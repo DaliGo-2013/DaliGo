@@ -1,6 +1,6 @@
 <section>
     <header>
-        <h2 class="text-lg font-medium text-neutral-900">
+        <h2 class="text-base font-semibold text-neutral-900">
             {{ __('Profile Information') }}
         </h2>
 
@@ -19,21 +19,22 @@
 
         <div>
             <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
+            <x-text-input id="name" name="name" type="text" class="mt-1.5 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
+            <x-text-input id="email" name="email" type="email" class="mt-1.5 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
+            <x-input-hint>Si cambias tu correo, deberás verificarlo nuevamente.</x-input-hint>
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
-                <div>
-                    <p class="mt-2 text-sm text-neutral-700">
+                <div class="mt-3 rounded-lg bg-brand-50 px-4 py-3">
+                    <p class="text-sm text-neutral-700">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="text-sm text-brand-600 underline-offset-2 hover:text-brand-700 hover:underline focus:outline-none">
+                        <button form="send-verification" class="font-medium text-brand-600 underline-offset-2 hover:text-brand-700 hover:underline focus:outline-none">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>

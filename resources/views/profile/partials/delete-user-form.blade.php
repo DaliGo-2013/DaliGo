@@ -1,6 +1,6 @@
 <section class="space-y-6">
     <header>
-        <h2 class="text-lg font-medium text-neutral-900">
+        <h2 class="text-base font-semibold text-neutral-900">
             {{ __('Delete Account') }}
         </h2>
 
@@ -19,7 +19,7 @@
             @csrf
             @method('delete')
 
-            <h2 class="text-lg font-medium text-neutral-900">
+            <h2 class="text-base font-semibold text-neutral-900">
                 {{ __('Are you sure you want to delete your account?') }}
             </h2>
 
@@ -34,7 +34,7 @@
                     id="password"
                     name="password"
                     type="password"
-                    class="mt-1 block w-3/4"
+                    class="mt-1.5 block w-3/4"
                     placeholder="{{ __('Password') }}"
                 />
 

@@ -1,8 +1,10 @@
 <x-guest-layout>
-    <h1 class="mb-2 text-xl font-semibold text-neutral-900">{{ __('Forgot your password?') }}</h1>
-    <p class="mb-6 text-sm text-neutral-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
-    </p>
+    <header class="mb-6">
+        <h1 class="text-xl font-semibold tracking-tight text-neutral-900">{{ __('Forgot your password?') }}</h1>
+        <p class="mt-1 text-sm text-neutral-500">
+            {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+        </p>
+    </header>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
@@ -11,7 +13,7 @@
 
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="mt-1" type="email" name="email" :value="old('email')" required autofocus />
+            <x-text-input id="email" class="mt-1.5" type="email" name="email" :value="old('email')" required autofocus placeholder="tu@correo.cl" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
