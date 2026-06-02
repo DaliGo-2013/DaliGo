@@ -9,3 +9,32 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* ===== Motion DaliGo (design-motion-principles: Emil "restricción" + Jakub "pulido") =====
+   Contexto serio de autenticación → motion sutil y con propósito, sin rebotes. */
+
+/* Entrada: materializar (opacity + translateY + blur) con easing ease-out custom */
+@keyframes dg-enter {
+    from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+    to   { opacity: 1; transform: translateY(0);   filter: blur(0); }
+}
+.dg-enter { animation: dg-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Shake sutil para errores de validación (feedback funcional) */
+@keyframes dg-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+}
+.dg-shake { animation: dg-shake 0.38s ease-in-out; }
+
+/* Accesibilidad: respetar prefers-reduced-motion (no es opcional) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
