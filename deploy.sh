@@ -24,7 +24,7 @@ echo "==> Ejecutando migraciones"
 php artisan migrate --force
 
 echo "==> Enlazando storage publico"
-php artisan storage:link || true
+php artisan storage:link --force >/dev/null 2>&1 || true
 
 echo "==> Reconstruyendo caches (config/rutas/vistas)"
 php artisan config:cache
