@@ -11,24 +11,26 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-COMPOSER_BIN="$(command -v composer || echo /opt/cpanel/composer/bin/composer)"
+# PHP 8.3 explicito: misma version que el entorno local y el web de produccion
+PHP_BIN=/opt/cpanel/ea-php83/root/usr/bin/php
+COMPOSER_BIN=/opt/cpanel/composer/bin/composer
 
 echo "==> Actualizando codigo (git pull)"
 git pull --ff-only origin main
 
-echo "==> Instalando dependencias de produccion"
+echo "==> Instalando dependencias de produccion (PHP 8.3)"
 export COMPOSER_MEMORY_LIMIT=-1
-"$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction
+"$PHP_BIN" "$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction
 
 echo "==> Ejecutando migraciones"
-php artisan migrate --force
+"$PHP_BIN" artisan migrate --force
 
 echo "==> Enlazando storage publico"
-php artisan storage:link --force >/dev/null 2>&1 || true
+"$PHP_BIN" artisan storage:link --force >/dev/null 2>&1 || true
 
 echo "==> Reconstruyendo caches (config/rutas/vistas)"
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+"$PHP_BIN" artisan config:cache
+"$PHP_BIN" artisan route:cache
+"$PHP_BIN" artisan view:cache
 
 echo "==> Despliegue completado"
