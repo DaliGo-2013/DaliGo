@@ -1,6 +1,6 @@
 <x-guest-layout>
-    <h1 class="mb-2 text-xl font-semibold text-white">{{ __('Forgot your password?') }}</h1>
-    <p class="mb-6 text-sm text-slate-400">
+    <h1 class="mb-2 text-xl font-semibold text-neutral-900">{{ __('Forgot your password?') }}</h1>
+    <p class="mb-6 text-sm text-neutral-600">
         {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
     </p>
 
@@ -18,7 +18,7 @@
         <x-primary-button class="w-full">{{ __('Email Password Reset Link') }}</x-primary-button>
     </form>
 
-    <p class="mt-6 text-center text-sm text-slate-400">
-        <a href="{{ route('login') }}" class="font-medium text-indigo-400 hover:text-indigo-300">{{ __('Back to log in') }}</a>
+    <p class="mt-6 text-center text-sm text-neutral-600">
+        <a href="{{ route('login') }}" class="font-medium text-brand-600 hover:text-brand-700">{{ __('Back to log in') }}</a>
     </p>
 </x-guest-layout>

@@ -12,12 +12,12 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-full font-sans text-slate-100 antialiased bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+    <body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
         <div class="min-h-screen">
             @include('layouts.navigation')
 
             @isset($header)
-                <header class="border-b border-slate-800 bg-slate-900/50">
+                <header class="border-b border-neutral-200 bg-white">
                     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         {{ $header }}
                     </div>

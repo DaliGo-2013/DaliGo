@@ -1,10 +1,10 @@
 <section>
     <header>
-        <h2 class="text-lg font-medium text-white">
+        <h2 class="text-lg font-medium text-neutral-900">
             {{ __('Profile Information') }}
         </h2>
 
-        <p class="mt-1 text-sm text-slate-400">
+        <p class="mt-1 text-sm text-neutral-500">
             {{ __("Update your account's profile information and email address.") }}
         </p>
     </header>
@@ -30,16 +30,16 @@
 
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
                 <div>
-                    <p class="mt-2 text-sm text-slate-300">
+                    <p class="mt-2 text-sm text-neutral-700">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="text-sm text-indigo-400 underline-offset-2 hover:text-indigo-300 hover:underline focus:outline-none">
+                        <button form="send-verification" class="text-sm text-brand-600 underline-offset-2 hover:text-brand-700 hover:underline focus:outline-none">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 text-sm font-medium text-emerald-400">
+                        <p class="mt-2 text-sm font-medium text-green-700">
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
@@ -51,7 +51,7 @@
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
             @if (session('status') === 'profile-updated')
-                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)" class="text-sm text-slate-400">{{ __('Saved.') }}</p>
+                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)" class="text-sm text-neutral-500">{{ __('Saved.') }}</p>
             @endif
         </div>
     </form>

@@ -8,17 +8,24 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Marca DaliGo: naranjo sobrio (#EA580C). Centralizado: cambiar el tono aqui. */
+    --color-brand-50: #fff7ed;
+    --color-brand-100: #ffedd5;
+    --color-brand-500: #f97316;
+    --color-brand-600: #ea580c;
+    --color-brand-700: #c2410c;
 }
 
 /* ===== Motion DaliGo (design-motion-principles: Emil "restricción" + Jakub "pulido") =====
-   Contexto serio de autenticación → motion sutil y con propósito, sin rebotes. */
+   App de negocio sobria → motion sutil, rápido y con propósito; sin rebotes ni loops. */
 
 /* Entrada: materializar (opacity + translateY + blur) con easing ease-out custom */
 @keyframes dg-enter {
     from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
     to   { opacity: 1; transform: translateY(0);   filter: blur(0); }
 }
-.dg-enter { animation: dg-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.dg-enter { animation: dg-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* Shake sutil para errores de validación (feedback funcional) */
 @keyframes dg-shake {

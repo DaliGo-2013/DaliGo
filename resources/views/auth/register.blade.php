@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h1 class="mb-6 text-xl font-semibold text-white">{{ __('Register') }}</h1>
+    <h1 class="mb-6 text-xl font-semibold text-neutral-900">{{ __('Register') }}</h1>
 
     <form method="POST" action="{{ route('register') }}" class="space-y-5">
         @csrf
@@ -31,8 +31,8 @@
         <x-primary-button class="w-full">{{ __('Register') }}</x-primary-button>
     </form>
 
-    <p class="mt-6 text-center text-sm text-slate-400">
+    <p class="mt-6 text-center text-sm text-neutral-600">
         {{ __('Already registered?') }}
-        <a href="{{ route('login') }}" class="font-medium text-indigo-400 hover:text-indigo-300">{{ __('Log in') }}</a>
+        <a href="{{ route('login') }}" class="font-medium text-brand-600 hover:text-brand-700">{{ __('Log in') }}</a>
     </p>
 </x-guest-layout>
