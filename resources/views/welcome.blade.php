@@ -14,7 +14,7 @@
                     <span class="text-3xl font-black tracking-tight text-indigo-300">D</span>
                 </div>
                 <h1 class="text-4xl font-bold tracking-tight">DaliGo</h1>
-                <p class="mt-2 text-sm text-slate-400">Despliegue verificado &middot; Laravel sobre PHP 8.2</p>
+                <p class="mt-2 text-sm text-slate-400">Despliegue verificado &middot; Laravel 12 + MySQL 5.7</p>
             </div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
