@@ -16,6 +16,10 @@ PHP_BIN=/opt/cpanel/ea-php83/root/usr/bin/php
 COMPOSER_BIN=/opt/cpanel/composer/bin/composer
 
 echo "==> Actualizando codigo (git pull)"
+# cPanel reintroduce un bloque de handler PHP en public/.htaccess (solo comentarios)
+# que ensucia el arbol de trabajo y rompe el pull --ff-only. Lo descartamos antes
+# de actualizar; cPanel lo vuelve a agregar despues sin afectar el funcionamiento.
+git checkout -- public/.htaccess 2>/dev/null || true
 git pull --ff-only origin main
 
 echo "==> Instalando dependencias de produccion (PHP 8.3)"
