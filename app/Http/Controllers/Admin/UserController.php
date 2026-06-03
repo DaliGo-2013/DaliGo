@@ -62,7 +62,37 @@ class UserController extends Controller
     }
 
     /**
-     * Elimina una cuenta (no permite auto-eliminarse).
+     * Formulario para cambiar el rol de una cuenta.
+     */
+    public function edit(User $user): View
+    {
+        return view('admin.users.edit', [
+            'user' => $user->load('roles'),
+            'roles' => Role::orderBy('name')->pluck('name'),
+        ]);
+    }
+
+    /**
+     * Actualiza (reemplaza) el rol de una cuenta.
+     */
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'string', Rule::exists('roles', 'name')],
+        ]);
+
+        if ($this->wouldRemoveLastAdmin($user, $validated['role'])) {
+            return back()->with('status', 'No puedes quitar el rol admin: es el ultimo administrador.');
+        }
+
+        $user->syncRoles([$validated['role']]);
+
+        return redirect()->route('admin.users.index')
+            ->with('status', "Rol de {$user->email} actualizado a {$validated['role']}.");
+    }
+
+    /**
+     * Elimina una cuenta (no permite auto-eliminarse ni borrar al ultimo admin).
      */
     public function destroy(Request $request, User $user): RedirectResponse
     {
@@ -70,8 +100,29 @@ class UserController extends Controller
             return back()->with('status', 'No puedes eliminar tu propia cuenta.');
         }
 
+        if ($this->wouldRemoveLastAdmin($user)) {
+            return back()->with('status', 'No puedes eliminar al ultimo administrador.');
+        }
+
         $user->delete();
 
         return back()->with('status', "Cuenta de {$user->email} eliminada.");
+    }
+
+    /**
+     * Determina si la accion dejaria al sistema sin ningun administrador.
+     * Al editar, $newRole es el rol que quedaria; al eliminar, es null.
+     */
+    private function wouldRemoveLastAdmin(User $user, ?string $newRole = null): bool
+    {
+        if (! $user->hasRole('admin')) {
+            return false;
+        }
+
+        if ($newRole === 'admin') {
+            return false;
+        }
+
+        return User::role('admin')->count() <= 1;
     }
 }

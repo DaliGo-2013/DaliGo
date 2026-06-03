@@ -2,9 +2,11 @@
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
             <h2 class="text-xl font-semibold leading-tight text-neutral-900">Usuarios</h2>
-            <a href="{{ route('admin.users.create') }}" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
-                Crear cuenta
-            </a>
+            @can('create users')
+                <a href="{{ route('admin.users.create') }}" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
+                    Crear cuenta
+                </a>
+            @endcan
         </div>
     </x-slot>
 
@@ -38,14 +40,21 @@
                                         <span class="text-xs text-neutral-400">sin rol</span>
                                     @endforelse
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    @unless ($user->is(auth()->user()))
-                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('¿Eliminar la cuenta de {{ $user->email }}?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-700">Eliminar</button>
-                                        </form>
-                                    @endunless
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-end gap-4">
+                                        @can('edit users')
+                                            <a href="{{ route('admin.users.edit', $user) }}" class="text-sm font-medium text-brand-600 hover:text-brand-700">Editar</a>
+                                        @endcan
+                                        @can('delete users')
+                                            @unless ($user->is(auth()->user()))
+                                                <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('¿Eliminar la cuenta de {{ $user->email }}?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-700">Eliminar</button>
+                                                </form>
+                                            @endunless
+                                        @endcan
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

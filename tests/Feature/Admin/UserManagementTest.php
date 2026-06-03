@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -23,6 +24,20 @@ class UserManagementTest extends TestCase
         $admin->assignRole('admin');
 
         return $admin;
+    }
+
+    /**
+     * Usuario con un rol personalizado que solo tiene los permisos indicados.
+     */
+    private function userWith(array $permissions): User
+    {
+        $role = Role::firstOrCreate(['name' => 'custom', 'guard_name' => 'web']);
+        $role->syncPermissions($permissions);
+
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        return $user;
     }
 
     public function test_admin_can_view_users_index(): void
@@ -94,5 +109,88 @@ class UserManagementTest extends TestCase
     public function test_public_register_route_is_removed(): void
     {
         $this->get('/register')->assertNotFound();
+    }
+
+    public function test_admin_can_view_edit_form(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('member');
+
+        $this->actingAs($this->admin())->get("/admin/users/{$user->id}/edit")
+            ->assertOk()
+            ->assertSee('Editar rol');
+    }
+
+    public function test_admin_can_update_user_role(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('member');
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$user->id}", ['role' => 'admin'])
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertTrue($user->fresh()->hasRole('admin'));
+        $this->assertFalse($user->fresh()->hasRole('member'));
+    }
+
+    public function test_update_rejects_unknown_role(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('member');
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$user->id}", ['role' => 'inexistente'])
+            ->assertSessionHasErrors('role');
+    }
+
+    public function test_cannot_remove_last_admin_role_via_update(): void
+    {
+        $admin = $this->admin(); // unico admin
+
+        $this->actingAs($admin)->put("/admin/users/{$admin->id}", ['role' => 'member']);
+
+        $this->assertTrue($admin->fresh()->hasRole('admin'));
+    }
+
+    public function test_can_change_admin_role_when_another_admin_exists(): void
+    {
+        $admin1 = $this->admin();
+        $admin2 = $this->admin();
+
+        $this->actingAs($admin1)
+            ->put("/admin/users/{$admin2->id}", ['role' => 'member'])
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertTrue($admin2->fresh()->hasRole('member'));
+        $this->assertFalse($admin2->fresh()->hasRole('admin'));
+    }
+
+    public function test_view_permission_allows_index_but_not_create(): void
+    {
+        $user = $this->userWith(['view users']);
+
+        $this->actingAs($user)->get('/admin/users')->assertOk();
+        $this->actingAs($user)->get('/admin/users/create')->assertForbidden();
+    }
+
+    public function test_edit_permission_required_for_edit_and_update(): void
+    {
+        $viewer = $this->userWith(['view users']);
+        $target = User::factory()->create();
+        $target->assignRole('member');
+
+        $this->actingAs($viewer)->get("/admin/users/{$target->id}/edit")->assertForbidden();
+        $this->actingAs($viewer)->put("/admin/users/{$target->id}", ['role' => 'admin'])->assertForbidden();
+    }
+
+    public function test_cannot_delete_last_admin(): void
+    {
+        $admin = $this->admin(); // unico admin
+        $deleter = $this->userWith(['delete users']); // puede borrar pero no es admin
+
+        $this->actingAs($deleter)->delete("/admin/users/{$admin->id}");
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }
 }

@@ -14,9 +14,15 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
 
-                    @can('create users')
+                    @can('view users')
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                             Usuarios
+                        </x-nav-link>
+                    @endcan
+
+                    @can('manage roles')
+                        <x-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                            Roles
                         </x-nav-link>
                     @endcan
                 </div>
@@ -68,9 +74,15 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
 
-            @can('create users')
+            @can('view users')
                 <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                     Usuarios
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('manage roles')
+                <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                    Roles
                 </x-responsive-nav-link>
             @endcan
         </div>
