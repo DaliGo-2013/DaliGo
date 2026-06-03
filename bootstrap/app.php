@@ -16,12 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // 419 (token CSRF / sesion expirada): en lugar de la pagina cruda
-        // "Page Expired", devolver al formulario con un mensaje claro y
-        // conservando lo escrito (menos las contrasenas).
-        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
-            return redirect()->back()
-                ->withInput($request->except(['password', 'password_confirmation', '_token']))
-                ->with('status', 'Tu sesión expiró por seguridad. Por favor, vuelve a intentarlo.');
+        // 419 (token CSRF / sesion expirada): Laravel convierte
+        // TokenMismatchException en HttpException(419) ANTES de los render
+        // callbacks, por eso se intercepta por status 419 (no por la clase).
+        // En peticiones web devolvemos al formulario con un mensaje claro y
+        // conservando lo escrito (menos contrasenas); como red de seguridad
+        // existe ademas resources/views/errors/419.blade.php.
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() === 419 && ! $request->expectsJson()) {
+                return redirect()->back()
+                    ->withInput($request->except(['password', 'password_confirmation', '_token']))
+                    ->with('status', 'Tu sesión expiró por seguridad. Por favor, vuelve a intentarlo.');
+            }
         });
     })->create();
