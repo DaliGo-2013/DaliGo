@@ -1,0 +1,30 @@
+name: Desplegar a producción
+
+# Se ejecuta en cada push a main (despliegue automatico) y tambien a mano
+# desde la pestaña Actions (boton "Run workflow").
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Serializa los despliegues: nunca corren dos a la vez. Si llega un push
+# mientras otro deploy esta en curso, espera (no lo cancela).
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy por SSH a HostGator
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 20m
+          script: |
+            cd /home4/impdali/daligo
+            bash deploy.sh
