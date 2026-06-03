@@ -14,6 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Detras de LiteSpeed/cPanel (SSL terminado en el proxy): confiar en los
         // encabezados X-Forwarded-* para detectar correctamente el esquema HTTPS.
         $middleware->trustProxies(at: '*');
+
+        // Alias de middleware de spatie/laravel-permission.
+        $middleware->alias([
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // 419 (token CSRF / sesion expirada): Laravel convierte

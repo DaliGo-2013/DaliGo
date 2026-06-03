@@ -25,6 +25,9 @@ export COMPOSER_MEMORY_LIMIT=-1
 echo "==> Ejecutando migraciones"
 "$PHP_BIN" artisan migrate --force
 
+echo "==> Seed de roles/permisos (idempotente)"
+"$PHP_BIN" artisan db:seed --class=RolesAndPermissionsSeeder --force
+
 echo "==> Enlazando storage publico"
 "$PHP_BIN" artisan storage:link --force >/dev/null 2>&1 || true
 
@@ -32,5 +35,8 @@ echo "==> Reconstruyendo caches (config/rutas/vistas)"
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan route:cache
 "$PHP_BIN" artisan view:cache
+
+echo "==> Reset de cache de permisos (spatie)"
+"$PHP_BIN" artisan permission:cache-reset
 
 echo "==> Despliegue completado"

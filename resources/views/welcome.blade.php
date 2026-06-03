@@ -19,10 +19,7 @@
                 @auth
                     <a href="{{ url('/dashboard') }}" class="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Dashboard') }}</a>
                 @else
-                    <a href="{{ route('login') }}" class="px-3 py-2 text-neutral-600 transition duration-150 hover:text-neutral-900">{{ __('Log in') }}</a>
-                    @if (Route::has('register'))
-                        <a href="{{ route('register') }}" class="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Register') }}</a>
-                    @endif
+                    <a href="{{ route('login') }}" class="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Log in') }}</a>
                 @endauth
             </nav>
         </header>
@@ -38,9 +35,6 @@
                         <a href="{{ url('/dashboard') }}" class="rounded-lg bg-brand-600 px-6 py-3 font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">Ir al panel</a>
                     @else
                         <a href="{{ route('login') }}" class="rounded-lg bg-brand-600 px-6 py-3 font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Log in') }}</a>
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="rounded-lg border border-neutral-300 bg-white px-6 py-3 font-semibold text-neutral-700 transition duration-150 hover:bg-neutral-50 active:scale-[0.98]">{{ __('Register') }}</a>
-                        @endif
                     @endauth
                 </div>
             </div>

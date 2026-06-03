@@ -37,10 +37,4 @@
         </div>
     </form>
 
-    @if (Route::has('register'))
-        <p class="mt-6 text-center text-sm text-neutral-600">
-            {{ __("Don't have an account?") }}
-            <a href="{{ route('register') }}" class="font-medium text-brand-600 hover:text-brand-700">{{ __('Register') }}</a>
-        </p>
-    @endif
 </x-guest-layout>
