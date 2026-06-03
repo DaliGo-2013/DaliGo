@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,5 +25,11 @@ class AppServiceProvider extends ServiceProvider
         // string (191*4 = 764 < 767 bytes) para no exceder el limite de
         // longitud de indice de InnoDB en MySQL 5.7.
         Schema::defaultStringLength(191);
+
+        // En produccion (HTTPS detras de LiteSpeed) forzar https en las URLs
+        // generadas, para que formularios y enlaces siempre apunten a https.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }

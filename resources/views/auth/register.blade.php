@@ -4,6 +4,8 @@
         <p class="mt-1 text-sm text-neutral-500">Crea tu cuenta para comenzar.</p>
     </header>
 
+    <x-auth-session-status class="mb-4" :status="session('status')" />
+
     <form method="POST" action="{{ route('register') }}" class="space-y-5">
         @csrf
 
