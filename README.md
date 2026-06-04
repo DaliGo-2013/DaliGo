@@ -24,7 +24,7 @@ Aplicación web desarrollada con Laravel 12 sobre PHP 8.3, preparada para desple
 Clonar el repositorio:
 
 ```bash
-git clone https://github.com/Mauricio-Alvarez-T/DaliGo.git
+git clone https://github.com/DaliGo-2013/DaliGo.git
 cd DaliGo
 ```
 

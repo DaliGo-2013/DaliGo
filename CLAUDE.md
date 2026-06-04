@@ -34,6 +34,34 @@ archivo automáticamente al iniciar cada sesión en este repo).
 - **UI en español**, tema claro y sobrio, **motion sutil** (`dg-enter` / `dg-shake`, respeta `prefers-reduced-motion`).
 - **Permisos** con `spatie/laravel-permission`; el seeder `RolesAndPermissionsSeeder` es **idempotente** (se puede correr siempre).
 
+### Reglas de diseño (UI)
+Tema **claro y sobrio**: naranjo de marca + blanco + neutros, **sin degradados**. **Reutiliza los componentes Blade** de `resources/views/components/`; no recrees botones/inputs/iconos inline.
+
+**Colores** — siempre utilidades, nunca hex hardcodeado:
+- Marca: `brand-600` (#ea580c, primario), `brand-700` (#c2410c, hover), `brand-50`/`brand-100` (fondos y anillos suaves). Definidos en [resources/css/app.css](resources/css/app.css) (`@theme`); para cambiar el tono, edítalo **solo ahí**.
+- Neutros: escala `neutral-*` (texto `neutral-900/700/600/500/400`, fondos `neutral-50/100`, bordes `neutral-200/300`).
+- Destructivo (eliminar): `red-600` (texto/fondo), `red-500` (hover), `red-50` (fondo hover).
+
+**Iconos** — Heroicons estilo **outline**, como componentes Blade en `resources/views/components/icon/`, usados con `<x-icon.nombre />` (hoy: `pencil`, `trash`, `plus`):
+- Formato exacto del SVG: `fill="none"`, `viewBox="0 0 24 24"`, `stroke-width="1.5"`, `stroke="currentColor"`, `aria-hidden="true"`. Tamaño por defecto `h-5 w-5` (sobrescribible; `h-4 w-4` dentro de botones).
+- El color se **hereda** con `currentColor`: no pongas color en el SVG; contrólalo con `text-*` en el contenedor.
+- Icono accionable (botón/enlace): agrega `title="..."` y un `<span class="sr-only">Acción</span>` para accesibilidad.
+- Icono nuevo: copia uno existente (ej. `pencil.blade.php`), pega el `path` de Heroicons *outline 24* y conserva el mismo formato.
+
+**Botones** — usa los componentes, no los reconstruyas: `<x-primary-button>` (`bg-brand-600 hover:bg-brand-700`), `<x-secondary-button>` (borde `neutral-300`, fondo blanco), `<x-danger-button>` (`bg-red-600 hover:bg-red-500`). Todos: `rounded-lg`, `text-sm font-semibold`, `shadow-sm`, `transition duration-150`, foco con anillo de marca y `active:scale-[0.98]`. Icon-button de fila: `rounded-lg p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700` (destructivo: `hover:bg-red-50 hover:text-red-600`).
+
+**Formularios** — `<x-text-input>`, `<x-input-label>`, `<x-input-error>`, `<x-input-hint>`. Inputs: `rounded-lg border-neutral-300`, foco `focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30`.
+
+**Radios:** `rounded-lg` (botones/inputs/icon-buttons), `rounded-2xl` (tarjetas), `rounded-full` (badges/pills y avatares).
+
+**Tipografía:** fuente **Instrument Sans** (en `@theme`). Títulos `text-xl font-semibold text-neutral-900`; encabezados de sección `text-xs font-medium uppercase tracking-wide text-neutral-500`; cuerpo `text-sm`; badges/ayudas `text-xs`.
+
+**Tarjetas y listas:** contenedor `rounded-2xl border border-neutral-200 bg-white shadow-sm`; cabecera `border-b border-neutral-100 px-6 py-3`; filas con `divide-y divide-neutral-100`, cada una `flex items-center gap-4 px-6 py-4 hover:bg-neutral-50`. Avatares `h-10 w-10 rounded-full bg-neutral-100`. Para columnas alineadas a la derecha (badge + acciones) dar **ancho fijo** a esas columnas (ver commit `0c3f4fa`).
+
+**Badges / pills:** `inline-flex rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100`.
+
+**Motion** (sutil, rápido, con propósito — **sin rebotes ni loops**): `transition duration-150` en estados/hover; `active:scale-[0.98]` al presionar; `dg-enter` para materializar contenedores al cargar; `dg-shake` para feedback de error; **siempre** respetar `prefers-reduced-motion` (ya cubierto en `app.css`).
+
 ### Entorno local
 - Todo junto: `composer dev` (levanta `serve` + `queue` + `pail` logs + `vite` a la vez).
 - O por separado: `php artisan serve` y `npm run dev`.
