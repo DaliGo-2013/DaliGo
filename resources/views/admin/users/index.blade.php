@@ -45,7 +45,7 @@
                                 <p class="truncate text-sm text-neutral-500">{{ $user->email }}</p>
                             </div>
 
-                            <div class="shrink-0">
+                            <div class="flex w-28 shrink-0 flex-wrap items-center gap-1">
                                 @forelse ($user->roles as $role)
                                     <span class="inline-flex rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">{{ $role->name }}</span>
                                 @empty
@@ -53,7 +53,7 @@
                                 @endforelse
                             </div>
 
-                            <div class="flex shrink-0 items-center gap-1">
+                            <div class="flex w-20 shrink-0 items-center gap-1">
                                 @can('edit users')
                                     <a href="{{ route('admin.users.edit', $user) }}" title="Editar" class="rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700">
                                         <x-icon.pencil class="h-5 w-5" />

@@ -59,11 +59,11 @@
                                 </div>
                             </div>
 
-                            <div class="hidden shrink-0 text-sm text-neutral-500 sm:block">
+                            <div class="hidden w-24 shrink-0 text-right text-sm text-neutral-500 sm:block">
                                 {{ $role->users_count }} {{ \Illuminate\Support\Str::plural('usuario', $role->users_count) }}
                             </div>
 
-                            <div class="flex shrink-0 items-center gap-1">
+                            <div class="flex w-20 shrink-0 items-center gap-1">
                                 <a href="{{ route('admin.roles.edit', $role) }}" title="Editar" class="rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700">
                                     <x-icon.pencil class="h-5 w-5" />
                                     <span class="sr-only">Editar</span>
