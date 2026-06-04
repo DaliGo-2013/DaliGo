@@ -2,6 +2,8 @@
 
 Aplicación web desarrollada con Laravel 12 sobre PHP 8.3, preparada para desplegarse en un hosting compartido (HostGator). Incluye autenticación de usuarios (registro, inicio de sesión y recuperación de contraseña) mediante Laravel Breeze.
 
+> 📋 **Antes de trabajar en el proyecto:** lee y mantén [`CLAUDE.md`](CLAUDE.md) — la guía viva con las *formas correctas de hacer las cosas* y la **bitácora de errores y soluciones**. Si tienes una dificultad o un error y lo resuelves, **regístralo ahí antes de cerrar tu tarea** (aplica a todos los colaboradores, humanos e IA).
+
 ## Stack tecnológico
 
 - PHP 8.3
