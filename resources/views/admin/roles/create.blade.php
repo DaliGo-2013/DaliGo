@@ -10,7 +10,7 @@
     @endphp
 
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-neutral-900">Crear rol</h2>
+        <x-page-header title="Crear rol" />
     </x-slot>
 
     <div class="py-12">
@@ -30,21 +30,17 @@
                         <x-input-label value="Permisos" />
                         <div class="mt-1.5 space-y-2">
                             @foreach ($permissions as $permission)
-                                <label class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3.5 py-2.5 text-sm transition duration-150 hover:bg-neutral-50">
-                                    <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
-                                        @checked(in_array($permission->name, old('permissions', [])))
-                                        class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500/30">
-                                    <span class="font-medium text-neutral-700">{{ $labels[$permission->name] ?? $permission->name }}</span>
-                                </label>
+                                <x-checkbox-item name="permissions[]" :value="$permission->name" :checked="in_array($permission->name, old('permissions', []))">
+                                    {{ $labels[$permission->name] ?? $permission->name }}
+                                </x-checkbox-item>
                             @endforeach
                         </div>
                         <x-input-error :messages="$errors->get('permissions')" class="mt-2" />
                     </div>
 
-                    <div class="flex items-center justify-end gap-4 pt-2">
-                        <a href="{{ route('admin.roles.index') }}" class="text-sm font-medium text-neutral-500 hover:text-neutral-800">Cancelar</a>
+                    <x-form-footer :cancel="route('admin.roles.index')">
                         <x-primary-button>Crear rol</x-primary-button>
-                    </div>
+                    </x-form-footer>
                 </form>
             </div>
         </div>

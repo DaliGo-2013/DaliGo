@@ -13,7 +13,7 @@
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                         <span class="text-sm text-neutral-500">Tu rol:</span>
                         @forelse (auth()->user()->roles as $role)
-                            <span class="inline-flex rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">{{ $role->name }}</span>
+                            <x-badge>{{ $role->name }}</x-badge>
                         @empty
                             <span class="text-xs text-neutral-400">sin rol</span>
                         @endforelse

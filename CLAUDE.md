@@ -62,6 +62,27 @@ Tema **claro y sobrio**: naranjo de marca + blanco + neutros, **sin degradados**
 
 **Motion** (sutil, rápido, con propósito — **sin rebotes ni loops**): `transition duration-150` en estados/hover; `active:scale-[0.98]` al presionar; `dg-enter` para materializar contenedores al cargar; `dg-shake` para feedback de error; **siempre** respetar `prefers-reduced-motion` (ya cubierto en `app.css`).
 
+### Responsive (obligatorio en cada cambio)
+La app es **mobile-first**. Toda pantalla y componente debe verse bien y **sin scroll horizontal** a **375px (móvil), 768px (tablet) y ≥1024px (desktop)**.
+- Las clases base son para móvil; se escala con prefijos `sm:` / `md:` / `lg:`, nunca al revés.
+- **Prohibido** un ancho fijo (`w-28`, `w-64`, …) sin fallback responsive; en móvil usar `w-full` o reflow.
+- Filas/tablas con varias columnas deben **reflowar o apilar** en móvil (usa `<x-list-row>`), no desbordar.
+- **Cada cambio se entrega ya responsive y verificado** a esos 3 anchos.
+- Checklist antes de cerrar: ¿se ve bien a 375/768/1024? ¿sin scroll horizontal? ¿los botones/enlaces son cómodos al tocar en móvil?
+
+### Reutilizar antes de crear (DRY)
+**Antes de escribir UI nueva**, revisa el catálogo de abajo y **reutiliza**. Si un patrón se repite (o se va a repetir), **extrae un componente** en `resources/views/components/` en vez de copiar markup. **Prohibido** inline-stylear a mano botones, inputs, selects, checkboxes, badges, íconos o filas que ya tienen componente. Los elementos de uso constante SIEMPRE se componentizan.
+
+#### Catálogo de componentes (`<x-...>`)
+- **Layout / página:** `app-layout`, `guest-layout`, `page-header` (título + subtítulo + slot `action`), `list-card` (tarjeta + cabecera + `<ul>`), `list-row` (fila **responsive** con slots `leading`/`meta`/`actions`), `avatar`, `modal`, `dropdown` / `dropdown-link`.
+- **Navegación:** `nav-link`, `responsive-nav-link`.
+- **Botones / enlaces:** `primary-button`, `secondary-button`, `danger-button`, `button-link` (enlace con estilo primario), `icon-button` (`:href`, `variant=default|danger`, `label`), `secondary-link` (cancelar/volver).
+- **Form controls:** `input-label`, `text-input`, `select`, `textarea`, `checkbox`, `radio`, `checkbox-item` (checkbox + label en tarjeta; slot `note`), `input-error`, `input-hint`, `form-footer` (`:cancel` + botón submit en el slot).
+- **Feedback:** `badge` (`variant=brand|neutral`), `status-alert` (`:status`), `auth-session-status`.
+- **Íconos:** `icon.pencil`, `icon.trash`, `icon.plus` (agrega nuevos como Heroicons outline; ver Reglas de diseño).
+
+Si algo no existe y se va a usar seguido, créalo siguiendo el formato de los componentes existentes.
+
 ### Entorno local
 - Todo junto: `composer dev` (levanta `serve` + `queue` + `pail` logs + `vite` a la vez).
 - O por separado: `php artisan serve` y `npm run dev`.

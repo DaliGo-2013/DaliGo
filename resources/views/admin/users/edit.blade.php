@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-neutral-900">Editar rol</h2>
+        <x-page-header title="Editar rol" />
     </x-slot>
 
     <div class="py-12">
@@ -23,19 +23,17 @@
 
                     <div>
                         <x-input-label for="role" value="Rol" />
-                        <select id="role" name="role" required
-                            class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                        <x-select id="role" name="role" class="mt-1.5" required>
                             @foreach ($roles as $role)
                                 <option value="{{ $role }}" @selected(old('role', $user->roles->first()?->name) === $role)>{{ $role }}</option>
                             @endforeach
-                        </select>
+                        </x-select>
                         <x-input-error :messages="$errors->get('role')" class="mt-2" />
                     </div>
 
-                    <div class="flex items-center justify-end gap-4 pt-2">
-                        <a href="{{ route('admin.users.index') }}" class="text-sm font-medium text-neutral-500 hover:text-neutral-800">Cancelar</a>
+                    <x-form-footer :cancel="route('admin.users.index')">
                         <x-primary-button>Guardar rol</x-primary-button>
-                    </div>
+                    </x-form-footer>
                 </form>
             </div>
         </div>
