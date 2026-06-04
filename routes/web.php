@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Produccion\MiProduccionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -42,6 +44,26 @@ Route::middleware('auth')
         Route::resource('roles', RoleController::class)
             ->middleware('permission:manage roles')
             ->except(['show']);
+
+        // Produccion (Jefe de Bodega): asignar y revisar reportes.
+        Route::middleware('permission:manage production')->group(function () {
+            Route::get('produccion', [ProduccionController::class, 'index'])->name('produccion.index');
+            Route::get('produccion/asignar', [ProduccionController::class, 'asignar'])->name('produccion.asignar');
+            Route::post('produccion/asignar', [ProduccionController::class, 'asignarStore'])->name('produccion.asignar.store');
+            Route::get('produccion/reporte/{reporte}', [ProduccionController::class, 'reporteShow'])->name('produccion.reporte.show');
+            Route::post('produccion/reporte/{reporte}/aprobar', [ProduccionController::class, 'aprobar'])->name('produccion.reporte.aprobar');
+            Route::post('produccion/reporte/{reporte}/devolver', [ProduccionController::class, 'devolver'])->name('produccion.reporte.devolver');
+            Route::post('produccion/reporte/{reporte}/ajustar', [ProduccionController::class, 'ajustar'])->name('produccion.reporte.ajustar');
+        });
+    });
+
+// Mi produccion (Soplador): su reporte del dia.
+Route::middleware(['auth', 'permission:report production'])
+    ->prefix('produccion')
+    ->name('produccion.')
+    ->group(function () {
+        Route::get('mi-reporte', [MiProduccionController::class, 'index'])->name('mi.index');
+        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->name('mi.update');
     });
 
 require __DIR__.'/auth.php';

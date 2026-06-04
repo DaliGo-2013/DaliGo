@@ -26,6 +26,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'edit users',
             'delete users',
             'manage roles',
+            // Modulo Produccion.
+            'report production',  // soplador: ve y envia su reporte diario
+            'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve
         ];
 
         foreach ($permissions as $name) {
@@ -36,5 +39,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin->givePermissionTo($permissions);
 
         Role::firstOrCreate(['name' => 'member', 'guard_name' => 'web']);
+
+        // Modulo Produccion: el operario reporta, la jefatura gestiona.
+        // firstOrCreate es aditivo: si los roles ya existen (creados desde la UI),
+        // solo se les agrega el permiso correspondiente.
+        Role::firstOrCreate(['name' => 'Soplador', 'guard_name' => 'web'])
+            ->givePermissionTo('report production');
+        Role::firstOrCreate(['name' => 'Jefatura', 'guard_name' => 'web'])
+            ->givePermissionTo('manage production');
     }
 }

@@ -128,6 +128,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-06-04] `updateOrCreate` con columna `date` casteada no actualiza
+- **Síntoma:** al reasignar producción (mismo soplador/fecha/turno con otra cantidad), la fila no se duplicaba pero la cantidad no se actualizaba (quedaba la primera).
+- **Causa:** `updateOrCreate(['fecha' => $fecha, ...], [...])` compara `fecha` (cast a `date`) por igualdad exacta de string; el valor almacenado incluye hora (`Y-m-d 00:00:00`) y no coincide con `Y-m-d`, dejando el match inconsistente.
+- **Solución:** buscar con `whereDate('fecha', $fecha)->where(...)->first()` y luego `update()` o `create()` explícito. Ver `app/Http/Controllers/Admin/ProduccionController.php::asignarStore` (módulo Producción).
+- **Evitar a futuro:** para columnas `date`/`datetime` casteadas, usar `whereDate()` al buscar coincidencias; no confiar en la igualdad directa de `updateOrCreate`.
+
 ### [2026-06-04] Estilos nuevos de Tailwind no aparecen en producción
 - **Síntoma:** un cambio de clases Tailwind se ve en local pero en staging/producción sigue igual.
 - **Causa:** `public/build` está versionado y el servidor no tiene Node; no se recompiló ni commiteó el bundle, y Tailwind purga las clases no usadas (las nuevas no existían en el CSS desplegado).

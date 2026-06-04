@@ -25,6 +25,18 @@
                             Roles
                         </x-nav-link>
                     @endcan
+
+                    @can('manage production')
+                        <x-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
+                            Producción
+                        </x-nav-link>
+                    @endcan
+
+                    @can('report production')
+                        <x-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')">
+                            Mi producción
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -83,6 +95,18 @@
             @can('manage roles')
                 <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
                     Roles
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('manage production')
+                <x-responsive-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
+                    Producción
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('report production')
+                <x-responsive-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')">
+                    Mi producción
                 </x-responsive-nav-link>
             @endcan
         </div>
