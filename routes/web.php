@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
@@ -43,6 +44,12 @@ Route::middleware('auth')
         // Roles y permisos.
         Route::resource('roles', RoleController::class)
             ->middleware('permission:manage roles')
+            ->except(['show']);
+
+        // Sucursales / bodegas.
+        Route::resource('sucursales', SucursalController::class)
+            ->parameters(['sucursales' => 'sucursal'])
+            ->middleware('permission:manage sucursales')
             ->except(['show']);
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.

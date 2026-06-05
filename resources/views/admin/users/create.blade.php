@@ -37,6 +37,17 @@
                     </div>
 
                     <div>
+                        <x-input-label for="sucursal_id" value="Sucursal" />
+                        <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5">
+                            <option value="">— Sin sucursal —</option>
+                            @foreach ($sucursales as $sucursal)
+                                <option value="{{ $sucursal->id }}" @selected((int) old('sucursal_id') === $sucursal->id)>{{ $sucursal->nombre }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
+                    </div>
+
+                    <div>
                         <x-input-label for="password" value="Contraseña inicial" />
                         <x-text-input id="password" class="mt-1.5" type="password" name="password" required autocomplete="new-password" placeholder="••••••••" />
                         <x-input-hint>Mínimo 8 caracteres.</x-input-hint>

@@ -31,6 +31,17 @@
                         <x-input-error :messages="$errors->get('role')" class="mt-2" />
                     </div>
 
+                    <div>
+                        <x-input-label for="sucursal_id" value="Sucursal" />
+                        <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5">
+                            <option value="">— Sin sucursal —</option>
+                            @foreach ($sucursales as $sucursal)
+                                <option value="{{ $sucursal->id }}" @selected((int) old('sucursal_id', $user->sucursal_id) === $sucursal->id)>{{ $sucursal->nombre }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
+                    </div>
+
                     <x-form-footer :cancel="route('admin.users.index')">
                         <x-primary-button>Guardar rol</x-primary-button>
                     </x-form-footer>

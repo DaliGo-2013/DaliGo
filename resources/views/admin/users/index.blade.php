@@ -30,6 +30,7 @@
                             @endif
                         </div>
                         <p class="truncate text-sm text-neutral-500">{{ $user->email }}</p>
+                        <p class="truncate text-xs text-neutral-400">{{ $user->sucursal?->nombre ?? 'Sin sucursal' }}</p>
 
                         <x-slot name="meta">
                             <div class="flex flex-wrap items-center gap-1 sm:w-28 sm:shrink-0">

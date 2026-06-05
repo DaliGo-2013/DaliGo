@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -192,5 +193,35 @@ class UserManagementTest extends TestCase
         $this->actingAs($deleter)->delete("/admin/users/{$admin->id}");
 
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_create_form_only_lists_active_sucursales(): void
+    {
+        $activa = Sucursal::factory()->create(['activa' => true]);
+        $inactiva = Sucursal::factory()->create(['activa' => false]);
+
+        $ids = $this->actingAs($this->admin())
+            ->get('/admin/users/create')
+            ->assertOk()
+            ->viewData('sucursales')
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($activa->id));
+        $this->assertFalse($ids->contains($inactiva->id));
+    }
+
+    public function test_edit_form_keeps_users_current_sucursal_even_if_inactive(): void
+    {
+        $inactiva = Sucursal::factory()->create(['activa' => false]);
+        $user = User::factory()->create(['sucursal_id' => $inactiva->id]);
+        $user->assignRole('member');
+
+        $ids = $this->actingAs($this->admin())
+            ->get("/admin/users/{$user->id}/edit")
+            ->assertOk()
+            ->viewData('sucursales')
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($inactiva->id));
     }
 }

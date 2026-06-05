@@ -7,10 +7,13 @@ use Illuminate\Database\Seeder;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * Seeders base de la app (todos idempotentes; seguro re-ejecutar en cada deploy).
      */
     public function run(): void
     {
-        $this->call(RolesAndPermissionsSeeder::class);
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            SucursalSeeder::class,
+        ]);
     }
 }

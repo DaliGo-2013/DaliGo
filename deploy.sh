@@ -29,8 +29,8 @@ export COMPOSER_MEMORY_LIMIT=-1
 echo "==> Ejecutando migraciones"
 "$PHP_BIN" artisan migrate --force
 
-echo "==> Seed de roles/permisos (idempotente)"
-"$PHP_BIN" artisan db:seed --class=RolesAndPermissionsSeeder --force
+echo "==> Seed base (idempotente): roles/permisos + sucursales"
+"$PHP_BIN" artisan db:seed --force
 
 echo "==> Enlazando storage publico"
 "$PHP_BIN" artisan storage:link --force >/dev/null 2>&1 || true

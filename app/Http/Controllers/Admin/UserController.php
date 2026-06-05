@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Sucursal;
 use App\Models\User;
 use App\Rules\ImpdaliEmail;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +21,7 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        $users = User::with('roles')->orderBy('name')->get();
+        $users = User::with('roles', 'sucursal')->orderBy('name')->get();
 
         return view('admin.users.index', ['users' => $users]);
     }
@@ -32,11 +33,12 @@ class UserController extends Controller
     {
         return view('admin.users.create', [
             'roles' => Role::orderBy('name')->pluck('name'),
+            'sucursales' => Sucursal::where('activa', true)->orderBy('nombre')->get(),
         ]);
     }
 
     /**
-     * Crea una cuenta (solo dominio @impdali.cl) y le asigna un rol.
+     * Crea una cuenta (solo dominio @impdali.cl) y le asigna un rol y sucursal.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -44,6 +46,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', new ImpdaliEmail, 'unique:'.User::class],
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
@@ -51,6 +54,7 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'sucursal_id' => $validated['sucursal_id'] ?? null,
         ]);
 
         // Cuenta interna creada por un admin: se marca verificada.
@@ -62,29 +66,37 @@ class UserController extends Controller
     }
 
     /**
-     * Formulario para cambiar el rol de una cuenta.
+     * Formulario para cambiar el rol y la sucursal de una cuenta.
      */
     public function edit(User $user): View
     {
         return view('admin.users.edit', [
             'user' => $user->load('roles'),
             'roles' => Role::orderBy('name')->pluck('name'),
+            // Solo sucursales activas, pero conservando la del usuario aunque este inactiva
+            // (para no borrar su asignacion sin querer al guardar).
+            'sucursales' => Sucursal::where('activa', true)
+                ->orWhere('id', $user->sucursal_id)
+                ->orderBy('nombre')
+                ->get(),
         ]);
     }
 
     /**
-     * Actualiza (reemplaza) el rol de una cuenta.
+     * Actualiza el rol y la sucursal de una cuenta.
      */
     public function update(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
         ]);
 
         if ($this->wouldRemoveLastAdmin($user, $validated['role'])) {
             return back()->with('status', 'No puedes quitar el rol admin: es el ultimo administrador.');
         }
 
+        $user->update(['sucursal_id' => $validated['sucursal_id'] ?? null]);
         $user->syncRoles([$validated['role']]);
 
         return redirect()->route('admin.users.index')
