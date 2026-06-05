@@ -128,6 +128,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-06-05] El deploy de GitHub Actions falla por KEX (runner con OpenSSH nuevo)
+- **Síntoma:** los deploys (#9 solo `HANDOFF.md`, #10 módulo Producción) fallan en ~8-9s y el servidor no se actualiza (HEAD queda en el commit anterior, árbol limpio). Que falle hasta un commit de solo-docs descarta `deploy.sh`.
+- **Causa:** HostGator solo ofrece el KEX `diffie-hellman-group-exchange-sha256`; el runner de GitHub actualizó OpenSSH y dejó de habilitarlo por defecto, así que el handshake SSH muere **antes** de ejecutar `deploy.sh` (mismo KEX del incidente de `appleboy`, ahora en el cliente OpenSSH nativo del runner).
+- **Solución:** agregar `-o KexAlgorithms=+diffie-hellman-group-exchange-sha256` al `ssh` de `.github/workflows/deploy.yml`. Para desbloquear producción al toque, correr `deploy.sh` a mano: `ssh -i <llave> -p 2222 impdali@impdali.cl "cd /home4/impdali/daligo && bash deploy.sh"`.
+- **Evitar a futuro:** si un deploy falla en segundos sin tocar el servidor, sospechar de la negociación SSH (KEX/host key) antes que de `deploy.sh`; diagnosticar con `ssh -vv` y fijar los algoritmos que ofrece el server.
+
 ### [2026-06-04] `updateOrCreate` con columna `date` casteada no actualiza
 - **Síntoma:** al reasignar producción (mismo soplador/fecha/turno con otra cantidad), la fila no se duplicaba pero la cantidad no se actualizaba (quedaba la primera).
 - **Causa:** `updateOrCreate(['fecha' => $fecha, ...], [...])` compara `fecha` (cast a `date`) por igualdad exacta de string; el valor almacenado incluye hora (`Y-m-d 00:00:00`) y no coincide con `Y-m-d`, dejando el match inconsistente.
