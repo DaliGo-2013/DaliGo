@@ -17,12 +17,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Cliente OpenSSH nativo del runner (no appleboy/ssh-action).
-      # -o IdentitiesOnly=yes es CLAVE: una actualizacion de la imagen del runner dejo
-      # llaves en el ssh-agent que se ofrecen ANTES de la nuestra y agotan el MaxAuthTries
-      # del server -> "Too many authentication failures" (exit 255) y el deploy muere en
-      # segundos sin correr deploy.sh. Con IdentitiesOnly se ofrece SOLO la llave -i.
-      # -o KexAlgorithms fuerza el unico KEX que ofrece HostGator (legacy), por compatibilidad.
+      # Cliente OpenSSH nativo del runner.
+      # IMPORTANTE: el secret SSH_PRIVATE_KEY debe ser la llave ed25519 autorizada en el
+      # authorized_keys del server (daligo-deploy). Si es otra, el server la rechaza y ssh
+      # cae a otros metodos -> "Too many authentication failures".
+      # -o IdentitiesOnly + -o IdentityAgent=none: ofrecer SOLO esa llave (los runners nuevos
+      #   traen llaves en el ssh-agent que, ofrecidas antes, agotan el MaxAuthTries del server).
+      # -o KexAlgorithms: HostGator solo ofrece el KEX legacy diffie-hellman-group-exchange-sha256.
       - name: Deploy por SSH a HostGator
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -33,10 +34,7 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          echo "--- diag ~/.ssh ---"; ls -la ~/.ssh || true
-          echo "--- diag agente: SSH_AUTH_SOCK=$SSH_AUTH_SOCK ---"; ssh-add -l 2>&1 || true
-          unset SSH_AUTH_SOCK
-          ssh -v -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
             -o IdentitiesOnly=yes \
             -o IdentityAgent=none \
             -o StrictHostKeyChecking=accept-new \
