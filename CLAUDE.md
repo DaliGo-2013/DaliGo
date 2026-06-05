@@ -102,7 +102,7 @@ Si algo no existe y se va a usar seguido, créalo siguiendo el formato de los co
 - **`git push origin main` = despliegue automático.** GitHub Actions (`.github/workflows/deploy.yml`)
   entra por **SSH** al servidor y corre **`deploy.sh`** en `/home4/impdali/daligo`.
 - `deploy.sh` ya hace, en orden: descartar `public/.htaccess` → `git pull --ff-only` →
-  `composer install --no-dev` → `migrate --force` → `db:seed RolesAndPermissionsSeeder --force` →
+  `composer install --no-dev` → `migrate --force` → `db:seed --force` (DatabaseSeeder: roles/permisos + sucursales) →
   `storage:link` → `config:cache` + `route:cache` + `view:cache` → `permission:cache-reset`.
   **No corras seeds/cachés a mano en producción**; ya están cubiertos.
 - Mirar el avance en la pestaña **Actions** del repo `DaliGo-2013/DaliGo`. Staging: **staging.impdali.cl**.
@@ -127,6 +127,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 ## Bitácora de errores y soluciones
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
+
+### [2026-06-05] Un cambio en `deploy.sh` no surte efecto en el MISMO deploy (self-update lag) → las sucursales no se sembraron
+- **Síntoma:** el deploy del Incremento 1 salió `success` en Actions y las migraciones de `sucursales` quedaron `Ran`, pero la tabla `sucursales` quedó **vacía (0 filas)** en producción. Los roles y el permiso `manage sucursales` **sí** se crearon.
+- **Causa:** `deploy.sh` se actualiza a sí mismo con `git pull` *dentro* del propio script, pero la shell que lo ejecuta ya tenía cargada la versión **anterior**. Ese deploy corrió el seed viejo (`db:seed --class=RolesAndPermissionsSeeder --force`, solo roles) en lugar del nuevo (`db:seed --force` = `DatabaseSeeder` completo, que incluye `SucursalSeeder`). Por eso los roles sí y las sucursales no.
+- **Solución:** correr a mano **una vez** por SSH el seed nuevo: `php artisan db:seed --class=SucursalSeeder --force` (idempotente). El `deploy.sh` ya quedó actualizado en el server, así que los próximos deploys sí siembran. Verificar siempre en prod (`Sucursal::count()`) tras un deploy que cambia `deploy.sh`.
+- **Evitar a futuro:** cuando un commit modifique `deploy.sh`, asumir que **ese** deploy usa la versión vieja del script; verificar prod y re-correr a mano los pasos nuevos. (Hardening posible: en el workflow hacer `git pull` ANTES de invocar `deploy.sh`, o que el script se re-ejecute tras el pull.)
 
 ### [2026-06-05] Deploy de GitHub Actions: "Too many authentication failures" (llave equivocada en el secret)
 - **Síntoma:** los deploys #9–#13 fallan en segundos sin actualizar el server (HEAD se queda atrás, árbol limpio). Log del job: `Received disconnect from <host> port 2222:2: Too many authentication failures` → exit 255. El handshake SSH y el host key SÍ funcionan (`Permanently added ... ED25519`); falla la **autenticación**.
