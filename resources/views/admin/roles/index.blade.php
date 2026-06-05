@@ -1,12 +1,6 @@
 <x-app-layout>
     @php
-        $labels = [
-            'view users' => 'Ver usuarios',
-            'create users' => 'Crear usuarios',
-            'edit users' => 'Editar usuarios',
-            'delete users' => 'Eliminar usuarios',
-            'manage roles' => 'Gestionar roles',
-        ];
+        $labels = config('permissions.labels');
     @endphp
 
     <x-slot name="header">
@@ -32,7 +26,7 @@
                         </x-slot>
 
                         <div class="flex items-center gap-2">
-                            <p class="truncate font-medium capitalize text-neutral-900">{{ $role->name }}</p>
+                            <p class="truncate font-medium text-neutral-900">{{ \Illuminate\Support\Str::headline($role->name) }}</p>
                             @if (in_array($role->name, $baseRoles, true))
                                 <x-badge variant="neutral">sistema</x-badge>
                             @endif

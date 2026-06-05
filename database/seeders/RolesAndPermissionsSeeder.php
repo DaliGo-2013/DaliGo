@@ -48,5 +48,17 @@ class RolesAndPermissionsSeeder extends Seeder
             ->givePermissionTo('report production');
         Role::firstOrCreate(['name' => 'Jefatura', 'guard_name' => 'web'])
             ->givePermissionTo('manage production');
+
+        // Roles del negocio (Incremento 2): matriz de partida.
+        // givePermissionTo es aditivo: garantiza el piso de permisos sin borrar
+        // los que un admin haya agregado desde la UI. NO migrar a syncPermissions:
+        // revertiria esas personalizaciones en cada deploy.
+        Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
+            ->givePermissionTo('view users');
+        Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
+            ->givePermissionTo('view users');
+        Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web']);
     }
 }

@@ -1,12 +1,6 @@
 <x-app-layout>
     @php
-        $labels = [
-            'view users' => 'Ver usuarios',
-            'create users' => 'Crear usuarios',
-            'edit users' => 'Editar usuarios',
-            'delete users' => 'Eliminar usuarios',
-            'manage roles' => 'Gestionar roles',
-        ];
+        $labels = config('permissions.labels');
     @endphp
 
     <x-slot name="header">
