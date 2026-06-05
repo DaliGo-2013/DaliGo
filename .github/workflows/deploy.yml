@@ -33,8 +33,12 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+          echo "--- diag ~/.ssh ---"; ls -la ~/.ssh || true
+          echo "--- diag agente: SSH_AUTH_SOCK=$SSH_AUTH_SOCK ---"; ssh-add -l 2>&1 || true
+          unset SSH_AUTH_SOCK
+          ssh -v -i ~/.ssh/deploy_key -p "$SSH_PORT" \
             -o IdentitiesOnly=yes \
+            -o IdentityAgent=none \
             -o StrictHostKeyChecking=accept-new \
             -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
             "$SSH_USER@$SSH_HOST" \
