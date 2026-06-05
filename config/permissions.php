@@ -19,6 +19,7 @@ return [
         'delete users' => 'Eliminar usuarios',
         'manage roles' => 'Gestionar roles',
         'manage sucursales' => 'Gestionar sucursales',
+        'manage settings' => 'Gestionar configuración',
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
     ],

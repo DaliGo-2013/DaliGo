@@ -32,6 +32,12 @@
                         </x-nav-link>
                     @endcan
 
+                    @can('manage settings')
+                        <x-nav-link :href="route('admin.configuracion.index')" :active="request()->routeIs('admin.configuracion.*')">
+                            Configuración
+                        </x-nav-link>
+                    @endcan
+
                     @can('manage production')
                         <x-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
                             Producción
@@ -107,6 +113,12 @@
             @can('manage sucursales')
                 <x-responsive-nav-link :href="route('admin.sucursales.index')" :active="request()->routeIs('admin.sucursales.*')">
                     Sucursales
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('manage settings')
+                <x-responsive-nav-link :href="route('admin.configuracion.index')" :active="request()->routeIs('admin.configuracion.*')">
+                    Configuración
                 </x-responsive-nav-link>
             @endcan
 

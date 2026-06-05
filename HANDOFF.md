@@ -60,10 +60,10 @@ Hemos completado **~40–50% de M01 Core**. En producción (staging) y testeado:
 **Último commit sincronizado de referencia:** `8e952d5` (puede haber más recientes; haz `git log` para confirmar).
 
 ### Lo que FALTA de M01 Core (el trabajo inmediato — ver Plan, sección 8)
-- **Multi-sucursal** (tabla `sucursales` + vínculo usuario↔sucursal). **No existe aún.**
-- **Roles reales del negocio** (hoy solo hay `admin`/`member`; faltan los 7 del negocio).
-- **Configuración global** (parámetros/umbrales configurables, no hardcodeados). **No existe aún.**
-- **Auditoría** (`owen-it/laravel-auditing`: quién/qué/cuándo/dónde). **No existe aún.**
+- ~~**Multi-sucursal**~~ ✅ **Hecho** (Incremento 1, commit `e25d773`): tabla `sucursales` + `sucursal_id` en `users`.
+- ~~**Roles reales del negocio**~~ ✅ **Hecho** (Incremento 2, commit `e1df23d`): roles del negocio + matriz de partida editable.
+- ~~**Configuración global**~~ ✅ **Hecho** (Incremento 3): tabla `configuraciones` + accesores cacheados `Configuracion::get()/set()` + UI admin `/admin/configuracion`.
+- **Auditoría** (`owen-it/laravel-auditing`: quién/qué/cuándo/dónde). **No existe aún (Incremento 4 — el siguiente).**
 
 ---
 
@@ -193,7 +193,7 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 - **Vínculo usuario↔sucursal:** **una** sucursal por usuario (FK `sucursal_id` nullable). Extensible a pivote si el negocio lo pide.
 - **Matriz de permisos completa:** queda **pendiente de Sprint 0** (decisión de negocio). Se deja una **matriz de partida editable** desde la UI de roles.
 
-### Incremento 1 — Multi-sucursal
+### Incremento 1 — Multi-sucursal — ✅ HECHO (commit `e25d773`)
 - Migración `create_sucursales_table`: `nombre`(191), `codigo`(191 unique), `ciudad`(null), `direccion`(null), `es_central`(bool), `activa`(bool, def true), timestamps.
 - Migración `add_sucursal_id_to_users`: `sucursal_id` nullable FK → sucursales (`onDelete set null`).
 - Modelo `App\Models\Sucursal` (`users()` hasMany). `User`: `sucursal()` belongsTo + `sucursal_id` en fillable.
@@ -205,12 +205,24 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 - Nav: enlace "Sucursales" (`@can('manage sucursales')`, desktop + responsive).
 - Tests `Admin/SucursalManagementTest` (CRUD, 403 no-admin, guarda con usuarios).
 
-### Incremento 2 — Roles reales del negocio + matriz de partida
+### Incremento 2 — Roles reales del negocio + matriz de partida — ✅ HECHO (commit `e1df23d`)
+> Nota: se decidió **mantener** los roles `Soplador`/`Jefatura` del Módulo Producción (TitleCase, sin
+> renombrar) y solo **agregar** `vendedor`, `jefe_ventas`, `jefe_bodega`, `conductor`, `tecnico`.
+> `jefe_ventas`/`jefe_bodega` = `view users`; operativos sin permisos de gestión. Labels de permisos
+> centralizados en `config/permissions.php`; nombres de rol mostrados con `Str::headline`.
+> `manage settings`/`view audit` se **difirieron** a los Incrementos 3 y 4.
 - Extender `RolesAndPermissionsSeeder` (idempotente): crear los 6 roles nuevos del negocio (admin/member ya existen).
 - Permisos nuevos de los incrementos: `manage sucursales`, `manage settings`, `view audit` → asignados a `admin`.
 - Matriz de partida: `admin`=todos; `jefe_ventas`/`jefe_bodega`=`view users`; el resto (operativos)=sin permisos de gestión (recibirán permisos por módulo a medida que se construyan).
 
-### Incremento 3 — Configuración global
+### Incremento 3 — Configuración global — ✅ HECHO
+> Modelo `App\Models\Configuracion` (tabla `configuraciones`): valor tipado (`string/integer/decimal/
+> boolean/json`) guardado como texto, casteado por `tipo`; accesores estáticos cacheados
+> `Configuracion::get($clave,$default)` / `set($clave,$valor)` (`Cache::rememberForever('config.'.$clave)`,
+> invalidado en `set()`). **Siempre escribir vía `set()`** (editar la tabla a mano en BD deja la caché
+> obsoleta). UI admin solo index/edit/update (`permission:manage settings`); permiso creado aquí
+> (diferido del Inc 2). `ConfiguracionSeeder` idempotente siembra `umbral_aprobacion_clp` y
+> `cotizacion_vigencia_dias`.
 - Migración `create_configuracion_table`: `clave`(191 unique), `valor`(text null), `tipo`(string/integer/decimal/boolean/json), `grupo`(191), `descripcion`(null), timestamps.
 - Modelo `App\Models\Configuracion` con cast por `tipo` y estáticos **`Configuracion::get($clave,$default)` / `set()`** cacheados (`Cache::rememberForever('config.'.$clave)`, invalidar al guardar). (Sin helper global → sin tocar el autoload.)
 - `ConfiguracionSeeder` idempotente: semilla mínima (`umbral_aprobacion_clp=1000000`, `cotizacion_vigencia_dias=5`). Más parámetros cuando existan los módulos.

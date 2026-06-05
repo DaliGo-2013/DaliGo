@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SucursalController;
@@ -51,6 +52,11 @@ Route::middleware('auth')
             ->parameters(['sucursales' => 'sucursal'])
             ->middleware('permission:manage sucursales')
             ->except(['show']);
+
+        // Configuracion global: parametros tipados (solo ver y editar).
+        Route::resource('configuracion', ConfiguracionController::class)
+            ->only(['index', 'edit', 'update'])
+            ->middleware('permission:manage settings');
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
         Route::middleware('permission:manage production')->group(function () {
