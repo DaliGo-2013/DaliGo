@@ -17,11 +17,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Usamos el cliente OpenSSH nativo del runner (no appleboy/ssh-action).
-      # El SSH de HostGator solo ofrece el KEX diffie-hellman-group-exchange-sha256.
-      # Los runners con OpenSSH nuevo ya no lo habilitan por defecto, asi que hay que
-      # forzarlo explicitamente con -o KexAlgorithms=+... o el handshake SSH falla y el
-      # deploy muere en segundos sin llegar a ejecutar deploy.sh.
+      # Cliente OpenSSH nativo del runner (no appleboy/ssh-action).
+      # -o IdentitiesOnly=yes es CLAVE: una actualizacion de la imagen del runner dejo
+      # llaves en el ssh-agent que se ofrecen ANTES de la nuestra y agotan el MaxAuthTries
+      # del server -> "Too many authentication failures" (exit 255) y el deploy muere en
+      # segundos sin correr deploy.sh. Con IdentitiesOnly se ofrece SOLO la llave -i.
+      # -o KexAlgorithms fuerza el unico KEX que ofrece HostGator (legacy), por compatibilidad.
       - name: Deploy por SSH a HostGator
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -33,6 +34,7 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+            -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=accept-new \
             -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
             "$SSH_USER@$SSH_HOST" \
