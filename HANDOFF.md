@@ -1,7 +1,7 @@
 # HANDOFF — DaliGo (traspaso de contexto para continuar el proyecto)
 
 > **Para la IA que recibe esto:** este documento es el **estado de ingeniería** de DaliGo y
-> **complementa** a `PROYECTO_DALIGO.md` (la "biblia" de producto/negocio, que se te entrega aparte).
+> **complementa** a [`PROYECTO_DALIGO.md`](PROYECTO_DALIGO.md) (la "biblia" de producto/negocio, en este mismo repo).
 > Léelos juntos: la **biblia** dice *qué* construir y *por qué*; este **HANDOFF** dice *qué ya existe*,
 > *cómo está hecho*, *cómo se despliega* y *qué sigue*. En el repo también hay un `CLAUDE.md` con
 > las reglas vivas + bitácora de errores (Claude Code lo lee solo; otras IAs deberían leerlo igual).
