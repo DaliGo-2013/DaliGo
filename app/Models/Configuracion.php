@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use OwenIt\Auditing\Auditable as AuditableTrait;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
 /**
  * Parametro global tipado clave/valor.
@@ -13,8 +15,10 @@ use Illuminate\Support\Facades\Cache;
  * IMPORTANTE: escribir siempre via Configuracion::set(); editar la tabla a mano
  * en la BD deja la cache obsoleta.
  */
-class Configuracion extends Model
+class Configuracion extends Model implements AuditableContract
 {
+    use AuditableTrait;
+
     // El pluralizador de Laravel haria 'configuracions'; fijamos la tabla correcta.
     protected $table = 'configuraciones';
 

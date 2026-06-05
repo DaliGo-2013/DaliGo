@@ -33,7 +33,7 @@ Sistema de gestión interno (ERP-lite) para **Importadora DALI / DALI Cargos-Tra
 
 ## 2. Estado actual (qué YA está construido y funcionando)
 
-Hemos completado **~40–50% de M01 Core**. En producción (staging) y testeado:
+**M01 Core está COMPLETO** (Incrementos 1–4; ver sección 8). En producción (staging) y testeado:
 
 - **Autenticación completa** (Laravel Breeze, stack Blade): login, recuperación de contraseña,
   verificación de email (`MustVerifyEmail`). **Registro público REMOVIDO** (las cuentas las crea un admin).
@@ -63,7 +63,9 @@ Hemos completado **~40–50% de M01 Core**. En producción (staging) y testeado:
 - ~~**Multi-sucursal**~~ ✅ **Hecho** (Incremento 1, commit `e25d773`): tabla `sucursales` + `sucursal_id` en `users`.
 - ~~**Roles reales del negocio**~~ ✅ **Hecho** (Incremento 2, commit `e1df23d`): roles del negocio + matriz de partida editable.
 - ~~**Configuración global**~~ ✅ **Hecho** (Incremento 3): tabla `configuraciones` + accesores cacheados `Configuracion::get()/set()` + UI admin `/admin/configuracion`.
-- **Auditoría** (`owen-it/laravel-auditing`: quién/qué/cuándo/dónde). **No existe aún (Incremento 4 — el siguiente).**
+- ~~**Auditoría**~~ ✅ **Hecho** (Incremento 4): `owen-it/laravel-auditing` en User/Sucursal/Configuracion + audit manual de cambios de rol + UI `/admin/audits`.
+
+**🎉 M01 Core COMPLETO** (Incrementos 1–4). El siguiente hito es M02+ según la biblia `PROYECTO_DALIGO.md`.
 
 ---
 
@@ -230,7 +232,15 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 - Rutas `/admin/configuracion`. Vistas `admin/configuracion/{index,edit}`. Nav "Configuración" (`@can('manage settings')`).
 - Tests `Admin/ConfiguracionTest`.
 
-### Incremento 4 — Auditoría
+### Incremento 4 — Auditoría — ✅ HECHO
+> `owen-it/laravel-auditing` v14. Modelos `User`/`Sucursal`/`Configuracion` con
+> `implements AuditableContract` + trait; `User` excluye `password`/`remember_token` vía `$auditExclude`.
+> Cambios de rol (pivote spatie, no auto-auditado) se registran **manualmente** con un custom audit
+> (`AuditCustom`, evento `roleChanged`) en `UserController`. `Admin\AuditController@index` (solo lectura,
+> paginado, filtros por usuario/modelo), permiso `view audit`, vista `admin/audits/index`.
+> **Gotcha clave:** owen-it no audita en CLI salvo `audit.console=true`; se hizo env-driven
+> (`AUDITING_CONSOLE`), `true` solo en `phpunit.xml` (tests), `false` en prod (los seeders del deploy
+> no generan ruido).
 - `composer require owen-it/laravel-auditing`; publicar config + migración `audits`.
 - `implements Auditable` + `use \OwenIt\Auditing\Auditable` en `User`, `Sucursal`, `Configuracion`.
 - Auditar cambios de rol **manualmente** en `UserController::update` (owen-it no captura el pivote spatie).

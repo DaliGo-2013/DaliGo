@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\RoleController;
@@ -57,6 +58,10 @@ Route::middleware('auth')
         Route::resource('configuracion', ConfiguracionController::class)
             ->only(['index', 'edit', 'update'])
             ->middleware('permission:manage settings');
+
+        // Auditoria: historial de cambios (solo lectura).
+        Route::get('audits', [AuditController::class, 'index'])
+            ->middleware('permission:view audit')->name('audits.index');
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
         Route::middleware('permission:manage production')->group(function () {

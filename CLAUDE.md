@@ -128,6 +128,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-06-05] owen-it/laravel-auditing no registra audits en consola (tests sin audits)
+- **Síntoma:** con la auditoría recién integrada, todo `assertDatabaseHas('audits', …)` en los tests fallaba aunque el feature funcionara; en la app web (request HTTP real) sí se registraban.
+- **Causa:** owen-it **desactiva la auditoría cuando `runningInConsole()` es true** salvo que `config('audit.console') === true`. **PHPUnit corre como CLI** y el controlador se ejecuta dentro del mismo proceso (no hay request HTTP separado), así que con `console=false` no se registra ningún audit en los tests. (En prod ese mismo comportamiento es deseable: el `db:seed --force` del deploy no debe generar audits.)
+- **Solución:** hacer `audit.console` dependiente de env → `config/audit.php`: `'console' => env('AUDITING_CONSOLE', false)`; y en `phpunit.xml` agregar `AUDITING_CONSOLE=true` (+ `AUDITING_ENABLED=true`). Prod nunca define la var → queda `false`. Commit `1328de8`+ (Incremento 4). Además se quitó el guard `api` de `audit.user.guards` (no existe en este proyecto; el `UserResolver` lanzaría "Auth guard [api] is not defined").
+- **Evitar a futuro:** los **cambios de rol** (pivote spatie `model_has_roles`) **no** se auditan solos; se registran a mano con un custom audit (`OwenIt\Auditing\Events\AuditCustom`, evento `roleChanged`) en `UserController`. Al auditar un modelo nuevo, recordar excluir secretos con `$auditExclude` (owen-it **no** respeta `$hidden`).
+
 ### [2026-06-05] Un cambio en `deploy.sh` no surte efecto en el MISMO deploy (self-update lag) → las sucursales no se sembraron
 - **Síntoma:** el deploy del Incremento 1 salió `success` en Actions y las migraciones de `sucursales` quedaron `Ran`, pero la tabla `sucursales` quedó **vacía (0 filas)** en producción. Los roles y el permiso `manage sucursales` **sí** se crearon.
 - **Causa:** `deploy.sh` se actualiza a sí mismo con `git pull` *dentro* del propio script, pero la shell que lo ejecuta ya tenía cargada la versión **anterior**. Ese deploy corrió el seed viejo (`db:seed --class=RolesAndPermissionsSeeder --force`, solo roles) en lugar del nuevo (`db:seed --force` = `DatabaseSeeder` completo, que incluye `SucursalSeeder`). Por eso los roles sí y las sucursales no.

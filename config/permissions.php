@@ -20,6 +20,7 @@ return [
         'manage roles' => 'Gestionar roles',
         'manage sucursales' => 'Gestionar sucursales',
         'manage settings' => 'Gestionar configuración',
+        'view audit' => 'Ver auditoría',
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
     ],

@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use OwenIt\Auditing\Auditable as AuditableTrait;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
-class Sucursal extends Model
+class Sucursal extends Model implements AuditableContract
 {
     /** @use HasFactory<\Database\Factories\SucursalFactory> */
-    use HasFactory;
+    use HasFactory, AuditableTrait;
 
     // El pluralizador de Laravel haria 'sucursals'; fijamos la tabla correcta.
     protected $table = 'sucursales';

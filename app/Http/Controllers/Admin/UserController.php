@@ -8,10 +8,12 @@ use App\Models\User;
 use App\Rules\ImpdaliEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use OwenIt\Auditing\Events\AuditCustom;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -60,6 +62,7 @@ class UserController extends Controller
         // Cuenta interna creada por un admin: se marca verificada.
         $user->markEmailAsVerified();
         $user->assignRole($validated['role']);
+        $this->auditRoleChange($user, null, $validated['role']);
 
         return redirect()->route('admin.users.index')
             ->with('status', "Cuenta creada para {$user->email}.");
@@ -96,11 +99,33 @@ class UserController extends Controller
             return back()->with('status', 'No puedes quitar el rol admin: es el ultimo administrador.');
         }
 
+        $oldRole = $user->getRoleNames()->sort()->values()->implode(', ');
+
         $user->update(['sucursal_id' => $validated['sucursal_id'] ?? null]);
         $user->syncRoles([$validated['role']]);
+        $this->auditRoleChange($user, $oldRole === '' ? null : $oldRole, $validated['role']);
 
         return redirect()->route('admin.users.index')
             ->with('status', "Rol de {$user->email} actualizado a {$validated['role']}.");
+    }
+
+    /**
+     * Registra manualmente un cambio de rol en la auditoria. spatie escribe el rol
+     * en el pivote model_has_roles, que owen-it no audita automaticamente. Solo
+     * emite el audit si el rol efectivamente cambio.
+     */
+    private function auditRoleChange(User $user, ?string $oldRole, string $newRole): void
+    {
+        if ($oldRole === $newRole) {
+            return;
+        }
+
+        $user->auditEvent = 'roleChanged';
+        $user->isCustomEvent = true;
+        $user->auditCustomOld = ['roles' => $oldRole];
+        $user->auditCustomNew = ['roles' => $newRole];
+
+        Event::dispatch(new AuditCustom($user));
     }
 
     /**
