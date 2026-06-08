@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Bsale (catalogo, stock, documentos). El token vive solo en .env (nunca versionado).
+    // Detalle de la API en docs/BSALE_API.md.
+    'bsale' => [
+        'base_url' => env('BSALE_BASE_URL', 'https://api.bsale.io/v1'),
+        'token' => env('BSALE_ACCESS_TOKEN'),
+    ],
+
 ];
