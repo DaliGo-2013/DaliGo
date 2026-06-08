@@ -260,7 +260,7 @@ CREATE TABLE produccion_botellones (
 
 ### Integraciones externas
 
-Bsale API (SII, catálogo, stock — central), WhatsApp Business API (migración pendiente), Webpay/Transbank (links de pago, NO pasarela propia), Google Maps (ruteo PWA), APIs Chilexpress/Starken/Cruz del Sur (cotización despacho), Mercado Libre/Falabella (fase posterior).
+Bsale API (SII, catálogo, stock — central; **detalle de endpoints/auth/límites en [`docs/BSALE_API.md`](docs/BSALE_API.md)**), WhatsApp Business API (migración pendiente), Webpay/Transbank (links de pago, NO pasarela propia), Google Maps (ruteo PWA), APIs Chilexpress/Starken/Cruz del Sur (cotización despacho), Mercado Libre/Falabella (fase posterior).
 
 ---
 
