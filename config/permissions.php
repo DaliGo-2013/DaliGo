@@ -21,6 +21,7 @@ return [
         'manage sucursales' => 'Gestionar sucursales',
         'manage settings' => 'Gestionar configuración',
         'view audit' => 'Ver auditoría',
+        'manage productos' => 'Gestionar catálogo',
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
     ],

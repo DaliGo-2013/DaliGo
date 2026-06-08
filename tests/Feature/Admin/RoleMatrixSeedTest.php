@@ -27,7 +27,7 @@ class RoleMatrixSeedTest extends TestCase
             'admin' => [
                 'view users', 'create users', 'edit users', 'delete users',
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
-                'report production', 'manage production',
+                'manage productos', 'report production', 'manage production',
             ],
             'member' => [],
             'Soplador' => ['report production'],

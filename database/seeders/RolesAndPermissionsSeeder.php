@@ -29,6 +29,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage sucursales',
             'manage settings',
             'view audit',
+            'manage productos',
             // Modulo Produccion.
             'report production',  // soplador: ve y envia su reporte diario
             'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve

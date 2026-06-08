@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ProduccionController;
+use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
@@ -62,6 +63,18 @@ Route::middleware('auth')
         // Auditoria: historial de cambios (solo lectura).
         Route::get('audits', [AuditController::class, 'index'])
             ->middleware('permission:view audit')->name('audits.index');
+
+        // Catalogo de productos (nivel SKU) + import/export CSV.
+        // Las rutas literales van ANTES del resource para no chocar con productos/{producto}.
+        Route::middleware('permission:manage productos')->group(function () {
+            Route::get('productos/importar', [ProductoController::class, 'importForm'])->name('productos.import.form');
+            Route::post('productos/importar', [ProductoController::class, 'import'])->name('productos.import');
+            Route::get('productos/exportar', [ProductoController::class, 'export'])->name('productos.export');
+            Route::get('productos/plantilla', [ProductoController::class, 'template'])->name('productos.template');
+        });
+        Route::resource('productos', ProductoController::class)
+            ->middleware('permission:manage productos')
+            ->except(['show']);
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
         Route::middleware('permission:manage production')->group(function () {
