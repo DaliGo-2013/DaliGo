@@ -23,6 +23,7 @@ class Producto extends Model implements AuditableContract
 
     protected $fillable = [
         'sku',
+        'barcode',
         'nombre',
         'descripcion',
         'categoria',
@@ -35,6 +36,7 @@ class Producto extends Model implements AuditableContract
         'activo',
         'bsale_variant_id',
         'bsale_product_id',
+        'bsale_product_type_id',
     ];
 
     protected function casts(): array
