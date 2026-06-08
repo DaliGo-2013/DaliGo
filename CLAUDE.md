@@ -128,6 +128,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-06-08] `cURL error 60: unable to get local issuer certificate` al llamar APIs HTTPS desde PHP en Windows local
+- **Síntoma:** cualquier llamada HTTPS saliente de PHP local (ej. `bsale:explore` contra `https://api.bsale.io`) falla con `cURL error 60: SSL certificate ... unable to get local issuer certificate (20)`. En el servidor (Linux/HostGator) NO ocurre. (Composer sí funciona porque trae su propio CA bundle.)
+- **Causa:** el PHP de Windows (`C:\Users\mauri\php83`) no trae bundle de certificados CA y `php.ini` tenía `curl.cainfo` y `openssl.cafile` **vacíos** → cURL no puede verificar el certificado del servidor. La env var `CURL_CA_BUNDLE` **no** la respeta Guzzle en este build.
+- **Solución:** descargar el bundle oficial `https://curl.se/ca/cacert.pem` (ej. a `C:\Users\mauri\php83\cacert.pem`) y configurarlo en `php.ini`: `curl.cainfo = "C:/Users/mauri/php83/cacert.pem"` y `openssl.cafile = "C:/Users/mauri/php83/cacert.pem"` (usar `/`). Verificar con `php -r "echo ini_get('curl.cainfo');"`. Arregla todo el HTTPS de PHP, no solo Bsale.
+- **Evitar a futuro:** es solo de entorno local Windows; **no** desactivar la verificación TLS (`verify=false`) — es inseguro. En producción el CA del sistema ya está.
+
 ### [2026-06-05] owen-it/laravel-auditing no registra audits en consola (tests sin audits)
 - **Síntoma:** con la auditoría recién integrada, todo `assertDatabaseHas('audits', …)` en los tests fallaba aunque el feature funcionara; en la app web (request HTTP real) sí se registraban.
 - **Causa:** owen-it **desactiva la auditoría cuando `runningInConsole()` es true** salvo que `config('audit.console') === true`. **PHPUnit corre como CLI** y el controlador se ejecuta dentro del mismo proceso (no hay request HTTP separado), así que con `console=false` no se registra ningún audit en los tests. (En prod ese mismo comportamiento es deseable: el `db:seed --force` del deploy no debe generar audits.)
