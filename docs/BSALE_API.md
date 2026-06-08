@@ -32,6 +32,7 @@ Obtención en **producción**, dos vías: (1) solicitarlo por correo a ayuda@bsa
 **Códigos de error.** 400, 401, **402 (instancia bloqueada por no pago)**, 403, 404, 405, 429, 500, 502. Cada error trae código + mensaje. ✅ [CONFIRMADO] — https://docs.bsale.dev/faq
 
 **Webhooks.** **Sí existen** (POST a tu URL). Topics: **document, product, variant, price, stock, documento pagado**, además de tienda en línea (producto web, colección, venta online) y otros (pagos, doc. de compra, RCOF, courier externo). Estructura: {cpnId, resource, resourceId, topic, action, send}. **Activación NO self-service:** se solicita por correo a ayuda@bsale.app indicando URL + RUT/cpnId. No hay eventos DELETE (desactivación se informa como PUT). ✅ [CONFIRMADO] — https://docs.bsale.dev/webhooks · https://docs.bsale.dev/productos-y-servicios/webhooks
+> ⚠️ **Corregido en el Anexo A:** el panel de Devs SÍ permite **auto-configurar webhooks** (formulario con URL + topics + acciones), sin pedirlos por correo.
 
 **SDKs.** **No hay SDK oficial.** Comunitarios en Packagist: ticketeradigital/bsale ("Bsale connector", ~3.304 instalaciones) y pviojo/bsale-api-php. Validar compatibilidad con Laravel 12 / PHP 8.3 antes de adoptar. ✅ [CONFIRMADO existencia] / 🔎 [INFERIDO: no oficiales] — https://packagist.org/?query=bsale
 
@@ -261,3 +262,51 @@ Dado el stack (**Laravel 12 / PHP 8.3 / MySQL 5.7 / HostGator compartido, sin da
 > productos/variantes/precios/stock por cron o webhooks, según este documento) y las **listas de
 > precios** quedan para incrementos posteriores, una vez se obtenga el access_token (correo a
 > ayuda@bsale.app u OAuth) y se valide con Víctor los huecos de arriba.
+
+---
+
+## Anexo A — Hallazgos empíricos contra la API real (2026-06-08)
+
+> Exploración de **solo lectura** hecha con la cuenta **DEMO BSALE API CL (Cpn 18790)** del panel de
+> Devs. Las **formas (shapes) son reales**; los **datos** (conteos, nombres de categorías, etc.) son de
+> la cuenta DEMO de Bsale, **no** del catálogo real de DALI (ese se explorará con el token de la empresa
+> de producción que se elija). Empresas del panel: DEMO (18790), **IMPORT Y EXPORTA DALI LTDA (26021,
+> 76301506-8, Producción)**, **PLASTICOS DALI (102681, 76754504-5, Producción)**, y dos inactivas
+> (DALI NORTE 49875, DAMIMED 48550).
+
+### Correcciones a lo de arriba
+- **Webhooks = SELF-SERVICE** (corrige la sección A). El panel de Devs tiene un **formulario**: campo
+  *URL de destino* (+ toggle "Usa Headers"), checkboxes de topics (**Documento, Variante, Stock, Precio,
+  Producto** pre-marcados; + Tienda en línea; + Pagos/RCOF/etc.), checkboxes de **acción: Crear /
+  Actualizar**, y botón **AGREGAR HOOK**. NO se piden por correo. Hay listado de hooks existentes con
+  eliminar por fila.
+
+### Confirmaciones clave (datos reales)
+- **Producto → MUCHAS variantes** (en DEMO: 41.285 productos vs 273.233 variantes ≈ 6,6/producto). →
+  **valida** modelar el catálogo local a **nivel variante/SKU**; enlace real = **id de la variante**
+  (`bsale_variant_id`), `bsale_product_id` agrupa.
+- **NO existe `updatedAt`/`modifiedAt`/`createdAt`** en producto ni variante (lista completa de campos
+  verificada). → **No hay sync incremental por fecha.** Estrategia: **carga inicial = barrido completo
+  paginado** + **mantención = webhooks** (Variante/Producto/Precio/Stock, acción *Actualizar*).
+- **SKU (`code`) = string libre**: numéricos cortos ("12"), EAN ("73884546240647"), alfanuméricos
+  ("LC0037"), con guiones ("VMT-adulto"). ⚠️ **No está garantizada la unicidad** del `code` → en la
+  sync, la **clave de upsert debe ser `bsale_variant_id`** (no el SKU). `barCode` puede ser un UUID.
+- **Sin concepto de marca** (ni `brand` ni `brandId` en producto/variante) → marca vive local.
+  Categoría = `product_type` (id + name).
+- **Precio por variante**: `variantValue` (neto) + `variantValueWithTaxes` (con IVA). Listas: muchas
+  (66 en DEMO, todas CLP en la muestra); **no hay correspondencia nativa "una lista = un canal"** → los
+  canales serían convención de DaliGo.
+- **Stock** = combinación variante × oficina (`quantity`, `quantityReserved`, `quantityAvailable`).
+- **Oficinas/bodegas**: 68 en DEMO, **ninguna `isVirtual=1`** (pero el campo existe; el catastro real de
+  DALI tiene ~25 virtuales según la biblia → confirmar contra la cuenta real).
+- **Conteos**: el `count` de los listados (`/products.json`, `/variants.json`) **difiere** de
+  `/count.json` (los listados filtran por `state` por defecto). Para totales/barridos, usar
+  `/count.json` y ser explícito con el filtro `state`. Paginación máx **50**, rate limit **3.000/300s**
+  → dimensionar el barrido inicial.
+
+### Implicancia para el incremento de sincronización (futuro)
+Receptor de **webhooks** (controller que guarda `resourceId` y procesa con el cron por minuto) para
+mantención + **comando de barrido inicial** (paginado a 50, respetando rate limit) para la carga.
+Upsert por `bsale_variant_id`. Token de la empresa de producción en `.env` (`BSALE_ACCESS_TOKEN`).
+Pendiente de confirmar contra la cuenta REAL: tamaño del catálogo DALI, sus `product_types`, y los
+huecos finos (unicidad de `code`, reintentos/firma de webhooks).
