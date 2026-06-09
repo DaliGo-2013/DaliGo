@@ -6,6 +6,7 @@ Aplicación web desarrollada con Laravel 12 sobre PHP 8.3, preparada para desple
 > 1. [`PROYECTO_DALIGO.md`](PROYECTO_DALIGO.md) — la **biblia**: *qué* construir y *por qué* (16 módulos M01–M16, reglas de negocio, Gantt).
 > 2. [`HANDOFF.md`](HANDOFF.md) — el estado de ingeniería: *qué ya existe*, *cómo está hecho* y *qué sigue*.
 > 3. [`CLAUDE.md`](CLAUDE.md) — guía viva con las *formas correctas de hacer las cosas* y la **bitácora de errores y soluciones**. Si tienes una dificultad o un error y lo resuelves, **regístralo ahí antes de cerrar tu tarea** (aplica a todos los colaboradores, humanos e IA).
+> 4. [`docs/GUIA-DALIGO.md`](docs/GUIA-DALIGO.md) — tutorial de las 4 capas (organización ruta→controlador→modelo→vista, roles/permisos, catálogo+sync Bsale, despliegue). Punto de entrada para quien recién llega al proyecto.
 
 ## Stack tecnológico
 
