@@ -3,6 +3,7 @@
         <x-page-header title="Catálogo" subtitle="Productos (SKU), con peso y dimensiones para despacho.">
             <x-slot name="action">
                 <div class="flex flex-wrap items-center gap-2">
+                    <x-secondary-link :href="route('admin.productos.plantilla.medidas', request()->query())">Plantilla de medidas</x-secondary-link>
                     <x-secondary-link :href="route('admin.productos.import.form')">Importar CSV</x-secondary-link>
                     <x-secondary-link :href="route('admin.productos.export', request()->query())">Exportar CSV</x-secondary-link>
                     <x-button-link :href="route('admin.productos.create')">
@@ -51,6 +52,14 @@
                         <option value="0" @selected(($filtros['activo'] ?? '') === '0')>Inactivos</option>
                     </x-select>
                 </div>
+                <div class="sm:w-40">
+                    <x-input-label for="medidas" value="Medidas" />
+                    <x-select id="medidas" name="medidas" class="mt-1.5">
+                        <option value="">Todas</option>
+                        <option value="incompletas" @selected(($filtros['medidas'] ?? '') === 'incompletas')>Incompletas</option>
+                        <option value="completas" @selected(($filtros['medidas'] ?? '') === 'completas')>Completas</option>
+                    </x-select>
+                </div>
                 <div class="flex items-center gap-3">
                     <x-primary-button>Filtrar</x-primary-button>
                     @if (array_filter($filtros))
@@ -58,6 +67,18 @@
                     @endif
                 </div>
             </form>
+
+            {{-- Progreso de la carga de medidas (peso + dimensiones, productos activos) --}}
+            <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm shadow-sm">
+                <span class="font-medium text-neutral-700">Medidas completas:</span>
+                <x-badge>{{ $activosCompletos }} de {{ $activos }} activos</x-badge>
+                @if ($activos > 0)
+                    <span class="text-xs text-neutral-500">({{ round($activosCompletos * 100 / $activos) }}%)</span>
+                @endif
+                @if ($activosCompletos < $activos)
+                    <span class="text-xs text-neutral-400">— descarga la «Plantilla de medidas» para completar los pendientes.</span>
+                @endif
+            </div>
 
             <x-list-card title="Productos" :count="$productos->total()" :countLabel="\Illuminate\Support\Str::plural('producto', $productos->total())">
                 @forelse ($productos as $producto)

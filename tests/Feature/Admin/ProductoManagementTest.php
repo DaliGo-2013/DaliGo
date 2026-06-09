@@ -223,7 +223,7 @@ class ProductoManagementTest extends TestCase
         $this->assertSame(3, $result['errores'][0]['fila']); // cabecera=1, OK=2, BAD=3
     }
 
-    public function test_import_requires_sku_and_nombre_headers(): void
+    public function test_import_requires_sku_header(): void
     {
         $csv = "codigo;titulo\nX;Y\n";
 
@@ -243,6 +243,205 @@ class ProductoManagementTest extends TestCase
 
         // Decision B1: la carga masiva NO genera audits por fila.
         $this->assertSame(0, Audit::where('auditable_type', Producto::class)->count());
+    }
+
+    // --- Import: semántica de parche --------------------------------------
+
+    public function test_minimal_measures_csv_preserves_other_fields(): void
+    {
+        $p = Producto::factory()->create([
+            'sku' => 'MED-1', 'nombre' => 'Original', 'categoria' => 'Botellones',
+            'marca' => 'DALI', 'activo' => true, 'peso_kg' => null,
+        ]);
+
+        $csv = "sku;peso_kg;alto_cm;ancho_cm;largo_cm\nMED-1;1,5;30;20;10\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $fresh = $p->fresh();
+        $this->assertEquals(1.5, (float) $fresh->peso_kg);
+        $this->assertEquals(30.0, (float) $fresh->alto_cm);
+        $this->assertSame('Original', $fresh->nombre);      // columna ausente: no tocada
+        $this->assertSame('Botellones', $fresh->categoria); // no tocada
+        $this->assertSame('DALI', $fresh->marca);           // no tocada
+        $this->assertTrue($fresh->activo);                  // no tocada
+        $this->assertEmpty(session('importResult')['errores']);
+    }
+
+    public function test_new_row_without_nombre_column_errors(): void
+    {
+        $csv = "sku;peso_kg\nNUEVO-1;2\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $this->assertDatabaseMissing('productos', ['sku' => 'NUEVO-1']);
+        $result = session('importResult');
+        $this->assertCount(1, $result['errores']);
+        $this->assertStringContainsString('nombre', $result['errores'][0]['error']);
+    }
+
+    public function test_empty_nombre_cell_on_existing_row_errors_not_500(): void
+    {
+        Producto::factory()->create(['sku' => 'EX-1', 'nombre' => 'Conservado']);
+
+        $csv = "sku;nombre\nEX-1;\n";
+        $response = $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $response->assertRedirect(route('admin.productos.import.form')); // no 500
+        $this->assertSame('Conservado', Producto::where('sku', 'EX-1')->value('nombre'));
+        $this->assertCount(1, session('importResult')['errores']);
+    }
+
+    public function test_empty_cell_clears_nullable_field_and_counts_vaciados(): void
+    {
+        Producto::factory()->create(['sku' => 'VAC-1', 'marca' => 'DALI']);
+
+        $csv = "sku;marca\nVAC-1;\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $this->assertNull(Producto::where('sku', 'VAC-1')->value('marca'));
+        $result = session('importResult');
+        $this->assertSame(1, $result['vaciados']);
+        $this->assertSame(1, $result['actualizados']);
+    }
+
+    public function test_activo_untouched_when_column_absent_and_invalid_token_errors(): void
+    {
+        Producto::factory()->create(['sku' => 'ACT-1', 'nombre' => 'X', 'activo' => false]);
+
+        // Columna ausente: no se toca.
+        $csv = "sku;marca\nACT-1;NuevaMarca\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+        $this->assertFalse((bool) Producto::where('sku', 'ACT-1')->value('activo'));
+
+        // Token no reconocido: error de fila, sin cambio.
+        $csv2 = "sku;activo\nACT-1;x\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv2)]);
+        $this->assertCount(1, session('importResult')['errores']);
+        $this->assertFalse((bool) Producto::where('sku', 'ACT-1')->value('activo'));
+    }
+
+    public function test_ragged_row_treated_as_empty_cells(): void
+    {
+        Producto::factory()->create(['sku' => 'RAG-1', 'nombre' => 'Intacto', 'marca' => 'DALI', 'activo' => true]);
+
+        // Fila con menos celdas que el header: marca sin celda = vacía (borra);
+        // activo sin celda = no tocar.
+        $csv = "sku;marca;activo\nRAG-1\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $fresh = Producto::where('sku', 'RAG-1')->first();
+        $this->assertNull($fresh->marca);
+        $this->assertTrue((bool) $fresh->activo);
+        $this->assertEmpty(session('importResult')['errores']);
+    }
+
+    public function test_sku_only_file_no_ops_existing_and_errors_unknown(): void
+    {
+        Producto::factory()->create(['sku' => 'SOLO-1', 'nombre' => 'Igual']);
+
+        $csv = "sku\nSOLO-1\nDESCONOCIDO-9\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $result = session('importResult');
+        $this->assertSame(1, $result['sin_cambios']);
+        $this->assertSame(0, $result['creados']);
+        $this->assertCount(1, $result['errores']); // DESCONOCIDO-9 requiere nombre
+    }
+
+    public function test_bsale_columns_in_csv_are_ignored_on_import(): void
+    {
+        $p = Producto::factory()->create(['sku' => 'BS-1', 'nombre' => 'X', 'bsale_variant_id' => 777, 'barcode' => 'ABC']);
+
+        $csv = "sku;bsale_variant_id;barcode;marca\nBS-1;999;HACKED;DALI\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $fresh = $p->fresh();
+        $this->assertSame(777, (int) $fresh->bsale_variant_id); // intacto (solo-export)
+        $this->assertSame('ABC', $fresh->barcode);              // intacto (solo-export)
+        $this->assertSame('DALI', $fresh->marca);               // la importable sí aplicó
+    }
+
+    // --- Filtro de medidas + progreso ---------------------------------------
+
+    public function test_medidas_filter_combines_with_categoria(): void
+    {
+        Producto::factory()->create(['sku' => 'MC-1', 'nombre' => 'A', 'categoria' => 'CatX', 'peso_kg' => null]);
+        Producto::factory()->create(['sku' => 'MC-2', 'nombre' => 'B', 'categoria' => 'CatY', 'peso_kg' => null]);
+
+        // El OR de medidas va agrupado: no debe "fugar" filas de otra categoría.
+        $this->actingAs($this->admin())
+            ->get('/admin/productos?medidas=incompletas&categoria=CatX')
+            ->assertSee('MC-1')
+            ->assertDontSee('MC-2');
+    }
+
+    public function test_partial_measures_count_as_incompletas(): void
+    {
+        Producto::factory()->create(['sku' => 'PARC-1', 'nombre' => 'Parcial',
+            'peso_kg' => 1, 'alto_cm' => null, 'ancho_cm' => 1, 'largo_cm' => 1]);
+
+        $this->actingAs($this->admin())->get('/admin/productos?medidas=incompletas')->assertSee('PARC-1');
+        $this->actingAs($this->admin())->get('/admin/productos?medidas=completas')->assertDontSee('PARC-1');
+    }
+
+    public function test_index_shows_progress_counter(): void
+    {
+        Producto::factory()->create(['sku' => 'PRG-1', 'activo' => true,
+            'peso_kg' => 1, 'alto_cm' => 1, 'ancho_cm' => 1, 'largo_cm' => 1]);
+        Producto::factory()->create(['sku' => 'PRG-2', 'activo' => true, 'peso_kg' => null]);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/productos')
+            ->assertSee('Medidas completas')
+            ->assertSee('1 de 2 activos');
+    }
+
+    // --- Plantilla de medidas ------------------------------------------------
+
+    public function test_plantilla_medidas_access(): void
+    {
+        $this->get('/admin/productos/plantilla-medidas')->assertRedirect('/login');
+
+        $member = User::factory()->create();
+        $member->assignRole('member');
+        $this->actingAs($member)->get('/admin/productos/plantilla-medidas')->assertForbidden();
+    }
+
+    public function test_plantilla_medidas_downloads_pending_and_honors_filters(): void
+    {
+        Producto::factory()->create(['sku' => 'PEND-1', 'nombre' => 'Pendiente', 'categoria' => 'CatA', 'peso_kg' => null]);
+        Producto::factory()->create(['sku' => 'FULL-1', 'nombre' => 'Completo', 'categoria' => 'CatA',
+            'peso_kg' => 1, 'alto_cm' => 1, 'ancho_cm' => 1, 'largo_cm' => 1]);
+        Producto::factory()->create(['sku' => 'PEND-2', 'nombre' => 'OtraCat', 'categoria' => 'CatB', 'peso_kg' => null]);
+
+        $body = $this->actingAs($this->admin())
+            ->get('/admin/productos/plantilla-medidas?categoria=CatA')
+            ->streamedContent();
+
+        $this->assertStringContainsString('sku;producto;categoria_ref;codigo_barras;peso_kg;', $body);
+        $this->assertStringContainsString('PEND-1', $body);
+        $this->assertStringNotContainsString('FULL-1', $body); // completas excluidas por defecto
+        $this->assertStringNotContainsString('PEND-2', $body); // otra categoría
+    }
+
+    public function test_plantilla_medidas_reimport_only_writes_measures(): void
+    {
+        $p = Producto::factory()->create([
+            'sku' => 'PM-1', 'nombre' => 'NombreReal', 'categoria' => 'CatReal',
+            'barcode' => 'BAR-1', 'peso_kg' => null,
+        ]);
+
+        // Simula la plantilla llenada en Excel: referencias "desactualizadas" + medidas nuevas.
+        $csv = "sku;producto;categoria_ref;codigo_barras;peso_kg;alto_cm;ancho_cm;largo_cm\n"
+            ."PM-1;Nombre Viejo En Excel;OtraCat;XXXX;2,5;30;20;10\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+
+        $fresh = $p->fresh();
+        $this->assertEquals(2.5, (float) $fresh->peso_kg);  // medida aplicada
+        $this->assertEquals(10.0, (float) $fresh->largo_cm);
+        $this->assertSame('NombreReal', $fresh->nombre);    // referencia ignorada
+        $this->assertSame('CatReal', $fresh->categoria);    // referencia ignorada
+        $this->assertSame('BAR-1', $fresh->barcode);        // referencia ignorada
+        $this->assertEmpty(session('importResult')['errores']);
     }
 
     // --- Export CSV -----------------------------------------------------
@@ -287,6 +486,18 @@ class ProductoManagementTest extends TestCase
         $result = session('importResult');
         $this->assertEmpty($result['errores']);
         $this->assertSame(1, Producto::count());
+    }
+
+    public function test_export_header_is_exact_with_barcode_at_end(): void
+    {
+        Producto::factory()->create(['sku' => 'EXPB-1']);
+
+        $body = $this->actingAs($this->admin())->get('/admin/productos/exportar')->streamedContent();
+
+        $this->assertStringContainsString(
+            'sku;nombre;descripcion;categoria;marca;peso_kg;alto_cm;ancho_cm;largo_cm;activo;barcode;bsale_variant_id;bsale_product_id',
+            $body,
+        );
     }
 
     public function test_template_is_header_only(): void

@@ -7,7 +7,6 @@ use App\Models\Producto;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -15,17 +14,32 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class ProductoController extends Controller
 {
     /**
-     * Orden canonico de columnas del CSV (export e import lo comparten).
+     * Columnas que el IMPORT puede escribir. Los campos que manda Bsale por la
+     * sincronizacion (barcode, bsale_*) NO son importables: un CSV podria
+     * re-enlazar un producto al variant_id equivocado y la sync le reescribiria
+     * la identidad. Esos van solo en el export, como referencia.
+     */
+    private const IMPORTABLE = [
+        'sku', 'nombre', 'descripcion', 'categoria', 'marca',
+        'peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm', 'activo',
+    ];
+
+    /**
+     * Orden canonico de columnas del CSV de export/plantilla: las importables
+     * primero, las de referencia (solo-export) al final.
      */
     private const CSV_HEADERS = [
         'sku', 'nombre', 'descripcion', 'categoria', 'marca',
-        'peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm',
-        'activo', 'bsale_variant_id', 'bsale_product_id',
+        'peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm', 'activo',
+        'barcode', 'bsale_variant_id', 'bsale_product_id',
     ];
+
+    private const NUMERICAS = ['peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'];
 
     public function index(Request $request): View
     {
@@ -34,9 +48,17 @@ class ProductoController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+        $activos = Producto::where('activo', true)->count();
+        $activosCompletos = Producto::where('activo', true)
+            ->whereNotNull('peso_kg')->whereNotNull('alto_cm')
+            ->whereNotNull('ancho_cm')->whereNotNull('largo_cm')
+            ->count();
+
         return view('admin.productos.index', array_merge([
             'productos' => $productos,
-            'filtros' => $request->only(['q', 'categoria', 'marca', 'activo']),
+            'filtros' => $request->only(['q', 'categoria', 'marca', 'activo', 'medidas']),
+            'activos' => $activos,
+            'activosCompletos' => $activosCompletos,
         ], $this->formData()));
     }
 
@@ -81,10 +103,11 @@ class ProductoController extends Controller
     }
 
     /**
-     * Importa productos desde CSV (upsert por SKU, idempotente). Tolera el CSV de
-     * Excel-CL: separador ; o , (autodetectado), decimales con coma, BOM y
-     * Windows-1252. Filas invalidas se saltan y se reportan. La auditoria por fila
-     * se desactiva (seria ruido en cargas masivas); se deja un resumen en el log.
+     * Importa productos desde CSV con SEMANTICA DE PARCHE: solo se tocan las
+     * columnas presentes en el archivo (una columna ausente no se modifica; una
+     * celda vacia borra el valor). Upsert por SKU, idempotente. Tolera el CSV de
+     * Excel-CL (separador ; o ,, decimales con coma, BOM, Windows-1252). Filas
+     * invalidas se saltan y se reportan. Sin auditoria por fila (resumen al log).
      */
     public function import(Request $request): RedirectResponse
     {
@@ -117,19 +140,19 @@ class ProductoController extends Controller
             str_getcsv(rtrim($headerLine, "\r\n"), $delimiter),
         ));
 
-        if (! isset($map['sku'], $map['nombre'])) {
+        if (! isset($map['sku'])) {
             fclose($handle);
 
-            return back()->withErrors(['archivo' => 'El archivo debe incluir las columnas "sku" y "nombre".']);
+            return back()->withErrors(['archivo' => 'El archivo debe incluir la columna "sku".']);
         }
 
-        $numericas = ['peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'];
-        $creados = 0;
-        $actualizados = 0;
-        $errores = [];
+        // Solo columnas importables presentes en el archivo; el resto se ignora.
+        $presentes = array_values(array_intersect(self::IMPORTABLE, array_keys($map)));
+
+        $stats = ['creados' => 0, 'actualizados' => 0, 'sin_cambios' => 0, 'vaciados' => 0, 'errores' => []];
         $fila = 1; // la cabecera es la linea 1
 
-        Producto::withoutAuditing(function () use ($handle, $delimiter, $map, $numericas, &$creados, &$actualizados, &$errores, &$fila) {
+        Producto::withoutAuditing(function () use ($handle, $delimiter, $map, $presentes, &$stats, &$fila) {
             while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
                 $fila++;
 
@@ -137,60 +160,118 @@ class ProductoController extends Controller
                     continue; // fila en blanco
                 }
 
-                $data = [];
-                foreach (self::CSV_HEADERS as $col) {
-                    $idx = $map[$col] ?? null;
-                    $val = ($idx !== null && array_key_exists($idx, $row)) ? $this->toUtf8(trim((string) $row[$idx])) : null;
-                    $data[$col] = ($val === '' || $val === null) ? null : $val;
+                $error = $this->importRow($row, $map, $presentes, $stats);
+                if ($error !== null) {
+                    $stats['errores'][] = ['fila' => $fila, 'error' => $error];
                 }
-
-                foreach ($numericas as $col) {
-                    $data[$col] = $this->normalizeDecimal($data[$col]);
-                }
-                $data['activo'] = $this->parseBool($data['activo']);
-
-                $validator = Validator::make($data, [
-                    'sku' => ['required', 'string', 'max:64'],
-                    'nombre' => ['required', 'string', 'max:191'],
-                    'categoria' => ['nullable', 'string', 'max:191'],
-                    'marca' => ['nullable', 'string', 'max:191'],
-                    'peso_kg' => ['nullable', 'numeric', 'min:0'],
-                    'alto_cm' => ['nullable', 'numeric', 'min:0'],
-                    'ancho_cm' => ['nullable', 'numeric', 'min:0'],
-                    'largo_cm' => ['nullable', 'numeric', 'min:0'],
-                    'bsale_variant_id' => ['nullable', 'integer', 'min:0'],
-                    'bsale_product_id' => ['nullable', 'integer', 'min:0'],
-                ]);
-
-                if ($validator->fails()) {
-                    $errores[] = ['fila' => $fila, 'error' => $validator->errors()->first()];
-
-                    continue;
-                }
-
-                $producto = Producto::updateOrCreate(
-                    ['sku' => $data['sku']],
-                    Arr::except($data, ['sku']),
-                );
-                $producto->wasRecentlyCreated ? $creados++ : $actualizados++;
             }
         });
 
         fclose($handle);
 
-        Log::info("Import catálogo por usuario {$request->user()->id}: {$creados} creados, {$actualizados} actualizados, ".count($errores).' errores.');
+        Log::info(sprintf(
+            'Import catálogo por usuario %d: %d creados, %d actualizados, %d sin cambios, %d campos vaciados, %d errores.',
+            $request->user()->id, $stats['creados'], $stats['actualizados'],
+            $stats['sin_cambios'], $stats['vaciados'], count($stats['errores']),
+        ));
 
-        return redirect()->route('admin.productos.import.form')
-            ->with('importResult', [
-                'creados' => $creados,
-                'actualizados' => $actualizados,
-                'errores' => $errores,
-            ]);
+        return redirect()->route('admin.productos.import.form')->with('importResult', $stats);
+    }
+
+    /**
+     * Procesa una fila del CSV. Devuelve el mensaje de error (la fila se salta)
+     * o null si se aplico bien. Solo escribe las columnas presentes en el archivo.
+     */
+    private function importRow(array $row, array $map, array $presentes, array &$stats): ?string
+    {
+        // Celda fisicamente ausente (fila mas corta que el header) = celda vacia.
+        $data = [];
+        foreach ($presentes as $col) {
+            $idx = $map[$col];
+            $val = array_key_exists($idx, $row) ? $this->toUtf8(trim((string) $row[$idx])) : '';
+            $data[$col] = ($val === '') ? null : $val;
+        }
+
+        // 'activo' solo aplica si viene con valor; token no reconocido = error.
+        if (array_key_exists('activo', $data)) {
+            if ($data['activo'] === null) {
+                unset($data['activo']); // celda vacia: no tocar
+            } else {
+                $bool = $this->parseBoolStrict($data['activo']);
+                if ($bool === null) {
+                    return "Valor de \"activo\" no reconocido: \"{$data['activo']}\" (usa 1/0, si/no).";
+                }
+                $data['activo'] = $bool;
+            }
+        }
+
+        foreach (self::NUMERICAS as $col) {
+            if (array_key_exists($col, $data)) {
+                $data[$col] = $this->normalizeDecimal($data[$col]);
+            }
+        }
+
+        // Validar solo las columnas presentes. 'nombre' presente no puede ir vacio
+        // (la columna es NOT NULL; vaciarla seria un error de digitacion).
+        $reglas = [
+            'sku' => ['required', 'string', 'max:64'],
+            'nombre' => ['required', 'string', 'max:191'],
+            'descripcion' => ['nullable', 'string'],
+            'categoria' => ['nullable', 'string', 'max:191'],
+            'marca' => ['nullable', 'string', 'max:191'],
+            'peso_kg' => ['nullable', 'numeric', 'min:0'],
+            'alto_cm' => ['nullable', 'numeric', 'min:0'],
+            'ancho_cm' => ['nullable', 'numeric', 'min:0'],
+            'largo_cm' => ['nullable', 'numeric', 'min:0'],
+        ];
+        $validator = Validator::make($data, array_intersect_key($reglas, $data + ['sku' => true]));
+
+        if ($validator->fails()) {
+            return $validator->errors()->first();
+        }
+
+        $sku = $data['sku'];
+        unset($data['sku']);
+
+        try {
+            $existing = Producto::where('sku', $sku)->first();
+
+            if ($existing === null) {
+                if (! isset($data['nombre'])) {
+                    return "Producto nuevo \"{$sku}\": requiere la columna \"nombre\".";
+                }
+
+                Producto::create(['sku' => $sku] + $data);
+                $stats['creados']++;
+
+                return null;
+            }
+
+            // Rastro contra perdida silenciosa: campos que pasan de valor a vacio.
+            foreach ($data as $col => $val) {
+                if ($val === null && $existing->{$col} !== null) {
+                    $stats['vaciados']++;
+                }
+            }
+
+            $existing->fill($data);
+            if ($existing->isDirty()) {
+                $existing->save();
+                $stats['actualizados']++;
+            } else {
+                $stats['sin_cambios']++;
+            }
+
+            return null;
+        } catch (Throwable $e) {
+            return 'Error al guardar: '.mb_substr($e->getMessage(), 0, 150);
+        }
     }
 
     /**
      * Exporta el catalogo filtrado a CSV (mismas reglas de filtro que el index:
      * "filtro previo a exportar"). ; + BOM para que el Excel chileno lo abra bien.
+     * barcode y bsale_* van al final como referencia (el import los ignora).
      */
     public function export(Request $request): StreamedResponse
     {
@@ -206,7 +287,8 @@ class ProductoController extends Controller
                     fputcsv($out, [
                         $p->sku, $p->nombre, $p->descripcion, $p->categoria, $p->marca,
                         $p->peso_kg, $p->alto_cm, $p->ancho_cm, $p->largo_cm,
-                        $p->activo ? '1' : '0', $p->bsale_variant_id, $p->bsale_product_id,
+                        $p->activo ? '1' : '0',
+                        $p->barcode, $p->bsale_variant_id, $p->bsale_product_id,
                     ], ';');
                 }
             });
@@ -232,11 +314,46 @@ class ProductoController extends Controller
         ]);
     }
 
+    /**
+     * Plantilla de TRABAJO para cargar peso/dimensiones: los SKUs pendientes
+     * (medidas incompletas por defecto; respeta los demas filtros del index) con
+     * columnas de referencia NO importables (producto/categoria_ref/codigo_barras:
+     * el import las ignora) + las 4 medidas a llenar. Reimportarla solo escribe
+     * sku + medidas: cero riesgo de pisar nombre/categoria.
+     */
+    public function plantillaMedidas(Request $request): StreamedResponse
+    {
+        if (! $request->has('medidas')) {
+            $request->merge(['medidas' => 'incompletas']);
+        }
+
+        $query = $this->filteredQuery($request)->orderBy('categoria')->orderBy('nombre');
+
+        return response()->streamDownload(function () use ($query) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['sku', 'producto', 'categoria_ref', 'codigo_barras', 'peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'], ';');
+
+            $query->chunk(500, function ($rows) use ($out) {
+                foreach ($rows as $p) {
+                    fputcsv($out, [
+                        $p->sku, $p->nombre, $p->categoria, $p->barcode,
+                        $p->peso_kg, $p->alto_cm, $p->ancho_cm, $p->largo_cm,
+                    ], ';');
+                }
+            });
+
+            fclose($out);
+        }, 'medidas_pendientes_'.now()->format('Ymd_His').'.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
     // --- Helpers --------------------------------------------------------
 
     /**
      * Query del catalogo con los filtros del request aplicados. Compartida por
-     * index (paginado) y export (streaming) para que el export respete el filtro.
+     * index (paginado), export y plantilla-medidas para que respeten el filtro.
      */
     private function filteredQuery(Request $request): Builder
     {
@@ -245,6 +362,7 @@ class ProductoController extends Controller
             'categoria' => ['nullable', 'string', 'max:191'],
             'marca' => ['nullable', 'string', 'max:191'],
             'activo' => ['nullable', 'in:0,1'],
+            'medidas' => ['nullable', 'in:incompletas,completas'],
         ]);
 
         $query = Producto::query()
@@ -252,7 +370,15 @@ class ProductoController extends Controller
                 fn (Builder $w) => $w->where('sku', 'like', "%{$q}%")->orWhere('nombre', 'like', "%{$q}%"),
             ))
             ->when($f['categoria'] ?? null, fn (Builder $qb, $v) => $qb->where('categoria', $v))
-            ->when($f['marca'] ?? null, fn (Builder $qb, $v) => $qb->where('marca', $v));
+            ->when($f['marca'] ?? null, fn (Builder $qb, $v) => $qb->where('marca', $v))
+            // OJO: el OR va agrupado en closure para no romper el AND con los demas filtros.
+            ->when(($f['medidas'] ?? null) === 'incompletas', fn (Builder $qb) => $qb->where(
+                fn (Builder $w) => $w->whereNull('peso_kg')->orWhereNull('alto_cm')
+                    ->orWhereNull('ancho_cm')->orWhereNull('largo_cm'),
+            ))
+            ->when(($f['medidas'] ?? null) === 'completas', fn (Builder $qb) => $qb
+                ->whereNotNull('peso_kg')->whereNotNull('alto_cm')
+                ->whereNotNull('ancho_cm')->whereNotNull('largo_cm'));
 
         if (isset($f['activo']) && $f['activo'] !== '' && $f['activo'] !== null) {
             $query->where('activo', $f['activo'] === '1');
@@ -342,12 +468,23 @@ class ProductoController extends Controller
         return $value;
     }
 
-    private function parseBool(?string $value): bool
+    /**
+     * Interpreta un booleano del CSV con whitelist estricta. Token desconocido
+     * devuelve null (la fila se reporta como error: evita desactivar productos
+     * en silencio por un typo).
+     */
+    private function parseBoolStrict(string $value): ?bool
     {
-        if ($value === null) {
-            return true; // por defecto, activo
+        $v = Str::lower(trim($value));
+
+        if (in_array($v, ['1', 'si', 'sí', 'true', 'verdadero', 'activo'], true)) {
+            return true;
         }
 
-        return in_array(Str::lower(trim($value)), ['1', 'si', 'sí', 'true', 'verdadero', 'activo'], true);
+        if (in_array($v, ['0', 'no', 'false', 'falso', 'inactivo'], true)) {
+            return false;
+        }
+
+        return null;
     }
 }

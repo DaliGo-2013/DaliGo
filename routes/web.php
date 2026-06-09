@@ -71,6 +71,7 @@ Route::middleware('auth')
             Route::post('productos/importar', [ProductoController::class, 'import'])->name('productos.import');
             Route::get('productos/exportar', [ProductoController::class, 'export'])->name('productos.export');
             Route::get('productos/plantilla', [ProductoController::class, 'template'])->name('productos.template');
+            Route::get('productos/plantilla-medidas', [ProductoController::class, 'plantillaMedidas'])->name('productos.plantilla.medidas');
         });
         Route::resource('productos', ProductoController::class)
             ->middleware('permission:manage productos')
