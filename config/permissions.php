@@ -22,6 +22,7 @@ return [
         'manage settings' => 'Gestionar configuración',
         'view audit' => 'Ver auditoría',
         'manage productos' => 'Gestionar catálogo',
+        'manage clientes' => 'Gestionar clientes',
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
     ],

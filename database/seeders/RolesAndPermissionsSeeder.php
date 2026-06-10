@@ -30,6 +30,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage settings',
             'view audit',
             'manage productos',
+            'manage clientes',
             // Modulo Produccion.
             'report production',  // soplador: ve y envia su reporte diario
             'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve
@@ -49,9 +50,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // givePermissionTo es aditivo: garantiza el piso de permisos sin borrar
         // los que un admin haya agregado desde la UI. NO migrar a syncPermissions:
         // revertiria esas personalizaciones en cada deploy.
-        Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web']);
+        // Regla #2 del negocio: "la gestion es por VENDEDOR" -> los vendedores
+        // trabajan con la cartera de clientes desde el dia 1.
+        Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web'])
+            ->givePermissionTo('manage clientes');
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo('view users');
+            ->givePermissionTo(['view users', 'manage clientes']);
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
             ->givePermissionTo(['view users', 'manage production']);
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);

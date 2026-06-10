@@ -291,6 +291,42 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 
 ---
 
+## 8c. M03 — Clientes (Incremento 1, estado al 2026-06-10)
+
+**Hecho:** ficha local de clientes + CRUD admin + sync desde Bsale, clonando los patrones de M02.
+- **Tabla `clientes`**: `rut` (varchar 20, **unique nullable**, normalizado `12345678-9` sin puntos,
+  K mayúscula — nullable porque Bsale trae clientes sin RUT), razón social, giro, email, teléfono,
+  dirección/ciudad/comuna, `es_empresa` (Bsale `companyOrPerson`), `envio_factura_email` (Bsale
+  `sendDte` — la verdad del envío de DTE vive en Bsale), `activo`; **locales que la sync jamás toca:**
+  `segmento` (mayorista/retail/recurrente), `notas`, `vendedor_id` (FK a users, cartera — corrección #2).
+  Enlace por `bsale_client_id` (index).
+- **Modelo `Cliente`** auditable (en `AuditController::MODELOS`), con `normalizarRut()` y `dvRut()`
+  (módulo 11). Regla `App\Rules\RutChileno` valida DV **solo en entrada manual** (la sync no rechaza
+  datos históricos). El RUT se normaliza ANTES de validar el unique (mismo RUT en distinto formato = duplicado).
+- **CRUD** `/admin/clientes` (permiso único `manage clientes`; **piso: admin + vendedor +
+  jefe_ventas** — regla #2 "la gestión es por VENDEDOR") con filtros q (RUT con o sin puntos /
+  razón social), segmento, vendedor, estado. Vistas con la librería de componentes.
+  **Anti-zombie:** un cliente enlazado a Bsale no se puede eliminar localmente (el sync lo
+  recrearía perdiendo segmento/notas/vendedor); se desactiva en Bsale y el espejo lo refleja.
+- **Sync `bsale:sync-clients`** (`App\Services\Bsale\ClientSync`, clon de `CatalogSync`): pagina
+  `clients.json?state=0`, escalera de upsert (match `bsale_client_id` → adopción por `rut` → create),
+  colisiones de RUT duplicado en Bsale se omiten y reportan, `withoutAuditing`, stats al log.
+  **Extranjeros (`isForeigner`):** su `code` se guarda crudo (no se normaliza: les borraría las
+  letras y fabricaría RUTs falsos). **Consumidor final (`66666666-6`):** se guarda rut null (Bsale
+  puede traer varios y el unique los volvería ruido). Personas (`companyOrPerson=0`) prefieren
+  nombre+apellido sobre `company`.
+  **Shape verificado contra la API real** (~47.800 clientes; email/phone planos; `code` con puntos y a veces vacío).
+- **Tests:** `ClienteManagementTest` (19) + `BsaleClientesSyncTest` (11).
+
+**Limitación conocida (igual que el catálogo):** el barrido usa `state=0`, así que un cliente
+eliminado en Bsale (state 99) queda `activo=true` local — la desactivación-por-ausencia se difiere
+a un incremento posterior.
+
+**Pendiente de M03+:** búsqueda por RUT con precarga desde Bsale en el form, historial de compras y
+boleta rápida (dependen de M05), cron de sync.
+
+---
+
 ## 9. Deuda técnica / pendientes conocidos
 
 - **Rotar la contraseña de la BD** `impdali_daligo`: se compartió por chat en algún momento → cambiarla en cPanel y actualizar `.env` del servidor.

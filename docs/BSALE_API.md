@@ -113,7 +113,7 @@ GET https://api.bsale.io/v1/price_lists/1/details.json?code=12345&expand=[varian
 
 ## D. Clientes (secundario)
 
-GET /v1/clients.json + CRUD (DELETE virtual → state 99). **RUT en el campo code**; búsqueda por RUT: ?code=12345678-9. Campos: firstName, lastName, code (RUT), phone, company (razón social), activity (giro), address, city, municipality, email (en contacts), companyOrPerson (0=persona/1=empresa), maxCredit, hasCredit, nodos contacts, attributes, addresses. Extranjeros: isForeigner: 1. ✅ [CONFIRMADO] — https://docs.bsale.dev/clientes
+GET /v1/clients.json + CRUD (DELETE virtual → state 99). **RUT en el campo code**; búsqueda por RUT: ?code=12345678-9. Campos: firstName, lastName, code (RUT), phone, company (razón social), activity (giro), address, city, municipality, email (campo plano del cliente — verificado contra la API real; los `contacts` son contactos ADICIONALES), companyOrPerson (0=persona/1=empresa), maxCredit, hasCredit, nodos contacts, attributes, addresses. Extranjeros: isForeigner: 1. ✅ [CONFIRMADO] — https://docs.bsale.dev/clientes
 
 | Método + ruta | Auth | Notas |
 |---|---|---|

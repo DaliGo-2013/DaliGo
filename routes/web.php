@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
@@ -75,6 +76,11 @@ Route::middleware('auth')
         });
         Route::resource('productos', ProductoController::class)
             ->middleware('permission:manage productos')
+            ->except(['show']);
+
+        // Clientes (M03): ficha local espejada desde Bsale + cartera por vendedor.
+        Route::resource('clientes', ClienteController::class)
+            ->middleware('permission:manage clientes')
             ->except(['show']);
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.

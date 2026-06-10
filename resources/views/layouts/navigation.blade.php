@@ -38,6 +38,12 @@
                         </x-nav-link>
                     @endcan
 
+                    @can('manage clientes')
+                        <x-nav-link :href="route('admin.clientes.index')" :active="request()->routeIs('admin.clientes.*')">
+                            Clientes
+                        </x-nav-link>
+                    @endcan
+
                     @can('manage settings')
                         <x-nav-link :href="route('admin.configuracion.index')" :active="request()->routeIs('admin.configuracion.*')">
                             Configuración
@@ -131,6 +137,12 @@
             @can('manage productos')
                 <x-responsive-nav-link :href="route('admin.productos.index')" :active="request()->routeIs('admin.productos.*')">
                     Catálogo
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('manage clientes')
+                <x-responsive-nav-link :href="route('admin.clientes.index')" :active="request()->routeIs('admin.clientes.*')">
+                    Clientes
                 </x-responsive-nav-link>
             @endcan
 
