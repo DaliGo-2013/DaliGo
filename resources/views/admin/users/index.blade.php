@@ -35,7 +35,7 @@
                         <x-slot name="meta">
                             <div class="flex flex-wrap items-center gap-1 sm:w-28 sm:shrink-0">
                                 @forelse ($user->roles as $role)
-                                    <x-badge>{{ $role->name }}</x-badge>
+                                    <x-badge>{{ \Illuminate\Support\Str::headline($role->name) }}</x-badge>
                                 @empty
                                     <span class="text-xs text-neutral-400">sin rol</span>
                                 @endforelse

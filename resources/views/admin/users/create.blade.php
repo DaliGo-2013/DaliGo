@@ -30,7 +30,7 @@
                         <x-input-label for="role" value="Rol" />
                         <x-select id="role" name="role" class="mt-1.5" required>
                             @foreach ($roles as $role)
-                                <option value="{{ $role }}" @selected(old('role') === $role)>{{ $role }}</option>
+                                <option value="{{ $role }}" @selected(old('role') === $role)>{{ \Illuminate\Support\Str::headline($role) }}</option>
                             @endforeach
                         </x-select>
                         <x-input-error :messages="$errors->get('role')" class="mt-2" />

@@ -45,6 +45,11 @@ class RoleController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Normalizar a minusculas ANTES de validar: el unique de MySQL 5.7 es
+        // case-insensitive (utf8mb4_unicode_ci) pero el de SQLite (tests) no;
+        // ademas mantiene la convencion ASCII-minuscula de los roles del negocio.
+        $request->merge(['name' => mb_strtolower(trim((string) $request->input('name')))]);
+
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255', 'regex:/^[a-z0-9 _-]+$/i',
@@ -80,6 +85,11 @@ class RoleController extends Controller
     public function update(Request $request, Role $role): RedirectResponse
     {
         $isBase = $this->isBaseRole($role);
+
+        if (! $isBase && $request->has('name')) {
+            // Misma normalizacion que en store() (ver comentario alla).
+            $request->merge(['name' => mb_strtolower(trim((string) $request->input('name')))]);
+        }
 
         $rules = [
             'permissions' => ['nullable', 'array'],

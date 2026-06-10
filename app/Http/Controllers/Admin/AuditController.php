@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Configuracion;
+use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class AuditController extends Controller
         User::class => 'Usuario',
         Sucursal::class => 'Sucursal',
         Configuracion::class => 'Configuración',
+        Producto::class => 'Producto',
     ];
 
     /**

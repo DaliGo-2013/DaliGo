@@ -30,13 +30,12 @@ class RoleMatrixSeedTest extends TestCase
                 'manage productos', 'report production', 'manage production',
             ],
             'member' => [],
-            'Soplador' => ['report production'],
-            'Jefatura' => ['manage production'],
             'vendedor' => [],
             'jefe_ventas' => ['view users'],
-            'jefe_bodega' => ['view users'],
+            'jefe_bodega' => ['view users', 'manage production'],
             'conductor' => [],
             'tecnico' => [],
+            'soplador' => ['report production'],
         ];
     }
 
@@ -53,9 +52,9 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_nueve_roles(): void
+    public function test_seeder_deja_exactamente_ocho_roles(): void
     {
-        $this->assertSame(9, Role::count());
+        $this->assertSame(8, Role::count());
     }
 
     public function test_reseed_es_idempotente_y_no_borra_permisos_de_la_ui(): void
@@ -74,7 +73,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(9, Role::count());
+        $this->assertSame(8, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

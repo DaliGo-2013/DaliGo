@@ -66,6 +66,19 @@ class RoleManagementTest extends TestCase
         $this->assertFalse($role->hasPermissionTo('delete users'));
     }
 
+    public function test_role_name_is_normalized_to_lowercase(): void
+    {
+        // El unique de MySQL 5.7 es case-insensitive; normalizamos al crear para
+        // que local (SQLite) y prod se comporten igual y se mantenga la
+        // convencion ASCII-minuscula de los roles del negocio.
+        $this->actingAs($this->admin())->post('/admin/roles', [
+            'name' => '  SUPERVISOR Regional ',
+        ])->assertRedirect(route('admin.roles.index'));
+
+        $this->assertDatabaseHas('roles', ['name' => 'supervisor regional']);
+        $this->assertDatabaseMissing('roles', ['name' => 'SUPERVISOR Regional']);
+    }
+
     public function test_create_rejects_duplicate_role_name(): void
     {
         $this->actingAs($this->admin())->post('/admin/roles', ['name' => 'admin'])

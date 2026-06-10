@@ -174,6 +174,15 @@ class AuditManagementTest extends TestCase
         }
     }
 
+    public function test_filter_accepts_producto_model(): void
+    {
+        // Producto es Auditable y debe ser filtrable/etiquetable en /admin/audits.
+        $this->actingAs($this->admin())
+            ->get('/admin/audits?auditable_type='.urlencode(\App\Models\Producto::class))
+            ->assertOk()
+            ->assertSee('Producto');
+    }
+
     public function test_filter_by_user(): void
     {
         $admin = $this->admin();

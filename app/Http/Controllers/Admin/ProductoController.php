@@ -213,16 +213,17 @@ class ProductoController extends Controller
 
         // Validar solo las columnas presentes. 'nombre' presente no puede ir vacio
         // (la columna es NOT NULL; vaciarla seria un error de digitacion).
+        // max: acorde a decimal(10,3)/(10,2) para no gatillar "Out of range" en MySQL.
         $reglas = [
             'sku' => ['required', 'string', 'max:64'],
             'nombre' => ['required', 'string', 'max:191'],
             'descripcion' => ['nullable', 'string'],
             'categoria' => ['nullable', 'string', 'max:191'],
             'marca' => ['nullable', 'string', 'max:191'],
-            'peso_kg' => ['nullable', 'numeric', 'min:0'],
-            'alto_cm' => ['nullable', 'numeric', 'min:0'],
-            'ancho_cm' => ['nullable', 'numeric', 'min:0'],
-            'largo_cm' => ['nullable', 'numeric', 'min:0'],
+            'peso_kg' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
+            'alto_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'ancho_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'largo_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
         ];
         $validator = Validator::make($data, array_intersect_key($reglas, $data + ['sku' => true]));
 
@@ -395,10 +396,10 @@ class ProductoController extends Controller
             'descripcion' => ['nullable', 'string'],
             'categoria' => ['nullable', 'string', 'max:191'],
             'marca' => ['nullable', 'string', 'max:191'],
-            'peso_kg' => ['nullable', 'numeric', 'min:0'],
-            'alto_cm' => ['nullable', 'numeric', 'min:0'],
-            'ancho_cm' => ['nullable', 'numeric', 'min:0'],
-            'largo_cm' => ['nullable', 'numeric', 'min:0'],
+            'peso_kg' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
+            'alto_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'ancho_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'largo_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'bsale_variant_id' => ['nullable', 'integer', 'min:0'],
             'bsale_product_id' => ['nullable', 'integer', 'min:0'],
             'atributos' => ['nullable', 'string'],

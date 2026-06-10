@@ -21,12 +21,12 @@ class ProduccionTest extends TestCase
 
     private function jefe(): User
     {
-        return tap(User::factory()->create())->assignRole('Jefatura');
+        return tap(User::factory()->create())->assignRole('jefe_bodega');
     }
 
     private function soplador(): User
     {
-        return tap(User::factory()->create())->assignRole('Soplador');
+        return tap(User::factory()->create())->assignRole('soplador');
     }
 
     private function reporteDe(User $soplador, int $asignadas = 100, string $estado = ProduccionReporte::BORRADOR): ProduccionReporte

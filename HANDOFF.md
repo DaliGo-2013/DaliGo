@@ -208,10 +208,14 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 - Tests `Admin/SucursalManagementTest` (CRUD, 403 no-admin, guarda con usuarios).
 
 ### Incremento 2 — Roles reales del negocio + matriz de partida — ✅ HECHO (commit `e1df23d`)
-> Nota: se decidió **mantener** los roles `Soplador`/`Jefatura` del Módulo Producción (TitleCase, sin
-> renombrar) y solo **agregar** `vendedor`, `jefe_ventas`, `jefe_bodega`, `conductor`, `tecnico`.
-> `jefe_ventas`/`jefe_bodega` = `view users`; operativos sin permisos de gestión. Labels de permisos
-> centralizados en `config/permissions.php`; nombres de rol mostrados con `Str::headline`.
+> Nota: el Inc 2 original mantuvo `Soplador`/`Jefatura` (TitleCase) junto a los nuevos roles ASCII.
+> **ACTUALIZADO (2026-06-10):** tras la auditoría (`docs/AUDITORIA-M01-M02.md`) se **reconcilió a
+> 8 roles ASCII** con la migración `reconcile_business_roles`: `Soplador`→`soplador` (renombre,
+> preserva asignaciones), `Jefatura`→consolidado en `jefe_bodega` (que ahora tiene
+> `manage production` + `view users`), y el huérfano `Ventas` eliminado. Set final:
+> `admin, member, vendedor, jefe_ventas, jefe_bodega, conductor, tecnico, soplador`.
+> Los nombres de rol creados por UI se normalizan a minúsculas (`RoleController`). Labels de
+> permisos centralizados en `config/permissions.php`; display con `Str::headline`.
 > `manage settings`/`view audit` se **difirieron** a los Incrementos 3 y 4.
 - Extender `RolesAndPermissionsSeeder` (idempotente): crear los 6 roles nuevos del negocio (admin/member ya existen).
 - Permisos nuevos de los incrementos: `manage sucursales`, `manage settings`, `view audit` → asignados a `admin`.
@@ -257,6 +261,33 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 - **Prod (MySQL 5.7):** `git push` → vigilar **Actions** → verificar en staging (migraciones aplicadas, vigilar índices en 5.7, seeders corridos, enlaces de nav). Asignar sucursal/rol a usuarios existentes.
 
 > El plan original local está en `C:\Users\mauri\.claude\plans\functional-squishing-river.md` (esta sección es su copia portable).
+
+---
+
+## 8b. M02 — Catálogo + Bsale (estado al 2026-06-10)
+
+**Hecho y en producción:**
+- **Catálogo local `productos`** (nivel SKU = variante de Bsale): sku único, nombre, descripción,
+  categoría, marca, **peso_kg + alto/ancho/largo_cm** (lo que Bsale NO tiene y M08 necesita),
+  `atributos` JSON, activo, `barcode`, `bsale_variant_id`/`bsale_product_id`/`bsale_product_type_id`.
+  CRUD admin (`ProductoController`, permiso `manage productos`), Auditable.
+- **Import/export CSV** apto Excel-CL (export `;`+BOM; import autodetecta separador, decimales con
+  coma, Windows-1252). El import tiene **semántica de PARCHE**: solo toca columnas presentes en el
+  archivo (celda vacía borra; columna ausente no se toca); upsert por SKU; filas malas se saltan y
+  reportan; `barcode`/`bsale_*` son **solo-export** (no importables). Contadores
+  creados/actualizados/sin_cambios/**vaciados**/errores. Sin audit por fila.
+- **Sincronización con Bsale** (`bsale:sync-catalog`, manual): barrido read-only de
+  productos+variantes (`app/Services/Bsale/BsaleClient` + `CatalogSync`), upsert por
+  `bsale_variant_id` (escalera: variant_id → sku sin enlazar [adopción CSV] → crear), **preservando
+  campos locales** (peso/dims/marca/descripcion/atributos). Token en `.env`
+  (`BSALE_ACCESS_TOKEN`, empresa 26021); corrido en prod: **2.846 productos**. Referencia API:
+  `docs/BSALE_API.md`.
+- **Plantilla de medidas** (`productos/plantilla-medidas`): CSV de trabajo con los SKUs de medidas
+  incompletas + columnas de referencia no importables; filtro `medidas` y contador de progreso
+  "X de Y activos" en el index. **Tarea operativa en curso: el equipo carga peso/dimensiones.**
+
+**Pendiente de M02+:** sync de precios (15 listas por zona en Bsale, solo lectura), webhooks
+(alta self-service en el panel de Devs) y/o cron para automatizar la sync, enlace catálogo↔M04.
 
 ---
 

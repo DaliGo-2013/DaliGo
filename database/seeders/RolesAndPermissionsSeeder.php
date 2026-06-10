@@ -44,15 +44,8 @@ class RolesAndPermissionsSeeder extends Seeder
 
         Role::firstOrCreate(['name' => 'member', 'guard_name' => 'web']);
 
-        // Modulo Produccion: el operario reporta, la jefatura gestiona.
-        // firstOrCreate es aditivo: si los roles ya existen (creados desde la UI),
-        // solo se les agrega el permiso correspondiente.
-        Role::firstOrCreate(['name' => 'Soplador', 'guard_name' => 'web'])
-            ->givePermissionTo('report production');
-        Role::firstOrCreate(['name' => 'Jefatura', 'guard_name' => 'web'])
-            ->givePermissionTo('manage production');
-
-        // Roles del negocio (Incremento 2): matriz de partida.
+        // Roles del negocio: 8 roles ASCII (reconciliados por la migracion
+        // reconcile_business_roles; los legacy Soplador/Jefatura ya no existen).
         // givePermissionTo es aditivo: garantiza el piso de permisos sin borrar
         // los que un admin haya agregado desde la UI. NO migrar a syncPermissions:
         // revertiria esas personalizaciones en cada deploy.
@@ -60,8 +53,10 @@ class RolesAndPermissionsSeeder extends Seeder
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             ->givePermissionTo('view users');
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo('view users');
+            ->givePermissionTo(['view users', 'manage production']);
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
+            ->givePermissionTo('report production');
     }
 }

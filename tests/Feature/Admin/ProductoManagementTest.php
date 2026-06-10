@@ -108,6 +108,19 @@ class ProductoManagementTest extends TestCase
             ->assertSessionHasErrors('peso_kg');
     }
 
+    public function test_peso_out_of_range_is_rejected_not_500(): void
+    {
+        // decimal(10,3) desborda con valores absurdos -> debe ser error de
+        // validacion, no un 500 "Out of range" de MySQL.
+        $this->actingAs($this->admin())
+            ->post('/admin/productos', ['sku' => 'X-9', 'nombre' => 'X', 'peso_kg' => '99999999999'])
+            ->assertSessionHasErrors('peso_kg');
+
+        $csv = "sku;nombre;peso_kg\nX-9;X;99999999999\n";
+        $this->actingAs($this->admin())->post('/admin/productos/importar', ['archivo' => $this->csv($csv)]);
+        $this->assertCount(1, session('importResult')['errores']);
+    }
+
     public function test_atributos_must_be_valid_json(): void
     {
         $this->actingAs($this->admin())

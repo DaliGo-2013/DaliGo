@@ -13,7 +13,7 @@
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                         <span class="text-sm text-neutral-500">Tu rol:</span>
                         @forelse (auth()->user()->roles as $role)
-                            <x-badge>{{ $role->name }}</x-badge>
+                            <x-badge>{{ \Illuminate\Support\Str::headline($role->name) }}</x-badge>
                         @empty
                             <span class="text-xs text-neutral-400">sin rol</span>
                         @endforelse

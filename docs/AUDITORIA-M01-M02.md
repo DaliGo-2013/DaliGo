@@ -1,5 +1,11 @@
 # Auditoría M01 (Inc 2/3/4) + M02 (Inc 1) — hallazgos y plan de continuación
 
+> ✅ **EJECUTADO (2026-06-10):** la reconciliación de roles a 8 ASCII (migración
+> `reconcile_business_roles` + seeder + tests) y los fixes accionables (Producto en
+> `AuditController::MODELOS`, normalización de nombre de rol, try/catch por fila en el
+> import [aplicado antes, en el incremento de medidas], `Str::headline` en
+> dashboard/usuarios, `max:` en peso/dimensiones). Este documento queda como registro histórico.
+
 > **Para retomar en otra máquina.** Documento de traspaso de una auditoría read-only hecha el
 > 2026-06-08 sobre los commits `e1df23d` (roles), `1328de8` (config), `729ccd1` (auditoría) y
 > `4ee1c54` (catálogo productos). Complementa `HANDOFF.md` y `CLAUDE.md`.
