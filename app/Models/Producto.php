@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -49,5 +50,11 @@ class Producto extends Model implements AuditableContract
             'ancho_cm' => 'decimal:2',
             'largo_cm' => 'decimal:2',
         ];
+    }
+
+    /** @return HasMany<Precio, $this> */
+    public function precios(): HasMany
+    {
+        return $this->hasMany(Precio::class, 'producto_id');
     }
 }

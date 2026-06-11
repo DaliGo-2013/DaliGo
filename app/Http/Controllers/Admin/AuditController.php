@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Configuracion;
+use App\Models\ListaPrecio;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\User;
@@ -23,6 +24,7 @@ class AuditController extends Controller
         Configuracion::class => 'Configuración',
         Producto::class => 'Producto',
         Cliente::class => 'Cliente',
+        ListaPrecio::class => 'Lista de precios',
     ];
 
     /**

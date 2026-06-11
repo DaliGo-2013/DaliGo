@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
+use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\RoleController;
@@ -77,6 +78,13 @@ Route::middleware('auth')
         Route::resource('productos', ProductoController::class)
             ->middleware('permission:manage productos')
             ->except(['show']);
+
+        // Listas de precios (M02.2): espejo de Bsale, solo lectura de valores;
+        // lo unico editable es el campo local `canal`.
+        Route::resource('listas-precios', ListaPrecioController::class)
+            ->parameters(['listas-precios' => 'listaPrecio'])
+            ->middleware('permission:manage productos')
+            ->only(['index', 'show', 'update']);
 
         // Clientes (M03): ficha local espejada desde Bsale + cartera por vendedor.
         Route::resource('clientes', ClienteController::class)

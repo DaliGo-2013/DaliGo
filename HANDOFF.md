@@ -286,8 +286,30 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
   incompletas + columnas de referencia no importables; filtro `medidas` y contador de progreso
   "X de Y activos" en el index. **Tarea operativa en curso: el equipo carga peso/dimensiones.**
 
-**Pendiente de M02+:** sync de precios (15 listas por zona en Bsale, solo lectura), webhooks
-(alta self-service en el panel de Devs) y/o cron para automatizar la sync, enlace catálogo↔M04.
+**Pendiente de M02+:** webhooks (alta self-service en el panel de Devs) y/o cron para automatizar
+la sync, enlace catálogo↔M04.
+
+### M02.2 — Listas de precios (estado al 2026-06-10)
+
+**Hecho:** espejo read-only de las listas de precios de Bsale (lo que faltaba para que M05 cotice).
+- **Tablas:** `listas_precios` (nombre, descripción, `bsale_coin_id` [1=CLP], activa, **local:**
+  `canal` — la convención "una lista = un canal" no existe en Bsale, la define DaliGo;
+  `bsale_price_list_id` unique) y `precios` (FK lista+producto con cascade, `precio_neto` +
+  `precio_con_iva` en **decimal(14,4)** — el neto real llega como float largo bruto/1.19,
+  `bsale_detail_id`, **unique compuesto lista+producto**).
+- **Sync `bsale:sync-prices`** (`App\Services\Bsale\PriceListSync`): cabeceras de TODAS las listas
+  (espeja el flag activa, preserva `canal`); **detalles solo de listas ACTIVAS** (las inactivas son
+  promos muertas); match al catálogo por `bsale_variant_id` (variante sin producto local se omite y
+  cuenta). **A diferencia del catálogo, los precios que Bsale ya no manda SE BORRAN** (un precio
+  obsoleto induce a cotizar mal). Shape real verificado: ids llegan como STRING, coin={href,id}.
+- **UI** `/admin/listas-precios` (permiso `manage productos`, nav "Precios"): index con listas
+  (moneda/canal/inactiva/# precios), show con valores paginados + filtro por SKU/nombre + edición
+  del `canal`; la ficha del producto (edit) muestra sus precios por lista (solo lectura).
+  `ListaPrecio` auditable (en `AuditController::MODELOS`); `Precio` NO (espejo masivo).
+- **Tests:** `BsalePreciosSyncTest` (8) + `ListaPrecioManagementTest` (8).
+
+**Pendiente:** automatización (cron/webhooks), y el mismo diferimiento de staleness de cabeceras
+que catálogo/clientes (lista eliminada en Bsale queda con su último estado local).
 
 ---
 
