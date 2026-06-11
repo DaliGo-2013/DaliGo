@@ -286,8 +286,14 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
   incompletas + columnas de referencia no importables; filtro `medidas` y contador de progreso
   "X de Y activos" en el index. **Tarea operativa en curso: el equipo carga peso/dimensiones.**
 
-**Pendiente de M02+:** webhooks (alta self-service en el panel de Devs) y/o cron para automatizar
-la sync, enlace catálogo↔M04.
+- **Automatización (cron):** las 3 syncs (`bsale:sync-catalog/clients/prices`) están registradas en
+  el scheduler de Laravel (`routes/console.php`), escalonadas por hora (catálogo :00 → clientes :20
+  → precios :40; el catálogo va primero porque los precios matchean por `bsale_variant_id`), con
+  `withoutOverlapping(15)` y salida a `storage/logs/bsale-sync.log`. **Requiere el cron de cPanel**
+  `* * * * * php artisan schedule:run` (ver §5/CLAUDE.md). Frecuencia tunable en `routes/console.php`.
+
+**Pendiente de M02+:** webhooks (sync incremental, alta self-service en el panel de Devs);
+enlace catálogo↔M04 (inventario).
 
 ### M02.2 — Listas de precios (estado al 2026-06-10)
 

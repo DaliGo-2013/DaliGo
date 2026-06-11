@@ -716,7 +716,20 @@ tail -50 storage/logs/laravel.log
 
 # Estado de las migraciones
 /opt/cpanel/ea-php83/root/usr/bin/php artisan migrate:status
+
+# Ver qué tareas programadas hay y cuándo corren
+/opt/cpanel/ea-php83/root/usr/bin/php artisan schedule:list
+
+# Historial de las syncs automáticas de Bsale
+tail -50 storage/logs/bsale-sync.log
 ```
+
+### Tareas programadas (cron)
+Las syncs de Bsale (catálogo, clientes, precios) corren **solas cada hora** gracias a un cron en
+cPanel que ejecuta `php artisan schedule:run` cada minuto (Laravel decide qué toca). Se definen en
+`routes/console.php`. Para cambiar la frecuencia, edita ahí (`->hourly()` → `->dailyAt('03:00')`,
+etc.) y haz push. El cron de cPanel se crea **una sola vez**:
+`* * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home4/impdali/daligo/artisan schedule:run >> /dev/null 2>&1`
 
 ---
 

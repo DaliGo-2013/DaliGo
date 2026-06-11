@@ -107,6 +107,7 @@ Si algo no existe y se va a usar seguido, créalo siguiendo el formato de los co
   **No corras seeds/cachés a mano en producción**; ya están cubiertos.
 - Mirar el avance en la pestaña **Actions** del repo `DaliGo-2013/DaliGo`. Staging: **staging.impdali.cl**.
 - Servidor: HostGator compartido (cPanel + LiteSpeed), PHP **ea-php83**, BD **MySQL 5.7** (`impdali_daligo`), **sin Node**.
+- **Cron del scheduler** (one-time en cPanel → Cron Jobs, no lo crea el deploy): `* * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home4/impdali/daligo/artisan schedule:run >> /dev/null 2>&1`. Corre cada minuto y dispara las tareas de `routes/console.php` (hoy: las 3 syncs de Bsale → `storage/logs/bsale-sync.log`). Toda tarea programada nueva corre sola sin volver a tocar cPanel.
 
 ---
 
