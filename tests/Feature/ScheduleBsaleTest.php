@@ -6,7 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Tests\TestCase;
 
 /**
- * Verifica que las 3 syncs de Bsale queden registradas en el scheduler (lo que
+ * Verifica que las 4 syncs de Bsale queden registradas en el scheduler (lo que
  * el cron de cPanel ejecutara via `schedule:run`). No corre las syncs; solo
  * inspecciona el registro definido en routes/console.php.
  */
@@ -21,13 +21,14 @@ class ScheduleBsaleTest extends TestCase
         );
     }
 
-    public function test_las_tres_syncs_estan_agendadas(): void
+    public function test_las_syncs_estan_agendadas(): void
     {
         $comandos = implode("\n", $this->comandosAgendados());
 
         $this->assertStringContainsString('bsale:sync-catalog', $comandos);
         $this->assertStringContainsString('bsale:sync-clients', $comandos);
         $this->assertStringContainsString('bsale:sync-prices', $comandos);
+        $this->assertStringContainsString('bsale:sync-stock', $comandos);
     }
 
     public function test_las_syncs_no_se_solapan(): void
@@ -35,7 +36,7 @@ class ScheduleBsaleTest extends TestCase
         $eventos = collect(app(Schedule::class)->events())
             ->filter(fn ($e) => str_contains((string) $e->command, 'bsale:sync-'));
 
-        $this->assertCount(3, $eventos);
+        $this->assertCount(4, $eventos);
         foreach ($eventos as $evento) {
             $this->assertTrue($evento->withoutOverlapping, "La sync {$evento->command} debe tener withoutOverlapping.");
         }

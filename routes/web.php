@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
@@ -85,6 +86,11 @@ Route::middleware('auth')
             ->parameters(['listas-precios' => 'listaPrecio'])
             ->middleware('permission:manage productos')
             ->only(['index', 'show', 'update']);
+
+        // Inventario (M04): bodegas + stock espejados desde Bsale, solo lectura.
+        Route::resource('bodegas', BodegaController::class)
+            ->middleware('permission:manage productos')
+            ->only(['index', 'show']);
 
         // Clientes (M03): ficha local espejada desde Bsale + cartera por vendedor.
         Route::resource('clientes', ClienteController::class)

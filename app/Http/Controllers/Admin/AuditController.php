@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bodega;
 use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\ListaPrecio;
@@ -25,6 +26,7 @@ class AuditController extends Controller
         Producto::class => 'Producto',
         Cliente::class => 'Cliente',
         ListaPrecio::class => 'Lista de precios',
+        Bodega::class => 'Bodega',
     ];
 
     /**

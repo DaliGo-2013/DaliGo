@@ -57,4 +57,10 @@ class Producto extends Model implements AuditableContract
     {
         return $this->hasMany(Precio::class, 'producto_id');
     }
+
+    /** @return HasMany<Stock, $this> */
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(Stock::class, 'producto_id');
+    }
 }

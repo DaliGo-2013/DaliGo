@@ -77,14 +77,19 @@ class ProductoController extends Controller
 
     public function edit(Producto $producto): View
     {
-        // Precios espejados desde Bsale (solo lectura; M02.2), si el producto esta enlazado.
+        // Precios y stock espejados desde Bsale (solo lectura), si el producto esta enlazado.
         $precios = $producto->bsale_variant_id
             ? $producto->precios()->with('lista')->get()->sortBy(fn ($p) => $p->lista->nombre)->values()
+            : collect();
+
+        $stocks = $producto->bsale_variant_id
+            ? $producto->stocks()->with('bodega')->get()->sortBy(fn ($s) => $s->bodega->nombre)->values()
             : collect();
 
         return view('admin.productos.edit', array_merge([
             'producto' => $producto,
             'precios' => $precios,
+            'stocks' => $stocks,
         ], $this->formData()));
     }
 

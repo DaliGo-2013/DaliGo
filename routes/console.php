@@ -27,3 +27,10 @@ Schedule::command('bsale:sync-prices')
     ->hourlyAt(40)
     ->withoutOverlapping(15)
     ->appendOutputTo(storage_path('logs/bsale-sync.log'));
+
+// Stock va último: matchea producto (bsale_variant_id) contra `productos` y
+// bodega contra las offices, así que corre tras el catálogo de la misma hora.
+Schedule::command('bsale:sync-stock')
+    ->hourlyAt(50)
+    ->withoutOverlapping(15)
+    ->appendOutputTo(storage_path('logs/bsale-sync.log'));
