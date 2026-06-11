@@ -364,6 +364,9 @@ boleta rápida (dependen de M05), cron de sync.
 - **Matriz de permisos por módulo:** se define en Sprint 0 con el negocio; hoy solo hay permisos de usuarios/roles + los nuevos de M01.
 - **MySQL 5.7 EOL:** pedir upgrade a 8.x cuando el hosting lo permita.
 - **PWA offline:** es el mayor riesgo del proyecto (módulo posterior); diseñar con cuidado.
+- **🔴 M02.2 sync de precios — footgun de borrado masivo (deuda priorizada):** `PriceListSync::syncDetalles` (`app/Services/Bsale/PriceListSync.php:132`) hace `Precio::where('lista_precio_id',…)->whereNotIn('producto_id', $vistos)->delete()`; si `$vistos` queda **vacío** (la lista trae details pero NINGUNO matchea el catálogo local — p. ej. el catálogo se desincronizó o un producto perdió su `bsale_variant_id`), `whereNotIn([])` compila como `1=1` y **borra TODOS los precios de esa lista**. Ahora corre **cada hora sin supervisión** (scheduler, `routes/console.php`). Fix: contar details recorridos; si `details > 0 && $vistos === []` → saltar el delete + registrar error; + test de regresión (0-match-no-borra y fallo-de-API-a-mitad-no-borra). Hoy prod está intacto (catálogo sincronizado), es riesgo latente.
+- **`productos.bsale_variant_id` sin `unique`:** migración `2026_06_08_120000` solo `->index()` y `ProductoController::validateData` lo acepta sin `Rule::unique`. Dos productos con el mismo variant_id → `pluck()` colapsa y el sync borra el precio del "perdedor". Fix: quitar `bsale_variant_id`/`bsale_product_id` de `validateData` (el form no los expone; la sync es dueña del enlace) o `Rule::unique` + índice unique (verificar 0 duplicados en prod antes).
+- **Cron duplicado:** en cPanel hay dos entradas de `schedule:run` (`*/20 * * * *` y `* * * * *`); sobra la de 20 min (Laravel necesita solo la de cada minuto).
 
 ---
 
