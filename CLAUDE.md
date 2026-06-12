@@ -62,6 +62,8 @@ Tema **claro y sobrio**: naranjo de marca + blanco + neutros, **sin degradados**
 
 **Motion** (sutil, rápido, con propósito — **sin rebotes ni loops**): `transition duration-150` en estados/hover; `active:scale-[0.98]` al presionar; `dg-enter` para materializar contenedores al cargar; `dg-shake` para feedback de error; **siempre** respetar `prefers-reduced-motion` (ya cubierto en `app.css`).
 
+**Pantallas de operario (módulo Mi producción y similares):** el operario usa el celular en planta, con apuro y a veces con guantes. Reglas: (1) mínima cantidad de elementos en pantalla — sin banda de cabecera de página; título + fecha compactos en una línea dentro del contenido; (2) todo lo autocompletable viene precargado (fecha, asignación, datos del usuario) — el operario **solo ingresa cantidades**; (3) las cantidades se ingresan **tocando**, no tipeando: usar `<x-stepper-input>` (botones −1/+1/+10, objetivos táctiles ≥48px); el input central queda como atajo para números grandes; (4) botones de acción a ancho completo y `h-12` en móvil; (5) los campos condicionales (ej. motivo de diferencia) solo aparecen cuando aplican, con sugerencias tocables (`datalist`) para minimizar tipeo.
+
 ### Responsive (obligatorio en cada cambio)
 La app es **mobile-first**. Toda pantalla y componente debe verse bien y **sin scroll horizontal** a **375px (móvil), 768px (tablet) y ≥1024px (desktop)**.
 - Las clases base son para móvil; se escala con prefijos `sm:` / `md:` / `lg:`, nunca al revés.
@@ -77,7 +79,7 @@ La app es **mobile-first**. Toda pantalla y componente debe verse bien y **sin s
 - **Layout / página:** `app-layout`, `guest-layout`, `page-header` (título + subtítulo + slot `action`), `list-card` (tarjeta + cabecera + `<ul>`), `list-row` (fila **responsive** con slots `leading`/`meta`/`actions`), `avatar`, `modal`, `dropdown` / `dropdown-link`.
 - **Navegación:** `nav-link`, `responsive-nav-link`.
 - **Botones / enlaces:** `primary-button`, `secondary-button`, `danger-button`, `button-link` (enlace con estilo primario), `icon-button` (`:href`, `variant=default|danger`, `label`), `secondary-link` (cancelar/volver).
-- **Form controls:** `input-label`, `text-input`, `select`, `textarea`, `checkbox`, `radio`, `checkbox-item` (checkbox + label en tarjeta; slot `note`), `input-error`, `input-hint`, `form-footer` (`:cancel` + botón submit en el slot).
+- **Form controls:** `input-label`, `text-input`, `select`, `textarea`, `checkbox`, `radio`, `checkbox-item` (checkbox + label en tarjeta; slot `note`), `input-error`, `input-hint`, `form-footer` (`:cancel` + botón submit en el slot), `stepper-input` (cantidad para operarios: botones grandes −1/+1/+10 sin tipear; requiere `x-data` en el contenedor; props `name`/`label`/`hint`/`:value`/`:steps`).
 - **Feedback:** `badge` (`variant=brand|neutral`), `status-alert` (`:status`), `auth-session-status`.
 - **Íconos:** `icon.pencil`, `icon.trash`, `icon.plus` (agrega nuevos como Heroicons outline; ver Reglas de diseño).
 
