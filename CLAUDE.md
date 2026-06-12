@@ -80,7 +80,7 @@ La app es **mobile-first**. Toda pantalla y componente debe verse bien y **sin s
 - **Navegación:** `nav-link`, `responsive-nav-link`, `nav-dropdown` (grupo desktop con trigger estilo nav-link + `:active`), `responsive-nav-heading` (encabezado de sección del menú móvil). El nav desktop aparece desde `lg:` (1024px); bajo eso, menú hamburguesa.
 - **Botones / enlaces:** `primary-button`, `secondary-button`, `danger-button`, `button-link` (enlace con estilo primario), `icon-button` (`:href`, `variant=default|danger`, `label`), `secondary-link` (cancelar/volver).
 - **Form controls:** `input-label`, `text-input`, `select`, `textarea`, `checkbox`, `radio`, `checkbox-item` (checkbox + label en tarjeta; slot `note`), `input-error`, `input-hint`, `form-footer` (`:cancel` + botón submit en el slot), `stepper-input` (cantidad para operarios: botones grandes −1/+1/+10 sin tipear; requiere `x-data` en el contenedor; props `name`/`label`/`hint`/`:value`/`:steps`).
-- **Feedback:** `badge` (`variant=brand|neutral`), `status-alert` (`:status`), `auth-session-status`.
+- **Feedback:** `badge` (`variant=brand|neutral`), `status-alert` (`:status`), `auth-session-status`, `stat-card` (indicador clickeable del Inicio: `label`/`valor`/`href`/`alerta`).
 - **Íconos:** `icon.pencil`, `icon.trash`, `icon.plus` (agrega nuevos como Heroicons outline; ver Reglas de diseño).
 
 Si algo no existe y se va a usar seguido, créalo siguiendo el formato de los componentes existentes.
