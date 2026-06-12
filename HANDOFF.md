@@ -358,7 +358,6 @@ boleta rápida (dependen de M05), cron de sync.
 ## 9. Deuda técnica / pendientes conocidos
 
 - **Rotar la contraseña de la BD** `impdali_daligo`: se compartió por chat en algún momento → cambiarla en cPanel y actualizar `.env` del servidor.
-- **Cuenta `marcos.uribe.impdali@gmail.com`**: quedó bloqueada por la regla de dominio `@impdali.cl` (login solo permite ese dominio). Decidir qué hacer (crear su cuenta `@impdali.cl` o excepción).
 - **Dominio de staging:** la biblia menciona `daliprueba.cl`; nosotros usamos `staging.impdali.cl`. Reconciliar antes de producción real.
 - **Cron de cola:** cuando llegue M15 (notificaciones), agregar un segundo cron `php artisan queue:work --stop-when-empty --max-time=55` (el server no tiene daemons).
 - **Matriz de permisos por módulo:** se define en Sprint 0 con el negocio; hoy solo hay permisos de usuarios/roles + los nuevos de M01.
