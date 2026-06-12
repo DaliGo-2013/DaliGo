@@ -9,80 +9,69 @@
                     </a>
                 </div>
 
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                {{-- Navegación agrupada por dominio: Comercial / Operación / Administración.
+                     "Mi producción" queda de primer nivel a propósito: es LA pantalla del
+                     operario (soplador) y no debe esconderse tras un dropdown. --}}
+                <div class="hidden space-x-8 lg:-my-px lg:ms-10 lg:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
 
-                    @can('view users')
-                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                            Usuarios
-                        </x-nav-link>
-                    @endcan
+                    @canany(['manage productos', 'manage clientes'])
+                        <x-nav-dropdown label="Comercial"
+                            :active="request()->routeIs('admin.productos.*', 'admin.listas-precios.*', 'admin.clientes.*')">
+                            @can('manage productos')
+                                <x-dropdown-link :href="route('admin.productos.index')">Catálogo</x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.listas-precios.index')">Precios</x-dropdown-link>
+                            @endcan
+                            @can('manage clientes')
+                                <x-dropdown-link :href="route('admin.clientes.index')">Clientes</x-dropdown-link>
+                            @endcan
+                        </x-nav-dropdown>
+                    @endcanany
 
-                    @can('manage roles')
-                        <x-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
-                            Roles
-                        </x-nav-link>
-                    @endcan
+                    @canany(['manage productos', 'manage production'])
+                        <x-nav-dropdown label="Operación"
+                            :active="request()->routeIs('admin.bodegas.*', 'admin.produccion.*')">
+                            @can('manage productos')
+                                <x-dropdown-link :href="route('admin.bodegas.index')">Inventario</x-dropdown-link>
+                            @endcan
+                            @can('manage production')
+                                <x-dropdown-link :href="route('admin.produccion.index')">Producción</x-dropdown-link>
+                            @endcan
+                        </x-nav-dropdown>
+                    @endcanany
 
-                    @can('manage sucursales')
-                        <x-nav-link :href="route('admin.sucursales.index')" :active="request()->routeIs('admin.sucursales.*')">
-                            Sucursales
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage productos')
-                        <x-nav-link :href="route('admin.productos.index')" :active="request()->routeIs('admin.productos.*')">
-                            Catálogo
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage productos')
-                        <x-nav-link :href="route('admin.listas-precios.index')" :active="request()->routeIs('admin.listas-precios.*')">
-                            Precios
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage productos')
-                        <x-nav-link :href="route('admin.bodegas.index')" :active="request()->routeIs('admin.bodegas.*')">
-                            Inventario
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage clientes')
-                        <x-nav-link :href="route('admin.clientes.index')" :active="request()->routeIs('admin.clientes.*')">
-                            Clientes
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage settings')
-                        <x-nav-link :href="route('admin.configuracion.index')" :active="request()->routeIs('admin.configuracion.*')">
-                            Configuración
-                        </x-nav-link>
-                    @endcan
-
-                    @can('view audit')
-                        <x-nav-link :href="route('admin.audits.index')" :active="request()->routeIs('admin.audits.*')">
-                            Auditoría
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage production')
-                        <x-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
-                            Producción
-                        </x-nav-link>
-                    @endcan
+                    @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit'])
+                        <x-nav-dropdown label="Administración"
+                            :active="request()->routeIs('admin.users.*', 'admin.roles.*', 'admin.sucursales.*', 'admin.configuracion.*', 'admin.audits.*')">
+                            @can('view users')
+                                <x-dropdown-link :href="route('admin.users.index')">Usuarios</x-dropdown-link>
+                            @endcan
+                            @can('manage roles')
+                                <x-dropdown-link :href="route('admin.roles.index')">Roles</x-dropdown-link>
+                            @endcan
+                            @can('manage sucursales')
+                                <x-dropdown-link :href="route('admin.sucursales.index')">Sucursales</x-dropdown-link>
+                            @endcan
+                            @can('manage settings')
+                                <x-dropdown-link :href="route('admin.configuracion.index')">Configuración</x-dropdown-link>
+                            @endcan
+                            @can('view audit')
+                                <x-dropdown-link :href="route('admin.audits.index')">Auditoría</x-dropdown-link>
+                            @endcan
+                        </x-nav-dropdown>
+                    @endcanany
 
                     @can('report production')
-                        <x-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')">
+                        <x-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')" class="whitespace-nowrap">
                             Mi producción
                         </x-nav-link>
                     @endcan
                 </div>
             </div>
 
-            <div class="hidden sm:ms-6 sm:flex sm:items-center">
+            <div class="hidden lg:ms-6 lg:flex lg:items-center">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center rounded-md border border-transparent px-3 py-2 text-sm font-medium leading-4 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
@@ -111,7 +100,7 @@
                 </x-dropdown>
             </div>
 
-            <div class="-me-2 flex items-center sm:hidden">
+            <div class="-me-2 flex items-center lg:hidden">
                 <button @click="open = ! open" class="inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -122,77 +111,88 @@
         </div>
     </div>
 
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden lg:hidden">
+        {{-- Menú móvil: mismas agrupaciones que el desktop, pero como secciones
+             planas con encabezado (dropdowns anidados son mala UX en móvil). --}}
         <div class="space-y-1 pb-3 pt-2">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-
-            @can('view users')
-                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                    Usuarios
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage roles')
-                <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
-                    Roles
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage sucursales')
-                <x-responsive-nav-link :href="route('admin.sucursales.index')" :active="request()->routeIs('admin.sucursales.*')">
-                    Sucursales
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage productos')
-                <x-responsive-nav-link :href="route('admin.productos.index')" :active="request()->routeIs('admin.productos.*')">
-                    Catálogo
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage productos')
-                <x-responsive-nav-link :href="route('admin.listas-precios.index')" :active="request()->routeIs('admin.listas-precios.*')">
-                    Precios
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage productos')
-                <x-responsive-nav-link :href="route('admin.bodegas.index')" :active="request()->routeIs('admin.bodegas.*')">
-                    Inventario
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage clientes')
-                <x-responsive-nav-link :href="route('admin.clientes.index')" :active="request()->routeIs('admin.clientes.*')">
-                    Clientes
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage settings')
-                <x-responsive-nav-link :href="route('admin.configuracion.index')" :active="request()->routeIs('admin.configuracion.*')">
-                    Configuración
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('view audit')
-                <x-responsive-nav-link :href="route('admin.audits.index')" :active="request()->routeIs('admin.audits.*')">
-                    Auditoría
-                </x-responsive-nav-link>
-            @endcan
-
-            @can('manage production')
-                <x-responsive-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
-                    Producción
-                </x-responsive-nav-link>
-            @endcan
 
             @can('report production')
                 <x-responsive-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')">
                     Mi producción
                 </x-responsive-nav-link>
             @endcan
+
+            @canany(['manage productos', 'manage clientes'])
+                <x-responsive-nav-heading>Comercial</x-responsive-nav-heading>
+
+                @can('manage productos')
+                    <x-responsive-nav-link :href="route('admin.productos.index')" :active="request()->routeIs('admin.productos.*')">
+                        Catálogo
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.listas-precios.index')" :active="request()->routeIs('admin.listas-precios.*')">
+                        Precios
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('manage clientes')
+                    <x-responsive-nav-link :href="route('admin.clientes.index')" :active="request()->routeIs('admin.clientes.*')">
+                        Clientes
+                    </x-responsive-nav-link>
+                @endcan
+            @endcanany
+
+            @canany(['manage productos', 'manage production'])
+                <x-responsive-nav-heading>Operación</x-responsive-nav-heading>
+
+                @can('manage productos')
+                    <x-responsive-nav-link :href="route('admin.bodegas.index')" :active="request()->routeIs('admin.bodegas.*')">
+                        Inventario
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('manage production')
+                    <x-responsive-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
+                        Producción
+                    </x-responsive-nav-link>
+                @endcan
+            @endcanany
+
+            @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit'])
+                <x-responsive-nav-heading>Administración</x-responsive-nav-heading>
+
+                @can('view users')
+                    <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                        Usuarios
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('manage roles')
+                    <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                        Roles
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('manage sucursales')
+                    <x-responsive-nav-link :href="route('admin.sucursales.index')" :active="request()->routeIs('admin.sucursales.*')">
+                        Sucursales
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('manage settings')
+                    <x-responsive-nav-link :href="route('admin.configuracion.index')" :active="request()->routeIs('admin.configuracion.*')">
+                        Configuración
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('view audit')
+                    <x-responsive-nav-link :href="route('admin.audits.index')" :active="request()->routeIs('admin.audits.*')">
+                        Auditoría
+                    </x-responsive-nav-link>
+                @endcan
+            @endcanany
         </div>
 
         <div class="border-t border-neutral-200 pb-1 pt-4">
