@@ -37,8 +37,8 @@ class BsaleSyncCatalog extends Command
         }
 
         $this->table(
-            ['Creados', 'Actualizados', 'Adoptados', 'Omitidos', 'Errores'],
-            [[$stats['creados'], $stats['actualizados'], $stats['adoptados'], $stats['omitidos'], count($stats['errores'])]],
+            ['Creados', 'Actualizados', 'Adoptados', 'Desactivados', 'Omitidos', 'Errores'],
+            [[$stats['creados'], $stats['actualizados'], $stats['adoptados'], $stats['desactivados'], $stats['omitidos'], count($stats['errores'])]],
         );
 
         foreach (array_slice($stats['errores'], 0, 20) as $err) {

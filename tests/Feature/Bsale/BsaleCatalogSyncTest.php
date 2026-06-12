@@ -192,4 +192,49 @@ class BsaleCatalogSyncTest extends TestCase
 
         $this->assertSame(0, Audit::where('auditable_type', Producto::class)->count());
     }
+
+    public function test_deactivates_linked_products_missing_from_bsale(): void
+    {
+        // Primera sync: dos variantes activas.
+        $this->fakeBsale([$this->variant(1, 'SKU-1'), $this->variant(2, 'SKU-2')]);
+        $this->sync();
+
+        // Producto local SIN enlace a Bsale (CSV/UI): jamas debe desactivarse.
+        $localOnly = Producto::factory()->create(['sku' => 'LOCAL-1', 'bsale_variant_id' => null, 'activo' => true]);
+
+        // Bsale deja de listar la variante 2 (desactivada/eliminada alla).
+        $this->fakeBsale([$this->variant(1, 'SKU-1')]);
+        $stats = $this->sync();
+
+        $this->assertSame(1, $stats['desactivados']);
+        $this->assertTrue(Producto::where('bsale_variant_id', 1)->value('activo'));
+        $this->assertFalse(Producto::where('bsale_variant_id', 2)->value('activo'));
+        $this->assertTrue($localOnly->fresh()->activo);
+
+        // Y si la variante 2 vuelve a Bsale, el espejo la reactiva.
+        $this->fakeBsale([$this->variant(1, 'SKU-1'), $this->variant(2, 'SKU-2')]);
+        $this->sync();
+        $this->assertTrue(Producto::where('bsale_variant_id', 2)->value('activo'));
+    }
+
+    public function test_zero_recognized_variants_skips_deactivation(): void
+    {
+        // Primera sync: dos productos enlazados y activos.
+        $this->fakeBsale([$this->variant(1, 'SKU-1'), $this->variant(2, 'SKU-2')]);
+        $this->sync();
+
+        // Barrido anomalo: variantes sin code (todas fallan, 0 reconocidas).
+        // El guard debe saltar la desactivacion en vez de apagar todo el catalogo.
+        $this->fakeBsale([
+            $this->variant(8, '', ['code' => '']),
+            $this->variant(9, '', ['code' => '']),
+        ]);
+        $stats = $this->sync();
+
+        $this->assertSame(0, $stats['desactivados']);
+        $this->assertSame(2, Producto::where('activo', true)->count());
+        $this->assertTrue(
+            collect($stats['errores'])->contains(fn ($e) => str_contains($e['error'], 'se omite la desactivación')),
+        );
+    }
 }
