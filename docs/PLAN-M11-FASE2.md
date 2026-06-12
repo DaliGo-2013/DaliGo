@@ -6,6 +6,28 @@
 > correcciones #7/#8/#9 de Luis). Repo: `C:\Users\mauri\OneDrive\Documents\Claude\DaliGo`
 > (= `https://github.com/DaliGo-2013/DaliGo`, push a main = deploy automático a staging).
 
+## ⚠️ RECONCILIACIÓN OBLIGATORIA ANTES DE IMPLEMENTAR (decisión del usuario, 2026-06-12)
+
+En el working tree de esta PC existe **trabajo en curso SIN commitear** de una sesión anterior
+que implementó esta fase con un **diseño alternativo** (tablas dedicadas `tipos_botellon`,
+`maquinas`, `produccion_registros` + backfill + CRUDs + vistas). El usuario decidió de forma
+explícita: **ESTE PLAN MANDA** — los botellones y preformas se modelan como **productos del
+catálogo** (tabla `productos`, integración con precios/stock/Bsale), NO como tablas dedicadas.
+
+**Pasos de reconciliación (hacer ANTES de implementar el plan):**
+1. **Respaldar** el trabajo en curso en una rama (nada se pierde definitivamente):
+   `git checkout -b backup/produccion-tipos-botellon && git add -A && git commit -m "wip: respaldo diseño alternativo (tipos_botellon/maquinas/registros) descartado por decisión de diseño" && git checkout main`
+2. **Limpiar main** del trabajo descartado: `git checkout -- .` + borrar los untracked del diseño
+   alternativo (`git clean -fd -- app/Http/Controllers/Admin/MaquinaController.php app/Http/Controllers/Admin/TipoBotellonController.php app/Models/Maquina.php app/Models/ProduccionRegistro.php app/Models/TipoBotellon.php database/migrations/2026_06_12_*.php database/seeders/TipoBotellonSeeder.php resources/views/admin/maquinas resources/views/admin/tipos-botellon tests/Feature/Admin/MaquinaManagementTest.php tests/Feature/Admin/TipoBotellonManagementTest.php` — revisar `git status` antes y después).
+3. **Rescatables de la rama de respaldo** (adaptar, no copiar a ciegas):
+   - `resources/views/components/chip-radio.blade.php` (radio táctil ≥48px para operarios — útil
+     para el selector de botellón de este plan; ya documentado en el catálogo de CLAUDE.md).
+   - Las mejoras de UX de `mi-reporte.blade.php` (stepper/tandas) como referencia visual.
+   - El concepto de **máquinas por sucursal** queda como **extensión futura opcional** (atribuir
+     producción a una máquina) — NO construirlo en esta fase.
+4. Ojo: la entrada de `chip-radio` en el catálogo de `CLAUDE.md` (working tree) puede conservarse
+   solo si el componente se rescata; si no, quitarla.
+
 ## Contexto
 
 **Qué se pide:** que el soplador registre en SU vista (celular) la transformación de **preformas**
