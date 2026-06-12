@@ -85,6 +85,35 @@ class ProductoManagementTest extends TestCase
         $this->assertDatabaseHas('productos', ['sku' => 'BOT-20L', 'nombre' => 'Botellón 20L con manilla']);
     }
 
+    public function test_form_ignores_bsale_link_fields(): void
+    {
+        // El enlace a Bsale es propiedad exclusiva de la sync: un POST manipulado
+        // (el form no expone estos campos) no debe poder setearlo ni cambiarlo.
+        $this->actingAs($this->admin())->post('/admin/productos', [
+            'sku' => 'BOT-20L',
+            'nombre' => 'Botellón 20L',
+            'bsale_variant_id' => 999,
+            'bsale_product_id' => 888,
+        ]);
+
+        $creado = Producto::where('sku', 'BOT-20L')->firstOrFail();
+        $this->assertNull($creado->bsale_variant_id);
+        $this->assertNull($creado->bsale_product_id);
+
+        // Tampoco en update: el enlace puesto por la sync queda intacto.
+        $enlazado = Producto::factory()->create(['sku' => 'BS-9', 'bsale_variant_id' => 777, 'bsale_product_id' => 70]);
+        $this->actingAs($this->admin())->put("/admin/productos/{$enlazado->id}", [
+            'sku' => 'BS-9',
+            'nombre' => 'Renombrado',
+            'bsale_variant_id' => 12345,
+        ]);
+
+        $fresh = $enlazado->fresh();
+        $this->assertSame('Renombrado', $fresh->nombre);
+        $this->assertSame(777, (int) $fresh->bsale_variant_id);  // intacto
+        $this->assertSame(70, (int) $fresh->bsale_product_id);
+    }
+
     public function test_store_requires_sku_and_nombre(): void
     {
         $this->actingAs($this->admin())

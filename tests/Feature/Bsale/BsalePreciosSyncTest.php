@@ -25,6 +25,9 @@ class BsalePreciosSyncTest extends TestCase
 
     private bool $httpFaked = false;
 
+    /** Si está activo, el endpoint de details responde 500 (simula caída de la API). */
+    private bool $failDetails = false;
+
     /** Sobre paginado al estilo Bsale. */
     private function envelope(array $items, int $count, int $limit, int $offset): array
     {
@@ -53,6 +56,10 @@ class BsalePreciosSyncTest extends TestCase
 
             // OJO: details ANTES que price_lists.json (ambas URLs contienen "price_lists").
             if (preg_match('#price_lists/(\d+)/details\.json#', $request->url(), $m)) {
+                if ($this->failDetails) {
+                    return Http::response(['error' => 'boom'], 500);
+                }
+
                 $items = $this->fakeDetails[(int) $m[1]] ?? [];
 
                 return Http::response($this->envelope(array_slice($items, $offset, $limit), count($items), $limit, $offset));
@@ -250,5 +257,54 @@ class BsalePreciosSyncTest extends TestCase
         $this->sync();
 
         $this->assertSame(0, Audit::where('auditable_type', ListaPrecio::class)->count());
+    }
+
+    public function test_zero_matches_with_details_skips_delete(): void
+    {
+        // Primera sync: crea el precio normalmente.
+        $producto = $this->producto(979);
+        $this->fakeBsale(
+            [$this->bsaleLista(15, 'COQUIMBO-1')],
+            [15 => [$this->bsaleDetail(45802, 979, 1000.0, 1190.0)]],
+        );
+        $this->sync();
+        $this->assertSame(1, Precio::count());
+
+        // El catalogo se "desincroniza": el producto pierde su enlace a Bsale.
+        // La lista TRAE details pero ninguno matchea => whereNotIn([]) borraria
+        // TODOS los precios de la lista. El guard debe saltar el delete y reportar.
+        $producto->update(['bsale_variant_id' => null]);
+
+        $stats = $this->sync();
+
+        $this->assertSame(1, Precio::count());          // intacto: no hubo borrado masivo
+        $this->assertSame(0, $stats['eliminados']);
+        $this->assertSame(1, $stats['omitidos']);       // el detail sin match se omitio
+        $this->assertCount(1, $stats['errores']);
+        $this->assertSame(15, $stats['errores'][0]['lista_id']);
+        $this->assertStringContainsString('se omite el borrado', $stats['errores'][0]['error']);
+    }
+
+    public function test_api_failure_on_details_does_not_delete(): void
+    {
+        // Primera sync: crea el precio normalmente.
+        $this->producto(979);
+        $this->fakeBsale(
+            [$this->bsaleLista(15, 'COQUIMBO-1')],
+            [15 => [$this->bsaleDetail(45802, 979, 1000.0, 1190.0)]],
+        );
+        $this->sync();
+        $this->assertSame(1, Precio::count());
+
+        // Segunda sync: la API de details se cae (500). La excepcion corta el
+        // recorrido ANTES del delete => los precios existentes quedan intactos.
+        $this->failDetails = true;
+
+        $stats = $this->sync();
+
+        $this->assertSame(1, Precio::count());          // intacto
+        $this->assertSame(0, $stats['eliminados']);
+        $this->assertNotEmpty($stats['errores']);
+        $this->assertSame(15, $stats['errores'][0]['lista_id']);
     }
 }

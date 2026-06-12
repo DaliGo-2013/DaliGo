@@ -413,8 +413,9 @@ class ProductoController extends Controller
             'alto_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'ancho_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'largo_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'bsale_variant_id' => ['nullable', 'integer', 'min:0'],
-            'bsale_product_id' => ['nullable', 'integer', 'min:0'],
+            // bsale_variant_id / bsale_product_id NO se validan ni persisten aqui:
+            // el form no los expone y la sync es la unica duena del enlace (un POST
+            // manipulado podria duplicar un variant_id y romper el espejo de precios).
             'atributos' => ['nullable', 'string'],
         ]);
 

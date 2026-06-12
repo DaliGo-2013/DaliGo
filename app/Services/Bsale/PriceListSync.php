@@ -103,8 +103,10 @@ class PriceListSync
     private function syncDetalles(ListaPrecio $lista, $productoPorVariante, array &$stats): void
     {
         $vistos = [];
+        $detalles = 0;
 
         foreach ($this->client->each("price_lists/{$lista->bsale_price_list_id}/details.json") as $det) {
+            $detalles++;
             $variantId = isset($det['variant']['id']) ? (int) $det['variant']['id'] : null;
             $productoId = $variantId !== null ? ($productoPorVariante[$variantId] ?? null) : null;
 
@@ -127,6 +129,22 @@ class PriceListSync
 
             $precio->wasRecentlyCreated ? $stats['creados']++ : $stats['actualizados']++;
             $vistos[] = $productoId;
+        }
+
+        // Guard anti-borrado-masivo: si la lista TRAE details pero ninguno matchea
+        // el catalogo local ($vistos vacio), whereNotIn([]) compilaria como 1=1 y
+        // borraria TODOS los precios de la lista. Eso nunca es un espejo fiel: es
+        // sintoma de catalogo desincronizado (productos sin bsale_variant_id).
+        // Se salta el delete y se reporta. (Lista legitimamente vacia en Bsale,
+        // $detalles === 0, si borra: espejo fiel de "sin precios".)
+        if ($detalles > 0 && $vistos === []) {
+            $stats['errores'][] = [
+                'lista_id' => $lista->bsale_price_list_id,
+                'detalle' => null,
+                'error' => "Lista {$lista->bsale_price_list_id}: {$detalles} details y 0 matches con el catalogo local; se omite el borrado de precios (catalogo desincronizado?).",
+            ];
+
+            return;
         }
 
         $stats['eliminados'] += Precio::where('lista_precio_id', $lista->id)
