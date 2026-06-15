@@ -34,6 +34,8 @@ class RolesAndPermissionsSeeder extends Seeder
             // Modulo Produccion.
             'report production',  // soplador: ve y envia su reporte diario
             'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve
+            // Modulo Servicio Tecnico (taller).
+            'manage servicio tecnico',  // tecnico: ingreso/listado de maquinas y lavadoras
         ];
 
         foreach ($permissions as $name) {
@@ -59,7 +61,9 @@ class RolesAndPermissionsSeeder extends Seeder
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
             ->givePermissionTo(['view users', 'manage production']);
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web']);
+        // El tecnico gestiona el ingreso de maquinas/lavadoras al taller (M12).
+        Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
+            ->givePermissionTo('manage servicio tecnico');
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
     }

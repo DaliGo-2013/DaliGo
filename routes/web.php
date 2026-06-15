@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
@@ -98,6 +99,17 @@ Route::middleware('auth')
         Route::resource('clientes', ClienteController::class)
             ->middleware('permission:manage clientes')
             ->except(['show']);
+
+        // Servicio Tecnico (taller): ingreso de maquinas/lavadoras. Solo CRUD.
+        // La ruta literal va ANTES del resource para no chocar con servicio-tecnico/{orden}.
+        Route::middleware('permission:manage servicio tecnico')->group(function () {
+            Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
+                ->name('servicio-tecnico.buscar-cliente');
+
+            Route::resource('servicio-tecnico', ServicioTecnicoController::class)
+                ->parameters(['servicio-tecnico' => 'orden'])
+                ->except(['show']);
+        });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
         Route::middleware('permission:manage production')->group(function () {

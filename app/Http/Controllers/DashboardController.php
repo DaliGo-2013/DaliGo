@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\OrdenServicio;
 use App\Models\ProduccionReporte;
 use App\Models\Producto;
 use App\Models\User;
@@ -58,6 +59,15 @@ class DashboardController extends Controller
             ];
         }
 
+        if ($user->can('manage servicio tecnico')) {
+            $indicadores[] = [
+                'label' => 'Equipos en taller',
+                'valor' => OrdenServicio::where('estado', '!=', 'entregado')->count(),
+                'href' => route('admin.servicio-tecnico.index'),
+                'alerta' => true,
+            ];
+        }
+
         if ($user->can('view users')) {
             $indicadores[] = [
                 'label' => 'Usuarios',
@@ -77,6 +87,9 @@ class DashboardController extends Controller
             'Operación' => [
                 ['label' => 'Inventario', 'desc' => 'Stock por bodega (espejo de Bsale)', 'href' => route('admin.bodegas.index'), 'permiso' => 'manage productos'],
                 ['label' => 'Producción', 'desc' => 'Asignar y revisar reportes de soplado', 'href' => route('admin.produccion.index'), 'permiso' => 'manage production'],
+            ],
+            'Servicio Técnico' => [
+                ['label' => 'Servicio Técnico', 'desc' => 'Ingreso de máquinas y lavadoras al taller', 'href' => route('admin.servicio-tecnico.index'), 'permiso' => 'manage servicio tecnico'],
             ],
             'Administración' => [
                 ['label' => 'Usuarios', 'desc' => 'Cuentas y roles del equipo', 'href' => route('admin.users.index'), 'permiso' => 'view users'],

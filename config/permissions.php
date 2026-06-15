@@ -25,5 +25,6 @@ return [
         'manage clientes' => 'Gestionar clientes',
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
+        'manage servicio tecnico' => 'Gestionar servicio técnico',
     ],
 ];

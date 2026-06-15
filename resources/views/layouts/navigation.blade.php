@@ -68,6 +68,12 @@
                             Mi producción
                         </x-nav-link>
                     @endcan
+
+                    @can('manage servicio tecnico')
+                        <x-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')" class="whitespace-nowrap">
+                            Servicio Técnico
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -122,6 +128,12 @@
             @can('report production')
                 <x-responsive-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')">
                     Mi producción
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('manage servicio tecnico')
+                <x-responsive-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')">
+                    Servicio Técnico
                 </x-responsive-nav-link>
             @endcan
 

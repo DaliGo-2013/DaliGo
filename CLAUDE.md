@@ -131,6 +131,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-06-15] `syntax error, unexpected token "endif"` al compilar Blade con condicionales inline pegados
+- **Síntoma:** una vista no compila (`syntax error, unexpected token "endif" (View: ...index.blade.php)`) y el test que la renderiza falla, aunque las llaves parecen balanceadas.
+- **Causa:** condicionales `@if(...) ... @endif@if(...) ... @endif` **encadenados en una sola línea** (un `@endif` pegado al siguiente `@if`, con interpolaciones `{{ }}` en medio) confunden al compilador de Blade y el `@endif` queda sin su `@if`.
+- **Solución:** construir el texto en un bloque `@php` (p. ej. `collect([...])->filter()->implode(' · ')`) y renderizar el resultado con un solo `{{ $detalle }}`. Ver `resources/views/admin/servicio-tecnico/index.blade.php` (subtítulo de la fila: tipo · marca modelo · N° serie).
+- **Evitar a futuro:** no encadenar `@endif@if` en línea ni mezclar varios condicionales inline con interpolaciones; si la lógica arma una cadena, resolverla en `@php` y dejar el Blade declarativo.
+
 ### [2026-06-15] Rebuild de Tailwind dropeó `lg:flex`/`lg:hidden` del nav → hamburguesa en escritorio
 - **Síntoma:** tras desplegar M05.2 (`eff4995`), en escritorio (≥1024px) staging mostraba la **hamburguesa** en vez del nav horizontal agrupado; el menú móvil se desplegaba en pantalla ancha. `navigation.blade.php` estaba intacto (el nav horizontal es `lg:flex`, la hamburguesa `lg:hidden`).
 - **Causa:** el `npm run build` de M05.2 generó un bundle (`app-CARLsbwS.css`) **sin** las utilidades `lg:flex` ni `lg:hidden` (verificado con grep: 0 y 0), pese a que el Blade las usa. El CSS del commit anterior (`3374acc`/`app-CohybUlu.css`) sí las tenía. Sin `lg:flex` el nav horizontal queda `hidden` siempre; sin `lg:hidden` la hamburguesa (base `flex`) no se oculta nunca. El build escaneó un estado donde esas clases no aparecieron y el push reemplazó el CSS bueno por el incompleto. No hubo cambio de código fuente.
