@@ -2,10 +2,14 @@
     <x-slot name="header">
         <x-page-header title="Producción" subtitle="Asignaciones y revisión de reportes del día.">
             <x-slot name="action">
-                <x-button-link :href="route('admin.produccion.asignar')">
-                    <x-icon.plus class="h-4 w-4" />
-                    Asignar
-                </x-button-link>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <x-secondary-link :href="route('admin.maquinas.index')">Máquinas</x-secondary-link>
+                    <x-secondary-link :href="route('admin.tipos-botellon.index')">Tipos de botellón</x-secondary-link>
+                    <x-button-link :href="route('admin.produccion.asignar')">
+                        <x-icon.plus class="h-4 w-4" />
+                        Asignar
+                    </x-button-link>
+                </div>
             </x-slot>
         </x-page-header>
     </x-slot>
@@ -31,6 +35,28 @@
                     </div>
                 @endforeach
             </div>
+
+            {{-- Producción del día por máquina (incluye reportes sin aprobar) --}}
+            @if ($porMaquina->isNotEmpty())
+                <div class="dg-enter mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por máquina · hoy</h3>
+                        <span class="text-xs font-medium text-neutral-400">incluye reportes sin aprobar</span>
+                    </div>
+                    <ul class="divide-y divide-neutral-100">
+                        @foreach ($porMaquina as $fila)
+                            <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 sm:px-6">
+                                <p class="text-sm font-medium text-neutral-900">{{ $fila->maquina ?? 'Sin máquina' }}</p>
+                                <div class="flex items-center gap-4 text-sm text-neutral-600">
+                                    <span><span class="text-neutral-400">1ª</span> {{ number_format($fila->primera, 0, ',', '.') }}</span>
+                                    <span><span class="text-neutral-400">2ª</span> {{ number_format($fila->segunda, 0, ',', '.') }}</span>
+                                    <span><span class="text-neutral-400">Malos</span> {{ number_format($fila->malo, 0, ',', '.') }}</span>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <x-list-card title="Cola de reportes" :count="$reportes->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $reportes->count())">
                 @forelse ($reportes as $reporte)

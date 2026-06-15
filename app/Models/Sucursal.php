@@ -42,4 +42,14 @@ class Sucursal extends Model implements AuditableContract
     {
         return $this->hasMany(User::class);
     }
+
+    /**
+     * Maquinas sopladoras de esta sucursal.
+     *
+     * @return HasMany<Maquina>
+     */
+    public function maquinas(): HasMany
+    {
+        return $this->hasMany(Maquina::class);
+    }
 }

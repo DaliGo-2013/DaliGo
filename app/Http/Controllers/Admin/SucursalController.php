@@ -48,12 +48,16 @@ class SucursalController extends Controller
     }
 
     /**
-     * Elimina una sucursal. Guarda: no se puede borrar si tiene usuarios asignados.
+     * Elimina una sucursal. Guarda: no se puede borrar si tiene usuarios o maquinas.
      */
     public function destroy(Sucursal $sucursal): RedirectResponse
     {
         if ($sucursal->users()->exists()) {
             return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene usuarios asignados.");
+        }
+
+        if ($sucursal->maquinas()->exists()) {
+            return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene máquinas asociadas.");
         }
 
         $sucursal->delete();

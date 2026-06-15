@@ -3,10 +3,16 @@
 namespace App\Http\Controllers\Produccion;
 
 use App\Http\Controllers\Controller;
+use App\Models\Maquina;
 use App\Models\ProduccionAsignacion;
+use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
+use App\Models\TipoBotellon;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class MiProduccionController extends Controller
@@ -21,13 +27,82 @@ class MiProduccionController extends Controller
             ->latest('id')
             ->first();
 
-        return view('produccion.mi-reporte', [
-            'reporte' => $asignacion?->reporte,
-        ]);
+        return $this->vistaReporte($request->user(), $asignacion?->reporte);
     }
 
     /**
-     * Guarda el borrador o envia el reporte (segun el flag 'enviar').
+     * Un reporte propio especifico (ej. uno devuelto de un dia anterior).
+     */
+    public function show(Request $request, ProduccionReporte $reporte): View
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+
+        return $this->vistaReporte($request->user(), $reporte);
+    }
+
+    /**
+     * Agrega una tanda de produccion (maquina + tipo + cantidades) al reporte.
+     * Append-only: cada tanda es una fila nueva; los totales del reporte se
+     * recalculan en la misma transaccion.
+     */
+    public function registroStore(Request $request, ProduccionReporte $reporte): RedirectResponse
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+        abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
+
+        // Las mismas listas que ve el soplador en pantalla (sincronia por
+        // construccion entre el selector y la validacion).
+        $maquinas = Maquina::paraSoplador($request->user());
+        $tipos = TipoBotellon::activos()->get();
+
+        $validated = $request->validate([
+            'maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
+            'tipo_botellon_id' => [$tipos->isEmpty() ? 'nullable' : 'required', Rule::in($tipos->pluck('id'))],
+            'primera' => ['required', 'integer', 'min:0'],
+            'segunda' => ['required', 'integer', 'min:0'],
+            'malo' => ['required', 'integer', 'min:0'],
+        ], [
+            'maquina_id.required' => 'Selecciona la máquina en la que trabajaste.',
+            'maquina_id.in' => 'Selecciona una máquina válida.',
+            'tipo_botellon_id.required' => 'Selecciona el tipo de botellón.',
+            'tipo_botellon_id.in' => 'Selecciona un tipo de botellón válido.',
+        ]);
+
+        if (($validated['primera'] + $validated['segunda'] + $validated['malo']) <= 0) {
+            return back()->withInput()
+                ->withErrors(['primera' => 'Ingresa al menos una cantidad antes de agregar.']);
+        }
+
+        DB::transaction(function () use ($reporte, $validated) {
+            $reporte->registros()->create($validated);
+            $reporte->recalcularDesdeRegistros();
+        });
+
+        return redirect()->to($this->rutaDelReporte($reporte))
+            ->with('status', 'Producción agregada al reporte.');
+    }
+
+    /**
+     * Elimina una tanda del reporte (correccion de errores del soplador).
+     */
+    public function registroDestroy(Request $request, ProduccionReporte $reporte, ProduccionRegistro $registro): RedirectResponse
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+        abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
+        abort_unless($registro->reporte_id === $reporte->id, 404);
+
+        DB::transaction(function () use ($reporte, $registro) {
+            $registro->delete();
+            $reporte->recalcularDesdeRegistros();
+        });
+
+        return redirect()->to($this->rutaDelReporte($reporte))
+            ->with('status', 'Registro eliminado.');
+    }
+
+    /**
+     * Guarda motivo/observaciones y envia el reporte (segun el flag 'enviar').
+     * Las cantidades ya no entran por aqui: viven en los registros (tandas).
      */
     public function update(Request $request, ProduccionReporte $reporte): RedirectResponse
     {
@@ -35,23 +110,18 @@ class MiProduccionController extends Controller
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
 
         $validated = $request->validate([
-            'primera' => ['required', 'integer', 'min:0'],
-            'segunda' => ['required', 'integer', 'min:0'],
-            'malo' => ['required', 'integer', 'min:0'],
             'motivo' => ['nullable', 'string', 'max:255'],
             'obs' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $enviar = $request->boolean('enviar');
-        $total = $validated['primera'] + $validated['segunda'] + $validated['malo'];
-        $diferencia = $reporte->asignadas - $total;
 
         if ($enviar) {
-            if ($total <= 0) {
+            if ($reporte->total <= 0) {
                 return back()->withInput()
-                    ->withErrors(['primera' => 'Ingresa al menos una cantidad antes de enviar.']);
+                    ->withErrors(['enviar' => 'Agrega al menos una tanda de producción antes de enviar.']);
             }
-            if ($diferencia !== 0 && blank($validated['motivo'] ?? null)) {
+            if ($reporte->diferencia !== 0 && blank($validated['motivo'] ?? null)) {
                 return back()->withInput()
                     ->withErrors(['motivo' => 'Indica el motivo de la diferencia con lo asignado.']);
             }
@@ -62,13 +132,61 @@ class MiProduccionController extends Controller
         if ($enviar) {
             $reporte->estado = ProduccionReporte::ENVIADO;
             $reporte->enviado_at = now();
+            // El motivo de una devolucion anterior ya se atendio al re-enviar.
+            $reporte->devuelto_motivo = null;
         }
 
         $reporte->save();
 
-        return redirect()->route('produccion.mi.index')->with(
+        return redirect()->to($this->rutaDelReporte($reporte))->with(
             'status',
-            $enviar ? 'Reporte enviado. Queda a la espera de revision.' : 'Borrador guardado.',
+            $enviar ? 'Reporte enviado. Queda a la espera de revision.' : 'Cambios guardados.',
         );
+    }
+
+    /**
+     * Arma la vista del reporte (compartida entre index y show).
+     */
+    private function vistaReporte(User $user, ?ProduccionReporte $reporte): View
+    {
+        $reporte?->load([
+            'registros' => fn ($query) => $query->latest('id'),
+            'registros.maquina',
+            'registros.tipoBotellon',
+        ]);
+
+        $maquinas = Maquina::paraSoplador($user);
+        $tipos = TipoBotellon::activos()->orderBy('nombre')->get();
+
+        // Preseleccion pegajosa: la maquina/tipo de la ultima tanda del reporte.
+        $ultimo = $reporte?->registros->first();
+
+        // Reportes devueltos pendientes (de otros dias o turnos) que el
+        // soplador no veria de otra forma.
+        $devueltos = ProduccionReporte::where('soplador_id', $user->id)
+            ->where('estado', ProduccionReporte::DEVUELTO)
+            ->when($reporte, fn ($query) => $query->where('id', '!=', $reporte->id))
+            ->orderByDesc('fecha')
+            ->get();
+
+        return view('produccion.mi-reporte', [
+            'reporte' => $reporte,
+            'maquinas' => $maquinas,
+            'tipos' => $tipos,
+            'maquinaPreseleccionada' => (int) old('maquina_id', $ultimo?->maquina_id),
+            'tipoPreseleccionado' => (int) old('tipo_botellon_id', $ultimo?->tipo_botellon_id),
+            'devueltos' => $devueltos,
+        ]);
+    }
+
+    /**
+     * A donde volver tras una accion: el index si el reporte es de hoy,
+     * o su vista propia si es de otro dia (ej. un devuelto antiguo).
+     */
+    private function rutaDelReporte(ProduccionReporte $reporte): string
+    {
+        return $reporte->fecha->isToday()
+            ? route('produccion.mi.index')
+            : route('produccion.mi.show', $reporte);
     }
 }

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             SucursalSeeder::class,
             ConfiguracionSeeder::class,
+            TipoBotellonSeeder::class,
         ]);
     }
 }

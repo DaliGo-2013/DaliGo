@@ -5,9 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use OwenIt\Auditing\Auditable as AuditableTrait;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
-class ProduccionReporte extends Model
+class ProduccionReporte extends Model implements AuditableContract
 {
+    // Auditable: tres escritores tocan los mismos totales (soplador via
+    // recalculo, jefe via ajuste, y el recalculo pisando ajustes); la traza
+    // queda en el visor de auditoria.
+    use AuditableTrait;
+
     protected $table = 'produccion_reportes';
 
     // Estados del flujo.
@@ -65,6 +73,11 @@ class ProduccionReporte extends Model
         return $this->belongsTo(User::class, 'revisado_por');
     }
 
+    public function registros(): HasMany
+    {
+        return $this->hasMany(ProduccionRegistro::class, 'reporte_id');
+    }
+
     // --- Derivados ---
 
     public function getTotalAttribute(): int
@@ -80,6 +93,25 @@ class ProduccionReporte extends Model
     public function getTasaPrimeraAttribute(): int
     {
         return $this->total > 0 ? (int) round($this->primera / $this->total * 100) : 0;
+    }
+
+    /**
+     * Sincroniza los totales denormalizados desde los registros (tandas).
+     * Llamar dentro de la misma transaccion que crea/borra el registro.
+     * Limpia motivo_ajuste: un ajuste del jefe pierde sentido si el detalle
+     * cambio despues (solo puede pasar en estado devuelto = re-reportar).
+     */
+    public function recalcularDesdeRegistros(): void
+    {
+        $sumas = $this->registros()
+            ->selectRaw('COALESCE(SUM(primera), 0) AS t_primera, COALESCE(SUM(segunda), 0) AS t_segunda, COALESCE(SUM(malo), 0) AS t_malo')
+            ->first();
+
+        $this->primera = (int) $sumas->t_primera;
+        $this->segunda = (int) $sumas->t_segunda;
+        $this->malo = (int) $sumas->t_malo;
+        $this->motivo_ajuste = null;
+        $this->save();
     }
 
     // --- Helpers de estado ---

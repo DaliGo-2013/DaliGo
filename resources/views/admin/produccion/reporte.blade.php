@@ -48,6 +48,30 @@
                     </div>
                 </dl>
 
+                @if ($reporte->registros->isNotEmpty())
+                    <div class="border-t border-neutral-100">
+                        <h3 class="px-6 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle por máquina y tipo</h3>
+                        <ul class="divide-y divide-neutral-100">
+                            @foreach ($reporte->registros as $registro)
+                                @php
+                                    $partes = array_filter([$registro->tipoBotellon?->nombre, $registro->maquina?->nombre]);
+                                @endphp
+                                <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 py-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial (sin máquina/tipo)' }}</p>
+                                        <p class="text-xs text-neutral-400">{{ $registro->created_at->format('d-m-Y H:i') }}</p>
+                                    </div>
+                                    <div class="flex items-center gap-4 text-sm text-neutral-600">
+                                        <span><span class="text-neutral-400">1ª</span> {{ $registro->primera }}</span>
+                                        <span><span class="text-neutral-400">2ª</span> {{ $registro->segunda }}</span>
+                                        <span><span class="text-neutral-400">Malos</span> {{ $registro->malo }}</span>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 @if ($reporte->motivo || $reporte->obs || $reporte->motivo_ajuste || $reporte->devuelto_motivo)
                     <div class="space-y-2 border-t border-neutral-100 px-6 py-4 text-sm">
                         @if ($reporte->motivo)

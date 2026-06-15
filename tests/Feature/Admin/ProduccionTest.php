@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Maquina;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
+use App\Models\Sucursal;
+use App\Models\TipoBotellon;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,16 +27,37 @@ class ProduccionTest extends TestCase
         return tap(User::factory()->create())->assignRole('jefe_bodega');
     }
 
-    private function soplador(): User
+    private function soplador(?Sucursal $sucursal = null): User
     {
-        return tap(User::factory()->create())->assignRole('soplador');
+        return tap(User::factory()->create(['sucursal_id' => $sucursal?->id]))->assignRole('soplador');
     }
 
-    private function reporteDe(User $soplador, int $asignadas = 100, string $estado = ProduccionReporte::BORRADOR): ProduccionReporte
+    private function sucursal(string $codigo): Sucursal
     {
+        return Sucursal::firstOrCreate(['codigo' => $codigo], ['nombre' => ucfirst(strtolower($codigo))]);
+    }
+
+    private function maquina(?Sucursal $sucursal = null, string $nombre = 'Sopladora 1', bool $activa = true): Maquina
+    {
+        return Maquina::create([
+            'nombre' => $nombre,
+            'sucursal_id' => ($sucursal ?? $this->sucursal('MIRADOR'))->id,
+            'activa' => $activa,
+        ]);
+    }
+
+    private function tipo(string $codigo = 'AZUL-20L', string $nombre = 'Azul 20L s/manilla'): TipoBotellon
+    {
+        return TipoBotellon::firstOrCreate(['codigo' => $codigo], ['nombre' => $nombre, 'activo' => true]);
+    }
+
+    private function reporteDe(User $soplador, int $asignadas = 100, string $estado = ProduccionReporte::BORRADOR, ?string $fecha = null): ProduccionReporte
+    {
+        $fecha ??= now()->toDateString();
+
         $asignacion = ProduccionAsignacion::create([
             'soplador_id' => $soplador->id,
-            'fecha' => now()->toDateString(),
+            'fecha' => $fecha,
             'turno' => 'dia',
             'asignadas' => $asignadas,
         ]);
@@ -41,11 +65,23 @@ class ProduccionTest extends TestCase
         return ProduccionReporte::create([
             'asignacion_id' => $asignacion->id,
             'soplador_id' => $soplador->id,
-            'fecha' => now()->toDateString(),
+            'fecha' => $fecha,
             'turno' => 'dia',
             'asignadas' => $asignadas,
             'estado' => $estado,
         ]);
+    }
+
+    /** Agrega una tanda válida actuando como el soplador dueño del reporte. */
+    private function agregarTanda(User $soplador, ProduccionReporte $reporte, array $cantidades, ?Maquina $maquina = null, ?TipoBotellon $tipo = null)
+    {
+        return $this->actingAs($soplador)->post(route('produccion.mi.registros.store', $reporte), array_merge([
+            'maquina_id' => $maquina?->id,
+            'tipo_botellon_id' => $tipo?->id,
+            'primera' => 0,
+            'segunda' => 0,
+            'malo' => 0,
+        ], $cantidades));
     }
 
     // --- Acceso / gating ---
@@ -105,7 +141,7 @@ class ProduccionTest extends TestCase
         $this->assertDatabaseHas('produccion_asignaciones', ['soplador_id' => $soplador->id, 'asignadas' => 250]);
     }
 
-    // --- Reporte del soplador ---
+    // --- Registros (tandas) del soplador ---
 
     public function test_soplador_ve_su_reporte_del_dia(): void
     {
@@ -115,27 +151,167 @@ class ProduccionTest extends TestCase
         $this->actingAs($soplador)->get('/produccion/mi-reporte')->assertOk();
     }
 
-    public function test_soplador_guarda_borrador(): void
+    public function test_tanda_crea_registro_y_sincroniza_totales(): void
     {
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
 
-        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
-            'primera' => 50, 'segunda' => 10, 'malo' => 5, 'enviar' => 0,
-        ])->assertRedirect(route('produccion.mi.index'));
+        $this->agregarTanda($soplador, $reporte, ['primera' => 50, 'segunda' => 10, 'malo' => 5], $maquina, $tipo)
+            ->assertRedirect(route('produccion.mi.index'));
+
+        $this->assertDatabaseHas('produccion_registros', [
+            'reporte_id' => $reporte->id,
+            'maquina_id' => $maquina->id,
+            'tipo_botellon_id' => $tipo->id,
+            'primera' => 50, 'segunda' => 10, 'malo' => 5,
+        ]);
 
         $reporte->refresh();
         $this->assertSame('borrador', $reporte->estado);
         $this->assertSame(50, $reporte->primera);
+        $this->assertSame(10, $reporte->segunda);
+        $this->assertSame(5, $reporte->malo);
     }
+
+    public function test_dos_tandas_del_mismo_combo_no_se_funden_y_suman(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 20], $maquina, $tipo);
+        $this->agregarTanda($soplador, $reporte, ['primera' => 30], $maquina, $tipo);
+
+        $this->assertSame(2, $reporte->registros()->count());
+        $this->assertSame(50, $reporte->fresh()->primera);
+    }
+
+    public function test_eliminar_tanda_recalcula_totales(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 20], $maquina, $tipo);
+        $this->agregarTanda($soplador, $reporte, ['primera' => 30, 'malo' => 2], $maquina, $tipo);
+        $registro = $reporte->registros()->where('primera', 30)->first();
+
+        $this->actingAs($soplador)
+            ->delete(route('produccion.mi.registros.destroy', [$reporte, $registro]))
+            ->assertRedirect(route('produccion.mi.index'));
+
+        $reporte->refresh();
+        $this->assertSame(1, $reporte->registros()->count());
+        $this->assertSame(20, $reporte->primera);
+        $this->assertSame(0, $reporte->malo);
+    }
+
+    public function test_tanda_exige_alguna_cantidad(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $this->agregarTanda($soplador, $reporte, [], $maquina, $tipo)
+            ->assertSessionHasErrors('primera');
+
+        $this->assertSame(0, $reporte->registros()->count());
+    }
+
+    public function test_tanda_exige_maquina_si_hay_activas(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        $this->maquina();
+        $tipo = $this->tipo();
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10], null, $tipo)
+            ->assertSessionHasErrors('maquina_id');
+    }
+
+    public function test_sin_maquinas_ni_tipos_la_tanda_entra_sin_ellos(): void
+    {
+        // Transicion post-deploy: aun no se crean maquinas ni tipos.
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10])
+            ->assertRedirect(route('produccion.mi.index'));
+
+        $this->assertDatabaseHas('produccion_registros', [
+            'reporte_id' => $reporte->id, 'maquina_id' => null, 'tipo_botellon_id' => null, 'primera' => 10,
+        ]);
+    }
+
+    public function test_maquina_de_otra_sucursal_es_rechazada(): void
+    {
+        $sucursalA = $this->sucursal('MIRADOR');
+        $sucursalB = $this->sucursal('COQUIMBO');
+        $soplador = $this->soplador($sucursalA);
+        $reporte = $this->reporteDe($soplador, 100);
+        $this->maquina($sucursalA, 'Sopladora A');
+        $ajena = $this->maquina($sucursalB, 'Sopladora B');
+        $tipo = $this->tipo();
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10], $ajena, $tipo)
+            ->assertSessionHasErrors('maquina_id');
+    }
+
+    public function test_maquina_inactiva_es_rechazada(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        $activa = $this->maquina(nombre: 'Activa');
+        $inactiva = $this->maquina(nombre: 'Inactiva', activa: false);
+        $tipo = $this->tipo();
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10], $inactiva, $tipo)
+            ->assertSessionHasErrors('maquina_id');
+    }
+
+    public function test_soplador_no_agrega_tandas_a_reporte_ajeno(): void
+    {
+        $reporte = $this->reporteDe($this->soplador());
+        $otro = $this->soplador();
+
+        $this->agregarTanda($otro, $reporte, ['primera' => 10])->assertForbidden();
+    }
+
+    public function test_no_se_agregan_tandas_a_reporte_enviado(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10])->assertForbidden();
+    }
+
+    public function test_registro_de_otro_reporte_devuelve_404_al_borrar(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10]);
+
+        $otroSoplador = $this->soplador();
+        $otroReporte = $this->reporteDe($otroSoplador, 100);
+        $registroAjeno = $reporte->registros()->first();
+
+        $this->actingAs($otroSoplador)
+            ->delete(route('produccion.mi.registros.destroy', [$otroReporte, $registroAjeno]))
+            ->assertNotFound();
+    }
+
+    // --- Envio del reporte (soplador) ---
 
     public function test_soplador_envia_reporte_cuadrado(): void
     {
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 90, 'segunda' => 5, 'malo' => 5], $maquina, $tipo);
 
         $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
-            'primera' => 90, 'segunda' => 5, 'malo' => 5, 'enviar' => 1,
+            'enviar' => 1,
         ])->assertRedirect(route('produccion.mi.index'));
 
         $reporte->refresh();
@@ -143,16 +319,57 @@ class ProduccionTest extends TestCase
         $this->assertNotNull($reporte->enviado_at);
     }
 
-    public function test_enviar_con_diferencia_exige_motivo(): void
+    public function test_enviar_sin_tandas_es_rechazado(): void
     {
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100);
 
         $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
-            'primera' => 50, 'segunda' => 0, 'malo' => 0, 'enviar' => 1,
+            'enviar' => 1,
+        ])->assertSessionHasErrors('enviar');
+
+        $this->assertSame('borrador', $reporte->fresh()->estado);
+    }
+
+    public function test_enviar_con_diferencia_exige_motivo(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 50], $maquina, $tipo);
+
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
+            'enviar' => 1,
         ])->assertSessionHasErrors('motivo');
 
         $this->assertSame('borrador', $reporte->fresh()->estado);
+    }
+
+    public function test_reenviar_limpia_el_motivo_de_devolucion(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::DEVUELTO);
+        $reporte->update(['devuelto_motivo' => 'Faltan los malos.']);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 100], $maquina, $tipo);
+
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), ['enviar' => 1]);
+
+        $reporte->refresh();
+        $this->assertSame('enviado', $reporte->estado);
+        $this->assertNull($reporte->devuelto_motivo);
+    }
+
+    public function test_recalculo_limpia_ajuste_previo_del_jefe(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::DEVUELTO);
+        $reporte->update(['motivo_ajuste' => 'Recuento físico previo.']);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10], $maquina, $tipo);
+
+        $this->assertNull($reporte->fresh()->motivo_ajuste);
     }
 
     public function test_soplador_no_edita_reporte_ajeno(): void
@@ -161,7 +378,7 @@ class ProduccionTest extends TestCase
         $otro = $this->soplador();
 
         $this->actingAs($otro)->patch(route('produccion.mi.update', $reporte), [
-            'primera' => 1, 'segunda' => 0, 'malo' => 0, 'enviar' => 0,
+            'enviar' => 0,
         ])->assertForbidden();
     }
 
@@ -171,8 +388,61 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
 
         $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
-            'primera' => 1, 'segunda' => 0, 'malo' => 0, 'enviar' => 0,
+            'enviar' => 0,
         ])->assertForbidden();
+    }
+
+    // --- Reportes devueltos de otros dias ---
+
+    public function test_devuelto_de_ayer_es_visible_en_su_propia_vista(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::DEVUELTO, now()->subDay()->toDateString());
+
+        $this->actingAs($soplador)->get(route('produccion.mi.show', $reporte))
+            ->assertOk()
+            ->assertSee('Preformas asignadas');
+    }
+
+    public function test_devuelto_de_ayer_aparece_en_el_banner_de_hoy(): void
+    {
+        $soplador = $this->soplador();
+        $this->reporteDe($soplador, 100, ProduccionReporte::DEVUELTO, now()->subDay()->toDateString());
+
+        $this->actingAs($soplador)->get('/produccion/mi-reporte')
+            ->assertOk()
+            ->assertSee('por corregir');
+    }
+
+    public function test_show_de_reporte_ajeno_es_rechazado(): void
+    {
+        $reporte = $this->reporteDe($this->soplador());
+        $otro = $this->soplador();
+
+        $this->actingAs($otro)->get(route('produccion.mi.show', $reporte))->assertForbidden();
+    }
+
+    // --- Backfill de transicion ---
+
+    public function test_backfill_crea_registro_desde_totales_preexistentes(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        // Reporte del flujo viejo: cantidades directas, sin registros.
+        $reporte->update(['primera' => 80, 'segunda' => 15, 'malo' => 5]);
+
+        $migration = include database_path('migrations/2026_06_12_120003_backfill_produccion_registros_desde_reportes.php');
+        $migration->up();
+
+        $this->assertDatabaseHas('produccion_registros', [
+            'reporte_id' => $reporte->id,
+            'maquina_id' => null,
+            'tipo_botellon_id' => null,
+            'primera' => 80, 'segunda' => 15, 'malo' => 5,
+        ]);
+
+        $migration->up(); // idempotente: no duplica
+        $this->assertSame(1, $reporte->registros()->count());
     }
 
     // --- Revision (jefe) ---
@@ -228,5 +498,33 @@ class ProduccionTest extends TestCase
         $reporte->refresh();
         $this->assertSame(80, $reporte->primera);
         $this->assertSame('Recuento físico.', $reporte->motivo_ajuste);
+    }
+
+    public function test_panel_del_jefe_muestra_produccion_por_maquina(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        $maquina = $this->maquina(nombre: 'Sopladora Norte');
+        $tipo = $this->tipo();
+        $this->agregarTanda($soplador, $reporte, ['primera' => 40], $maquina, $tipo);
+
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertSee('Sopladora Norte');
+    }
+
+    public function test_detalle_del_reporte_muestra_las_tandas(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        $maquina = $this->maquina(nombre: 'Sopladora Sur');
+        $tipo = $this->tipo('INCOLORO-10L-RETORNABLE', 'Incoloro 10L retornable');
+        $this->agregarTanda($soplador, $reporte, ['primera' => 25], $maquina, $tipo);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('Detalle por máquina y tipo')
+            ->assertSee('Sopladora Sur')
+            ->assertSee('Incoloro 10L retornable');
     }
 }

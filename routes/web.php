@@ -5,8 +5,10 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
+use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
+use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
@@ -106,16 +108,27 @@ Route::middleware('auth')
             Route::post('produccion/reporte/{reporte}/aprobar', [ProduccionController::class, 'aprobar'])->name('produccion.reporte.aprobar');
             Route::post('produccion/reporte/{reporte}/devolver', [ProduccionController::class, 'devolver'])->name('produccion.reporte.devolver');
             Route::post('produccion/reporte/{reporte}/ajustar', [ProduccionController::class, 'ajustar'])->name('produccion.reporte.ajustar');
+
+            // Catalogos de produccion: maquinas sopladoras y tipos de botellon.
+            Route::resource('maquinas', MaquinaController::class)
+                ->parameters(['maquinas' => 'maquina'])
+                ->except(['show']);
+            Route::resource('tipos-botellon', TipoBotellonController::class)
+                ->parameters(['tipos-botellon' => 'tipoBotellon'])
+                ->except(['show']);
         });
     });
 
-// Mi produccion (Soplador): su reporte del dia.
+// Mi produccion (Soplador): su reporte del dia + registros (tandas) por maquina/tipo.
 Route::middleware(['auth', 'permission:report production'])
     ->prefix('produccion')
     ->name('produccion.')
     ->group(function () {
         Route::get('mi-reporte', [MiProduccionController::class, 'index'])->name('mi.index');
+        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->name('mi.show');
         Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->name('mi.update');
+        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->name('mi.registros.store');
+        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->name('mi.registros.destroy');
     });
 
 require __DIR__.'/auth.php';
