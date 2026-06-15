@@ -105,6 +105,8 @@ Route::middleware('auth')
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
                 ->name('servicio-tecnico.buscar-cliente');
+            Route::get('servicio-tecnico/buscar-producto', [ServicioTecnicoController::class, 'buscarProducto'])
+                ->name('servicio-tecnico.buscar-producto');
 
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])

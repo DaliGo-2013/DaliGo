@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\Producto;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,6 +60,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($member)->get('/admin/servicio-tecnico')->assertForbidden();
         $this->actingAs($member)->post('/admin/servicio-tecnico', $this->payload())->assertForbidden();
         $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-cliente?q=test')->assertForbidden();
+        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-producto?q=test')->assertForbidden();
     }
 
     public function test_permission_grants_access(): void
@@ -83,21 +85,24 @@ class ServicioTecnicoManagementTest extends TestCase
     public function test_admin_can_register_orden(): void
     {
         $cliente = Cliente::factory()->create();
+        $producto = Producto::factory()->create();
 
         $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
             'cliente_id' => $cliente->id,
+            'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
-            'marca' => 'Samsung',
             'modelo' => 'WX-100',
             'numero_serie' => 'SN-555',
+            'facturacion' => 'garantia',
             'falla_reportada' => 'No enciende',
         ]))->assertRedirect(route('admin.servicio-tecnico.index'));
 
         $this->assertDatabaseHas('ordenes_servicio', [
             'cliente_id' => $cliente->id,
+            'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
-            'marca' => 'Samsung',
             'numero_serie' => 'SN-555',
+            'facturacion' => 'garantia',
             'estado' => 'recibido',
         ]);
     }
@@ -109,18 +114,18 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSessionHasErrors(['fecha_ingreso', 'tipo_equipo', 'estado']);
     }
 
-    public function test_invalid_tipo_and_estado_are_rejected(): void
+    public function test_invalid_tipo_estado_y_facturacion_are_rejected(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/servicio-tecnico', $this->payload(['tipo_equipo' => 'auto', 'estado' => 'volando']))
-            ->assertSessionHasErrors(['tipo_equipo', 'estado']);
+            ->post('/admin/servicio-tecnico', $this->payload(['tipo_equipo' => 'auto', 'estado' => 'volando', 'facturacion' => 'tarjeta']))
+            ->assertSessionHasErrors(['tipo_equipo', 'estado', 'facturacion']);
     }
 
-    public function test_unknown_cliente_and_tecnico_are_rejected(): void
+    public function test_unknown_cliente_and_producto_are_rejected(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/servicio-tecnico', $this->payload(['cliente_id' => 9999, 'tecnico_id' => 8888]))
-            ->assertSessionHasErrors(['cliente_id', 'tecnico_id']);
+            ->post('/admin/servicio-tecnico', $this->payload(['cliente_id' => 9999, 'producto_id' => 8888]))
+            ->assertSessionHasErrors(['cliente_id', 'producto_id']);
     }
 
     public function test_cliente_is_optional(): void
@@ -134,18 +139,18 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_admin_can_update_orden(): void
     {
-        $orden = OrdenServicio::factory()->create(['estado' => 'recibido', 'marca' => 'Vieja']);
+        $orden = OrdenServicio::factory()->create(['estado' => 'recibido', 'facturacion' => 'garantia']);
 
         $this->actingAs($this->admin())
             ->put("/admin/servicio-tecnico/{$orden->id}", $this->payload([
                 'estado' => 'reparado',
-                'marca' => 'Nueva',
+                'facturacion' => 'boleta',
             ]))
             ->assertRedirect(route('admin.servicio-tecnico.index'));
 
         $fresh = $orden->fresh();
         $this->assertSame('reparado', $fresh->estado);
-        $this->assertSame('Nueva', $fresh->marca);
+        $this->assertSame('boleta', $fresh->facturacion);
     }
 
     public function test_admin_can_delete_orden(): void
@@ -223,5 +228,20 @@ class ServicioTecnicoManagementTest extends TestCase
             ->getJson('/admin/servicio-tecnico/buscar-cliente?q=Norte')
             ->assertOk()
             ->assertJsonCount(15);
+    }
+
+    public function test_buscar_producto_matches_sku_and_nombre(): void
+    {
+        $producto = Producto::factory()->create(['sku' => 'MAQ-001', 'nombre' => 'Dispensador Frío/Calor']);
+
+        $this->actingAs($this->admin())
+            ->getJson('/admin/servicio-tecnico/buscar-producto?q=MAQ-001')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $producto->id]);
+
+        $this->actingAs($this->admin())
+            ->getJson('/admin/servicio-tecnico/buscar-producto?q=Dispensador')
+            ->assertOk()
+            ->assertJsonFragment(['sku' => 'MAQ-001']);
     }
 }

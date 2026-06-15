@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\Producto;
 use App\Models\Sucursal;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,14 +25,14 @@ class ServicioTecnicoController extends Controller
     public function index(Request $request): View
     {
         $ordenes = $this->filteredQuery($request)
-            ->with(['cliente', 'sucursal', 'tecnico'])
+            ->with(['cliente', 'producto', 'sucursal'])
             ->latest('fecha_ingreso')->latest('id')
             ->paginate(25)
             ->withQueryString();
 
         return view('admin.servicio-tecnico.index', array_merge([
             'ordenes' => $ordenes,
-            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'tecnico_id']),
+            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion']),
         ], $this->formData()));
     }
 
@@ -52,7 +52,7 @@ class ServicioTecnicoController extends Controller
     public function edit(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.edit', array_merge(
-            ['orden' => $orden->load('cliente')],
+            ['orden' => $orden->load(['cliente', 'producto'])],
             $this->formData($orden)
         ));
     }
@@ -105,6 +105,34 @@ class ServicioTecnicoController extends Controller
         ]));
     }
 
+    /**
+     * Autocompletado de producto Dali (el "codigo" del equipo) por SKU o nombre.
+     * Mismo patron que buscarCliente: minimo 2 caracteres, limite 15.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $productos = Producto::query()
+            ->where(fn (Builder $w) => $w
+                ->where('sku', 'like', "%{$q}%")
+                ->orWhere('nombre', 'like', "%{$q}%"))
+            ->orderBy('sku')
+            ->limit(15)
+            ->get(['id', 'sku', 'nombre']);
+
+        return response()->json($productos->map(fn (Producto $p) => [
+            'id' => $p->id,
+            'sku' => $p->sku,
+            'nombre' => $p->nombre,
+            'label' => $p->sku.' — '.$p->nombre,
+        ]));
+    }
+
     // --- Helpers --------------------------------------------------------
 
     /**
@@ -117,7 +145,7 @@ class ServicioTecnicoController extends Controller
             'q' => ['nullable', 'string', 'max:191'],
             'estado' => ['nullable', Rule::in(OrdenServicio::ESTADOS)],
             'tipo_equipo' => ['nullable', Rule::in(OrdenServicio::TIPOS)],
-            'tecnico_id' => ['nullable', 'integer'],
+            'facturacion' => ['nullable', Rule::in(OrdenServicio::FACTURACION)],
         ]);
 
         return OrdenServicio::query()
@@ -125,9 +153,11 @@ class ServicioTecnicoController extends Controller
                 $rutQ = preg_replace('/[.\s]/', '', $q);
 
                 $qb->where(function (Builder $w) use ($q, $rutQ) {
-                    $w->where('marca', 'like', "%{$q}%")
-                        ->orWhere('modelo', 'like', "%{$q}%")
+                    $w->where('modelo', 'like', "%{$q}%")
                         ->orWhere('numero_serie', 'like', "%{$q}%")
+                        ->orWhereHas('producto', fn (Builder $p) => $p
+                            ->where('sku', 'like', "%{$q}%")
+                            ->orWhere('nombre', 'like', "%{$q}%"))
                         ->orWhereHas('cliente', fn (Builder $c) => $c
                             ->where('razon_social', 'like', "%{$q}%")
                             ->orWhere('rut', 'like', "%{$rutQ}%"));
@@ -135,49 +165,39 @@ class ServicioTecnicoController extends Controller
             })
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
-            ->when($f['tecnico_id'] ?? null, fn (Builder $qb, $v) => $qb->where('tecnico_id', $v));
+            ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v));
     }
 
     private function validateData(Request $request): array
     {
         return $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
+            'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
-            'tecnico_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'marca' => ['nullable', 'string', 'max:191'],
             'modelo' => ['nullable', 'string', 'max:191'],
             'numero_serie' => ['nullable', 'string', 'max:191'],
             'falla_reportada' => ['nullable', 'string'],
             'accesorios' => ['nullable', 'string'],
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
+            'facturacion' => ['nullable', Rule::in(OrdenServicio::FACTURACION)],
             'observaciones' => ['nullable', 'string'],
             'fecha_entrega' => ['nullable', 'date'],
         ]);
     }
 
     /**
-     * Combos para formularios y filtros. Tecnicos: whereHas y no User::role()
-     * porque el scope de spatie LANZA RoleDoesNotExist si un admin borro el rol
-     * desde la UI -> 500 en todas las pantallas del modulo. Incluye admin (un
-     * admin tambien atiende/asigna). Al editar se conserva el tecnico actual
-     * aunque haya perdido el rol, para no botar la asignacion en silencio.
+     * Combos para formularios y filtros. El producto (codigo) y el cliente se
+     * eligen por autocompletado (endpoints JSON), no como <select>.
      */
     private function formData(?OrdenServicio $orden = null): array
     {
-        $tecnicos = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['tecnico', 'admin']))
-            ->orderBy('name')->get();
-
-        if ($orden?->tecnico_id && ! $tecnicos->contains('id', $orden->tecnico_id) && $orden->tecnico) {
-            $tecnicos = $tecnicos->push($orden->tecnico)->sortBy('name')->values();
-        }
-
         return [
-            'tecnicos' => $tecnicos,
             'sucursales' => Sucursal::orderBy('nombre')->get(),
             'tipos' => OrdenServicio::TIPOS,
             'estados' => OrdenServicio::ESTADOS,
+            'facturaciones' => OrdenServicio::FACTURACION,
         ];
     }
 }

@@ -3,14 +3,17 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 
 /**
- * Buscador de cliente por RUT/nombre (Servicio Tecnico). Se registra aqui y no
- * con @push('scripts') porque el layout no tiene @stack. Pega a un endpoint JSON
- * (limit 15) y guarda el id elegido en un <input hidden name="cliente_id">.
+ * Buscador remoto reutilizable (Servicio Tecnico): autocompletado contra un
+ * endpoint JSON (limit 15). Se usa para cliente (por RUT/nombre) y para producto
+ * (por SKU/nombre); el id elegido se guarda en un <input hidden> que define la
+ * vista (name="cliente_id" o "producto_id"). Se registra aqui y no con
+ * @push('scripts') porque el layout no tiene @stack. Enfoca via $refs.input
+ * para que convivan varias instancias en la misma pagina.
  */
-Alpine.data('buscadorCliente', ({ endpoint, inicialId, inicialLabel }) => ({
+Alpine.data('buscadorRemoto', ({ endpoint, inicialId, inicialLabel }) => ({
     endpoint,
     term: inicialLabel || '',
-    clienteId: inicialId || null,
+    seleccionId: inicialId || null,
     elegidoLabel: inicialLabel || '',
     resultados: [],
     abierto: false,
@@ -39,7 +42,7 @@ Alpine.data('buscadorCliente', ({ endpoint, inicialId, inicialLabel }) => ({
     },
 
     elegir(r) {
-        this.clienteId = r.id;
+        this.seleccionId = r.id;
         this.elegidoLabel = r.label;
         this.term = r.label;
         this.abierto = false;
@@ -47,11 +50,11 @@ Alpine.data('buscadorCliente', ({ endpoint, inicialId, inicialLabel }) => ({
     },
 
     limpiar() {
-        this.clienteId = null;
+        this.seleccionId = null;
         this.elegidoLabel = '';
         this.term = '';
         this.resultados = [];
-        this.$nextTick(() => document.getElementById('cliente_buscar')?.focus());
+        this.$nextTick(() => this.$refs.input?.focus());
     },
 }));
 

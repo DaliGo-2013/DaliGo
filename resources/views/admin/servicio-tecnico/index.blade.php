@@ -40,11 +40,11 @@
                     </x-select>
                 </div>
                 <div class="sm:w-44">
-                    <x-input-label for="tecnico_id" value="Técnico" />
-                    <x-select id="tecnico_id" name="tecnico_id" class="mt-1.5">
-                        <option value="">Todos</option>
-                        @foreach ($tecnicos as $t)
-                            <option value="{{ $t->id }}" @selected((int) ($filtros['tecnico_id'] ?? 0) === $t->id)>{{ $t->name }}</option>
+                    <x-input-label for="facturacion" value="Boleta/Garantía" />
+                    <x-select id="facturacion" name="facturacion" class="mt-1.5">
+                        <option value="">Todas</option>
+                        @foreach ($facturaciones as $f)
+                            <option value="{{ $f }}" @selected(($filtros['facturacion'] ?? '') === $f)>{{ ucfirst($f) }}</option>
                         @endforeach
                     </x-select>
                 </div>
@@ -66,7 +66,8 @@
                         @php
                             $detalle = collect([
                                 ucfirst($orden->tipo_equipo),
-                                trim(($orden->marca ?? '').' '.($orden->modelo ?? '')) ?: null,
+                                $orden->producto?->sku,
+                                $orden->modelo ?: null,
                                 $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
                             ])->filter()->implode(' · ');
                         @endphp
@@ -74,17 +75,15 @@
                             <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                             <p class="truncate font-medium text-neutral-900">{{ $orden->cliente?->razon_social ?? 'Sin cliente' }}</p>
                             <x-badge :variant="$orden->estado === 'entregado' ? 'neutral' : 'brand'">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
+                            @if ($orden->facturacion)
+                                <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
+                            @endif
                         </div>
                         <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
 
                         <x-slot name="meta">
-                            <div class="text-sm text-neutral-500 sm:w-40 sm:shrink-0 sm:text-right">
-                                <div>{{ $orden->fecha_ingreso?->format('d-m-Y') }}</div>
-                                @if ($orden->tecnico)
-                                    <div class="text-xs text-neutral-400">{{ $orden->tecnico->name }}</div>
-                                @else
-                                    <div class="text-xs text-neutral-400">sin técnico</div>
-                                @endif
+                            <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                {{ $orden->fecha_ingreso?->format('d-m-Y') }}
                             </div>
                         </x-slot>
 

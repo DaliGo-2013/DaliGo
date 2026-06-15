@@ -17,16 +17,16 @@ class OrdenServicioFactory extends Factory
     {
         return [
             'cliente_id' => Cliente::factory(),
+            'producto_id' => null,
             'sucursal_id' => null,
-            'tecnico_id' => null,
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => fake()->randomElement(OrdenServicio::TIPOS),
-            'marca' => fake()->optional()->company(),
             'modelo' => fake()->optional()->bothify('Mod-###'),
             'numero_serie' => fake()->optional()->bothify('SN-#######'),
             'falla_reportada' => fake()->optional()->sentence(),
             'accesorios' => null,
             'estado' => fake()->randomElement(OrdenServicio::ESTADOS),
+            'facturacion' => fake()->randomElement(OrdenServicio::FACTURACION),
             'observaciones' => null,
             'fecha_entrega' => null,
             'fuente' => 'mostrador',
