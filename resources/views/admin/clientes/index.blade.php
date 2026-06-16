@@ -79,9 +79,10 @@
                         </p>
 
                         <x-slot name="meta">
+                            @php $vend = $cliente->vendedor_nombre ?: $cliente->vendedor?->name; @endphp
                             <div class="text-sm text-neutral-500 sm:w-40 sm:shrink-0 sm:text-right">
-                                @if ($cliente->vendedor)
-                                    {{ $cliente->vendedor->name }}
+                                @if ($vend)
+                                    {{ $vend }}
                                 @else
                                     <span class="text-neutral-400">sin vendedor</span>
                                 @endif

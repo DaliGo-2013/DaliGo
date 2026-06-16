@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Crear cuenta" />
+        <x-page-header title="Crear cuenta">
+            <x-slot name="action">
+                <x-form-actions :cancel="route('admin.users.index')" form="user-form" submitLabel="Crear cuenta" />
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
@@ -11,7 +15,7 @@
                     Comparte la contraseña inicial con la persona; podrá cambiarla luego.
                 </p>
 
-                <form method="POST" action="{{ route('admin.users.store') }}" class="space-y-5">
+                <form id="user-form" method="POST" action="{{ route('admin.users.store') }}" class="space-y-5">
                     @csrf
 
                     <div>
@@ -59,9 +63,6 @@
                         <x-text-input id="password_confirmation" class="mt-1.5" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="••••••••" />
                     </div>
 
-                    <x-form-footer :cancel="route('admin.users.index')">
-                        <x-primary-button>Crear cuenta</x-primary-button>
-                    </x-form-footer>
                 </form>
             </div>
         </div>

@@ -2,14 +2,7 @@
     <x-slot name="header">
         <x-page-header :title="'Editar orden '.$orden->folio" subtitle="Actualiza los datos del equipo en taller.">
             <x-slot name="action">
-                <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Cancelar" title="Cancelar">
-                        <x-icon.x-mark class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-icon-button type="submit" form="orden-servicio-form" size="lg" variant="primary" label="Guardar cambios" title="Guardar cambios">
-                        <x-icon.check class="h-5 w-5" />
-                    </x-icon-button>
-                </div>
+                <x-form-actions :cancel="route('admin.servicio-tecnico.index')" form="orden-servicio-form" submitLabel="Guardar cambios" />
             </x-slot>
         </x-page-header>
     </x-slot>

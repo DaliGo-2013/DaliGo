@@ -87,7 +87,8 @@ class ClienteController extends Controller
 
                 $qb->where(fn (Builder $w) => $w
                     ->where('razon_social', 'like', "%{$q}%")
-                    ->orWhere('rut', 'like', "%{$rutQ}%"));
+                    ->orWhere('rut', 'like', "%{$rutQ}%")
+                    ->orWhere('vendedor_nombre', 'like', "%{$q}%"));
             })
             ->when($f['segmento'] ?? null, fn (Builder $qb, $v) => $qb->where('segmento', $v))
             ->when($f['vendedor_id'] ?? null, fn (Builder $qb, $v) => $qb->where('vendedor_id', $v));
@@ -119,6 +120,7 @@ class ClienteController extends Controller
             'segmento' => ['nullable', Rule::in(Cliente::SEGMENTOS)],
             'notas' => ['nullable', 'string'],
             'vendedor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'vendedor_nombre' => ['nullable', 'string', 'max:191'],
         ]);
 
         $validated['es_empresa'] = $request->boolean('es_empresa');

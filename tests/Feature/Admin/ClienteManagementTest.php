@@ -177,6 +177,16 @@ class ClienteManagementTest extends TestCase
         $this->assertDatabaseHas('clientes', ['rut' => '12345678-5', 'vendedor_id' => $vendedor->id]);
     }
 
+    public function test_admin_can_set_vendedor_libre_por_nombre(): void
+    {
+        // El vendedor asignado es texto libre (puede no ser usuario del sistema).
+        $this->actingAs($this->admin())
+            ->post('/admin/clientes', $this->payload(['vendedor_nombre' => 'Carlos Vega']))
+            ->assertRedirect(route('admin.clientes.index'));
+
+        $this->assertDatabaseHas('clientes', ['rut' => '12345678-5', 'vendedor_nombre' => 'Carlos Vega']);
+    }
+
     public function test_admin_can_update_cliente(): void
     {
         $cliente = Cliente::factory()->create(['segmento' => null]);

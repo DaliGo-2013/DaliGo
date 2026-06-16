@@ -38,6 +38,7 @@ class Cliente extends Model implements AuditableContract
         'segmento',
         'notas',
         'vendedor_id',
+        'vendedor_nombre',
         'bsale_client_id',
     ];
 

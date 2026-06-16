@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Editar rol" />
+        <x-page-header title="Editar rol">
+            <x-slot name="action">
+                <x-form-actions :cancel="route('admin.users.index')" form="user-form" submitLabel="Guardar rol" />
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
@@ -17,7 +21,7 @@
                     </div>
                 </dl>
 
-                <form method="POST" action="{{ route('admin.users.update', $user) }}" class="space-y-5">
+                <form id="user-form" method="POST" action="{{ route('admin.users.update', $user) }}" class="space-y-5">
                     @csrf
                     @method('PUT')
 
@@ -42,9 +46,6 @@
                         <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
                     </div>
 
-                    <x-form-footer :cancel="route('admin.users.index')">
-                        <x-primary-button>Guardar rol</x-primary-button>
-                    </x-form-footer>
                 </form>
             </div>
         </div>

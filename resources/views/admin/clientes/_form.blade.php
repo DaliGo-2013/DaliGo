@@ -62,17 +62,10 @@
     </div>
 
     <div>
-        <x-input-label for="vendedor_id" value="Vendedor asignado" />
-        <x-select id="vendedor_id" name="vendedor_id" class="mt-1.5">
-            <option value="">— Sin vendedor —</option>
-            @foreach ($vendedores as $v)
-                <option value="{{ $v->id }}" @selected((int) old('vendedor_id', $c?->vendedor_id) === $v->id)>{{ $v->name }}</option>
-            @endforeach
-        </x-select>
-        @if ($vendedores->isEmpty())
-            <x-input-hint>No hay usuarios con rol vendedor o jefe de ventas todavía.</x-input-hint>
-        @endif
-        <x-input-error :messages="$errors->get('vendedor_id')" class="mt-2" />
+        <x-input-label for="vendedor_nombre" value="Vendedor asignado" />
+        <x-text-input id="vendedor_nombre" class="mt-1.5" type="text" name="vendedor_nombre" :value="old('vendedor_nombre', $c?->vendedor_nombre)" maxlength="191" placeholder="Nombre del vendedor" />
+        <x-input-hint>Escribe el nombre del vendedor; queda guardado en la ficha.</x-input-hint>
+        <x-input-error :messages="$errors->get('vendedor_nombre')" class="mt-2" />
     </div>
 
     <div class="sm:col-span-2">

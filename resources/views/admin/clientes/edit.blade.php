@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'Editar: '.$cliente->razon_social" />
+        <x-page-header :title="'Editar: '.$cliente->razon_social">
+            <x-slot name="action">
+                <x-form-actions :cancel="route('admin.clientes.index')" form="cliente-form" submitLabel="Guardar cambios" />
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
@@ -13,14 +17,10 @@
                     </p>
                 @endif
 
-                <form method="POST" action="{{ route('admin.clientes.update', $cliente) }}" class="space-y-6">
+                <form id="cliente-form" method="POST" action="{{ route('admin.clientes.update', $cliente) }}" class="space-y-6">
                     @csrf
                     @method('PUT')
                     @include('admin.clientes._form', ['cliente' => $cliente])
-
-                    <x-form-footer :cancel="route('admin.clientes.index')">
-                        <x-primary-button>Guardar cambios</x-primary-button>
-                    </x-form-footer>
                 </form>
             </div>
         </div>

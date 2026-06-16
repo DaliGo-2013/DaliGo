@@ -4,13 +4,17 @@
     @endphp
 
     <x-slot name="header">
-        <x-page-header title="Editar rol" />
+        <x-page-header title="Editar rol">
+            <x-slot name="action">
+                <x-form-actions :cancel="route('admin.roles.index')" form="role-form" submitLabel="Guardar cambios" />
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
         <div class="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-                <form method="POST" action="{{ route('admin.roles.update', $role) }}" class="space-y-6">
+                <form id="role-form" method="POST" action="{{ route('admin.roles.update', $role) }}" class="space-y-6">
                     @csrf
                     @method('PUT')
 
@@ -45,9 +49,6 @@
                         <x-input-error :messages="$errors->get('permissions')" class="mt-2" />
                     </div>
 
-                    <x-form-footer :cancel="route('admin.roles.index')">
-                        <x-primary-button>Guardar cambios</x-primary-button>
-                    </x-form-footer>
                 </form>
             </div>
         </div>
