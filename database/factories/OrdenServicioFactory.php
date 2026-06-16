@@ -15,8 +15,12 @@ class OrdenServicioFactory extends Factory
 
     public function definition(): array
     {
+        $cuerpo = fake()->unique()->numberBetween(1000000, 25999999);
+
         return [
             'cliente_id' => Cliente::factory(),
+            'cliente_nombre' => fake()->name(),
+            'cliente_rut' => $cuerpo.'-'.Cliente::dvRut($cuerpo),
             'producto_id' => null,
             'sucursal_id' => null,
             'fecha_ingreso' => now()->toDateString(),

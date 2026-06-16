@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\OrdenServicio;
 use App\Models\Producto;
 use App\Models\Sucursal;
+use App\Rules\RutChileno;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class ServicioTecnicoController extends Controller
     public function index(Request $request): View
     {
         $ordenes = $this->filteredQuery($request)
-            ->with(['cliente', 'producto', 'sucursal'])
+            ->with('producto')
             ->latest('fecha_ingreso')->latest('id')
             ->paginate(25)
             ->withQueryString();
@@ -52,7 +53,7 @@ class ServicioTecnicoController extends Controller
     public function edit(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.edit', array_merge(
-            ['orden' => $orden->load(['cliente', 'producto'])],
+            ['orden' => $orden->load('producto')],
             $this->formData($orden)
         ));
     }
@@ -153,14 +154,13 @@ class ServicioTecnicoController extends Controller
                 $rutQ = preg_replace('/[.\s]/', '', $q);
 
                 $qb->where(function (Builder $w) use ($q, $rutQ) {
-                    $w->where('modelo', 'like', "%{$q}%")
+                    $w->where('cliente_nombre', 'like', "%{$q}%")
+                        ->orWhere('cliente_rut', 'like', "%{$rutQ}%")
+                        ->orWhere('modelo', 'like', "%{$q}%")
                         ->orWhere('numero_serie', 'like', "%{$q}%")
                         ->orWhereHas('producto', fn (Builder $p) => $p
                             ->where('sku', 'like', "%{$q}%")
-                            ->orWhere('nombre', 'like', "%{$q}%"))
-                        ->orWhereHas('cliente', fn (Builder $c) => $c
-                            ->where('razon_social', 'like', "%{$q}%")
-                            ->orWhere('rut', 'like', "%{$rutQ}%"));
+                            ->orWhere('nombre', 'like', "%{$q}%"));
                 });
             })
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
@@ -170,17 +170,25 @@ class ServicioTecnicoController extends Controller
 
     private function validateData(Request $request): array
     {
+        // Normalizar el RUT antes de validar (forma canonica 12345678-9), igual que
+        // en Clientes; si no se puede normalizar, dejar el valor original para que
+        // RutChileno lo rechace con su mensaje (no tragarlo como null).
+        $rutInput = trim((string) $request->input('cliente_rut'));
+        $request->merge(['cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput)]);
+
         return $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
+            'cliente_nombre' => ['required', 'string', 'max:191'],
+            'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'modelo' => ['nullable', 'string', 'max:191'],
+            'modelo' => ['required', 'string', 'max:191'],
             'numero_serie' => ['nullable', 'string', 'max:191'],
-            'falla_reportada' => ['nullable', 'string'],
+            'falla_reportada' => ['required', 'string'],
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
-            'facturacion' => ['nullable', Rule::in(OrdenServicio::FACTURACION)],
+            'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
             'observaciones' => ['nullable', 'string'],
             'fecha_entrega' => ['nullable', 'date'],
         ]);

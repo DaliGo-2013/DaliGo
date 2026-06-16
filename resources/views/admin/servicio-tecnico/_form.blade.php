@@ -2,25 +2,17 @@
     use Illuminate\Support\Str;
 
     $o = $orden ?? null;
-    $clienteActual = $o?->cliente;
-    $clienteActualLabel = $clienteActual
-        ? (($clienteActual->rut ? $clienteActual->rut.' — ' : '').$clienteActual->razon_social)
-        : '';
     $productoActual = $o?->producto;
     $productoActualLabel = $productoActual ? ($productoActual->sku.' — '.$productoActual->nombre) : '';
 @endphp
 
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-    {{-- Cliente: se busca por RUT o razon social (autocompletado). --}}
-    <x-buscador-remoto class="sm:col-span-2"
-        name="cliente_id"
-        label="Cliente (buscar por RUT o nombre)"
-        chip="Cliente"
+    {{-- Cliente: nombre y RUT obligatorios; autocompleta si existe en el catálogo. --}}
+    <x-cliente-ingreso class="sm:col-span-2"
         :endpoint="route('admin.servicio-tecnico.buscar-cliente')"
-        :inicialId="$clienteActual?->id ?? 0"
-        :inicialLabel="$clienteActualLabel"
-        placeholder="Escribe RUT o razón social…"
-        hint="Opcional. Si el cliente no existe aún, puedes dejarlo en blanco." />
+        :inicialRut="$o?->cliente_rut ?? ''"
+        :inicialNombre="$o?->cliente_nombre ?? ''"
+        :inicialClienteId="$o?->cliente_id ?? 0" />
 
     {{-- Codigo: producto Dali del catalogo (por SKU). --}}
     <x-buscador-remoto class="sm:col-span-2"
@@ -51,8 +43,8 @@
     </div>
 
     <div>
-        <x-input-label for="modelo" value="Modelo" />
-        <x-text-input id="modelo" class="mt-1.5" type="text" name="modelo" :value="old('modelo', $o?->modelo)" maxlength="191" />
+        <x-input-label for="modelo">Modelo <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="modelo" class="mt-1.5" type="text" name="modelo" :value="old('modelo', $o?->modelo)" maxlength="191" required />
         <x-input-error :messages="$errors->get('modelo')" class="mt-2" />
     </div>
 
@@ -74,9 +66,9 @@
     </div>
 
     <div>
-        <x-input-label for="facturacion" value="Condición" />
-        <x-select id="facturacion" name="facturacion" class="mt-1.5">
-            <option value="">— Sin definir —</option>
+        <x-input-label for="facturacion">Condición <span class="text-red-500">*</span></x-input-label>
+        <x-select id="facturacion" name="facturacion" class="mt-1.5" required>
+            <option value="" disabled @selected(old('facturacion', $o?->facturacion ?? '') === '')>— Selecciona —</option>
             @foreach ($facturaciones as $f)
                 <option value="{{ $f }}" @selected(old('facturacion', $o?->facturacion) === $f)>{{ ucfirst($f) }}</option>
             @endforeach
@@ -104,8 +96,8 @@
     </div>
 
     <div class="sm:col-span-2">
-        <x-input-label for="falla_reportada" value="Falla reportada" />
-        <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2">{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
+        <x-input-label for="falla_reportada">Falla reportada <span class="text-red-500">*</span></x-input-label>
+        <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2" required>{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
         <x-input-error :messages="$errors->get('falla_reportada')" class="mt-2" />
     </div>
 

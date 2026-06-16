@@ -65,6 +65,7 @@
 
                         @php
                             $detalle = collect([
+                                $orden->cliente_rut,
                                 ucfirst($orden->tipo_equipo),
                                 $orden->producto?->sku,
                                 $orden->modelo ?: null,
@@ -73,7 +74,7 @@
                         @endphp
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
-                            <p class="truncate font-medium text-neutral-900">{{ $orden->cliente?->razon_social ?? 'Sin cliente' }}</p>
+                            <p class="truncate font-medium text-neutral-900">{{ $orden->cliente_nombre }}</p>
                             <x-badge :variant="$orden->estado === 'entregado' ? 'neutral' : 'brand'">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
                             @if ($orden->facturacion)
                                 <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>

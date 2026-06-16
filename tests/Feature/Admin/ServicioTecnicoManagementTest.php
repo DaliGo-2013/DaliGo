@@ -40,9 +40,14 @@ class ServicioTecnicoManagementTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
+            'cliente_nombre' => 'Juan Pérez',
+            'cliente_rut' => '12.345.678-5',
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => 'maquina',
+            'modelo' => 'Modelo X',
+            'falla_reportada' => 'No enciende',
             'estado' => 'recibido',
+            'facturacion' => 'garantia',
         ], $overrides);
     }
 
@@ -99,6 +104,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->assertDatabaseHas('ordenes_servicio', [
             'cliente_id' => $cliente->id,
+            'cliente_nombre' => 'Juan Pérez',
+            'cliente_rut' => '12345678-5',   // normalizado
             'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
             'numero_serie' => 'SN-555',
@@ -107,11 +114,42 @@ class ServicioTecnicoManagementTest extends TestCase
         ]);
     }
 
-    public function test_store_requires_fecha_tipo_y_estado(): void
+    public function test_store_requires_obligatorios(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/servicio-tecnico', ['fecha_ingreso' => '', 'tipo_equipo' => '', 'estado' => ''])
-            ->assertSessionHasErrors(['fecha_ingreso', 'tipo_equipo', 'estado']);
+            ->post('/admin/servicio-tecnico', [
+                'cliente_nombre' => '', 'cliente_rut' => '', 'fecha_ingreso' => '',
+                'tipo_equipo' => '', 'modelo' => '', 'falla_reportada' => '',
+                'estado' => '', 'facturacion' => '',
+            ])
+            ->assertSessionHasErrors([
+                'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
+                'tipo_equipo', 'modelo', 'falla_reportada', 'estado', 'facturacion',
+            ]);
+    }
+
+    public function test_rut_invalido_es_rechazado_y_valido_se_normaliza(): void
+    {
+        // DV correcto de 12345678 es 5; -9 debe rechazarse.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['cliente_rut' => '12.345.678-9']))
+            ->assertSessionHasErrors('cliente_rut');
+
+        // Valido con puntos: se guarda normalizado.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['cliente_rut' => '12.345.678-5']))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', ['cliente_rut' => '12345678-5']);
+    }
+
+    public function test_herramienta_es_un_tipo_valido(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['tipo_equipo' => 'herramienta']))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', ['tipo_equipo' => 'herramienta']);
     }
 
     public function test_invalid_tipo_estado_y_facturacion_are_rejected(): void
@@ -128,13 +166,19 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSessionHasErrors(['cliente_id', 'producto_id']);
     }
 
-    public function test_cliente_is_optional(): void
+    public function test_cliente_link_is_optional_pero_nombre_y_rut_se_guardan(): void
     {
+        // El enlace al catalogo (cliente_id) es opcional: un cliente que no existe
+        // se ingresa a mano y queda archivado por nombre + rut.
         $this->actingAs($this->admin())
-            ->post('/admin/servicio-tecnico', $this->payload(['cliente_id' => '']))
+            ->post('/admin/servicio-tecnico', $this->payload(['cliente_id' => '', 'cliente_nombre' => 'Pedro Soto']))
             ->assertRedirect(route('admin.servicio-tecnico.index'));
 
-        $this->assertDatabaseHas('ordenes_servicio', ['cliente_id' => null, 'tipo_equipo' => 'maquina']);
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'cliente_id' => null,
+            'cliente_nombre' => 'Pedro Soto',
+            'cliente_rut' => '12345678-5',
+        ]);
     }
 
     public function test_admin_can_update_orden(): void
@@ -166,10 +210,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_index_filters_by_estado_and_tipo(): void
     {
-        $alfa = Cliente::factory()->create(['razon_social' => 'Alfa SpA']);
-        $beta = Cliente::factory()->create(['razon_social' => 'Beta Ltda']);
-        OrdenServicio::factory()->create(['cliente_id' => $alfa->id, 'estado' => 'recibido', 'tipo_equipo' => 'maquina']);
-        OrdenServicio::factory()->create(['cliente_id' => $beta->id, 'estado' => 'entregado', 'tipo_equipo' => 'lavadora']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Alfa SpA', 'estado' => 'recibido', 'tipo_equipo' => 'maquina']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Beta Ltda', 'estado' => 'entregado', 'tipo_equipo' => 'lavadora']);
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?estado=recibido')
             ->assertOk()->assertSee('Alfa SpA')->assertDontSee('Beta Ltda');
@@ -180,10 +222,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_index_search_matches_cliente_and_serie(): void
     {
-        $gamma = Cliente::factory()->create(['razon_social' => 'Gamma Importadora']);
-        OrdenServicio::factory()->create(['cliente_id' => $gamma->id, 'numero_serie' => 'SN-XYZ-9']);
-        $delta = Cliente::factory()->create(['razon_social' => 'Delta Comercial']);
-        OrdenServicio::factory()->create(['cliente_id' => $delta->id, 'numero_serie' => 'SN-AAA-1']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Gamma Importadora', 'numero_serie' => 'SN-XYZ-9']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Delta Comercial', 'numero_serie' => 'SN-AAA-1']);
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q=Gamma')
             ->assertOk()->assertSee('Gamma Importadora')->assertDontSee('Delta Comercial');
