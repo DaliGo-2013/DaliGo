@@ -74,7 +74,7 @@
     </div>
 
     <div>
-        <x-input-label for="facturacion" value="Boleta / Garantía" />
+        <x-input-label for="facturacion" value="Condición" />
         <x-select id="facturacion" name="facturacion" class="mt-1.5">
             <option value="">— Sin definir —</option>
             @foreach ($facturaciones as $f)
@@ -107,13 +107,6 @@
         <x-input-label for="falla_reportada" value="Falla reportada" />
         <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2">{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
         <x-input-error :messages="$errors->get('falla_reportada')" class="mt-2" />
-    </div>
-
-    <div class="sm:col-span-2">
-        <x-input-label for="accesorios" value="Accesorios recibidos" />
-        <x-textarea id="accesorios" class="mt-1.5" name="accesorios" rows="2">{{ old('accesorios', $o?->accesorios) }}</x-textarea>
-        <x-input-hint>Ej.: cable, manguera, filtro, control.</x-input-hint>
-        <x-input-error :messages="$errors->get('accesorios')" class="mt-2" />
     </div>
 
     <div class="sm:col-span-2">

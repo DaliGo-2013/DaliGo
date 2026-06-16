@@ -39,7 +39,6 @@ class OrdenServicio extends Model implements AuditableContract
         'modelo',
         'numero_serie',
         'falla_reportada',
-        'accesorios',
         'estado',
         'facturacion',
         'observaciones',

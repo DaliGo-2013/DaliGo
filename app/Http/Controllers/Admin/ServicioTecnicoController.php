@@ -179,7 +179,6 @@ class ServicioTecnicoController extends Controller
             'modelo' => ['nullable', 'string', 'max:191'],
             'numero_serie' => ['nullable', 'string', 'max:191'],
             'falla_reportada' => ['nullable', 'string'],
-            'accesorios' => ['nullable', 'string'],
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'facturacion' => ['nullable', Rule::in(OrdenServicio::FACTURACION)],
             'observaciones' => ['nullable', 'string'],

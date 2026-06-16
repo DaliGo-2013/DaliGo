@@ -40,7 +40,7 @@
                     </x-select>
                 </div>
                 <div class="sm:w-44">
-                    <x-input-label for="facturacion" value="Boleta/Garantía" />
+                    <x-input-label for="facturacion" value="Condición" />
                     <x-select id="facturacion" name="facturacion" class="mt-1.5">
                         <option value="">Todas</option>
                         @foreach ($facturaciones as $f)

@@ -4,6 +4,8 @@
     $variants = [
         'default' => 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700',
         'danger' => 'text-neutral-400 hover:bg-red-50 hover:text-red-600',
+        'primary' => 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:scale-[0.98]',
+        'secondary' => 'border border-neutral-300 bg-white text-neutral-500 shadow-sm hover:bg-neutral-50 hover:text-neutral-700 active:scale-[0.98]',
     ];
     $classes = 'inline-flex items-center justify-center rounded-lg p-2 transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 '.($variants[$variant] ?? $variants['default']);
 @endphp

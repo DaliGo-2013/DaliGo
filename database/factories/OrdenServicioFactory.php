@@ -24,7 +24,6 @@ class OrdenServicioFactory extends Factory
             'modelo' => fake()->optional()->bothify('Mod-###'),
             'numero_serie' => fake()->optional()->bothify('SN-#######'),
             'falla_reportada' => fake()->optional()->sentence(),
-            'accesorios' => null,
             'estado' => fake()->randomElement(OrdenServicio::ESTADOS),
             'facturacion' => fake()->randomElement(OrdenServicio::FACTURACION),
             'observaciones' => null,
