@@ -6,7 +6,8 @@
     $productoActualLabel = $productoActual ? ($productoActual->sku.' — '.$productoActual->nombre) : '';
 @endphp
 
-<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2"
+    x-data="{ cond: '{{ old('facturacion', $o?->facturacion ?? '') }}' }">
     {{-- Cliente: nombre y RUT obligatorios; autocompleta si existe en el catálogo. --}}
     <x-cliente-ingreso class="sm:col-span-2"
         :endpoint="route('admin.servicio-tecnico.buscar-cliente')"
@@ -43,12 +44,6 @@
     </div>
 
     <div>
-        <x-input-label for="modelo">Modelo <span class="text-red-500">*</span></x-input-label>
-        <x-text-input id="modelo" class="mt-1.5" type="text" name="modelo" :value="old('modelo', $o?->modelo)" maxlength="191" required />
-        <x-input-error :messages="$errors->get('modelo')" class="mt-2" />
-    </div>
-
-    <div>
         <x-input-label for="numero_serie" value="N° de serie" />
         <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" maxlength="191" />
         <x-input-error :messages="$errors->get('numero_serie')" class="mt-2" />
@@ -67,14 +62,52 @@
 
     <div>
         <x-input-label for="facturacion">Condición <span class="text-red-500">*</span></x-input-label>
-        <x-select id="facturacion" name="facturacion" class="mt-1.5" required>
+        <x-select id="facturacion" name="facturacion" class="mt-1.5" required x-model="cond">
             <option value="" disabled @selected(old('facturacion', $o?->facturacion ?? '') === '')>— Selecciona —</option>
             @foreach ($facturaciones as $f)
                 <option value="{{ $f }}" @selected(old('facturacion', $o?->facturacion) === $f)>{{ ucfirst($f) }}</option>
             @endforeach
         </x-select>
-        <x-input-hint>Garantía: no se cobra. Boleta: se cobra la reparación.</x-input-hint>
+        <x-input-hint>Garantía: no se cobra (si está vigente). Reparación: se cobra al cliente.</x-input-hint>
         <x-input-error :messages="$errors->get('facturacion')" class="mt-2" />
+    </div>
+
+    {{-- Respaldo de garantia: solo visible si la condicion es «garantia».
+         La garantia dura 6 meses desde la compra (la valida el servidor). --}}
+    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:col-span-2"
+        x-show="cond === 'garantia'" x-cloak x-transition>
+        <p class="mb-3 text-sm font-medium text-amber-900">
+            Documento de compra (respalda la garantía · 6 meses desde la compra)
+        </p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+                <x-input-label for="garantia_doc_tipo" value="Documento" />
+                <x-select id="garantia_doc_tipo" name="garantia_doc_tipo" class="mt-1.5"
+                    x-bind:required="cond === 'garantia'">
+                    <option value="">— Selecciona —</option>
+                    @foreach ($garantiaDocTipos as $gt)
+                        <option value="{{ $gt }}" @selected(old('garantia_doc_tipo', $o?->garantia_doc_tipo) === $gt)>{{ ucfirst($gt) }}</option>
+                    @endforeach
+                </x-select>
+                <x-input-error :messages="$errors->get('garantia_doc_tipo')" class="mt-2" />
+            </div>
+
+            <div>
+                <x-input-label for="garantia_doc_numero" value="N° de documento" />
+                <x-text-input id="garantia_doc_numero" class="mt-1.5" type="text" name="garantia_doc_numero"
+                    :value="old('garantia_doc_numero', $o?->garantia_doc_numero)" maxlength="191"
+                    x-bind:required="cond === 'garantia'" />
+                <x-input-error :messages="$errors->get('garantia_doc_numero')" class="mt-2" />
+            </div>
+
+            <div>
+                <x-input-label for="garantia_doc_fecha" value="Fecha de compra" />
+                <x-text-input id="garantia_doc_fecha" class="mt-1.5" type="date" name="garantia_doc_fecha"
+                    :value="old('garantia_doc_fecha', $o?->garantia_doc_fecha?->format('Y-m-d'))"
+                    x-bind:required="cond === 'garantia'" />
+                <x-input-error :messages="$errors->get('garantia_doc_fecha')" class="mt-2" />
+            </div>
+        </div>
     </div>
 
     <div>
@@ -99,11 +132,5 @@
         <x-input-label for="falla_reportada">Falla reportada <span class="text-red-500">*</span></x-input-label>
         <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2" required>{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
         <x-input-error :messages="$errors->get('falla_reportada')" class="mt-2" />
-    </div>
-
-    <div class="sm:col-span-2">
-        <x-input-label for="observaciones" value="Observaciones" />
-        <x-textarea id="observaciones" class="mt-1.5" name="observaciones" rows="2">{{ old('observaciones', $o?->observaciones) }}</x-textarea>
-        <x-input-error :messages="$errors->get('observaciones')" class="mt-2" />
     </div>
 </div>

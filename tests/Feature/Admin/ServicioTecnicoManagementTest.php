@@ -44,11 +44,24 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_rut' => '12.345.678-5',
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => 'maquina',
-            'modelo' => 'Modelo X',
             'falla_reportada' => 'No enciende',
             'estado' => 'recibido',
-            'facturacion' => 'garantia',
+            'facturacion' => 'reparacion',
         ], $overrides);
+    }
+
+    /**
+     * Payload de garantia: incluye el documento de compra (factura/boleta),
+     * su numero y la fecha de compra (dentro de los 6 meses por defecto).
+     */
+    private function payloadGarantia(array $overrides = []): array
+    {
+        return $this->payload(array_merge([
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-12345',
+            'garantia_doc_fecha' => now()->subMonths(2)->toDateString(),
+        ], $overrides));
     }
 
     // --- Acceso ---
@@ -96,9 +109,8 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_id' => $cliente->id,
             'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
-            'modelo' => 'WX-100',
             'numero_serie' => 'SN-555',
-            'facturacion' => 'garantia',
+            'facturacion' => 'reparacion',
             'falla_reportada' => 'No enciende',
         ]))->assertRedirect(route('admin.servicio-tecnico.index'));
 
@@ -109,8 +121,63 @@ class ServicioTecnicoManagementTest extends TestCase
             'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
             'numero_serie' => 'SN-555',
-            'facturacion' => 'garantia',
+            'facturacion' => 'reparacion',
             'estado' => 'recibido',
+        ]);
+    }
+
+    public function test_garantia_vigente_se_registra_con_documento(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payloadGarantia([
+                'garantia_doc_tipo' => 'factura',
+                'garantia_doc_numero' => 'F-9001',
+                'garantia_doc_fecha' => now()->subMonths(3)->toDateString(),
+            ]))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'factura',
+            'garantia_doc_numero' => 'F-9001',
+        ]);
+    }
+
+    public function test_garantia_exige_documento_y_fecha(): void
+    {
+        // facturacion=garantia sin los datos del documento => error.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['facturacion' => 'garantia']))
+            ->assertSessionHasErrors(['garantia_doc_tipo', 'garantia_doc_numero', 'garantia_doc_fecha']);
+    }
+
+    public function test_garantia_vencida_mas_de_6_meses_es_rechazada(): void
+    {
+        // Compra hace 8 meses => al ingreso de hoy ya vencio la garantia.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payloadGarantia([
+                'garantia_doc_fecha' => now()->subMonths(8)->toDateString(),
+            ]))
+            ->assertSessionHasErrors('garantia_doc_fecha');
+    }
+
+    public function test_reparacion_no_guarda_datos_de_garantia(): void
+    {
+        // Aunque vengan datos de garantia, si la condicion es reparacion se descartan.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload([
+                'facturacion' => 'reparacion',
+                'garantia_doc_tipo' => 'boleta',
+                'garantia_doc_numero' => 'B-1',
+                'garantia_doc_fecha' => now()->subMonths(1)->toDateString(),
+            ]))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'reparacion',
+            'garantia_doc_tipo' => null,
+            'garantia_doc_numero' => null,
+            'garantia_doc_fecha' => null,
         ]);
     }
 
@@ -119,12 +186,12 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->post('/admin/servicio-tecnico', [
                 'cliente_nombre' => '', 'cliente_rut' => '', 'fecha_ingreso' => '',
-                'tipo_equipo' => '', 'modelo' => '', 'falla_reportada' => '',
+                'tipo_equipo' => '', 'falla_reportada' => '',
                 'estado' => '', 'facturacion' => '',
             ])
             ->assertSessionHasErrors([
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'modelo', 'falla_reportada', 'estado', 'facturacion',
+                'tipo_equipo', 'falla_reportada', 'estado', 'facturacion',
             ]);
     }
 
@@ -188,13 +255,13 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put("/admin/servicio-tecnico/{$orden->id}", $this->payload([
                 'estado' => 'reparado',
-                'facturacion' => 'boleta',
+                'facturacion' => 'reparacion',
             ]))
             ->assertRedirect(route('admin.servicio-tecnico.index'));
 
         $fresh = $orden->fresh();
         $this->assertSame('reparado', $fresh->estado);
-        $this->assertSame('boleta', $fresh->facturacion);
+        $this->assertSame('reparacion', $fresh->facturacion);
     }
 
     public function test_admin_can_delete_orden(): void

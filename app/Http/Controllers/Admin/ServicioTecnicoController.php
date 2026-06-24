@@ -12,7 +12,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -176,7 +178,9 @@ class ServicioTecnicoController extends Controller
         $rutInput = trim((string) $request->input('cliente_rut'));
         $request->merge(['cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput)]);
 
-        return $request->validate([
+        $esGarantia = $request->input('facturacion') === 'garantia';
+
+        $data = $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
             'cliente_nombre' => ['required', 'string', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
@@ -184,14 +188,35 @@ class ServicioTecnicoController extends Controller
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'modelo' => ['required', 'string', 'max:191'],
             'numero_serie' => ['nullable', 'string', 'max:191'],
             'falla_reportada' => ['required', 'string'],
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
-            'observaciones' => ['nullable', 'string'],
+            // Si es garantia, el documento de compra y su fecha son obligatorios.
+            'garantia_doc_tipo' => [Rule::requiredIf($esGarantia), Rule::in(OrdenServicio::GARANTIA_DOC_TIPOS)],
+            'garantia_doc_numero' => [Rule::requiredIf($esGarantia), 'nullable', 'string', 'max:191'],
+            'garantia_doc_fecha' => [Rule::requiredIf($esGarantia), 'nullable', 'date', 'before_or_equal:fecha_ingreso'],
             'fecha_entrega' => ['nullable', 'date'],
         ]);
+
+        if ($esGarantia) {
+            // La garantia dura 6 meses desde la compra. Si al ingresar el equipo
+            // ya vencio, no aplica garantia: debe registrarse como Reparacion.
+            $vence = Carbon::parse($data['garantia_doc_fecha'])->addMonths(OrdenServicio::GARANTIA_MESES);
+            if ($vence->lt(Carbon::parse($data['fecha_ingreso']))) {
+                throw ValidationException::withMessages([
+                    'garantia_doc_fecha' => 'La garantía venció el '.$vence->format('d-m-Y')
+                        .' (6 meses desde la compra). Debe registrarse como «Reparación» (con cobro).',
+                ]);
+            }
+        } else {
+            // Reparacion: no se guardan datos de garantia.
+            $data['garantia_doc_tipo'] = null;
+            $data['garantia_doc_numero'] = null;
+            $data['garantia_doc_fecha'] = null;
+        }
+
+        return $data;
     }
 
     /**
@@ -205,6 +230,7 @@ class ServicioTecnicoController extends Controller
             'tipos' => OrdenServicio::TIPOS,
             'estados' => OrdenServicio::ESTADOS,
             'facturaciones' => OrdenServicio::FACTURACION,
+            'garantiaDocTipos' => OrdenServicio::GARANTIA_DOC_TIPOS,
         ];
     }
 }

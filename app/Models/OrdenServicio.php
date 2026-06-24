@@ -24,8 +24,15 @@ class OrdenServicio extends Model implements AuditableContract
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     public const ESTADOS = ['recibido', 'en_revision', 'esperando_repuesto', 'reparado', 'entregado', 'sin_solucion'];
 
-    // Garantia: no se cobra. Boleta: se cobra la reparacion.
-    public const FACTURACION = ['garantia', 'boleta'];
+    // Condicion del ingreso. Garantia: no se cobra (si esta vigente).
+    // Reparacion: se cobra al cliente.
+    public const FACTURACION = ['garantia', 'reparacion'];
+
+    // Documento de compra que respalda la garantia.
+    public const GARANTIA_DOC_TIPOS = ['factura', 'boleta'];
+
+    // Duracion de la garantia desde la fecha de compra.
+    public const GARANTIA_MESES = 6;
 
     // El pluralizador ingles haria 'orden_servicios'; fijamos la tabla correcta.
     protected $table = 'ordenes_servicio';
@@ -43,6 +50,9 @@ class OrdenServicio extends Model implements AuditableContract
         'falla_reportada',
         'estado',
         'facturacion',
+        'garantia_doc_tipo',
+        'garantia_doc_numero',
+        'garantia_doc_fecha',
         'observaciones',
         'fecha_entrega',
         'fuente',
@@ -53,7 +63,30 @@ class OrdenServicio extends Model implements AuditableContract
         return [
             'fecha_ingreso' => 'date',
             'fecha_entrega' => 'date',
+            'garantia_doc_fecha' => 'date',
         ];
+    }
+
+    /**
+     * Fecha en que vence la garantia: 6 meses desde la compra. Null si no hay
+     * documento de compra cargado.
+     */
+    public function getGarantiaVenceAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->garantia_doc_fecha?->copy()->addMonths(self::GARANTIA_MESES);
+    }
+
+    /**
+     * Garantia vigente al momento de ingresar el equipo al taller: la compra
+     * esta dentro de la ventana de 6 meses respecto de la fecha de ingreso.
+     */
+    public function getGarantiaVigenteAttribute(): bool
+    {
+        if ($this->facturacion !== 'garantia' || ! $this->garantia_doc_fecha || ! $this->fecha_ingreso) {
+            return false;
+        }
+
+        return $this->garantia_vence->gte($this->fecha_ingreso);
     }
 
     /**
