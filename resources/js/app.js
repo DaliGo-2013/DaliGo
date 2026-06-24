@@ -106,6 +106,58 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, clienteId }) => ({
     },
 }));
 
+/**
+ * Formulario de Servicio Tecnico. Maneja dos cosas:
+ *  1. `cond`: muestra el bloque de documento de garantia solo si la condicion
+ *     es "garantia".
+ *  2. Fecha de entrega estimada: fecha de ingreso + N dias habiles segun la
+ *     sucursal (data-dias en cada <option>), saltando sabados, domingos y
+ *     feriados (lista pasada desde config/feriados.php). Se autocompleta pero
+ *     es editable: si el usuario la cambia a mano, deja de recalcularse.
+ */
+Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados }) => ({
+    cond: cond || '',
+    fechaEntrega: fechaEntrega || '',
+    entregaManual: !!fechaEntrega, // si ya traia fecha, no la pisamos
+    feriados: new Set(feriados || []),
+
+    iso(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    },
+
+    // Suma `n` dias habiles a partir del dia SIGUIENTE a `desde` (Y-m-d),
+    // saltando sabados, domingos y feriados. Devuelve Y-m-d o ''.
+    sumarDiasHabiles(desde, n) {
+        if (!desde || !n) return '';
+        const d = new Date(desde + 'T00:00:00');
+        if (isNaN(d.getTime())) return '';
+
+        let sumados = 0;
+        while (sumados < n) {
+            d.setDate(d.getDate() + 1);
+            const dow = d.getDay(); // 0=domingo, 6=sabado
+            if (dow === 0 || dow === 6) continue;
+            if (this.feriados.has(this.iso(d))) continue;
+            sumados++;
+        }
+
+        return this.iso(d);
+    },
+
+    recalcularEntrega() {
+        if (this.entregaManual) return;
+
+        const ingreso = this.$refs.fechaIngreso?.value;
+        const opt = this.$refs.sucursal?.selectedOptions?.[0];
+        const dias = opt ? parseInt(opt.dataset.dias || '0', 10) : 0;
+
+        this.fechaEntrega = this.sumarDiasHabiles(ingreso, dias);
+    },
+}));
+
 window.Alpine = Alpine;
 
 Alpine.start();

@@ -7,7 +7,11 @@
 @endphp
 
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2"
-    x-data="{ cond: '{{ old('facturacion', $o?->facturacion ?? '') }}' }">
+    x-data="ordenServicioForm({
+        cond: '{{ old('facturacion', $o?->facturacion ?? '') }}',
+        fechaEntrega: '{{ old('fecha_entrega', $o?->fecha_entrega?->format('Y-m-d')) }}',
+        feriados: @js($feriados),
+    })">
     {{-- Cliente: nombre y RUT obligatorios; autocompleta si existe en el catálogo. --}}
     <x-cliente-ingreso class="sm:col-span-2"
         :endpoint="route('admin.servicio-tecnico.buscar-cliente')"
@@ -28,7 +32,8 @@
 
     <div>
         <x-input-label for="fecha_ingreso" value="Fecha de ingreso" />
-        <x-text-input id="fecha_ingreso" class="mt-1.5" type="date" name="fecha_ingreso"
+        <x-text-input id="fecha_ingreso" class="mt-1.5" type="date" name="fecha_ingreso" x-ref="fechaIngreso"
+            x-on:change="recalcularEntrega()"
             :value="old('fecha_ingreso', $o?->fecha_ingreso?->format('Y-m-d') ?? now()->format('Y-m-d'))" required />
         <x-input-error :messages="$errors->get('fecha_ingreso')" class="mt-2" />
     </div>
@@ -50,13 +55,16 @@
     </div>
 
     <div>
-        <x-input-label for="sucursal_id" value="Sucursal de recepción" />
-        <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5">
-            <option value="">— Sin sucursal —</option>
+        <x-input-label for="sucursal_id">Sucursal de recepción <span class="text-red-500">*</span></x-input-label>
+        <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5" required
+            x-ref="sucursal" x-on:change="recalcularEntrega()">
+            <option value="" disabled @selected(old('sucursal_id', $o?->sucursal_id) === null)>— Selecciona —</option>
             @foreach ($sucursales as $s)
-                <option value="{{ $s->id }}" @selected((int) old('sucursal_id', $o?->sucursal_id) === $s->id)>{{ $s->nombre }}</option>
+                <option value="{{ $s->id }}" data-dias="{{ $s->dias_reparacion }}"
+                    @selected((int) old('sucursal_id', $o?->sucursal_id) === $s->id)>{{ $s->nombre }}</option>
             @endforeach
         </x-select>
+        <x-input-hint>Define el plazo de entrega: Mirador 10 días hábiles; Coquimbo, Abate Molina y Buzeta 15.</x-input-hint>
         <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
     </div>
 
@@ -121,10 +129,10 @@
     </div>
 
     <div>
-        <x-input-label for="fecha_entrega" value="Fecha de entrega" />
+        <x-input-label for="fecha_entrega" value="Fecha de entrega (estimada)" />
         <x-text-input id="fecha_entrega" class="mt-1.5" type="date" name="fecha_entrega"
-            :value="old('fecha_entrega', $o?->fecha_entrega?->format('Y-m-d'))" />
-        <x-input-hint>Opcional. Se completa al entregar el equipo.</x-input-hint>
+            x-model="fechaEntrega" x-on:input="entregaManual = true" />
+        <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Puedes editarla.</x-input-hint>
         <x-input-error :messages="$errors->get('fecha_entrega')" class="mt-2" />
     </div>
 

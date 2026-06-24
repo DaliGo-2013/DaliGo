@@ -185,7 +185,7 @@ class ServicioTecnicoController extends Controller
             'cliente_nombre' => ['required', 'string', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
-            'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
+            'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => ['nullable', 'string', 'max:191'],
@@ -231,6 +231,8 @@ class ServicioTecnicoController extends Controller
             'estados' => OrdenServicio::ESTADOS,
             'facturaciones' => OrdenServicio::FACTURACION,
             'garantiaDocTipos' => OrdenServicio::GARANTIA_DOC_TIPOS,
+            // Feriados (Y-m-d) para calcular la fecha de entrega en dias habiles.
+            'feriados' => array_values(config('feriados', [])),
         ];
     }
 }

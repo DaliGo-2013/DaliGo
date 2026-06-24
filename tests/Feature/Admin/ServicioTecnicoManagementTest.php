@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
 use App\Models\Producto;
+use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +45,7 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_rut' => '12.345.678-5',
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => 'maquina',
+            'sucursal_id' => Sucursal::factory()->create()->id,
             'falla_reportada' => 'No enciende',
             'estado' => 'recibido',
             'facturacion' => 'reparacion',
@@ -191,7 +193,7 @@ class ServicioTecnicoManagementTest extends TestCase
             ])
             ->assertSessionHasErrors([
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'falla_reportada', 'estado', 'facturacion',
+                'tipo_equipo', 'sucursal_id', 'falla_reportada', 'estado', 'facturacion',
             ]);
     }
 

@@ -44,6 +44,17 @@ class Sucursal extends Model implements AuditableContract
     }
 
     /**
+     * Dias habiles de reparacion de esta sucursal (plazo de entrega estimado).
+     * Configurable en config/servicio_tecnico.php por codigo de sucursal.
+     */
+    public function getDiasReparacionAttribute(): int
+    {
+        $map = config('servicio_tecnico.dias_reparacion', []);
+
+        return $map[$this->codigo] ?? (int) config('servicio_tecnico.dias_reparacion_default', 15);
+    }
+
+    /**
      * Maquinas sopladoras de esta sucursal.
      *
      * @return HasMany<Maquina>
