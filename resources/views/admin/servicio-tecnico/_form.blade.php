@@ -19,8 +19,8 @@
         :inicialNombre="$o?->cliente_nombre ?? ''"
         :inicialClienteId="$o?->cliente_id ?? 0" />
 
-    {{-- Codigo: producto Dali del catalogo (por SKU). --}}
-    <x-buscador-remoto class="sm:col-span-2"
+    {{-- Codigo (producto Dali) + N° de serie en el mismo renglon. --}}
+    <x-buscador-remoto
         name="producto_id"
         label="Código (producto Dali)"
         chip="Producto"
@@ -29,6 +29,12 @@
         :inicialLabel="$productoActualLabel"
         placeholder="Escribe el código (SKU) o el nombre…"
         hint="Opcional. Es el producto Dali del catálogo." />
+
+    <div>
+        <x-input-label for="numero_serie" value="N° de serie" />
+        <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" maxlength="191" />
+        <x-input-error :messages="$errors->get('numero_serie')" class="mt-2" />
+    </div>
 
     <div>
         <x-input-label for="fecha_ingreso" value="Fecha de ingreso" />
@@ -46,12 +52,6 @@
             @endforeach
         </x-select>
         <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-2" />
-    </div>
-
-    <div>
-        <x-input-label for="numero_serie" value="N° de serie" />
-        <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" maxlength="191" />
-        <x-input-error :messages="$errors->get('numero_serie')" class="mt-2" />
     </div>
 
     <div>
