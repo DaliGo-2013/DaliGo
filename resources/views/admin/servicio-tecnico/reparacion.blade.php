@@ -21,9 +21,6 @@
                     <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado">
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
-                    <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" size="lg" variant="secondary" label="Vista de recepción" title="Ir a la vista de recepción">
-                        <x-icon.pencil class="h-5 w-5" />
-                    </x-icon-button>
                     <x-icon-button type="submit" form="reparacion-form" size="lg" variant="primary" label="Guardar" title="Guardar reparación">
                         <x-icon.check class="h-5 w-5" />
                     </x-icon-button>
@@ -34,6 +31,21 @@
 
     <div class="py-12">
         <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            {{-- Volver a la primera vista (recepcion): datos del ingreso de la maquina. --}}
+            <a href="{{ route('admin.servicio-tecnico.edit', $orden) }}"
+               class="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 shadow-sm transition hover:bg-neutral-100">
+                <span class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-200 text-neutral-600">
+                        <x-icon.document-text class="h-5 w-5" />
+                    </span>
+                    <span>
+                        <span class="block font-medium text-neutral-900">Ver datos de recepción</span>
+                        <span class="block text-sm text-neutral-500">Cliente, equipo, garantía y falla del ingreso.</span>
+                    </span>
+                </span>
+                <x-icon.arrow-right class="h-5 w-5 shrink-0 text-neutral-500" />
+            </a>
+
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
                 {{-- Resumen de la recepcion (solo lectura, para contexto del tecnico). --}}
                 <div class="mb-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm">
