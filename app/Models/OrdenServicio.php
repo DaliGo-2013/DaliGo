@@ -109,6 +109,16 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Condicion efectiva para mostrar y cobrar: es garantia SOLO si esta vigente;
+     * si la garantia vencio o no tiene documento de respaldo, es reparacion (se
+     * cobra). Evita mostrar "garantia vencida" como si fuera garantia.
+     */
+    public function getCondicionEfectivaAttribute(): string
+    {
+        return ($this->facturacion === 'garantia' && $this->garantia_vigente) ? 'garantia' : 'reparacion';
+    }
+
+    /**
      * Variante de color del badge segun el estado actual.
      */
     public function getEstadoVarianteAttribute(): string

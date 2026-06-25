@@ -3,7 +3,8 @@
         $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
         $tieneReparacion = $orden->trabajo_realizado || $orden->repuestos->isNotEmpty()
             || $orden->mano_obra || $orden->fecha_aviso || $orden->fecha_retiro;
-        $esReparacion = $orden->facturacion === 'reparacion';
+        $esGarantia = $orden->condicion_efectiva === 'garantia';
+        $esReparacion = ! $esGarantia;
     @endphp
 
     <x-slot name="header">
@@ -33,12 +34,7 @@
             <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <span class="text-sm text-neutral-500">Estado actual:</span>
                 <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
-                <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
-                @if ($orden->facturacion === 'garantia')
-                    <span class="text-xs {{ $orden->garantia_vigente ? 'text-green-600' : 'text-red-600' }}">
-                        {{ $orden->garantia_vigente ? 'Garantía vigente' : 'Garantía vencida' }}
-                    </span>
-                @endif
+                <x-badge variant="neutral">{{ $esGarantia ? 'Garantía' : 'Reparación' }}</x-badge>
             </div>
 
             {{-- Cliente --}}
@@ -63,8 +59,8 @@
                 </dl>
             </div>
 
-            {{-- Garantia (si aplica) --}}
-            @if ($orden->facturacion === 'garantia')
+            {{-- Garantia (solo si esta vigente; si vencio se trata como reparacion) --}}
+            @if ($esGarantia)
                 <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                     <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Documento de garantía</h3>
                     <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">

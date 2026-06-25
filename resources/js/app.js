@@ -163,9 +163,17 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados }) => ({
  * (agregar/quitar filas) y calcula en vivo el costo total: suma de cada
  * repuesto (cantidad x precio) + mano de obra. Montos en pesos chilenos.
  */
-Alpine.data('reparacionForm', ({ repuestos, manoObra }) => ({
+Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
     repuestos: Array.isArray(repuestos) ? repuestos : [],
     manoObra: manoObra || 0,
+
+    // Autocompletado de repuestos (historial + comunes). `filaActiva` marca
+    // que fila tiene el dropdown abierto; `sugerencias` son los nombres del
+    // endpoint. El campo sigue siendo de texto libre: elegir solo rellena.
+    endpointRepuestos: endpointRepuestos || '',
+    sugerencias: [],
+    filaActiva: null,
+    buscandoRepuesto: false,
 
     agregar() {
         this.repuestos.push({ nombre: '', cantidad: 1, precio_unitario: 0 });
@@ -173,6 +181,37 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra }) => ({
 
     quitar(i) {
         this.repuestos.splice(i, 1);
+    },
+
+    async buscarRepuesto(i) {
+        this.filaActiva = i;
+        const q = (this.repuestos[i]?.nombre || '').trim();
+
+        if (q.length < 2 || !this.endpointRepuestos) {
+            this.sugerencias = [];
+            return;
+        }
+
+        this.buscandoRepuesto = true;
+
+        try {
+            const { data } = await window.axios.get(this.endpointRepuestos, { params: { q } });
+            this.sugerencias = data;
+        } catch (e) {
+            this.sugerencias = [];
+        } finally {
+            this.buscandoRepuesto = false;
+        }
+    },
+
+    elegirRepuesto(i, nombre) {
+        this.repuestos[i].nombre = nombre;
+        this.cerrarSugerencias();
+    },
+
+    cerrarSugerencias() {
+        this.sugerencias = [];
+        this.filaActiva = null;
     },
 
     subtotal(r) {

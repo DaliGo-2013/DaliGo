@@ -84,9 +84,7 @@
                                 <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
                                 <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
-                                @if ($orden->facturacion)
-                                    <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
-                                @endif
+                                <x-badge variant="neutral">{{ $orden->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación' }}</x-badge>
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
                         </a>

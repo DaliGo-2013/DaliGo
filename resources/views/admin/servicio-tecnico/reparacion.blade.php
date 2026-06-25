@@ -1,6 +1,6 @@
 <x-app-layout>
     @php
-        $esReparacion = $orden->facturacion === 'reparacion';
+        $esReparacion = $orden->condicion_efectiva === 'reparacion';
         $equipo = collect([
             ucfirst($orden->tipo_equipo),
             $orden->producto?->sku,
@@ -45,16 +45,16 @@
                         <p class="mt-2 text-neutral-700"><span class="font-medium">Falla reportada:</span> {{ $orden->falla_reportada }}</p>
                     @endif
                     <p class="mt-2">
-                        <x-badge :variant="$esReparacion ? 'brand' : 'neutral'">{{ ucfirst($orden->facturacion) }}</x-badge>
+                        <x-badge :variant="$esReparacion ? 'brand' : 'neutral'">{{ $esReparacion ? 'Reparación' : 'Garantía' }}</x-badge>
                         @unless ($esReparacion)
-                            <span class="ml-1 text-xs text-neutral-500">Garantía: la reparación no se cobra.</span>
+                            <span class="ml-1 text-xs text-neutral-500">Garantía vigente: la reparación no se cobra.</span>
                         @endunless
                     </p>
                 </div>
 
                 <form id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
                     class="space-y-6"
-                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }} })">
+                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}' })">
                     @csrf
                     @method('PUT')
 
@@ -90,10 +90,30 @@
                         <div class="mt-2 space-y-2">
                             <template x-for="(r, i) in repuestos" :key="i">
                                 <div class="flex items-start gap-2">
-                                    <div class="flex-1">
+                                    <div class="relative flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
                                         <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
-                                            placeholder="Nombre del repuesto" maxlength="191"
+                                            placeholder="Nombre del repuesto" maxlength="191" autocomplete="off"
+                                            x-on:input.debounce.250ms="buscarRepuesto(i)"
+                                            x-on:focus="buscarRepuesto(i)"
+                                            x-on:keydown.escape="cerrarSugerencias()"
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+
+                                        <div x-show="filaActiva === i && (buscandoRepuesto || sugerencias.length)" x-cloak
+                                            class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                            <template x-if="buscandoRepuesto && sugerencias.length === 0">
+                                                <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
+                                            </template>
+                                            <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
+                                                <template x-for="(s, si) in sugerencias" :key="si">
+                                                    <li>
+                                                        <button type="button" x-on:click="elegirRepuesto(i, s.nombre)"
+                                                            class="block w-full px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
+                                                            <span x-text="s.nombre"></span>
+                                                        </button>
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </div>
                                     </div>
                                     <div class="w-16">
                                         <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"

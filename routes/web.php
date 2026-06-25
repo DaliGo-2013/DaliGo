@@ -116,6 +116,8 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.buscar-cliente');
             Route::get('servicio-tecnico/buscar-producto', [ServicioTecnicoController::class, 'buscarProducto'])
                 ->name('servicio-tecnico.buscar-producto');
+            Route::get('servicio-tecnico/buscar-repuesto', [ServicioTecnicoController::class, 'buscarRepuesto'])
+                ->name('servicio-tecnico.buscar-repuesto');
 
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])

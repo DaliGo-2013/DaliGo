@@ -323,6 +323,35 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($member)->get(route('admin.servicio-tecnico.show', $orden))->assertForbidden();
     }
 
+    public function test_garantia_sin_documento_se_trata_como_reparacion(): void
+    {
+        $orden = OrdenServicio::factory()->create([
+            'facturacion' => 'garantia',
+            'garantia_doc_fecha' => null,
+        ]);
+
+        $this->assertSame('reparacion', $orden->condicion_efectiva);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertDontSee('Documento de garantía');   // no se muestra como garantía
+    }
+
+    public function test_garantia_vigente_se_muestra_como_garantia(): void
+    {
+        $orden = OrdenServicio::factory()->create([
+            'facturacion' => 'garantia',
+            'fecha_ingreso' => now()->toDateString(),
+            'garantia_doc_fecha' => now()->subMonths(2)->toDateString(),
+        ]);
+
+        $this->assertSame('garantia', $orden->condicion_efectiva);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertSee('Documento de garantía');
+    }
+
     // --- Reparacion (etapa de taller) ---
 
     public function test_member_cannot_open_reparacion(): void

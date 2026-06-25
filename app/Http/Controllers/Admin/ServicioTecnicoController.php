@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\OrdenServicioRepuesto;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
@@ -25,6 +26,33 @@ use Illuminate\View\View;
  */
 class ServicioTecnicoController extends Controller
 {
+    /**
+     * Repuestos comunes del taller. Sirven de catalogo base para el
+     * autocompletado de "Repuestos usados" cuando aun no hay historial
+     * suficiente. El historial real (nombres ya escritos en reparaciones)
+     * se mezcla con esta lista en buscarRepuesto().
+     */
+    private const REPUESTOS_COMUNES = [
+        'Placa electrica',
+        'Cambio de tapa lateral derecha',
+        'Cambio de tapa lateral izquierda',
+        'Celda de peltier',
+        'Llaves',
+        'Caldera',
+        'Resistencia',
+        'Termostato',
+        'Sensor de temperatura',
+        'Bomba de agua',
+        'Motor',
+        'Ventilador',
+        'Cable de poder',
+        'Interruptor',
+        'Fusible',
+        'Manguera',
+        'Empaquetadura',
+        'Filtro',
+    ];
+
     public function index(Request $request): View
     {
         $ordenes = $this->filteredQuery($request)
@@ -98,7 +126,8 @@ class ServicioTecnicoController extends Controller
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
-        $esReparacion = $orden->facturacion === 'reparacion';
+        // Garantia vencida o sin documento = reparacion (se cobra): exige precio.
+        $esReparacion = $orden->condicion_efectiva === 'reparacion';
 
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
@@ -220,6 +249,42 @@ class ServicioTecnicoController extends Controller
             'nombre' => $p->nombre,
             'label' => $p->sku.' — '.$p->nombre,
         ]));
+    }
+
+    /**
+     * Autocompletado de repuestos (JSON). El catalogo es el historial de
+     * nombres ya usados en reparaciones (distinct) + la lista base de
+     * repuestos comunes del taller, para que el campo sugiera desde el primer
+     * uso. Devuelve nombres unicos (case-insensitive), minimo 2 caracteres,
+     * limite 15. El campo sigue siendo de texto libre: la sugerencia solo
+     * rellena, no obliga.
+     */
+    public function buscarRepuesto(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $historial = OrdenServicioRepuesto::query()
+            ->where('nombre', 'like', "%{$q}%")
+            ->distinct()
+            ->orderBy('nombre')
+            ->limit(15)
+            ->pluck('nombre');
+
+        $comunes = collect(self::REPUESTOS_COMUNES)
+            ->filter(fn (string $n) => mb_stripos($n, $q) !== false);
+
+        $nombres = $historial->merge($comunes)
+            ->map(fn (string $n) => trim($n))
+            ->filter()
+            ->unique(fn (string $n) => mb_strtolower($n))
+            ->take(15)
+            ->values();
+
+        return response()->json($nombres->map(fn (string $n) => ['nombre' => $n]));
     }
 
     // --- Helpers --------------------------------------------------------
