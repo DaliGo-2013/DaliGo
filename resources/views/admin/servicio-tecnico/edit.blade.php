@@ -1,9 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'Editar orden '.$orden->folio" subtitle="Actualiza los datos del equipo en taller."
-            :back="route('admin.servicio-tecnico.index')">
+        <x-page-header :title="'Editar orden '.$orden->folio" subtitle="Actualiza los datos del equipo en taller.">
             <x-slot name="action">
-                <x-form-actions form="orden-servicio-form" submitLabel="Guardar cambios" />
+                <x-form-actions :back="route('admin.servicio-tecnico.index')" form="orden-servicio-form" submitLabel="Guardar cambios" />
             </x-slot>
         </x-page-header>
     </x-slot>
