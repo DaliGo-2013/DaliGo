@@ -1,0 +1,164 @@
+<x-app-layout>
+    @php
+        $esReparacion = $orden->facturacion === 'reparacion';
+        $equipo = collect([
+            ucfirst($orden->tipo_equipo),
+            $orden->producto?->sku,
+            $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
+        ])->filter()->implode(' · ');
+
+        $repuestosInit = $orden->repuestos->map(fn ($r) => [
+            'nombre' => $r->nombre,
+            'cantidad' => $r->cantidad,
+            'precio_unitario' => $r->precio_unitario,
+        ])->values();
+    @endphp
+
+    <x-slot name="header">
+        <x-page-header :title="'Reparación · '.$orden->folio" :subtitle="$orden->cliente_nombre.($equipo ? ' · '.$equipo : '')">
+            <x-slot name="action">
+                <x-form-actions :back="route('admin.servicio-tecnico.index')" form="reparacion-form" submitLabel="Guardar reparación" />
+            </x-slot>
+        </x-page-header>
+    </x-slot>
+
+    <div class="py-12">
+        <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+                {{-- Resumen de la recepcion (solo lectura, para contexto del tecnico). --}}
+                <div class="mb-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm">
+                    <p class="font-medium text-neutral-900">{{ $orden->cliente_nombre }} · {{ $orden->cliente_rut }}</p>
+                    @if ($equipo)
+                        <p class="mt-0.5 text-neutral-500">{{ $equipo }}</p>
+                    @endif
+                    @if ($orden->falla_reportada)
+                        <p class="mt-2 text-neutral-700"><span class="font-medium">Falla reportada:</span> {{ $orden->falla_reportada }}</p>
+                    @endif
+                    <p class="mt-2">
+                        <x-badge :variant="$esReparacion ? 'brand' : 'neutral'">{{ ucfirst($orden->facturacion) }}</x-badge>
+                        @unless ($esReparacion)
+                            <span class="ml-1 text-xs text-neutral-500">Garantía: la reparación no se cobra.</span>
+                        @endunless
+                    </p>
+                </div>
+
+                <form id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
+                    class="space-y-6"
+                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }} })">
+                    @csrf
+                    @method('PUT')
+
+                    {{-- Estado / etapa --}}
+                    <div>
+                        <x-input-label for="estado">Estado / etapa <span class="text-red-500">*</span></x-input-label>
+                        <x-select id="estado" name="estado" class="mt-1.5" required>
+                            @foreach ($estados as $e)
+                                <option value="{{ $e }}" @selected(old('estado', $orden->estado) === $e)>{{ \Illuminate\Support\Str::headline($e) }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-error :messages="$errors->get('estado')" class="mt-2" />
+                    </div>
+
+                    {{-- Trabajo realizado --}}
+                    <div>
+                        <x-input-label for="trabajo_realizado" value="Trabajo realizado" />
+                        <x-textarea id="trabajo_realizado" class="mt-1.5" name="trabajo_realizado" rows="3"
+                            placeholder="Describe el arreglo hecho a la máquina/herramienta…">{{ old('trabajo_realizado', $orden->trabajo_realizado) }}</x-textarea>
+                        <x-input-error :messages="$errors->get('trabajo_realizado')" class="mt-2" />
+                    </div>
+
+                    {{-- Repuestos (lista variable) --}}
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <x-input-label value="Repuestos usados" />
+                            <button type="button" x-on:click="agregar()"
+                                class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
+                                <x-icon.plus class="h-4 w-4" /> Agregar repuesto
+                            </button>
+                        </div>
+
+                        <div class="mt-2 space-y-2">
+                            <template x-for="(r, i) in repuestos" :key="i">
+                                <div class="flex items-start gap-2">
+                                    <div class="flex-1">
+                                        <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
+                                            placeholder="Nombre del repuesto" maxlength="191"
+                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                    </div>
+                                    <div class="w-16">
+                                        <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                    </div>
+                                    @if ($esReparacion)
+                                        <div class="w-28">
+                                            <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
+                                                placeholder="Precio"
+                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                        </div>
+                                        <div class="w-24 pt-2 text-right text-sm text-neutral-600" x-text="clp(subtotal(r))"></div>
+                                    @endif
+                                    <button type="button" x-on:click="quitar(i)"
+                                        class="mt-1 rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
+                                        <x-icon.trash class="h-5 w-5" />
+                                    </button>
+                                </div>
+                            </template>
+
+                            <p x-show="repuestos.length === 0" class="py-2 text-sm text-neutral-400">
+                                Sin repuestos. Usa «Agregar repuesto» si corresponde.
+                            </p>
+                        </div>
+                        <div class="mt-1 flex gap-3 text-xs text-neutral-400">
+                            <span class="flex-1">Repuesto</span>
+                            <span class="w-16 text-center">Cant.</span>
+                            @if ($esReparacion)
+                                <span class="w-28">Precio c/u</span>
+                                <span class="w-24 text-right">Subtotal</span>
+                            @endif
+                            <span class="w-9"></span>
+                        </div>
+                    </div>
+
+                    @if ($esReparacion)
+                        {{-- Mano de obra + costo total (solo si se cobra) --}}
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <div>
+                                <x-input-label for="mano_obra" value="Mano de obra ($)" />
+                                <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
+                                    x-model.number="manoObra" :value="old('mano_obra', $orden->mano_obra)" />
+                                <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
+                            </div>
+                            <div class="flex flex-col justify-end">
+                                <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
+                                    <p class="text-sm text-neutral-600">Costo total a pagar</p>
+                                    <p class="mt-0.5 text-2xl font-semibold text-neutral-900" x-text="clp(total)"></p>
+                                    <p class="mt-0.5 text-xs text-neutral-500">
+                                        Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Fechas de aviso y retiro --}}
+                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <div>
+                            <x-input-label for="fecha_aviso" value="Fecha de aviso al cliente" />
+                            <x-text-input id="fecha_aviso" class="mt-1.5" type="date" name="fecha_aviso"
+                                :value="old('fecha_aviso', $orden->fecha_aviso?->format('Y-m-d'))" />
+                            <x-input-hint>Cuando se le avisó que el equipo está listo.</x-input-hint>
+                            <x-input-error :messages="$errors->get('fecha_aviso')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="fecha_retiro" value="Fecha de retiro" />
+                            <x-text-input id="fecha_retiro" class="mt-1.5" type="date" name="fecha_retiro"
+                                :value="old('fecha_retiro', $orden->fecha_retiro?->format('Y-m-d'))" />
+                            <x-input-hint>Cuando el cliente retiró el equipo (respaldo).</x-input-hint>
+                            <x-input-error :messages="$errors->get('fecha_retiro')" class="mt-2" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</x-app-layout>

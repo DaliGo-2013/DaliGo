@@ -158,6 +158,40 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados }) => ({
     },
 }));
 
+/**
+ * Etapa de taller (Servicio Tecnico). Maneja la lista variable de repuestos
+ * (agregar/quitar filas) y calcula en vivo el costo total: suma de cada
+ * repuesto (cantidad x precio) + mano de obra. Montos en pesos chilenos.
+ */
+Alpine.data('reparacionForm', ({ repuestos, manoObra }) => ({
+    repuestos: Array.isArray(repuestos) ? repuestos : [],
+    manoObra: manoObra || 0,
+
+    agregar() {
+        this.repuestos.push({ nombre: '', cantidad: 1, precio_unitario: 0 });
+    },
+
+    quitar(i) {
+        this.repuestos.splice(i, 1);
+    },
+
+    subtotal(r) {
+        return (Number(r.cantidad) || 0) * (Number(r.precio_unitario) || 0);
+    },
+
+    get totalRepuestos() {
+        return this.repuestos.reduce((s, r) => s + this.subtotal(r), 0);
+    },
+
+    get total() {
+        return this.totalRepuestos + (Number(this.manoObra) || 0);
+    },
+
+    clp(n) {
+        return '$' + new Intl.NumberFormat('es-CL').format(Number(n) || 0);
+    },
+}));
+
 window.Alpine = Alpine;
 
 Alpine.start();

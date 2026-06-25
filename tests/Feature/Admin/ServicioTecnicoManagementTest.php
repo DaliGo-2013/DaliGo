@@ -275,6 +275,79 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->assertDatabaseMissing('ordenes_servicio', ['id' => $orden->id]);
     }
 
+    // --- Reparacion (etapa de taller) ---
+
+    public function test_member_cannot_open_reparacion(): void
+    {
+        $member = tap(User::factory()->create())->assignRole('member');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+    }
+
+    public function test_tecnico_can_open_reparacion(): void
+    {
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
+    }
+
+    public function test_guardar_reparacion_registra_arreglo_y_repuestos(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'trabajo_realizado' => 'Cambio de motor y correa',
+                'mano_obra' => 15000,
+                'fecha_aviso' => now()->toDateString(),
+                'repuestos' => [
+                    ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000],
+                    ['nombre' => 'Correa', 'cantidad' => 2, 'precio_unitario' => 5000],
+                    ['nombre' => '', 'cantidad' => 1, 'precio_unitario' => 0], // fila vacia => se ignora
+                ],
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $fresh = $orden->fresh()->load('repuestos');
+        $this->assertSame('reparado', $fresh->estado);
+        $this->assertSame('Cambio de motor y correa', $fresh->trabajo_realizado);
+        $this->assertSame(15000, $fresh->mano_obra);
+        $this->assertCount(2, $fresh->repuestos);                 // la vacia no se guarda
+        $this->assertSame(55000, $fresh->costo_total);            // 30000 + (2*5000) + 15000
+        $this->assertDatabaseHas('orden_servicio_repuestos', ['orden_servicio_id' => $orden->id, 'nombre' => 'Motor']);
+    }
+
+    public function test_guardar_reparacion_reemplaza_repuestos_anteriores(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+        $orden->repuestos()->create(['nombre' => 'Viejo', 'cantidad' => 1, 'precio_unitario' => 1000]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'repuestos' => [
+                    ['nombre' => 'Nuevo', 'cantidad' => 1, 'precio_unitario' => 2000],
+                ],
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseMissing('orden_servicio_repuestos', ['nombre' => 'Viejo']);
+        $this->assertDatabaseHas('orden_servicio_repuestos', ['nombre' => 'Nuevo']);
+        $this->assertCount(1, $orden->fresh()->repuestos);
+    }
+
+    public function test_guardar_reparacion_rechaza_estado_invalido(): void
+    {
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), ['estado' => 'volando'])
+            ->assertSessionHasErrors('estado');
+    }
+
     // --- Filtros ---
 
     public function test_index_filters_by_estado_and_tipo(): void

@@ -77,6 +77,59 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * Etapa de taller (tecnico): pantalla aparte sobre la MISMA orden para no
+     * alargar el formulario de recepcion en movil. Aqui se registra el arreglo,
+     * los repuestos, la mano de obra, el estado y las fechas de aviso/retiro.
+     */
+    public function reparacion(OrdenServicio $orden): View
+    {
+        return view('admin.servicio-tecnico.reparacion', [
+            'orden' => $orden->load(['producto', 'repuestos']),
+            'estados' => OrdenServicio::ESTADOS,
+        ]);
+    }
+
+    public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
+    {
+        $data = $request->validate([
+            'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
+            'trabajo_realizado' => ['nullable', 'string'],
+            'mano_obra' => ['nullable', 'integer', 'min:0'],
+            'fecha_aviso' => ['nullable', 'date'],
+            'fecha_retiro' => ['nullable', 'date'],
+            'repuestos' => ['array'],
+            'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
+            'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $orden->update([
+            'estado' => $data['estado'],
+            'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
+            'mano_obra' => $data['mano_obra'] ?? null,
+            'fecha_aviso' => $data['fecha_aviso'] ?? null,
+            'fecha_retiro' => $data['fecha_retiro'] ?? null,
+        ]);
+
+        // Reemplazo total de los repuestos: se borran y se recrean los que
+        // tengan nombre (las filas vacias del formulario se ignoran).
+        $orden->repuestos()->delete();
+        foreach ($data['repuestos'] ?? [] as $r) {
+            if (empty($r['nombre'])) {
+                continue;
+            }
+            $orden->repuestos()->create([
+                'nombre' => $r['nombre'],
+                'cantidad' => $r['cantidad'] ?? 1,
+                'precio_unitario' => $r['precio_unitario'] ?? 0,
+            ]);
+        }
+
+        return redirect()->route('admin.servicio-tecnico.index')
+            ->with('status', "Reparación de la orden {$orden->folio} actualizada.");
+    }
+
+    /**
      * Autocompletado de cliente por RUT o razon social (JSON). Reutiliza la
      * normalizacion de rut de Cliente: el rut se guarda sin puntos (12345678-9),
      * asi que limpiamos la consulta igual antes del LIKE. Limite 15 + minimo 2

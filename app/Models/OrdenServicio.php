@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -55,6 +56,11 @@ class OrdenServicio extends Model implements AuditableContract
         'garantia_doc_fecha',
         'observaciones',
         'fecha_entrega',
+        // Etapa de taller (tecnico).
+        'trabajo_realizado',
+        'mano_obra',
+        'fecha_aviso',
+        'fecha_retiro',
         'fuente',
     ];
 
@@ -64,6 +70,9 @@ class OrdenServicio extends Model implements AuditableContract
             'fecha_ingreso' => 'date',
             'fecha_entrega' => 'date',
             'garantia_doc_fecha' => 'date',
+            'fecha_aviso' => 'date',
+            'fecha_retiro' => 'date',
+            'mano_obra' => 'integer',
         ];
     }
 
@@ -87,6 +96,33 @@ class OrdenServicio extends Model implements AuditableContract
         }
 
         return $this->garantia_vence->gte($this->fecha_ingreso);
+    }
+
+    /**
+     * Costo de los repuestos: suma de cantidad x precio de cada uno.
+     */
+    public function getCostoRepuestosAttribute(): int
+    {
+        return (int) $this->repuestos->sum(fn (OrdenServicioRepuesto $r) => $r->subtotal);
+    }
+
+    /**
+     * Costo total a pagar: repuestos + mano de obra. Solo tiene sentido cobrar
+     * cuando la condicion es reparacion (garantia no cobra).
+     */
+    public function getCostoTotalAttribute(): int
+    {
+        return $this->costo_repuestos + (int) ($this->mano_obra ?? 0);
+    }
+
+    /**
+     * Repuestos usados en la reparacion.
+     *
+     * @return HasMany<OrdenServicioRepuesto>
+     */
+    public function repuestos(): HasMany
+    {
+        return $this->hasMany(OrdenServicioRepuesto::class, 'orden_servicio_id');
     }
 
     /**
