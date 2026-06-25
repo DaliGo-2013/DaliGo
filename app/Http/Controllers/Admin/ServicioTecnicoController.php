@@ -52,6 +52,13 @@ class ServicioTecnicoController extends Controller
             ->with('status', "Orden {$orden->folio} registrada.");
     }
 
+    public function show(OrdenServicio $orden): View
+    {
+        return view('admin.servicio-tecnico.show', [
+            'orden' => $orden->load(['producto', 'sucursal', 'repuestos']),
+        ]);
+    }
+
     public function edit(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.edit', array_merge(

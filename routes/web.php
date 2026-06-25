@@ -115,8 +115,7 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.reparacion.guardar');
 
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
-                ->parameters(['servicio-tecnico' => 'orden'])
-                ->except(['show']);
+                ->parameters(['servicio-tecnico' => 'orden']);
         });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.

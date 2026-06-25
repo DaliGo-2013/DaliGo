@@ -275,6 +275,25 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->assertDatabaseMissing('ordenes_servicio', ['id' => $orden->id]);
     }
 
+    public function test_admin_can_view_orden_detail(): void
+    {
+        $orden = OrdenServicio::factory()->create(['cliente_nombre' => 'Detalle SpA']);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Detalle SpA')
+            ->assertSee($orden->folio);
+    }
+
+    public function test_member_cannot_view_orden_detail(): void
+    {
+        $member = tap(User::factory()->create())->assignRole('member');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.show', $orden))->assertForbidden();
+    }
+
     // --- Reparacion (etapa de taller) ---
 
     public function test_member_cannot_open_reparacion(): void

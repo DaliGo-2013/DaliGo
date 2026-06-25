@@ -72,15 +72,17 @@
                                 $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
                             ])->filter()->implode(' · ');
                         @endphp
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
-                            <p class="truncate font-medium text-neutral-900">{{ $orden->cliente_nombre }}</p>
-                            <x-badge :variant="$orden->estado === 'entregado' ? 'neutral' : 'brand'">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
-                            @if ($orden->facturacion)
-                                <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
-                            @endif
-                        </div>
-                        <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
+                        <a href="{{ route('admin.servicio-tecnico.show', $orden) }}" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
+                                <x-badge :variant="$orden->estado === 'entregado' ? 'neutral' : 'brand'">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
+                                @if ($orden->facturacion)
+                                    <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
+                                @endif
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
+                        </a>
 
                         <x-slot name="meta">
                             <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
