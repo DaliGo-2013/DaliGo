@@ -97,12 +97,6 @@
 
                         @can('manage servicio tecnico')
                             <x-slot name="actions">
-                                <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" label="Reparación" title="Reparación (taller)">
-                                    <x-icon.wrench-screwdriver class="h-5 w-5" />
-                                </x-icon-button>
-                                <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" label="Editar" title="Editar">
-                                    <x-icon.pencil class="h-5 w-5" />
-                                </x-icon-button>
                                 <form method="POST" action="{{ route('admin.servicio-tecnico.destroy', $orden) }}" onsubmit="return confirm('¿Eliminar la orden {{ $orden->folio }}?');">
                                     @csrf
                                     @method('DELETE')
