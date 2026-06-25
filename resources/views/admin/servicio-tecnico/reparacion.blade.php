@@ -43,7 +43,7 @@
                         <span class="block text-sm text-neutral-500">Cliente, equipo, garantía y falla del ingreso.</span>
                     </span>
                 </span>
-                <x-icon.arrow-right class="h-5 w-5 shrink-0 text-neutral-500" />
+                <x-icon.arrow-left class="h-5 w-5 shrink-0 text-neutral-500" />
             </a>
 
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
