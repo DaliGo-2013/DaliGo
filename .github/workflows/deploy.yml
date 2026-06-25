@@ -40,4 +40,4 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
             "$SSH_USER@$SSH_HOST" \
-            "cd /home4/impdali/daligo && bash deploy.sh"
+            "cd /home4/impdali/daligo && git fetch origin main && git reset --hard origin/main && bash deploy.sh"
