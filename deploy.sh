@@ -15,12 +15,14 @@ cd "$(dirname "$0")"
 PHP_BIN=/opt/cpanel/ea-php83/root/usr/bin/php
 COMPOSER_BIN=/opt/cpanel/composer/bin/composer
 
-echo "==> Actualizando codigo (git pull)"
-# cPanel reintroduce un bloque de handler PHP en public/.htaccess (solo comentarios)
-# que ensucia el arbol de trabajo y rompe el pull --ff-only. Lo descartamos antes
-# de actualizar; cPanel lo vuelve a agregar despues sin afectar el funcionamiento.
-git checkout -- public/.htaccess 2>/dev/null || true
-git pull --ff-only origin main
+echo "==> Actualizando codigo (git fetch + reset --hard origin/main)"
+# El servidor es un destino de despliegue: debe quedar identico a origin/main.
+# Usamos reset --hard (no pull) para descartar cualquier cambio del arbol de
+# trabajo que rompa el merge: el bloque de handler PHP que cPanel reintroduce en
+# public/.htaccess, binarios que el hosting altera, etc. Los archivos NO rastreados
+# (.env, vendor/, public/storage) no se tocan.
+git fetch origin main
+git reset --hard origin/main
 
 echo "==> Instalando dependencias de produccion (PHP 8.3)"
 export COMPOSER_MEMORY_LIMIT=-1
