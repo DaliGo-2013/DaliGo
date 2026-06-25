@@ -89,8 +89,10 @@
 
                         <div class="mt-2 space-y-2">
                             <template x-for="(r, i) in repuestos" :key="i">
-                                <div class="flex items-start gap-2">
-                                    <div class="relative flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
+                                {{-- Movil: tarjeta apilada (nombre arriba, controles abajo).
+                                     Desktop (sm+): una sola fila inline. --}}
+                                <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
+                                    <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
                                         <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
                                             placeholder="Nombre del repuesto" maxlength="191" autocomplete="off"
                                             x-on:input.debounce.250ms="buscarRepuesto(i)"
@@ -115,22 +117,31 @@
                                             </ul>
                                         </div>
                                     </div>
-                                    <div class="w-16">
-                                        <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
-                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                    </div>
-                                    @if ($esReparacion)
-                                        <div class="w-28">
-                                            <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
-                                                placeholder="Precio"
-                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+
+                                    {{-- Controles: cantidad, precio, subtotal y quitar. --}}
+                                    <div class="flex items-start gap-2">
+                                        <div class="w-20 sm:w-16">
+                                            <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
+                                            <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                         </div>
-                                        <div class="w-24 pt-2 text-right text-sm text-neutral-600" x-text="clp(subtotal(r))"></div>
-                                    @endif
-                                    <button type="button" x-on:click="quitar(i)"
-                                        class="mt-1 rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
-                                        <x-icon.trash class="h-5 w-5" />
-                                    </button>
+                                        @if ($esReparacion)
+                                            <div class="flex-1 sm:w-28 sm:flex-none">
+                                                <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Precio c/u</label>
+                                                <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
+                                                    placeholder="Precio"
+                                                    class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
+                                            <div class="w-24 shrink-0 text-right text-sm text-neutral-600">
+                                                <span class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Subtotal</span>
+                                                <span class="block sm:pt-2" x-text="clp(subtotal(r))"></span>
+                                            </div>
+                                        @endif
+                                        <button type="button" x-on:click="quitar(i)"
+                                            class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
+                                            <x-icon.trash class="h-5 w-5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </template>
 
@@ -138,7 +149,7 @@
                                 Sin repuestos. Usa «Agregar repuesto» si corresponde.
                             </p>
                         </div>
-                        <div class="mt-1 flex gap-3 text-xs text-neutral-400">
+                        <div class="mt-1 hidden gap-3 text-xs text-neutral-400 sm:flex">
                             <span class="flex-1">Repuesto</span>
                             <span class="w-16 text-center">Cant.</span>
                             @if ($esReparacion)

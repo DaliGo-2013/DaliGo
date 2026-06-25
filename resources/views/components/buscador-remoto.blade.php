@@ -55,9 +55,9 @@
         </div>
     </div>
 
-    <div x-show="seleccionId" x-cloak class="mt-2 flex flex-wrap items-center gap-2 text-sm">
-        <x-badge>{{ $chip }}</x-badge>
-        <span class="font-medium text-neutral-800" x-text="elegidoLabel"></span>
+    {{-- El input ya conserva el texto elegido (term = label), asi que aqui solo
+         ofrecemos "cambiar" para limpiar y volver a buscar. --}}
+    <div x-show="seleccionId" x-cloak class="mt-1.5 text-sm">
         <button type="button" @click="limpiar()" class="text-xs text-neutral-400 underline hover:text-neutral-600">cambiar</button>
     </div>
 
