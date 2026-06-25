@@ -1,12 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
         <x-page-header title="Servicio Técnico" subtitle="Ingreso de máquinas y lavadoras al taller.">
-            <x-slot name="action">
-                <x-button-link :href="route('admin.servicio-tecnico.create')">
-                    <x-icon.plus class="h-4 w-4" />
-                    Registrar ingreso
-                </x-button-link>
-            </x-slot>
+            @can('manage servicio tecnico')
+                <x-slot name="action">
+                    <x-button-link :href="route('admin.servicio-tecnico.create')">
+                        <x-icon.plus class="h-4 w-4" />
+                        Registrar ingreso
+                    </x-button-link>
+                </x-slot>
+            @endcan
         </x-page-header>
     </x-slot>
 
@@ -72,11 +74,16 @@
                                 $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
                             ])->filter()->implode(' · ');
                         @endphp
-                        <a href="{{ route('admin.servicio-tecnico.show', $orden) }}" class="block">
+                        @php
+                            $verHref = auth()->user()->can('manage servicio tecnico')
+                                ? route('admin.servicio-tecnico.edit', $orden)
+                                : route('admin.servicio-tecnico.show', $orden);
+                        @endphp
+                        <a href="{{ $verHref }}" class="block">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
-                                <x-badge :variant="$orden->estado === 'entregado' ? 'neutral' : 'brand'">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
+                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
                                 @if ($orden->facturacion)
                                     <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
                                 @endif
@@ -90,21 +97,23 @@
                             </div>
                         </x-slot>
 
-                        <x-slot name="actions">
-                            <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" label="Reparación" title="Reparación (taller)">
-                                <x-icon.wrench-screwdriver class="h-5 w-5" />
-                            </x-icon-button>
-                            <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" label="Editar" title="Editar">
-                                <x-icon.pencil class="h-5 w-5" />
-                            </x-icon-button>
-                            <form method="POST" action="{{ route('admin.servicio-tecnico.destroy', $orden) }}" onsubmit="return confirm('¿Eliminar la orden {{ $orden->folio }}?');">
-                                @csrf
-                                @method('DELETE')
-                                <x-icon-button type="submit" variant="danger" label="Eliminar" title="Eliminar">
-                                    <x-icon.trash class="h-5 w-5" />
+                        @can('manage servicio tecnico')
+                            <x-slot name="actions">
+                                <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" label="Reparación" title="Reparación (taller)">
+                                    <x-icon.wrench-screwdriver class="h-5 w-5" />
                                 </x-icon-button>
-                            </form>
-                        </x-slot>
+                                <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" label="Editar" title="Editar">
+                                    <x-icon.pencil class="h-5 w-5" />
+                                </x-icon-button>
+                                <form method="POST" action="{{ route('admin.servicio-tecnico.destroy', $orden) }}" onsubmit="return confirm('¿Eliminar la orden {{ $orden->folio }}?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <x-icon-button type="submit" variant="danger" label="Eliminar" title="Eliminar">
+                                        <x-icon.trash class="h-5 w-5" />
+                                    </x-icon-button>
+                                </form>
+                            </x-slot>
+                        @endcan
                     </x-list-row>
                 @empty
                     <li class="px-6 py-8 text-center text-sm text-neutral-500">

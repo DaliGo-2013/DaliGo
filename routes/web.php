@@ -100,8 +100,17 @@ Route::middleware('auth')
             ->middleware('permission:manage clientes')
             ->except(['show']);
 
-        // Servicio Tecnico (taller): ingreso de maquinas/lavadoras. Solo CRUD.
-        // La ruta literal va ANTES del resource para no chocar con servicio-tecnico/{orden}.
+        // Servicio Tecnico (taller). Lectura (listado + detalle) para los roles
+        // internos que solo consultan el estado; la gestion (crear/editar/borrar
+        // + etapa de taller) queda solo para tecnico/admin. whereNumber en {orden}
+        // evita que `show` choque con las rutas literales (buscar-*, create).
+        Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
+            Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
+                ->name('servicio-tecnico.index');
+            Route::get('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'show'])
+                ->whereNumber('orden')->name('servicio-tecnico.show');
+        });
+
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
                 ->name('servicio-tecnico.buscar-cliente');
@@ -115,7 +124,8 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.reparacion.guardar');
 
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
-                ->parameters(['servicio-tecnico' => 'orden']);
+                ->parameters(['servicio-tecnico' => 'orden'])
+                ->only(['create', 'store', 'edit', 'update', 'destroy']);
         });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.

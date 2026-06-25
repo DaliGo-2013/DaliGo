@@ -101,6 +101,23 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertRedirect(route('admin.servicio-tecnico.index'));
     }
 
+    public function test_vendedor_puede_ver_pero_no_gestionar(): void
+    {
+        // El seeder le da 'view servicio tecnico' al vendedor (solo lectura).
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+        $orden = OrdenServicio::factory()->create();
+
+        // Ve listado y detalle.
+        $this->actingAs($vendedor)->get('/admin/servicio-tecnico')->assertOk();
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))->assertOk();
+
+        // No puede gestionar ni entrar al taller.
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertForbidden();
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+        $this->actingAs($vendedor)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
+        $this->actingAs($vendedor)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
+    }
+
     // --- CRUD ---
 
     public function test_admin_can_register_orden(): void

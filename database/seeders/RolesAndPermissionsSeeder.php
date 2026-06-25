@@ -35,7 +35,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'report production',  // soplador: ve y envia su reporte diario
             'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve
             // Modulo Servicio Tecnico (taller).
-            'manage servicio tecnico',  // tecnico: ingreso/listado de maquinas y lavadoras
+            'view servicio tecnico',    // jefes/vendedores: ver listado + detalle (solo lectura)
+            'manage servicio tecnico',  // tecnico: ingreso/edicion + etapa de taller
         ];
 
         foreach ($permissions as $name) {
@@ -54,16 +55,18 @@ class RolesAndPermissionsSeeder extends Seeder
         // revertiria esas personalizaciones en cada deploy.
         // Regla #2 del negocio: "la gestion es por VENDEDOR" -> los vendedores
         // trabajan con la cartera de clientes desde el dia 1.
+        // Vendedores y jefes pueden VER el estado de las maquinas en taller (solo
+        // lectura), aunque no las gestionen.
         Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web'])
-            ->givePermissionTo('manage clientes');
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico']);
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico']);
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico']);
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);
         // El tecnico gestiona el ingreso de maquinas/lavadoras al taller (M12).
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo('manage servicio tecnico');
+            ->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
     }

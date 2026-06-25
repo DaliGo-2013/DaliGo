@@ -13,12 +13,14 @@
                     <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver">
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
-                    <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" size="lg" variant="secondary" label="Reparación" title="Reparación (taller)">
-                        <x-icon.wrench-screwdriver class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" size="lg" variant="primary" label="Editar" title="Editar recepción">
-                        <x-icon.pencil class="h-5 w-5" />
-                    </x-icon-button>
+                    @can('manage servicio tecnico')
+                        <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" size="lg" variant="secondary" label="Reparación" title="Reparación (taller)">
+                            <x-icon.wrench-screwdriver class="h-5 w-5" />
+                        </x-icon-button>
+                        <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" size="lg" variant="primary" label="Editar" title="Editar recepción">
+                            <x-icon.pencil class="h-5 w-5" />
+                        </x-icon-button>
+                    @endcan
                 </div>
             </x-slot>
         </x-page-header>
@@ -30,7 +32,7 @@
             {{-- Estado + condicion --}}
             <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <span class="text-sm text-neutral-500">Estado actual:</span>
-                <x-badge :variant="$orden->estado === 'entregado' ? 'neutral' : 'brand'">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
+                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
                 <x-badge variant="neutral">{{ ucfirst($orden->facturacion) }}</x-badge>
                 @if ($orden->facturacion === 'garantia')
                     <span class="text-xs {{ $orden->garantia_vigente ? 'text-green-600' : 'text-red-600' }}">
@@ -83,7 +85,9 @@
             <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <div class="mb-3 flex items-center justify-between">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Reparación (taller)</h3>
-                    <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Editar →</a>
+                    @can('manage servicio tecnico')
+                        <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Editar →</a>
+                    @endcan
                 </div>
 
                 @unless ($tieneReparacion)

@@ -17,7 +17,17 @@
     <x-slot name="header">
         <x-page-header :title="'Reparación · '.$orden->folio" :subtitle="$orden->cliente_nombre.($equipo ? ' · '.$equipo : '')">
             <x-slot name="action">
-                <x-form-actions :back="route('admin.servicio-tecnico.index')" form="reparacion-form" submitLabel="Guardar reparación" />
+                <div class="flex items-center gap-2">
+                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado">
+                        <x-icon.arrow-left class="h-5 w-5" />
+                    </x-icon-button>
+                    <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" size="lg" variant="secondary" label="Vista de recepción" title="Ir a la vista de recepción">
+                        <x-icon.pencil class="h-5 w-5" />
+                    </x-icon-button>
+                    <x-icon-button type="submit" form="reparacion-form" size="lg" variant="primary" label="Guardar" title="Guardar reparación">
+                        <x-icon.check class="h-5 w-5" />
+                    </x-icon-button>
+                </div>
             </x-slot>
         </x-page-header>
     </x-slot>

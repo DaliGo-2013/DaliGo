@@ -25,6 +25,16 @@ class OrdenServicio extends Model implements AuditableContract
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     public const ESTADOS = ['recibido', 'en_revision', 'esperando_repuesto', 'reparado', 'entregado', 'sin_solucion'];
 
+    // Color del badge por etapa (variantes de x-badge), para leer el estado de un vistazo.
+    public const ESTADO_VARIANTES = [
+        'recibido' => 'brand',
+        'en_revision' => 'info',
+        'esperando_repuesto' => 'warning',
+        'reparado' => 'success',
+        'entregado' => 'neutral',
+        'sin_solucion' => 'danger',
+    ];
+
     // Condicion del ingreso. Garantia: no se cobra (si esta vigente).
     // Reparacion: se cobra al cliente.
     public const FACTURACION = ['garantia', 'reparacion'];
@@ -96,6 +106,14 @@ class OrdenServicio extends Model implements AuditableContract
         }
 
         return $this->garantia_vence->gte($this->fecha_ingreso);
+    }
+
+    /**
+     * Variante de color del badge segun el estado actual.
+     */
+    public function getEstadoVarianteAttribute(): string
+    {
+        return self::ESTADO_VARIANTES[$this->estado] ?? 'brand';
     }
 
     /**
