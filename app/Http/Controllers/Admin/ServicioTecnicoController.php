@@ -98,6 +98,8 @@ class ServicioTecnicoController extends Controller
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        $esReparacion = $orden->facturacion === 'reparacion';
+
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
@@ -109,6 +111,30 @@ class ServicioTecnicoController extends Controller
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ]);
+
+        // Validacion por fila: si el tecnico empezo a llenar un repuesto, exige
+        // nombre (min 3) y, cuando se cobra (reparacion), un precio mayor a 0.
+        $errores = [];
+        foreach ($request->input('repuestos', []) as $i => $r) {
+            $nombre = trim((string) ($r['nombre'] ?? ''));
+            $precio = (int) ($r['precio_unitario'] ?? 0);
+            $cantidad = (int) ($r['cantidad'] ?? 1);
+
+            $tieneAlgo = $nombre !== '' || $precio > 0 || $cantidad > 1;
+            if (! $tieneAlgo) {
+                continue;
+            }
+
+            if (mb_strlen($nombre) < 3) {
+                $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
+            }
+            if ($esReparacion && $precio < 1) {
+                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0).';
+            }
+        }
+        if ($errores) {
+            throw ValidationException::withMessages($errores);
+        }
 
         $orden->update([
             'estado' => $data['estado'],
@@ -242,14 +268,14 @@ class ServicioTecnicoController extends Controller
 
         $data = $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
-            'cliente_nombre' => ['required', 'string', 'max:191'],
+            'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'numero_serie' => ['nullable', 'string', 'max:191'],
-            'falla_reportada' => ['required', 'string'],
+            'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
+            'falla_reportada' => ['required', 'string', 'min:3'],
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
             // Si es garantia, el documento de compra y su fecha son obligatorios.

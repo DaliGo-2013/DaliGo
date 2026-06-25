@@ -46,6 +46,7 @@ class ServicioTecnicoManagementTest extends TestCase
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => 'maquina',
             'sucursal_id' => Sucursal::factory()->create()->id,
+            'numero_serie' => 'SN-1234',
             'falla_reportada' => 'No enciende',
             'estado' => 'recibido',
             'facturacion' => 'reparacion',
@@ -193,8 +194,19 @@ class ServicioTecnicoManagementTest extends TestCase
             ])
             ->assertSessionHasErrors([
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'sucursal_id', 'falla_reportada', 'estado', 'facturacion',
+                'tipo_equipo', 'sucursal_id', 'numero_serie', 'falla_reportada', 'estado', 'facturacion',
             ]);
+    }
+
+    public function test_numero_serie_y_textos_exigen_minimo_3(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload([
+                'numero_serie' => 'AB',
+                'cliente_nombre' => 'Jo',
+                'falla_reportada' => 'no',
+            ]))
+            ->assertSessionHasErrors(['numero_serie', 'cliente_nombre', 'falla_reportada']);
     }
 
     public function test_rut_invalido_es_rechazado_y_valido_se_normaliza(): void
@@ -365,6 +377,20 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), ['estado' => 'volando'])
             ->assertSessionHasErrors('estado');
+    }
+
+    public function test_repuesto_en_reparacion_exige_nombre_y_precio(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'repuestos' => [
+                    ['nombre' => 'XY', 'cantidad' => 1, 'precio_unitario' => 0], // nombre corto + sin precio
+                ],
+            ])
+            ->assertSessionHasErrors(['repuestos.0.nombre', 'repuestos.0.precio_unitario']);
     }
 
     // --- Filtros ---

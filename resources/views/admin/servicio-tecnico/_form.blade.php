@@ -31,8 +31,8 @@
         hint="Opcional. Es el producto Dali del catálogo." />
 
     <div>
-        <x-input-label for="numero_serie" value="N° de serie" />
-        <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" maxlength="191" />
+        <x-input-label for="numero_serie">N° de serie <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" minlength="3" maxlength="191" required />
         <x-input-error :messages="$errors->get('numero_serie')" class="mt-2" />
     </div>
 
@@ -138,7 +138,7 @@
 
     <div class="sm:col-span-2">
         <x-input-label for="falla_reportada">Falla reportada <span class="text-red-500">*</span></x-input-label>
-        <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2" required>{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
+        <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2" minlength="3" required>{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
         <x-input-error :messages="$errors->get('falla_reportada')" class="mt-2" />
     </div>
 </div>
