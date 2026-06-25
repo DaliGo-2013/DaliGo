@@ -3,7 +3,7 @@
         <x-page-header title="Registrar ingreso" subtitle="Nuevo equipo recibido en el taller."
             :back="route('admin.servicio-tecnico.index')">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.servicio-tecnico.index')" form="orden-servicio-form" submitLabel="Registrar ingreso" />
+                <x-form-actions form="orden-servicio-form" submitLabel="Registrar ingreso" />
             </x-slot>
         </x-page-header>
     </x-slot>

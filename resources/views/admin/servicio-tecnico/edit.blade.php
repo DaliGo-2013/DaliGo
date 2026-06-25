@@ -3,7 +3,7 @@
         <x-page-header :title="'Editar orden '.$orden->folio" subtitle="Actualiza los datos del equipo en taller."
             :back="route('admin.servicio-tecnico.index')">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.servicio-tecnico.index')" form="orden-servicio-form" submitLabel="Guardar cambios" />
+                <x-form-actions form="orden-servicio-form" submitLabel="Guardar cambios" />
             </x-slot>
         </x-page-header>
     </x-slot>
