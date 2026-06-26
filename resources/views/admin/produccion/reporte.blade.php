@@ -44,6 +44,10 @@
                         <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->malo }}</dd>
                     </div>
                     <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Preforma dañada</dt>
+                        <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->danada }}</dd>
+                    </div>
+                    <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de primera</dt>
                         <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_primera }}%</dd>
                     </div>
@@ -54,6 +58,10 @@
                     <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de malas</dt>
                         <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_malo }}%</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de dañadas</dt>
+                        <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_danada }}%</dd>
                     </div>
                 </dl>
 
@@ -74,6 +82,7 @@
                                         <span><span class="text-neutral-400">1ª</span> {{ $registro->primera }}</span>
                                         <span><span class="text-neutral-400">2ª</span> {{ $registro->segunda }}</span>
                                         <span><span class="text-neutral-400">Malos</span> {{ $registro->malo }}</span>
+                                        <span><span class="text-neutral-400">Dañadas</span> {{ $registro->danada }}</span>
                                     </div>
                                 </li>
                             @endforeach
@@ -142,7 +151,7 @@
                             <x-input-hint>Sincroniza la asignación del soplador para ese día/turno.</x-input-hint>
                             <x-input-error :messages="$errors->get('asignadas')" class="mt-2" />
                         </div>
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                             <div>
                                 <x-input-label for="primera" value="Primera" />
                                 <x-text-input id="primera" class="mt-1.5" type="number" min="0" name="primera" :value="old('primera', $reporte->primera)" required />
@@ -155,10 +164,15 @@
                                 <x-input-label for="malo" value="Malos" />
                                 <x-text-input id="malo" class="mt-1.5" type="number" min="0" name="malo" :value="old('malo', $reporte->malo)" required />
                             </div>
+                            <div>
+                                <x-input-label for="danada" value="Preforma dañada" />
+                                <x-text-input id="danada" class="mt-1.5" type="number" min="0" name="danada" :value="old('danada', $reporte->danada)" required />
+                            </div>
                         </div>
                         <x-input-error :messages="$errors->get('primera')" class="mt-1" />
                         <x-input-error :messages="$errors->get('segunda')" class="mt-1" />
                         <x-input-error :messages="$errors->get('malo')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('danada')" class="mt-1" />
                         <div>
                             <x-input-label for="motivo_ajuste" value="Motivo del cambio" />
                             <x-textarea id="motivo_ajuste" name="motivo_ajuste" rows="2" class="mt-1.5" required>{{ old('motivo_ajuste') }}</x-textarea>

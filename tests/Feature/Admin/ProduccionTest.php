@@ -81,6 +81,7 @@ class ProduccionTest extends TestCase
             'primera' => 0,
             'segunda' => 0,
             'malo' => 0,
+            'danada' => 0,
         ], $cantidades));
     }
 
@@ -157,14 +158,14 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($soplador, 100);
         [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
 
-        $this->agregarTanda($soplador, $reporte, ['primera' => 50, 'segunda' => 10, 'malo' => 5], $maquina, $tipo)
+        $this->agregarTanda($soplador, $reporte, ['primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3], $maquina, $tipo)
             ->assertRedirect(route('produccion.mi.index'));
 
         $this->assertDatabaseHas('produccion_registros', [
             'reporte_id' => $reporte->id,
             'maquina_id' => $maquina->id,
             'tipo_botellon_id' => $tipo->id,
-            'primera' => 50, 'segunda' => 10, 'malo' => 5,
+            'primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3,
         ]);
 
         $reporte->refresh();
@@ -172,6 +173,9 @@ class ProduccionTest extends TestCase
         $this->assertSame(50, $reporte->primera);
         $this->assertSame(10, $reporte->segunda);
         $this->assertSame(5, $reporte->malo);
+        $this->assertSame(3, $reporte->danada);
+        // Las preformas dañadas suman al total producido.
+        $this->assertSame(68, $reporte->total);
     }
 
     public function test_dos_tandas_del_mismo_combo_no_se_funden_y_suman(): void
@@ -492,7 +496,7 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
 
         $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.ajustar', $reporte), [
-            'asignadas' => 120, 'primera' => 80, 'segunda' => 15, 'malo' => 5, 'motivo_ajuste' => 'Recuento físico.',
+            'asignadas' => 120, 'primera' => 80, 'segunda' => 15, 'malo' => 5, 'danada' => 0, 'motivo_ajuste' => 'Recuento físico.',
         ])->assertRedirect(route('admin.produccion.reporte.show', $reporte));
 
         $reporte->refresh();
@@ -508,7 +512,7 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO);
 
         $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.ajustar', $reporte), [
-            'asignadas' => 90, 'primera' => 70, 'segunda' => 10, 'malo' => 10, 'motivo_ajuste' => 'Corrección post-aprobación.',
+            'asignadas' => 90, 'primera' => 70, 'segunda' => 10, 'malo' => 10, 'danada' => 0, 'motivo_ajuste' => 'Corrección post-aprobación.',
         ])->assertRedirect(route('admin.produccion.reporte.show', $reporte));
 
         $reporte->refresh();

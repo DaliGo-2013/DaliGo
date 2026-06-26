@@ -45,9 +45,11 @@
                         <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Primera</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->primera }}</dd></div>
                         <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Segunda</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->segunda }}</dd></div>
                         <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Malos</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->malo }}</dd></div>
+                        <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Preforma dañada</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->danada }}</dd></div>
                         <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de primera</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_primera }}%</dd></div>
                         <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de segunda</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_segunda }}%</dd></div>
                         <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de malas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_malo }}%</dd></div>
+                        <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de dañadas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_danada }}%</dd></div>
                     </dl>
 
                     @if ($reporte->registros->isNotEmpty())
@@ -60,7 +62,7 @@
                                     @endphp
                                     <li class="px-4 py-3 sm:px-6">
                                         <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
-                                        <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · {{ $registro->created_at->format('H:i') }}</p>
+                                        <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->format('H:i') }}</p>
                                     </li>
                                 @endforeach
                             </ul>
@@ -93,6 +95,7 @@
                         primera: {{ (int) old('primera', 0) }},
                         segunda: {{ (int) old('segunda', 0) }},
                         malo: {{ (int) old('malo', 0) }},
+                        danada: {{ (int) old('danada', 0) }},
                         guardado: {{ (int) $reporte->total }},
                         asignadas: {{ (int) $reporte->asignadas }},
                         maquinaId: '{{ $maquinaPreseleccionada ?: '' }}',
@@ -102,7 +105,7 @@
                         seleccionAbierta: {{ $seleccionAbierta ? 'true' : 'false' }},
                         agregando: false,
                         avisoTanda: false,
-                        get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0); },
+                        get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0) + (Number(this.danada) || 0); },
                         get total() { return this.guardado + this.tanda; },
                         get diferencia() { return this.asignadas - this.total; },
                         get resumenSeleccion() { return [this.maquinas[this.maquinaId], this.tipos[this.tipoId]].filter(Boolean).join(' · '); },
@@ -164,6 +167,7 @@
                         <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" />
                         <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" />
                         <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" />
+                        <x-stepper-input name="danada" label="Preforma dañada" hint="Se rompió antes de soplar." :value="old('danada', 0)" />
 
                         <x-primary-button class="h-12 w-full" x-bind:disabled="agregando || tanda === 0">
                             Agregar al reporte
@@ -189,7 +193,7 @@
                                     <li class="flex items-center gap-3 px-4 py-3 sm:px-6">
                                         <div class="min-w-0 flex-1">
                                             <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
-                                            <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · {{ $registro->created_at->format('H:i') }}</p>
+                                            <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->format('H:i') }}</p>
                                         </div>
                                         <form method="POST" action="{{ route('produccion.mi.registros.destroy', [$reporte, $registro]) }}"
                                               onsubmit="return confirm('¿Eliminar este registro?');">

@@ -33,6 +33,7 @@ class ProduccionReporte extends Model implements AuditableContract
         'primera',
         'segunda',
         'malo',
+        'danada',
         'motivo',
         'obs',
         'estado',
@@ -51,6 +52,7 @@ class ProduccionReporte extends Model implements AuditableContract
             'primera' => 'integer',
             'segunda' => 'integer',
             'malo' => 'integer',
+            'danada' => 'integer',
             'enviado_at' => 'datetime',
             'revisado_at' => 'datetime',
         ];
@@ -82,7 +84,7 @@ class ProduccionReporte extends Model implements AuditableContract
 
     public function getTotalAttribute(): int
     {
-        return (int) $this->primera + (int) $this->segunda + (int) $this->malo;
+        return (int) $this->primera + (int) $this->segunda + (int) $this->malo + (int) $this->danada;
     }
 
     public function getDiferenciaAttribute(): int
@@ -105,6 +107,11 @@ class ProduccionReporte extends Model implements AuditableContract
         return $this->tasaDe($this->malo);
     }
 
+    public function getTasaDanadaAttribute(): int
+    {
+        return $this->tasaDe($this->danada);
+    }
+
     /**
      * Porcentaje (entero) de una categoria sobre el total producido. Base para
      * todas las tasas del reporte; agregar una nueva tasa = un accessor que
@@ -124,12 +131,13 @@ class ProduccionReporte extends Model implements AuditableContract
     public function recalcularDesdeRegistros(): void
     {
         $sumas = $this->registros()
-            ->selectRaw('COALESCE(SUM(primera), 0) AS t_primera, COALESCE(SUM(segunda), 0) AS t_segunda, COALESCE(SUM(malo), 0) AS t_malo')
+            ->selectRaw('COALESCE(SUM(primera), 0) AS t_primera, COALESCE(SUM(segunda), 0) AS t_segunda, COALESCE(SUM(malo), 0) AS t_malo, COALESCE(SUM(danada), 0) AS t_danada')
             ->first();
 
         $this->primera = (int) $sumas->t_primera;
         $this->segunda = (int) $sumas->t_segunda;
         $this->malo = (int) $sumas->t_malo;
+        $this->danada = (int) $sumas->t_danada;
         $this->motivo_ajuste = null;
         $this->save();
     }

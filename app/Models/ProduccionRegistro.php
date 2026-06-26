@@ -23,6 +23,7 @@ class ProduccionRegistro extends Model
         'primera',
         'segunda',
         'malo',
+        'danada',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class ProduccionRegistro extends Model
             'primera' => 'integer',
             'segunda' => 'integer',
             'malo' => 'integer',
+            'danada' => 'integer',
         ];
     }
 

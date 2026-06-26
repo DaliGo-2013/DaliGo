@@ -61,6 +61,7 @@ class MiProduccionController extends Controller
             'primera' => ['required', 'integer', 'min:0'],
             'segunda' => ['required', 'integer', 'min:0'],
             'malo' => ['required', 'integer', 'min:0'],
+            'danada' => ['required', 'integer', 'min:0'],
         ], [
             'maquina_id.required' => 'Selecciona la máquina en la que trabajaste.',
             'maquina_id.in' => 'Selecciona una máquina válida.',
@@ -68,7 +69,7 @@ class MiProduccionController extends Controller
             'tipo_botellon_id.in' => 'Selecciona un tipo de botellón válido.',
         ]);
 
-        if (($validated['primera'] + $validated['segunda'] + $validated['malo']) <= 0) {
+        if (($validated['primera'] + $validated['segunda'] + $validated['malo'] + $validated['danada']) <= 0) {
             return back()->withInput()
                 ->withErrors(['primera' => 'Ingresa al menos una cantidad antes de agregar.']);
         }

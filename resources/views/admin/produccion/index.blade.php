@@ -52,6 +52,7 @@
                                     <span><span class="text-neutral-400">1ª</span> {{ number_format($fila->primera, 0, ',', '.') }}</span>
                                     <span><span class="text-neutral-400">2ª</span> {{ number_format($fila->segunda, 0, ',', '.') }}</span>
                                     <span><span class="text-neutral-400">Malos</span> {{ number_format($fila->malo, 0, ',', '.') }}</span>
+                                    <span><span class="text-neutral-400">Dañadas</span> {{ number_format($fila->danada, 0, ',', '.') }}</span>
                                 </div>
                             </li>
                         @endforeach
@@ -77,6 +78,7 @@
                                 <span><span class="text-neutral-400">1ª</span> {{ $reporte->primera }}</span>
                                 <span><span class="text-neutral-400">2ª</span> {{ $reporte->segunda }}</span>
                                 <span><span class="text-neutral-400">Malos</span> {{ $reporte->malo }}</span>
+                                <span><span class="text-neutral-400">Dañadas</span> {{ $reporte->danada }}</span>
                                 <span class="font-medium {{ $reporte->diferencia === 0 ? 'text-emerald-600' : 'text-amber-600' }}">
                                     Δ {{ $reporte->diferencia }}
                                 </span>

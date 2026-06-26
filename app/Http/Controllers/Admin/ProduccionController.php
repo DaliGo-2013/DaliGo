@@ -43,7 +43,7 @@ class ProduccionController extends Controller
             ->whereDate('produccion_reportes.fecha', $hoy)
             ->groupBy('produccion_registros.maquina_id', 'maquinas.nombre')
             ->orderByRaw('maquinas.nombre IS NULL, maquinas.nombre')
-            ->selectRaw('maquinas.nombre AS maquina, SUM(produccion_registros.primera) AS primera, SUM(produccion_registros.segunda) AS segunda, SUM(produccion_registros.malo) AS malo')
+            ->selectRaw('maquinas.nombre AS maquina, SUM(produccion_registros.primera) AS primera, SUM(produccion_registros.segunda) AS segunda, SUM(produccion_registros.malo) AS malo, SUM(produccion_registros.danada) AS danada')
             ->get();
 
         return view('admin.produccion.index', [
@@ -240,6 +240,7 @@ class ProduccionController extends Controller
             'primera' => ['required', 'integer', 'min:0'],
             'segunda' => ['required', 'integer', 'min:0'],
             'malo' => ['required', 'integer', 'min:0'],
+            'danada' => ['required', 'integer', 'min:0'],
             'motivo_ajuste' => ['required', 'string', 'max:255'],
         ]);
 
