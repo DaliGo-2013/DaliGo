@@ -98,19 +98,23 @@
                 @endif
             </div>
 
-            {{-- Acciones del jefe --}}
-            @if ($reporte->esPendienteDeRevision())
-                <div x-data="{ panel: null }" class="space-y-4">
-                    <div class="flex flex-wrap gap-3">
+            {{-- Acciones del admin. La edición (asignadas + cantidades) está
+                 disponible en CUALQUIER estado; aprobar/devolver solo si está
+                 pendiente de revisión (enviado). --}}
+            <div x-data="{ panel: null }" class="space-y-4">
+                <div class="flex flex-wrap gap-3">
+                    @if ($reporte->esPendienteDeRevision())
                         <form method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"
                               onsubmit="return confirm('¿Aprobar el reporte de {{ $reporte->soplador->name }}?');">
                             @csrf
                             <x-primary-button>Aprobar</x-primary-button>
                         </form>
-                        <x-secondary-button x-on:click="panel = panel === 'ajustar' ? null : 'ajustar'">Ajustar cantidades</x-secondary-button>
                         <x-secondary-button x-on:click="panel = panel === 'devolver' ? null : 'devolver'">Devolver al soplador</x-secondary-button>
-                    </div>
+                    @endif
+                    <x-secondary-button x-on:click="panel = panel === 'editar' ? null : 'editar'">Editar reporte</x-secondary-button>
+                </div>
 
+                @if ($reporte->esPendienteDeRevision())
                     {{-- Devolver --}}
                     <div x-show="panel === 'devolver'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
                         <form method="POST" action="{{ route('admin.produccion.reporte.devolver', $reporte) }}" class="space-y-4">
@@ -125,48 +129,50 @@
                             </div>
                         </form>
                     </div>
+                @endif
 
-                    {{-- Ajustar --}}
-                    <div x-show="panel === 'ajustar'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                        <form method="POST" action="{{ route('admin.produccion.reporte.ajustar', $reporte) }}" class="space-y-4">
-                            @csrf
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <div>
-                                    <x-input-label for="primera" value="Primera" />
-                                    <x-text-input id="primera" class="mt-1.5" type="number" min="0" name="primera" :value="old('primera', $reporte->primera)" required />
-                                </div>
-                                <div>
-                                    <x-input-label for="segunda" value="Segunda" />
-                                    <x-text-input id="segunda" class="mt-1.5" type="number" min="0" name="segunda" :value="old('segunda', $reporte->segunda)" required />
-                                </div>
-                                <div>
-                                    <x-input-label for="malo" value="Malos" />
-                                    <x-text-input id="malo" class="mt-1.5" type="number" min="0" name="malo" :value="old('malo', $reporte->malo)" required />
-                                </div>
-                            </div>
-                            <x-input-error :messages="$errors->get('primera')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('segunda')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('malo')" class="mt-1" />
+                {{-- Editar reporte (asignadas + cantidades), cualquier estado --}}
+                <div x-show="panel === 'editar'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    <form method="POST" action="{{ route('admin.produccion.reporte.ajustar', $reporte) }}" class="space-y-4">
+                        @csrf
+                        <div>
+                            <x-input-label for="asignadas" value="Asignadas (inicio del día)" />
+                            <x-text-input id="asignadas" class="mt-1.5" type="number" min="1" name="asignadas" :value="old('asignadas', $reporte->asignadas)" required />
+                            <x-input-hint>Sincroniza la asignación del soplador para ese día/turno.</x-input-hint>
+                            <x-input-error :messages="$errors->get('asignadas')" class="mt-2" />
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div>
-                                <x-input-label for="motivo_ajuste" value="Motivo del ajuste" />
-                                <x-textarea id="motivo_ajuste" name="motivo_ajuste" rows="2" class="mt-1.5" required>{{ old('motivo_ajuste') }}</x-textarea>
-                                <x-input-error :messages="$errors->get('motivo_ajuste')" class="mt-2" />
+                                <x-input-label for="primera" value="Primera" />
+                                <x-text-input id="primera" class="mt-1.5" type="number" min="0" name="primera" :value="old('primera', $reporte->primera)" required />
                             </div>
-                            <div class="flex justify-end">
-                                <x-primary-button>Guardar ajuste</x-primary-button>
+                            <div>
+                                <x-input-label for="segunda" value="Segunda" />
+                                <x-text-input id="segunda" class="mt-1.5" type="number" min="0" name="segunda" :value="old('segunda', $reporte->segunda)" required />
                             </div>
-                        </form>
-                    </div>
+                            <div>
+                                <x-input-label for="malo" value="Malos" />
+                                <x-text-input id="malo" class="mt-1.5" type="number" min="0" name="malo" :value="old('malo', $reporte->malo)" required />
+                            </div>
+                        </div>
+                        <x-input-error :messages="$errors->get('primera')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('segunda')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('malo')" class="mt-1" />
+                        <div>
+                            <x-input-label for="motivo_ajuste" value="Motivo del cambio" />
+                            <x-textarea id="motivo_ajuste" name="motivo_ajuste" rows="2" class="mt-1.5" required>{{ old('motivo_ajuste') }}</x-textarea>
+                            <x-input-error :messages="$errors->get('motivo_ajuste')" class="mt-2" />
+                        </div>
+                        <div class="flex justify-end">
+                            <x-primary-button>Guardar cambios</x-primary-button>
+                        </div>
+                    </form>
                 </div>
-            @else
-                <p class="text-sm text-neutral-500">
-                    Este reporte está en estado <span class="font-medium text-neutral-700">{{ $reporte->estado }}</span>;
-                    no hay acciones de revisión disponibles.
-                </p>
-            @endif
+            </div>
 
-            <div>
+            <div class="flex flex-wrap gap-x-4 gap-y-2">
                 <x-secondary-link :href="route('admin.produccion.index')">← Volver a la cola</x-secondary-link>
+                <x-secondary-link :href="route('admin.produccion.soplador', $reporte->soplador)">Ver historial del soplador</x-secondary-link>
             </div>
         </div>
     </div>

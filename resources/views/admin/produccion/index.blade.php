@@ -3,6 +3,7 @@
         <x-page-header title="Producción" subtitle="Asignaciones y revisión de reportes del día.">
             <x-slot name="action">
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <x-secondary-link :href="route('admin.produccion.sopladores')">Sopladores</x-secondary-link>
                     <x-secondary-link :href="route('admin.maquinas.index')">Máquinas</x-secondary-link>
                     <x-secondary-link :href="route('admin.tipos-botellon.index')">Tipos de botellón</x-secondary-link>
                     <x-button-link :href="route('admin.produccion.asignar')">
@@ -65,7 +66,8 @@
                             <x-avatar>{{ mb_substr($reporte->soplador->name, 0, 1) }}</x-avatar>
                         </x-slot>
 
-                        <p class="truncate font-medium text-neutral-900">{{ $reporte->soplador->name }}</p>
+                        <a href="{{ route('admin.produccion.soplador', $reporte->soplador) }}"
+                           class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $reporte->soplador->name }}</a>
                         <p class="truncate text-sm text-neutral-500">
                             Turno {{ $reporte->turno }} · asignadas {{ number_format($reporte->asignadas, 0, ',', '.') }}
                         </p>

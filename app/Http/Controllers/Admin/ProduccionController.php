@@ -54,6 +54,58 @@ class ProduccionController extends Controller
     }
 
     /**
+     * Lista de sopladores para entrar a su historial. Incluye un agregado por
+     * soplador (total de reportes y ultima fecha) en una sola query, sin N+1.
+     */
+    public function sopladores(): View
+    {
+        $sopladores = User::permission('report production')->orderBy('name')->get(['id', 'name']);
+
+        $stats = ProduccionReporte::query()
+            ->selectRaw('soplador_id, COUNT(*) AS total, MAX(fecha) AS ultima')
+            ->groupBy('soplador_id')
+            ->get()
+            ->keyBy('soplador_id');
+
+        return view('admin.produccion.sopladores', [
+            'sopladores' => $sopladores,
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
+     * Historial de un soplador: que se le asigno y que produjo, dia por dia, en
+     * el rango de fechas elegido (por defecto el mes actual). El detalle de un
+     * dia reusa admin.produccion.reporte.show.
+     */
+    public function sopladorHistorial(Request $request, User $soplador): View
+    {
+        $desde = $request->date('desde') ?? now()->startOfMonth();
+        $hasta = $request->date('hasta') ?? now()->endOfMonth();
+
+        $reportes = ProduccionReporte::with(['registros.maquina', 'registros.tipoBotellon', 'asignacion'])
+            ->where('soplador_id', $soplador->id)
+            ->whereBetween('fecha', [$desde->toDateString(), $hasta->toDateString()])
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->get();
+
+        $totales = [
+            'asignadas' => (int) $reportes->sum('asignadas'),
+            'producido' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->total),
+            'reportes' => $reportes->count(),
+        ];
+
+        return view('admin.produccion.soplador', [
+            'soplador' => $soplador,
+            'reportes' => $reportes,
+            'totales' => $totales,
+            'desde' => $desde->toDateString(),
+            'hasta' => $hasta->toDateString(),
+        ]);
+    }
+
+    /**
      * Formulario para asignar produccion del dia a un soplador.
      */
     public function asignar(): View
@@ -175,15 +227,16 @@ class ProduccionController extends Controller
     }
 
     /**
-     * Ajuste de cantidades por el jefe (queda registrado con su motivo).
+     * Edicion del reporte por el admin: asignadas + cantidades producidas. A
+     * diferencia de aprobar/devolver, se permite en CUALQUIER estado (el admin
+     * tiene control total); queda registrado con su motivo y en auditoria. Si
+     * se cambia asignadas, se sincroniza la asignacion (fuente de verdad) para
+     * no dejar desfasado el snapshot del reporte.
      */
     public function ajustar(Request $request, ProduccionReporte $reporte): RedirectResponse
     {
-        if (! $reporte->esPendienteDeRevision()) {
-            return back()->with('status', 'Solo se pueden ajustar reportes enviados.');
-        }
-
         $validated = $request->validate([
+            'asignadas' => ['required', 'integer', 'min:1'],
             'primera' => ['required', 'integer', 'min:0'],
             'segunda' => ['required', 'integer', 'min:0'],
             'malo' => ['required', 'integer', 'min:0'],
@@ -191,8 +244,9 @@ class ProduccionController extends Controller
         ]);
 
         $reporte->update($validated);
+        $reporte->asignacion?->update(['asignadas' => $validated['asignadas']]);
 
         return redirect()->route('admin.produccion.reporte.show', $reporte)
-            ->with('status', 'Cantidades ajustadas.');
+            ->with('status', 'Reporte actualizado.');
     }
 }

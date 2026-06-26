@@ -492,12 +492,28 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
 
         $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.ajustar', $reporte), [
-            'primera' => 80, 'segunda' => 15, 'malo' => 5, 'motivo_ajuste' => 'Recuento físico.',
+            'asignadas' => 120, 'primera' => 80, 'segunda' => 15, 'malo' => 5, 'motivo_ajuste' => 'Recuento físico.',
         ])->assertRedirect(route('admin.produccion.reporte.show', $reporte));
 
         $reporte->refresh();
         $this->assertSame(80, $reporte->primera);
         $this->assertSame('Recuento físico.', $reporte->motivo_ajuste);
+        // Editar asignadas sincroniza la asignacion (fuente de verdad).
+        $this->assertSame(120, $reporte->asignadas);
+        $this->assertSame(120, $reporte->asignacion->fresh()->asignadas);
+    }
+
+    public function test_admin_edita_reporte_aprobado_en_cualquier_estado(): void
+    {
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO);
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.ajustar', $reporte), [
+            'asignadas' => 90, 'primera' => 70, 'segunda' => 10, 'malo' => 10, 'motivo_ajuste' => 'Corrección post-aprobación.',
+        ])->assertRedirect(route('admin.produccion.reporte.show', $reporte));
+
+        $reporte->refresh();
+        $this->assertSame(70, $reporte->primera);
+        $this->assertSame(90, $reporte->asignadas);
     }
 
     public function test_panel_del_jefe_muestra_produccion_por_maquina(): void
