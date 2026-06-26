@@ -92,7 +92,27 @@ class ProduccionReporte extends Model implements AuditableContract
 
     public function getTasaPrimeraAttribute(): int
     {
-        return $this->total > 0 ? (int) round($this->primera / $this->total * 100) : 0;
+        return $this->tasaDe($this->primera);
+    }
+
+    public function getTasaSegundaAttribute(): int
+    {
+        return $this->tasaDe($this->segunda);
+    }
+
+    public function getTasaMaloAttribute(): int
+    {
+        return $this->tasaDe($this->malo);
+    }
+
+    /**
+     * Porcentaje (entero) de una categoria sobre el total producido. Base para
+     * todas las tasas del reporte; agregar una nueva tasa = un accessor que
+     * llame aqui con la cantidad correspondiente. 0 si aun no hay total.
+     */
+    protected function tasaDe(?int $cantidad): int
+    {
+        return $this->total > 0 ? (int) round((int) $cantidad / $this->total * 100) : 0;
     }
 
     /**

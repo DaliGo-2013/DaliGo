@@ -46,6 +46,14 @@
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de primera</dt>
                         <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_primera }}%</dd>
                     </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de segunda</dt>
+                        <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_segunda }}%</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de malas</dt>
+                        <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_malo }}%</dd>
+                    </div>
                 </dl>
 
                 @if ($reporte->registros->isNotEmpty())
