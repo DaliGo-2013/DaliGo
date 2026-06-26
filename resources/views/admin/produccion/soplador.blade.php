@@ -1,11 +1,20 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="$soplador->name" subtitle="Historial de asignaciones y producción."
-                       :back="route('admin.produccion.sopladores')" />
+        <x-page-header :title="$soplador->name" subtitle="Historial de asignaciones y producción." />
     </x-slot>
 
     <div class="py-12">
         <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
+            {{-- Volver a la página anterior (el reporte desde donde se llegó, o la
+                 lista de sopladores si se entró directo). history.back evita el
+                 salto fijo a sopladores que sacaba al jefe del contexto. --}}
+            <div>
+                <x-secondary-link href="{{ route('admin.produccion.sopladores') }}"
+                                  onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }">
+                    ← Volver
+                </x-secondary-link>
+            </div>
+
             <x-status-alert :status="session('status')" />
 
             {{-- Filtro por rango de fechas (default: mes actual). --}}
