@@ -23,12 +23,15 @@ class OrdenServicio extends Model implements AuditableContract
     public const TIPOS = ['maquina', 'lavadora', 'herramienta', 'otro'];
 
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
-    public const ESTADOS = ['recibido', 'en_revision', 'esperando_repuesto', 'reparado', 'entregado', 'sin_solucion'];
+    // 'cotizacion' = se le paso presupuesto al cliente y se espera su aprobacion
+    // del arreglo (va despues de la revision, antes de pedir repuestos/reparar).
+    public const ESTADOS = ['recibido', 'en_revision', 'cotizacion', 'esperando_repuesto', 'reparado', 'entregado', 'sin_solucion'];
 
     // Color del badge por etapa (variantes de x-badge), para leer el estado de un vistazo.
     public const ESTADO_VARIANTES = [
         'recibido' => 'brand',
         'en_revision' => 'info',
+        'cotizacion' => 'warning',
         'esperando_repuesto' => 'warning',
         'reparado' => 'success',
         'entregado' => 'neutral',
