@@ -1,14 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
         <x-page-header :title="'Reporte de '.$reporte->soplador->name"
-                       :subtitle="$reporte->fecha->format('d-m-Y').' · turno '.$reporte->turno">
+                       :subtitle="$reporte->fecha->format('d-m-Y').' · turno '.$reporte->turno"
+                       :back="route('admin.produccion.soplador', $reporte->soplador)">
             <x-slot name="action">
-                <div class="flex items-center gap-3">
-                    <x-icon-button :href="route('admin.produccion.soplador', $reporte->soplador)" size="lg" variant="secondary" label="Volver" title="Volver al historial del soplador">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-produccion.estado-badge :estado="$reporte->estado" class="text-sm" />
-                </div>
+                <x-produccion.estado-badge :estado="$reporte->estado" class="text-sm" />
             </x-slot>
         </x-page-header>
     </x-slot>
