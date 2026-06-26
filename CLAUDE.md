@@ -131,6 +131,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-06-26] `<select>` estricto manda `''` y rompe `Rule::in` al validar
+- **Síntoma:** un select cerrado con opción placeholder (`<option value="">Elige…</option>`) que no es obligatorio siempre fallaba la validación cuando el usuario no elegía: `Rule::in([...])` rechaza el string vacío `''` aunque la regla lleve `nullable` (nullable solo salta para `null`, no para `''`).
+- **Causa:** un `<select>` no seleccionado envía `''` (string vacío), no `null`. `nullable` no lo trata como ausente, así que pasa a `Rule::in` y no matchea ningún valor de la lista.
+- **Solución:** normalizar a `null` **antes** de validar: `$request->merge(['motivo_x' => $request->filled('motivo_x') ? $request->input('motivo_x') : null])`. Luego `['nullable', Rule::in(...)]` deja pasar el null y valida solo los valores reales. La obligatoriedad condicional (ej. motivo requerido si la cantidad > 0) se chequea aparte tras `validate()`, como ya se hace con el motivo de la diferencia. Ver `MiProduccionController::registroStore` (motivo de defecto por tanda). Lista cerrada centralizada en `ProduccionRegistro::MOTIVOS_DEFECTO` (fuente única para validación y el `<x-select>`).
+- **Evitar a futuro:** todo select no obligatorio con `Rule::in` → normaliza `''`→`null` antes de validar; no confíes en que `nullable` cubra el string vacío.
+
 ### [2026-06-15] `syntax error, unexpected token "endif"` al compilar Blade con condicionales inline pegados
 - **Síntoma:** una vista no compila (`syntax error, unexpected token "endif" (View: ...index.blade.php)`) y el test que la renderiza falla, aunque las llaves parecen balanceadas.
 - **Causa:** condicionales `@if(...) ... @endif@if(...) ... @endif` **encadenados en una sola línea** (un `@endif` pegado al siguiente `@if`, con interpolaciones `{{ }}` en medio) confunden al compilador de Blade y el `@endif` queda sin su `@if`.

@@ -63,6 +63,13 @@
                                     <li class="px-4 py-3 sm:px-6">
                                         <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
                                         <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->format('H:i') }}</p>
+                                        @php
+                                            $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
+                                                ->filter()->map(fn ($m, $k) => "$k: $m")->implode(' · ');
+                                        @endphp
+                                        @if ($motivosTanda)
+                                            <p class="text-xs text-neutral-400">{{ $motivosTanda }}</p>
+                                        @endif
                                     </li>
                                 @endforeach
                             </ul>
@@ -165,8 +172,35 @@
                         @endif
 
                         <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" />
-                        <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" />
-                        <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" />
+
+                        <div>
+                            <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" />
+                            <div x-show="segunda > 0" x-cloak class="mt-2">
+                                <x-input-label for="motivo_segunda" value="Motivo de las de segunda" />
+                                <x-select id="motivo_segunda" name="motivo_segunda" class="mt-1.5">
+                                    <option value="">Elige un motivo…</option>
+                                    @foreach (\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO as $motivo)
+                                        <option value="{{ $motivo }}" @selected(old('motivo_segunda') === $motivo)>{{ $motivo }}</option>
+                                    @endforeach
+                                </x-select>
+                                <x-input-error :messages="$errors->get('motivo_segunda')" class="mt-2" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" />
+                            <div x-show="malo > 0" x-cloak class="mt-2">
+                                <x-input-label for="motivo_malo" value="Motivo de las malas" />
+                                <x-select id="motivo_malo" name="motivo_malo" class="mt-1.5">
+                                    <option value="">Elige un motivo…</option>
+                                    @foreach (\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO as $motivo)
+                                        <option value="{{ $motivo }}" @selected(old('motivo_malo') === $motivo)>{{ $motivo }}</option>
+                                    @endforeach
+                                </x-select>
+                                <x-input-error :messages="$errors->get('motivo_malo')" class="mt-2" />
+                            </div>
+                        </div>
+
                         <x-stepper-input name="danada" label="Preforma dañada" hint="Se rompió antes de soplar." :value="old('danada', 0)" />
 
                         <x-primary-button class="h-12 w-full" x-bind:disabled="agregando || tanda === 0">
@@ -194,6 +228,13 @@
                                         <div class="min-w-0 flex-1">
                                             <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
                                             <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->format('H:i') }}</p>
+                                        @php
+                                            $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
+                                                ->filter()->map(fn ($m, $k) => "$k: $m")->implode(' · ');
+                                        @endphp
+                                        @if ($motivosTanda)
+                                            <p class="text-xs text-neutral-400">{{ $motivosTanda }}</p>
+                                        @endif
                                         </div>
                                         <form method="POST" action="{{ route('produccion.mi.registros.destroy', [$reporte, $registro]) }}"
                                               onsubmit="return confirm('¿Eliminar este registro?');">

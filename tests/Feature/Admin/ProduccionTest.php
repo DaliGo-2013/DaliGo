@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Maquina;
 use App\Models\ProduccionAsignacion;
+use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\Sucursal;
 use App\Models\TipoBotellon;
@@ -75,14 +76,25 @@ class ProduccionTest extends TestCase
     /** Agrega una tanda válida actuando como el soplador dueño del reporte. */
     private function agregarTanda(User $soplador, ProduccionReporte $reporte, array $cantidades, ?Maquina $maquina = null, ?TipoBotellon $tipo = null)
     {
-        return $this->actingAs($soplador)->post(route('produccion.mi.registros.store', $reporte), array_merge([
+        $payload = array_merge([
             'maquina_id' => $maquina?->id,
             'tipo_botellon_id' => $tipo?->id,
             'primera' => 0,
             'segunda' => 0,
             'malo' => 0,
             'danada' => 0,
-        ], $cantidades));
+        ], $cantidades);
+
+        // El motivo es obligatorio cuando hay defectuosas; los tests que no lo
+        // fijan reciben uno valido por defecto.
+        if (($payload['segunda'] ?? 0) > 0 && ! array_key_exists('motivo_segunda', $payload)) {
+            $payload['motivo_segunda'] = ProduccionRegistro::MOTIVOS_DEFECTO[0];
+        }
+        if (($payload['malo'] ?? 0) > 0 && ! array_key_exists('motivo_malo', $payload)) {
+            $payload['motivo_malo'] = ProduccionRegistro::MOTIVOS_DEFECTO[0];
+        }
+
+        return $this->actingAs($soplador)->post(route('produccion.mi.registros.store', $reporte), $payload);
     }
 
     // --- Acceso / gating ---
@@ -158,14 +170,17 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($soplador, 100);
         [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
 
-        $this->agregarTanda($soplador, $reporte, ['primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3], $maquina, $tipo)
-            ->assertRedirect(route('produccion.mi.index'));
+        $this->agregarTanda($soplador, $reporte, [
+            'primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3,
+            'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Material quemado',
+        ], $maquina, $tipo)->assertRedirect(route('produccion.mi.index'));
 
         $this->assertDatabaseHas('produccion_registros', [
             'reporte_id' => $reporte->id,
             'maquina_id' => $maquina->id,
             'tipo_botellon_id' => $tipo->id,
             'primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3,
+            'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Material quemado',
         ]);
 
         $reporte->refresh();
@@ -221,6 +236,44 @@ class ProduccionTest extends TestCase
             ->assertSessionHasErrors('primera');
 
         $this->assertSame(0, $reporte->registros()->count());
+    }
+
+    public function test_tanda_con_segunda_exige_motivo(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        // motivo_segunda explicitamente vacio: no debe pasar.
+        $this->agregarTanda($soplador, $reporte, ['segunda' => 5, 'motivo_segunda' => ''], $maquina, $tipo)
+            ->assertSessionHasErrors('motivo_segunda');
+
+        $this->assertSame(0, $reporte->registros()->count());
+    }
+
+    public function test_tanda_rechaza_motivo_fuera_de_la_lista(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $this->agregarTanda($soplador, $reporte, ['malo' => 3, 'motivo_malo' => 'Inventado'], $maquina, $tipo)
+            ->assertSessionHasErrors('motivo_malo');
+
+        $this->assertSame(0, $reporte->registros()->count());
+    }
+
+    public function test_motivo_se_descarta_si_la_categoria_queda_en_cero(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        // primera > 0 hace valida la tanda; segunda = 0 con motivo elegido => motivo se anula.
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10, 'segunda' => 0, 'motivo_segunda' => 'Rebaba'], $maquina, $tipo)
+            ->assertRedirect(route('produccion.mi.index'));
+
+        $this->assertNull($reporte->registros()->first()->motivo_segunda);
     }
 
     public function test_tanda_exige_maquina_si_hay_activas(): void

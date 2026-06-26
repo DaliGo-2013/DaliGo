@@ -74,9 +74,13 @@
                                     $partes = array_filter([$registro->tipoBotellon?->nombre, $registro->maquina?->nombre]);
                                 @endphp
                                 <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 py-3">
+                                    @php
+                                        $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
+                                            ->filter()->map(fn ($m, $k) => "$k: $m")->implode(' · ');
+                                    @endphp
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial (sin máquina/tipo)' }}</p>
-                                        <p class="text-xs text-neutral-400">{{ $registro->created_at->format('d-m-Y H:i') }}</p>
+                                        <p class="text-xs text-neutral-400">{{ $registro->created_at->format('d-m-Y H:i') }}@if ($motivosTanda) · {{ $motivosTanda }}@endif</p>
                                     </div>
                                     <div class="flex items-center gap-4 text-sm text-neutral-600">
                                         <span><span class="text-neutral-400">1ª</span> {{ $registro->primera }}</span>

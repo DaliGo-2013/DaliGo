@@ -16,13 +16,32 @@ class ProduccionRegistro extends Model
 {
     protected $table = 'produccion_registros';
 
+    /**
+     * Motivos de defecto (lista cerrada) que explican por que una tanda salio
+     * de segunda o mala. Fuente unica para la validacion y el select del
+     * operario; agregar/editar motivos = tocar solo este arreglo.
+     */
+    public const MOTIVOS_DEFECTO = [
+        'Burbujas / aire',
+        'Rebaba',
+        'Cuello o rosca deforme',
+        'Mal sellado',
+        'Punto frío',
+        'Contaminación / suciedad',
+        'Material quemado',
+        'Espesor irregular',
+        'Rayas o marcas',
+    ];
+
     protected $fillable = [
         'reporte_id',
         'maquina_id',
         'tipo_botellon_id',
         'primera',
         'segunda',
+        'motivo_segunda',
         'malo',
+        'motivo_malo',
         'danada',
     ];
 

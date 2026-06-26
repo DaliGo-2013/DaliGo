@@ -55,6 +55,13 @@ class MiProduccionController extends Controller
         $maquinas = Maquina::paraSoplador($request->user());
         $tipos = TipoBotellon::activos()->get();
 
+        // Los select de motivo mandan '' cuando no aplican; normalizar a null
+        // para que 'nullable' los deje pasar sin chocar con Rule::in.
+        $request->merge([
+            'motivo_segunda' => $request->filled('motivo_segunda') ? $request->input('motivo_segunda') : null,
+            'motivo_malo' => $request->filled('motivo_malo') ? $request->input('motivo_malo') : null,
+        ]);
+
         $validated = $request->validate([
             'maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
             'tipo_botellon_id' => [$tipos->isEmpty() ? 'nullable' : 'required', Rule::in($tipos->pluck('id'))],
@@ -62,16 +69,40 @@ class MiProduccionController extends Controller
             'segunda' => ['required', 'integer', 'min:0'],
             'malo' => ['required', 'integer', 'min:0'],
             'danada' => ['required', 'integer', 'min:0'],
+            'motivo_segunda' => ['nullable', Rule::in(ProduccionRegistro::MOTIVOS_DEFECTO)],
+            'motivo_malo' => ['nullable', Rule::in(ProduccionRegistro::MOTIVOS_DEFECTO)],
         ], [
             'maquina_id.required' => 'Selecciona la máquina en la que trabajaste.',
             'maquina_id.in' => 'Selecciona una máquina válida.',
             'tipo_botellon_id.required' => 'Selecciona el tipo de botellón.',
             'tipo_botellon_id.in' => 'Selecciona un tipo de botellón válido.',
+            'motivo_segunda.in' => 'Selecciona un motivo válido para las de segunda.',
+            'motivo_malo.in' => 'Selecciona un motivo válido para las malas.',
         ]);
 
         if (($validated['primera'] + $validated['segunda'] + $validated['malo'] + $validated['danada']) <= 0) {
             return back()->withInput()
                 ->withErrors(['primera' => 'Ingresa al menos una cantidad antes de agregar.']);
+        }
+
+        // Si hay defectuosas, exigir su motivo (el select solo aparece con
+        // cantidad > 0, asi que esto cubre el envio sin elegir).
+        if ($validated['segunda'] > 0 && blank($validated['motivo_segunda'])) {
+            return back()->withInput()
+                ->withErrors(['motivo_segunda' => 'Indica el motivo de las de segunda.']);
+        }
+        if ($validated['malo'] > 0 && blank($validated['motivo_malo'])) {
+            return back()->withInput()
+                ->withErrors(['motivo_malo' => 'Indica el motivo de las malas.']);
+        }
+
+        // Sin cantidad no hay motivo que guardar (descarta un select tocado y
+        // luego devuelto a 0).
+        if ($validated['segunda'] == 0) {
+            $validated['motivo_segunda'] = null;
+        }
+        if ($validated['malo'] == 0) {
+            $validated['motivo_malo'] = null;
         }
 
         DB::transaction(function () use ($reporte, $validated) {
