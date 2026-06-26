@@ -15,6 +15,7 @@ class ProduccionAsignacion extends Model
         'fecha',
         'turno',
         'asignadas',
+        'preforma_id',
         'creado_por',
     ];
 
@@ -34,6 +35,15 @@ class ProduccionAsignacion extends Model
     public function creadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creado_por');
+    }
+
+    /**
+     * Preforma del turno (producto del catalogo). Nullable: asignaciones
+     * historicas o sin preforma elegida.
+     */
+    public function preforma(): BelongsTo
+    {
+        return $this->belongsTo(Producto::class, 'preforma_id');
     }
 
     public function reporte(): HasOne

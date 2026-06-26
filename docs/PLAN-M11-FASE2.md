@@ -1,5 +1,16 @@
 # Plan — Producción Fase 2 (M11): preformas → botellones + aprobación del jefe
 
+> ⚠️ **SUPERADO (2026-06-26) — documento histórico, NO refleja el código.** Este plan proponía
+> modelar preformas/botellones como `productos` con una tabla `produccion_reporte_lineas` y descartar
+> `maquinas`/`tipos_botellon`. **El código tomó el camino contrario:** mantuvo `maquinas` +
+> `tipos_botellon` + `produccion_registros` (tandas) y la conexión con stock se resolvió con un
+> **kardex local puente** (`produccion_movimientos` + `tipos_botellon.producto_id` +
+> `produccion_asignaciones.preforma_id`, todos nullable), generado al aprobar y **sin push a Bsale**.
+> El estado **real y vigente** de M11 está en **`HANDOFF.md` §8d** y en la bitácora de `CLAUDE.md`
+> (entrada 2026-06-26). Conservar este archivo solo como contexto de diseño.
+
+
+
 > **Documento de implementación para otra IA.** Autocontenido: contexto, decisiones ya tomadas
 > con el usuario, esquema exacto, contratos, archivos, tests y verificación. Antes de programar,
 > leer `CLAUDE.md` (reglas vivas + bitácora), `HANDOFF.md` y `PROYECTO_DALIGO.md` (módulo M11,

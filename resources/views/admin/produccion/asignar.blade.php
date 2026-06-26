@@ -46,6 +46,18 @@
                         <x-input-error :messages="$errors->get('asignadas')" class="mt-2" />
                     </div>
 
+                    <div>
+                        <x-input-label for="preforma_id" value="Preforma (opcional)" />
+                        <x-select id="preforma_id" name="preforma_id" class="mt-1.5">
+                            <option value="" @selected(! old('preforma_id'))>Sin especificar</option>
+                            @foreach ($preformas as $preforma)
+                                <option value="{{ $preforma->id }}" @selected((int) old('preforma_id') === $preforma->id)>{{ $preforma->nombre }} ({{ $preforma->sku }})</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>Qué preforma trabaja este turno. Al aprobar el reporte se descontará en el kardex de producción.</x-input-hint>
+                        <x-input-error :messages="$errors->get('preforma_id')" class="mt-2" />
+                    </div>
+
                     <x-form-footer :cancel="route('admin.produccion.index')">
                         <x-primary-button>Guardar asignación</x-primary-button>
                     </x-form-footer>

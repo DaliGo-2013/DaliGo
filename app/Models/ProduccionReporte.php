@@ -80,11 +80,42 @@ class ProduccionReporte extends Model implements AuditableContract
         return $this->hasMany(ProduccionRegistro::class, 'reporte_id');
     }
 
+    /**
+     * Movimientos del kardex local generados al aprobar (regla #9).
+     */
+    public function movimientos(): HasMany
+    {
+        return $this->hasMany(ProduccionMovimiento::class, 'reporte_id');
+    }
+
     // --- Derivados ---
 
+    /**
+     * Total contado = preformas que el soplador dio cuenta (1a + 2a + malo +
+     * danada). Es la base de la diferencia con lo asignado y del consumo de
+     * preforma en el kardex (cada unidad contada consumio una preforma).
+     */
     public function getTotalAttribute(): int
     {
         return (int) $this->primera + (int) $this->segunda + (int) $this->malo + (int) $this->danada;
+    }
+
+    /**
+     * Producido vendible = 1a + 2a. NO incluye malos ni preformas danadas (que
+     * consumieron preforma pero no rindieron botellon). Es la metrica honesta
+     * de productividad; "total" es consumo, no produccion.
+     */
+    public function getProducidoAttribute(): int
+    {
+        return (int) $this->primera + (int) $this->segunda;
+    }
+
+    /**
+     * Merma = malo + danada (preforma consumida sin botellon vendible).
+     */
+    public function getMermaAttribute(): int
+    {
+        return (int) $this->malo + (int) $this->danada;
     }
 
     public function getDiferenciaAttribute(): int

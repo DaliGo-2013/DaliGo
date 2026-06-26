@@ -134,6 +134,7 @@ Route::middleware('auth')
         Route::middleware('permission:manage production')->group(function () {
             Route::get('produccion', [ProduccionController::class, 'index'])->name('produccion.index');
             Route::get('produccion/sopladores', [ProduccionController::class, 'sopladores'])->name('produccion.sopladores');
+            Route::get('produccion/movimientos', [ProduccionController::class, 'movimientos'])->name('produccion.movimientos');
             Route::get('produccion/soplador/{soplador}', [ProduccionController::class, 'sopladorHistorial'])->name('produccion.soplador');
             Route::get('produccion/asignar', [ProduccionController::class, 'asignar'])->name('produccion.asignar');
             Route::post('produccion/asignar', [ProduccionController::class, 'asignarStore'])->name('produccion.asignar.store');

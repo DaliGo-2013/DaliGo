@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
+use App\Models\ProduccionMovimiento;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProduccionController extends Controller
@@ -92,7 +95,11 @@ class ProduccionController extends Controller
 
         $totales = [
             'asignadas' => (int) $reportes->sum('asignadas'),
-            'producido' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->total),
+            // Producido = vendible (1a + 2a); consumido y merma se muestran aparte
+            // para no inflar la productividad con preformas perdidas.
+            'producido' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->producido),
+            'consumido' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->total),
+            'merma' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->merma),
             'reportes' => $reportes->count(),
         ];
 
@@ -113,7 +120,29 @@ class ProduccionController extends Controller
         return view('admin.produccion.asignar', [
             'sopladores' => User::permission('report production')->orderBy('name')->get(),
             'turnos' => self::TURNOS,
+            'preformas' => $this->preformasParaSelector(),
         ]);
+    }
+
+    /**
+     * Productos elegibles como preforma del turno: activos cuya categoria
+     * menciona "preforma". Fallback: todos los activos (para no bloquear si la
+     * categorizacion del catalogo aun no distingue preformas).
+     */
+    private function preformasParaSelector()
+    {
+        $preformas = Producto::query()->where('activo', true)
+            ->where('categoria', 'like', '%preforma%')
+            ->orderBy('nombre')
+            ->get(['id', 'sku', 'nombre']);
+
+        if ($preformas->isNotEmpty()) {
+            return $preformas;
+        }
+
+        return Producto::query()->where('activo', true)
+            ->orderBy('nombre')
+            ->get(['id', 'sku', 'nombre']);
     }
 
     /**
@@ -126,42 +155,53 @@ class ProduccionController extends Controller
             'turno' => ['required', 'in:'.implode(',', self::TURNOS)],
             'fecha' => ['required', 'date'],
             'asignadas' => ['required', 'integer', 'min:1'],
+            // Preforma del turno (producto del catalogo). Opcional: si no se
+            // elige, el consumo del kardex queda sin enlace a producto.
+            'preforma_id' => ['nullable', 'integer', 'exists:productos,id'],
         ]);
 
-        // Buscamos con whereDate para normalizar la comparacion de fecha (cast a date)
-        // tanto en SQLite (tests) como en MySQL (produccion).
-        $asignacion = ProduccionAsignacion::whereDate('fecha', $validated['fecha'])
-            ->where('soplador_id', $validated['soplador_id'])
-            ->where('turno', $validated['turno'])
-            ->first();
+        // Asignacion + reporte en una sola transaccion: si el reporte falla, no
+        // queda una asignacion huerfana (el soplador veria "sin asignacion").
+        $asignacion = DB::transaction(function () use ($validated, $request) {
+            // Buscamos con whereDate para normalizar la comparacion de fecha (cast a date)
+            // tanto en SQLite (tests) como en MySQL (produccion).
+            $asignacion = ProduccionAsignacion::whereDate('fecha', $validated['fecha'])
+                ->where('soplador_id', $validated['soplador_id'])
+                ->where('turno', $validated['turno'])
+                ->first();
 
-        if ($asignacion) {
-            $asignacion->update([
-                'asignadas' => $validated['asignadas'],
-                'creado_por' => $request->user()->id,
-            ]);
-        } else {
-            $asignacion = ProduccionAsignacion::create([
-                'soplador_id' => $validated['soplador_id'],
-                'fecha' => $validated['fecha'],
-                'turno' => $validated['turno'],
-                'asignadas' => $validated['asignadas'],
-                'creado_por' => $request->user()->id,
-            ]);
-        }
+            if ($asignacion) {
+                $asignacion->update([
+                    'asignadas' => $validated['asignadas'],
+                    'preforma_id' => $validated['preforma_id'] ?? null,
+                    'creado_por' => $request->user()->id,
+                ]);
+            } else {
+                $asignacion = ProduccionAsignacion::create([
+                    'soplador_id' => $validated['soplador_id'],
+                    'fecha' => $validated['fecha'],
+                    'turno' => $validated['turno'],
+                    'asignadas' => $validated['asignadas'],
+                    'preforma_id' => $validated['preforma_id'] ?? null,
+                    'creado_por' => $request->user()->id,
+                ]);
+            }
 
-        // Reporte en borrador asociado (idempotente). Mantiene el snapshot de asignadas al dia.
-        $reporte = $asignacion->reporte()->firstOrNew([]);
-        $reporte->fill([
-            'soplador_id' => $asignacion->soplador_id,
-            'fecha' => $asignacion->fecha->toDateString(),
-            'turno' => $asignacion->turno,
-            'asignadas' => $asignacion->asignadas,
-        ]);
-        if (! $reporte->exists) {
-            $reporte->estado = ProduccionReporte::BORRADOR;
-        }
-        $reporte->save();
+            // Reporte en borrador asociado (idempotente). Mantiene el snapshot de asignadas al dia.
+            $reporte = $asignacion->reporte()->firstOrNew([]);
+            $reporte->fill([
+                'soplador_id' => $asignacion->soplador_id,
+                'fecha' => $asignacion->fecha->toDateString(),
+                'turno' => $asignacion->turno,
+                'asignadas' => $asignacion->asignadas,
+            ]);
+            if (! $reporte->exists) {
+                $reporte->estado = ProduccionReporte::BORRADOR;
+            }
+            $reporte->save();
+
+            return $asignacion;
+        });
 
         return redirect()->route('admin.produccion.index')
             ->with('status', "Asignacion guardada para {$asignacion->soplador->name} ({$asignacion->asignadas} preformas).");
@@ -175,9 +215,11 @@ class ProduccionController extends Controller
         $reporte->load([
             'soplador',
             'revisadoPor',
+            'asignacion.preforma',
             'registros' => fn ($query) => $query->latest('id'),
             'registros.maquina',
-            'registros.tipoBotellon',
+            'registros.tipoBotellon.producto',
+            'movimientos.producto',
         ]);
 
         return view('admin.produccion.reporte', ['reporte' => $reporte]);
@@ -186,20 +228,69 @@ class ProduccionController extends Controller
     /**
      * Aprueba un reporte enviado.
      */
-    public function aprobar(ProduccionReporte $reporte): RedirectResponse
+    public function aprobar(Request $request, ProduccionReporte $reporte): RedirectResponse
     {
         if (! $reporte->esPendienteDeRevision()) {
             return back()->with('status', 'Solo se pueden aprobar reportes enviados.');
         }
 
-        $reporte->update([
-            'estado' => ProduccionReporte::APROBADO,
-            'revisado_por' => request()->user()->id,
-            'revisado_at' => now(),
-        ]);
+        // Aprobar + generar el kardex local en la misma transaccion (regla #9:
+        // solo lo aprobado mueve inventario). Idempotente: si ya tiene
+        // movimientos, no se duplican ante un doble submit.
+        DB::transaction(function () use ($request, $reporte) {
+            $reporte->update([
+                'estado' => ProduccionReporte::APROBADO,
+                'revisado_por' => $request->user()->id,
+                'revisado_at' => now(),
+            ]);
+
+            if ($reporte->movimientos()->exists()) {
+                return;
+            }
+
+            ProduccionMovimiento::generarParaReporte($reporte);
+        });
 
         return redirect()->route('admin.produccion.index')
             ->with('status', "Reporte de {$reporte->soplador->name} aprobado.");
+    }
+
+    /**
+     * Kardex local de produccion: movimientos generados al aprobar, filtrables
+     * por producto (nombre/SKU), tipo de movimiento y rango de fechas. No toca
+     * el stock espejo de Bsale; es la verdad local de produccion.
+     */
+    public function movimientos(Request $request): View
+    {
+        $filtros = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'tipo' => ['nullable', 'string', 'in:'.implode(',', ProduccionMovimiento::TIPOS)],
+            'desde' => ['nullable', 'date'],
+            'hasta' => ['nullable', 'date'],
+        ]);
+
+        $query = ProduccionMovimiento::query()->with(['producto', 'reporte.soplador'])
+            ->when($filtros['q'] ?? null, fn ($q, $term) => $q->whereHas(
+                'producto',
+                fn ($p) => $p->where('nombre', 'like', "%{$term}%")->orWhere('sku', 'like', "%{$term}%"),
+            ))
+            ->when($filtros['tipo'] ?? null, fn ($q, $tipo) => $q->where('tipo', $tipo))
+            ->when($filtros['desde'] ?? null, fn ($q, $d) => $q->whereDate('fecha', '>=', $d))
+            ->when($filtros['hasta'] ?? null, fn ($q, $h) => $q->whereDate('fecha', '<=', $h));
+
+        // Resumen del filtro actual (totales por tipo).
+        $resumen = (clone $query)->selectRaw('tipo, COALESCE(SUM(cantidad), 0) AS total')
+            ->groupBy('tipo')->pluck('total', 'tipo');
+
+        $movimientos = $query->latest('fecha')->latest('id')->paginate(25)->withQueryString();
+
+        return view('admin.produccion.movimientos', [
+            'movimientos' => $movimientos,
+            'resumen' => $resumen,
+            'tipos' => ProduccionMovimiento::TIPOS,
+            'etiquetasTipos' => ProduccionMovimiento::ETIQUETAS,
+            'filtros' => $filtros,
+        ]);
     }
 
     /**

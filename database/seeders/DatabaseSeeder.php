@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
             SucursalSeeder::class,
             ConfiguracionSeeder::class,
             TipoBotellonSeeder::class,
+            MaquinaSeeder::class,
+            // Despues de TipoBotellonSeeder: enlaza los tipos a sus productos.
+            ProduccionTesteoSeeder::class,
         ]);
     }
 }

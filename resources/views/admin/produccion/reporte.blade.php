@@ -29,12 +29,20 @@
                         <dd class="mt-1 text-sm font-medium text-neutral-900">{{ number_format($reporte->asignadas, 0, ',', '.') }}</dd>
                     </div>
                     <div>
-                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Total producido</dt>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Total contado</dt>
                         <dd class="mt-1 text-sm font-medium text-neutral-900">{{ number_format($reporte->total, 0, ',', '.') }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Diferencia</dt>
                         <dd class="mt-1 text-sm font-medium {{ $reporte->diferencia === 0 ? 'text-emerald-600' : 'text-amber-600' }}">{{ $reporte->diferencia }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Producido (1ª+2ª)</dt>
+                        <dd class="mt-1 text-sm font-medium text-emerald-700">{{ number_format($reporte->producido, 0, ',', '.') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Merma (malos+dañadas)</dt>
+                        <dd class="mt-1 text-sm font-medium text-neutral-700">{{ number_format($reporte->merma, 0, ',', '.') }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Primera</dt>
@@ -116,6 +124,53 @@
                     </div>
                 @endif
             </div>
+
+            {{-- Kardex: preview de lo que se registrará al aprobar, o los
+                 movimientos ya generados si el reporte está aprobado. No toca el
+                 stock espejo de Bsale; es el ledger local de producción. --}}
+            @if ($reporte->esPendienteDeRevision())
+                <div class="dg-enter overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm">
+                    <div class="border-b border-brand-100 bg-brand-50 px-6 py-3">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-brand-700">Al aprobar se registrará en el kardex</h3>
+                    </div>
+                    <ul class="divide-y divide-neutral-100 text-sm">
+                        <li class="flex items-center justify-between px-6 py-3">
+                            <span class="text-neutral-700">Consumo de preforma{{ $reporte->asignacion?->preforma ? ' · '.$reporte->asignacion->preforma->nombre : ' (sin preforma asignada)' }}</span>
+                            <span class="font-medium text-neutral-900">−{{ number_format($reporte->total, 0, ',', '.') }}</span>
+                        </li>
+                        <li class="flex items-center justify-between px-6 py-3">
+                            <span class="text-neutral-700">Producción 1ª + 2ª (vendible)</span>
+                            <span class="font-medium text-emerald-700">+{{ number_format($reporte->producido, 0, ',', '.') }}</span>
+                        </li>
+                        <li class="flex items-center justify-between px-6 py-3">
+                            <span class="text-neutral-700">Merma (malos + dañadas)</span>
+                            <span class="font-medium text-neutral-700">{{ number_format($reporte->merma, 0, ',', '.') }}</span>
+                        </li>
+                    </ul>
+                </div>
+            @elseif ($reporte->movimientos->isNotEmpty())
+                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-3">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Kardex generado</h3>
+                        <x-secondary-link :href="route('admin.produccion.movimientos', ['q' => ''])">Ver kardex completo</x-secondary-link>
+                    </div>
+                    <ul class="divide-y divide-neutral-100 text-sm">
+                        @foreach ($reporte->movimientos as $movimiento)
+                            <li class="flex items-center justify-between px-6 py-3">
+                                <span class="text-neutral-700">
+                                    {{ \App\Models\ProduccionMovimiento::ETIQUETAS[$movimiento->tipo] ?? $movimiento->tipo }}
+                                    @if ($movimiento->producto)
+                                        · <span class="text-neutral-500">{{ $movimiento->producto->nombre }}</span>
+                                    @endif
+                                </span>
+                                <span class="font-medium {{ $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA ? 'text-neutral-900' : ($movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_MERMA ? 'text-neutral-700' : 'text-emerald-700') }}">
+                                    {{ number_format($movimiento->cantidad, 0, ',', '.') }}
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             {{-- Acciones del admin. La edición (asignadas + cantidades) está
                  disponible en CUALQUIER estado; aprobar/devolver solo si está

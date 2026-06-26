@@ -33,13 +33,14 @@
                 </div>
             </form>
 
-            {{-- Totales del período --}}
-            <div class="grid grid-cols-3 gap-4">
+            {{-- Totales del período. "Producido" es vendible (1ª+2ª); la merma
+                 (malos+dañadas) se muestra aparte para no inflar la productividad. --}}
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 @php
-                    $diff = $totales['asignadas'] - $totales['producido'];
                     $cards = [
                         ['Asignadas', number_format($totales['asignadas'], 0, ',', '.')],
-                        ['Producido', number_format($totales['producido'], 0, ',', '.')],
+                        ['Producido (1ª+2ª)', number_format($totales['producido'], 0, ',', '.')],
+                        ['Merma', number_format($totales['merma'], 0, ',', '.')],
                         ['Reportes', $totales['reportes']],
                     ];
                 @endphp

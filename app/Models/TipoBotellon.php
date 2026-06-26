@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -18,6 +19,7 @@ class TipoBotellon extends Model implements AuditableContract
     protected $fillable = [
         'codigo',
         'nombre',
+        'producto_id',
         'activo',
     ];
 
@@ -26,6 +28,16 @@ class TipoBotellon extends Model implements AuditableContract
         return [
             'activo' => 'boolean',
         ];
+    }
+
+    /**
+     * Producto del catalogo que representa este botellon terminado. Nullable:
+     * un tipo sin enlazar aun al catalogo igual sirve para reportar (el kardex
+     * registra el movimiento sin producto hasta que se enlace).
+     */
+    public function producto(): BelongsTo
+    {
+        return $this->belongsTo(Producto::class, 'producto_id');
     }
 
     public function registros(): HasMany

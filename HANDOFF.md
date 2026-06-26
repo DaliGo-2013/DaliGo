@@ -355,6 +355,33 @@ boleta rápida (dependen de M05), cron de sync.
 
 ---
 
+## 8d. M11 — Producción de botellones / sopladores (estado al 2026-06-26)
+
+> **Importante (drift histórico):** `docs/PLAN-M11-FASE2.md` describe un diseño que **NO** es el
+> implementado. El código siguió un diseño alternativo (máquinas + tipos de botellón + tandas), no el
+> de productos+movimientos del plan. Esta sección es el estado **real**.
+
+**Modelo de datos (real):**
+- `produccion_asignaciones` (soplador/fecha/turno/`asignadas`/`preforma_id`→productos nullable/`creado_por`; UNIQUE soplador/fecha/turno) — modelo `ProduccionAsignacion` (hasOne reporte, belongsTo preforma).
+- `produccion_reportes` (1:1 con asignación; `primera/segunda/malo/danada`, motivo/obs, estado `borrador|enviado|aprobado|devuelto`, enviado/revisado, motivo_ajuste, devuelto_motivo). Auditable. Derivados: `total` (4 categorías = consumo), **`producido` (1ª+2ª = vendible)**, **`merma` (malo+danada)**, `diferencia` (asignadas−total), `tasa_*`. `recalcularDesdeRegistros()` denormaliza desde las tandas.
+- `produccion_registros` (tandas, append-only: máquina + tipo de botellón + 4 cantidades).
+- `maquinas` (por sucursal; `Maquina::paraSoplador()` filtra por sucursal con fallback) y `tipos_botellon` (`codigo/nombre/`**`producto_id`**`/activo`). Ambos auditables.
+- **`produccion_movimientos` (kardex local):** se escribe SOLO al aprobar (`ProduccionMovimiento::generarParaReporte` en `aprobar`, en transacción, idempotente). Tipos: `consumo_preforma|produccion_primera|produccion_segunda|merma`. `producto_id` nullable (degrada si la preforma/tipo no está enlazada). **NUNCA toca `stocks`/`bodegas`** (espejo Bsale); es la verdad local de producción, lista para empujar a Bsale (receptions/consumptions) en una fase futura.
+
+**Controllers / rutas:**
+- `Admin\ProduccionController` (`permission:manage production`): `index` (panel del día + por máquina), `sopladores`/`sopladorHistorial`, `asignar`/`asignarStore` (con preforma + transacción), `reporteShow`, `aprobar` (→ kardex), `devolver`, `ajustar`, **`movimientos` (kardex con filtros producto/tipo/fecha + resumen)**. CRUD `maquinas` y `tipos-botellon`.
+- `Produccion\MiProduccionController` (`permission:report production`): `index`/`show` del reporte del día, `registroStore`/`registroDestroy` (tandas), `update` (motivo/obs + enviar; motivo obligatorio si diferencia≠0).
+
+**UI:** vista de operario `produccion/mi-reporte.blade.php` (celular, `x-stepper-input` táctil + `x-chip-radio`, diferencia y vendible en vivo). Panel y detalle del jefe con preview "al aprobar se registrará" y kardex. Roles: `soplador`→`report production`; `jefe_bodega`→`manage production`.
+
+**Seeders:** `TipoBotellonSeeder` (tipos base), `MaquinaSeeder` (sopladoras Mirador/Coquimbo), `ProduccionTesteoSeeder` (productos `TEST-` preforma/botellón + enlaza tipos; `bsale_variant_id` null para que el `CatalogSync` no los pise). Todos idempotentes; corren en el deploy (`db:seed --force`).
+
+**Tests:** `ProduccionTest` (flujo Fase 1, 37) + `ProduccionKardexTest` (generación de movimientos, idempotencia, sin-preforma, devolver-no-genera, kardex 403/filtro, accessors producido/merma, seeder idempotente).
+
+**Pendiente de M11+:** push del kardex a Bsale (validar con Víctor); PWA offline; consolidar `tipos_botellon`/`maquinas` en `productos` (decisión estratégica); meta/indicadores avanzados por soplador; auditar recalibrado al cambiar preforma.
+
+---
+
 ## 9. Deuda técnica / pendientes conocidos
 
 - **Rotar la contraseña de la BD** `impdali_daligo`: se compartió por chat en algún momento → cambiarla en cPanel y actualizar `.env` del servidor.

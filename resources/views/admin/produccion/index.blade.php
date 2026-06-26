@@ -4,6 +4,7 @@
             <x-slot name="action">
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <x-secondary-link :href="route('admin.produccion.sopladores')">Sopladores</x-secondary-link>
+                    <x-secondary-link :href="route('admin.produccion.movimientos')">Kardex</x-secondary-link>
                     <x-secondary-link :href="route('admin.maquinas.index')">Máquinas</x-secondary-link>
                     <x-secondary-link :href="route('admin.tipos-botellon.index')">Tipos de botellón</x-secondary-link>
                     <x-button-link :href="route('admin.produccion.asignar')">

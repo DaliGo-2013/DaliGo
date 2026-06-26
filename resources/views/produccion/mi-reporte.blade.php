@@ -104,6 +104,7 @@
                         malo: {{ (int) old('malo', 0) }},
                         danada: {{ (int) old('danada', 0) }},
                         guardado: {{ (int) $reporte->total }},
+                        guardadoVendible: {{ (int) $reporte->producido }},
                         asignadas: {{ (int) $reporte->asignadas }},
                         maquinaId: '{{ $maquinaPreseleccionada ?: '' }}',
                         tipoId: '{{ $tipoPreseleccionado ?: '' }}',
@@ -114,6 +115,7 @@
                         avisoTanda: false,
                         get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0) + (Number(this.danada) || 0); },
                         get total() { return this.guardado + this.tanda; },
+                        get vendible() { return this.guardadoVendible + (Number(this.primera) || 0) + (Number(this.segunda) || 0); },
                         get diferencia() { return this.asignadas - this.total; },
                         get resumenSeleccion() { return [this.maquinas[this.maquinaId], this.tipos[this.tipoId]].filter(Boolean).join(' · '); },
                         autoColapsar() { if (this.maquinaId && this.tipoId) this.seleccionAbierta = false; }
@@ -255,6 +257,10 @@
                         <div class="flex items-center justify-between">
                             <span class="text-neutral-500">Total ingresado</span>
                             <span class="text-base font-semibold text-neutral-900" x-text="total">{{ $reporte->total }}</span>
+                        </div>
+                        <div class="mt-1 flex items-center justify-between">
+                            <span class="text-neutral-500">Vendible (1ª+2ª)</span>
+                            <span class="font-semibold text-emerald-600" x-text="vendible">{{ $reporte->producido }}</span>
                         </div>
                         <div class="mt-1 flex items-center justify-between" x-show="tanda > 0" x-cloak>
                             <span class="text-amber-600">Tanda sin agregar</span>

@@ -7,8 +7,11 @@ use App\Models\Bodega;
 use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\ListaPrecio;
+use App\Models\Maquina;
 use App\Models\Producto;
+use App\Models\ProduccionReporte;
 use App\Models\Sucursal;
+use App\Models\TipoBotellon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -27,6 +30,9 @@ class AuditController extends Controller
         Cliente::class => 'Cliente',
         ListaPrecio::class => 'Lista de precios',
         Bodega::class => 'Bodega',
+        ProduccionReporte::class => 'Reporte de producción',
+        Maquina::class => 'Máquina',
+        TipoBotellon::class => 'Tipo de botellón',
     ];
 
     /**
