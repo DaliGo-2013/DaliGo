@@ -20,7 +20,7 @@ class OrdenServicio extends Model implements AuditableContract
     /** @use HasFactory<\Database\Factories\OrdenServicioFactory> */
     use HasFactory, AuditableTrait;
 
-    public const TIPOS = ['maquina', 'lavadora', 'herramienta', 'otro'];
+    public const TIPOS = ['dispensador', 'lavadora', 'herramienta', 'otro'];
 
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     // 'cotizacion' = se le paso presupuesto al cliente y se espera su aprobacion
