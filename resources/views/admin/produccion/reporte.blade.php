@@ -13,6 +13,11 @@
         <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
             <x-status-alert :status="session('status')" />
 
+            <div class="flex flex-wrap gap-x-4 gap-y-2">
+                <x-secondary-link :href="route('admin.produccion.index')">← Volver a la cola</x-secondary-link>
+                <x-secondary-link :href="route('admin.produccion.soplador', $reporte->soplador)">Ver historial del soplador</x-secondary-link>
+            </div>
+
             {{-- Datos del reporte --}}
             <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="border-b border-neutral-100 px-6 py-3">
@@ -187,11 +192,6 @@
                         </div>
                     </form>
                 </div>
-            </div>
-
-            <div class="flex flex-wrap gap-x-4 gap-y-2">
-                <x-secondary-link :href="route('admin.produccion.index')">← Volver a la cola</x-secondary-link>
-                <x-secondary-link :href="route('admin.produccion.soplador', $reporte->soplador)">Ver historial del soplador</x-secondary-link>
             </div>
         </div>
     </div>
