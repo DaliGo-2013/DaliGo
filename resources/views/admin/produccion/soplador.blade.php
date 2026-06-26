@@ -1,10 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="$soplador->name" subtitle="Historial de asignaciones y producción.">
-            <x-slot name="action">
-                <x-secondary-link :href="route('admin.produccion.sopladores')">← Sopladores</x-secondary-link>
-            </x-slot>
-        </x-page-header>
+        <x-page-header :title="$soplador->name" subtitle="Historial de asignaciones y producción."
+                       :back="route('admin.produccion.sopladores')" />
     </x-slot>
 
     <div class="py-12">
