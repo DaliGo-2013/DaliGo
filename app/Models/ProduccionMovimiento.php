@@ -85,8 +85,15 @@ class ProduccionMovimiento extends Model
 
         $fecha = $reporte->fecha->toDateString();
 
-        // 1) Consumo de preforma = total del reporte (1a + 2a + malo + danada).
-        $total = $reporte->total;
+        // 1) Consumo de preforma = suma de las TANDAS (1a + 2a + malo + danada),
+        // NO el total denormalizado del reporte. Asi el kardex queda internamente
+        // consistente (consumo == produccion + merma) aunque el admin haya editado
+        // los totales del reporte via ajustar() sin recalcular las tandas: el
+        // kardex es la verdad fisica de lo soplado; el ajuste del jefe es una capa
+        // de reporte (queda marcado con motivo_ajuste). Ver bitacora M-1.
+        $total = (int) $reporte->registros->sum(
+            fn ($r) => (int) $r->primera + (int) $r->segunda + (int) $r->malo + (int) $r->danada
+        );
         if ($total > 0) {
             static::registrar($reporte, $reporte->asignacion?->preforma_id, self::TIPO_CONSUMO_PREFORMA, $total, $fecha);
         }

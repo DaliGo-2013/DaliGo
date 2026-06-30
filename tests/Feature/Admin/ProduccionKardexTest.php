@@ -103,6 +103,46 @@ class ProduccionKardexTest extends TestCase
         $this->assertSame(4, $reporte->movimientos()->count());
     }
 
+    public function test_kardex_usa_las_tandas_no_los_totales_ajustados(): void
+    {
+        // M-1: el consumo del kardex se deriva de las TANDAS, no del total
+        // denormalizado del reporte. Si el admin ajusta los totales (ajustar())
+        // sin tocar las tandas, el kardex sigue siendo internamente consistente.
+        $preforma = $this->producto('PRE-AJ', 'Preformas');
+        $botellon = $this->producto('BOT-AJ');
+        $tipo = TipoBotellon::create(['codigo' => 'TAJ', 'nombre' => 'Tipo Aj', 'producto_id' => $botellon->id, 'activo' => true]);
+
+        // Tandas reales suman 100 (80 + 10 + 5 + 5).
+        $reporte = $this->reporteEnviadoConTanda($this->soplador(), $preforma, $tipo, [
+            'primera' => 80, 'segunda' => 10, 'malo' => 5, 'danada' => 5,
+        ]);
+
+        // El admin edita los totales denormalizados a 500 SIN tocar las tandas (ajustar()).
+        $reporte->update(['primera' => 500, 'segunda' => 0, 'malo' => 0, 'danada' => 0]);
+        $this->assertSame(500, $reporte->fresh()->total);
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.aprobar', $reporte));
+
+        // El consumo sigue las tandas (100), no el total ajustado (500).
+        $this->assertDatabaseHas('produccion_movimientos', [
+            'reporte_id' => $reporte->id, 'tipo' => ProduccionMovimiento::TIPO_CONSUMO_PREFORMA, 'cantidad' => 100,
+        ]);
+        $this->assertDatabaseMissing('produccion_movimientos', [
+            'reporte_id' => $reporte->id, 'tipo' => ProduccionMovimiento::TIPO_CONSUMO_PREFORMA, 'cantidad' => 500,
+        ]);
+
+        // Internamente consistente: consumo == producción (1ª+2ª) + merma.
+        $movs = $reporte->movimientos()->get();
+        $consumo = (int) $movs->where('tipo', ProduccionMovimiento::TIPO_CONSUMO_PREFORMA)->sum('cantidad');
+        $prodYmerma = (int) $movs->whereIn('tipo', [
+            ProduccionMovimiento::TIPO_PRODUCCION_PRIMERA,
+            ProduccionMovimiento::TIPO_PRODUCCION_SEGUNDA,
+            ProduccionMovimiento::TIPO_MERMA,
+        ])->sum('cantidad');
+        $this->assertSame(100, $consumo);
+        $this->assertSame($consumo, $prodYmerma);
+    }
+
     public function test_aprobar_dos_veces_no_duplica_movimientos(): void
     {
         $preforma = $this->producto('PRE-2', 'Preformas');
