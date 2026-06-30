@@ -166,10 +166,10 @@
                             </x-collapsible>
                         @endif
 
-                        <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" :steps="[10, 100]" />
+                        <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" :steps="[1, 10, 100]" />
 
                         <div>
-                            <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" :steps="[10, 100]" />
+                            <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" :steps="[1, 10, 100]" />
                             <div x-show="segunda > 0" x-cloak class="mt-2">
                                 <x-reason-chips name="motivo_segunda" label="Motivo de las de segunda"
                                                 :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
@@ -178,7 +178,7 @@
                         </div>
 
                         <div>
-                            <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" :steps="[10, 100]" />
+                            <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" :steps="[1, 10, 100]" />
                             <div x-show="malo > 0" x-cloak class="mt-2">
                                 <x-reason-chips name="motivo_malo" label="Motivo de las malas"
                                                 :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
