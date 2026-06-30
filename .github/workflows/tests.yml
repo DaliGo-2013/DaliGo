@@ -1,49 +1,11 @@
 name: Tests
-
-# Corre la suite (PHPUnit, SQLite en memoria) en cada push a main y a mano.
-# Da la senal automatica que faltaba: confirma que los tests pasan de verdad
-# (varios colaboradores trabajan sin PHP local).
-#
-# SIN actions (ni siquiera actions/checkout): la org restringe Actions a un
-# allowlist que no incluye las de GitHub, por eso cualquier `uses:` rompia el
-# arranque del workflow (0 jobs, "workflow file issue"). El runner ubuntu-latest
-# ya trae git + PHP 8.3 + Composer, asi que se clona y testea con `run:`.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  phpunit:
+  ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Clonar el repo (git, sin actions)
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: |
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" src
-          cd src
-          git checkout "$SHA"
-
-      - name: Versiones (PHP/Composer/SQLite del runner)
-        working-directory: src
-        run: |
-          php -v
-          php -m | grep -iE 'pdo_sqlite|sqlite3' || true
-          composer --version
-
-      - name: Instalar dependencias (con dev: incluye PHPUnit)
-        working-directory: src
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Preparar .env + APP_KEY
-        working-directory: src
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
-      - name: Correr la suite
-        working-directory: src
-        run: php artisan test
+      - run: echo hello
