@@ -3,6 +3,10 @@ name: Tests
 # Corre la suite (PHPUnit, SQLite en memoria) en cada push a main, en PRs y a
 # mano. Da la senal automatica que faltaba: confirma que los tests pasan de
 # verdad (el entorno local de algunos colaboradores no tiene PHP).
+#
+# Sin actions de terceros (el runner ubuntu-latest ya trae PHP 8.3 + Composer):
+# la org restringe Actions a las creadas por GitHub, asi que setup-php de
+# terceros rompia el arranque del workflow. Solo se usa actions/checkout.
 on:
   push:
     branches: [main]
@@ -15,19 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP 8.3
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: sqlite3, pdo_sqlite, mbstring, dom, xml, bcmath, ctype, tokenizer, fileinfo
-          coverage: none
-
-      - name: Cache de Composer
-        uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
+      - name: Versiones (PHP y Composer vienen preinstalados en el runner)
+        run: |
+          php -v
+          php -m | grep -iE 'pdo_sqlite|sqlite3' || true
+          composer --version
 
       - name: Instalar dependencias (con dev: incluye PHPUnit)
         run: composer install --no-interaction --prefer-dist --no-progress
