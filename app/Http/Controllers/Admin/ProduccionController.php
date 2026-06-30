@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProduccionController extends Controller
@@ -164,8 +165,10 @@ class ProduccionController extends Controller
             'fecha' => ['required', 'date'],
             'asignadas' => ['required', 'integer', 'min:1'],
             // Preforma del turno (producto del catalogo). Opcional: si no se
-            // elige, el consumo del kardex queda sin enlace a producto.
-            'preforma_id' => ['nullable', 'integer', 'exists:productos,id'],
+            // elige, el consumo del kardex queda sin enlace a producto. Se
+            // restringe a productos ACTIVOS (mismo universo que el selector;
+            // un id inactivo o de otra categoria no debe entrar al kardex).
+            'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)],
         ]);
 
         // Asignacion + reporte en una sola transaccion: si el reporte falla, no
@@ -246,17 +249,25 @@ class ProduccionController extends Controller
         // solo lo aprobado mueve inventario). Idempotente: si ya tiene
         // movimientos, no se duplican ante un doble submit.
         DB::transaction(function () use ($request, $reporte) {
-            $reporte->update([
+            // Lock pesimista del reporte ANTES de mutar: el guard de idempotencia
+            // movimientos()->exists() es check-then-act, asi que sin lock dos
+            // aprobaciones concurrentes (doble-tap / reintento en el celular)
+            // podrian pasar ambas y duplicar el kardex. El lock las serializa: la
+            // segunda espera, re-lee el estado ya APROBADO y sale sin re-generar.
+            $locked = ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
+            if (! $locked || ! $locked->esPendienteDeRevision()) {
+                return;
+            }
+
+            $locked->update([
                 'estado' => ProduccionReporte::APROBADO,
                 'revisado_por' => $request->user()->id,
                 'revisado_at' => now(),
             ]);
 
-            if ($reporte->movimientos()->exists()) {
-                return;
+            if (! $locked->movimientos()->exists()) {
+                ProduccionMovimiento::generarParaReporte($locked);
             }
-
-            ProduccionMovimiento::generarParaReporte($reporte);
         });
 
         return redirect()->route('admin.produccion.index')

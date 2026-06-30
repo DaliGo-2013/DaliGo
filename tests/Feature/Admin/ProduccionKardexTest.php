@@ -198,4 +198,29 @@ class ProduccionKardexTest extends TestCase
         $this->assertSame(6, Producto::where('sku', 'like', 'TEST-%')->count());
         $this->assertNotNull(TipoBotellon::where('codigo', 'AZUL-20L')->first()->producto_id);
     }
+
+    // --- Scope de preforma_id al asignar ---
+
+    public function test_asignar_rechaza_preforma_inactiva_y_acepta_activa(): void
+    {
+        $soplador = $this->soplador();
+        $base = ['soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+
+        $inactiva = Producto::create(['sku' => 'PREF-OFF', 'nombre' => 'Preforma inactiva', 'categoria' => 'Preformas', 'activo' => false]);
+        $activa = $this->producto('PREF-ON', 'Preformas');
+
+        // Un producto inactivo no puede entrar al kardex como preforma del turno.
+        $this->actingAs($this->jefe())
+            ->post(route('admin.produccion.asignar.store'), $base + ['preforma_id' => $inactiva->id])
+            ->assertSessionHasErrors('preforma_id');
+        $this->assertDatabaseMissing('produccion_asignaciones', ['soplador_id' => $soplador->id]);
+
+        // Un producto activo sí se acepta y queda enlazado a la asignación.
+        $this->actingAs($this->jefe())
+            ->post(route('admin.produccion.asignar.store'), $base + ['preforma_id' => $activa->id])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'preforma_id' => $activa->id,
+        ]);
+    }
 }
