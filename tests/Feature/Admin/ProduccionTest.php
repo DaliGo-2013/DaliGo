@@ -402,6 +402,76 @@ class ProduccionTest extends TestCase
         $this->assertSame('borrador', $reporte->fresh()->estado);
     }
 
+    public function test_enviar_con_diferencia_acepta_motivo_de_la_lista(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 50], $maquina, $tipo);
+
+        $motivo = ProduccionReporte::MOTIVOS_DIFERENCIA[0];
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
+            'enviar' => 1, 'motivo' => $motivo,
+        ])->assertRedirect(route('produccion.mi.index'));
+
+        $reporte->refresh();
+        $this->assertSame('enviado', $reporte->estado);
+        $this->assertSame($motivo, $reporte->motivo);
+    }
+
+    public function test_enviar_con_diferencia_acepta_motivo_otro_libre(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 50], $maquina, $tipo);
+
+        // El chip "Otro" viaja como centinela; el texto real en motivo_otro.
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
+            'enviar' => 1,
+            'motivo' => ProduccionReporte::MOTIVO_OTRO,
+            'motivo_otro' => 'Se cortó el aire comprimido',
+        ])->assertRedirect(route('produccion.mi.index'));
+
+        $reporte->refresh();
+        $this->assertSame('enviado', $reporte->estado);
+        $this->assertSame('Se cortó el aire comprimido', $reporte->motivo);
+    }
+
+    public function test_enviar_con_otro_sin_texto_exige_motivo(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 50], $maquina, $tipo);
+
+        // "Otro" elegido pero el texto queda en blanco => se normaliza a null y
+        // la diferencia sigue exigiendo motivo.
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
+            'enviar' => 1,
+            'motivo' => ProduccionReporte::MOTIVO_OTRO,
+            'motivo_otro' => '   ',
+        ])->assertSessionHasErrors('motivo');
+
+        $this->assertSame('borrador', $reporte->fresh()->estado);
+    }
+
+    public function test_mi_reporte_renderiza_chips_de_motivo_y_notas(): void
+    {
+        // Render real de la vista del operario: valida que el componente
+        // reason-chips compila y que las listas centralizadas se muestran.
+        $soplador = $this->soplador();
+        $this->reporteDe($soplador, 100);
+        $this->maquina();
+        $this->tipo();
+
+        $this->actingAs($soplador)->get('/produccion/mi-reporte')
+            ->assertOk()
+            ->assertSee(ProduccionReporte::MOTIVOS_DIFERENCIA[0])
+            ->assertSee(ProduccionReporte::NOTAS_COMUNES[0])
+            ->assertSee('Motivo de la diferencia');
+    }
+
     public function test_reenviar_limpia_el_motivo_de_devolucion(): void
     {
         $soplador = $this->soplador();

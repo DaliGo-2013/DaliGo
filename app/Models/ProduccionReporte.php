@@ -24,6 +24,34 @@ class ProduccionReporte extends Model implements AuditableContract
     public const APROBADO = 'aprobado';
     public const DEVUELTO = 'devuelto';
 
+    // Centinela del chip "Otro" del selector de motivo (la vista lo manda como
+    // valor del radio; el controlador lo resuelve al texto libre de motivo_otro).
+    public const MOTIVO_OTRO = '__otro__';
+
+    // Motivos por los que lo producido no cuadra con lo asignado. Lista abierta:
+    // se ofrecen como chips tocables y, si ninguno aplica, el operario escribe en
+    // "Otro" (por eso 'motivo' no se restringe con Rule::in). Fuente unica para
+    // la vista; antes vivian hardcodeados en mi-reporte.blade.php.
+    public const MOTIVOS_DIFERENCIA = [
+        'Faltaron preformas',
+        'Falla de máquina',
+        'Mantención de máquina',
+        'Cambio de molde',
+        'Molde dañado',
+        'Preformas defectuosas',
+        'Corte de luz',
+    ];
+
+    // Notas frecuentes para las observaciones: el operario las inserta tocando un
+    // chip (no son una lista cerrada; el textarea queda como respaldo editable).
+    public const NOTAS_COMUNES = [
+        'Máquina con falla intermitente',
+        'Preformas con polvo o humedad',
+        'Molde frío al iniciar el turno',
+        'Corte de luz breve',
+        'Material de baja calidad',
+    ];
+
     protected $fillable = [
         'asignacion_id',
         'soplador_id',

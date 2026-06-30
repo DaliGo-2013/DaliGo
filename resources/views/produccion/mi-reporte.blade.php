@@ -103,6 +103,7 @@
                         segunda: {{ (int) old('segunda', 0) }},
                         malo: {{ (int) old('malo', 0) }},
                         danada: {{ (int) old('danada', 0) }},
+                        obs: {{ Js::from(old('obs', $reporte->obs) ?? '') }},
                         guardado: {{ (int) $reporte->total }},
                         guardadoVendible: {{ (int) $reporte->producido }},
                         asignadas: {{ (int) $reporte->asignadas }},
@@ -173,33 +174,23 @@
                             </div>
                         @endif
 
-                        <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" />
+                        <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" :steps="[10, 100]" />
 
                         <div>
-                            <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" />
+                            <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" :steps="[10, 100]" />
                             <div x-show="segunda > 0" x-cloak class="mt-2">
-                                <x-input-label for="motivo_segunda" value="Motivo de las de segunda" />
-                                <x-select id="motivo_segunda" name="motivo_segunda" class="mt-1.5">
-                                    <option value="">Elige un motivo…</option>
-                                    @foreach (\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO as $motivo)
-                                        <option value="{{ $motivo }}" @selected(old('motivo_segunda') === $motivo)>{{ $motivo }}</option>
-                                    @endforeach
-                                </x-select>
-                                <x-input-error :messages="$errors->get('motivo_segunda')" class="mt-2" />
+                                <x-reason-chips name="motivo_segunda" label="Motivo de las de segunda"
+                                                :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
+                                                :selected="old('motivo_segunda')" />
                             </div>
                         </div>
 
                         <div>
-                            <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" />
+                            <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" :steps="[10, 100]" />
                             <div x-show="malo > 0" x-cloak class="mt-2">
-                                <x-input-label for="motivo_malo" value="Motivo de las malas" />
-                                <x-select id="motivo_malo" name="motivo_malo" class="mt-1.5">
-                                    <option value="">Elige un motivo…</option>
-                                    @foreach (\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO as $motivo)
-                                        <option value="{{ $motivo }}" @selected(old('motivo_malo') === $motivo)>{{ $motivo }}</option>
-                                    @endforeach
-                                </x-select>
-                                <x-input-error :messages="$errors->get('motivo_malo')" class="mt-2" />
+                                <x-reason-chips name="motivo_malo" label="Motivo de las malas"
+                                                :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
+                                                :selected="old('motivo_malo')" />
                             </div>
                         </div>
 
@@ -284,23 +275,28 @@
                         @method('PATCH')
                         <input type="hidden" name="enviar" value="1">
 
-                        {{-- Motivo: requerido si hay diferencia; con sugerencias tocables --}}
+                        {{-- Motivo: requerido si hay diferencia; chips tocables + "Otro" --}}
                         <div x-show="diferencia !== 0" @if($reporte->diferencia === 0) x-cloak @endif>
-                            <x-input-label for="motivo" value="Motivo de la diferencia" />
-                            <x-text-input id="motivo" class="mt-1.5" type="text" name="motivo" list="motivos-comunes" :value="old('motivo', $reporte->motivo)" placeholder="Toca para elegir o escribe…" />
-                            <datalist id="motivos-comunes">
-                                <option value="Molde dañado"></option>
-                                <option value="Falla de máquina"></option>
-                                <option value="Corte de luz"></option>
-                                <option value="Faltaron preformas"></option>
-                                <option value="Preformas defectuosas"></option>
-                            </datalist>
-                            <x-input-error :messages="$errors->get('motivo')" class="mt-2" />
+                            <x-reason-chips name="motivo" label="Motivo de la diferencia" allow-other
+                                            :options="\App\Models\ProduccionReporte::MOTIVOS_DIFERENCIA"
+                                            :selected="old('motivo', $reporte->motivo)" />
                         </div>
 
                         <div>
-                            <x-input-label for="obs" value="Observaciones (opcional)" />
-                            <x-textarea id="obs" name="obs" rows="2" class="mt-1.5">{{ old('obs', $reporte->obs) }}</x-textarea>
+                            <div class="flex flex-wrap items-baseline gap-x-2">
+                                <x-input-label for="obs" value="Observaciones (opcional)" />
+                                <span class="text-xs text-neutral-500">Toca una nota o escribe.</span>
+                            </div>
+                            <div class="mt-1.5 flex flex-wrap gap-2">
+                                @foreach (\App\Models\ProduccionReporte::NOTAS_COMUNES as $nota)
+                                    <button type="button"
+                                            x-on:click="obs = obs.includes(@js($nota)) ? obs : (obs.trim() ? obs.trim() + ' · ' : '') + @js($nota)"
+                                            class="inline-flex min-h-11 items-center rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-600 shadow-sm transition duration-150 hover:bg-neutral-50 active:scale-[0.98]">
+                                        <span aria-hidden="true" class="mr-1 text-brand-600">+</span>{{ $nota }}
+                                    </button>
+                                @endforeach
+                            </div>
+                            <x-textarea id="obs" name="obs" rows="2" class="mt-2" x-model="obs">{{ old('obs', $reporte->obs) }}</x-textarea>
                             <x-input-error :messages="$errors->get('obs')" class="mt-2" />
                         </div>
 

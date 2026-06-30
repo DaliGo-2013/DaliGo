@@ -146,6 +146,17 @@ class MiProduccionController extends Controller
         abort_unless($reporte->soplador_id === $request->user()->id, 403);
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
 
+        // El motivo de la diferencia llega por chips tocables; el chip "Otro"
+        // viaja como centinela y el texto real en motivo_otro. Resolver a un
+        // unico string antes de validar y normalizar '' -> null (un chip oculto
+        // o no elegido manda ''), para que 'nullable' y la regla de motivo
+        // requerido cuando hay diferencia funcionen igual que antes.
+        $motivo = $request->input('motivo');
+        if ($motivo === ProduccionReporte::MOTIVO_OTRO) {
+            $motivo = $request->filled('motivo_otro') ? trim((string) $request->input('motivo_otro')) : null;
+        }
+        $request->merge(['motivo' => blank($motivo) ? null : $motivo]);
+
         $validated = $request->validate([
             'motivo' => ['nullable', 'string', 'max:255'],
             'obs' => ['nullable', 'string', 'max:1000'],
