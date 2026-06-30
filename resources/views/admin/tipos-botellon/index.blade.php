@@ -39,7 +39,8 @@
                             <x-icon-button :href="route('admin.tipos-botellon.edit', $tipo)" label="Editar" title="Editar">
                                 <x-icon.pencil class="h-5 w-5" />
                             </x-icon-button>
-                            <form method="POST" action="{{ route('admin.tipos-botellon.destroy', $tipo) }}" onsubmit="return confirm('¿Eliminar el tipo {{ $tipo->nombre }}?');">
+                            <form method="POST" action="{{ route('admin.tipos-botellon.destroy', $tipo) }}"
+                                  x-data x-on:submit="if (! confirm('¿Eliminar el tipo ' + @js($tipo->nombre) + '?')) $event.preventDefault()">
                                 @csrf
                                 @method('DELETE')
                                 <x-icon-button type="submit" variant="danger" label="Eliminar" title="Eliminar">

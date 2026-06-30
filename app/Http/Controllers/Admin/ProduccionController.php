@@ -38,21 +38,29 @@ class ProduccionController extends Controller
             'aprobados' => $reportes->where('estado', ProduccionReporte::APROBADO)->count(),
         ];
 
-        // Produccion del dia agrupada por maquina (primer entregable de
-        // metricas por maquina; incluye reportes aun sin aprobar).
+        // Produccion del dia agrupada por maquina (rollup operativo basado en las
+        // tandas reportadas; incluye reportes sin aprobar y puede diferir de un
+        // total editado por el admin). Incluye la sucursal: el nombre de maquina
+        // solo es unico por sucursal, asi que dos maquinas homonimas de distinta
+        // sucursal deben distinguirse.
         $porMaquina = ProduccionRegistro::query()
             ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
             ->leftJoin('maquinas', 'maquinas.id', '=', 'produccion_registros.maquina_id')
+            ->leftJoin('sucursales', 'sucursales.id', '=', 'maquinas.sucursal_id')
             ->whereDate('produccion_reportes.fecha', $hoy)
-            ->groupBy('produccion_registros.maquina_id', 'maquinas.nombre')
+            ->groupBy('produccion_registros.maquina_id', 'maquinas.nombre', 'sucursales.nombre')
             ->orderByRaw('maquinas.nombre IS NULL, maquinas.nombre')
-            ->selectRaw('maquinas.nombre AS maquina, SUM(produccion_registros.primera) AS primera, SUM(produccion_registros.segunda) AS segunda, SUM(produccion_registros.malo) AS malo, SUM(produccion_registros.danada) AS danada')
+            ->selectRaw('maquinas.nombre AS maquina, sucursales.nombre AS sucursal, SUM(produccion_registros.primera) AS primera, SUM(produccion_registros.segunda) AS segunda, SUM(produccion_registros.malo) AS malo, SUM(produccion_registros.danada) AS danada')
             ->get();
+
+        // Solo desambiguar con sucursal si el dia mezcla varias (evita ruido mono-sucursal).
+        $porMaquinaMultiSucursal = $porMaquina->whereNotNull('sucursal')->pluck('sucursal')->unique()->count() > 1;
 
         return view('admin.produccion.index', [
             'reportes' => $reportes,
             'resumen' => $resumen,
             'porMaquina' => $porMaquina,
+            'porMaquinaMultiSucursal' => $porMaquinaMultiSucursal,
         ]);
     }
 

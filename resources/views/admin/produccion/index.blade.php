@@ -41,14 +41,16 @@
             {{-- Producción del día por máquina (incluye reportes sin aprobar) --}}
             @if ($porMaquina->isNotEmpty())
                 <div class="dg-enter mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                    <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+                    <div class="flex items-center justify-between gap-3 border-b border-neutral-100 px-4 py-3 sm:px-6">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por máquina · hoy</h3>
-                        <span class="text-xs font-medium text-neutral-400">incluye reportes sin aprobar</span>
+                        <span class="text-right text-xs font-medium text-neutral-400">según tandas reportadas · puede diferir de totales editados</span>
                     </div>
                     <ul class="divide-y divide-neutral-100">
                         @foreach ($porMaquina as $fila)
                             <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 sm:px-6">
-                                <p class="text-sm font-medium text-neutral-900">{{ $fila->maquina ?? 'Sin máquina' }}</p>
+                                <p class="text-sm font-medium text-neutral-900">
+                                    {{ $fila->maquina ?? 'Sin máquina' }}@if ($porMaquinaMultiSucursal && $fila->sucursal)<span class="text-neutral-400"> · {{ $fila->sucursal }}</span>@endif
+                                </p>
                                 <div class="flex items-center gap-4 text-sm text-neutral-600">
                                     <span><span class="text-neutral-400">1ª</span> {{ number_format($fila->primera, 0, ',', '.') }}</span>
                                     <span><span class="text-neutral-400">2ª</span> {{ number_format($fila->segunda, 0, ',', '.') }}</span>

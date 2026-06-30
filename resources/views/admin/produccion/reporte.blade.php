@@ -81,6 +81,9 @@
                 @if ($reporte->registros->isNotEmpty())
                     <div class="border-t border-neutral-100">
                         <h3 class="px-6 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle por máquina y tipo</h3>
+                        @if ($reporte->motivo_ajuste)
+                            <p class="px-6 pt-1 text-xs text-amber-600">Detalle según lo que reportó el soplador; el admin editó las cantidades (ver «Ajuste del jefe» abajo), por lo que la suma de abajo puede no coincidir con los totales del encabezado.</p>
+                        @endif
                         <ul class="divide-y divide-neutral-100">
                             @foreach ($reporte->registros as $registro)
                                 @php
@@ -179,7 +182,7 @@
                 <div class="flex flex-wrap gap-3">
                     @if ($reporte->esPendienteDeRevision())
                         <form method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"
-                              onsubmit="return confirm('¿Aprobar el reporte de {{ $reporte->soplador->name }}?');">
+                              x-on:submit="if (! confirm('¿Aprobar el reporte de ' + @js($reporte->soplador->name) + '?')) $event.preventDefault()">
                             @csrf
                             <x-primary-button>Aprobar</x-primary-button>
                         </form>

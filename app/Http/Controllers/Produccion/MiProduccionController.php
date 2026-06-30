@@ -106,6 +106,10 @@ class MiProduccionController extends Controller
         }
 
         DB::transaction(function () use ($reporte, $validated) {
+            // Lock pesimista del reporte: serializa el ciclo crear-tanda → recalcular
+            // SUM ante doble POST concurrente (doble tap / reintento en el celular),
+            // evitando que el total denormalizado quede corto. No-op inofensivo en SQLite.
+            ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
             $reporte->registros()->create($validated);
             $reporte->recalcularDesdeRegistros();
         });
@@ -124,6 +128,7 @@ class MiProduccionController extends Controller
         abort_unless($registro->reporte_id === $reporte->id, 404);
 
         DB::transaction(function () use ($reporte, $registro) {
+            ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
             $registro->delete();
             $reporte->recalcularDesdeRegistros();
         });

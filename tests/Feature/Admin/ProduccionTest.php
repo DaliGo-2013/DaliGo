@@ -600,4 +600,44 @@ class ProduccionTest extends TestCase
             ->assertSee('Sopladora Sur')
             ->assertSee('Incoloro 10L retornable');
     }
+
+    public function test_reporte_editado_marca_la_divergencia_en_el_detalle(): void
+    {
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
+        $reporte->registros()->create([
+            'maquina_id' => $this->maquina()->id,
+            'tipo_botellon_id' => $this->tipo()->id,
+            'primera' => 50,
+        ]);
+        $reporte->recalcularDesdeRegistros(); // total desde tandas = 50
+
+        // El admin edita el total a 80; el detalle por tandas sigue en 50.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.ajustar', $reporte), [
+            'asignadas' => 100, 'primera' => 80, 'segunda' => 0, 'malo' => 0, 'danada' => 0, 'motivo_ajuste' => 'Recuento físico.',
+        ]);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('el admin editó las cantidades'); // nota de divergencia sobre el detalle
+    }
+
+    public function test_por_maquina_distingue_maquinas_homonimas_de_distinta_sucursal(): void
+    {
+        $sucA = $this->sucursal('MIRADOR');
+        $sucB = $this->sucursal('COQUIMBO');
+        $sopA = $this->soplador($sucA);
+        $sopB = $this->soplador($sucB);
+        $repA = $this->reporteDe($sopA, 100);
+        $repB = $this->reporteDe($sopB, 100);
+        $maqA = $this->maquina($sucA, 'Sopladora 1');
+        $maqB = $this->maquina($sucB, 'Sopladora 1'); // mismo nombre, otra sucursal
+        $tipo = $this->tipo();
+        $this->agregarTanda($sopA, $repA, ['primera' => 10], $maqA, $tipo);
+        $this->agregarTanda($sopB, $repB, ['primera' => 20], $maqB, $tipo);
+
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertSee('Mirador')
+            ->assertSee('Coquimbo');
+    }
 }

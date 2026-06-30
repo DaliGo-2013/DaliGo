@@ -39,7 +39,8 @@
                             <x-icon-button :href="route('admin.maquinas.edit', $maquina)" label="Editar" title="Editar">
                                 <x-icon.pencil class="h-5 w-5" />
                             </x-icon-button>
-                            <form method="POST" action="{{ route('admin.maquinas.destroy', $maquina) }}" onsubmit="return confirm('¿Eliminar la máquina {{ $maquina->nombre }}?');">
+                            <form method="POST" action="{{ route('admin.maquinas.destroy', $maquina) }}"
+                                  x-data x-on:submit="if (! confirm('¿Eliminar la máquina ' + @js($maquina->nombre) + '?')) $event.preventDefault()">
                                 @csrf
                                 @method('DELETE')
                                 <x-icon-button type="submit" variant="danger" label="Eliminar" title="Eliminar">
