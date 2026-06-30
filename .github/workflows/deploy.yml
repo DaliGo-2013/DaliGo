@@ -24,6 +24,14 @@ jobs:
       # -o IdentitiesOnly + -o IdentityAgent=none: ofrecer SOLO esa llave (los runners nuevos
       #   traen llaves en el ssh-agent que, ofrecidas antes, agotan el MaxAuthTries del server).
       # -o KexAlgorithms: HostGator solo ofrece el KEX legacy diffie-hellman-group-exchange-sha256.
+      #
+      # db:seed --force AL FINAL (a nivel workflow, no en deploy.sh): el deploy.sh
+      # del servidor quedo "congelado" en una version vieja (git reset --hard no lo
+      # pisa -> probablemente tiene skip-worktree), por lo que su paso de seed solo
+      # sembraba roles. El resto del codigo SI se actualiza (la migracion nueva corrio),
+      # asi que correr el DatabaseSeeder completo aca, sobre el codigo ya actualizado,
+      # garantiza que se siembren TODOS los seeders (sucursales, maquinas, material de
+      # testeo del soplador, etc.). Es idempotente: seguro re-ejecutar en cada deploy.
       - name: Deploy por SSH a HostGator
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -40,4 +48,4 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
             "$SSH_USER@$SSH_HOST" \
-            "cd /home4/impdali/daligo && git fetch origin main && git reset --hard origin/main && bash deploy.sh"
+            "cd /home4/impdali/daligo && git fetch origin main && git reset --hard origin/main && bash deploy.sh && /opt/cpanel/ea-php83/root/usr/bin/php artisan db:seed --force"
