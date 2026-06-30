@@ -95,9 +95,6 @@
                     $multiSucursal = $maquinas->pluck('sucursal_id')->unique()->count() > 1;
                     $etiquetasMaquinas = $maquinas->mapWithKeys(fn ($m) => [$m->id => $multiSucursal ? "{$m->nombre} · {$m->sucursal->nombre}" : $m->nombre]);
                     $etiquetasTipos = $tipos->pluck('nombre', 'id');
-                    $seleccionAbierta = $errors->has('maquina_id') || $errors->has('tipo_botellon_id')
-                        || ($maquinas->isNotEmpty() && ! $maquinaPreseleccionada)
-                        || ($tipos->isNotEmpty() && ! $tipoPreseleccionado);
                 @endphp
 
                 <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
@@ -114,15 +111,18 @@
                         tipoId: '{{ $tipoPreseleccionado ?: '' }}',
                         maquinas: {{ Js::from($etiquetasMaquinas) }},
                         tipos: {{ Js::from($etiquetasTipos) }},
-                        seleccionAbierta: {{ $seleccionAbierta ? 'true' : 'false' }},
+                        paneles: {
+                            maquina: {{ $errors->has('maquina_id') ? 'true' : 'false' }},
+                            tipo: {{ $errors->has('tipo_botellon_id') ? 'true' : 'false' }},
+                            motivo: {{ $errors->has('motivo') ? 'true' : 'false' }},
+                            obs: {{ $errors->has('obs') ? 'true' : 'false' }},
+                        },
                         agregando: false,
                         avisoTanda: false,
                         get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0) + (Number(this.danada) || 0); },
                         get total() { return this.guardado + this.tanda; },
                         get vendible() { return this.guardadoVendible + (Number(this.primera) || 0) + (Number(this.segunda) || 0); },
-                        get diferencia() { return this.asignadas - this.total; },
-                        get resumenSeleccion() { return [this.maquinas[this.maquinaId], this.tipos[this.tipoId]].filter(Boolean).join(' · '); },
-                        autoColapsar() { if (this.maquinaId && this.tipoId) this.seleccionAbierta = false; }
+                        get diferencia() { return this.asignadas - this.total; }
                      }">
                     {{-- La asignación, siempre a la vista --}}
                     <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
@@ -137,44 +137,33 @@
                           class="space-y-4 p-4 sm:p-6" x-on:submit="agregando = true">
                         @csrf
 
-                        @if ($maquinas->isNotEmpty() || $tipos->isNotEmpty())
-                            {{-- Selección colapsada: una línea, sin estorbar las cantidades --}}
-                            <button type="button" x-show="! seleccionAbierta" x-cloak x-on:click="seleccionAbierta = true"
-                                    class="flex w-full items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-2.5 text-left transition duration-150 hover:bg-neutral-100">
-                                <span class="truncate text-sm font-medium text-neutral-700" x-text="resumenSeleccion || 'Elige máquina y tipo'"></span>
-                                <span class="shrink-0 text-xs font-semibold text-brand-700">Cambiar</span>
-                            </button>
+                        @if ($maquinas->isNotEmpty())
+                            <x-collapsible label="Máquina" model="paneles.maquina">
+                                <x-slot:summary><span x-text="maquinas[maquinaId] || 'Toca para elegir'"></span></x-slot:summary>
+                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                    @foreach ($maquinas as $maquina)
+                                        <x-chip-radio name="maquina_id" :value="$maquina->id"
+                                                      :label="$etiquetasMaquinas[$maquina->id]"
+                                                      :checked="(int) old('maquina_id', $maquinaPreseleccionada) === $maquina->id"
+                                                      x-model="maquinaId" x-on:change="paneles.maquina = false" />
+                                    @endforeach
+                                </div>
+                                <x-input-error :messages="$errors->get('maquina_id')" class="mt-2" />
+                            </x-collapsible>
+                        @endif
 
-                            <div x-show="seleccionAbierta" @if(! $seleccionAbierta) x-cloak @endif class="space-y-4">
-                                @if ($maquinas->isNotEmpty())
-                                    <div>
-                                        <x-input-label value="Máquina" />
-                                        <div class="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                            @foreach ($maquinas as $maquina)
-                                                <x-chip-radio name="maquina_id" :value="$maquina->id"
-                                                              :label="$etiquetasMaquinas[$maquina->id]"
-                                                              :checked="(int) old('maquina_id', $maquinaPreseleccionada) === $maquina->id"
-                                                              x-model="maquinaId" x-on:change="$nextTick(() => autoColapsar())" />
-                                            @endforeach
-                                        </div>
-                                        <x-input-error :messages="$errors->get('maquina_id')" class="mt-2" />
-                                    </div>
-                                @endif
-
-                                @if ($tipos->isNotEmpty())
-                                    <div>
-                                        <x-input-label value="Tipo de botellón" />
-                                        <div class="mt-1.5 grid grid-cols-2 gap-2">
-                                            @foreach ($tipos as $tipo)
-                                                <x-chip-radio name="tipo_botellon_id" :value="$tipo->id" :label="$tipo->nombre"
-                                                              :checked="(int) old('tipo_botellon_id', $tipoPreseleccionado) === $tipo->id"
-                                                              x-model="tipoId" x-on:change="$nextTick(() => autoColapsar())" />
-                                            @endforeach
-                                        </div>
-                                        <x-input-error :messages="$errors->get('tipo_botellon_id')" class="mt-2" />
-                                    </div>
-                                @endif
-                            </div>
+                        @if ($tipos->isNotEmpty())
+                            <x-collapsible label="Tipo de botellón" model="paneles.tipo">
+                                <x-slot:summary><span x-text="tipos[tipoId] || 'Toca para elegir'"></span></x-slot:summary>
+                                <div class="grid grid-cols-2 gap-2">
+                                    @foreach ($tipos as $tipo)
+                                        <x-chip-radio name="tipo_botellon_id" :value="$tipo->id" :label="$tipo->nombre"
+                                                      :checked="(int) old('tipo_botellon_id', $tipoPreseleccionado) === $tipo->id"
+                                                      x-model="tipoId" x-on:change="paneles.tipo = false" />
+                                    @endforeach
+                                </div>
+                                <x-input-error :messages="$errors->get('tipo_botellon_id')" class="mt-2" />
+                            </x-collapsible>
                         @endif
 
                         <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" :steps="[10, 100]" />
@@ -280,16 +269,17 @@
 
                         {{-- Motivo: requerido si hay diferencia; chips tocables + "Otro" --}}
                         <div x-show="diferencia !== 0" @if($reporte->diferencia === 0) x-cloak @endif>
-                            <x-reason-chips name="motivo" label="Motivo de la diferencia" allow-other
-                                            :options="\App\Models\ProduccionReporte::MOTIVOS_DIFERENCIA"
-                                            :selected="old('motivo', $reporte->motivo)" />
+                            <x-collapsible label="Motivo de la diferencia" model="paneles.motivo">
+                                <x-slot:summary>¿Por qué no cuadra con lo asignado?</x-slot:summary>
+                                <x-reason-chips name="motivo" allow-other
+                                                :options="\App\Models\ProduccionReporte::MOTIVOS_DIFERENCIA"
+                                                :selected="old('motivo', $reporte->motivo)" />
+                            </x-collapsible>
                         </div>
 
-                        <div>
-                            <div class="flex flex-wrap items-baseline gap-x-2">
-                                <x-input-label for="obs" value="Observaciones (opcional)" />
-                                <span class="text-xs text-neutral-500">Toca una nota o escribe.</span>
-                            </div>
+                        <x-collapsible label="Observaciones (opcional)" model="paneles.obs">
+                            <x-slot:summary><span x-text="obs ? obs : 'Toca para agregar una nota'"></span></x-slot:summary>
+                            <p class="text-xs text-neutral-500">Toca una nota o escribe.</p>
                             <div class="mt-1.5 flex flex-wrap gap-2">
                                 @foreach (\App\Models\ProduccionReporte::NOTAS_COMUNES as $nota)
                                     <button type="button"
@@ -301,7 +291,7 @@
                             </div>
                             <x-textarea id="obs" name="obs" rows="2" class="mt-2" x-model="obs">{{ old('obs', $reporte->obs) }}</x-textarea>
                             <x-input-error :messages="$errors->get('obs')" class="mt-2" />
-                        </div>
+                        </x-collapsible>
 
                         <p x-show="avisoTanda" x-cloak class="dg-shake rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700">
                             Tienes una tanda sin agregar. Toca «Agregar al reporte» antes de enviar.
