@@ -44,7 +44,7 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_nombre' => 'Juan Pérez',
             'cliente_rut' => '12.345.678-5',
             'fecha_ingreso' => now()->toDateString(),
-            'tipo_equipo' => 'maquina',
+            'tipo_equipo' => 'dispensador',
             'sucursal_id' => Sucursal::factory()->create()->id,
             'numero_serie' => 'SN-1234',
             'falla_reportada' => 'No enciende',
@@ -443,7 +443,7 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_index_filters_by_estado_and_tipo(): void
     {
-        OrdenServicio::factory()->create(['cliente_nombre' => 'Alfa SpA', 'estado' => 'recibido', 'tipo_equipo' => 'maquina']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Alfa SpA', 'estado' => 'recibido', 'tipo_equipo' => 'dispensador']);
         OrdenServicio::factory()->create(['cliente_nombre' => 'Beta Ltda', 'estado' => 'entregado', 'tipo_equipo' => 'lavadora']);
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?estado=recibido')

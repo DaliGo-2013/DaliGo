@@ -5,7 +5,30 @@ on:
   workflow_dispatch:
 
 jobs:
-  ping:
+  phpunit:
     runs-on: ubuntu-latest
     steps:
-      - run: echo hello
+      - name: Clonar el repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" src
+          cd src
+          git checkout "$SHA"
+
+      - name: Suite
+        working-directory: src
+        env:
+          # Prod (ea-php83) no tiene xdebug. Con xdebug el runner falla:
+          # al lanzar DateMalformedStringException (que Laravel normalmente
+          # captura), xdebug intenta agregarle $xdebug_message -> Error de
+          # propiedad dinamica en PHP 8.3 que escapa el catch. Off = como prod.
+          XDEBUG_MODE: 'off'
+        run: |
+          php -v
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
