@@ -142,7 +142,7 @@ class ProduccionTest extends TestCase
         ]);
     }
 
-    public function test_reasignar_actualiza_cantidad_sin_duplicar(): void
+    public function test_asignar_de_nuevo_crea_otra_produccion(): void
     {
         $soplador = $this->soplador();
         $payload = ['soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString()];
@@ -150,8 +150,78 @@ class ProduccionTest extends TestCase
         $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $payload + ['asignadas' => 100]);
         $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $payload + ['asignadas' => 250]);
 
-        $this->assertSame(1, ProduccionAsignacion::where('soplador_id', $soplador->id)->count());
+        // Cada "Asignar" crea una produccion independiente (varias por dia/turno).
+        $this->assertSame(2, ProduccionAsignacion::where('soplador_id', $soplador->id)->count());
+        $this->assertSame(2, ProduccionReporte::where('soplador_id', $soplador->id)->count());
+        $this->assertDatabaseHas('produccion_asignaciones', ['soplador_id' => $soplador->id, 'asignadas' => 100]);
         $this->assertDatabaseHas('produccion_asignaciones', ['soplador_id' => $soplador->id, 'asignadas' => 250]);
+    }
+
+    public function test_asignar_no_muta_un_reporte_aprobado_existente(): void
+    {
+        // Regresion del bug: re-asignar a un soplador con reporte aprobado del dia
+        // NO debe pisar ese aprobado; crea una produccion nueva en borrador.
+        $soplador = $this->soplador();
+        $aprobado = $this->reporteDe($soplador, 600, ProduccionReporte::APROBADO);
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), [
+            'soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 500,
+        ])->assertRedirect(route('admin.produccion.index'));
+
+        $aprobado->refresh();
+        $this->assertSame('aprobado', $aprobado->estado);
+        $this->assertSame(600, $aprobado->asignadas); // intacto, no pisado a 500
+        $this->assertSame(2, ProduccionReporte::where('soplador_id', $soplador->id)->count());
+        $this->assertSame(1, ProduccionReporte::where('soplador_id', $soplador->id)
+            ->where('estado', ProduccionReporte::BORRADOR)->where('asignadas', 500)->count());
+    }
+
+    public function test_soplador_lista_varias_producciones_del_dia(): void
+    {
+        $soplador = $this->soplador();
+        $r1 = $this->reporteDe($soplador, 100);
+        $r2 = $this->reporteDe($soplador, 250);
+
+        $this->actingAs($soplador)->get(route('produccion.mi.index'))
+            ->assertOk()
+            ->assertSee('100 preformas')
+            ->assertSee('250 preformas')
+            ->assertSee(route('produccion.mi.show', $r1))
+            ->assertSee(route('produccion.mi.show', $r2));
+    }
+
+    public function test_jefe_elimina_produccion_vacia_en_borrador(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100); // borrador sin tandas
+        $asignacionId = $reporte->asignacion_id;
+
+        $this->actingAs($this->jefe())->delete(route('admin.produccion.reporte.destroy', $reporte))
+            ->assertRedirect(route('admin.produccion.index'));
+
+        $this->assertDatabaseMissing('produccion_reportes', ['id' => $reporte->id]);
+        $this->assertDatabaseMissing('produccion_asignaciones', ['id' => $asignacionId]);
+    }
+
+    public function test_no_elimina_produccion_con_tandas(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10], $maquina, $tipo);
+
+        $this->actingAs($this->jefe())->delete(route('admin.produccion.reporte.destroy', $reporte));
+
+        $this->assertDatabaseHas('produccion_reportes', ['id' => $reporte->id]);
+    }
+
+    public function test_no_elimina_produccion_aprobada(): void
+    {
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO);
+
+        $this->actingAs($this->jefe())->delete(route('admin.produccion.reporte.destroy', $reporte));
+
+        $this->assertDatabaseHas('produccion_reportes', ['id' => $reporte->id]);
     }
 
     // --- Registros (tandas) del soplador ---
@@ -173,7 +243,7 @@ class ProduccionTest extends TestCase
         $this->agregarTanda($soplador, $reporte, [
             'primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3,
             'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Material quemado',
-        ], $maquina, $tipo)->assertRedirect(route('produccion.mi.index'));
+        ], $maquina, $tipo)->assertRedirect(route('produccion.mi.show', $reporte));
 
         $this->assertDatabaseHas('produccion_registros', [
             'reporte_id' => $reporte->id,
@@ -218,7 +288,7 @@ class ProduccionTest extends TestCase
 
         $this->actingAs($soplador)
             ->delete(route('produccion.mi.registros.destroy', [$reporte, $registro]))
-            ->assertRedirect(route('produccion.mi.index'));
+            ->assertRedirect(route('produccion.mi.show', $reporte));
 
         $reporte->refresh();
         $this->assertSame(1, $reporte->registros()->count());
@@ -271,7 +341,7 @@ class ProduccionTest extends TestCase
 
         // primera > 0 hace valida la tanda; segunda = 0 con motivo elegido => motivo se anula.
         $this->agregarTanda($soplador, $reporte, ['primera' => 10, 'segunda' => 0, 'motivo_segunda' => 'Rebaba'], $maquina, $tipo)
-            ->assertRedirect(route('produccion.mi.index'));
+            ->assertRedirect(route('produccion.mi.show', $reporte));
 
         $this->assertNull($reporte->registros()->first()->motivo_segunda);
     }
@@ -294,7 +364,7 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($soplador, 100);
 
         $this->agregarTanda($soplador, $reporte, ['primera' => 10])
-            ->assertRedirect(route('produccion.mi.index'));
+            ->assertRedirect(route('produccion.mi.show', $reporte));
 
         $this->assertDatabaseHas('produccion_registros', [
             'reporte_id' => $reporte->id, 'maquina_id' => null, 'tipo_botellon_id' => null, 'primera' => 10,
@@ -461,11 +531,12 @@ class ProduccionTest extends TestCase
         // Render real de la vista del operario: valida que el componente
         // reason-chips compila y que las listas centralizadas se muestran.
         $soplador = $this->soplador();
-        $this->reporteDe($soplador, 100);
+        $reporte = $this->reporteDe($soplador, 100);
         $this->maquina();
         $this->tipo();
 
-        $this->actingAs($soplador)->get('/produccion/mi-reporte')
+        // La pantalla de llenado de un reporte es mi.show (mi.index es la lista).
+        $this->actingAs($soplador)->get(route('produccion.mi.show', $reporte))
             ->assertOk()
             ->assertSee(ProduccionReporte::MOTIVOS_DIFERENCIA[0])
             ->assertSee(ProduccionReporte::NOTAS_COMUNES[0])

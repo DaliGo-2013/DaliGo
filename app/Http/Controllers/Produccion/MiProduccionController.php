@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Produccion;
 
 use App\Http\Controllers\Controller;
 use App\Models\Maquina;
-use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\TipoBotellon;
@@ -18,16 +17,33 @@ use Illuminate\View\View;
 class MiProduccionController extends Controller
 {
     /**
-     * Reporte del dia del soplador autenticado.
+     * Lista de producciones del dia del soplador autenticado. Un soplador puede
+     * tener varias el mismo dia; cada una se reporta por separado (mi.show).
      */
     public function index(Request $request): View
     {
-        $asignacion = ProduccionAsignacion::where('soplador_id', $request->user()->id)
-            ->whereDate('fecha', now()->toDateString())
-            ->latest('id')
-            ->first();
+        $user = $request->user();
+        $hoy = now()->toDateString();
 
-        return $this->vistaReporte($request->user(), $asignacion?->reporte);
+        $reportes = ProduccionReporte::where('soplador_id', $user->id)
+            ->whereDate('fecha', $hoy)
+            ->with('asignacion.preforma')
+            ->withCount('registros')
+            ->orderBy('id')
+            ->get();
+
+        // Devueltos de OTROS dias (los de hoy ya salen en la lista de arriba),
+        // para que un reporte por corregir de ayer no se pierda.
+        $devueltos = ProduccionReporte::where('soplador_id', $user->id)
+            ->where('estado', ProduccionReporte::DEVUELTO)
+            ->whereDate('fecha', '!=', $hoy)
+            ->orderByDesc('fecha')
+            ->get();
+
+        return view('produccion.mis-producciones', [
+            'reportes' => $reportes,
+            'devueltos' => $devueltos,
+        ]);
     }
 
     /**
@@ -186,7 +202,12 @@ class MiProduccionController extends Controller
 
         $reporte->save();
 
-        return redirect()->to($this->rutaDelReporte($reporte))->with(
+        // Al enviar, volver a la lista de producciones del dia (el reporte ya
+        // queda en solo lectura y puede haber otra produccion que reportar). Al
+        // solo guardar, quedarse en el reporte.
+        $destino = $enviar ? route('produccion.mi.index') : route('produccion.mi.show', $reporte);
+
+        return redirect()->to($destino)->with(
             'status',
             $enviar ? 'Reporte enviado. Queda a la espera de revision.' : 'Cambios guardados.',
         );
@@ -228,13 +249,11 @@ class MiProduccionController extends Controller
     }
 
     /**
-     * A donde volver tras una accion: el index si el reporte es de hoy,
-     * o su vista propia si es de otro dia (ej. un devuelto antiguo).
+     * Tras agregar/eliminar una tanda, quedarse en el reporte (la pantalla de
+     * llenado), no en la lista de producciones del dia.
      */
     private function rutaDelReporte(ProduccionReporte $reporte): string
     {
-        return $reporte->fecha->isToday()
-            ? route('produccion.mi.index')
-            : route('produccion.mi.show', $reporte);
+        return route('produccion.mi.show', $reporte);
     }
 }

@@ -27,6 +27,7 @@ class ProduccionController extends Controller
         $hoy = now()->toDateString();
 
         $reportes = ProduccionReporte::with('soplador')
+            ->withCount('registros')
             ->delDia($hoy)
             ->orderByRaw("CASE estado WHEN 'enviado' THEN 0 WHEN 'devuelto' THEN 1 WHEN 'borrador' THEN 2 ELSE 3 END")
             ->orderBy('id')
@@ -155,7 +156,11 @@ class ProduccionController extends Controller
     }
 
     /**
-     * Crea (o actualiza) la asignacion del dia y deja un reporte en borrador.
+     * Crea una produccion NUEVA del dia para un soplador (asignacion + reporte en
+     * borrador). Un soplador puede tener varias producciones el mismo dia/turno:
+     * cada "Asignar" crea una independiente y NO toca las existentes (un reporte
+     * ya enviado/aprobado queda intacto). Para deshacer una asignacion equivocada,
+     * destroyReporte borra los borradores sin tandas.
      */
     public function asignarStore(Request $request): RedirectResponse
     {
@@ -174,48 +179,54 @@ class ProduccionController extends Controller
         // Asignacion + reporte en una sola transaccion: si el reporte falla, no
         // queda una asignacion huerfana (el soplador veria "sin asignacion").
         $asignacion = DB::transaction(function () use ($validated, $request) {
-            // Buscamos con whereDate para normalizar la comparacion de fecha (cast a date)
-            // tanto en SQLite (tests) como en MySQL (produccion).
-            $asignacion = ProduccionAsignacion::whereDate('fecha', $validated['fecha'])
-                ->where('soplador_id', $validated['soplador_id'])
-                ->where('turno', $validated['turno'])
-                ->first();
+            $asignacion = ProduccionAsignacion::create([
+                'soplador_id' => $validated['soplador_id'],
+                'fecha' => $validated['fecha'],
+                'turno' => $validated['turno'],
+                'asignadas' => $validated['asignadas'],
+                'preforma_id' => $validated['preforma_id'] ?? null,
+                'creado_por' => $request->user()->id,
+            ]);
 
-            if ($asignacion) {
-                $asignacion->update([
-                    'asignadas' => $validated['asignadas'],
-                    'preforma_id' => $validated['preforma_id'] ?? null,
-                    'creado_por' => $request->user()->id,
-                ]);
-            } else {
-                $asignacion = ProduccionAsignacion::create([
-                    'soplador_id' => $validated['soplador_id'],
-                    'fecha' => $validated['fecha'],
-                    'turno' => $validated['turno'],
-                    'asignadas' => $validated['asignadas'],
-                    'preforma_id' => $validated['preforma_id'] ?? null,
-                    'creado_por' => $request->user()->id,
-                ]);
-            }
-
-            // Reporte en borrador asociado (idempotente). Mantiene el snapshot de asignadas al dia.
-            $reporte = $asignacion->reporte()->firstOrNew([]);
-            $reporte->fill([
+            // Reporte en borrador con el snapshot de asignadas del dia.
+            $asignacion->reporte()->create([
                 'soplador_id' => $asignacion->soplador_id,
                 'fecha' => $asignacion->fecha->toDateString(),
                 'turno' => $asignacion->turno,
                 'asignadas' => $asignacion->asignadas,
+                'estado' => ProduccionReporte::BORRADOR,
             ]);
-            if (! $reporte->exists) {
-                $reporte->estado = ProduccionReporte::BORRADOR;
-            }
-            $reporte->save();
 
             return $asignacion;
         });
 
         return redirect()->route('admin.produccion.index')
             ->with('status', "Asignacion guardada para {$asignacion->soplador->name} ({$asignacion->asignadas} preformas).");
+    }
+
+    /**
+     * Elimina una produccion (asignacion + su reporte) que se asigno por error.
+     * Solo si el reporte sigue en BORRADOR y SIN tandas: asi nunca se borra algo
+     * que ya movio inventario (el kardex se genera al aprobar) ni trabajo del
+     * soplador. Borrar la asignacion cascadea el reporte (FK cascadeOnDelete).
+     */
+    public function destroyReporte(ProduccionReporte $reporte): RedirectResponse
+    {
+        if ($reporte->estado !== ProduccionReporte::BORRADOR || $reporte->registros()->exists()) {
+            return back()->with('status', 'Solo se puede eliminar una produccion en borrador y sin avances.');
+        }
+
+        $nombre = $reporte->soplador->name;
+        // Borrar la asignacion arrastra el reporte; si por datos viejos no hay
+        // asignacion, borrar el reporte directo.
+        if ($reporte->asignacion) {
+            $reporte->asignacion->delete();
+        } else {
+            $reporte->delete();
+        }
+
+        return redirect()->route('admin.produccion.index')
+            ->with('status', "Produccion de {$nombre} eliminada.");
     }
 
     /**

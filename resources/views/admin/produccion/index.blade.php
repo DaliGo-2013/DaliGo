@@ -90,10 +90,23 @@
                         </x-slot>
 
                         <x-slot name="actions">
-                            <a href="{{ route('admin.produccion.reporte.show', $reporte) }}"
-                               class="whitespace-nowrap text-sm font-medium text-brand-600 transition duration-150 hover:text-brand-700">
-                                Revisar
-                            </a>
+                            <div class="flex items-center gap-1">
+                                <a href="{{ route('admin.produccion.reporte.show', $reporte) }}"
+                                   class="whitespace-nowrap text-sm font-medium text-brand-600 transition duration-150 hover:text-brand-700">
+                                    Revisar
+                                </a>
+                                {{-- Eliminar una produccion asignada por error: solo borradores sin avances. --}}
+                                @if ($reporte->estado === \App\Models\ProduccionReporte::BORRADOR && $reporte->registros_count === 0)
+                                    <form method="POST" action="{{ route('admin.produccion.reporte.destroy', $reporte) }}"
+                                          onsubmit="return confirm('¿Eliminar esta producción asignada? Aún no tiene avances.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <x-icon-button type="submit" variant="danger" label="Eliminar producción" title="Eliminar producción">
+                                            <x-icon.trash class="h-5 w-5" />
+                                        </x-icon-button>
+                                    </form>
+                                @endif
+                            </div>
                         </x-slot>
                     </x-list-row>
                 @empty

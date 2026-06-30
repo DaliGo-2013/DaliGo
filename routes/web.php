@@ -142,6 +142,7 @@ Route::middleware('auth')
             Route::post('produccion/reporte/{reporte}/aprobar', [ProduccionController::class, 'aprobar'])->name('produccion.reporte.aprobar');
             Route::post('produccion/reporte/{reporte}/devolver', [ProduccionController::class, 'devolver'])->name('produccion.reporte.devolver');
             Route::post('produccion/reporte/{reporte}/ajustar', [ProduccionController::class, 'ajustar'])->name('produccion.reporte.ajustar');
+            Route::delete('produccion/reporte/{reporte}', [ProduccionController::class, 'destroyReporte'])->name('produccion.reporte.destroy');
 
             // Catalogos de produccion: maquinas sopladoras y tipos de botellon.
             Route::resource('maquinas', MaquinaController::class)
