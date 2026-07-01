@@ -3,6 +3,32 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 
 /**
+ * "Señalar en vez de narrar": ante una acción bloqueada por una precondición, en
+ * lugar de dejar un texto rojo lejano, llevamos la mirada al control exacto que
+ * falta. dgDestacar() hace scroll hasta el elemento y reinicia la animación de
+ * feedback sobre él:
+ *   - ring:true  -> `.dg-destacado` (sacude + anillo rojo breve). Para un control
+ *                   concreto (un colapsable, unos chips, un botón).
+ *   - ring:false -> reusa `.dg-shake`. Para el texto de error (un anillo alrededor
+ *                   de una lista se ve mal); solo lo sacude al llegar.
+ * Respeta prefers-reduced-motion (scroll sin animar; el CSS ya recorta la duración
+ * de las animaciones). El truco `void offsetWidth` fuerza un reflow para poder
+ * re-disparar una animación que ya corrió.
+ */
+function dgDestacar(el, { ring = true } = {}) {
+    if (!el) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    const cls = ring ? 'dg-destacado' : 'dg-shake';
+    el.classList.remove(cls);
+    void el.offsetWidth; // reflow: reinicia la animación aunque ya haya corrido
+    el.classList.add(cls);
+    if (ring) window.setTimeout(() => el.classList.remove(cls), 1400);
+}
+window.dgDestacar = dgDestacar;
+Alpine.magic('destacar', () => (el) => dgDestacar(el)); // uso en vistas: $destacar($refs.x)
+
+/**
  * Buscador remoto reutilizable (Servicio Tecnico): autocompletado contra un
  * endpoint JSON (limit 15). Se usa para cliente (por RUT/nombre) y para producto
  * (por SKU/nombre); el id elegido se guarda en un <input hidden> que define la
@@ -234,3 +260,20 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
 window.Alpine = Alpine;
 
 Alpine.start();
+
+/**
+ * Global: si la página cargó con errores de validación del servidor, llevar al
+ * usuario al PRIMER error visible y sacudirlo (sin anillo, sin focus() para no
+ * abrir el teclado en móvil). Marcamos cada mensaje con [data-error-message] en
+ * el componente <x-input-error>. Se corre en un requestAnimationFrame tras
+ * Alpine.start() para que los colapsables que se auto-abren ante error (p. ej.
+ * paneles.maquina) ya estén expandidos; por eso preferimos el primer error con
+ * offsetParent (visible).
+ */
+const irAlPrimerError = () => {
+    const errores = [...document.querySelectorAll('[data-error-message]')];
+    const primero = errores.find((el) => el.offsetParent !== null) || errores[0];
+    if (primero) window.requestAnimationFrame(() => dgDestacar(primero, { ring: false }));
+};
+if (document.readyState !== 'loading') irAlPrimerError();
+else document.addEventListener('DOMContentLoaded', irAlPrimerError);

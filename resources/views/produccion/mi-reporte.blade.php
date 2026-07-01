@@ -122,7 +122,27 @@
                         get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0) + (Number(this.danada) || 0); },
                         get total() { return this.guardado + this.tanda; },
                         get vendible() { return this.guardadoVendible + (Number(this.primera) || 0) + (Number(this.segunda) || 0); },
-                        get diferencia() { return this.asignadas - this.total; }
+                        get diferencia() { return this.asignadas - this.total; },
+                        /* Señalar en vez de narrar: antes de mandar al servidor, si falta una
+                           precondición abrimos su panel y sacudimos ESE control (sin recargar).
+                           El servidor sigue validando igual como respaldo. */
+                        agregarTanda(e) {
+                            if (this.$refs.grupoMaquina && ! this.maquinaId) { e.preventDefault(); this.paneles.maquina = true; this.$nextTick(() => this.$destacar(this.$refs.grupoMaquina)); return; }
+                            if (this.$refs.grupoTipo && ! this.tipoId) { e.preventDefault(); this.paneles.tipo = true; this.$nextTick(() => this.$destacar(this.$refs.grupoTipo)); return; }
+                            if (this.segunda > 0 && ! this.$refs.grupoMotivoSegunda.querySelector('input[type=radio]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoMotivoSegunda); return; }
+                            if (this.malo > 0 && ! this.$refs.grupoMotivoMalo.querySelector('input[type=radio]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoMotivoMalo); return; }
+                            this.agregando = true;
+                        },
+                        enviar(e) {
+                            if (this.tanda > 0) { e.preventDefault(); this.avisoTanda = true; this.$destacar(this.$refs.grupoTanda); return; }
+                            this.avisoTanda = false;
+                            const cont = this.$refs.grupoMotivoDiferencia;
+                            const sel = cont && cont.querySelector('input[type=radio]:checked');
+                            const otro = cont && cont.querySelector('input[name=motivo_otro]');
+                            const falta = ! sel || (sel.value === @js(\App\Models\ProduccionReporte::MOTIVO_OTRO) && ! (otro && otro.value.trim()));
+                            if (this.diferencia !== 0 && falta) { e.preventDefault(); this.paneles.motivo = true; this.$nextTick(() => this.$destacar(cont)); return; }
+                            if (! confirm('¿Enviar el reporte? No podrás editarlo después.')) e.preventDefault();
+                        }
                      }">
                     {{-- La asignación, siempre a la vista --}}
                     <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
@@ -134,11 +154,11 @@
 
                     {{-- Agregar una tanda: máquina + tipo + cantidades --}}
                     <form method="POST" action="{{ route('produccion.mi.registros.store', $reporte) }}"
-                          class="space-y-4 p-4 sm:p-6" x-on:submit="agregando = true">
+                          class="space-y-4 p-4 sm:p-6" x-on:submit="agregarTanda($event)">
                         @csrf
 
                         @if ($maquinas->isNotEmpty())
-                            <x-collapsible label="Máquina" model="paneles.maquina">
+                            <x-collapsible label="Máquina" model="paneles.maquina" x-ref="grupoMaquina">
                                 <x-slot:summary><span x-text="maquinas[maquinaId] || 'Toca para elegir'"></span></x-slot:summary>
                                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                     @foreach ($maquinas as $maquina)
@@ -153,7 +173,7 @@
                         @endif
 
                         @if ($tipos->isNotEmpty())
-                            <x-collapsible label="Tipo de botellón" model="paneles.tipo">
+                            <x-collapsible label="Tipo de botellón" model="paneles.tipo" x-ref="grupoTipo">
                                 <x-slot:summary><span x-text="tipos[tipoId] || 'Toca para elegir'"></span></x-slot:summary>
                                 <div class="grid grid-cols-2 gap-2">
                                     @foreach ($tipos as $tipo)
@@ -170,7 +190,7 @@
 
                         <div>
                             <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" :steps="[1, 10, 100]" />
-                            <div x-show="segunda > 0" x-cloak class="mt-2">
+                            <div x-show="segunda > 0" x-cloak class="mt-2" x-ref="grupoMotivoSegunda">
                                 <x-reason-chips name="motivo_segunda" label="Motivo de las de segunda"
                                                 :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
                                                 :selected="old('motivo_segunda')" />
@@ -179,7 +199,7 @@
 
                         <div>
                             <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" :steps="[1, 10, 100]" />
-                            <div x-show="malo > 0" x-cloak class="mt-2">
+                            <div x-show="malo > 0" x-cloak class="mt-2" x-ref="grupoMotivoMalo">
                                 <x-reason-chips name="motivo_malo" label="Motivo de las malas"
                                                 :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
                                                 :selected="old('motivo_malo')" />
@@ -188,7 +208,7 @@
 
                         <x-stepper-input name="danada" label="Preforma dañada" hint="Se rompió antes de soplar." :value="old('danada', 0)" />
 
-                        <x-primary-button class="h-12 w-full" x-bind:disabled="agregando || tanda === 0">
+                        <x-primary-button class="h-12 w-full" x-ref="grupoTanda" x-bind:disabled="agregando || tanda === 0">
                             Agregar al reporte
                         </x-primary-button>
                     </form>
@@ -258,17 +278,13 @@
                     {{-- Enviar el reporte --}}
                     <form method="POST" action="{{ route('produccion.mi.update', $reporte) }}"
                           class="space-y-4 border-t border-neutral-100 p-4 sm:p-6"
-                          x-on:submit="
-                            if (tanda > 0) { $event.preventDefault(); avisoTanda = true; return; }
-                            avisoTanda = false;
-                            if (! confirm('¿Enviar el reporte? No podrás editarlo después.')) $event.preventDefault();
-                          ">
+                          x-on:submit="enviar($event)">
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="enviar" value="1">
 
                         {{-- Motivo: requerido si hay diferencia; chips tocables + "Otro" --}}
-                        <div x-show="diferencia !== 0" @if($reporte->diferencia === 0) x-cloak @endif>
+                        <div x-show="diferencia !== 0" @if($reporte->diferencia === 0) x-cloak @endif x-ref="grupoMotivoDiferencia">
                             <x-collapsible label="Motivo de la diferencia" model="paneles.motivo">
                                 <x-slot:summary>¿Por qué no cuadra con lo asignado?</x-slot:summary>
                                 <x-reason-chips name="motivo" allow-other

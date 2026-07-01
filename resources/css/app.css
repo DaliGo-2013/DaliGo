@@ -47,6 +47,19 @@
 }
 .dg-shake { animation: dg-shake 0.38s ease-in-out; }
 
+/* Destacar el control al que hay que ir cuando una acción se bloquea por una
+   precondición ("señalar en vez de narrar"): lo sacude Y le dibuja un anillo rojo
+   que se desvanece. dg-shake y dg-destacado no pueden coexistir como clases
+   separadas (ambas setean la shorthand `animation` y una pisaría a la otra), así
+   que este estado corre las DOS animaciones en un solo `animation`. El rojo es la
+   única excepción de la paleta de 4, reservada a error/negativo. Lo dispara
+   window.dgDestacar() / el magic $destacar (ver resources/js/app.js). */
+@keyframes dg-destacar-ring {
+    0%   { box-shadow: 0 0 0 3px rgb(248 113 113 / 0.6); }  /* red-400 */
+    100% { box-shadow: 0 0 0 3px rgb(248 113 113 / 0); }
+}
+.dg-destacado { animation: dg-shake 0.38s ease-in-out, dg-destacar-ring 1.4s ease-out; }
+
 /* Accesibilidad: respetar prefers-reduced-motion (no es opcional) */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
