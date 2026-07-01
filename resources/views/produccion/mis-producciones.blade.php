@@ -56,7 +56,7 @@
                             <div class="mt-3 flex items-center justify-between gap-3">
                                 <p class="text-xs text-neutral-500">
                                     @if ($reporte->registros_count > 0)
-                                        Llevas {{ $reporte->total }} <span class="text-emerald-600">({{ $reporte->producido }} vendibles)</span>
+                                        Llevas {{ $reporte->total }} <span class="text-brand-600">({{ $reporte->producido }} vendibles)</span>
                                     @else
                                         Sin avances todavía.
                                     @endif

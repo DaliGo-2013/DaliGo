@@ -30,8 +30,9 @@
                         <p class="truncate text-sm text-neutral-500">{{ $maquina->sucursal->nombre }}</p>
 
                         <x-slot name="meta">
-                            <div class="text-sm text-neutral-500 sm:w-28 sm:shrink-0 sm:text-right">
-                                {{ $maquina->registros_count }} {{ \Illuminate\Support\Str::plural('registro', $maquina->registros_count) }}
+                            <div class="sm:w-32 sm:shrink-0 sm:text-right">
+                                <a href="{{ route('admin.produccion.maquina', $maquina) }}"
+                                   class="text-sm font-medium text-brand-600 transition duration-150 hover:text-brand-700">Ver rendimiento</a>
                             </div>
                         </x-slot>
 

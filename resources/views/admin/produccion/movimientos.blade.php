@@ -74,7 +74,7 @@
 
                         <x-slot name="meta">
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
-                                <span class="font-semibold {{ $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_PRODUCCION_PRIMERA || $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_PRODUCCION_SEGUNDA ? 'text-emerald-700' : 'text-neutral-900' }}">
+                                <span class="font-semibold {{ $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_PRODUCCION_PRIMERA || $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_PRODUCCION_SEGUNDA ? 'text-brand-600' : 'text-neutral-900' }}">
                                     {{ number_format($movimiento->cantidad, 0, ',', '.') }}
                                 </span>
                                 <span class="text-neutral-400">{{ $movimiento->fecha->format('d-m-Y') }}</span>

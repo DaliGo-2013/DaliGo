@@ -243,15 +243,15 @@
                         </div>
                         <div class="mt-1 flex items-center justify-between">
                             <span class="text-neutral-500">Vendible (1ª+2ª)</span>
-                            <span class="font-semibold text-emerald-600" x-text="vendible">{{ $reporte->producido }}</span>
+                            <span class="font-semibold text-brand-600" x-text="vendible">{{ $reporte->producido }}</span>
                         </div>
                         <div class="mt-1 flex items-center justify-between" x-show="tanda > 0" x-cloak>
-                            <span class="text-amber-600">Tanda sin agregar</span>
-                            <span class="font-semibold text-amber-600" x-text="tanda"></span>
+                            <span class="text-brand-600">Tanda sin agregar</span>
+                            <span class="font-semibold text-brand-600" x-text="tanda"></span>
                         </div>
                         <div class="mt-1 flex items-center justify-between">
                             <span class="text-neutral-500">Diferencia con asignadas</span>
-                            <span class="text-base font-semibold" :class="diferencia === 0 ? 'text-emerald-600' : 'text-amber-600'" x-text="diferencia">{{ $reporte->diferencia }}</span>
+                            <span class="text-base font-semibold" :class="diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900'" x-text="diferencia">{{ $reporte->diferencia }}</span>
                         </div>
                     </div>
 
@@ -293,7 +293,7 @@
                             <x-input-error :messages="$errors->get('obs')" class="mt-2" />
                         </x-collapsible>
 
-                        <p x-show="avisoTanda" x-cloak class="dg-shake rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700">
+                        <p x-show="avisoTanda" x-cloak class="dg-shake rounded-lg bg-brand-50 px-3.5 py-2.5 text-sm font-medium text-brand-700">
                             Tienes una tanda sin agregar. Toca «Agregar al reporte» antes de enviar.
                         </p>
                         <x-input-error :messages="$errors->get('enviar')" />

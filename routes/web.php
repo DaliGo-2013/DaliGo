@@ -133,6 +133,9 @@ Route::middleware('auth')
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
         Route::middleware('permission:manage production')->group(function () {
             Route::get('produccion', [ProduccionController::class, 'index'])->name('produccion.index');
+            Route::get('produccion/dia', [ProduccionController::class, 'diaDetalle'])->name('produccion.dia');
+            Route::get('produccion/maquina/{maquina}', [ProduccionController::class, 'maquinaRendimiento'])->name('produccion.maquina');
+            Route::get('produccion/tipo/{tipoBotellon}', [ProduccionController::class, 'tipoRendimiento'])->name('produccion.tipo');
             Route::get('produccion/sopladores', [ProduccionController::class, 'sopladores'])->name('produccion.sopladores');
             Route::get('produccion/movimientos', [ProduccionController::class, 'movimientos'])->name('produccion.movimientos');
             Route::get('produccion/soplador/{soplador}', [ProduccionController::class, 'sopladorHistorial'])->name('produccion.soplador');

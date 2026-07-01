@@ -12,9 +12,12 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
-    /* Marca DaliGo: naranjo sobrio (#EA580C). Centralizado: cambiar el tono aqui. */
+    /* Marca DaliGo: naranjo sobrio (#EA580C). Centralizado: cambiar el tono aqui.
+       Escala completa de tintes (50-300) para bordes/fondos suaves de la paleta de 4. */
     --color-brand-50: #fff7ed;
     --color-brand-100: #ffedd5;
+    --color-brand-200: #fed7aa;
+    --color-brand-300: #fdba74;
     --color-brand-500: #f97316;
     --color-brand-600: #ea580c;
     --color-brand-700: #c2410c;

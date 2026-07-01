@@ -30,8 +30,9 @@
                         <p class="truncate text-sm text-neutral-500">{{ $tipo->codigo }}</p>
 
                         <x-slot name="meta">
-                            <div class="text-sm text-neutral-500 sm:w-28 sm:shrink-0 sm:text-right">
-                                {{ $tipo->registros_count }} {{ \Illuminate\Support\Str::plural('registro', $tipo->registros_count) }}
+                            <div class="sm:w-32 sm:shrink-0 sm:text-right">
+                                <a href="{{ route('admin.produccion.tipo', $tipo) }}"
+                                   class="text-sm font-medium text-brand-600 transition duration-150 hover:text-brand-700">Ver producción</a>
                             </div>
                         </x-slot>
 

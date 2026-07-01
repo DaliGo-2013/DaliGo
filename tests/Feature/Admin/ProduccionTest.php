@@ -840,4 +840,79 @@ class ProduccionTest extends TestCase
             ->assertOk()
             ->assertViewHas('periodo', fn ($p) => ! $p['esDefault'] && $p['totales']['producido'] === 30);
     }
+
+    // --- Drill-down: día, máquina, tipo, ranking ---
+
+    public function test_dia_lista_reportes_de_esa_fecha(): void
+    {
+        $sop = $this->soplador();
+        $hoyRep = $this->reporteDe($sop, 100, ProduccionReporte::APROBADO, now()->toDateString());
+        $hoyRep->update(['primera' => 50]);
+        $ayer = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO, now()->subDay()->toDateString());
+        $ayer->update(['primera' => 999]);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.dia', ['fecha' => now()->toDateString()]))
+            ->assertOk()
+            ->assertViewHas('resumen', fn ($r) => $r['producido'] === 50) // solo hoy, no el de ayer
+            ->assertSee($sop->name);
+    }
+
+    public function test_maquina_rendimiento_agrega_por_periodo(): void
+    {
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        $tipo = $this->tipo();
+        $maquina = $this->maquina(nombre: 'Sopladora A');
+        $otra = $this->maquina(nombre: 'Sopladora B');
+        $this->agregarTanda($sop, $reporte, ['primera' => 40, 'segunda' => 10, 'motivo_segunda' => 'Rebaba'], $maquina, $tipo);
+        $this->agregarTanda($sop, $reporte, ['primera' => 5], $otra, $tipo);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.maquina', $maquina))
+            ->assertOk()
+            ->assertViewHas('tendencia', fn ($t) => $t['totales']['producido'] === 50); // solo esta máquina
+    }
+
+    public function test_tipo_rendimiento_agrega_por_periodo(): void
+    {
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        $maquina = $this->maquina();
+        $tipoA = $this->tipo('AZUL-20L', 'Azul 20L');
+        $tipoB = $this->tipo('INCOLORO-10L-RETORNABLE', 'Incoloro 10L');
+        $this->agregarTanda($sop, $reporte, ['primera' => 30], $maquina, $tipoA);
+        $this->agregarTanda($sop, $reporte, ['primera' => 7], $maquina, $tipoB);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.tipo', $tipoA))
+            ->assertOk()
+            ->assertViewHas('tendencia', fn ($t) => $t['totales']['producido'] === 30); // solo este tipo
+    }
+
+    public function test_panel_ranking_sopladores(): void
+    {
+        $sopA = $this->soplador();
+        $this->reporteDe($sopA, 100, ProduccionReporte::APROBADO, now()->toDateString())->update(['primera' => 80]);
+        $sopB = $this->soplador();
+        $this->reporteDe($sopB, 100, ProduccionReporte::APROBADO, now()->toDateString())->update(['primera' => 20]);
+
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertViewHas('rankingSopladores', function ($r) use ($sopA) {
+                return $r->count() === 2 && $r->first()->id === $sopA->id && $r->first()->producido === 80;
+            });
+    }
+
+    public function test_drilldowns_exigen_permiso_de_jefe(): void
+    {
+        $sop = $this->soplador();
+        $maquina = $this->maquina();
+        $tipo = $this->tipo();
+
+        foreach ([
+            route('admin.produccion.dia'),
+            route('admin.produccion.maquina', $maquina),
+            route('admin.produccion.tipo', $tipo),
+        ] as $url) {
+            $this->actingAs($sop)->get($url)->assertForbidden();
+        }
+    }
 }

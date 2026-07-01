@@ -82,9 +82,9 @@
 
     {{-- Respaldo de garantia: solo visible si la condicion es «garantia».
          La garantia dura 6 meses desde la compra (la valida el servidor). --}}
-    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:col-span-2"
+    <div class="rounded-lg border border-brand-200 bg-brand-50 p-4 sm:col-span-2"
         x-show="cond === 'garantia'" x-cloak x-transition>
-        <p class="mb-3 text-sm font-medium text-amber-900">
+        <p class="mb-3 text-sm font-medium text-brand-700">
             Documento de compra (respalda la garantía · 6 meses desde la compra)
         </p>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">

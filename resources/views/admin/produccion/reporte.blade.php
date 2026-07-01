@@ -34,11 +34,11 @@
                     </div>
                     <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Diferencia</dt>
-                        <dd class="mt-1 text-sm font-medium {{ $reporte->diferencia === 0 ? 'text-emerald-600' : 'text-amber-600' }}">{{ $reporte->diferencia }}</dd>
+                        <dd class="mt-1 text-sm font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">{{ $reporte->diferencia }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Producido (1ª+2ª)</dt>
-                        <dd class="mt-1 text-sm font-medium text-emerald-700">{{ number_format($reporte->producido, 0, ',', '.') }}</dd>
+                        <dd class="mt-1 text-sm font-medium text-brand-600">{{ number_format($reporte->producido, 0, ',', '.') }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs uppercase tracking-wide text-neutral-400">Merma (malos+dañadas)</dt>
@@ -82,20 +82,24 @@
                     <div class="border-t border-neutral-100">
                         <h3 class="px-6 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle por máquina y tipo</h3>
                         @if ($reporte->motivo_ajuste)
-                            <p class="px-6 pt-1 text-xs text-amber-600">Detalle según lo que reportó el soplador; el admin editó las cantidades (ver «Ajuste del jefe» abajo), por lo que la suma de abajo puede no coincidir con los totales del encabezado.</p>
+                            <p class="px-6 pt-1 text-xs text-neutral-500">Detalle según lo que reportó el soplador; el admin editó las cantidades (ver «Ajuste del jefe» abajo), por lo que la suma de abajo puede no coincidir con los totales del encabezado.</p>
                         @endif
                         <ul class="divide-y divide-neutral-100">
                             @foreach ($reporte->registros as $registro)
-                                @php
-                                    $partes = array_filter([$registro->tipoBotellon?->nombre, $registro->maquina?->nombre]);
-                                @endphp
                                 <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 py-3">
                                     @php
                                         $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
                                             ->filter()->map(fn ($m, $k) => "$k: $m")->implode(' · ');
+                                        $piezas = [];
+                                        if ($registro->tipoBotellon) {
+                                            $piezas[] = '<a href="'.route('admin.produccion.tipo', $registro->tipoBotellon).'" class="transition duration-150 hover:text-brand-600">'.e($registro->tipoBotellon->nombre).'</a>';
+                                        }
+                                        if ($registro->maquina) {
+                                            $piezas[] = '<a href="'.route('admin.produccion.maquina', $registro->maquina).'" class="transition duration-150 hover:text-brand-600">'.e($registro->maquina->nombre).'</a>';
+                                        }
                                     @endphp
                                     <div class="min-w-0">
-                                        <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial (sin máquina/tipo)' }}</p>
+                                        <p class="truncate text-sm font-medium text-neutral-900">{!! $piezas ? implode(' · ', $piezas) : 'Registro inicial (sin máquina/tipo)' !!}</p>
                                         <p class="text-xs text-neutral-400">{{ $registro->created_at->format('d-m-Y H:i') }}@if ($motivosTanda) · {{ $motivosTanda }}@endif</p>
                                     </div>
                                     <div class="flex items-center gap-4 text-sm text-neutral-600">
@@ -143,7 +147,7 @@
                         </li>
                         <li class="flex items-center justify-between px-6 py-3">
                             <span class="text-neutral-700">Producción 1ª + 2ª (vendible)</span>
-                            <span class="font-medium text-emerald-700">+{{ number_format($reporte->producido, 0, ',', '.') }}</span>
+                            <span class="font-medium text-brand-600">+{{ number_format($reporte->producido, 0, ',', '.') }}</span>
                         </li>
                         <li class="flex items-center justify-between px-6 py-3">
                             <span class="text-neutral-700">Merma (malos + dañadas)</span>
@@ -166,7 +170,7 @@
                                         · <span class="text-neutral-500">{{ $movimiento->producto->nombre }}</span>
                                     @endif
                                 </span>
-                                <span class="font-medium {{ $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA ? 'text-neutral-900' : ($movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_MERMA ? 'text-neutral-700' : 'text-emerald-700') }}">
+                                <span class="font-medium {{ $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA ? 'text-neutral-900' : ($movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_MERMA ? 'text-neutral-500' : 'text-brand-600') }}">
                                     {{ number_format($movimiento->cantidad, 0, ',', '.') }}
                                 </span>
                             </li>

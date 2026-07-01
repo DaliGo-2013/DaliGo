@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Maquina;
 use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionMovimiento;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
+use App\Models\TipoBotellon;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,11 +28,6 @@ class ProduccionController extends Controller
      */
     public function index(Request $request): View
     {
-        $request->validate([
-            'desde' => ['nullable', 'date'],
-            'hasta' => ['nullable', 'date'],
-        ]);
-
         $hoy = now()->toDateString();
 
         // --- Cola de reportes de HOY (la superficie de trabajo del jefe) ---
@@ -64,76 +61,15 @@ class ProduccionController extends Controller
         );
         $hoyResumen['sopladores'] = $reportes->pluck('soplador_id')->unique()->count();
 
-        // --- Produccion por periodo (rango; default ultimos 7 dias) ---
-        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : $hoy;
-        $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->toDateString() : Carbon::parse($hasta)->subDays(6)->toDateString();
-        if ($desde > $hasta) {
-            $desde = $hasta;
-        }
-        // Cota de seguridad: la tabla por dia se arma en PHP; no mas de ~92 filas.
-        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > 92) {
-            $desde = Carbon::parse($hasta)->subDays(92)->toDateString();
-        }
-
-        // whereDate en ambos extremos: la columna 'fecha' (cast a date) puede
-        // traer hora 00:00:00 y romper un whereBetween por string cuando desde==hasta.
-        $porDia = ProduccionReporte::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
-            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
-            ->groupBy('fecha')
-            ->get()
-            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
-
-        $asignadasPorDia = ProduccionAsignacion::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
-            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
-            ->groupBy('fecha')
-            ->get()
-            ->mapWithKeys(fn ($r) => [Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
-
-        $dias = [];
-        [$sp1, $sp2, $smal, $sdan, $sasig, $srep] = [0, 0, 0, 0, 0, 0];
-        for ($cursor = Carbon::parse($desde); $cursor->lte(Carbon::parse($hasta)); $cursor->addDay()) {
-            $k = $cursor->toDateString();
-            $r = $porDia->get($k);
-            $p1 = (int) ($r->p1 ?? 0);
-            $p2 = (int) ($r->p2 ?? 0);
-            $mal = (int) ($r->mal ?? 0);
-            $dan = (int) ($r->dan ?? 0);
-            $asig = (int) ($asignadasPorDia[$k] ?? 0);
-            $rep = (int) ($r->reportes ?? 0);
-
-            $dias[] = $this->armarResumen($p1, $p2, $mal, $dan, $asig) + [
-                'fecha' => $cursor->copy(),
-                'reportes' => $rep,
-            ];
-            $sp1 += $p1;
-            $sp2 += $p2;
-            $smal += $mal;
-            $sdan += $dan;
-            $sasig += $asig;
-            $srep += $rep;
-        }
-
-        $periodo = [
-            'desde' => $desde,
-            'hasta' => $hasta,
-            'esDefault' => ! $request->filled('desde') && ! $request->filled('hasta'),
-            'dias' => $dias,
-            'totales' => $this->armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
-            'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
-        ];
+        // --- Produccion por periodo (rango; default ultimos 7 dias) + desgloses ---
+        [$desde, $hasta, $esDefault] = $this->rango($request);
+        $periodo = $this->construirTendencia($desde, $hasta, $this->reportesPorDia($desde, $hasta), $this->asignadasPorDia($desde, $hasta))
+            + ['desde' => $desde, 'hasta' => $hasta, 'esDefault' => $esDefault];
+        $rankingSopladores = $this->desgloseSopladores($desde, $hasta);
+        $porTipoPeriodo = $this->desgloseRegistros($desde, $hasta, 'tipo_botellon_id', 'tipos_botellon');
 
         // --- Por maquina de HOY (rollup operativo desde las tandas) ---
-        $porMaquina = ProduccionRegistro::query()
-            ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
-            ->leftJoin('maquinas', 'maquinas.id', '=', 'produccion_registros.maquina_id')
-            ->leftJoin('sucursales', 'sucursales.id', '=', 'maquinas.sucursal_id')
-            ->whereDate('produccion_reportes.fecha', $hoy)
-            ->groupBy('produccion_registros.maquina_id', 'maquinas.nombre', 'sucursales.nombre')
-            ->orderByRaw('maquinas.nombre IS NULL, maquinas.nombre')
-            ->selectRaw('maquinas.nombre AS maquina, sucursales.nombre AS sucursal, SUM(produccion_registros.primera) AS primera, SUM(produccion_registros.segunda) AS segunda, SUM(produccion_registros.malo) AS malo, SUM(produccion_registros.danada) AS danada')
-            ->get();
-
-        // Solo desambiguar con sucursal si el dia mezcla varias (evita ruido mono-sucursal).
+        $porMaquina = $this->porMaquinaEntre($hoy, $hoy);
         $porMaquinaMultiSucursal = $porMaquina->whereNotNull('sucursal')->pluck('sucursal')->unique()->count() > 1;
 
         return view('admin.produccion.index', [
@@ -141,6 +77,8 @@ class ProduccionController extends Controller
             'alertas' => $alertas,
             'hoy' => $hoyResumen,
             'periodo' => $periodo,
+            'rankingSopladores' => $rankingSopladores,
+            'porTipoPeriodo' => $porTipoPeriodo,
             'porMaquina' => $porMaquina,
             'porMaquinaMultiSucursal' => $porMaquinaMultiSucursal,
         ]);
@@ -166,6 +104,239 @@ class ProduccionController extends Controller
             'tasa1' => $total > 0 ? (int) round($p1 / $total * 100) : 0,
             'avance' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0,
         ];
+    }
+
+    // ============================================================
+    //  Drill-down: helpers de agregacion + vistas de detalle
+    // ============================================================
+
+    /**
+     * Resuelve el rango [desde, hasta] desde el request (valida y acota). Default:
+     * los ultimos $ventana+1 dias hasta hoy. Devuelve [desde, hasta, esDefault].
+     */
+    private function rango(Request $request, int $ventana = 6): array
+    {
+        $request->validate([
+            'desde' => ['nullable', 'date'],
+            'hasta' => ['nullable', 'date'],
+        ]);
+
+        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : now()->toDateString();
+        $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->toDateString() : Carbon::parse($hasta)->subDays($ventana)->toDateString();
+        if ($desde > $hasta) {
+            $desde = $hasta;
+        }
+        // La tabla por dia se arma en PHP: acotar a ~92 filas.
+        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > 92) {
+            $desde = Carbon::parse($hasta)->subDays(92)->toDateString();
+        }
+
+        return [$desde, $hasta, ! $request->filled('desde') && ! $request->filled('hasta')];
+    }
+
+    /** Serie por dia desde los reportes (totales denormalizados), keyed por Y-m-d. */
+    private function reportesPorDia(string $desde, string $hasta, ?int $sopladorId = null)
+    {
+        return ProduccionReporte::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->when($sopladorId, fn ($q) => $q->where('soplador_id', $sopladorId))
+            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
+            ->groupBy('fecha')
+            ->get()
+            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
+    }
+
+    /** Serie por dia desde las tandas (registros) filtradas por maquina/tipo, keyed por Y-m-d. */
+    private function registrosPorDia(string $desde, string $hasta, string $col, int $id)
+    {
+        return ProduccionRegistro::query()
+            ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
+            ->whereDate('produccion_reportes.fecha', '>=', $desde)->whereDate('produccion_reportes.fecha', '<=', $hasta)
+            ->where("produccion_registros.$col", $id)
+            ->selectRaw('produccion_reportes.fecha AS fecha, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan, COUNT(DISTINCT produccion_registros.reporte_id) reportes')
+            ->groupBy('produccion_reportes.fecha')
+            ->get()
+            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
+    }
+
+    /** Asignadas por dia (mapa Y-m-d => int) para el rango. */
+    private function asignadasPorDia(string $desde, string $hasta)
+    {
+        return ProduccionAsignacion::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
+            ->groupBy('fecha')
+            ->get()
+            ->mapWithKeys(fn ($r) => [Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
+    }
+
+    /**
+     * Arma la tendencia diaria: una fila por cada dia del rango (con ceros donde
+     * no hubo), totales del rango y el maximo de producido (para escalar barras).
+     */
+    private function construirTendencia(string $desde, string $hasta, $porDia, $asignadasPorDia = null): array
+    {
+        $dias = [];
+        [$sp1, $sp2, $smal, $sdan, $sasig, $srep] = [0, 0, 0, 0, 0, 0];
+        for ($cursor = Carbon::parse($desde); $cursor->lte(Carbon::parse($hasta)); $cursor->addDay()) {
+            $k = $cursor->toDateString();
+            $r = $porDia->get($k);
+            $p1 = (int) ($r->p1 ?? 0);
+            $p2 = (int) ($r->p2 ?? 0);
+            $mal = (int) ($r->mal ?? 0);
+            $dan = (int) ($r->dan ?? 0);
+            $asig = (int) ($asignadasPorDia[$k] ?? 0);
+            $rep = (int) ($r->reportes ?? 0);
+
+            $dias[] = $this->armarResumen($p1, $p2, $mal, $dan, $asig) + ['fecha' => $cursor->copy(), 'reportes' => $rep];
+            $sp1 += $p1;
+            $sp2 += $p2;
+            $smal += $mal;
+            $sdan += $dan;
+            $sasig += $asig;
+            $srep += $rep;
+        }
+
+        return [
+            'dias' => $dias,
+            'totales' => $this->armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
+            'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
+        ];
+    }
+
+    /** Ranking de sopladores del rango (producido/merma/tasas + reportes), orden desc. */
+    private function desgloseSopladores(string $desde, string $hasta)
+    {
+        return ProduccionReporte::query()
+            ->join('users', 'users.id', '=', 'produccion_reportes.soplador_id')
+            ->whereDate('produccion_reportes.fecha', '>=', $desde)->whereDate('produccion_reportes.fecha', '<=', $hasta)
+            ->groupBy('produccion_reportes.soplador_id', 'users.name')
+            ->selectRaw('produccion_reportes.soplador_id AS id, users.name AS nombre, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
+            ->get()
+            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre, 'reportes' => (int) $r->reportes]))
+            ->sortByDesc('producido')->values();
+    }
+
+    /**
+     * Desglose por maquina o tipo (group por $groupCol, nombre desde $joinTable).
+     * Con $whereCol/$whereId filtra (ej. tipos de UNA maquina). Orden desc por producido.
+     */
+    private function desgloseRegistros(string $desde, string $hasta, string $groupCol, string $joinTable, ?string $whereCol = null, ?int $whereId = null)
+    {
+        return ProduccionRegistro::query()
+            ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
+            ->leftJoin($joinTable, "$joinTable.id", '=', "produccion_registros.$groupCol")
+            ->whereDate('produccion_reportes.fecha', '>=', $desde)->whereDate('produccion_reportes.fecha', '<=', $hasta)
+            ->when($whereCol && $whereId, fn ($q) => $q->where("produccion_registros.$whereCol", $whereId))
+            ->groupBy("produccion_registros.$groupCol", "$joinTable.nombre")
+            ->selectRaw("produccion_registros.$groupCol AS id, $joinTable.nombre AS nombre, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan")
+            ->get()
+            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
+            ->sortByDesc('producido')->values();
+    }
+
+    /** Sopladores que pasaron por una maquina/tipo en el rango (orden desc por producido). */
+    private function desgloseRegistrosPorSoplador(string $desde, string $hasta, string $whereCol, int $whereId)
+    {
+        return ProduccionRegistro::query()
+            ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
+            ->join('users', 'users.id', '=', 'produccion_reportes.soplador_id')
+            ->whereDate('produccion_reportes.fecha', '>=', $desde)->whereDate('produccion_reportes.fecha', '<=', $hasta)
+            ->where("produccion_registros.$whereCol", $whereId)
+            ->groupBy('produccion_reportes.soplador_id', 'users.name')
+            ->selectRaw('produccion_reportes.soplador_id AS id, users.name AS nombre, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan')
+            ->get()
+            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
+            ->sortByDesc('producido')->values();
+    }
+
+    /** Rollup "por maquina" (con sucursal) para un rango de fechas. */
+    private function porMaquinaEntre(string $desde, string $hasta)
+    {
+        return ProduccionRegistro::query()
+            ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
+            ->leftJoin('maquinas', 'maquinas.id', '=', 'produccion_registros.maquina_id')
+            ->leftJoin('sucursales', 'sucursales.id', '=', 'maquinas.sucursal_id')
+            ->whereDate('produccion_reportes.fecha', '>=', $desde)->whereDate('produccion_reportes.fecha', '<=', $hasta)
+            ->groupBy('produccion_registros.maquina_id', 'maquinas.nombre', 'sucursales.nombre')
+            ->orderByRaw('maquinas.nombre IS NULL, maquinas.nombre')
+            ->selectRaw('produccion_registros.maquina_id AS maquina_id, maquinas.nombre AS maquina, sucursales.nombre AS sucursal, SUM(produccion_registros.primera) AS primera, SUM(produccion_registros.segunda) AS segunda, SUM(produccion_registros.malo) AS malo, SUM(produccion_registros.danada) AS danada')
+            ->get();
+    }
+
+    /**
+     * Detalle de un dia puntual: todas las producciones de esa fecha (todos los
+     * sopladores), su rollup por maquina y por tipo, y el resumen del dia.
+     */
+    public function diaDetalle(Request $request): View
+    {
+        $request->validate(['fecha' => ['nullable', 'date']]);
+        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : now()->toDateString();
+
+        $reportes = ProduccionReporte::with('soplador')->withCount('registros')
+            ->whereDate('fecha', $fecha)
+            ->orderByRaw("CASE estado WHEN 'enviado' THEN 0 WHEN 'devuelto' THEN 1 WHEN 'borrador' THEN 2 ELSE 3 END")
+            ->orderBy('id')
+            ->get();
+
+        $t = ProduccionReporte::whereDate('fecha', $fecha)
+            ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
+            ->first();
+        $resumen = $this->armarResumen(
+            (int) $t->p1, (int) $t->p2, (int) $t->mal, (int) $t->dan,
+            (int) ProduccionAsignacion::whereDate('fecha', $fecha)->sum('asignadas'),
+        );
+
+        $porMaquina = $this->porMaquinaEntre($fecha, $fecha);
+
+        return view('admin.produccion.dia', [
+            'fecha' => Carbon::parse($fecha),
+            'reportes' => $reportes,
+            'resumen' => $resumen,
+            'porMaquina' => $porMaquina,
+            'porMaquinaMultiSucursal' => $porMaquina->whereNotNull('sucursal')->pluck('sucursal')->unique()->count() > 1,
+            'porTipo' => $this->desgloseRegistros($fecha, $fecha, 'tipo_botellon_id', 'tipos_botellon'),
+        ]);
+    }
+
+    /**
+     * Rendimiento de una maquina en un rango (default ultimo mes): tendencia por
+     * dia + desglose por tipo y por soplador que la usaron.
+     */
+    public function maquinaRendimiento(Request $request, Maquina $maquina): View
+    {
+        [$desde, $hasta, $esDefault] = $this->rango($request, 29);
+
+        $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'maquina_id', $maquina->id));
+
+        return view('admin.produccion.maquina', [
+            'maquina' => $maquina->load('sucursal'),
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'esDefault' => $esDefault,
+            'tendencia' => $tendencia,
+            'porTipo' => $this->desgloseRegistros($desde, $hasta, 'tipo_botellon_id', 'tipos_botellon', 'maquina_id', $maquina->id),
+            'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'maquina_id', $maquina->id),
+        ]);
+    }
+
+    /**
+     * Produccion de un tipo de botellon en un rango (default ultimo mes):
+     * tendencia por dia + desglose por maquina y por soplador.
+     */
+    public function tipoRendimiento(Request $request, TipoBotellon $tipoBotellon): View
+    {
+        [$desde, $hasta, $esDefault] = $this->rango($request, 29);
+
+        $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'tipo_botellon_id', $tipoBotellon->id));
+
+        return view('admin.produccion.tipo', [
+            'tipo' => $tipoBotellon,
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'esDefault' => $esDefault,
+            'tendencia' => $tendencia,
+            'porMaquina' => $this->desgloseRegistros($desde, $hasta, 'maquina_id', 'maquinas', 'tipo_botellon_id', $tipoBotellon->id),
+            'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'tipo_botellon_id', $tipoBotellon->id),
+        ]);
     }
 
     /**

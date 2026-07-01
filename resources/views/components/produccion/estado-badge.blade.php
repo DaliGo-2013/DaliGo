@@ -1,10 +1,13 @@
 @props(['estado'])
 
 @php
+    // Paleta de 4 colores: el color transmite el significado por relleno, no por matiz.
+    // Borrador = gris suave (en progreso) · Enviado = naranjo sólido (requiere tu acción) ·
+    // Aprobado = neutro sólido (cerrado/final) · Devuelto = rojo suave (problema).
     $map = [
         'borrador' => ['label' => 'Borrador', 'class' => 'bg-neutral-100 text-neutral-600 ring-neutral-200'],
-        'enviado'  => ['label' => 'Enviado',  'class' => 'bg-amber-50 text-amber-700 ring-amber-200'],
-        'aprobado' => ['label' => 'Aprobado', 'class' => 'bg-emerald-50 text-emerald-700 ring-emerald-200'],
+        'enviado'  => ['label' => 'Enviado',  'class' => 'bg-brand-600 text-white ring-brand-600'],
+        'aprobado' => ['label' => 'Aprobado', 'class' => 'bg-neutral-800 text-white ring-neutral-800'],
         'devuelto' => ['label' => 'Devuelto', 'class' => 'bg-red-50 text-red-700 ring-red-200'],
     ];
     $e = $map[$estado] ?? ['label' => $estado, 'class' => 'bg-neutral-100 text-neutral-600 ring-neutral-200'];

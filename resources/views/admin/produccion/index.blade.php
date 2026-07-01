@@ -26,21 +26,23 @@
                 <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Requiere tu atención</h3>
                 @if ($hayAlertas)
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <a href="#cola" class="block rounded-2xl border p-4 shadow-sm transition duration-150 active:scale-[0.98] {{ $alertas['porAprobar'] > 0 ? 'border-amber-200 bg-amber-50 hover:border-amber-300' : 'border-neutral-200 bg-white hover:border-neutral-300' }}">
-                            <p class="text-2xl font-semibold {{ $alertas['porAprobar'] > 0 ? 'text-amber-700' : 'text-neutral-900' }}">{{ $alertas['porAprobar'] }}</p>
-                            <p class="mt-1 text-sm {{ $alertas['porAprobar'] > 0 ? 'text-amber-700' : 'text-neutral-500' }}">Por aprobar</p>
+                        {{-- Naranjo = requiere tu acción. --}}
+                        <a href="#cola" class="block rounded-2xl border p-4 shadow-sm transition duration-150 active:scale-[0.98] {{ $alertas['porAprobar'] > 0 ? 'border-brand-200 bg-brand-50 hover:border-brand-300' : 'border-neutral-200 bg-white hover:border-neutral-300' }}">
+                            <p class="text-2xl font-semibold {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['porAprobar'] }}</p>
+                            <p class="mt-1 text-sm {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-500' }}">Por aprobar</p>
                         </a>
+                        {{-- Rojo = problema (devuelto). --}}
                         <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['devueltos'] > 0 ? 'border-red-200 bg-red-50' : 'border-neutral-200 bg-white' }}">
                             <p class="text-2xl font-semibold {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-900' }}">{{ $alertas['devueltos'] }}</p>
                             <p class="mt-1 text-sm {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-500' }}">Devueltos sin corregir</p>
                         </div>
-                        <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['atrasados'] > 0 ? 'border-amber-200 bg-amber-50' : 'border-neutral-200 bg-white' }}">
-                            <p class="text-2xl font-semibold {{ $alertas['atrasados'] > 0 ? 'text-amber-700' : 'text-neutral-900' }}">{{ $alertas['atrasados'] }}</p>
-                            <p class="mt-1 text-sm {{ $alertas['atrasados'] > 0 ? 'text-amber-700' : 'text-neutral-500' }}">Atrasados hoy · sin enviar</p>
+                        <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['atrasados'] > 0 ? 'border-brand-200 bg-brand-50' : 'border-neutral-200 bg-white' }}">
+                            <p class="text-2xl font-semibold {{ $alertas['atrasados'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['atrasados'] }}</p>
+                            <p class="mt-1 text-sm {{ $alertas['atrasados'] > 0 ? 'text-brand-700' : 'text-neutral-500' }}">Atrasados hoy · sin enviar</p>
                         </div>
                     </div>
                 @else
-                    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                    <div class="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-600">
                         Todo al día — nada por aprobar, devuelto ni atrasado.
                     </div>
                 @endif
@@ -55,9 +57,9 @@
                 @php
                     $chipsHoy = [
                         ['Asignado', number_format($hoy['asignadas'], 0, ',', '.'), null],
-                        ['Producido', number_format($hoy['producido'], 0, ',', '.'), 'emerald'],
+                        ['Producido', number_format($hoy['producido'], 0, ',', '.'), 'brand'],
                         ['% de avance', $hoy['avance'].'%', null],
-                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' · '.$hoy['merma_pct'].'%', 'amber'],
+                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' · '.$hoy['merma_pct'].'%', 'muted'],
                         ['Tasa 1ª', $hoy['tasa1'].'%', null],
                     ];
                 @endphp
@@ -65,7 +67,7 @@
                     @foreach ($chipsHoy as [$label, $valor, $tono])
                         <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                             <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
-                            <p class="mt-1 text-2xl font-semibold {{ $tono === 'emerald' ? 'text-emerald-600' : ($tono === 'amber' ? 'text-amber-600' : 'text-neutral-900') }}">{{ $valor }}</p>
+                            <p class="mt-1 text-2xl font-semibold {{ $tono === 'brand' ? 'text-brand-600' : ($tono === 'muted' ? 'text-neutral-500' : 'text-neutral-900') }}">{{ $valor }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -100,29 +102,33 @@
                 {{-- Totales del rango --}}
                 <div class="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-neutral-100 px-4 py-4 sm:grid-cols-4 sm:px-6">
                     <div><p class="text-xs uppercase tracking-wide text-neutral-400">Asignado</p><p class="mt-0.5 text-xl font-semibold text-neutral-900">{{ number_format($tp['asignadas'], 0, ',', '.') }}</p></div>
-                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Producido</p><p class="mt-0.5 text-xl font-semibold text-emerald-600">{{ number_format($tp['producido'], 0, ',', '.') }}</p></div>
-                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Merma</p><p class="mt-0.5 text-xl font-semibold text-amber-600">{{ number_format($tp['merma'], 0, ',', '.') }} · {{ $tp['merma_pct'] }}%</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Producido</p><p class="mt-0.5 text-xl font-semibold text-brand-600">{{ number_format($tp['producido'], 0, ',', '.') }}</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Merma</p><p class="mt-0.5 text-xl font-semibold text-neutral-500">{{ number_format($tp['merma'], 0, ',', '.') }} · {{ $tp['merma_pct'] }}%</p></div>
                     <div><p class="text-xs uppercase tracking-wide text-neutral-400">Reportes</p><p class="mt-0.5 text-xl font-semibold text-neutral-900">{{ $tp['reportes'] }}</p></div>
                 </div>
 
-                {{-- Tabla por día con mini-barras --}}
-                <ul class="divide-y divide-neutral-100">
-                    @foreach ($periodo['dias'] as $d)
-                        <li class="px-4 py-3 sm:px-6">
-                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                <span class="text-sm font-medium text-neutral-900">{{ ucfirst($d['fecha']->translatedFormat('D d/m')) }}</span>
-                                <div class="flex items-center gap-4 text-sm text-neutral-600">
-                                    <span><span class="text-neutral-400">Producido</span> <span class="font-medium text-emerald-600">{{ number_format($d['producido'], 0, ',', '.') }}</span></span>
-                                    <span><span class="text-neutral-400">Merma</span> {{ $d['merma'] }} · {{ $d['merma_pct'] }}%</span>
-                                    <span><span class="text-neutral-400">1ª</span> {{ $d['tasa1'] }}%</span>
-                                </div>
-                            </div>
-                            <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-                                <div class="h-full rounded-full bg-brand-500" style="width: {{ (int) round($d['producido'] / $periodo['maxProducido'] * 100) }}%"></div>
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
+                {{-- Tabla por día con mini-barras (cada día enlaza a su detalle) --}}
+                @include('admin.produccion.partials._tendencia', ['tendencia' => $periodo, 'linkDia' => true])
+            </div>
+
+            {{-- Desgloses del periodo (clickeables a su detalle) --}}
+            @php $linkRango = ['desde' => $periodo['desde'], 'hasta' => $periodo['hasta']]; @endphp
+            <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="border-b border-neutral-100 px-4 py-3 sm:px-6"><h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Ranking de sopladores · periodo</h3></div>
+                    @include('admin.produccion.partials._desglose', [
+                        'items' => $rankingSopladores,
+                        'linkRoute' => 'admin.produccion.soplador', 'linkKey' => 'soplador', 'linkExtra' => $linkRango,
+                    ])
+                </div>
+                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="border-b border-neutral-100 px-4 py-3 sm:px-6"><h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de botellón · periodo</h3></div>
+                    @include('admin.produccion.partials._desglose', [
+                        'items' => $porTipoPeriodo,
+                        'linkRoute' => 'admin.produccion.tipo', 'linkKey' => 'tipoBotellon', 'linkExtra' => $linkRango,
+                        'sinNombre' => 'Sin tipo',
+                    ])
+                </div>
             </div>
 
             {{-- Producción del día por máquina (incluye reportes sin aprobar) --}}
@@ -135,9 +141,11 @@
                     <ul class="divide-y divide-neutral-100">
                         @foreach ($porMaquina as $fila)
                             <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 sm:px-6">
-                                <p class="text-sm font-medium text-neutral-900">
-                                    {{ $fila->maquina ?? 'Sin máquina' }}@if ($porMaquinaMultiSucursal && $fila->sucursal)<span class="text-neutral-400"> · {{ $fila->sucursal }}</span>@endif
-                                </p>
+                                @if ($fila->maquina_id)
+                                    <a href="{{ route('admin.produccion.maquina', $fila->maquina_id) }}" class="text-sm font-medium text-neutral-900 transition duration-150 hover:text-brand-600">{{ $fila->maquina }}@if ($porMaquinaMultiSucursal && $fila->sucursal)<span class="text-neutral-400"> · {{ $fila->sucursal }}</span>@endif</a>
+                                @else
+                                    <p class="text-sm font-medium text-neutral-900">Sin máquina</p>
+                                @endif
                                 <div class="flex items-center gap-4 text-sm text-neutral-600">
                                     <span><span class="text-neutral-400">1ª</span> {{ number_format($fila->primera, 0, ',', '.') }}</span>
                                     <span><span class="text-neutral-400">2ª</span> {{ number_format($fila->segunda, 0, ',', '.') }}</span>
@@ -169,7 +177,7 @@
                                 <span><span class="text-neutral-400">2ª</span> {{ $reporte->segunda }}</span>
                                 <span><span class="text-neutral-400">Malos</span> {{ $reporte->malo }}</span>
                                 <span><span class="text-neutral-400">Dañadas</span> {{ $reporte->danada }}</span>
-                                <span class="font-medium {{ $reporte->diferencia === 0 ? 'text-emerald-600' : 'text-amber-600' }}">
+                                <span class="font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
                                     Δ {{ $reporte->diferencia }}
                                 </span>
                                 <x-produccion.estado-badge :estado="$reporte->estado" />
