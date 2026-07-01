@@ -59,7 +59,7 @@
                         ['Asignado', number_format($hoy['asignadas'], 0, ',', '.'), null],
                         ['Producido', number_format($hoy['producido'], 0, ',', '.'), 'brand'],
                         ['% de avance', $hoy['avance'].'%', null],
-                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' · '.$hoy['merma_pct'].'%', 'muted'],
+                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' ('.$hoy['merma_pct'].'%)', 'muted'],
                         ['Tasa 1ª', $hoy['tasa1'].'%', null],
                     ];
                 @endphp
@@ -103,7 +103,7 @@
                 <div class="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-neutral-100 px-4 py-4 sm:grid-cols-4 sm:px-6">
                     <div><p class="text-xs uppercase tracking-wide text-neutral-400">Asignado</p><p class="mt-0.5 text-xl font-semibold text-neutral-900">{{ number_format($tp['asignadas'], 0, ',', '.') }}</p></div>
                     <div><p class="text-xs uppercase tracking-wide text-neutral-400">Producido</p><p class="mt-0.5 text-xl font-semibold text-brand-600">{{ number_format($tp['producido'], 0, ',', '.') }}</p></div>
-                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Merma</p><p class="mt-0.5 text-xl font-semibold text-neutral-500">{{ number_format($tp['merma'], 0, ',', '.') }} · {{ $tp['merma_pct'] }}%</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Merma</p><p class="mt-0.5 text-xl font-semibold text-neutral-500">{{ number_format($tp['merma'], 0, ',', '.') }} ({{ $tp['merma_pct'] }}%)</p></div>
                     <div><p class="text-xs uppercase tracking-wide text-neutral-400">Reportes</p><p class="mt-0.5 text-xl font-semibold text-neutral-900">{{ $tp['reportes'] }}</p></div>
                 </div>
 
@@ -147,10 +147,10 @@
                                     <p class="text-sm font-medium text-neutral-900">Sin máquina</p>
                                 @endif
                                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
-                                    <x-produccion.metrica label="1ª" w="w-12">{{ number_format($fila->primera, 0, ',', '.') }}</x-produccion.metrica>
-                                    <x-produccion.metrica label="2ª" w="w-12">{{ number_format($fila->segunda, 0, ',', '.') }}</x-produccion.metrica>
-                                    <x-produccion.metrica label="Malos" w="w-12">{{ number_format($fila->malo, 0, ',', '.') }}</x-produccion.metrica>
-                                    <x-produccion.metrica label="Dañadas" w="w-12">{{ number_format($fila->danada, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="1ª" w="w-16">{{ number_format($fila->primera, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="2ª" w="w-16">{{ number_format($fila->segunda, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="Malos" w="w-24">{{ number_format($fila->malo, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="Dañadas" w="w-28">{{ number_format($fila->danada, 0, ',', '.') }}</x-produccion.metrica>
                                 </div>
                             </li>
                         @endforeach
@@ -173,12 +173,12 @@
 
                         <x-slot name="meta">
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
-                                <x-produccion.metrica label="1ª" w="w-12">{{ $reporte->primera }}</x-produccion.metrica>
-                                <x-produccion.metrica label="2ª" w="w-12">{{ $reporte->segunda }}</x-produccion.metrica>
-                                <x-produccion.metrica label="Malos" w="w-12">{{ $reporte->malo }}</x-produccion.metrica>
-                                <x-produccion.metrica label="Dañadas" w="w-12">{{ $reporte->danada }}</x-produccion.metrica>
-                                <span class="inline-flex items-baseline gap-1 font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
-                                    Δ <span class="w-12 text-right tabular-nums">{{ $reporte->diferencia }}</span>
+                                <x-produccion.metrica label="1ª" w="w-16">{{ $reporte->primera }}</x-produccion.metrica>
+                                <x-produccion.metrica label="2ª" w="w-16">{{ $reporte->segunda }}</x-produccion.metrica>
+                                <x-produccion.metrica label="Malos" w="w-24">{{ $reporte->malo }}</x-produccion.metrica>
+                                <x-produccion.metrica label="Dañadas" w="w-28">{{ $reporte->danada }}</x-produccion.metrica>
+                                <span class="inline-flex w-16 items-baseline gap-1 font-medium tabular-nums {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
+                                    Δ <span>{{ $reporte->diferencia }}</span>
                                 </span>
                                 <x-produccion.estado-badge :estado="$reporte->estado" />
                             </div>

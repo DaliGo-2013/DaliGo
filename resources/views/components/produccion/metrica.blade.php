@@ -1,11 +1,11 @@
-{{-- Una métrica "etiqueta + valor" para filas de datos. El valor va en una caja
-     de ancho fijo, alineada a la derecha y con tabular-nums (dígitos de ancho
-     uniforme); como la etiqueta es texto constante, cada métrica mide igual en
-     todas las filas → las columnas se alinean solas sin importar la magnitud.
-     Props: label, w (ancho del valor, ej. w-14), tone (brand | muted | null). --}}
-@props(['label', 'w' => 'w-12', 'tone' => null])
+{{-- Una métrica "etiqueta + valor" para filas de datos. El valor va PEGADO a la
+     etiqueta (legible) dentro de un cell de ANCHO FIJO (`w`) con tabular-nums; el
+     ancho fijo del cell mantiene las columnas alineadas entre filas (cada columna
+     arranca en el mismo x) y el sobrante queda como separación entre métricas.
+     Props: label, w (ancho del cell completo etiqueta+valor, ej. w-28), tone. --}}
+@props(['label', 'w' => 'w-16', 'tone' => null])
 
-<span class="inline-flex items-baseline gap-1">
+<span class="{{ $w }} inline-flex items-baseline gap-1 tabular-nums">
     <span class="text-neutral-400">{{ $label }}</span>
-    <span class="{{ $w }} text-right tabular-nums {{ $tone === 'brand' ? 'font-medium text-brand-600' : ($tone === 'muted' ? 'text-neutral-500' : '') }}">{{ $slot }}</span>
+    <span class="{{ $tone === 'brand' ? 'font-medium text-brand-600' : ($tone === 'muted' ? 'text-neutral-500' : '') }}">{{ $slot }}</span>
 </span>

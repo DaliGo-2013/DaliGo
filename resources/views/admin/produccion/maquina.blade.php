@@ -19,7 +19,7 @@
 
             @include('admin.produccion.partials._totales', ['chips' => [
                 ['label' => 'Producido', 'valor' => number_format($tendencia['totales']['producido'], 0, ',', '.'), 'tono' => 'brand'],
-                ['label' => 'Merma', 'valor' => number_format($tendencia['totales']['merma'], 0, ',', '.').' · '.$tendencia['totales']['merma_pct'].'%', 'tono' => 'muted'],
+                ['label' => 'Merma', 'valor' => number_format($tendencia['totales']['merma'], 0, ',', '.').' ('.$tendencia['totales']['merma_pct'].'%)', 'tono' => 'muted'],
                 ['label' => 'Tasa 1ª', 'valor' => $tendencia['totales']['tasa1'].'%', 'tono' => null],
                 ['label' => 'Reportes', 'valor' => $tendencia['totales']['reportes'], 'tono' => null],
             ]])

@@ -61,7 +61,7 @@ Tema **claro y sobrio**: naranjo de marca + blanco + neutros, **sin degradados**
 
 **Badges / pills:** `inline-flex rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100`.
 
-**Filas de métricas** (listas con varias cifras por fila: producido/merma/tasas, 1ª/2ª/malos/dañadas, Δ): usar `<x-produccion.metrica>` — el **valor** va en una caja de **ancho fijo** (`w-*`) `text-right tabular-nums`, con la etiqueta de texto constante al lado. Así las columnas quedan **alineadas entre filas** sin importar la magnitud del número. **Nunca** pegar el número a la etiqueta con ancho variable (se descuadran las columnas al crecer las cifras).
+**Filas de métricas** (listas con varias cifras por fila: producido/merma/tasas, 1ª/2ª/malos/dañadas, Δ): usar `<x-produccion.metrica>` — etiqueta + valor **pegados** (legible) dentro de un **cell de ancho fijo** (`w-*` = ancho del cell completo) con `tabular-nums`; el ancho fijo alinea las columnas entre filas y el sobrante queda como separación *entre* métricas. El `w` debe cubrir "etiqueta + valor máximo" (ej. Producido/Merma `w-28`, 1ª/2ª `w-16`, Malos `w-24`, Dañadas `w-28`). La **merma** se muestra `N (N%)` (unidades y, entre paréntesis, el % sobre el total) — nunca `N · N%` (confuso). Grupos de 4+ métricas con `flex-wrap` para no desbordar en móvil.
 
 **Motion** (sutil, rápido, con propósito — **sin rebotes ni loops**): `transition duration-150` en estados/hover; `active:scale-[0.98]` al presionar; `dg-enter` para materializar contenedores al cargar; `dg-shake` para feedback de error; **siempre** respetar `prefers-reduced-motion` (ya cubierto en `app.css`).
 

@@ -15,12 +15,12 @@
                     <span class="text-sm font-medium text-neutral-900">{{ $etiqueta }}</span>
                 @endif
                 <div class="flex items-center gap-4 text-sm text-neutral-600">
-                    <x-produccion.metrica label="Producido" w="w-14" tone="brand">{{ number_format($d['producido'], 0, ',', '.') }}</x-produccion.metrica>
-                    <x-produccion.metrica label="Merma" w="w-20" tone="muted">{{ $d['merma'] }} · {{ $d['merma_pct'] }}%</x-produccion.metrica>
-                    <x-produccion.metrica label="1ª" w="w-10">{{ $d['tasa1'] }}%</x-produccion.metrica>
+                    <x-produccion.metrica label="Producido" w="w-28" tone="brand">{{ number_format($d['producido'], 0, ',', '.') }}</x-produccion.metrica>
+                    <x-produccion.metrica label="Merma" w="w-28" tone="muted">{{ $d['merma'] }} ({{ $d['merma_pct'] }}%)</x-produccion.metrica>
+                    <x-produccion.metrica label="1ª" w="w-16">{{ $d['tasa1'] }}%</x-produccion.metrica>
                 </div>
             </div>
-            <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+            <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-neutral-200">
                 <div class="h-full rounded-full bg-brand-500" style="width: {{ $pct }}%"></div>
             </div>
         </li>
