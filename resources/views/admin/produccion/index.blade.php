@@ -20,22 +20,109 @@
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <x-status-alert :status="session('status')" class="mb-6" />
 
-            {{-- Resumen del día --}}
-            <div class="dg-enter mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {{-- Requiere tu atención: lo accionable primero --}}
+            @php $hayAlertas = ($alertas['porAprobar'] + $alertas['devueltos'] + $alertas['atrasados']) > 0; @endphp
+            <div class="dg-enter mb-6">
+                <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Requiere tu atención</h3>
+                @if ($hayAlertas)
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <a href="#cola" class="block rounded-2xl border p-4 shadow-sm transition duration-150 active:scale-[0.98] {{ $alertas['porAprobar'] > 0 ? 'border-amber-200 bg-amber-50 hover:border-amber-300' : 'border-neutral-200 bg-white hover:border-neutral-300' }}">
+                            <p class="text-2xl font-semibold {{ $alertas['porAprobar'] > 0 ? 'text-amber-700' : 'text-neutral-900' }}">{{ $alertas['porAprobar'] }}</p>
+                            <p class="mt-1 text-sm {{ $alertas['porAprobar'] > 0 ? 'text-amber-700' : 'text-neutral-500' }}">Por aprobar</p>
+                        </a>
+                        <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['devueltos'] > 0 ? 'border-red-200 bg-red-50' : 'border-neutral-200 bg-white' }}">
+                            <p class="text-2xl font-semibold {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-900' }}">{{ $alertas['devueltos'] }}</p>
+                            <p class="mt-1 text-sm {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-500' }}">Devueltos sin corregir</p>
+                        </div>
+                        <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['atrasados'] > 0 ? 'border-amber-200 bg-amber-50' : 'border-neutral-200 bg-white' }}">
+                            <p class="text-2xl font-semibold {{ $alertas['atrasados'] > 0 ? 'text-amber-700' : 'text-neutral-900' }}">{{ $alertas['atrasados'] }}</p>
+                            <p class="mt-1 text-sm {{ $alertas['atrasados'] > 0 ? 'text-amber-700' : 'text-neutral-500' }}">Atrasados hoy · sin enviar</p>
+                        </div>
+                    </div>
+                @else
+                    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                        Todo al día — nada por aprobar, devuelto ni atrasado.
+                    </div>
+                @endif
+            </div>
+
+            {{-- Hoy (ampliado) --}}
+            <div class="dg-enter mb-6">
+                <div class="mb-2 flex items-baseline justify-between gap-3">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Hoy</h3>
+                    <span class="text-xs text-neutral-400">{{ now()->translatedFormat('l d \\d\\e F') }}</span>
+                </div>
                 @php
-                    $chips = [
-                        ['Sopladores', $resumen['sopladores']],
-                        ['Asignadas', number_format($resumen['asignadas'], 0, ',', '.')],
-                        ['Pendientes de aprobar', $resumen['pendientes']],
-                        ['Aprobados', $resumen['aprobados']],
+                    $chipsHoy = [
+                        ['Asignado', number_format($hoy['asignadas'], 0, ',', '.'), null],
+                        ['Producido', number_format($hoy['producido'], 0, ',', '.'), 'emerald'],
+                        ['% de avance', $hoy['avance'].'%', null],
+                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' · '.$hoy['merma_pct'].'%', 'amber'],
+                        ['Tasa 1ª', $hoy['tasa1'].'%', null],
                     ];
                 @endphp
-                @foreach ($chips as [$label, $valor])
-                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-                        <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
-                        <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ $valor }}</p>
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
+                    @foreach ($chipsHoy as [$label, $valor, $tono])
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
+                            <p class="mt-1 text-2xl font-semibold {{ $tono === 'emerald' ? 'text-emerald-600' : ($tono === 'amber' ? 'text-amber-600' : 'text-neutral-900') }}">{{ $valor }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Producción por periodo (rango; default últimos 7 días) --}}
+            @php
+                $tp = $periodo['totales'];
+                $rangoLabel = $periodo['esDefault']
+                    ? 'Últimos 7 días'
+                    : \Illuminate\Support\Carbon::parse($periodo['desde'])->translatedFormat('d M') . ' – ' . \Illuminate\Support\Carbon::parse($periodo['hasta'])->translatedFormat('d M');
+            @endphp
+            <div class="dg-enter mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="flex flex-col gap-3 border-b border-neutral-100 px-4 py-3 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+                    <div>
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por periodo</h3>
+                        <p class="mt-0.5 text-sm text-neutral-500">{{ $rangoLabel }}</p>
                     </div>
-                @endforeach
+                    <form method="GET" action="{{ route('admin.produccion.index') }}" class="flex flex-wrap items-end gap-2">
+                        <div>
+                            <x-input-label for="desde" value="Desde" />
+                            <x-text-input id="desde" name="desde" type="date" class="mt-1" :value="$periodo['desde']" />
+                        </div>
+                        <div>
+                            <x-input-label for="hasta" value="Hasta" />
+                            <x-text-input id="hasta" name="hasta" type="date" class="mt-1" :value="$periodo['hasta']" />
+                        </div>
+                        <x-secondary-button>Filtrar</x-secondary-button>
+                    </form>
+                </div>
+
+                {{-- Totales del rango --}}
+                <div class="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-neutral-100 px-4 py-4 sm:grid-cols-4 sm:px-6">
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Asignado</p><p class="mt-0.5 text-xl font-semibold text-neutral-900">{{ number_format($tp['asignadas'], 0, ',', '.') }}</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Producido</p><p class="mt-0.5 text-xl font-semibold text-emerald-600">{{ number_format($tp['producido'], 0, ',', '.') }}</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Merma</p><p class="mt-0.5 text-xl font-semibold text-amber-600">{{ number_format($tp['merma'], 0, ',', '.') }} · {{ $tp['merma_pct'] }}%</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-neutral-400">Reportes</p><p class="mt-0.5 text-xl font-semibold text-neutral-900">{{ $tp['reportes'] }}</p></div>
+                </div>
+
+                {{-- Tabla por día con mini-barras --}}
+                <ul class="divide-y divide-neutral-100">
+                    @foreach ($periodo['dias'] as $d)
+                        <li class="px-4 py-3 sm:px-6">
+                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                <span class="text-sm font-medium text-neutral-900">{{ ucfirst($d['fecha']->translatedFormat('D d/m')) }}</span>
+                                <div class="flex items-center gap-4 text-sm text-neutral-600">
+                                    <span><span class="text-neutral-400">Producido</span> <span class="font-medium text-emerald-600">{{ number_format($d['producido'], 0, ',', '.') }}</span></span>
+                                    <span><span class="text-neutral-400">Merma</span> {{ $d['merma'] }} · {{ $d['merma_pct'] }}%</span>
+                                    <span><span class="text-neutral-400">1ª</span> {{ $d['tasa1'] }}%</span>
+                                </div>
+                            </div>
+                            <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+                                <div class="h-full rounded-full bg-brand-500" style="width: {{ (int) round($d['producido'] / $periodo['maxProducido'] * 100) }}%"></div>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
             </div>
 
             {{-- Producción del día por máquina (incluye reportes sin aprobar) --}}
@@ -63,7 +150,7 @@
                 </div>
             @endif
 
-            <x-list-card title="Cola de reportes" :count="$reportes->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $reportes->count())">
+            <x-list-card id="cola" title="Cola de reportes · hoy" :count="$reportes->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $reportes->count())">
                 @forelse ($reportes as $reporte)
                     <x-list-row>
                         <x-slot name="leading">

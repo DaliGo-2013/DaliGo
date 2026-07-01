@@ -11,6 +11,7 @@ use App\Models\ProduccionReporte;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -20,12 +21,19 @@ class ProduccionController extends Controller
     private const TURNOS = ['dia', 'noche'];
 
     /**
-     * Panel del jefe: resumen del dia + cola de reportes para revisar.
+     * Panel del jefe: alertas de accion + resumen de hoy + produccion por
+     * periodo (rango, default ultimos 7 dias) + por maquina y cola de HOY.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
+        $request->validate([
+            'desde' => ['nullable', 'date'],
+            'hasta' => ['nullable', 'date'],
+        ]);
+
         $hoy = now()->toDateString();
 
+        // --- Cola de reportes de HOY (la superficie de trabajo del jefe) ---
         $reportes = ProduccionReporte::with('soplador')
             ->withCount('registros')
             ->delDia($hoy)
@@ -33,18 +41,88 @@ class ProduccionController extends Controller
             ->orderBy('id')
             ->get();
 
-        $resumen = [
-            'sopladores' => $reportes->pluck('soplador_id')->unique()->count(),
-            'asignadas' => (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
-            'pendientes' => $reportes->where('estado', ProduccionReporte::ENVIADO)->count(),
-            'aprobados' => $reportes->where('estado', ProduccionReporte::APROBADO)->count(),
+        // --- Requiere atencion (independiente del rango: son senales de "ahora") ---
+        $alertas = [
+            'porAprobar' => ProduccionReporte::pendientes()->count(),
+            'devueltos' => ProduccionReporte::where('estado', ProduccionReporte::DEVUELTO)->count(),
+            // Asignaciones de hoy sin enviar todavia (reporte en borrador o inexistente).
+            'atrasados' => ProduccionAsignacion::whereDate('fecha', $hoy)
+                ->where(function ($q) {
+                    $q->doesntHave('reporte')
+                        ->orWhereHas('reporte', fn ($r) => $r->where('estado', ProduccionReporte::BORRADOR));
+                })
+                ->count(),
         ];
 
-        // Produccion del dia agrupada por maquina (rollup operativo basado en las
-        // tandas reportadas; incluye reportes sin aprobar y puede diferir de un
-        // total editado por el admin). Incluye la sucursal: el nombre de maquina
-        // solo es unico por sucursal, asi que dos maquinas homonimas de distinta
-        // sucursal deben distinguirse.
+        // --- Resumen de HOY (ampliado) ---
+        $t = ProduccionReporte::delDia($hoy)
+            ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
+            ->first();
+        $hoyResumen = $this->armarResumen(
+            (int) $t->p1, (int) $t->p2, (int) $t->mal, (int) $t->dan,
+            (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
+        );
+        $hoyResumen['sopladores'] = $reportes->pluck('soplador_id')->unique()->count();
+
+        // --- Produccion por periodo (rango; default ultimos 7 dias) ---
+        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : $hoy;
+        $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->toDateString() : Carbon::parse($hasta)->subDays(6)->toDateString();
+        if ($desde > $hasta) {
+            $desde = $hasta;
+        }
+        // Cota de seguridad: la tabla por dia se arma en PHP; no mas de ~92 filas.
+        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > 92) {
+            $desde = Carbon::parse($hasta)->subDays(92)->toDateString();
+        }
+
+        // whereDate en ambos extremos: la columna 'fecha' (cast a date) puede
+        // traer hora 00:00:00 y romper un whereBetween por string cuando desde==hasta.
+        $porDia = ProduccionReporte::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
+            ->groupBy('fecha')
+            ->get()
+            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
+
+        $asignadasPorDia = ProduccionAsignacion::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
+            ->groupBy('fecha')
+            ->get()
+            ->mapWithKeys(fn ($r) => [Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
+
+        $dias = [];
+        [$sp1, $sp2, $smal, $sdan, $sasig, $srep] = [0, 0, 0, 0, 0, 0];
+        for ($cursor = Carbon::parse($desde); $cursor->lte(Carbon::parse($hasta)); $cursor->addDay()) {
+            $k = $cursor->toDateString();
+            $r = $porDia->get($k);
+            $p1 = (int) ($r->p1 ?? 0);
+            $p2 = (int) ($r->p2 ?? 0);
+            $mal = (int) ($r->mal ?? 0);
+            $dan = (int) ($r->dan ?? 0);
+            $asig = (int) ($asignadasPorDia[$k] ?? 0);
+            $rep = (int) ($r->reportes ?? 0);
+
+            $dias[] = $this->armarResumen($p1, $p2, $mal, $dan, $asig) + [
+                'fecha' => $cursor->copy(),
+                'reportes' => $rep,
+            ];
+            $sp1 += $p1;
+            $sp2 += $p2;
+            $smal += $mal;
+            $sdan += $dan;
+            $sasig += $asig;
+            $srep += $rep;
+        }
+
+        $periodo = [
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'esDefault' => ! $request->filled('desde') && ! $request->filled('hasta'),
+            'dias' => $dias,
+            'totales' => $this->armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
+            'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
+        ];
+
+        // --- Por maquina de HOY (rollup operativo desde las tandas) ---
         $porMaquina = ProduccionRegistro::query()
             ->join('produccion_reportes', 'produccion_reportes.id', '=', 'produccion_registros.reporte_id')
             ->leftJoin('maquinas', 'maquinas.id', '=', 'produccion_registros.maquina_id')
@@ -60,10 +138,34 @@ class ProduccionController extends Controller
 
         return view('admin.produccion.index', [
             'reportes' => $reportes,
-            'resumen' => $resumen,
+            'alertas' => $alertas,
+            'hoy' => $hoyResumen,
+            'periodo' => $periodo,
             'porMaquina' => $porMaquina,
             'porMaquinaMultiSucursal' => $porMaquinaMultiSucursal,
         ]);
+    }
+
+    /**
+     * Arma un resumen de produccion (producido/merma/tasas/avance) a partir de
+     * las 4 cantidades y lo asignado. Fuente unica para hoy, cada dia y el total
+     * del rango, asi todos calculan igual.
+     */
+    private function armarResumen(int $p1, int $p2, int $mal, int $dan, int $asignadas): array
+    {
+        $producido = $p1 + $p2;
+        $merma = $mal + $dan;
+        $total = $producido + $merma;
+
+        return [
+            'asignadas' => $asignadas,
+            'producido' => $producido,
+            'merma' => $merma,
+            'total' => $total,
+            'merma_pct' => $total > 0 ? (int) round($merma / $total * 100) : 0,
+            'tasa1' => $total > 0 ? (int) round($p1 / $total * 100) : 0,
+            'avance' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0,
+        ];
     }
 
     /**

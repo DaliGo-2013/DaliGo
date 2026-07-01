@@ -781,4 +781,63 @@ class ProduccionTest extends TestCase
             ->assertSee('Mirador')
             ->assertSee('Coquimbo');
     }
+
+    // --- Panel del jefe: alertas + resumen de hoy + periodo ---
+
+    public function test_panel_muestra_alertas(): void
+    {
+        $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);   // por aprobar
+        $this->reporteDe($this->soplador(), 100, ProduccionReporte::DEVUELTO);  // devuelto
+        $this->reporteDe($this->soplador(), 100, ProduccionReporte::BORRADOR);  // atrasado hoy (sin enviar)
+
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertViewHas('alertas', fn ($a) => $a['porAprobar'] === 1 && $a['devueltos'] === 1 && $a['atrasados'] === 1)
+            ->assertSee('Requiere tu atención');
+    }
+
+    public function test_panel_resumen_de_hoy(): void
+    {
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($sop, $reporte, [
+            'primera' => 80, 'segunda' => 10, 'malo' => 5, 'danada' => 5,
+            'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Rebaba',
+        ], $maquina, $tipo);
+
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertViewHas('hoy', fn ($h) => $h['producido'] === 90 && $h['merma'] === 10 && $h['asignadas'] === 100 && $h['avance'] === 90);
+    }
+
+    public function test_panel_tendencia_por_periodo_agrega_por_dia(): void
+    {
+        $sop = $this->soplador();
+        $haceDos = now()->subDays(2)->toDateString();
+        $rep = $this->reporteDe($sop, 100, ProduccionReporte::APROBADO, $haceDos);
+        $rep->update(['primera' => 50, 'segunda' => 10]); // producido = 60
+
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertViewHas('periodo', function ($p) use ($haceDos) {
+                return $p['esDefault']
+                    && $p['totales']['producido'] === 60
+                    && collect($p['dias'])->contains(fn ($d) => $d['fecha']->toDateString() === $haceDos && $d['producido'] === 60);
+            });
+    }
+
+    public function test_panel_filtra_por_rango(): void
+    {
+        $hoyRep = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO, now()->toDateString());
+        $hoyRep->update(['primera' => 30]);
+        $viejo = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO, now()->subDays(20)->toDateString());
+        $viejo->update(['primera' => 999]);
+
+        // Rango = solo hoy: el reporte de hace 20 días queda fuera.
+        $this->actingAs($this->jefe())
+            ->get('/admin/produccion?desde='.now()->toDateString().'&hasta='.now()->toDateString())
+            ->assertOk()
+            ->assertViewHas('periodo', fn ($p) => ! $p['esDefault'] && $p['totales']['producido'] === 30);
+    }
 }
