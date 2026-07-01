@@ -196,7 +196,8 @@ class ProduccionController extends Controller
         }
 
         return [
-            'dias' => $dias,
+            // Mas reciente primero (arriba de la lista).
+            'dias' => array_reverse($dias),
             'totales' => $this->armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
             'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
         ];
