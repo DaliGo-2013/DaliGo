@@ -146,11 +146,11 @@
                                 @else
                                     <p class="text-sm font-medium text-neutral-900">Sin máquina</p>
                                 @endif
-                                <div class="flex items-center gap-4 text-sm text-neutral-600">
-                                    <span><span class="text-neutral-400">1ª</span> {{ number_format($fila->primera, 0, ',', '.') }}</span>
-                                    <span><span class="text-neutral-400">2ª</span> {{ number_format($fila->segunda, 0, ',', '.') }}</span>
-                                    <span><span class="text-neutral-400">Malos</span> {{ number_format($fila->malo, 0, ',', '.') }}</span>
-                                    <span><span class="text-neutral-400">Dañadas</span> {{ number_format($fila->danada, 0, ',', '.') }}</span>
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
+                                    <x-produccion.metrica label="1ª" w="w-12">{{ number_format($fila->primera, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="2ª" w="w-12">{{ number_format($fila->segunda, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="Malos" w="w-12">{{ number_format($fila->malo, 0, ',', '.') }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="Dañadas" w="w-12">{{ number_format($fila->danada, 0, ',', '.') }}</x-produccion.metrica>
                                 </div>
                             </li>
                         @endforeach
@@ -173,12 +173,12 @@
 
                         <x-slot name="meta">
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
-                                <span><span class="text-neutral-400">1ª</span> {{ $reporte->primera }}</span>
-                                <span><span class="text-neutral-400">2ª</span> {{ $reporte->segunda }}</span>
-                                <span><span class="text-neutral-400">Malos</span> {{ $reporte->malo }}</span>
-                                <span><span class="text-neutral-400">Dañadas</span> {{ $reporte->danada }}</span>
-                                <span class="font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
-                                    Δ {{ $reporte->diferencia }}
+                                <x-produccion.metrica label="1ª" w="w-12">{{ $reporte->primera }}</x-produccion.metrica>
+                                <x-produccion.metrica label="2ª" w="w-12">{{ $reporte->segunda }}</x-produccion.metrica>
+                                <x-produccion.metrica label="Malos" w="w-12">{{ $reporte->malo }}</x-produccion.metrica>
+                                <x-produccion.metrica label="Dañadas" w="w-12">{{ $reporte->danada }}</x-produccion.metrica>
+                                <span class="inline-flex items-baseline gap-1 font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
+                                    Δ <span class="w-12 text-right tabular-nums">{{ $reporte->diferencia }}</span>
                                 </span>
                                 <x-produccion.estado-badge :estado="$reporte->estado" />
                             </div>

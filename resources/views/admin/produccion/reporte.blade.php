@@ -102,11 +102,11 @@
                                         <p class="truncate text-sm font-medium text-neutral-900">{!! $piezas ? implode(' · ', $piezas) : 'Registro inicial (sin máquina/tipo)' !!}</p>
                                         <p class="text-xs text-neutral-400">{{ $registro->created_at->format('d-m-Y H:i') }}@if ($motivosTanda) · {{ $motivosTanda }}@endif</p>
                                     </div>
-                                    <div class="flex items-center gap-4 text-sm text-neutral-600">
-                                        <span><span class="text-neutral-400">1ª</span> {{ $registro->primera }}</span>
-                                        <span><span class="text-neutral-400">2ª</span> {{ $registro->segunda }}</span>
-                                        <span><span class="text-neutral-400">Malos</span> {{ $registro->malo }}</span>
-                                        <span><span class="text-neutral-400">Dañadas</span> {{ $registro->danada }}</span>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
+                                        <x-produccion.metrica label="1ª" w="w-12">{{ $registro->primera }}</x-produccion.metrica>
+                                        <x-produccion.metrica label="2ª" w="w-12">{{ $registro->segunda }}</x-produccion.metrica>
+                                        <x-produccion.metrica label="Malos" w="w-12">{{ $registro->malo }}</x-produccion.metrica>
+                                        <x-produccion.metrica label="Dañadas" w="w-12">{{ $registro->danada }}</x-produccion.metrica>
                                     </div>
                                 </li>
                             @endforeach
