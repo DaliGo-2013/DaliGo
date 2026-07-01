@@ -26,19 +26,24 @@
                 <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Requiere tu atención</h3>
                 @if ($hayAlertas)
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        {{-- Naranjo = requiere tu acción. --}}
-                        <a href="#cola" class="block rounded-2xl border p-4 shadow-sm transition duration-150 active:scale-[0.98] {{ $alertas['porAprobar'] > 0 ? 'border-brand-200 bg-brand-50 hover:border-brand-300' : 'border-neutral-200 bg-white hover:border-neutral-300' }}">
-                            <p class="text-2xl font-semibold {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['porAprobar'] }}</p>
-                            <p class="mt-1 text-sm {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-500' }}">Por aprobar</p>
-                        </a>
+                        {{-- Naranjo = requiere tu acción. Es un enlace a la cola; la ⓘ va como hermano superpuesto (no anidar botón en <a>). --}}
+                        <div class="relative">
+                            <a href="#cola" class="block rounded-2xl border p-4 shadow-sm transition duration-150 active:scale-[0.98] {{ $alertas['porAprobar'] > 0 ? 'border-brand-200 bg-brand-50 hover:border-brand-300' : 'border-neutral-200 bg-white hover:border-neutral-300' }}">
+                                <p class="text-2xl font-semibold {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['porAprobar'] }}</p>
+                                <p class="mt-1 text-sm {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-500' }}">Por aprobar</p>
+                            </a>
+                            <span class="absolute right-2 top-2 z-10"><x-info-tip>Reportes que el soplador ya envió y esperan tu aprobación. Al aprobar se registran en el kardex.</x-info-tip></span>
+                        </div>
                         {{-- Rojo = problema (devuelto). --}}
-                        <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['devueltos'] > 0 ? 'border-red-200 bg-red-50' : 'border-neutral-200 bg-white' }}">
+                        <div class="relative rounded-2xl border p-4 shadow-sm {{ $alertas['devueltos'] > 0 ? 'border-red-200 bg-red-50' : 'border-neutral-200 bg-white' }}">
                             <p class="text-2xl font-semibold {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-900' }}">{{ $alertas['devueltos'] }}</p>
                             <p class="mt-1 text-sm {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-500' }}">Devueltos sin corregir</p>
+                            <span class="absolute right-2 top-2"><x-info-tip>Reportes que devolviste al soplador; siguen pendientes hasta que los corrija y reenvíe.</x-info-tip></span>
                         </div>
-                        <div class="rounded-2xl border p-4 shadow-sm {{ $alertas['atrasados'] > 0 ? 'border-brand-200 bg-brand-50' : 'border-neutral-200 bg-white' }}">
+                        <div class="relative rounded-2xl border p-4 shadow-sm {{ $alertas['atrasados'] > 0 ? 'border-brand-200 bg-brand-50' : 'border-neutral-200 bg-white' }}">
                             <p class="text-2xl font-semibold {{ $alertas['atrasados'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['atrasados'] }}</p>
                             <p class="mt-1 text-sm {{ $alertas['atrasados'] > 0 ? 'text-brand-700' : 'text-neutral-500' }}">Atrasados hoy · sin enviar</p>
+                            <span class="absolute right-2 top-2"><x-info-tip>Sopladores con producción asignada para hoy que todavía no envían su reporte.</x-info-tip></span>
                         </div>
                     </div>
                 @else
@@ -56,18 +61,19 @@
                 </div>
                 @php
                     $chipsHoy = [
-                        ['Asignado', number_format($hoy['asignadas'], 0, ',', '.'), null],
-                        ['Producido', number_format($hoy['producido'], 0, ',', '.'), 'brand'],
-                        ['% de avance', $hoy['avance'].'%', null],
-                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' ('.$hoy['merma_pct'].'%)', 'muted'],
-                        ['Tasa 1ª', $hoy['tasa1'].'%', null],
+                        ['Asignado', number_format($hoy['asignadas'], 0, ',', '.'), null, 'Preformas asignadas hoy a los sopladores para producir.'],
+                        ['Producido', number_format($hoy['producido'], 0, ',', '.'), 'brand', 'Botellones vendibles hechos hoy: primera + segunda calidad (no incluye merma).'],
+                        ['% de avance', $hoy['avance'].'%', null, 'Producido respecto a lo asignado hoy (producido ÷ asignado).'],
+                        ['Merma', number_format($hoy['merma'], 0, ',', '.').' ('.$hoy['merma_pct'].'%)', 'muted', 'Unidades perdidas hoy (malos + preformas dañadas) y, entre paréntesis, su % sobre el total.'],
+                        ['Tasa 1ª', $hoy['tasa1'].'%', null, 'Porcentaje de botellones de primera calidad sobre el total producido hoy.'],
                     ];
                 @endphp
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                    @foreach ($chipsHoy as [$label, $valor, $tono])
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
+                    @foreach ($chipsHoy as [$label, $valor, $tono, $info])
+                        <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                            <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
                             <p class="mt-1 text-2xl font-semibold {{ $tono === 'brand' ? 'text-brand-600' : ($tono === 'muted' ? 'text-neutral-500' : 'text-neutral-900') }}">{{ $valor }}</p>
+                            <span class="absolute right-2 top-2"><x-info-tip>{{ $info }}</x-info-tip></span>
                         </div>
                     @endforeach
                 </div>
@@ -80,10 +86,13 @@
                     ? 'Últimos 7 días'
                     : \Illuminate\Support\Carbon::parse($periodo['desde'])->translatedFormat('d M') . ' – ' . \Illuminate\Support\Carbon::parse($periodo['hasta'])->translatedFormat('d M');
             @endphp
-            <div class="dg-enter mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            <div class="dg-enter mb-6 rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex flex-col gap-3 border-b border-neutral-100 px-4 py-3 sm:flex-row sm:items-end sm:justify-between sm:px-6">
                     <div>
-                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por periodo</h3>
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por periodo</h3>
+                            <x-info-tip align="left">Producción de los días del rango elegido (por defecto, últimos 7): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
+                        </div>
                         <p class="mt-0.5 text-sm text-neutral-500">{{ $rangoLabel }}</p>
                     </div>
                     <form method="GET" action="{{ route('admin.produccion.index') }}" class="flex flex-wrap items-end gap-2">
@@ -114,15 +123,21 @@
             {{-- Desgloses del periodo (clickeables a su detalle) --}}
             @php $linkRango = ['desde' => $periodo['desde'], 'hasta' => $periodo['hasta']]; @endphp
             <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                    <div class="border-b border-neutral-100 px-4 py-3 sm:px-6"><h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Ranking de sopladores · periodo</h3></div>
+                <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Ranking de sopladores · periodo</h3>
+                        <x-info-tip align="left">Producción de cada soplador en el rango, de mayor a menor. Toca un soplador para ver su historial.</x-info-tip>
+                    </div>
                     @include('admin.produccion.partials._desglose', [
                         'items' => $rankingSopladores,
                         'linkRoute' => 'admin.produccion.soplador', 'linkKey' => 'soplador', 'linkExtra' => $linkRango,
                     ])
                 </div>
-                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                    <div class="border-b border-neutral-100 px-4 py-3 sm:px-6"><h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de botellón · periodo</h3></div>
+                <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de botellón · periodo</h3>
+                        <x-info-tip align="left">Cuánto se produjo de cada tipo de botellón en el rango. Toca un tipo para ver su detalle.</x-info-tip>
+                    </div>
                     @include('admin.produccion.partials._desglose', [
                         'items' => $porTipoPeriodo,
                         'linkRoute' => 'admin.produccion.tipo', 'linkKey' => 'tipoBotellon', 'linkExtra' => $linkRango,
@@ -133,9 +148,12 @@
 
             {{-- Producción del día por máquina (incluye reportes sin aprobar) --}}
             @if ($porMaquina->isNotEmpty())
-                <div class="dg-enter mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="dg-enter mb-6 rounded-2xl border border-neutral-200 bg-white shadow-sm">
                     <div class="flex items-center justify-between gap-3 border-b border-neutral-100 px-4 py-3 sm:px-6">
-                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por máquina · hoy</h3>
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por máquina · hoy</h3>
+                            <x-info-tip align="left">Producción de hoy por máquina, según las tandas reportadas (puede diferir de totales editados). Toca una máquina para ver su rendimiento.</x-info-tip>
+                        </div>
                         <span class="text-right text-xs font-medium text-neutral-400">según tandas reportadas · puede diferir de totales editados</span>
                     </div>
                     <ul class="divide-y divide-neutral-100">
