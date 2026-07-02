@@ -37,6 +37,8 @@ class RolesAndPermissionsSeeder extends Seeder
             // Modulo Servicio Tecnico (taller).
             'view servicio tecnico',    // jefes/vendedores: ver listado + detalle (solo lectura)
             'manage servicio tecnico',  // tecnico: ingreso/edicion + etapa de taller
+            // Modulo Notificaciones (M15).
+            'view notificaciones',      // ver el panel de todas las notificaciones del sistema
         ];
 
         foreach ($permissions as $name) {

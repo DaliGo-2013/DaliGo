@@ -26,5 +26,6 @@ return [
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
+        'view notificaciones' => 'Ver notificaciones',
     ],
 ];

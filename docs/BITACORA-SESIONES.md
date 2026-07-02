@@ -21,6 +21,14 @@
 
 ## Sesiones
 
+### [2026-07-04] Stream 2 · día 3: reintentador atómico + panel + campanita (P-M15-05/06)
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8**) + 3 exploradores paralelos
+- **Objetivo declarado:** P-M15-05 + P-M15-06, dictado del Director
+- **Qué se hizo:** (1) **P-M15-05**: comando `notificaciones:reintentar` ATÓMICO (`DB::transaction` + `lockForUpdate` sobre fallidas vencidas con `intentos < max` → claim por UPDATE a pendiente → dispatch solo lo reclamado; robusto a scheduler degradado: reclama por `programada_para <= now()`, no por cadencia — vale si I-01 reincide) agendado `everyFiveMinutes()->withoutOverlapping()`; panel `/admin/notificaciones` read-only (patrón AuditController: filtros validados `Rule::in`, paginado, `x-list-card`/`x-badge`) + botón "enviar prueba"; permiso `view notificaciones` aditivo + label; `PreferenciaCanal` en `AuditController::MODELOS`. (2) **P-M15-06**: icono `bell`, partial `campanita` (contador + dropdown 5 últimas + marcar leída/todas), bandeja personal en rutas `auth` (NO admin; `abort_unless` dueño, 403 ajeno), cambio mínimo en `navigation.blade.php` (desktop + móvil), `npm run build`. (3) `RoleMatrixSeedTest` (existente) rojo por mi permiso nuevo → agregado `view notificaciones` al esperado del admin. **Suite 397 verdes.** Gotcha: el grep del bundle marcó `lg:flex` MISSING = falso negativo (el CSS escapa `.lg\:flex`); con match literal, presente. Colisión con main (P-SPK-02): cero en código.
+- **Pasos marcados:** P-M15-05 [x], P-M15-06 [x].
+- **Decisiones:** ninguna. · **Delegaciones:** ninguna nueva.
+- **Próximo paso:** P-M15-07 (preferencias/opt-out por usuario) + P-M15-08 (tests integrales) → P-M15-09 (merge coordinado + QA staging).
+
 ### [2026-07-04] Stream 2 · día 2: seeds de configuración M15 + prompt del cron de cola
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B) — nota consumo: sesión aún en Fable 5 (dictado pedía Opus 4.8; el switch de modelo es de Mauricio)
 - **Objetivo declarado:** P-M15-03 (delegación) + P-M15-04 (seeds), dictado del Director día 2

@@ -91,4 +91,12 @@ class Notificacion extends Model
             ->where('canal', self::CANAL_DATABASE)
             ->where('estado', self::ENVIADA);
     }
+
+    /** Marca una notificacion in-app como leida (idempotente). */
+    public function marcarLeida(): void
+    {
+        if ($this->estado !== self::LEIDA) {
+            $this->update(['estado' => self::LEIDA, 'leida_at' => now()]);
+        }
+    }
 }

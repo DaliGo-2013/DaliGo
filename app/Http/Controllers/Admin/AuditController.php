@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\ListaPrecio;
 use App\Models\Maquina;
+use App\Models\PreferenciaCanal;
 use App\Models\Producto;
 use App\Models\ProduccionReporte;
 use App\Models\Sucursal;
@@ -33,6 +34,7 @@ class AuditController extends Controller
         ProduccionReporte::class => 'Reporte de producción',
         Maquina::class => 'Máquina',
         TipoBotellon::class => 'Tipo de botellón',
+        PreferenciaCanal::class => 'Preferencia de canal',
     ];
 
     /**

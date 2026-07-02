@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\MaquinaController;
+use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\TipoBotellonController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificacionUsuarioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +31,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Campanita (M15): bandeja personal in-app; cualquier usuario gestiona LO SUYO.
+    Route::post('/notificaciones/leer-todas', [NotificacionUsuarioController::class, 'leerTodas'])->name('notificaciones.leer-todas');
+    Route::post('/notificaciones/{notificacion}/leer', [NotificacionUsuarioController::class, 'leer'])->name('notificaciones.leer');
 });
 
 // Administracion: cada ruta declara su permiso especifico (granular).
@@ -69,6 +75,12 @@ Route::middleware('auth')
         // Auditoria: historial de cambios (solo lectura).
         Route::get('audits', [AuditController::class, 'index'])
             ->middleware('permission:view audit')->name('audits.index');
+
+        // Notificaciones (M15): panel de todas las notificaciones + envio de prueba.
+        Route::get('notificaciones', [NotificacionController::class, 'index'])
+            ->middleware('permission:view notificaciones')->name('notificaciones.index');
+        Route::post('notificaciones/prueba', [NotificacionController::class, 'prueba'])
+            ->middleware('permission:view notificaciones')->name('notificaciones.prueba');
 
         // Catalogo de productos (nivel SKU) + import/export CSV.
         // Las rutas literales van ANTES del resource para no chocar con productos/{producto}.

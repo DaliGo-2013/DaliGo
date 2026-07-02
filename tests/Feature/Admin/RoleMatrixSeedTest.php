@@ -29,6 +29,7 @@ class RoleMatrixSeedTest extends TestCase
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'manage servicio tecnico',
+                'view notificaciones',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico'],

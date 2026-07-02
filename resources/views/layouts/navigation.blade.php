@@ -78,6 +78,9 @@
             </div>
 
             <div class="hidden lg:ms-6 lg:flex lg:items-center">
+                {{-- Campanita in-app (M15) --}}
+                @include('layouts.partials.campanita')
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center rounded-md border border-transparent px-3 py-2 text-sm font-medium leading-4 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
@@ -205,6 +208,30 @@
                     </x-responsive-nav-link>
                 @endcan
             @endcanany
+        </div>
+
+        {{-- Campanita in-app (M15) — móvil --}}
+        @php $dgConteoMovil = \App\Models\Notificacion::campanitaDe(auth()->id())->count(); @endphp
+        <div class="border-t border-neutral-200 pb-1 pt-4">
+            <div class="flex items-center justify-between px-4">
+                <span class="inline-flex items-center gap-2 text-base font-medium text-neutral-800">
+                    Notificaciones
+                    @if ($dgConteoMovil > 0)
+                        <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">{{ $dgConteoMovil }}</span>
+                    @endif
+                </span>
+                @if ($dgConteoMovil > 0)
+                    <form method="POST" action="{{ route('notificaciones.leer-todas') }}">
+                        @csrf
+                        <button type="submit" class="text-sm font-medium text-brand-600">Marcar todas</button>
+                    </form>
+                @endif
+            </div>
+            @can('view notificaciones')
+                <div class="mt-1">
+                    <x-responsive-nav-link :href="route('admin.notificaciones.index')">Ver todas</x-responsive-nav-link>
+                </div>
+            @endcan
         </div>
 
         <div class="border-t border-neutral-200 pb-1 pt-4">
