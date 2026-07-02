@@ -70,17 +70,39 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 
 **Brief listo para enviar:** preparar la planilla módulo×rol pre-llenada (se genera en E3 con los permisos reales del seeder) y enviarla con la instrucción: "marquen ✓ o ✗ donde no estén de acuerdo; lo no marcado queda como está".
 
-### D-003 · Bodegas virtuales (~25): levantamiento y destino ⚠️ LA MÁS URGENTE
-- **Estado:** ABIERTA · **Decisor:** Luis + Ricardo (Víctor si hay dudas técnicas) · **Fecha límite útil:** antes de E3/M04-F1 (~W13, fines de julio)
-- **Contexto:** biblia §3 (corrección de Luis): limpiar ~25 bodegas virtuales heredadas. **Ventaja descubierta:** la tabla `bodegas` ya está espejada desde Bsale en la app (`bsale:sync-stock`) — el catastro se exporta de ahí, no hay que pedirlo.
+### D-003 · Bodegas virtuales: levantamiento y destino ⚠️ LA MÁS URGENTE
+- **Estado:** ABIERTA (catastro ✔ obtenido 2026-07-02; falta la respuesta de Luis/Ricardo) · **Decisor:** Luis + Ricardo (Víctor si hay dudas técnicas) · **Fecha límite útil:** antes de E3/M04-F1 (~fines de julio)
+- **Contexto:** biblia §3 (corrección de Luis): limpiar las bodegas virtuales heredadas. **Catastro real verificado en producción** (evidencia `docs/qa/INFRA/2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md`): son **16 bodegas** (no ~25 como estimaba la biblia). Además resuelve el misterio "Santa Rosa": ES una bodega de Bsale.
 - **Opciones por bodega:** (a) se mantiene (¿con qué propósito y de qué sucursal?), (b) se elimina/fusiona, (c) queda solo histórica.
 - **Decisión:** — pendiente —
 - **Consecuencias:** define la clasificación física/virtual/propósito y el mapping bodega↔sucursal de M04; mal resuelta, corrompe todo el inventario.
 - **Bloquea:** `[B:D-003]` en P-M04-01 y siguientes.
 - **Mientras tanto:** el espejo sigue sincronizando todo; la clasificación es aditiva (columnas locales nuevas).
 
-**Brief listo para enviar:** exportar CSV de la tabla `bodegas` (delegación E0 a la IA de QA) con columnas extra "¿SE MANTIENE? / PROPÓSITO / SUCURSAL" y enviarlo:
-> Ricardo/Luis: adjunto la lista de TODAS las bodegas que hoy existen en Bsale. Necesitamos que por cada fila marquen: ¿se sigue usando? ¿para qué sirve? ¿a qué sucursal pertenece? Las que no se usen las dejaremos de mostrar en el sistema nuevo (en Bsale no tocamos nada). Plazo ideal: 2 semanas.
+**Brief listo para enviar a Luis/Ricardo (tabla pre-llenada — solo corrigen/completan):**
+
+> Ricardo/Luis: esta es la lista REAL de las 16 bodegas que hoy existen en Bsale. Pre-llenamos lo que
+> creemos; corrijan lo que esté mal y completen los «?». Las que se marquen "NO se usa" solo se dejarán
+> de mostrar en el sistema nuevo (en Bsale no tocamos nada). Plazo ideal: 2 semanas.
+>
+> | Bodega (Bsale) | ¿Se usa? | Propósito (propuesta) | Sucursal |
+> |---|---|---|---|
+> | MIRADOR | ¿SÍ? | Física — bodega central | Mirador |
+> | COQUIMBO | ¿SÍ? | Física | Coquimbo |
+> | ABATE MOLINA | ¿SÍ? | Física | Abate Molina |
+> | BUZETA | ¿SÍ? | Física — almacenaje | Buzeta |
+> | BODEGA SANTA ROSA | ¿SÍ? | ¿Central de insumos (tapas/manillas)? | ¿Mirador? |
+> | BODEGA SERVICIO TECNICO | ¿? | Virtual — taller. **¿Es duplicada de "SERVICIO TECNICO"? ¿cuál se usa?** | ¿Mirador? |
+> | SERVICIO TECNICO | ¿? | Virtual — taller (ver fila anterior) | ¿? |
+> | BODEGA MERMAS | ¿SÍ? | Virtual — mermas/dañados | transversal |
+> | RESERVA SUCURSALES | ¿? | Virtual — reservas entre sucursales | transversal |
+> | CONTENEDORES | ¿? | ¿Importaciones en tránsito (China)? | ¿Abate? |
+> | CERTIFICACIONES | ¿? | ¿? | ¿? |
+> | SERAFIN ZAMORA | ¿? | ¿Punto de venta/bodega antigua? | ¿? |
+> | CONCEPCIÓN | ¿? | ¿Ex-sucursal / punto remoto? | ¿? |
+> | VIÑA DEL MAR | ¿? | ¿Ex-sucursal / punto remoto? | ¿? |
+> | ABATE PRUEBA | ¿NO? | Parece de PRUEBA — ¿eliminar del sistema nuevo? | — |
+> | COQUIMBO PRUEBA | ¿NO? | Parece de PRUEBA — ¿eliminar del sistema nuevo? | — |
 
 ### D-004 · Boleta rápida: flujo tributario
 - **Estado:** ABIERTA · **Decisor:** Contabilidad (Melissa/Scarleth) vía Luis · **Fecha límite útil:** antes de M05-F3 (~W23)

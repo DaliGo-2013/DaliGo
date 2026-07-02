@@ -43,4 +43,5 @@ APROBADO | APROBADO CON OBSERVACIONES | RECHAZADO | INVÁLIDA (reenvío)
 
 | Fecha | Área | Tema | Veredicto | Archivo |
 |---|---|---|---|---|
-| — | — | (se llena con la primera evidencia) | — | — |
+| 2026-07-02 | INFRA | Cron scheduler (hallazgo `*/20`+`*/15`), deploy.sh, logs | APROBADO C/OBS | [2026-07-02--INFRA--cron-deploysh-infra.md](INFRA/2026-07-02--INFRA--cron-deploysh-infra.md) |
+| 2026-07-02 | INFRA | 0 duplicados `bsale_variant_id` + catastro real de bodegas (16) | APROBADO C/OBS | [2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md](INFRA/2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md) |

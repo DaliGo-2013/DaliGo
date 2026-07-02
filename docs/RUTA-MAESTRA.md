@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-01 (sesión E0 — consolidación documental; ver `docs/BITACORA-SESIONES.md`) |
+| **Última actualización** | 2026-07-02 (cierre de delegaciones E0; ver `docs/BITACORA-SESIONES.md`) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
-| **Unidad activa** | **E0 · Consolidación documental + infra** (en cierre) |
-| **Próximo paso** | `P-S0-07` y `P-S0-08` (delegaciones a IA cPanel/QA) → luego arrancar **E1 · M15 Notificaciones** |
-| **Bloqueos activos** | D-003 (bodegas, bloquea E3), D-005 (Víctor, bloquea M05-F2) — semáforo completo en `docs/DECISIONES.md` §2 |
-| **Salud doc↔código** | VERIFICADA el 2026-07-01 (auditoría de 3 agentes + greps; ver bitácora) |
+| **Unidad activa** | **E0 · Consolidación** — CERRADA salvo pendientes menores (P-S0-03/04/05/06 envíos + P-S0-09/10/11/12) |
+| **Próximo paso** | `P-S0-03/04`: despachar briefs (D-003 con tabla lista) → arrancar **E1 · M15 Notificaciones** |
+| **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
+| **Salud doc↔código** | VERIFICADA el 2026-07-02 (+ infra verificada por IA-QA: cron OK, 4 syncs corriendo, logs limpios) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04)
@@ -65,10 +65,15 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-S0-01** · Registro de decisiones creado con briefs copy/paste (este push, 2026-07-01)
 - [x] **P-S0-02** · Transcripción y cotejo de `Correcciones luis.pdf` → `docs/CORRECCIONES-LUIS.md` (este push, 2026-07-01)
 - [ ] **P-S0-03** · Enviar los briefs D-001, D-003, D-004, D-005, D-007 a sus decisores (Mauricio los despacha; anotar fecha de envío en cada ficha)
-- [ ] **P-S0-04** · D-003: obtener el CSV de bodegas espejadas (delegación `P-S0-08`) y enviarlo a Luis/Ricardo
+- [ ] **P-S0-04** · D-003: ~~obtener el catastro~~ ✔ obtenido (16 bodegas, evidencia P-S0-08) → **enviar la tabla pre-llenada a Luis/Ricardo** (lista en `docs/DECISIONES.md` D-003)
 - [ ] **P-S0-05** · Revisar semáforo cada viernes hasta cerrar las 10 (ritual §0)
 - [ ] **P-S0-06** · Aclarar con Luis/Mauricio las 3 anotaciones ambiguas del escaneo (ver `docs/CORRECCIONES-LUIS.md` §Discrepancias): "14 m³" junto a peso/dimensiones, la serie de códigos `1010/1020/…/8010001`, y "(Nuevo APP B[sale?])" junto a M10
-- [ ] **P-S0-07** · Delegación infra a IA-cPanel: (a) eliminar cron duplicado `*/20`, (b) rotar password BD + `.env`, (c) des-congelar `deploy.sh` (`git update-index --no-skip-worktree`), (d) confirmar seeders visibles en el log del próximo deploy — usar plantilla `docs/delegacion/plantillas/VERIFICACION-CPANEL.md`; evidencia a `docs/qa/INFRA/`
+- [x] **P-S0-07** · Delegación infra a IA-cPanel: cron del scheduler corregido (los `*/20`+`*/15` reemplazados por UNO `* * * * *` — hallazgo: `bsale:sync-stock` a :50 JAMÁS había corrido en prod; primera corrida verificada, 28.350 stocks al día), `deploy.sh` des-congelado, `schedule:list` y logs limpios (evidencia: `docs/qa/INFRA/2026-07-02--INFRA--cron-deploysh-infra.md`)
+- [x] **P-S0-08** · Query duplicados `bsale_variant_id`: **0 duplicados** → migración `unique` habilitada para E3. Catastro real de bodegas obtenido: **16** (no ~25) — "Santa Rosa" ES una bodega Bsale (evidencia: `docs/qa/INFRA/2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md`)
+- [ ] **P-S0-09** · Rotar contraseña de la BD `impdali_daligo` + `.env` + `config:cache` (la clave se compartió por chat alguna vez — HANDOFF §9). **Pospuesto por decisión del dueño (2026-07-02)**; hacerlo idealmente antes de F3/piloto. La clave nueva NUNCA pasa por un chat: se escribe directo en cPanel y `.env`
+- [ ] **P-S0-10** · Investigar los **44 omitidos / 44 errores recurrentes** de `bsale:sync-clients` (observación QA 2026-07-02). Hipótesis: colisiones de RUT duplicado en Bsale (comportamiento documentado, HANDOFF §8c) — confirmar en `bsale-sync.log` y reclasificar el conteo para que no parezca fallo
+- [ ] **P-S0-11** · Confirmar seeders visibles (`RUNNING/DONE`) en el log de Actions del próximo deploy
+- [ ] **P-S0-12** · Diagnosticar `git status` del servidor: "ahead of 'origin/main' by 111 commits" — probable remote `origin` apuntando al repo viejo o fetch por URL sin tracking ref. Pedir `git remote -v` en la próxima delegación de infra (no afecta el deploy actual)
 - [ ] **P-S0-08** · Delegación a IA-QA: query de duplicados de `bsale_variant_id` en producción + export CSV de `bodegas` — evidencia a `docs/qa/INFRA/`; si 0 duplicados → migración `unique` entra en E3
 
 ---
@@ -139,7 +144,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-M04-02** · Vistas de stock por producto/bodega/sucursal + permisos `view stock`/`manage inventario`
 - [ ] [B:D-002] **P-M04-03** · Vista cruzada filtrada por perfil (interim: solo admin/jefes)
 - [ ] **P-M04-04** · Alertas básicas: bajo mínimo, sin movimiento 10 días; punto de reorden por SKU
-- [ ] **P-M04-05** · Migración `unique` en `bsale_variant_id` (si P-S0-08 confirmó 0 duplicados)
+- [ ] **P-M04-05** · Migración `unique` en `bsale_variant_id` — ✔ habilitada: P-S0-08 confirmó **0 duplicados** en prod (evidencia 2026-07-02)
 - [ ] **P-M04-06** · Tests + merge + QA staging
 
 ### E4 · M04-F2 Reservas por vendedor + transferencias (~3 sem)
