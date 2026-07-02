@@ -25,7 +25,14 @@ sesión restante.
 | Fecha | Cuenta | Tarea (tablero) | Talla | Modelo·Esfuerzo | /usage inicio (ses/sem) | /usage fin (ses/sem) | Δ sesión | Resultado |
 |---|---|---|---|---|---|---|---|---|
 | _(ejemplo)_ 03-07 | Pro-2 QA | Guion regresión M11 | M | Sonnet5·high | 0% / 12% | 38% / 17% | 38% | HECHA |
+| 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 | M | Fable 5 (¹) | n/d (²) | n/d (²) | ~1 h sesión | HECHA |
 |  |  |  |  |  |  |  |  |  |
+
+> (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
+> el modelo se elige en el selector de la app, no desde la sesión. Mauricio decide si la
+> cambia para las próximas sesiones del Director.
+> (²) `/usage` es comando de terminal interactivo, no disponible en esta sesión → proxy por
+> duración según §4.
 
 ## 3. Calibración (el Director la actualiza al cierre de cada día)
 
