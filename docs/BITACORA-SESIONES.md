@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-02] Se constituye la FLOTA: 6 cuentas Claude orquestadas + tablero de 3 días
+- **Quién:** Mauricio + Claude (Opus, stream 1)
+- **Objetivo declarado:** P-S0-17 — organizar 2 cuentas Max + 4 Pro con roles, dictado de modelo/esfuerzo y control de consumo.
+- **Qué se hizo:** investigación del estado Anthropic a hoy (modelos Fable 5/Opus 4.8/Sonnet 5/Haiku 4.5; esfuerzo low→max; `/fast`; límites por plan NO públicos → medición empírica vía `/usage`). Diseño: Max-1 forjador stream 1 (spike PWA), Max-2 forjador stream 2 (E1·M15, ya operando), Pro-1 DIRECTOR (tablero/verificación/ledger, escribe solo `docs/fleet/`), Pro-2 AUDITOR/QA (read-only), Pro-3 INVESTIGADOR (decisiones D-0xx), Pro-4 ESCRIBA (docs aislados). Bus = Mauricio + repo; territorio exclusivo por cuenta; tareas L/XL solo a Max. Archivos: `docs/fleet/{FLOTA,TABLERO-3-DIAS,CONSUMO}.md` + `docs/delegacion/KICKOFF-DIRECTOR.md`.
+- **Pasos marcados:** P-S0-17 [x]. · **Decisiones:** ninguna. · **Delegaciones:** 4 prompts de arranque entregados a Mauricio (Director, QA, Investigador, Escriba).
+- **Próximo paso:** día 1 del tablero (2026-07-03): Max-1 → P-SPK-01; el Director se constituye y toma el mando del tablero.
+
 ### [2026-07-02] Stream 2 arranca: setup del entorno + PLAN-M15 con sello (pendiente visto bueno)
 - **Quién:** Mauricio + Claude (stream 2, primera sesión)
 - **Objetivo declarado:** kickoff §2/§3 + primer entregable (PLAN-M15 antes de P-M15-01)

@@ -11,7 +11,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-02 (P-S0-13/14/15: auditoría E2E M11, pendientes de otros días, limpieza de pruebas + D-011; ver `docs/BITACORA-SESIONES.md`) |
+| **Última actualización** | 2026-07-02 (P-S0-13…17: auditoría M11, panel, limpieza de pruebas + D-011, stream 2 y **flota de 6 cuentas con tablero de 3 días** — `docs/fleet/`) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
@@ -77,7 +77,8 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-S0-13** · Auditoría E2E de M11 Producción + hardening pre-demo (pedido del jefe, fuera de plan): 3 exploradores + verificación línea a línea → 5 fixes (whereDate en historial del soplador, locks en devolver/ajustar/destroy espejando aprobar, `max:` anti-dedazo en cantidades, hint stale de asignar) + 3 tests de regresión (361 verdes) + demo local E2E verificada (commit `3ff976d`, 2026-07-02)
 - [x] **P-S0-14** · Panel del jefe: sección "Pendientes de otros días" — las alertas por-aprobar/devueltos son globales pero la cola era solo de hoy → un enviado viejo quedaba contado e invisible (hallazgo del dueño en staging). Partial `_fila-reporte` compartido + test (commit `49f695a`, 2026-07-02)
 - [x] **P-S0-15** · Aislamiento de pruebas: comando `produccion:limpiar-pruebas` (borra asignaciones/reportes/tandas/kardex + audits de reportes, con confirmación; catálogo intacto) + **D-011 TOMADA** (URL oficial `daligo.impdali.cl`, staging queda de pruebas, separación real en F3). Verificado: Bsale es solo-lectura por construcción (commit `3d1defd`, 2026-07-02)
-- [x] **P-S0-16** · Kickoff del **stream 2** (segunda cuenta Claude): arranca E1 · M15 en la rama `feature/m15-notificaciones` con brief completo en `docs/delegacion/KICKOFF-E1-M15.md` (lectura obligatoria de toda la doc, reglas anti-colisión, territorio prohibido, merge coordinado; deploy/CI verificados solo-main) (este push, 2026-07-02)
+- [x] **P-S0-16** · Kickoff del **stream 2** (segunda cuenta Claude): arranca E1 · M15 en la rama `feature/m15-notificaciones` con brief completo en `docs/delegacion/KICKOFF-E1-M15.md` (lectura obligatoria de toda la doc, reglas anti-colisión, territorio prohibido, merge coordinado; deploy/CI verificados solo-main) (commit `4da5de2`, 2026-07-02)
+- [x] **P-S0-17** · **Flota constituida** (6 cuentas: 2 Max forjadores + 4 Pro con roles Director/QA/Investigador/Escriba) + tablero de 3 días: `docs/fleet/{FLOTA,TABLERO-3-DIAS,CONSUMO}.md` y `docs/delegacion/KICKOFF-DIRECTOR.md`. Incluye matriz modelo×esfuerzo (estado Anthropic verificado 2026-07-02) y ledger empírico de consumo vía `/usage` (este push, 2026-07-02)
 
 ---
 
