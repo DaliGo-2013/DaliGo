@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-02] P-SPK-01 hecho: mi-reporte es instalable (spike PWA, día 1 del tablero de flota)
+- **Quién:** Mauricio + Claude (Opus, Max-1/stream 1)
+- **Objetivo declarado:** P-SPK-01 (tarea Día 1 del tablero — mayor riesgo técnico del proyecto, adelantado de W27 a W12)
+- **Qué se hizo:** manifest.json (scope `/`, start_url mi-reporte, iconos 192/512+maskable generados con GD), `public/sw.js` conservador (assets `/build/*` cache-first inmutables; navegaciones network-first con fallback `/offline` SOLO en catch; passthrough sin respondWith para el resto; jamás HTML autenticado), ruta+vista `/offline` standalone, `Alpine.store('red')` con confirmación vía `/up` y registro del SW con guard de localhost, componente `<x-produccion.indicador-red>` en las 2 vistas del soplador. Diseño validado adversarialmente ANTES de implementar (3 bloqueantes corregidos en papel: opaqueredirect, scope, passthrough). 4 tests nuevos → 368 verdes. Verificado en preview: SW activo, caches pobladas, indicador reactivo, login intacto; navegador de dev limpiado (unregister). Las 5 reglas del SW quedaron en la bitácora de CLAUDE.md como contrato para P-SPK-02/M08.
+- **Pasos marcados:** P-SPK-01 [x]. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** Mauricio instala en su celular desde staging (criterio "celular real"); mañana P-SPK-02 (cola IndexedDB offline con idempotencia UUID — sin Background Sync por iOS: vaciar en `online`).
+
 ### [2026-07-02] Se constituye la FLOTA: 6 cuentas Claude orquestadas + tablero de 3 días
 - **Quién:** Mauricio + Claude (Opus, stream 1)
 - **Objetivo declarado:** P-S0-17 — organizar 2 cuentas Max + 4 Pro con roles, dictado de modelo/esfuerzo y control de consumo.

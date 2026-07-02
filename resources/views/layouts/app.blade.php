@@ -7,6 +7,12 @@
 
         <title>{{ config('app.name', 'DaliGo') }}</title>
 
+        {{-- PWA (spike P-SPK-01): instalable + tema. iOS ignora los icons del
+             manifest, por eso el apple-touch-icon aparte. --}}
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#EA580C">
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
 

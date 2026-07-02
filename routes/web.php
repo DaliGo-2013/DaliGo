@@ -169,4 +169,8 @@ Route::middleware(['auth', 'permission:report production'])
         Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->name('mi.registros.destroy');
     });
 
+// Fallback offline de la PWA (sin auth: el service worker la precachea en su
+// install, antes de cualquier login). Ver public/sw.js.
+Route::get('offline', fn () => view('offline'))->name('offline');
+
 require __DIR__.'/auth.php';

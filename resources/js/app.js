@@ -257,9 +257,49 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
     },
 }));
 
+/**
+ * Estado de red global (spike PWA, P-SPK-01). Indicador informativo para el
+ * operario: navigator.onLine tiene falsos positivos (WiFi sin internet), asi
+ * que al volver "online" se confirma con un HEAD al health check /up (ya
+ * existe, sin auth). Declarado ANTES de Alpine.start(): si va despues,
+ * $store.red es undefined al evaluar los x-show de las vistas.
+ */
+Alpine.store('red', {
+    online: navigator.onLine,
+
+    async confirmar() {
+        try {
+            const resp = await fetch('/up', { method: 'HEAD', cache: 'no-store' });
+            this.online = resp.ok;
+        } catch (e) {
+            this.online = false;
+        }
+    },
+});
+window.addEventListener('online', () => Alpine.store('red').confirmar());
+window.addEventListener('offline', () => (Alpine.store('red').online = false));
+
 window.Alpine = Alpine;
 
 Alpine.start();
+
+/**
+ * Registro del service worker (spike PWA). Guard de hostname: en localhost NO
+ * se registra (un SW persiste POR ORIGEN y contaminaria cualquier otro
+ * proyecto servido luego en el mismo puerto de dev); para probarlo en local:
+ * localStorage.daligoSW = '1'. updateViaCache:'none' blinda la revalidacion
+ * de sw.js contra headers de cache del hosting (LiteSpeed).
+ */
+if ('serviceWorker' in navigator) {
+    const esLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if (!esLocal || window.localStorage.getItem('daligoSW') === '1') {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker
+                .register('/sw.js', { updateViaCache: 'none' })
+                .catch(() => {}); // sin SW la app funciona igual (mejora progresiva)
+        });
+    }
+}
 
 /**
  * Global: si la página cargó con errores de validación del servidor, llevar al

@@ -11,7 +11,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-02 (P-S0-13…17: auditoría M11, panel, limpieza de pruebas + D-011, stream 2 y **flota de 6 cuentas con tablero de 3 días** — `docs/fleet/`) |
+| **Última actualización** | 2026-07-02 (P-S0-13…17 + **P-SPK-01 spike PWA hecho** — mi-reporte instalable con SW y fallback offline; P-SPK-02 cola IndexedDB es lo próximo del stream 1) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
@@ -130,7 +130,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-M14-05** · Cablear `ProduccionController::ajustar` como primer consumidor
 - [ ] **P-M14-06** · Historial + vista por aprobador/solicitante, auditable
 - [ ] **P-M14-07** · Tests + merge + QA staging desde celular
-- [ ] **P-SPK-01** · Spike: manifest + service worker sobre `mi-reporte` (instalable, cache assets, detección online/offline)
+- [x] **P-SPK-01** · Spike: manifest + service worker sobre `mi-reporte` (instalable, cache assets, detección online/offline) — `public/{manifest.json,sw.js,icons/}`, ruta `/offline` standalone, `Alpine.store('red')` + `<x-produccion.indicador-red>`; estrategia conservadora validada adversarialmente (fallback SOLO en catch por los opaqueredirect de auth, scope `/`, guard de localhost); 4 tests, 368 verdes (este push, 2026-07-02)
 - [ ] **P-SPK-02** · Spike: cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente)
 - [ ] **P-SPK-03** · Spike: prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08
 
