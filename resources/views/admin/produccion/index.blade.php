@@ -32,13 +32,13 @@
                                 <p class="text-2xl font-semibold {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['porAprobar'] }}</p>
                                 <p class="mt-1 text-sm {{ $alertas['porAprobar'] > 0 ? 'text-brand-700' : 'text-neutral-500' }}">Por aprobar</p>
                             </a>
-                            <span class="absolute right-2 top-2 z-10"><x-info-tip>Reportes que el soplador ya envió y esperan tu aprobación. Al aprobar se registran en el kardex.</x-info-tip></span>
+                            <span class="absolute right-2 top-2 z-10"><x-info-tip>Reportes que el soplador ya envió y esperan tu aprobación — de cualquier fecha, no solo hoy (los de otros días aparecen en "Pendientes de otros días"). Al aprobar se registran en el kardex.</x-info-tip></span>
                         </div>
                         {{-- Rojo = problema (devuelto). --}}
                         <div class="relative rounded-2xl border p-4 shadow-sm {{ $alertas['devueltos'] > 0 ? 'border-red-200 bg-red-50' : 'border-neutral-200 bg-white' }}">
                             <p class="text-2xl font-semibold {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-900' }}">{{ $alertas['devueltos'] }}</p>
                             <p class="mt-1 text-sm {{ $alertas['devueltos'] > 0 ? 'text-red-700' : 'text-neutral-500' }}">Devueltos sin corregir</p>
-                            <span class="absolute right-2 top-2"><x-info-tip>Reportes que devolviste al soplador; siguen pendientes hasta que los corrija y reenvíe.</x-info-tip></span>
+                            <span class="absolute right-2 top-2"><x-info-tip>Reportes que devolviste al soplador; siguen pendientes hasta que los corrija y reenvíe. Cuenta todos los días; los de fechas anteriores aparecen en "Pendientes de otros días".</x-info-tip></span>
                         </div>
                         <div class="relative rounded-2xl border p-4 shadow-sm {{ $alertas['atrasados'] > 0 ? 'border-brand-200 bg-brand-50' : 'border-neutral-200 bg-white' }}">
                             <p class="text-2xl font-semibold {{ $alertas['atrasados'] > 0 ? 'text-brand-700' : 'text-neutral-900' }}">{{ $alertas['atrasados'] }}</p>
@@ -176,58 +176,28 @@
                 </div>
             @endif
 
-            <x-list-card id="cola" title="Cola de reportes · hoy" :count="$reportes->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $reportes->count())">
-                @forelse ($reportes as $reporte)
-                    <x-list-row>
-                        <x-slot name="leading">
-                            <x-avatar>{{ mb_substr($reporte->soplador->name, 0, 1) }}</x-avatar>
-                        </x-slot>
+            {{-- El ancla #cola cubre ambas listas: lo pendiente de otros dias y lo de hoy. --}}
+            <div id="cola" class="space-y-6">
+                {{-- Pendientes de otros dias: las alertas de arriba son globales, asi
+                     que un enviado/devuelto viejo necesita una fila donde actuar. --}}
+                @if ($pendientesOtrosDias->isNotEmpty())
+                    <x-list-card title="Pendientes de otros días" :count="$pendientesOtrosDias->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $pendientesOtrosDias->count())">
+                        @foreach ($pendientesOtrosDias as $reporte)
+                            @include('admin.produccion.partials._fila-reporte', ['reporte' => $reporte, 'mostrarFecha' => true])
+                        @endforeach
+                    </x-list-card>
+                @endif
 
-                        <a href="{{ route('admin.produccion.soplador', $reporte->soplador) }}"
-                           class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $reporte->soplador->name }}</a>
-                        <p class="truncate text-sm text-neutral-500">
-                            Turno {{ $reporte->turno }} · asignadas {{ number_format($reporte->asignadas, 0, ',', '.') }}
-                        </p>
-
-                        <x-slot name="meta">
-                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
-                                <x-produccion.metrica label="1ª" w="w-16">{{ $reporte->primera }}</x-produccion.metrica>
-                                <x-produccion.metrica label="2ª" w="w-16">{{ $reporte->segunda }}</x-produccion.metrica>
-                                <x-produccion.metrica label="Malos" w="w-24">{{ $reporte->malo }}</x-produccion.metrica>
-                                <x-produccion.metrica label="Dañadas" w="w-28">{{ $reporte->danada }}</x-produccion.metrica>
-                                <span class="inline-flex w-16 items-baseline gap-1 font-medium tabular-nums {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
-                                    Δ <span>{{ $reporte->diferencia }}</span>
-                                </span>
-                                <x-produccion.estado-badge :estado="$reporte->estado" />
-                            </div>
-                        </x-slot>
-
-                        <x-slot name="actions">
-                            <div class="flex items-center gap-1">
-                                <a href="{{ route('admin.produccion.reporte.show', $reporte) }}"
-                                   class="whitespace-nowrap text-sm font-medium text-brand-600 transition duration-150 hover:text-brand-700">
-                                    Revisar
-                                </a>
-                                {{-- Eliminar una produccion asignada por error: solo borradores sin avances. --}}
-                                @if ($reporte->estado === \App\Models\ProduccionReporte::BORRADOR && $reporte->registros_count === 0)
-                                    <form method="POST" action="{{ route('admin.produccion.reporte.destroy', $reporte) }}"
-                                          onsubmit="return confirm('¿Eliminar esta producción asignada? Aún no tiene avances.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-icon-button type="submit" variant="danger" label="Eliminar producción" title="Eliminar producción">
-                                            <x-icon.trash class="h-5 w-5" />
-                                        </x-icon-button>
-                                    </form>
-                                @endif
-                            </div>
-                        </x-slot>
-                    </x-list-row>
-                @empty
-                    <li class="px-6 py-10 text-center text-sm text-neutral-500">
-                        No hay reportes para hoy. Usa <span class="font-medium text-neutral-700">Asignar</span> para empezar.
-                    </li>
-                @endforelse
-            </x-list-card>
+                <x-list-card title="Cola de reportes · hoy" :count="$reportes->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $reportes->count())">
+                    @forelse ($reportes as $reporte)
+                        @include('admin.produccion.partials._fila-reporte', ['reporte' => $reporte, 'mostrarFecha' => false])
+                    @empty
+                        <li class="px-6 py-10 text-center text-sm text-neutral-500">
+                            No hay reportes para hoy. Usa <span class="font-medium text-neutral-700">Asignar</span> para empezar.
+                        </li>
+                    @endforelse
+                </x-list-card>
+            </div>
         </div>
     </div>
 </x-app-layout>

@@ -956,4 +956,20 @@ class ProduccionTest extends TestCase
 
         $this->assertSame(0, $reporte->registros()->count());
     }
+
+    public function test_panel_lista_pendientes_de_otros_dias(): void
+    {
+        $sop = $this->soplador();
+        $deAyer = $this->reporteDe($sop, 100, ProduccionReporte::ENVIADO, now()->subDay()->toDateString());
+        $deHoy = $this->reporteDe($sop, 100, ProduccionReporte::ENVIADO, now()->toDateString());
+
+        // La alerta "por aprobar" es global (cuenta 2), pero la cola es de hoy:
+        // el enviado de ayer necesita su propia fila para no quedar invisible.
+        $this->actingAs($this->jefe())->get('/admin/produccion')
+            ->assertOk()
+            ->assertSee('Pendientes de otros días')
+            ->assertViewHas('alertas', fn ($a) => $a['porAprobar'] === 2)
+            ->assertViewHas('pendientesOtrosDias', fn ($p) => $p->count() === 1 && $p->first()->is($deAyer))
+            ->assertViewHas('reportes', fn ($r) => $r->count() === 1 && $r->first()->is($deHoy));
+    }
 }

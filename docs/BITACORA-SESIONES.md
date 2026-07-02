@@ -21,6 +21,14 @@
 
 ## Sesiones
 
+### [2026-07-02] Fix panel del jefe: "Pendientes de otros días" (alerta sin destino)
+- **Quién:** Mauricio + Claude (Opus)
+- **Objetivo declarado:** P-S0-14 (hallazgo del dueño en staging: "Por aprobar: 1" con "Cola · hoy: 0")
+- **Qué se hizo:** las alertas por-aprobar/devueltos son globales pero la cola era solo de hoy → sección nueva "Pendientes de otros días" (patrón de los devueltos-de-otros-días del soplador), fila de reporte extraída al partial `_fila-reporte.blade.php` compartido, info-tips aclarados. Test nuevo → 362 verdes. Verificado en preview: enviado de ayer visible con fecha, aprobado desde ahí, panel vuelve a "Todo al día".
+- **Pasos marcados:** P-S0-14 [x].
+- **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** sin cambio — P-S0-03/04 → E1 · M15. (En staging queda 1 enviado del 01/07 —"Romcom Enjoyer"— que ahora será visible para aprobar/devolver.)
+
 ### [2026-07-02] Auditoría E2E de M11 + hardening pre-demo (reunión del jefe)
 - **Quién:** Mauricio + Claude (Opus), en una segunda máquina (contexto reconstruido desde la doc)
 - **Objetivo declarado:** fuera de plan (pedido del jefe: funcionalidad lista lo antes posible) → P-S0-13 creado. Auditar la calidad de TODO el flujo de producción end-to-end y dejar la demo lista.

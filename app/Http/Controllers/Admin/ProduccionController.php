@@ -51,6 +51,18 @@ class ProduccionController extends Controller
                 ->count(),
         ];
 
+        // Pendientes de OTROS dias (enviados/devueltos con fecha != hoy): las
+        // alertas de arriba los cuentan (son globales), asi que la cola debe
+        // darles una fila donde actuar — sin esto la alerta es un callejon sin
+        // salida. Mismo patron que los "devueltos de otros dias" del soplador.
+        $pendientesOtrosDias = ProduccionReporte::with('soplador')
+            ->withCount('registros')
+            ->whereIn('estado', [ProduccionReporte::ENVIADO, ProduccionReporte::DEVUELTO])
+            ->whereDate('fecha', '!=', $hoy)
+            ->orderBy('fecha')
+            ->orderBy('id')
+            ->get();
+
         // --- Resumen de HOY (ampliado) ---
         $t = ProduccionReporte::delDia($hoy)
             ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
@@ -74,6 +86,7 @@ class ProduccionController extends Controller
 
         return view('admin.produccion.index', [
             'reportes' => $reportes,
+            'pendientesOtrosDias' => $pendientesOtrosDias,
             'alertas' => $alertas,
             'hoy' => $hoyResumen,
             'periodo' => $periodo,
