@@ -25,10 +25,10 @@ sesión restante.
 | Fecha | Cuenta | Tarea (tablero) | Talla | Modelo·Esfuerzo | /usage inicio (ses/sem) | /usage fin (ses/sem) | Δ sesión | Resultado |
 |---|---|---|---|---|---|---|---|---|
 | _(ejemplo)_ 03-07 | Pro-2 QA | Guion regresión M11 | M | Sonnet5·high | 0% / 12% | 38% / 17% | 38% | HECHA |
-| 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 | M | Fable 5 (¹) | n/d (²) | n/d (²) | ~1 h sesión | HECHA |
+| 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 + verificación de 2 partes | M | Fable 5 (¹) | n/d (²) | 22% / 3% (captura 12:57) | ≤22% | HECHA |
 | 02-07 | Max-2 Forjador B | Bootstrap stream 2 + PLAN-M15 (pre-flota) | L | Opus 4.8 · high | n/d (³) | n/d (³) | n/d | HECHA (plan aprobado con 2 ajustes) |
-| 02-07 | Max-2 Forjador B | Visto bueno + P-M15-01 + P-M15-02 | L | **Fable 5** (⁴) | pendiente (⁴) | pendiente (⁴) | pendiente | HECHA (verificada) |
-| 02-07 | Max-1 Forjador A | P-SPK-01 spike PWA | L | Fable5·xhigh→Opus4.8·high (según dictado) | n/d (⁵) | n/d (⁵) | n/d | HECHA (solo falta celular real) |
+| 02-07 | Max-2 Forjador B | Visto bueno + P-M15-01 + P-M15-02 (+ arranque P-M15-04) | L | **Fable 5** (⁴) | n/d | 26% / 11% (captura 12:57) | ≤26% | HECHA (verificada) |
+| 02-07 | Max-1 Forjador A | P-SPK-01 spike PWA (+ arranque P-SPK-02) | L | **Fable 5** (⁴)(⁵) | n/d | **86%** / 12% (captura 12:57) | ≤86% | HECHA (verificada, celular real OK) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
@@ -42,14 +42,22 @@ sesión restante.
 > Max acelerado. Mauricio: fijar el modelo en el selector ANTES de abrir cada sesión y
 > correr /usage tú mismo para completar esta fila (la sesión no puede ejecutar comandos
 > de UI).
-> (⁵) Mauricio corre /usage en la cuenta Max-1 y completa. Sin estos datos la tabla de
-> tallas Max no se puede calibrar al cierre del día 1.
+> (⁵) Datos de capturas de Mauricio 02-07 ~12:57 (panel de uso, no /usage textual). Sin el
+> % de INICIO los Δ son techos (≤). Max-1 al 86% de ventana arrancando P-SPK-02 (XL):
+> ventana resetea 13:30 — riesgo de corte asumido.
 
 ## 3. Calibración (el Director la actualiza al cierre de cada día)
 
-- Promedio real Δsesión por talla en Pro: S = __% · M = __% · L = __%
-- Promedio real Δsesión por talla en Max: S = __% · M = __% · L = __% · XL = __%
+- Promedio real Δsesión por talla en Pro: S = __% · M = ≤22% (1 dato, Director en Fable 5) · L = __%
+- Promedio real Δsesión por talla en Max: S = __% · M = __% · L = ≤26–86% (2 datos, ambos Fable 5) · XL = __%
 - Ajustes a la tabla de tallas: _(anotar cambios con fecha)_
+- **Calibración 02-07 (primeros datos, tomar con pinzas):** los 3 puntos son techos (sin %
+  de inicio) y TODAS las sesiones corrieron Fable 5, que consume mucho más rápido que el
+  modelo dictado — no sirven para calibrar Opus/Sonnet todavía. La dispersión Max (26% vs
+  86% para talla L) sugiere que P-SPK-01 fue realmente XL o que el contexto largo de Max-1
+  (622k tokens) pesó. Dato firme: lo SEMANAL va sano (3–12%) — el cuello es la ventana de
+  5h, que se resetea sola. Acción: fijar modelo del roster ANTES de cada sesión y reportar
+  /usage textual inicio+fin para tener Δ reales.
 
 ## 4. Notas
 
