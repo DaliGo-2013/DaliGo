@@ -26,6 +26,7 @@ sesión restante.
 |---|---|---|---|---|---|---|---|---|
 | _(ejemplo)_ 03-07 | Pro-2 QA | Guion regresión M11 | M | Sonnet5·high | 0% / 12% | 38% / 17% | 38% | HECHA |
 | 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 | M | Fable 5 (¹) | n/d (²) | n/d (²) | ~1 h sesión | HECHA |
+| 02-07 | Max-2 Forjador B | Bootstrap stream 2 + PLAN-M15 (pre-flota) | L | Opus 4.8 · high | n/d (³) | n/d (³) | n/d | HECHA (plan aprobado con 2 ajustes) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
@@ -33,6 +34,8 @@ sesión restante.
 > cambia para las próximas sesiones del Director.
 > (²) `/usage` es comando de terminal interactivo, no disponible en esta sesión → proxy por
 > duración según §4.
+> (³) Sesión anterior a la constitución de la flota: no reportó /usage. Desde su próxima
+> sesión debe reportarlo en el parte de cierre (FLOTA §5).
 
 ## 3. Calibración (el Director la actualiza al cierre de cada día)
 
