@@ -81,13 +81,15 @@ class MiProduccionController extends Controller
         $validated = $request->validate([
             'maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
             'tipo_botellon_id' => [$tipos->isEmpty() ? 'nullable' : 'required', Rule::in($tipos->pluck('id'))],
-            'primera' => ['required', 'integer', 'min:0'],
-            'segunda' => ['required', 'integer', 'min:0'],
-            'malo' => ['required', 'integer', 'min:0'],
-            'danada' => ['required', 'integer', 'min:0'],
+            // max como guardia anti-dedazo (un cero de mas ensucia el kardex).
+            'primera' => ['required', 'integer', 'min:0', 'max:100000'],
+            'segunda' => ['required', 'integer', 'min:0', 'max:100000'],
+            'malo' => ['required', 'integer', 'min:0', 'max:100000'],
+            'danada' => ['required', 'integer', 'min:0', 'max:100000'],
             'motivo_segunda' => ['nullable', Rule::in(ProduccionRegistro::MOTIVOS_DEFECTO)],
             'motivo_malo' => ['nullable', Rule::in(ProduccionRegistro::MOTIVOS_DEFECTO)],
         ], [
+            '*.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
             'maquina_id.required' => 'Selecciona la máquina en la que trabajaste.',
             'maquina_id.in' => 'Selecciona una máquina válida.',
             'tipo_botellon_id.required' => 'Selecciona el tipo de botellón.',

@@ -915,4 +915,45 @@ class ProduccionTest extends TestCase
             $this->actingAs($sop)->get($url)->assertForbidden();
         }
     }
+
+    // --- Hardening de auditoría (2026-07-02) ---
+
+    public function test_historial_del_soplador_incluye_el_dia_hasta(): void
+    {
+        $sop = $this->soplador();
+        $this->reporteDe($sop, 100, ProduccionReporte::APROBADO, now()->toDateString())->update(['primera' => 60]);
+
+        // Rango de UN dia (desde == hasta): la fecha casteada se guarda con hora
+        // 00:00:00 y un whereBetween deja el borde superior fuera (bitacora
+        // 2026-07-01); esta regresion cubre el whereDate del historial.
+        $this->actingAs($this->jefe())
+            ->get(route('admin.produccion.soplador', [$sop, 'desde' => now()->toDateString(), 'hasta' => now()->toDateString()]))
+            ->assertOk()
+            ->assertViewHas('totales', fn ($t) => $t['reportes'] === 1 && $t['producido'] === 60);
+    }
+
+    public function test_asignar_rechaza_cantidad_absurda(): void
+    {
+        $soplador = $this->soplador();
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), [
+            'soplador_id' => $soplador->id,
+            'turno' => 'dia',
+            'fecha' => now()->toDateString(),
+            'asignadas' => 10000000, // dedazo: un cero de mas
+        ])->assertSessionHasErrors('asignadas');
+
+        $this->assertDatabaseCount('produccion_asignaciones', 0);
+    }
+
+    public function test_tanda_rechaza_cantidad_absurda(): void
+    {
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop);
+
+        $this->agregarTanda($sop, $reporte, ['primera' => 10000000])
+            ->assertSessionHasErrors('primera');
+
+        $this->assertSame(0, $reporte->registros()->count());
+    }
 }

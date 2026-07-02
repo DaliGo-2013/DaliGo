@@ -399,9 +399,10 @@ boleta rápida (dependen de M05), cron de sync.
   offices (bodegas) y stock por variante desde Bsale, **read-only** (DaliGo jamás escribe stock en
   Bsale). Agendado en `routes/console.php` a los **:50 de cada hora** (después de catálogo :00,
   clientes :20, precios :40 — el catálogo va primero porque el match es por `bsale_variant_id`).
-  ⚠️ **Hallazgo 2026-07-01:** con los crons reales del servidor (`*/20` y `*/15`) el minuto :50 nunca
-  coincidía → esta sync **no corría en producción**; tras corregir el cron a `* * * * *` (P-S0-07),
-  verificar en `bsale-sync.log` que la corrida de :50 aparece y que el espejo se puso al día.
+  ⚠️ **Hallazgo 2026-07-01, RESUELTO el 2026-07-02 (P-S0-07):** con los crons reales del servidor
+  (`*/20` y `*/15`) el minuto :50 nunca coincidía → esta sync **no corría en producción**. Cron
+  corregido a `* * * * *` y **verificado**: primera corrida a las :50 con 16 bodegas y 28.350 stocks
+  actualizados, 0 errores (evidencia `docs/qa/INFRA/2026-07-02--INFRA--cron-deploysh-infra.md`).
 - **UI** `/admin/bodegas` (`Admin\BodegaController`, index/show): listado de bodegas y stock por
   bodega. Vistas `admin/bodegas/{index,show}`.
 - **Tests:** `BodegaManagementTest` + `BsaleStockSyncTest`.
@@ -444,12 +445,11 @@ boleta rápida (dependen de M05), cron de sync.
 - **PWA offline:** es el mayor riesgo del proyecto (módulo posterior); diseñar con cuidado.
 - ~~**🔴 M02.2 sync de precios — footgun de borrado masivo**~~ ✅ **RESUELTO**: guard en `PriceListSync::syncDetalles` — si la lista trae details pero 0 matchean el catálogo local, se salta el delete y se reporta en `errores` (un barrido con 0 matches nunca es espejo fiel; es catálogo desincronizado). Lista legítimamente vacía en Bsale (`0 details`) sí espeja el borrado. Tests de regresión: 0-match-no-borra y fallo-de-API-a-mitad-no-borra (`BsalePreciosSyncTest`).
 - ~~**`productos.bsale_variant_id` sin `unique`**~~ ✅ **RESUELTO (capa de aplicación)**: `bsale_variant_id`/`bsale_product_id` eliminados de `ProductoController::validateData` — el form no los expone y la sync es la única dueña del enlace (test `test_form_ignores_bsale_link_fields`). El import CSV ya los ignoraba (solo-export). **Pendiente opcional:** índice `unique` en BD como cinturón extra (verificar 0 duplicados en prod antes de migrar).
-- **Cron mal configurado (hallazgo 2026-07-01, P-S0-07):** en cPanel hay dos entradas de `schedule:run`
-  con frecuencias `*/20` y `*/15` — **ninguna es la de cada minuto** que Laravel requiere. Consecuencia
-  grave: el minuto :50 nunca coincide → **`bsale:sync-stock` (hourlyAt 50) jamás ha corrido por cron**
-  (el espejo de stock en prod puede estar desactualizado; §8e). Corrección en curso: reemplazar ambas
-  por UNA línea `* * * * *`. (Nota histórica: una versión anterior de esta sección decía `*/20` + `* * * * *`;
-  el estado real del servidor era otro — verificado por la IA de cPanel.)
+- ~~**Cron mal configurado (hallazgo 2026-07-01, P-S0-07)**~~ ✅ **RESUELTO (2026-07-02):** había DOS
+  entradas de `schedule:run` (`*/20` y `*/15`) y ninguna por-minuto → `bsale:sync-stock` (hourlyAt 50)
+  jamás corría. Se dejó UNA línea `* * * * *` y se verificó la primera corrida de :50 (16 bodegas,
+  28.350 stocks, 0 errores). Evidencia: `docs/qa/INFRA/2026-07-02--INFRA--cron-deploysh-infra.md`.
+  Regla derivada: el cron de `schedule:run` es SIEMPRE `* * * * *` (bitácora CLAUDE.md 2026-07-02).
 
 ---
 

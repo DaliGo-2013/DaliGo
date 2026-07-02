@@ -41,8 +41,8 @@
 
                     <div>
                         <x-input-label for="asignadas" value="Preformas asignadas" />
-                        <x-text-input id="asignadas" class="mt-1.5" type="number" min="1" name="asignadas" :value="old('asignadas')" required placeholder="Ej. 1200" />
-                        <x-input-hint>Si ya existe una asignación para ese soplador/turno/fecha, se actualiza la cantidad.</x-input-hint>
+                        <x-text-input id="asignadas" class="mt-1.5" type="number" min="1" max="100000" name="asignadas" :value="old('asignadas')" required placeholder="Ej. 1200" />
+                        <x-input-hint>Cada "Asignar" crea una producción nueva e independiente (un soplador puede tener varias el mismo día).</x-input-hint>
                         <x-input-error :messages="$errors->get('asignadas')" class="mt-2" />
                     </div>
 

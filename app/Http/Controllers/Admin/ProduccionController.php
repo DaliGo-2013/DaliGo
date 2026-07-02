@@ -370,9 +370,12 @@ class ProduccionController extends Controller
         $desde = $request->date('desde') ?? now()->startOfMonth();
         $hasta = $request->date('hasta') ?? now()->endOfMonth();
 
+        // whereDate (no whereBetween): la columna casteada guarda "Y-m-d 00:00:00"
+        // y el borde superior del between la deja fuera (bitacora 2026-07-01).
         $reportes = ProduccionReporte::with(['registros.maquina', 'registros.tipoBotellon', 'asignacion'])
             ->where('soplador_id', $soplador->id)
-            ->whereBetween('fecha', [$desde->toDateString(), $hasta->toDateString()])
+            ->whereDate('fecha', '>=', $desde->toDateString())
+            ->whereDate('fecha', '<=', $hasta->toDateString())
             ->orderByDesc('fecha')
             ->orderByDesc('id')
             ->get();
@@ -442,12 +445,16 @@ class ProduccionController extends Controller
             'soplador_id' => ['required', 'integer', 'exists:users,id'],
             'turno' => ['required', 'in:'.implode(',', self::TURNOS)],
             'fecha' => ['required', 'date'],
-            'asignadas' => ['required', 'integer', 'min:1'],
+            // max como guardia anti-dedazo: un cero de mas ensucia metricas y
+            // kardex aunque a la BD (unsigned int) le quepa.
+            'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
             // Preforma del turno (producto del catalogo). Opcional: si no se
             // elige, el consumo del kardex queda sin enlace a producto. Se
             // restringe a productos ACTIVOS (mismo universo que el selector;
             // un id inactivo o de otra categoria no debe entrar al kardex).
             'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)],
+        ], [
+            'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
 
         // Asignacion + reporte en una sola transaccion: si el reporte falla, no
@@ -486,17 +493,30 @@ class ProduccionController extends Controller
      */
     public function destroyReporte(ProduccionReporte $reporte): RedirectResponse
     {
-        if ($reporte->estado !== ProduccionReporte::BORRADOR || $reporte->registros()->exists()) {
-            return back()->with('status', 'Solo se puede eliminar una produccion en borrador y sin avances.');
-        }
-
         $nombre = $reporte->soplador->name;
-        // Borrar la asignacion arrastra el reporte; si por datos viejos no hay
-        // asignacion, borrar el reporte directo.
-        if ($reporte->asignacion) {
-            $reporte->asignacion->delete();
-        } else {
-            $reporte->delete();
+
+        // Guard bajo lock: registroStore lockea el reporte al agregar tandas,
+        // asi que el lock serializa borrar-vs-agregar y una tanda que entre
+        // entre el chequeo y el delete ya no se pierde en la cascada.
+        $eliminado = DB::transaction(function () use ($reporte) {
+            $locked = ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
+            if (! $locked || $locked->estado !== ProduccionReporte::BORRADOR || $locked->registros()->exists()) {
+                return false;
+            }
+
+            // Borrar la asignacion arrastra el reporte; si por datos viejos no
+            // hay asignacion, borrar el reporte directo.
+            if ($locked->asignacion) {
+                $locked->asignacion->delete();
+            } else {
+                $locked->delete();
+            }
+
+            return true;
+        });
+
+        if (! $eliminado) {
+            return back()->with('status', 'Solo se puede eliminar una produccion en borrador y sin avances.');
         }
 
         return redirect()->route('admin.produccion.index')
@@ -610,12 +630,25 @@ class ProduccionController extends Controller
             'devuelto_motivo' => ['required', 'string', 'max:255'],
         ]);
 
-        $reporte->update([
-            'estado' => ProduccionReporte::DEVUELTO,
-            'devuelto_motivo' => $validated['devuelto_motivo'],
-            'revisado_por' => $request->user()->id,
-            'revisado_at' => now(),
-        ]);
+        // Mismo idioma de lock que aprobar(): sin el, una devolucion concurrente
+        // con una aprobacion podia pisar el estado APROBADO ya con kardex
+        // generado (quedaria DEVUELTO con movimientos; al re-aprobar, el guard
+        // de idempotencia saltaria la regeneracion y el kardex quedaria
+        // desincronizado de las tandas finales). El lock re-lee el estado y la
+        // request que llega segunda sale sin tocar nada.
+        DB::transaction(function () use ($request, $reporte, $validated) {
+            $locked = ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
+            if (! $locked || ! $locked->esPendienteDeRevision()) {
+                return;
+            }
+
+            $locked->update([
+                'estado' => ProduccionReporte::DEVUELTO,
+                'devuelto_motivo' => $validated['devuelto_motivo'],
+                'revisado_por' => $request->user()->id,
+                'revisado_at' => now(),
+            ]);
+        });
 
         return redirect()->route('admin.produccion.index')
             ->with('status', "Reporte de {$reporte->soplador->name} devuelto.");
@@ -631,16 +664,24 @@ class ProduccionController extends Controller
     public function ajustar(Request $request, ProduccionReporte $reporte): RedirectResponse
     {
         $validated = $request->validate([
-            'asignadas' => ['required', 'integer', 'min:1'],
-            'primera' => ['required', 'integer', 'min:0'],
-            'segunda' => ['required', 'integer', 'min:0'],
-            'malo' => ['required', 'integer', 'min:0'],
-            'danada' => ['required', 'integer', 'min:0'],
+            'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
+            'primera' => ['required', 'integer', 'min:0', 'max:100000'],
+            'segunda' => ['required', 'integer', 'min:0', 'max:100000'],
+            'malo' => ['required', 'integer', 'min:0', 'max:100000'],
+            'danada' => ['required', 'integer', 'min:0', 'max:100000'],
             'motivo_ajuste' => ['required', 'string', 'max:255'],
+        ], [
+            '*.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
 
-        $reporte->update($validated);
-        $reporte->asignacion?->update(['asignadas' => $validated['asignadas']]);
+        // Reporte + asignacion en una transaccion (con lock): si el segundo
+        // update falla, no queda el snapshot de asignadas desfasado; y dos
+        // ajustes concurrentes no se entrelazan con un recalculo del soplador.
+        DB::transaction(function () use ($reporte, $validated) {
+            ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
+            $reporte->update($validated);
+            $reporte->asignacion?->update(['asignadas' => $validated['asignadas']]);
+        });
 
         return redirect()->route('admin.produccion.reporte.show', $reporte)
             ->with('status', 'Reporte actualizado.');
