@@ -39,16 +39,17 @@
 
 ## Incidencias
 
-### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — ABIERTA, prioritaria
-Detectada 02-07 por Max-2 al procesar la respuesta del cron (evidencia en
-`docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`, rama M15). El cron del scheduler
-está en `*/20 * * * *`; P-S0-07 lo había dejado en `* * * * *` esa misma madrugada (evidencia
-con `sync-stock` corriendo a las 03:50). Estado actual no es ni el pre ni el post P-S0-07 →
-cambio posterior NO registrado. **Impacto:** `bsale:sync-stock` (:50) no corre desde ~04:00
-del 02-07 (espejo de stock congelado); el reintentador de M15 (P-M15-05) correría cada 20 min
-en vez de 5 (degradado, no roto). **Acción:** prompt corrector redactado por el Director
-(patrón P-S0-07) → despacha Mauricio → evidencia de vuelta la archiva Max-1 en main
-(docs/qa/INFRA/). GATE: resolver antes de P-M15-09 (QA staging de M15).
+### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
+Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,
+rama M15). Timeline afinada con el baseline del corrector: el fix de P-S0-07 operó toda la
+mañana (`sync-stock` corrió 07:54/08:54/09:54 hora log) y la reversión a `*/20` ocurrió entre
+~09:54 y ~10:50 hora log — cambio NO registrado, cPanel sin historial de ediciones de cron
+(verificado). **Corrector aplicado 02-07 ~13:25 CDT** (IA-cPanel, 5/6 pasos OK): scheduler de
+vuelta a `* * * * *`, queue:work intacto, `schedule:list` muestra las 4 syncs. **Pendiente
+para CERRAR:** (1) confirmar primera corrida de `sync-stock` post-fix (grep tras las 13:50 CDT);
+(2) Max-1 archiva la respuesta íntegra en docs/qa/INFRA/ (main). **Vigilancia:** si vuelve a
+revertirse ya no es accidente → cazar el proceso que lo cambia. GATE pre-P-M15-09 se mantiene
+hasta cerrar.
 
 ## Reglas del tablero
 
