@@ -31,6 +31,7 @@ sesión restante.
 | 02-07 | Max-1 Forjador A | P-SPK-01 spike PWA (+ arranque P-SPK-02) | L | **Fable 5** (⁴)(⁵) | n/d | **86%** / 12% (captura 12:57) | ≤86% | HECHA (verificada, celular real OK) |
 | 02-07 | Max-2 Forjador B | P-M15-04 + prompt delegación P-M15-03 | L | **Fable 5** (⁴) | pendiente | pendiente | pendiente | P-M15-04 HECHA (verificada) · 03 PARCIAL |
 | 02-07 | Max-1 Forjador A | P-SPK-02 cola IndexedDB offline | XL | Opus 4.8 · xhigh ✓ | **0% / 12%** (captura 13:32) | pendiente | pendiente | EN CURSO — primer Δ limpio de Opus al cierre |
+| 02-07 | Max-2 Forjador B | Cierre P-M15-03 (archivo evidencia + hallazgo I-01) | S | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —

@@ -20,7 +20,7 @@
 | Cuenta | Tarea | Talla | Modelo·Esfuerzo | Hecho cuando |
 |---|---|---|---|---|
 | Max-1 | [~] **P-SPK-02** · Cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente) — *arrancada 02-07 (adelantada al día 2 con OK del dueño). OJO consumo: sesión al 86% al arrancar; ventana resetea 13:30 — si corta, parte PARCIAL y se retoma* | XL | Opus 4.8 · xhigh | Tanda creada offline se sincroniza al volver la señal, sin duplicados ante reintento; tests |
-| Max-2 | [~] **P-M15-03** (cola database + redactar prompt del cron `queue:work` para IA-cPanel) + **P-M15-04** (plantillas por evento + seeds) — *P-M15-04 [x] VERIFICADA 02-07: `bfdc77c`, ConfiguracionSeeder firstOrCreate aditivo (compartido permitido §5.4), 4 tests nuevos (382 declarados), RUTA/bitácora mismo push. P-M15-03 [~] PARCIAL: prompt de delegación REVISADO Y APROBADO por Director contra plantilla VERIFICACION-CPANEL (marcador [CAMBIO], hueco «PEGAR», formato cerrado, crontab antes/después, schedule:run intacto, comando idéntico a PLAN-M15 §5.1) → esperando despacho de Mauricio + evidencia a docs/qa/INFRA/* | L | Opus 4.8 · high | Prompt de delegación entregado a Mauricio; seeds idempotentes; tests |
+| Max-2 | [x] **P-M15-03** (cola database + cron `queue:work` vía IA-cPanel) + **P-M15-04** (plantillas por evento + seeds) — *AMBAS VERIFICADAS. P-M15-04: `bfdc77c` (seeder aditivo, 4 tests). P-M15-03: cron creado y verificado por IA-cPanel (crontab textual, worker corrió y salió limpio, 5/5 pasos OK), evidencia íntegra archivada en `532354a` (docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md), main intacto, sesión en Opus 4.8 ✓. BONUS: el procesamiento destapó la INCIDENCIA I-01 (abajo)* | L | Opus 4.8 · high | Prompt de delegación entregado a Mauricio; seeds idempotentes; tests |
 | Director | [ ] Verificación papel↔código de día 1 (commits vs tablero), ledger día 2, replanificar si algo se atrasó | M | Sonnet 5 · high | Tablero actualizado con evidencia por tarea |
 | QA | [ ] Ejecutar guion de regresión M11 en local + probar el spike PWA con modo avión (checklist del Forjador A) + segunda revisión del diff M15 | M | Sonnet 5 · high | Partes de QA con veredicto por flujo |
 | Investigador | [ ] D-007: opciones reales 2026 de WhatsApp Business API (Meta directo vs BSP, costos/plazos CL) + consolidar paquete D-005 para Víctor (huecos BSALE_API + sandbox + bodegas) | M | Sonnet 5 · medium | Ficha D-007 con opciones/costos citados + email listo para Víctor |
@@ -36,6 +36,19 @@
 | QA | [ ] QA integral del spike (guion adversarial: doble envío, foto grande, matar app) + guion QA-FUNCIONAL-STAGING para M15 (se usará post-merge) | M | Sonnet 5 · high | Ambos guiones entregados; hallazgos del spike reportados a Max-1 vía Director |
 | Investigador | [ ] Consolidado: estado de las 10 decisiones D-0xx con lo investigado (qué falta de quién) — insumo del informe del Director | S | Sonnet 5 · medium | Tabla actualizada entregada |
 | Escriba | [ ] Borrador `docs/manuales/BORRADOR-jefe-bodega.md` (1 página: asignar → cola → aprobar → kardex) | S | Haiku 4.5 · low | Página lista |
+
+## Incidencias
+
+### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — ABIERTA, prioritaria
+Detectada 02-07 por Max-2 al procesar la respuesta del cron (evidencia en
+`docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`, rama M15). El cron del scheduler
+está en `*/20 * * * *`; P-S0-07 lo había dejado en `* * * * *` esa misma madrugada (evidencia
+con `sync-stock` corriendo a las 03:50). Estado actual no es ni el pre ni el post P-S0-07 →
+cambio posterior NO registrado. **Impacto:** `bsale:sync-stock` (:50) no corre desde ~04:00
+del 02-07 (espejo de stock congelado); el reintentador de M15 (P-M15-05) correría cada 20 min
+en vez de 5 (degradado, no roto). **Acción:** prompt corrector redactado por el Director
+(patrón P-S0-07) → despacha Mauricio → evidencia de vuelta la archiva Max-1 en main
+(docs/qa/INFRA/). GATE: resolver antes de P-M15-09 (QA staging de M15).
 
 ## Reglas del tablero
 
