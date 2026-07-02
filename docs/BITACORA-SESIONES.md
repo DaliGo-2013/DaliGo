@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-02] Stream 2 arranca: setup del entorno + PLAN-M15 con sello (pendiente visto bueno)
+- **Quién:** Mauricio + Claude (stream 2, primera sesión)
+- **Objetivo declarado:** kickoff §2/§3 + primer entregable (PLAN-M15 antes de P-M15-01)
+- **Qué se hizo:** (1) toolchain local desde cero — esta PC no tenía PHP: instalado PHP **8.3.31** (misma versión fijada en `composer.json`) + Composer 2.10.2, extensiones sqlite/mbstring/etc. y `cacert.pem` (lección bitácora 2026-06-08); (2) clon propio `DaliGo-M15` (jamás el working tree del stream 1) + rama `feature/m15-notificaciones` desde `origin/main` (`4da5de2`); (3) setup HANDOFF §10 completo — gotcha: el `.env.example` trae `DB_DATABASE=` vacío y Laravel lo trata como seteado → apuntarlo explícito al sqlite; (4) **gate del kickoff cumplido: suite 364 verdes local**; (5) lectura obligatoria §3 completa (protocolo, RUTA, biblia M15, HANDOFF, CLAUDE.md íntegro, GUIA, delegación+plantillas, DECISIONES con D-011 nueva); (6) **`docs/planes/PLAN-M15.md`** escrito con sello de vigencia (verificado contra el código: cola/mail/scheduler/permisos/config/servicios/audit/nav) — diseño: dispatcher + contrato Canal (mail/database/whatsapp-stub), 2 tablas MySQL 5.7-safe, plantillas como claves `Configuracion`, reintentos propios con backoff, campanita, mapa P-M15-01…10 y 2 delegaciones listas para redactar.
+- **Pasos marcados:** ninguno todavía (el plan es pre-P-M15-01; nota agregada en §4/E1)
+- **Decisiones:** ninguna nueva. D-007 (stub) y D-011 (staging=QA) incorporadas al plan.
+- **Delegaciones:** ninguna enviada aún; las 2 de E1 (cron cola, SPF/DKIM) quedaron especificadas en el plan §5.
+- **Próximo paso:** **visto bueno de Mauricio a PLAN-M15.md** → recién ahí P-M15-01 (migraciones).
+
 ### [2026-07-02] Nace el stream 2: kickoff de E1 · M15 Notificaciones en rama paralela
 - **Quién:** Mauricio + Claude (Opus, stream 1)
 - **Objetivo declarado:** P-S0-16 — dar una tarea grande a la segunda cuenta de Claude de Mauricio sin chocar con el trabajo de M11.

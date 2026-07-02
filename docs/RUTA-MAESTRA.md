@@ -101,6 +101,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 ### E1 · M15 Notificaciones — núcleo multi-canal, email primero (~2 sem) — [EN CURSO · stream 2]
 > Asignada el 2026-07-02 al stream 2 (segunda cuenta Claude), rama `feature/m15-notificaciones`.
 > Kickoff/contrato: `docs/delegacion/KICKOFF-E1-M15.md`. Los `[x]` de esta unidad se marcan en la rama.
+> **Plan fino:** `docs/planes/PLAN-M15.md` (sello 2026-07-02, commit `4da5de2`) — **pendiente de visto bueno de Mauricio**; ninguna migración antes de eso.
 **Objetivo:** motor centralizado (tablas `notificaciones` + `preferencias_canal`, plantillas por evento, triggers, reintentos) con canal **email** operativo y canal **WhatsApp enchufable** (stub hasta D-007). No bloqueada por Marco: esa es la gracia del diseño.
 **Rama:** `feature/m15-notificaciones` · **Depende de:** nada (sí requiere cron de cola → delegación).
 **Hecho cuando:** tests verdes; en staging un evento llega por correo real y a la campanita; reintento ante fallo verificado.
