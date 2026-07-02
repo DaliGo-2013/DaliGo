@@ -109,8 +109,8 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 - [x] **P-M15-01** · Migraciones `notificaciones` (polimórfica: evento, canal, destinatario, payload, estado, reintentos) + `preferencias_canal` — MySQL 5.7: VARCHAR(191) en índices; unique de preferencias con evento a 100 chars por el prefijo utf8mb4 (este push, 2026-07-02)
 - [x] **P-M15-02** · `NotificacionDispatcher` + contrato `Canal` (`CanalMail`, `CanalDatabase`, `CanalWhatsApp` stub que loguea) + job `EnviarNotificacion` (tries=1, reintento propio con backoff) + 14 tests — suite 378 verdes (este push, 2026-07-02)
-- [ ] **P-M15-03** · Cola database + delegación IA-cPanel: segundo cron `queue:work --stop-when-empty --max-time=55`
-- [ ] **P-M15-04** · Plantillas por evento + seeds idempotentes + claves en `Configuracion`
+- [ ] [EN CURSO] **P-M15-03** · Cola database + delegación IA-cPanel: segundo cron `queue:work --stop-when-empty --max-time=55` — prompt redactado con plantilla VERIFICACION-CPANEL y entregado a Mauricio/Director el 2026-07-04; falta despacho + evidencia en `docs/qa/INFRA/`
+- [x] **P-M15-04** · Plantillas por evento + seeds idempotentes + claves en `Configuracion` (`notif_plantilla_sistema_prueba`, `notif_reintentos_max`, `notif_backoff_minutos`, `notif_remitente_nombre` — grupo `notificaciones`) + 4 tests; verificado seed 2× a mano sin duplicados; suite 382 verdes (este push, 2026-07-04)
 - [ ] **P-M15-05** · Reintentos con backoff + vista `/admin/notificaciones` (permiso `view notificaciones`)
 - [ ] **P-M15-06** · Campanita in-app en nav (desktop + responsive) — `npm run build` + grep del bundle
 - [ ] **P-M15-07** · Preferencias por usuario (canal por tipo de evento, opt-out)

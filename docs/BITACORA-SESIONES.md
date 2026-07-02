@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-04] Stream 2 · día 2: seeds de configuración M15 + prompt del cron de cola
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B) — nota consumo: sesión aún en Fable 5 (dictado pedía Opus 4.8; el switch de modelo es de Mauricio)
+- **Objetivo declarado:** P-M15-03 (delegación) + P-M15-04 (seeds), dictado del Director día 2
+- **Qué se hizo:** (1) **P-M15-04**: 4 claves `notif_*` en `ConfiguracionSeeder` (plantilla json del evento de prueba, reintentos max, backoff, nombre de remitente placeholder D-001) + 4 tests (idempotencia 2×, casteo por tipo, re-seed no pisa valor editado, dispatcher renderiza con la plantilla sembrada) — verificado además con doble `db:seed` manual (4 claves, 0 duplicados); **suite 382 verdes local**. (2) **P-M15-03**: prompt de delegación del cron `queue:work --stop-when-empty --max-time=55` redactado sección por sección con la plantilla VERIFICACION-CPANEL (estado previo textual → [CAMBIO] único → crontab completo de vuelta con verificación de que el `schedule:run` por-minuto sigue → corrida manual del worker → log), entregado vía Mauricio para revisión del Director ANTES del despacho. Main avanzó (spike PWA + partes fleet): no se mergea ahora — no toca M15; merge en P-M15-09.
+- **Pasos marcados:** P-M15-04 [x]; P-M15-03 [EN CURSO] (prompt entregado, falta despacho + evidencia).
+- **Decisiones:** ninguna.
+- **Delegaciones:** 1 redactada y entregada (cron de cola); pendiente de despacho por Mauricio.
+- **Próximo paso:** al volver la evidencia del cron → cerrar P-M15-03 y archivarla en `docs/qa/INFRA/`; en paralelo **P-M15-05** (reintentador atómico + vista `/admin/notificaciones`) según tablero día 3.
+
 ### [2026-07-02] Stream 2: visto bueno de PLAN-M15 + P-M15-01/02 construidos (motor de notificaciones)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B) — **nota consumo: sesión corrió en Fable 5, no Opus 4.8 del roster**
 - **Objetivo declarado:** incorporar ajustes del visto bueno → P-M15-01 y P-M15-02
