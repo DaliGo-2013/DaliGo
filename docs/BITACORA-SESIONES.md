@@ -25,10 +25,19 @@
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B) — nota consumo: sesión aún en Fable 5 (dictado pedía Opus 4.8; el switch de modelo es de Mauricio)
 - **Objetivo declarado:** P-M15-03 (delegación) + P-M15-04 (seeds), dictado del Director día 2
 - **Qué se hizo:** (1) **P-M15-04**: 4 claves `notif_*` en `ConfiguracionSeeder` (plantilla json del evento de prueba, reintentos max, backoff, nombre de remitente placeholder D-001) + 4 tests (idempotencia 2×, casteo por tipo, re-seed no pisa valor editado, dispatcher renderiza con la plantilla sembrada) — verificado además con doble `db:seed` manual (4 claves, 0 duplicados); **suite 382 verdes local**. (2) **P-M15-03**: prompt de delegación del cron `queue:work --stop-when-empty --max-time=55` redactado sección por sección con la plantilla VERIFICACION-CPANEL (estado previo textual → [CAMBIO] único → crontab completo de vuelta con verificación de que el `schedule:run` por-minuto sigue → corrida manual del worker → log), entregado vía Mauricio para revisión del Director ANTES del despacho. Main avanzó (spike PWA + partes fleet): no se mergea ahora — no toca M15; merge en P-M15-09.
-- **Pasos marcados:** P-M15-04 [x]; P-M15-03 [EN CURSO] (prompt entregado, falta despacho + evidencia).
+- **Pasos marcados:** P-M15-04 [x]; P-M15-03 [EN CURSO] (prompt entregado, falta despacho + evidencia). *(P-M15-03 cerrado [x] en la actualización de más abajo, mismo día.)*
 - **Decisiones:** ninguna.
 - **Delegaciones:** 1 redactada y entregada (cron de cola); pendiente de despacho por Mauricio.
 - **Próximo paso:** al volver la evidencia del cron → cerrar P-M15-03 y archivarla en `docs/qa/INFRA/`; en paralelo **P-M15-05** (reintentador atómico + vista `/admin/notificaciones`) según tablero día 3.
+
+### [2026-07-04] Stream 2 · cierre P-M15-03 + HALLAZGO: scheduler volvió a `*/20`
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, ahora sí en **Opus 4.8**) + IA externa de cPanel
+- **Objetivo declarado:** procesar la respuesta de la delegación del cron de cola
+- **Qué se hizo:** la IA-cPanel agregó el cron `* * * * * … queue:work --stop-when-empty --max-time=55` y lo verificó (worker corre, cola vacía, sale sin errores) → **P-M15-03 [x]**, evidencia íntegra en `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`. **HALLAZGO CRÍTICO al leer el paso 1:** el cron del **scheduler** está en `*/20 * * * *`, NO en `* * * * *`; el log de la propia respuesta no muestra ninguna corrida de `bsale:sync-stock` (con `*/20` el :50 nunca se dispara). Esto **contradice la evidencia archivada de P-S0-07** (que lo dejó en `* * * * *` con stock corriendo a :50) → o hubo una reversión posterior no documentada, o el server nunca persistió el fix. Es el bug original de vuelta. Escalado al Director (no es territorio de stream 2; toca las syncs de otro stream). Impacto en M15: el reintentador P-M15-05 (vía `schedule:run`) correría cada 20 min en vez de 5 → granularidad degradada, no roto (reclama por `programada_para <= now()`).
+- **Pasos marcados:** P-M15-03 [x].
+- **Decisiones:** ninguna.
+- **Delegaciones:** 1 recibida y archivada (cron de cola, APROBADO CON OBSERVACIONES).
+- **Próximo paso:** Director decide re-despacho del fix del scheduler (`*/20 → * * * * *`); stream 2 sigue con **P-M15-05** (reintentador atómico robusto a scheduler no-por-minuto + vista `/admin/notificaciones`).
 
 ### [2026-07-02] Stream 2: visto bueno de PLAN-M15 + P-M15-01/02 construidos (motor de notificaciones)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B) — **nota consumo: sesión corrió en Fable 5, no Opus 4.8 del roster**
