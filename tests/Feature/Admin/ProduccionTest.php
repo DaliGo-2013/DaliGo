@@ -1011,4 +1011,73 @@ class ProduccionTest extends TestCase
 
         $this->assertDatabaseCount('produccion_reportes', 1);
     }
+
+    // --- Cola offline / idempotencia por cliente_uuid (P-SPK-02) ---
+
+    public function test_tanda_offline_reintentada_no_se_duplica(): void
+    {
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $payload = [
+            'cliente_uuid' => $uuid, 'maquina_id' => $maquina->id, 'tipo_botellon_id' => $tipo->id,
+            'primera' => 40, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
+        ];
+
+        // El drenado reenvía la misma tanda dos veces (respuesta perdida por corte).
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $payload)->assertOk();
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $payload)->assertOk();
+
+        // Idempotente: un solo registro pese al reintento con el mismo uuid.
+        $this->assertSame(1, $reporte->registros()->count());
+        $this->assertDatabaseHas('produccion_registros', ['reporte_id' => $reporte->id, 'cliente_uuid' => $uuid, 'primera' => 40]);
+        $this->assertSame(40, $reporte->fresh()->primera);
+    }
+
+    public function test_dos_tandas_offline_con_uuid_distinto_se_guardan_ambas(): void
+    {
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $base = ['maquina_id' => $maquina->id, 'tipo_botellon_id' => $tipo->id, 'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0];
+
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $base + ['cliente_uuid' => (string) \Illuminate\Support\Str::uuid()])->assertOk();
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $base + ['cliente_uuid' => (string) \Illuminate\Support\Str::uuid()])->assertOk();
+
+        $this->assertSame(2, $reporte->registros()->count());
+        $this->assertSame(20, $reporte->fresh()->primera);
+    }
+
+    public function test_tanda_nativa_sin_uuid_sigue_redirigiendo(): void
+    {
+        // El camino con señal (submit nativo, sin cliente_uuid) no cambia.
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $this->agregarTanda($sop, $reporte, ['primera' => 25], $maquina, $tipo)
+            ->assertRedirect(route('produccion.mi.show', $reporte));
+
+        $this->assertSame(1, $reporte->registros()->count());
+        $this->assertNull($reporte->registros()->first()->cliente_uuid);
+    }
+
+    public function test_tanda_offline_con_maquina_invalida_devuelve_422(): void
+    {
+        // Máquina desactivada mientras el soplador estaba offline: el drenado
+        // recibe 422 (permanente) y NO crea el registro.
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        $maquinaInactiva = $this->maquina(activa: false);
+        $tipo = $this->tipo();
+
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), [
+            'cliente_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'maquina_id' => $maquinaInactiva->id, 'tipo_botellon_id' => $tipo->id,
+            'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
+        ])->assertStatus(422);
+
+        $this->assertSame(0, $reporte->registros()->count());
+    }
 }

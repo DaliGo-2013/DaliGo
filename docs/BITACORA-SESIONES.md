@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-02] P-SPK-02 hecho: cola offline de tandas (el soplador registra sin señal)
+- **Quién:** Mauricio + Claude (Opus 4.8, Max-1/stream 1) — dictado del Director (Opus 4.8·xhigh)
+- **Objetivo declarado:** P-SPK-02 (día 2 del tablero) — cola IndexedDB con idempotencia.
+- **Qué se hizo:** migración `cliente_uuid` + unique compuesto `[reporte_id, cliente_uuid]`; `registroStore` idempotente dentro del lock + respuesta JSON (ValidationException para 422 reales); `resources/js/offline-queue.js` (encolar/drenar con CSRF fresco del meta, clasificación transitorio/permanente, guard de reentrada, reload al reconciliar); integración en el form del soplador (encola si offline, feedback optimista, contador de pendientes). Diseño validado adversarialmente ANTES de codear (3 bloqueantes: unique compuesto, CSRF sin serializar, clasificación de errores). 4 tests de idempotencia → 372 verdes. Verificado E2E en preview: 2 tandas offline → IndexedDB (sin `_token`) → online → drenan → 2 registros reales sin duplicar. Las decisiones quedaron en la bitácora de CLAUDE.md.
+- **Pasos marcados:** P-SPK-02 [x]. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso (Max-1):** P-SPK-03 — prueba de campo real (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08.
+
 ### [2026-07-02] P-SPK-01 hecho: mi-reporte es instalable (spike PWA, día 1 del tablero de flota)
 - **Quién:** Mauricio + Claude (Opus, Max-1/stream 1)
 - **Objetivo declarado:** P-SPK-01 (tarea Día 1 del tablero — mayor riesgo técnico del proyecto, adelantado de W27 a W12)

@@ -1,6 +1,11 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { encolar, pendientes, iniciarColaOffline } from './offline-queue';
+
+// Cola offline de tandas (spike P-SPK-02). Se expone en window porque el x-data
+// del form del soplador es inline en el Blade y no puede importar el modulo.
+window.dgCola = { encolar, pendientes };
 
 /**
  * "Señalar en vez de narrar": ante una acción bloqueada por una precondición, en
@@ -300,6 +305,9 @@ if ('serviceWorker' in navigator) {
         });
     }
 }
+
+// Drenado de la cola offline al volver la señal / al cargar (spike P-SPK-02).
+iniciarColaOffline();
 
 /**
  * Global: si la página cargó con errores de validación del servidor, llevar al
