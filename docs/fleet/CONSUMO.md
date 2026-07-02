@@ -28,6 +28,7 @@ sesión restante.
 | 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 | M | Fable 5 (¹) | n/d (²) | n/d (²) | ~1 h sesión | HECHA |
 | 02-07 | Max-2 Forjador B | Bootstrap stream 2 + PLAN-M15 (pre-flota) | L | Opus 4.8 · high | n/d (³) | n/d (³) | n/d | HECHA (plan aprobado con 2 ajustes) |
 | 02-07 | Max-2 Forjador B | Visto bueno + P-M15-01 + P-M15-02 | L | **Fable 5** (⁴) | pendiente (⁴) | pendiente (⁴) | pendiente | HECHA (verificada) |
+| 02-07 | Max-1 Forjador A | P-SPK-01 spike PWA | L | Fable5·xhigh→Opus4.8·high (según dictado) | n/d (⁵) | n/d (⁵) | n/d | HECHA (solo falta celular real) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
@@ -41,6 +42,8 @@ sesión restante.
 > Max acelerado. Mauricio: fijar el modelo en el selector ANTES de abrir cada sesión y
 > correr /usage tú mismo para completar esta fila (la sesión no puede ejecutar comandos
 > de UI).
+> (⁵) Mauricio corre /usage en la cuenta Max-1 y completa. Sin estos datos la tabla de
+> tallas Max no se puede calibrar al cierre del día 1.
 
 ## 3. Calibración (el Director la actualiza al cierre de cada día)
 
