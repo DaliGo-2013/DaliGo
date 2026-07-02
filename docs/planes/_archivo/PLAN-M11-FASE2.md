@@ -14,8 +14,8 @@
 > **Documento de implementación para otra IA.** Autocontenido: contexto, decisiones ya tomadas
 > con el usuario, esquema exacto, contratos, archivos, tests y verificación. Antes de programar,
 > leer `CLAUDE.md` (reglas vivas + bitácora), `HANDOFF.md` y `PROYECTO_DALIGO.md` (módulo M11,
-> correcciones #7/#8/#9 de Luis). Repo: `C:\Users\mauri\OneDrive\Documents\Claude\DaliGo`
-> (= `https://github.com/DaliGo-2013/DaliGo`, push a main = deploy automático a staging).
+> correcciones #7/#8/#9 de Luis). Repo: `https://github.com/DaliGo-2013/DaliGo`
+> (push a main = deploy automático a staging; la ruta local varía según la máquina).
 
 ## ⚠️ RECONCILIACIÓN OBLIGATORIA ANTES DE IMPLEMENTAR (decisión del usuario, 2026-06-12)
 

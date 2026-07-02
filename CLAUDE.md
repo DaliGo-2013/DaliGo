@@ -21,6 +21,10 @@ infraestructura, base de datos o **cualquier tema de la app web y relacionados**
 Esto aplica por igual a **colaboradores humanos** y a **asistentes de IA** (Claude Code lee este
 archivo automáticamente al iniciar cada sesión en este repo).
 
+**Además, toda sesión de trabajo:** arranca y termina con `docs/PROTOCOLO-SESION.md` (retomar en
+10 minutos §1; checklist de cierre §3). El estado del proyecto vive en `docs/RUTA-MAESTRA.md` —
+**un paso completado sin marcar ahí (en el mismo push) es trabajo que no existe.**
+
 ---
 
 ## Cómo trabajar en DaliGo (formas correctas)
