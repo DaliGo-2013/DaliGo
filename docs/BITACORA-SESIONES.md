@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-02] Stream 2: visto bueno de PLAN-M15 + P-M15-01/02 construidos (motor de notificaciones)
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B) — **nota consumo: sesión corrió en Fable 5, no Opus 4.8 del roster**
+- **Objetivo declarado:** incorporar ajustes del visto bueno → P-M15-01 y P-M15-02
+- **Qué se hizo:** (1) merge de `origin/main` a la rama (trae `docs/fleet/`; conflicto solo en esta bitácora, resuelto conservando ambas entradas — `41dc503`); (2) PLAN-M15 actualizado con los 2 ajustes obligatorios (Notificacion SIN audit / PreferenciaCanal SÍ; reintentador atómico `withoutOverlapping` + claim por UPDATE) y las 3 notas (transiciones por canal, `{{ }}` siempre, campanita v1 sin polling); (3) **P-M15-01**: migraciones `notificaciones` + `preferencias_canal` MySQL 5.7-safe (unique de preferencias con evento a 100 chars por el prefijo utf8mb4) — `ff27f40`; (4) **P-M15-02**: `NotificacionDispatcher` + contrato `Canal` + `CanalMail`/`CanalDatabase`/`CanalWhatsApp`(stub) + job `EnviarNotificacion` (tries=1, reintento propio con backoff de `Configuracion`) + Mailable con vista escapada — `771f278`; (5) 14 tests nuevos → **suite 378 verdes local** (CI no corre en la rama). Gotcha de test: columna datetime trunca microsegundos → comparar backoff con `toDateTimeString()`, no `equalTo`.
+- **Pasos marcados:** P-M15-01 [x], P-M15-02 [x] (en la rama).
+- **Decisiones:** ninguna nueva (ajustes = dictado del visto bueno).
+- **Delegaciones:** ninguna enviada; la del cron de cola (P-M15-03) es el siguiente paso y su prompt sale de PLAN-M15 §5.
+- **Próximo paso:** **P-M15-03** — redactar la delegación del cron `queue:work` (plantilla VERIFICACION-CPANEL) y entregarla a Mauricio; en paralelo P-M15-04 (plantillas + seeds, no depende del cron).
+
 ### [2026-07-02] Se constituye la FLOTA: 6 cuentas Claude orquestadas + tablero de 3 días
 - **Quién:** Mauricio + Claude (Opus, stream 1)
 - **Objetivo declarado:** P-S0-17 — organizar 2 cuentas Max + 4 Pro con roles, dictado de modelo/esfuerzo y control de consumo.
