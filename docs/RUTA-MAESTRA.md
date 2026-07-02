@@ -13,8 +13,8 @@
 |---|---|
 | **Última actualización** | 2026-07-02 (P-S0-13/14/15: auditoría E2E M11, pendientes de otros días, limpieza de pruebas + D-011; ver `docs/BITACORA-SESIONES.md`) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
-| **Unidad activa** | **E0 · Consolidación** — CERRADA salvo pendientes menores (P-S0-03/04/05/06 envíos + P-S0-09/10/11/12) |
-| **Próximo paso** | `P-S0-03/04`: despachar briefs (D-003 con tabla lista) → arrancar **E1 · M15 Notificaciones** |
+| **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
+| **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
 | **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-02 (+ infra verificada por IA-QA: cron OK, 4 syncs corriendo, logs limpios) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
@@ -76,7 +76,8 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-S0-12** · Diagnosticar `git status` del servidor: "ahead of 'origin/main' by 111 commits" — probable remote `origin` apuntando al repo viejo o fetch por URL sin tracking ref. Pedir `git remote -v` en la próxima delegación de infra (no afecta el deploy actual)
 - [x] **P-S0-13** · Auditoría E2E de M11 Producción + hardening pre-demo (pedido del jefe, fuera de plan): 3 exploradores + verificación línea a línea → 5 fixes (whereDate en historial del soplador, locks en devolver/ajustar/destroy espejando aprobar, `max:` anti-dedazo en cantidades, hint stale de asignar) + 3 tests de regresión (361 verdes) + demo local E2E verificada (commit `3ff976d`, 2026-07-02)
 - [x] **P-S0-14** · Panel del jefe: sección "Pendientes de otros días" — las alertas por-aprobar/devueltos son globales pero la cola era solo de hoy → un enviado viejo quedaba contado e invisible (hallazgo del dueño en staging). Partial `_fila-reporte` compartido + test (commit `49f695a`, 2026-07-02)
-- [x] **P-S0-15** · Aislamiento de pruebas: comando `produccion:limpiar-pruebas` (borra asignaciones/reportes/tandas/kardex + audits de reportes, con confirmación; catálogo intacto) + **D-011 TOMADA** (URL oficial `daligo.impdali.cl`, staging queda de pruebas, separación real en F3). Verificado: Bsale es solo-lectura por construcción (este push, 2026-07-02)
+- [x] **P-S0-15** · Aislamiento de pruebas: comando `produccion:limpiar-pruebas` (borra asignaciones/reportes/tandas/kardex + audits de reportes, con confirmación; catálogo intacto) + **D-011 TOMADA** (URL oficial `daligo.impdali.cl`, staging queda de pruebas, separación real en F3). Verificado: Bsale es solo-lectura por construcción (commit `3d1defd`, 2026-07-02)
+- [x] **P-S0-16** · Kickoff del **stream 2** (segunda cuenta Claude): arranca E1 · M15 en la rama `feature/m15-notificaciones` con brief completo en `docs/delegacion/KICKOFF-E1-M15.md` (lectura obligatoria de toda la doc, reglas anti-colisión, territorio prohibido, merge coordinado; deploy/CI verificados solo-main) (este push, 2026-07-02)
 
 ---
 
@@ -97,7 +98,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 |---|---|---|---|
 | biblia §4/M03 | CRUD + sync ~47.800 clientes + vendedor_id | `HANDOFF.md` §8c | tests clientes + sync |
 
-### E1 · M15 Notificaciones — núcleo multi-canal, email primero (~2 sem)
+### E1 · M15 Notificaciones — núcleo multi-canal, email primero (~2 sem) — [EN CURSO · stream 2]
+> Asignada el 2026-07-02 al stream 2 (segunda cuenta Claude), rama `feature/m15-notificaciones`.
+> Kickoff/contrato: `docs/delegacion/KICKOFF-E1-M15.md`. Los `[x]` de esta unidad se marcan en la rama.
 **Objetivo:** motor centralizado (tablas `notificaciones` + `preferencias_canal`, plantillas por evento, triggers, reintentos) con canal **email** operativo y canal **WhatsApp enchufable** (stub hasta D-007). No bloqueada por Marco: esa es la gracia del diseño.
 **Rama:** `feature/m15-notificaciones` · **Depende de:** nada (sí requiere cron de cola → delegación).
 **Hecho cuando:** tests verdes; en staging un evento llega por correo real y a la campanita; reintento ante fallo verificado.

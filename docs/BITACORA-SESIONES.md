@@ -21,6 +21,14 @@
 
 ## Sesiones
 
+### [2026-07-02] Nace el stream 2: kickoff de E1 · M15 Notificaciones en rama paralela
+- **Quién:** Mauricio + Claude (Opus, stream 1)
+- **Objetivo declarado:** P-S0-16 — dar una tarea grande a la segunda cuenta de Claude de Mauricio sin chocar con el trabajo de M11.
+- **Qué se hizo:** brief completo en `docs/delegacion/KICKOFF-E1-M15.md` para que el stream 2 construya la unidad E1 (la siguiente del plan) en la rama `feature/m15-notificaciones`: lectura obligatoria de toda la doc, presentación de la IA de cPanel/QA, reglas anti-colisión (territorio prohibido de producción, archivos compartidos con cambio mínimo, `public/build` se regenera post-merge y jamás se resuelve a mano, merge final coordinado con Mauricio), estándares innegociables y primer entregable = `docs/planes/PLAN-M15.md` con sello de vigencia. Verificado que `deploy.yml`/`tests.yml` disparan SOLO en `main` (pushear la rama no despliega; CI no corre en ramas → suite local obligatoria).
+- **Pasos marcados:** P-S0-16 [x]; E1 pasa a [EN CURSO · stream 2] en §0/§4.
+- **Decisiones:** ninguna. · **Delegaciones:** ninguna (el kickoff ES la delegación, a un dev-stream).
+- **Próximo paso:** stream 2 → PLAN-M15 + visto bueno → P-M15-01. Stream 1/Mauricio → P-S0-03/04 (briefs).
+
 ### [2026-07-02] Aislamiento de pruebas: comando de limpieza + D-011 (URL oficial y entornos)
 - **Quién:** Mauricio + Claude (Opus)
 - **Objetivo declarado:** P-S0-15 (duda del dueño: ¿los datos de prueba quedan para siempre? ¿se escribe algo en Bsale?)
