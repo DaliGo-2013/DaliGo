@@ -102,13 +102,13 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 ### E1 · M15 Notificaciones — núcleo multi-canal, email primero (~2 sem) — [EN CURSO · stream 2]
 > Asignada el 2026-07-02 al stream 2 (segunda cuenta Claude), rama `feature/m15-notificaciones`.
 > Kickoff/contrato: `docs/delegacion/KICKOFF-E1-M15.md`. Los `[x]` de esta unidad se marcan en la rama.
-> **Plan fino:** `docs/planes/PLAN-M15.md` (sello 2026-07-02, commit `4da5de2`) — **pendiente de visto bueno de Mauricio**; ninguna migración antes de eso.
+> **Plan fino:** `docs/planes/PLAN-M15.md` (sello 2026-07-02, commit `4da5de2`) — **APROBADO por Mauricio el 2026-07-02** con 2 ajustes obligatorios incorporados (Notificacion sin audit / PreferenciaCanal sí; reintentador atómico con `withoutOverlapping` + claim por UPDATE) y 3 notas menores documentadas. Luz verde P-M15-01/02.
 **Objetivo:** motor centralizado (tablas `notificaciones` + `preferencias_canal`, plantillas por evento, triggers, reintentos) con canal **email** operativo y canal **WhatsApp enchufable** (stub hasta D-007). No bloqueada por Marco: esa es la gracia del diseño.
 **Rama:** `feature/m15-notificaciones` · **Depende de:** nada (sí requiere cron de cola → delegación).
 **Hecho cuando:** tests verdes; en staging un evento llega por correo real y a la campanita; reintento ante fallo verificado.
 
-- [ ] **P-M15-01** · Migraciones `notificaciones` (polimórfica: evento, canal, destinatario, payload, estado, reintentos) + `preferencias_canal` — MySQL 5.7: VARCHAR(191) en índices
-- [ ] **P-M15-02** · `NotificacionDispatcher` + contrato `Canal` (`CanalMail`, `CanalDatabase`, `CanalWhatsApp` stub que loguea)
+- [x] **P-M15-01** · Migraciones `notificaciones` (polimórfica: evento, canal, destinatario, payload, estado, reintentos) + `preferencias_canal` — MySQL 5.7: VARCHAR(191) en índices; unique de preferencias con evento a 100 chars por el prefijo utf8mb4 (este push, 2026-07-02)
+- [x] **P-M15-02** · `NotificacionDispatcher` + contrato `Canal` (`CanalMail`, `CanalDatabase`, `CanalWhatsApp` stub que loguea) + job `EnviarNotificacion` (tries=1, reintento propio con backoff) + 14 tests — suite 378 verdes (este push, 2026-07-02)
 - [ ] **P-M15-03** · Cola database + delegación IA-cPanel: segundo cron `queue:work --stop-when-empty --max-time=55`
 - [ ] **P-M15-04** · Plantillas por evento + seeds idempotentes + claves en `Configuracion`
 - [ ] **P-M15-05** · Reintentos con backoff + vista `/admin/notificaciones` (permiso `view notificaciones`)
