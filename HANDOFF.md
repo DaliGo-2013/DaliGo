@@ -1,22 +1,24 @@
 # HANDOFF — DaliGo (traspaso de contexto para continuar el proyecto)
 
-> **Para la IA que recibe esto:** este documento es el **estado de ingeniería** de DaliGo y
+> **Para la IA que recibe esto:** este documento es el **manual técnico** de DaliGo y
 > **complementa** a [`PROYECTO_DALIGO.md`](PROYECTO_DALIGO.md) (la "biblia" de producto/negocio, en este mismo repo).
-> Léelos juntos: la **biblia** dice *qué* construir y *por qué*; este **HANDOFF** dice *qué ya existe*,
-> *cómo está hecho*, *cómo se despliega* y *qué sigue*. En el repo también hay un `CLAUDE.md` con
+> La **biblia** dice *qué* construir y *por qué*; este **HANDOFF** dice *cómo está hecho* y *cómo se despliega*.
+> ⚠️ **El ESTADO del proyecto (qué está hecho, qué sigue, avance) NO vive aquí: vive en
+> [`docs/RUTA-MAESTRA.md`](docs/RUTA-MAESTRA.md) §0** — regla de "estado único". En el repo también hay un `CLAUDE.md` con
 > las reglas vivas + bitácora de errores (Claude Code lo lee solo; otras IAs deberían leerlo igual).
 >
 > **Idioma del proyecto:** español (UI, commits, comunicación).
-> **Fecha del traspaso:** 2026-06-04.
+> **Última actualización:** 2026-07-01 (sesión E0 de consolidación).
 
 ---
 
 ## 0. Cómo usar este documento
 
 1. Lee `PROYECTO_DALIGO.md` (la biblia: 16 módulos M01–M16, reglas de negocio, Gantt).
-2. Lee este `HANDOFF.md` (estado actual, stack, deploy, convenciones, gotchas, plan en curso).
-3. Lee `CLAUDE.md` del repo (reglas de diseño + **bitácora de errores resueltos** — no repitas esos errores).
-4. Continúa por el **Plan en curso** (sección 8): *Completar M01 Core*, incremento por incremento.
+2. Lee `docs/RUTA-MAESTRA.md` (**dónde estamos y qué sigue** — el estado vivo del proyecto).
+3. Lee este `HANDOFF.md` (stack, infra, deploy, convenciones, cómo quedó implementado lo construido).
+4. Lee `CLAUDE.md` del repo (reglas de diseño + **bitácora de errores resueltos** — no repitas esos errores).
+5. Para trabajar: sigue `docs/PROTOCOLO-SESION.md` (retomar en 10 minutos + checklist de cierre).
 
 ---
 
@@ -31,9 +33,18 @@ Sistema de gestión interno (ERP-lite) para **Importadora DALI / DALI Cargos-Tra
 
 ---
 
-## 2. Estado actual (qué YA está construido y funcionando)
+## 2. Qué hay construido (inventario técnico — el ESTADO vive en `docs/RUTA-MAESTRA.md`)
 
-**M01 Core está COMPLETO** (Incrementos 1–4; ver sección 8). En producción (staging) y testeado:
+Sistemas en producción (staging) y testeados — el detalle de implementación de cada uno está en las
+secciones 8/8b/8c/8d/8e/8f: **M01 Core** (§8) · **M02 Catálogo+Precios** (§8b) · **M03 Clientes** (§8c) ·
+**M11 Producción F1** (§8d) · **Espejo de inventario, base de M04** (§8e) · **Taller de servicio técnico,
+subset de M12** (§8f). Suite de tests: **~358 verdes**.
+
+> ⚠️ **M13 Devoluciones NO tiene código.** No confundir con la acción `devolver` de los reportes de
+> producción (M11, §8d) ni con el taller (§8f). Se registra aquí porque una redacción anterior de este
+> documento se prestaba a esa confusión.
+
+Piezas transversales de M01 (base de todo):
 
 - **Autenticación completa** (Laravel Breeze, stack Blade): login, recuperación de contraseña,
   verificación de email (`MustVerifyEmail`). **Registro público REMOVIDO** (las cuentas las crea un admin).
@@ -57,15 +68,7 @@ Sistema de gestión interno (ERP-lite) para **Importadora DALI / DALI Cargos-Tra
 - **Suite de tests verde** (PHPUnit, SQLite en memoria): gestión de usuarios (13), roles (11),
   dominio en login (2), + tests estándar de Breeze (login/logout/verificación/reset) + perfil.
 
-**Último commit sincronizado de referencia:** `8e952d5` (puede haber más recientes; haz `git log` para confirmar).
-
-### Lo que FALTA de M01 Core (el trabajo inmediato — ver Plan, sección 8)
-- ~~**Multi-sucursal**~~ ✅ **Hecho** (Incremento 1, commit `e25d773`): tabla `sucursales` + `sucursal_id` en `users`.
-- ~~**Roles reales del negocio**~~ ✅ **Hecho** (Incremento 2, commit `e1df23d`): roles del negocio + matriz de partida editable.
-- ~~**Configuración global**~~ ✅ **Hecho** (Incremento 3): tabla `configuraciones` + accesores cacheados `Configuracion::get()/set()` + UI admin `/admin/configuracion`.
-- ~~**Auditoría**~~ ✅ **Hecho** (Incremento 4): `owen-it/laravel-auditing` en User/Sucursal/Configuracion + audit manual de cambios de rol + UI `/admin/audits`.
-
-**🎉 M01 Core COMPLETO** (Incrementos 1–4). El siguiente hito es M02+ según la biblia `PROYECTO_DALIGO.md`.
+**Qué sigue y en qué orden:** `docs/RUTA-MAESTRA.md` (unidades E0–E13). Haz `git log` para confirmar el último commit.
 
 ---
 
@@ -187,7 +190,9 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 
 ---
 
-## 8. Plan en curso — **Completar M01 Core** (trabajo inmediato)
+## 8. M01 Core — cómo quedó implementado (referencia técnica)
+
+> Sección histórica de implementación. M01 está COMPLETO; el estado vive en `docs/RUTA-MAESTRA.md`.
 
 **Decisiones ya tomadas con el usuario:**
 - **Cadencia:** *incremento por incremento.* Cada uno: construir → `php artisan test` verde → `npm run build` → commit → `git push` → vigilar **Actions** → verificar en **staging** → recién entonces el siguiente.
@@ -260,11 +265,11 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 - **Local (SQLite):** `php artisan migrate:fresh --seed` → `php artisan test` (todo verde) → `npm run build` → `php artisan serve` y probar a mano (admin ve la sección nueva; no-admin → 403).
 - **Prod (MySQL 5.7):** `git push` → vigilar **Actions** → verificar en staging (migraciones aplicadas, vigilar índices en 5.7, seeders corridos, enlaces de nav). Asignar sucursal/rol a usuarios existentes.
 
-> El plan original local está en `C:\Users\mauri\.claude\plans\functional-squishing-river.md` (esta sección es su copia portable).
+> (Esta sección es la copia portable del plan de M01; el archivo local original quedó en una máquina antigua y ya no es referencia.)
 
 ---
 
-## 8b. M02 — Catálogo + Bsale (estado al 2026-06-10)
+## 8b. M02 — Catálogo + Bsale (cómo quedó implementado)
 
 **Hecho y en producción:**
 - **Catálogo local `productos`** (nivel SKU = variante de Bsale): sku único, nombre, descripción,
@@ -295,7 +300,7 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 **Pendiente de M02+:** webhooks (sync incremental, alta self-service en el panel de Devs);
 enlace catálogo↔M04 (inventario).
 
-### M02.2 — Listas de precios (estado al 2026-06-10)
+### M02.2 — Listas de precios (cómo quedó implementado)
 
 **Hecho:** espejo read-only de las listas de precios de Bsale (lo que faltaba para que M05 cotice).
 - **Tablas:** `listas_precios` (nombre, descripción, `bsale_coin_id` [1=CLP], activa, **local:**
@@ -319,7 +324,7 @@ que catálogo/clientes (lista eliminada en Bsale queda con su último estado loc
 
 ---
 
-## 8c. M03 — Clientes (Incremento 1, estado al 2026-06-10)
+## 8c. M03 — Clientes (cómo quedó implementado — Incremento 1)
 
 **Hecho:** ficha local de clientes + CRUD admin + sync desde Bsale, clonando los patrones de M02.
 - **Tabla `clientes`**: `rut` (varchar 20, **unique nullable**, normalizado `12345678-9` sin puntos,
@@ -355,7 +360,7 @@ boleta rápida (dependen de M05), cron de sync.
 
 ---
 
-## 8d. M11 — Producción de botellones / sopladores (estado al 2026-06-26)
+## 8d. M11 — Producción de botellones / sopladores (cómo quedó implementado — Fase 1)
 
 > **Importante (drift histórico):** `docs/PLAN-M11-FASE2.md` describe un diseño que **NO** es el
 > implementado. El código siguió un diseño alternativo (máquinas + tipos de botellón + tandas), no el
@@ -382,7 +387,51 @@ boleta rápida (dependen de M05), cron de sync.
 
 ---
 
+## 8e. Espejo de inventario (base de M04 — cómo quedó implementado)
+
+> Documentado el 2026-07-01: este código existía sin sección propia en el HANDOFF ("código fantasma").
+> Es el punto de partida REAL de M04 (unidad E3 de la RUTA-MAESTRA): se construye encima, no desde cero.
+
+- **Tablas** (migración `2026_06_11_120000_create_inventario_tables.php`): `bodegas` (nombre,
+  `bsale_office_id` unique, flags) y `stocks` (FK bodega+producto, `stock_real`/`stock_reservado`/
+  `stock_disponible`, `bsale_stock_id`; unique compuesto bodega+producto).
+- **Sync `bsale:sync-stock`** (`App\Services\Bsale\StockSync`, patrón de `CatalogSync`): espeja
+  offices (bodegas) y stock por variante desde Bsale, **read-only** (DaliGo jamás escribe stock en
+  Bsale). Agendado en `routes/console.php` a los **:50 de cada hora** (después de catálogo :00,
+  clientes :20, precios :40 — el catálogo va primero porque el match es por `bsale_variant_id`).
+- **UI** `/admin/bodegas` (`Admin\BodegaController`, index/show): listado de bodegas y stock por
+  bodega. Vistas `admin/bodegas/{index,show}`.
+- **Tests:** `BodegaManagementTest` + `BsaleStockSyncTest`.
+- **Lo que NO hace todavía** (es el trabajo de M04/E3–E4): clasificación física/virtual/propósito,
+  mapping bodega↔sucursal, vista cruzada por perfil, alertas, reservas por vendedor, movimientos
+  locales, transferencias.
+
+---
+
+## 8f. Taller de servicio técnico (subset de M12 — cómo quedó implementado)
+
+> Documentado el 2026-07-01: ídem §8e. Es la base sobre la que E9 construye el M12 completo.
+
+- **Modelos:** `OrdenServicio` (folio = id; cliente, sucursal, fecha_ingreso, tipo_equipo
+  ("dispensador" renombrado de "maquina"), marca/modelo/nº serie, falla_reportada, estado, observaciones,
+  fecha_entrega/aviso/retiro, trabajo_realizado, mano_obra, `facturacion` garantia|reparacion,
+  garantía por documento: tipo/número/fecha — vigencia 6 meses desde compra) y
+  `OrdenServicioRepuesto` (producto, cantidad, precio_unitario, subtotal).
+- **Estados:** `recibido → en_revision → cotizacion → esperando_repuesto → reparado → entregado | sin_solucion`.
+- **Controller:** `Admin\ServicioTecnicoController` (12 métodos: CRUD + `reparacion`/`guardarReparacion` +
+  buscadores AJAX `buscarCliente`/`buscarProducto`/`buscarRepuesto`). Permisos: `view servicio tecnico`
+  (jefes/vendedores, lectura) y `manage servicio tecnico` (técnico, gestión completa).
+- **Vistas:** `admin/servicio-tecnico/*` (index con filtros, show, form, reparación con repuestos).
+- **Tests:** `ServicioTecnicoManagementTest` (~520 líneas).
+- **Lo que NO hace todavía** (M12 completo, unidad E9): pre-ingreso online con QR, cotización
+  estructurada con aprobación del cliente por link WhatsApp, alertas 3/6/12 meses, tablero de plazos,
+  sugerencia de repuestos por histórico, cobro de hora de servicio en no aprobadas.
+
+---
+
 ## 9. Deuda técnica / pendientes conocidos
+
+> El seguimiento operativo de estos ítems vive en `docs/RUTA-MAESTRA.md` (varios son pasos P-S0-xx de la unidad E0).
 
 - **Rotar la contraseña de la BD** `impdali_daligo`: se compartió por chat en algún momento → cambiarla en cPanel y actualizar `.env` del servidor.
 - **Dominio de staging:** la biblia menciona `daliprueba.cl`; nosotros usamos `staging.impdali.cl`. Reconciliar antes de producción real.
@@ -418,4 +467,5 @@ php artisan serve           # + npm run dev   (o: composer dev)
 
 ---
 
-*Fin del HANDOFF. Mantener este archivo actualizado a medida que M01 Core avance.*
+*Fin del HANDOFF. Este archivo documenta CÓMO está hecho; se actualiza cuando cambia arquitectura,
+infra, deploy o el mapa de archivos. El estado y el avance viven en `docs/RUTA-MAESTRA.md`.*
