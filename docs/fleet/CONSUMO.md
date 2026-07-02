@@ -27,6 +27,7 @@ sesión restante.
 | _(ejemplo)_ 03-07 | Pro-2 QA | Guion regresión M11 | M | Sonnet5·high | 0% / 12% | 38% / 17% | 38% | HECHA |
 | 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 | M | Fable 5 (¹) | n/d (²) | n/d (²) | ~1 h sesión | HECHA |
 | 02-07 | Max-2 Forjador B | Bootstrap stream 2 + PLAN-M15 (pre-flota) | L | Opus 4.8 · high | n/d (³) | n/d (³) | n/d | HECHA (plan aprobado con 2 ajustes) |
+| 02-07 | Max-2 Forjador B | Visto bueno + P-M15-01 + P-M15-02 | L | **Fable 5** (⁴) | pendiente (⁴) | pendiente (⁴) | pendiente | HECHA (verificada) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
@@ -36,6 +37,10 @@ sesión restante.
 > duración según §4.
 > (³) Sesión anterior a la constitución de la flota: no reportó /usage. Desde su próxima
 > sesión debe reportarlo en el parte de cierre (FLOTA §5).
+> (⁴) DESVIACIÓN: la sesión corrió en Fable 5, no Opus 4.8 del roster/dictado — consumo
+> Max acelerado. Mauricio: fijar el modelo en el selector ANTES de abrir cada sesión y
+> correr /usage tú mismo para completar esta fila (la sesión no puede ejecutar comandos
+> de UI).
 
 ## 3. Calibración (el Director la actualiza al cierre de cada día)
 
