@@ -49,6 +49,14 @@ programada_para = now + backoff(intentos)  ──►  comando programado `notifi
 (scheduler cada 5 min) re-encola las fallidas vencidas hasta `notif_reintentos_max`
 ```
 
+**Atomicidad del reintento (ajuste del visto bueno 2026-07-02 — regla bitácora check-then-act):**
+`notificaciones:reintentar` (a) va con `->withoutOverlapping()` en el schedule, y (b) **reclama
+las filas atómicamente** antes de despachar: un solo `UPDATE notificaciones SET estado='pendiente'
+WHERE estado='fallida' AND programada_para <= now() AND intentos < max` y luego despacha
+**únicamente** los IDs reclamados por ese UPDATE (se leen post-update por marca de la corrida o
+se reclama por lotes con `WHERE id IN (...)` derivado de una selección previa dentro de la misma
+transacción con `lockForUpdate`). Dos corridas solapadas jamás re-encolan la misma notificación.
+
 - **Canal database = registro campanita**: siempre se crea (es la traza in-app y el fallback universal). Mail respeta preferencias/opt-out. WhatsApp nace deshabilitado por default (stub).
 - **Reintentos gestionados por nosotros** (estado + `programada_para` en la tabla propia, job con `tries=1`): visibles en `/admin/notificaciones`, testeables, sin depender de `failed_jobs`.
 - Sin daemons (HANDOFF §4): todo por cron. `queue:work --stop-when-empty --max-time=55` cada minuto (delegación P-M15-03).
@@ -81,7 +89,12 @@ programada_para = now + backoff(intentos)  ──►  comando programado `notifi
 | id, user_id (FK cascade), evento varchar(191), canal varchar(32), habilitado boolean default true, timestamps |
 Unique `[user_id, evento, canal]` (191 OK). Sin fila = default del canal (mail on, whatsapp off, database siempre).
 
-Modelo `Notificacion` (con `AuditableTrait` + alta en `AuditController::MODELOS`) y `PreferenciaCanal`. Catálogo de eventos como constante `Notificacion::EVENTOS` (fuente única para validación, seeds y UI — patrón `MOTIVOS_DEFECTO`). Evento inicial: `sistema.prueba`; los módulos consumidores (M14/M12/M13) agregan los suyos al integrar.
+Modelos `Notificacion` y `PreferenciaCanal`. **Auditoría (ajuste del visto bueno 2026-07-02):** `Notificacion` NO lleva `AuditableTrait` — convención del repo para tablas de alto volumen (mismo criterio que `ProduccionRegistro`/`ProduccionMovimiento`): la fila ES su propia traza (estado/intentos/ultimo_error/timestamps) y cada reintento mutaría estado+intentos inundando `audits`. Quien SÍ se audita es **`PreferenciaCanal`** (bajo volumen, significativo: quién se dio de baja de qué) + alta en `AuditController::MODELOS`. Catálogo de eventos como constante `Notificacion::EVENTOS` (fuente única para validación, seeds y UI — patrón `MOTIVOS_DEFECTO`). Evento inicial: `sistema.prueba`; los módulos consumidores (M14/M12/M13) agregan los suyos al integrar.
+
+**Transiciones de estado válidas por canal** (nota del visto bueno):
+- `mail` / `whatsapp`: `pendiente → enviada` · `pendiente → fallida → pendiente (reintento) → …` hasta `notif_reintentos_max` (queda `fallida` terminal). Nunca `leida`.
+- `database`: `pendiente → enviada` (al procesarse el job) `→ leida` (usuario la abre; setea `leida_at`). `leida` existe como estado además de `leida_at` por el índice del contador de la campanita (`[user_id, canal, estado]`); es semi-redundante y se acepta a sabiendas.
+- El cuerpo renderizado se imprime SIEMPRE con `{{ }}` en Blade (los placeholders vienen de `payload`, dato de usuario).
 
 ### 1.3 Plantillas y configuración (P-M15-04)
 Claves en `Configuracion` (grupo `notificaciones`, seeds idempotentes en `ConfiguracionSeeder`):
@@ -101,7 +114,7 @@ Placeholders `{nombre}`, `{url}`, etc. se reemplazan desde `payload` con `strtr`
 | **P-M15-03** | Cola database operativa + **delegación cron** `queue:work --stop-when-empty --max-time=55` | prompt con plantilla VERIFICACION-CPANEL → Mauricio; evidencia a `docs/qa/INFRA/` | IA-cPanel confirma cron creado (crontab textual, lección bitácora 2026-07-02) |
 | **P-M15-04** | Plantillas por evento + claves `Configuracion` + seeds | `ConfiguracionSeeder` (aditivo) | seeds idempotentes (2ª corrida no duplica); plantilla editable en UI |
 | **P-M15-05** | Reintentos backoff (comando `notificaciones:reintentar`, scheduler cada 5 min) + vista `/admin/notificaciones` (filtros estado/canal/evento + botón "enviar prueba") | `app/Console/Commands/`, `routes/console.php`, controller + Blade (componentes `x-list-card`/`x-list-row`/`x-badge`), permiso `view notificaciones` | fallo simulado reintenta con backoff y muere en max; vista 403 sin permiso |
-| **P-M15-06** | Campanita in-app: contador no-leídas + dropdown propias + marcar leída — desktop y móvil | `navigation.blade.php` (cambio MÍNIMO), ruta propia, partial | visible 375/768/1024; `npm run build` + grep bundle `lg\:flex`/`lg\:hidden` (bitácora 2026-06-15) |
+| **P-M15-06** | Campanita in-app: contador no-leídas + dropdown propias + marcar leída — desktop y móvil. **v1 se refresca al navegar (sin polling)** — expectativa acordada en el visto bueno | `navigation.blade.php` (cambio MÍNIMO), ruta propia, partial | visible 375/768/1024; `npm run build` + grep bundle `lg\:flex`/`lg\:hidden` (bitácora 2026-06-15) |
 | **P-M15-07** | Preferencias por usuario (canal × evento, opt-out) en el perfil | vista perfil + controller + `preferencias_canal` | opt-out respetado por el dispatcher (test) |
 | **P-M15-08** | Tests integrales | `tests/Feature/Notificaciones/*` | dispatch por preferencia · reintento/backoff · opt-out · 403 · campanita marca leída · stub whatsapp · seeds idempotentes |
 | **P-M15-09** | Merge coordinado + deploy + QA staging | protocolo kickoff §5.6 (fetch→merge main→`view:clear`+`npm run build`→grep→suite→**go de Mauricio**) + plantilla QA-FUNCIONAL | QA staging: correo real llega + campanita + fila en admin |
@@ -120,7 +133,7 @@ Commits pequeños por paso, **suite completa verde antes de cada commit** (CI no
 | `routes/web.php` | + grupo `admin/notificaciones` **al final** del archivo |
 | `navigation.blade.php` | + campanita junto al user-dropdown (desktop) y en el bloque inferior (móvil) |
 | `database/seeders/ConfiguracionSeeder.php` | + claves `notif_*` (firstOrCreate) |
-| `AuditController::MODELOS` | + `Notificacion::class => 'Notificación'` |
+| `AuditController::MODELOS` | + `PreferenciaCanal::class => 'Preferencia de notificación'` (Notificacion NO se audita — ajuste visto bueno) |
 
 Territorio del stream 1 (producción): **intocado**. Ningún trigger de producción en E1.
 
