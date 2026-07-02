@@ -39,6 +39,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 | D-008 | Impresora térmica (modelo) | 🔴 ABIERTA | Gonzalo + Mauricio | M09-mini (E12) | antes de ene 2027 |
 | D-009 | WordPress: curso WooCommerce vs código propio | 🔴 ABIERTA | Mauricio + Luis | M10 (backlog post-9-meses) | sin urgencia |
 | D-010 | Computadores nuevos para devs | 🟡 ABIERTA (probablemente ya no aplica) | Mauricio | nada | revisar y cerrar |
+| D-011 | URL oficial (`daligo.impdali.cl`) y estrategia de entornos | 🟢 TOMADA | Mauricio (2026-07-02) | — | — |
 | D-000 | [retroactiva] Roles reconciliados a 8 ASCII | 🟢 TOMADA | equipo (2026-06) | — | — |
 
 **Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026**.
@@ -171,6 +172,13 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 ---
 
 ## 4. Decisiones TOMADAS (cronológico inverso)
+
+### D-011 · URL oficial del sistema y estrategia de entornos
+- **Estado:** TOMADA (2026-07-02) · **Decisor:** Mauricio
+- **Contexto:** hoy existe UNA sola instancia (`staging.impdali.cl`, BD `impdali_daligo`); la biblia mencionaba `daliprueba.cl` y el HANDOFF pedía reconciliar. Al testear producción surgió la duda de si los datos de prueba quedan para siempre y si algo se escribe en Bsale.
+- **Decisión:** la app oficial vivirá en **`daligo.impdali.cl`**; `staging.impdali.cl` queda como ambiente de pruebas. La **separación real** de BD/entorno se ejecuta en F3 (paso P-F3-06), antes de usuarios reales. Mientras tanto: (a) Bsale es solo-lectura por construcción (`BsaleClient` no tiene métodos de escritura), así que probar flujos jamás toca Bsale; (b) los datos de prueba del módulo Producción se resetean on-demand con **`php artisan produccion:limpiar-pruebas`** (borra asignaciones/reportes/tandas/kardex local + sus audits; el catálogo no se toca).
+- **Consecuencias:** P-F3-06 deja de ser "evaluar" y pasa a ser "ejecutar la separación con daligo.impdali.cl como prod"; el go-live parte con BD limpia (comando de limpieza + migración de datos P-F3-03).
+- **Bloquea:** nada hoy.
 
 ### D-000 · [retroactiva] Roles reconciliados a 8 identificadores ASCII
 - **Estado:** TOMADA (2026-06) · **Decisor:** equipo

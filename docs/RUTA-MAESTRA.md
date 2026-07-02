@@ -11,7 +11,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-02 (P-S0-13 auditoría E2E M11 + P-S0-14 pendientes de otros días en el panel; ver `docs/BITACORA-SESIONES.md`) |
+| **Última actualización** | 2026-07-02 (P-S0-13/14/15: auditoría E2E M11, pendientes de otros días, limpieza de pruebas + D-011; ver `docs/BITACORA-SESIONES.md`) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E0 · Consolidación** — CERRADA salvo pendientes menores (P-S0-03/04/05/06 envíos + P-S0-09/10/11/12) |
 | **Próximo paso** | `P-S0-03/04`: despachar briefs (D-003 con tabla lista) → arrancar **E1 · M15 Notificaciones** |
@@ -75,7 +75,8 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-S0-11** · Confirmar seeders visibles (`RUNNING/DONE`) en el log de Actions del próximo deploy
 - [ ] **P-S0-12** · Diagnosticar `git status` del servidor: "ahead of 'origin/main' by 111 commits" — probable remote `origin` apuntando al repo viejo o fetch por URL sin tracking ref. Pedir `git remote -v` en la próxima delegación de infra (no afecta el deploy actual)
 - [x] **P-S0-13** · Auditoría E2E de M11 Producción + hardening pre-demo (pedido del jefe, fuera de plan): 3 exploradores + verificación línea a línea → 5 fixes (whereDate en historial del soplador, locks en devolver/ajustar/destroy espejando aprobar, `max:` anti-dedazo en cantidades, hint stale de asignar) + 3 tests de regresión (361 verdes) + demo local E2E verificada (commit `3ff976d`, 2026-07-02)
-- [x] **P-S0-14** · Panel del jefe: sección "Pendientes de otros días" — las alertas por-aprobar/devueltos son globales pero la cola era solo de hoy → un enviado viejo quedaba contado e invisible (hallazgo del dueño en staging). Partial `_fila-reporte` compartido + test (este push, 2026-07-02)
+- [x] **P-S0-14** · Panel del jefe: sección "Pendientes de otros días" — las alertas por-aprobar/devueltos son globales pero la cola era solo de hoy → un enviado viejo quedaba contado e invisible (hallazgo del dueño en staging). Partial `_fila-reporte` compartido + test (commit `49f695a`, 2026-07-02)
+- [x] **P-S0-15** · Aislamiento de pruebas: comando `produccion:limpiar-pruebas` (borra asignaciones/reportes/tandas/kardex + audits de reportes, con confirmación; catálogo intacto) + **D-011 TOMADA** (URL oficial `daligo.impdali.cl`, staging queda de pruebas, separación real en F3). Verificado: Bsale es solo-lectura por construcción (este push, 2026-07-02)
 
 ---
 
@@ -232,7 +233,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-F3-03** · Migración de datos: peso/dimensiones por SKU, usuarios reales con roles/sucursal
 - [ ] [B:D-001] **P-F3-04** · Manuales de 1 página por rol + capacitación (Pedro, Ricardo, Héctor, sopladores)
 - [ ] **P-F3-05** · Marcha blanca diciembre (doble registro) + monitoreo semanal
-- [ ] **P-F3-06** · Evaluar separación real staging/producción antes de usuarios reales (hoy staging = prod)
+- [ ] **P-F3-06** · Ejecutar la separación real staging/producción antes de usuarios reales (hoy staging = prod): prod = `daligo.impdali.cl` con BD limpia, staging queda en `staging.impdali.cl` (decisión D-011, 2026-07-02)
 - [ ] **P-F3-07** · Go-live + criterio "1 semana sin P1" antes de cortar papel
 
 ---

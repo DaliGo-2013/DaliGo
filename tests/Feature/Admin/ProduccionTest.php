@@ -11,6 +11,7 @@ use App\Models\TipoBotellon;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use OwenIt\Auditing\Models\Audit;
 use Tests\TestCase;
 
 class ProduccionTest extends TestCase
@@ -971,5 +972,43 @@ class ProduccionTest extends TestCase
             ->assertViewHas('alertas', fn ($a) => $a['porAprobar'] === 2)
             ->assertViewHas('pendientesOtrosDias', fn ($p) => $p->count() === 1 && $p->first()->is($deAyer))
             ->assertViewHas('reportes', fn ($r) => $r->count() === 1 && $r->first()->is($deHoy));
+    }
+
+    // --- Comando de limpieza de datos de prueba ---
+
+    public function test_comando_limpiar_pruebas_vacia_el_modulo(): void
+    {
+        // Flujo completo para que exista de todo: tanda + envio + aprobacion
+        // (la aprobacion genera el kardex y las mutaciones dejan audits).
+        $sop = $this->soplador();
+        $reporte = $this->reporteDe($sop, 100);
+        $this->agregarTanda($sop, $reporte, ['primera' => 90], $this->maquina(), $this->tipo());
+        $reporte->update(['estado' => ProduccionReporte::ENVIADO]);
+        $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.aprobar', $reporte));
+
+        $this->assertGreaterThan(0, \App\Models\ProduccionMovimiento::count());
+        $this->assertGreaterThan(0, Audit::where('auditable_type', ProduccionReporte::class)->count());
+
+        $this->artisan('produccion:limpiar-pruebas', ['--force' => true])->assertExitCode(0);
+
+        $this->assertDatabaseCount('produccion_asignaciones', 0);
+        $this->assertDatabaseCount('produccion_reportes', 0);
+        $this->assertDatabaseCount('produccion_registros', 0);
+        $this->assertDatabaseCount('produccion_movimientos', 0);
+        $this->assertSame(0, Audit::where('auditable_type', ProduccionReporte::class)->count());
+        // El catalogo no se toca.
+        $this->assertGreaterThan(0, Maquina::count());
+        $this->assertGreaterThan(0, TipoBotellon::count());
+    }
+
+    public function test_comando_limpiar_pruebas_pide_confirmacion(): void
+    {
+        $this->reporteDe($this->soplador());
+
+        $this->artisan('produccion:limpiar-pruebas')
+            ->expectsConfirmation('¿Borrar TODOS los datos del flujo de producción?', 'no')
+            ->assertExitCode(0);
+
+        $this->assertDatabaseCount('produccion_reportes', 1);
     }
 }

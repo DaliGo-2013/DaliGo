@@ -438,7 +438,7 @@ boleta rápida (dependen de M05), cron de sync.
 > El seguimiento operativo de estos ítems vive en `docs/RUTA-MAESTRA.md` (varios son pasos P-S0-xx de la unidad E0).
 
 - **Rotar la contraseña de la BD** `impdali_daligo`: se compartió por chat en algún momento → cambiarla en cPanel y actualizar `.env` del servidor.
-- **Dominio de staging:** la biblia menciona `daliprueba.cl`; nosotros usamos `staging.impdali.cl`. Reconciliar antes de producción real.
+- **Dominios/entornos (D-011, 2026-07-02):** la app oficial vivirá en **`daligo.impdali.cl`**; `staging.impdali.cl` queda como pruebas (hoy sigue siendo UNA sola instancia/BD — la separación real se ejecuta en F3, P-F3-06). Los datos de prueba de Producción se resetean con `php artisan produccion:limpiar-pruebas` (on-demand, con confirmación; jamás agendarlo). Recordatorio: Bsale es solo-lectura por construcción (`BsaleClient` no tiene métodos de escritura).
 - **Cron de cola:** cuando llegue M15 (notificaciones), agregar un segundo cron `php artisan queue:work --stop-when-empty --max-time=55` (el server no tiene daemons).
 - **Matriz de permisos por módulo:** se define en Sprint 0 con el negocio; hoy solo hay permisos de usuarios/roles + los nuevos de M01.
 - **MySQL 5.7 EOL:** pedir upgrade a 8.x cuando el hosting lo permita.

@@ -21,6 +21,17 @@
 
 ## Sesiones
 
+### [2026-07-02] Aislamiento de pruebas: comando de limpieza + D-011 (URL oficial y entornos)
+- **Quién:** Mauricio + Claude (Opus)
+- **Objetivo declarado:** P-S0-15 (duda del dueño: ¿los datos de prueba quedan para siempre? ¿se escribe algo en Bsale?)
+- **Qué se hizo:**
+  - **Verificado con evidencia:** Bsale es SOLO-LECTURA por construcción (`BsaleClient` únicamente tiene `get()`/`each()`; los `->delete()` de las syncs son sobre tablas espejo locales; el kardex es local y el push está sin construir hasta D-005).
+  - **Aclarado:** hoy hay UNA sola instancia/BD (staging = futura prod) — los datos de prueba SÍ persisten. Nuevo comando **`produccion:limpiar-pruebas`** (confirmación + `--force`; borra asignaciones/reportes/tandas/kardex + audits de reportes en transacción; catálogo/usuarios/Bsale intactos) + 2 tests.
+  - **D-011 TOMADA** (Mauricio): oficial futura = `daligo.impdali.cl`, staging queda de pruebas, separación real de entornos se ejecuta en F3 (P-F3-06 actualizado). HANDOFF §9 reconciliado (cierra la deuda "dominio de staging").
+  - Incidente de entorno local: Windows bloqueó `php.exe` (Control de aplicaciones) a mitad de sesión; el dueño lo destrabó y se continuó (no se pusheó nada sin tests verdes).
+- **Pasos marcados:** P-S0-15 [x]. · **Decisiones:** D-011 tomada. · **Delegaciones:** ninguna.
+- **Próximo paso:** sin cambio — P-S0-03/04 → E1 · M15 Notificaciones.
+
 ### [2026-07-02] Fix panel del jefe: "Pendientes de otros días" (alerta sin destino)
 - **Quién:** Mauricio + Claude (Opus)
 - **Objetivo declarado:** P-S0-14 (hallazgo del dueño en staging: "Por aprobar: 1" con "Cola · hoy: 0")
