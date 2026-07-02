@@ -29,6 +29,7 @@ sesión restante.
 | 02-07 | Max-2 Forjador B | Bootstrap stream 2 + PLAN-M15 (pre-flota) | L | Opus 4.8 · high | n/d (³) | n/d (³) | n/d | HECHA (plan aprobado con 2 ajustes) |
 | 02-07 | Max-2 Forjador B | Visto bueno + P-M15-01 + P-M15-02 (+ arranque P-M15-04) | L | **Fable 5** (⁴) | n/d | 26% / 11% (captura 12:57) | ≤26% | HECHA (verificada) |
 | 02-07 | Max-1 Forjador A | P-SPK-01 spike PWA (+ arranque P-SPK-02) | L | **Fable 5** (⁴)(⁵) | n/d | **86%** / 12% (captura 12:57) | ≤86% | HECHA (verificada, celular real OK) |
+| 02-07 | Max-2 Forjador B | P-M15-04 + prompt delegación P-M15-03 | L | **Fable 5** (⁴) | pendiente | pendiente | pendiente | P-M15-04 HECHA (verificada) · 03 PARCIAL |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
