@@ -71,6 +71,10 @@ CONTINÚA con el siguiente. No propongas soluciones: solo reporta lo que observa
 
 Los campos `{{...}}` se rellenan al redactar cada prompt; los huecos `«PEGAR...»` los rellena Mauricio.
 
+> **Dos públicos, dos documentos:** las plantillas de arriba son para la **IA EXTERNA** (cPanel/QA,
+> formato de respuesta cerrado). Los prompts para las **cuentas Claude de la flota** (orientarse,
+> planificar, construir, auditar, depurar, dirigir) viven en [`RECETARIO-PROMPTS.md`](RECETARIO-PROMPTS.md).
+
 ## 5. Archivo de evidencia
 
 La respuesta pegada se archiva **íntegra y sin editar** según la convención de

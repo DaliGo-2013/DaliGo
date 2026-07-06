@@ -21,6 +21,18 @@
 
 ## Sesiones
 
+### [2026-07-02] Recetario de prompts oficial adaptado + 3 skills de flota (P-S0-18)
+- **Quién:** Mauricio + Claude (cuenta original/casa)
+- **Objetivo declarado:** evaluar la [biblioteca oficial de prompts de Claude Code](https://code.claude.com/docs/en/prompt-library) y sincronizar el repo local (18 commits detrás).
+- **Qué se hizo:**
+  - Pull fast-forward limpio de los 18 commits de la flota; entorno local migrado y suite verificada (**372 verdes**).
+  - Análisis de la biblioteca oficial (48 prompts, 5 fases SDLC): veredicto SÍ adaptable — ~22 llenan vacíos reales del flujo; el resto duplica el sistema documental o no aplica a HostGator.
+  - **`docs/delegacion/RECETARIO-PROMPTS.md`** creado: 24 fichas R-01…R-71 en español, organizadas por momento del flujo y por rol de la flota, con slots, ejemplos DaliGo reales, gotchas caros horneados (R-31) y veredictos unificados con PROTOCOLO-DELEGACION.
+  - **3 skills delgadas** en `.claude/skills/` que viajan a las 6 cuentas vía git pull: `/arranque` (PROTOCOLO-SESION §1), `/cierre` (checklist §3), `/pre-merge` (auditoría R-31). Regla anti-drift: la skill solo referencia el doc canónico. Regla de graduación en R-71: un prompt se vuelve skill cuando 2+ cuentas lo usan semanalmente.
+  - Integraciones: fila en el mapa del README, nota en PROTOCOLO-DELEGACION §4 (plantillas=IA externa vs recetario=flota), referencia en ambos KICKOFF-*.
+- **Pasos marcados:** P-S0-18 [x]. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** los del panel §0 (streams de la flota siguen su tablero; Mauricio: P-S0-03/04 briefs).
+
 ### [2026-07-02] P-SPK-02 hecho: cola offline de tandas (el soplador registra sin señal)
 - **Quién:** Mauricio + Claude (Opus 4.8, Max-1/stream 1) — dictado del Director (Opus 4.8·xhigh)
 - **Objetivo declarado:** P-SPK-02 (día 2 del tablero) — cola IndexedDB con idempotencia.

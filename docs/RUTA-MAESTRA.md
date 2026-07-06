@@ -11,7 +11,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-02 (**P-SPK-01 + P-SPK-02 hechos** — mi-reporte instalable con SW, fallback offline y cola IndexedDB idempotente; P-SPK-03 prueba de campo + memo es lo próximo del stream 1) |
+| **Última actualización** | 2026-07-02 (**P-SPK-01 + P-SPK-02 hechos** — mi-reporte instalable con SW, fallback offline y cola IndexedDB idempotente; P-SPK-03 prueba de campo + memo es lo próximo del stream 1 · **P-S0-18**: recetario de prompts + skills `/arranque` `/cierre` `/pre-merge`) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
@@ -79,6 +79,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-S0-15** · Aislamiento de pruebas: comando `produccion:limpiar-pruebas` (borra asignaciones/reportes/tandas/kardex + audits de reportes, con confirmación; catálogo intacto) + **D-011 TOMADA** (URL oficial `daligo.impdali.cl`, staging queda de pruebas, separación real en F3). Verificado: Bsale es solo-lectura por construcción (commit `3d1defd`, 2026-07-02)
 - [x] **P-S0-16** · Kickoff del **stream 2** (segunda cuenta Claude): arranca E1 · M15 en la rama `feature/m15-notificaciones` con brief completo en `docs/delegacion/KICKOFF-E1-M15.md` (lectura obligatoria de toda la doc, reglas anti-colisión, territorio prohibido, merge coordinado; deploy/CI verificados solo-main) (commit `4da5de2`, 2026-07-02)
 - [x] **P-S0-17** · **Flota constituida** (6 cuentas: 2 Max forjadores + 4 Pro con roles Director/QA/Investigador/Escriba) + tablero de 3 días: `docs/fleet/{FLOTA,TABLERO-3-DIAS,CONSUMO}.md` y `docs/delegacion/KICKOFF-DIRECTOR.md`. Incluye matriz modelo×esfuerzo (estado Anthropic verificado 2026-07-02) y ledger empírico de consumo vía `/usage` (este push, 2026-07-02)
+- [x] **P-S0-18** · **Recetario de prompts + 3 skills de flota**: biblioteca oficial de Claude Code (48 prompts) evaluada y adaptada → `docs/delegacion/RECETARIO-PROMPTS.md` (24 fichas R-xx en español, por momento del flujo y rol) + skills `/arranque`, `/cierre`, `/pre-merge` en `.claude/skills/` (delgadas, anti-drift: solo referencian el doc canónico; viajan a las 6 cuentas vía pull) (este push, 2026-07-02)
 
 ---
 

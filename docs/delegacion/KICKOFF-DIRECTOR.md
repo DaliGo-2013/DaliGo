@@ -58,3 +58,6 @@ Los mismos del repo (fuente: `CLAUDE.md`): tests verdes antes de push, `whereDat
 fechas casteadas, locks en check-then-act, componentes `<x-*>`, paleta 4 colores, responsive
 375/768/1024, español, bitácora de errores el mismo día, regla del mismo push, evidencia o no
 pasó. Si un parte de cierre dice "hecho" sin evidencia → estado `[~]` y se devuelve.
+
+> **Recetario de prompts** (`docs/delegacion/RECETARIO-PROMPTS.md`): tú NO lo consumes — verificas
+> que los demás lo usen. Los veredictos de las auditorías R-31 del Auditor alimentan tu ledger.

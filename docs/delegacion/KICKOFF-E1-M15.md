@@ -136,5 +136,8 @@ y commit) y preséntaselo a Mauricio para su visto bueno ANTES de la primera mig
 
 ---
 
+**Prompts del día a día:** `docs/delegacion/RECETARIO-PROMPTS.md` — tus secciones son §3 y §4
+(R-20…R-34; para traer main a tu rama usa R-33). Skills disponibles: `/arranque`, `/cierre`, `/pre-merge`.
+
 **Arranque sugerido de tu primera sesión:** setup (§2) → lectura (§3) → `docs/planes/PLAN-M15.md`
 con sello de vigencia → visto bueno de Mauricio → P-M15-01. Éxito 🚀
