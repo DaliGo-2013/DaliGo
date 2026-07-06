@@ -29,6 +29,13 @@ archivo automáticamente al iniciar cada sesión en este repo).
 
 ## Cómo trabajar en DaliGo (formas correctas)
 
+### Recetario de prompts (consúltalo ANTES de improvisar uno propio)
+Ante cualquier prompt por redactar —delegaciones, planes, auditorías, fichas, cierres—, consulta
+PRIMERO `docs/delegacion/RECETARIO-PROMPTS.md` según el momento del flujo: orientarse (§1),
+planificar (§2), construir (§3), pre-merge (§4), incidentes, datos, dirigir y cierre. Las fichas
+traen los gotchas de este proyecto ya horneados; un prompt improvisado los pierde. Atajos:
+skills `/arranque`, `/cierre` y `/pre-merge` (delgadas — el texto canónico vive en el recetario).
+
 ### Stack y convenciones
 - **Laravel 12** + **Blade**, **PHP 8.3.31** (fijado en `composer.json` → `config.platform.php`; local = producción).
 - **Tailwind CSS v4** vía `@tailwindcss/vite` (sintaxis `@import 'tailwindcss'`, **no** `@tailwind`).

@@ -1,6 +1,6 @@
 ---
 name: arranque
-description: Retomar el proyecto DaliGo en 10 minutos - ejecuta el arranque de sesion del PROTOCOLO-SESION (panel de estado, ultima bitacora, verificacion papel-codigo) y termina declarando el paso P-xxx objetivo de la sesion. Usar al inicio de CADA sesion de trabajo.
+description: Use when starting a work session in this DaliGo repo - as the FIRST substantive action of the session, or when the user says retomar, arranquemos, empecemos, "donde estamos" or "que sigue". Runs the PROTOCOLO-SESION s1 opening (state panel of RUTA-MAESTRA, last bitacora entry, papel-codigo check against git log) and ends by declaring the session objective P-xxx. Do NOT start coding before this has run.
 ---
 
 Ejecuta el arranque de sesión de `docs/PROTOCOLO-SESION.md` §1 ("retomar el proyecto en 10 minutos"),

@@ -1,6 +1,6 @@
 ---
 name: cierre
-description: Cierre de sesion DaliGo - ejecuta la checklist obligatoria de 6 puntos del PROTOCOLO-SESION (marcar pasos en RUTA-MAESTRA, bitacora, decisiones, HANDOFF, mismo push) mostrando el estado de cada item. Usar como ULTIMO acto de cada sesion de trabajo.
+description: Use when the user asks to close or end the session (cerremos, listo por hoy, cierra la sesion, terminemos) OR when you are about to make the FINAL commit/push that completes a P-xxx step with its .md updates. Runs the mandatory 6-point closing checklist of PROTOCOLO-SESION s3 (RUTA-MAESTRA marks with hashes, bitacora entry, decisions, HANDOFF, same-push rule), showing the state of each item. A session must not end without this.
 ---
 
 Ejecuta la checklist de cierre de `docs/PROTOCOLO-SESION.md` §3, ítem por ítem, mostrando el

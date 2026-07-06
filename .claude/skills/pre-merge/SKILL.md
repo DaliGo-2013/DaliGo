@@ -1,6 +1,6 @@
 ---
 name: pre-merge
-description: Auditoria adversarial de gates antes de merge a main en DaliGo (main = deploy automatico a produccion). Ejecuta la ficha R-31 del recetario sobre una rama o rango de commits y entrega tabla de gates + veredicto APROBADO/RECHAZADO. Usar antes de CADA merge o push relevante.
+description: Use BEFORE merging a feature branch into main, or before any push to main containing significant code changes - in this repo main deploys AUTOMATICALLY to production. Also use when the user says revisa antes del merge, auditoria pre-merge or estamos listos para mergear. Runs the adversarial R-31 gate audit from the recetario (tests, build, MySQL 5.7, locks, permisos, x-components, responsive) and returns a gate table + APROBADO/RECHAZADO verdict.
 ---
 
 Ejecuta la auditoría adversarial R-31 de `docs/delegacion/RECETARIO-PROMPTS.md` §4 sobre la rama
