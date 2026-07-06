@@ -5,6 +5,9 @@
             || $orden->mano_obra || $orden->fecha_aviso || $orden->fecha_retiro;
         $esGarantia = $orden->condicion_efectiva === 'garantia';
         $esReparacion = ! $esGarantia;
+        // En Coquimbo y Abate Molina se RECIBE pero no se repara: la reparacion es
+        // en Mirador (casa matriz). Se rotula cuando la recepcion fue en otra sucursal.
+        $reparaEnMatriz = $orden->sucursal && ! $orden->sucursal->es_central && $sucursalCentral;
     @endphp
 
     <x-slot name="header">
@@ -30,6 +33,28 @@
     <div class="py-12">
         <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
 
+            <x-status-alert :status="session('status')" />
+
+            {{-- Por confirmar: llego por QR y el encargado aun no recibe la maquina. --}}
+            @can('manage servicio tecnico')
+                @if ($orden->por_confirmar)
+                    <div class="flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-brand-700">Ingreso por QR — por confirmar</h3>
+                            <p class="mt-0.5 text-sm text-brand-700">
+                                El cliente lo envió desde su celular. Revisa los datos con el equipo físico y confirma la recepción.
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ route('admin.servicio-tecnico.confirmar', $orden) }}"
+                              class="shrink-0"
+                              onsubmit="return confirm('¿Confirmar la recepción de la orden {{ $orden->folio }}? Se le enviará el detalle al cliente por correo.');">
+                            @csrf
+                            <x-primary-button>Confirmar recepción</x-primary-button>
+                        </form>
+                    </div>
+                @endif
+            @endcan
+
             {{-- Estado + condicion --}}
             <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <span class="text-sm text-neutral-500">Estado actual:</span>
@@ -54,7 +79,17 @@
                     <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ ucfirst($orden->tipo_equipo) }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Código (producto Dali)</dt><dd class="text-sm text-neutral-900">{{ $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">N° de serie</dt><dd class="text-sm text-neutral-900">{{ $orden->numero_serie ?: '—' }}</dd></div>
-                    <div><dt class="text-xs text-neutral-400">Sucursal de recepción</dt><dd class="text-sm text-neutral-900">{{ $orden->sucursal?->nombre ?: '—' }}</dd></div>
+                    <div>
+                        <dt class="text-xs text-neutral-400">Sucursal de recepción</dt>
+                        <dd class="text-sm text-neutral-900">
+                            {{ $orden->sucursal?->nombre ?: '—' }}
+                            @if ($reparaEnMatriz)
+                                <span class="mt-0.5 block text-xs text-neutral-500">Se repara en {{ $sucursalCentral->nombre }} (casa matriz)</span>
+                            @elseif ($orden->sucursal?->es_central)
+                                <span class="mt-0.5 block text-xs text-neutral-500">Recepción y reparación (casa matriz)</span>
+                            @endif
+                        </dd>
+                    </div>
                     <div><dt class="text-xs text-neutral-400">Fecha de ingreso</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_ingreso?->format('d-m-Y') ?: '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Fecha de entrega (estimada)</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_entrega?->format('d-m-Y') ?: '—' }}</dd></div>
                 </dl>

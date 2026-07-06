@@ -21,6 +21,20 @@
 
 ## Sesiones
 
+### [2026-07-06] Ingreso a servicio técnico por QR (piloto de P-M12-01) + historial compartido con separación por sucursal
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** adelantar **P-M12-01** como piloto — que un cliente ingrese su máquina al taller escaneando un QR del mostrador, **sin crearse usuario**, y reciba el folio por correo.
+- **Qué se hizo:** (rama `feature/m12-ingreso-qr-piloto`, **sin mergear aún** — no se puede marcar `[x]` sin QA staging)
+  - **Flujo público por QR:** ruta sin auth `ingreso-taller` con link **firmado** (`URL::signedRoute`, sucursal embebida) + `throttle:6,1` + honeypot; `App\Http\Controllers\Publico\IngresoTallerPublicoController` (create/store/gracias); vistas `publico/taller/*` sobre `<x-guest-layout>` (mobile-first). El envío crea una orden **real** (`fuente='qr'`, `estado='recibido'`, `confirmada_at=null`) — NO un pre-ingreso aparte.
+  - **Confirmación del encargado:** `ServicioTecnicoController::confirmar` (permiso `manage`, `lockForUpdate` anti doble-envío) setea `confirmada_at` y AHÍ dispara el correo. Bloque "Por confirmar (QR)" + auto-refresco liviano en el índice; botón en el detalle.
+  - **Correo piloto standalone:** `App\Mail\IngresoTallerRecibido` + `emails/taller/recibido` (mailer nativo `config/mail.php`). Migrable al motor **M15** (evento `taller.recibido`) cuando llegue a main.
+  - **QR imprimible:** página admin `servicio-tecnico/qr` (un QR firmado por sucursal), dibujado en el cliente con `qrcode` (npm) vía **import dinámico** → chunk aparte, no engorda el bundle global; assets `public/build` commiteados.
+  - **Historial compartido + separación por sucursal de recepción** (pedido del dueño): el listado ya era compartido por las 3 sucursales; se agregó **filtro "Sucursal (recepción)"** + badge "Recibido en X" por fila; en el detalle se rotula **"Se repara en Mirador (casa matriz)"** cuando la recepción NO fue central (Coquimbo/Abate reciben pero no reparan). Derivado de `es_central`, **sin campo nuevo**.
+  - **Migración** `…140000_add_email_y_confirmacion_a_ordenes_servicio` (idempotente): `cliente_email`, `confirmada_at`.
+  - **Tests:** 14 del flujo público (`IngresoTallerPublicoTest`) + 3 del módulo (filtro por sucursal; detalle repara-en-Mirador) → **391 verdes**.
+- **Pasos marcados:** ninguno `[x]`; **P-M12-01 [EN CURSO]** (piloto en rama; falta QA staging + merge por el gate). · **Decisiones:** ninguna (regla Mirador-casa-matriz la confirmó el dueño; correo standalone-vs-M15 = decisión de implementación del piloto). · **Delegaciones:** ninguna.
+- **Próximo paso:** QA en staging del flujo QR (escanear → enviar → confirmar → correo real con SMTP) + gate `/pre-merge` antes de mergear a main; luego migrar el correo a M15.
+
 ### [2026-07-02] Recetario de prompts oficial adaptado + 3 skills de flota (P-S0-18)
 - **Quién:** Mauricio + Claude (cuenta original/casa)
 - **Objetivo declarado:** evaluar la [biblioteca oficial de prompts de Claude Code](https://code.claude.com/docs/en/prompt-library) y sincronizar el repo local (18 commits detrás).
