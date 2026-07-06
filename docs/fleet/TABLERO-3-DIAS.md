@@ -39,10 +39,20 @@
 
 ## Incidencias
 
-### R-01 · Reconciliación pendiente: P-S0-18 en main sin parte de cierre
-Commit `4d7caa1` (recetario de prompts + skills de flota, toca KICKOFF-DIRECTOR) apareció en
-main sin parte de cierre al Director. Trabajo se ve legítimo (Opus 4.8, docs). Pedir a
-Mauricio: ¿qué cuenta lo hizo y su /usage? — para el ledger y la regla papel↔código.
+### R-01 · Reconciliación P-S0-18 — CERRADA (origen: Mauricio)
+Commit `4d7caa1` (recetario de prompts + skills) lo hizo Mauricio mismo en otra compu en
+tiempo muerto (fuente: biblioteca oficial de prompts de Claude Code). Ledger: /usage n/d.
+**Derivada → I-02:** la intención era apoyo AUTOMÁTICO del recetario, pero quedaron skills
+de ejecución manual. Corrección dictada a Max-1 (tarea F-01 abajo).
+
+### F-01 · Recetario como apoyo automático (corrección de P-S0-18) — dictada a Max-1
+La idea del dueño: que las IAs usen el recetario solas cuando la tarea lo amerite, sin
+invocar skills a mano. Mecanismo dictado: (a) regla corta en CLAUDE.md (se carga sola en
+CADA sesión) que ordena consultar `docs/delegacion/RECETARIO-PROMPTS.md` cuando la tarea
+calce con sus momentos (planificar/construir/pre-merge/incidentes/cierre); (b) reescribir
+los `description:` de las 3 skills para que el modelo las auto-dispare por contexto (así
+funciona el auto-trigger de skills: por descripción, no por invocación manual). Talla S,
+territorio stream 1 (CLAUDE.md + .claude/skills en main).
 
 ### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
 Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,

@@ -33,6 +33,7 @@ sesión restante.
 | 02-07 | Max-1 Forjador A | P-SPK-02 cola IndexedDB offline | XL | Opus 4.8 · xhigh ✓ | **0% / 12%** (captura 13:32) | **pendiente — Mauricio: /usage AHORA en Max-1** | pendiente | HECHA (verificada) — este Δ es el primer dato limpio de XL en Opus |
 | 02-07 | Max-2 Forjador B | Cierre P-M15-03 (archivo evidencia + hallazgo I-01) | S | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada) |
 | 06-07 | Max-2 Forjador B | P-M15-05 + P-M15-06 (fd31b2e) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada, 4 correcciones → gate merge) |
+| 05-07 | Mauricio (compu alterna) | P-S0-18 recetario + skills (4d7caa1) | M | Opus 4.8 | n/d | n/d | n/d | HECHA (fuera de flota; corrección F-01 dictada) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
