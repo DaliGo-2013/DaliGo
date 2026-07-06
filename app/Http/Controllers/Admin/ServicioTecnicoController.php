@@ -126,10 +126,19 @@ class ServicioTecnicoController extends Controller
 
         $orden = $orden->fresh();
 
+        // El correo es SECUNDARIO: si el mailer del servidor no esta configurado
+        // (SMTP pendiente, P-M15-10), su fallo NO debe tumbar la recepcion ya
+        // confirmada. Se loguea y se sigue.
         if (filled($orden->cliente_email)) {
-            Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
+            try {
+                Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
 
-            return back()->with('status', "Recepción de la orden {$orden->folio} confirmada y avisada a {$orden->cliente_email}.");
+                return back()->with('status', "Recepción de la orden {$orden->folio} confirmada y avisada a {$orden->cliente_email}.");
+            } catch (\Throwable $e) {
+                report($e);
+
+                return back()->with('status', "Recepción de la orden {$orden->folio} confirmada. No se pudo enviar el correo al cliente (revisa la configuración de correo del servidor).");
+            }
         }
 
         return back()->with('status', "Recepción de la orden {$orden->folio} confirmada.");
