@@ -45,6 +45,7 @@
                                 @php
                                     $filas = [
                                         'Equipo' => $tipo,
+                                        'Código' => $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : null,
                                         'N° de serie' => $orden->numero_serie,
                                         'Sucursal' => $orden->sucursal?->nombre,
                                         'Fecha de ingreso' => $orden->fecha_ingreso?->format('d-m-Y'),

@@ -21,6 +21,16 @@
 
 ## Sesiones
 
+### [2026-07-06] SMTP en prod + formulario del QR: código del producto (buscador de catálogo) y fecha de hoy
+- **Quién:** Marco + Claude (Opus 4.8) + IA de cPanel
+- **Objetivo declarado:** dejar operativo el correo del piloto P-M12-01 e iterar el formulario con feedback de prueba en vivo.
+- **Qué se hizo:**
+  - **SMTP configurado en producción** (delegación a IA-cPanel, veredicto APROBADO CON OBSERVACIONES): cuenta `servicio@impdali.cl`, `.env` con `MAIL_MAILER=smtp` / `mail.impdali.cl:465` / `smtps` / from `servicio@impdali.cl`; `config:cache`; prueba de envío `ENVIADO_SIN_ERROR`. El correo del QR ya se entrega de verdad. **Pendiente:** rotar la clave (quedó en `~/.bash_history` durante el setup) + prueba de entregabilidad a un dominio externo.
+  - **Formulario público del QR** (rama `feature/qr-form-producto-fecha`): campo **"Código del equipo (producto Dali)"** con autocompletado del catálogo (SKU/nombre) reusando `<x-buscador-remoto>`; endpoint público nuevo `ingreso-taller/buscar-producto` (sin auth, `throttle:30,1` por ser autocompletado; solo lee SKU/nombre). `producto_id` validado (`exists`) y guardado, y ahora sale en el correo. Campo **"Fecha de ingreso" = hoy** (solo lectura; el servidor sigue forzando la fecha).
+  - 5 tests nuevos (búsqueda pública, mínimo 2 caracteres, guarda `producto_id`, rechaza producto inexistente, render de código+fecha) → **396 verdes**. `view:clear` + build (CSS 43 kB).
+- **Pasos marcados:** ninguno (P-M12-01 sigue [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** SMTP (IA-cPanel) — reporte APROBADO CON OBSERVACIONES.
+- **Próximo paso:** rotar la clave del correo (prompt entregado) + QA real end-to-end (QR → enviar con un Gmail → confirmar → recibir el correo, ver si cae en Recibidos o Spam).
+
 ### [2026-07-06] Ingreso a servicio técnico por QR (piloto de P-M12-01) + historial compartido con separación por sucursal
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Objetivo declarado:** adelantar **P-M12-01** como piloto — que un cliente ingrese su máquina al taller escaneando un QR del mostrador, **sin crearse usuario**, y reciba el folio por correo.

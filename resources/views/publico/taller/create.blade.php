@@ -68,11 +68,29 @@
             <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-1.5" />
         </div>
 
+        {{-- Código del producto Dali: autocompletado contra el catálogo (SKU o
+             nombre). Opcional; escribe el código que trae el equipo. --}}
+        <x-buscador-remoto
+            name="producto_id"
+            label="Código del equipo (producto Dali)"
+            chip="Producto"
+            :endpoint="route('ingreso-taller.buscar-producto')"
+            placeholder="Escribe el código (SKU) o el nombre…"
+            hint="Opcional. Búscalo por el código que trae el equipo (ej. LB-07)." />
+
         <div>
             <x-input-label for="numero_serie" value="N° de serie *" />
             <x-text-input id="numero_serie" name="numero_serie" type="text" class="mt-1.5 block w-full"
                           :value="old('numero_serie')" required placeholder="El número que trae el equipo" />
             <x-input-error :messages="$errors->get('numero_serie')" class="mt-1.5" />
+        </div>
+
+        <div>
+            <x-input-label for="fecha_ingreso" value="Fecha de ingreso" />
+            <x-text-input id="fecha_ingreso" type="date"
+                          class="mt-1.5 block w-full pointer-events-none bg-neutral-50 text-neutral-500"
+                          :value="now()->format('Y-m-d')" readonly tabindex="-1" />
+            <x-input-hint>Es la fecha de hoy.</x-input-hint>
         </div>
 
         <div>

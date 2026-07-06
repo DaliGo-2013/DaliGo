@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\IngresoTallerRecibido;
 use App\Models\OrdenServicio;
+use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -99,6 +100,63 @@ class IngresoTallerPublicoTest extends TestCase
 
         // El correo NO sale en el envio: sale cuando el encargado confirma.
         Mail::assertNothingSent();
+    }
+
+    public function test_formulario_muestra_codigo_y_fecha_de_hoy(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->get($this->linkCreate($sucursal))
+            ->assertOk()
+            ->assertSee('Código del equipo')
+            ->assertSee('Fecha de ingreso')
+            ->assertSee(now()->format('Y-m-d'));   // fecha de hoy prellenada
+    }
+
+    public function test_buscar_producto_publico_devuelve_coincidencias(): void
+    {
+        $producto = Producto::factory()->create(['sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black']);
+
+        // Sin login (es público): matchea por SKU y por nombre.
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-07']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $producto->id]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Silver']))
+            ->assertOk()
+            ->assertJsonFragment(['sku' => 'LB-07']);
+    }
+
+    public function test_buscar_producto_publico_exige_dos_caracteres(): void
+    {
+        Producto::factory()->create(['sku' => 'X1']);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'X']))
+            ->assertOk()
+            ->assertExactJson([]);
+    }
+
+    public function test_envio_publico_guarda_producto_id(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+        $producto = Producto::factory()->create();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['producto_id' => $producto->id]))
+            ->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'producto_id' => $producto->id,
+            'fuente' => 'qr',
+        ]);
+    }
+
+    public function test_producto_inexistente_es_rechazado(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['producto_id' => 999999]))
+            ->assertSessionHasErrors('producto_id');
     }
 
     public function test_honeypot_lleno_no_crea_orden(): void
