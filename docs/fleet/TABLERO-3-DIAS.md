@@ -30,7 +30,7 @@
 
 | Cuenta | Tarea | Talla | Modelo·Esfuerzo | Hecho cuando |
 |---|---|---|---|---|
-| Max-1 | [~] **P-SPK-03** · Prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — *avance reportado 06-07: memo redactado con sello, verificado adversarialmente (95% fiel, 0 discrepancias de fondo), guardarraíl golden-hash agregado (tocar offline.blade.php sin bump de CACHE pone roja la suite). NADA pusheado aún (cierre en un solo push). BLOQUEADO en insumos de Mauricio: (a) prueba de campo con el guion A/B de Max-1, (b) material I-01 para archivar, (c) /usage* | L | Opus 4.8 · high (memo con Fable 5) | Memo sellado; RUTA-MAESTRA marca P-SPK-01..03 |
+| Max-1 | [~] **P-SPK-03** · Prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — *avance 06-07: memo redactado con sello, verificado adversarialmente (95% fiel), guardarraíl golden-hash. PRUEBA DE CAMPO APROBADA por el dueño 06-07 (capturas verificadas por Director): A OK (2 tandas offline con contador → sync sola al volver señal), B OK (matar app con cola pendiente → drena al reabrir), 4/4 tandas sin duplicados en el reporte del jefe, motivo por tanda ("2ª: Rebaba") sobrevivió la cola offline. Falta solo: Mauricio pega a Max-1 el resultado + material I-01 → push único de cierre + parte con /usage* | L | Opus 4.8 · high (memo con Fable 5) | Memo sellado; RUTA-MAESTRA marca P-SPK-01..03 |
 | Max-2 | [x] **P-M15-05** (reintentos backoff + vista `/admin/notificaciones`) + **P-M15-06** (campanita nav, cambio mínimo, build + grep del bundle) — *VERIFICADO por Director 06-07 con auditoría adversarial de 3 lentes sobre `fd31b2e` (22 archivos, 397 tests, Opus 4.8 ✓): claim atómico REAL (transaction+lockForUpdate+UPDATE, dispatch fuera), robusto a scheduler degradado, backoff de claves notif_*, compartidos 100% aditivos con conteos exactos, territorio limpio, RoleMatrixSeedTest +1 legítimo, bundle recompilado de verdad (lg\:flex/lg\:hidden + clases nuevas), 14/15 tests sólidos. HALLAZGOS → GATE de P-M15-09: (1) MEDIO móvil sin bandeja legible (operario en celular no puede LEER sus notificaciones — contra reglas de operario de CLAUDE.md); (2) marcarLeida sin guard canal=database (saca fallidas del reintentador); (3) withoutOverlapping() sin TTL (24h vs convención (15) del archivo); (4) pendientes huérfanas sin barrido si crash entre commit y dispatch. Menores anotados: claim no limpia programada_para, 1 test de humo, 3 queries/render duplicadas* | L | Opus 4.8 · high | Vistas funcionando en su local; suite verde en la rama |
 | Director | [ ] Informe ejecutivo de los 3 días para Mauricio (avance, consumo real por cuenta, tabla de tallas calibrada) + tablero de los próximos 3 días (propuesta) | M | Sonnet 5 · high | Informe entregado; CONSUMO.md con la tabla calibrada |
 | QA | [ ] QA integral del spike (guion adversarial: doble envío, foto grande, matar app) + guion QA-FUNCIONAL-STAGING para M15 (se usará post-merge) | M | Sonnet 5 · high | Ambos guiones entregados; hallazgos del spike reportados a Max-1 vía Director |
@@ -60,11 +60,13 @@ rama M15). Timeline afinada con el baseline del corrector: el fix de P-S0-07 ope
 mañana (`sync-stock` corrió 07:54/08:54/09:54 hora log) y la reversión a `*/20` ocurrió entre
 ~09:54 y ~10:50 hora log — cambio NO registrado, cPanel sin historial de ediciones de cron
 (verificado). **Corrector aplicado 02-07 ~13:25 CDT** (IA-cPanel, 5/6 pasos OK): scheduler de
-vuelta a `* * * * *`, queue:work intacto, `schedule:list` muestra las 4 syncs. **Pendiente
-para CERRAR:** (1) confirmar primera corrida de `sync-stock` post-fix (grep tras las 13:50 CDT);
-(2) Max-1 archiva la respuesta íntegra en docs/qa/INFRA/ (main). **Vigilancia:** si vuelve a
-revertirse ya no es accidente → cazar el proceso que lo cambia. GATE pre-P-M15-09 se mantiene
-hasta cerrar.
+vuelta a `* * * * *`, queue:work intacto, `schedule:list` muestra las 4 syncs. **FIX VERIFICADO
+06-07** (grep del dueño): `sync-stock` con 3 corridas horarias consecutivas post-fix (08:54 /
+09:54 / 10:54 hora-log). **Para CERRAR:** (1) chequeo `date && tail -5 laravel.log` — la última
+línea del grep es 03-07 hora-log y hoy es 06-07; probable desfase de reloj del log, pero hay que
+descartar re-reversión; (2) Max-1 archiva corrector + grep en docs/qa/INFRA/ (main).
+**Vigilancia:** si se revirtió de nuevo, ya no es accidente → cazar el proceso. GATE pre-P-M15-09
+se mantiene hasta (1) y (2).
 
 ## Reglas del tablero
 
