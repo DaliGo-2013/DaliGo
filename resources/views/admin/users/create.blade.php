@@ -53,14 +53,14 @@
 
                     <div>
                         <x-input-label for="password" value="Contraseña inicial" />
-                        <x-text-input id="password" class="mt-1.5" type="password" name="password" required autocomplete="new-password" placeholder="••••••••" />
+                        <x-password-input id="password" class="mt-1.5" name="password" required autocomplete="new-password" placeholder="••••••••" />
                         <x-input-hint>Mínimo 8 caracteres.</x-input-hint>
                         <x-input-error :messages="$errors->get('password')" class="mt-2" />
                     </div>
 
                     <div>
                         <x-input-label for="password_confirmation" value="Confirmar contraseña" />
-                        <x-text-input id="password_confirmation" class="mt-1.5" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="••••••••" />
+                        <x-password-input id="password_confirmation" class="mt-1.5" name="password_confirmation" required autocomplete="new-password" placeholder="••••••••" />
                     </div>
 
                 </form>
