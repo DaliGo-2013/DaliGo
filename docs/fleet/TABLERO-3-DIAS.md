@@ -30,14 +30,19 @@
 
 | Cuenta | Tarea | Talla | Modelo·Esfuerzo | Hecho cuando |
 |---|---|---|---|---|
-| Max-1 | [ ] **P-SPK-03** · Prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 | L | Opus 4.8 · high (memo con Fable 5) | Memo sellado; RUTA-MAESTRA marca P-SPK-01..03 |
-| Max-2 | [ ] **P-M15-05** (reintentos backoff + vista `/admin/notificaciones`) + **P-M15-06** (campanita nav, cambio mínimo, build + grep del bundle) | L | Opus 4.8 · high | Vistas funcionando en su local; suite verde en la rama |
+| Max-1 | [~] **P-SPK-03** · Prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — *avance reportado 06-07: memo redactado con sello, verificado adversarialmente (95% fiel, 0 discrepancias de fondo), guardarraíl golden-hash agregado (tocar offline.blade.php sin bump de CACHE pone roja la suite). NADA pusheado aún (cierre en un solo push). BLOQUEADO en insumos de Mauricio: (a) prueba de campo con el guion A/B de Max-1, (b) material I-01 para archivar, (c) /usage* | L | Opus 4.8 · high (memo con Fable 5) | Memo sellado; RUTA-MAESTRA marca P-SPK-01..03 |
+| Max-2 | [x] **P-M15-05** (reintentos backoff + vista `/admin/notificaciones`) + **P-M15-06** (campanita nav, cambio mínimo, build + grep del bundle) — *VERIFICADO por Director 06-07 con auditoría adversarial de 3 lentes sobre `fd31b2e` (22 archivos, 397 tests, Opus 4.8 ✓): claim atómico REAL (transaction+lockForUpdate+UPDATE, dispatch fuera), robusto a scheduler degradado, backoff de claves notif_*, compartidos 100% aditivos con conteos exactos, territorio limpio, RoleMatrixSeedTest +1 legítimo, bundle recompilado de verdad (lg\:flex/lg\:hidden + clases nuevas), 14/15 tests sólidos. HALLAZGOS → GATE de P-M15-09: (1) MEDIO móvil sin bandeja legible (operario en celular no puede LEER sus notificaciones — contra reglas de operario de CLAUDE.md); (2) marcarLeida sin guard canal=database (saca fallidas del reintentador); (3) withoutOverlapping() sin TTL (24h vs convención (15) del archivo); (4) pendientes huérfanas sin barrido si crash entre commit y dispatch. Menores anotados: claim no limpia programada_para, 1 test de humo, 3 queries/render duplicadas* | L | Opus 4.8 · high | Vistas funcionando en su local; suite verde en la rama |
 | Director | [ ] Informe ejecutivo de los 3 días para Mauricio (avance, consumo real por cuenta, tabla de tallas calibrada) + tablero de los próximos 3 días (propuesta) | M | Sonnet 5 · high | Informe entregado; CONSUMO.md con la tabla calibrada |
 | QA | [ ] QA integral del spike (guion adversarial: doble envío, foto grande, matar app) + guion QA-FUNCIONAL-STAGING para M15 (se usará post-merge) | M | Sonnet 5 · high | Ambos guiones entregados; hallazgos del spike reportados a Max-1 vía Director |
 | Investigador | [ ] Consolidado: estado de las 10 decisiones D-0xx con lo investigado (qué falta de quién) — insumo del informe del Director | S | Sonnet 5 · medium | Tabla actualizada entregada |
 | Escriba | [ ] Borrador `docs/manuales/BORRADOR-jefe-bodega.md` (1 página: asignar → cola → aprobar → kardex) | S | Haiku 4.5 · low | Página lista |
 
 ## Incidencias
+
+### R-01 · Reconciliación pendiente: P-S0-18 en main sin parte de cierre
+Commit `4d7caa1` (recetario de prompts + skills de flota, toca KICKOFF-DIRECTOR) apareció en
+main sin parte de cierre al Director. Trabajo se ve legítimo (Opus 4.8, docs). Pedir a
+Mauricio: ¿qué cuenta lo hizo y su /usage? — para el ledger y la regla papel↔código.
 
 ### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
 Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,
