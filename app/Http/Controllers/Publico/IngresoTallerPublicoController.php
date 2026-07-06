@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Publico;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -70,6 +73,7 @@ class IngresoTallerPublicoController extends Controller
             'cliente_email' => ['required', 'email', 'max:191'],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_rut' => ['nullable', 'string', 'max:20', new RutChileno],
+            'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
             'falla_reportada' => ['required', 'string', 'min:3'],
@@ -83,6 +87,7 @@ class IngresoTallerPublicoController extends Controller
             'cliente_email' => $data['cliente_email'],
             'cliente_telefono' => $data['cliente_telefono'] ?? null,
             'cliente_rut' => $data['cliente_rut'] ?? null,
+            'producto_id' => $data['producto_id'] ?? null,
             'sucursal_id' => $sucursal->id,
             'tipo_equipo' => $data['tipo_equipo'],
             'numero_serie' => $data['numero_serie'],
@@ -97,6 +102,37 @@ class IngresoTallerPublicoController extends Controller
         // El correo NO se manda aqui: sale cuando el encargado confirma la
         // recepcion (asi el cliente recibe datos ya verificados).
         return redirect()->to(URL::signedRoute('ingreso-taller.gracias', ['orden' => $orden->id]));
+    }
+
+    /**
+     * Autocompletado PUBLICO del producto Dali (codigo) por SKU o nombre, para
+     * que el cliente complete el codigo del equipo desde el catalogo. Mismo
+     * contrato JSON que Admin\ServicioTecnicoController::buscarProducto, pero sin
+     * auth (throttle propio en la ruta; solo lee SKU/nombre, minimo 2 caracteres,
+     * limite 15).
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $productos = Producto::query()
+            ->where(fn (Builder $w) => $w
+                ->where('sku', 'like', "%{$q}%")
+                ->orWhere('nombre', 'like', "%{$q}%"))
+            ->orderBy('sku')
+            ->limit(15)
+            ->get(['id', 'sku', 'nombre']);
+
+        return response()->json($productos->map(fn (Producto $p) => [
+            'id' => $p->id,
+            'sku' => $p->sku,
+            'nombre' => $p->nombre,
+            'label' => $p->sku.' — '.$p->nombre,
+        ]));
     }
 
     /**

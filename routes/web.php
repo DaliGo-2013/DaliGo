@@ -195,4 +195,9 @@ Route::middleware('throttle:6,1')->group(function () {
         ->middleware('signed')->name('ingreso-taller.gracias');
 });
 
+// Autocompletado publico del producto Dali para el formulario del QR. Throttle
+// propio (mas alto que el envio) porque dispara en cada tecla; solo lee catalogo.
+Route::get('ingreso-taller/buscar-producto', [IngresoTallerPublicoController::class, 'buscarProducto'])
+    ->middleware('throttle:30,1')->name('ingreso-taller.buscar-producto');
+
 require __DIR__.'/auth.php';
