@@ -213,12 +213,13 @@ class ServicioTecnicoController extends Controller
                 ->orWhere('rut', 'like', "%{$rutQ}%"))
             ->orderBy('razon_social')
             ->limit(15)
-            ->get(['id', 'rut', 'razon_social']);
+            ->get(['id', 'rut', 'razon_social', 'telefono']);
 
         return response()->json($clientes->map(fn (Cliente $c) => [
             'id' => $c->id,
             'rut' => $c->rut,
             'razon_social' => $c->razon_social,
+            'telefono' => $c->telefono,
             'label' => ($c->rut ? $c->rut.' — ' : '').$c->razon_social,
         ]));
     }
@@ -335,6 +336,7 @@ class ServicioTecnicoController extends Controller
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
+            'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
@@ -344,7 +346,9 @@ class ServicioTecnicoController extends Controller
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
             // Si es garantia, el documento de compra y su fecha son obligatorios.
-            'garantia_doc_tipo' => [Rule::requiredIf($esGarantia), Rule::in(OrdenServicio::GARANTIA_DOC_TIPOS)],
+            // 'nullable' es clave: en reparacion el select oculto de garantia igual
+            // envia garantia_doc_tipo="" (-> null) y sin nullable Rule::in lo rechaza.
+            'garantia_doc_tipo' => [Rule::requiredIf($esGarantia), 'nullable', Rule::in(OrdenServicio::GARANTIA_DOC_TIPOS)],
             'garantia_doc_numero' => [Rule::requiredIf($esGarantia), 'nullable', 'string', 'max:191'],
             'garantia_doc_fecha' => [Rule::requiredIf($esGarantia), 'nullable', 'date', 'before_or_equal:fecha_ingreso'],
             'fecha_entrega' => ['nullable', 'date'],

@@ -43,6 +43,7 @@
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                     <div><dt class="text-xs text-neutral-400">Nombre</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_nombre }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">RUT</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_rut }}</dd></div>
+                    <div><dt class="text-xs text-neutral-400">Teléfono</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_telefono ?: '—' }}</dd></div>
                 </dl>
             </div>
 

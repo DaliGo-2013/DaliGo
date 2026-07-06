@@ -17,6 +17,7 @@
         :endpoint="route('admin.servicio-tecnico.buscar-cliente')"
         :inicialRut="$o?->cliente_rut ?? ''"
         :inicialNombre="$o?->cliente_nombre ?? ''"
+        :inicialTelefono="$o?->cliente_telefono ?? ''"
         :inicialClienteId="$o?->cliente_id ?? 0" />
 
     {{-- Codigo (producto Dali) + N° de serie en el mismo renglon. --}}

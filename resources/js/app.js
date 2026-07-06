@@ -96,10 +96,11 @@ Alpine.data('buscadorRemoto', ({ endpoint, inicialId, inicialLabel }) => ({
  * cliente_id; si no, se escriben a mano (cliente_id queda nulo). Editar el RUT a
  * mano rompe el enlace (cliente_id nulo) porque ya no corresponde a esa ficha.
  */
-Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, clienteId }) => ({
+Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) => ({
     endpoint,
     rut: rut || '',
     nombre: nombre || '',
+    telefono: telefono || '',
     clienteId: clienteId || null,
     resultados: [],
     abierto: false,
@@ -132,6 +133,8 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, clienteId }) => ({
         this.clienteId = r.id;
         this.rut = r.rut || '';
         this.nombre = r.razon_social || '';
+        // Si la ficha no trae telefono, conservar el que se haya tipeado.
+        this.telefono = r.telefono || this.telefono;
         this.abierto = false;
         this.resultados = [];
     },

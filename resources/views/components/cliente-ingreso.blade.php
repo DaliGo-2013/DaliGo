@@ -2,6 +2,7 @@
     'endpoint',                 // URL del autocompletado de clientes (JSON)
     'inicialRut' => '',
     'inicialNombre' => '',
+    'inicialTelefono' => '',
     'inicialClienteId' => 0,
 ])
 
@@ -13,6 +14,7 @@
         endpoint: '{{ $endpoint }}',
         rut: @js(old('cliente_rut', $inicialRut)),
         nombre: @js(old('cliente_nombre', $inicialNombre)),
+        telefono: @js(old('cliente_telefono', $inicialTelefono)),
         clienteId: {{ (int) old('cliente_id', $inicialClienteId) }}
      })">
     <input type="hidden" name="cliente_id" :value="clienteId">
@@ -61,6 +63,16 @@
                 maxlength="191" placeholder="Nombre del cliente"
                 x-model="nombre" />
             <x-input-error :messages="$errors->get('cliente_nombre')" class="mt-2" />
+        </div>
+
+        {{-- Telefono de contacto --}}
+        <div>
+            <x-input-label for="cliente_telefono" value="Teléfono" />
+            <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 w-full"
+                maxlength="30" placeholder="Ej. +56 9 1234 5678"
+                x-model="telefono" />
+            <x-input-hint>Para avisarle cuando el equipo esté listo.</x-input-hint>
+            <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-2" />
         </div>
     </div>
 </div>

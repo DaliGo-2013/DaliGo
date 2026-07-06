@@ -120,6 +120,22 @@ class ServicioTecnicoManagementTest extends TestCase
 
     // --- CRUD ---
 
+    /**
+     * El navegador SIEMPRE envia los campos del bloque de garantia (el x-show
+     * solo los oculta), asi que en una reparacion llegan como "" (-> null).
+     * Regresion: sin 'nullable', Rule::in rechazaba garantia_doc_tipo null.
+     */
+    public function test_reparacion_acepta_campos_de_garantia_vacios(): void
+    {
+        $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
+            'facturacion' => 'reparacion',
+            'garantia_doc_tipo' => '',
+            'garantia_doc_numero' => '',
+            'garantia_doc_fecha' => '',
+        ]))->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+    }
+
     public function test_admin_can_register_orden(): void
     {
         $cliente = Cliente::factory()->create();
@@ -128,6 +144,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
             'cliente_id' => $cliente->id,
             'producto_id' => $producto->id,
+            'cliente_telefono' => '+56 9 1234 5678',
             'tipo_equipo' => 'lavadora',
             'numero_serie' => 'SN-555',
             'facturacion' => 'reparacion',
@@ -138,6 +155,7 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_id' => $cliente->id,
             'cliente_nombre' => 'Juan Pérez',
             'cliente_rut' => '12345678-5',   // normalizado
+            'cliente_telefono' => '+56 9 1234 5678',
             'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
             'numero_serie' => 'SN-555',
