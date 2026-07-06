@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
+use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -119,6 +120,14 @@ Route::middleware('auth')
             Route::get('servicio-tecnico/buscar-repuesto', [ServicioTecnicoController::class, 'buscarRepuesto'])
                 ->name('servicio-tecnico.buscar-repuesto');
 
+            // QR por sucursal (link firmado imprimible para el mostrador) e
+            // ingreso publico: el encargado confirma la recepcion de lo que
+            // llego por QR (setea confirmada_at + manda el correo al cliente).
+            Route::get('servicio-tecnico/qr', [ServicioTecnicoController::class, 'qr'])
+                ->name('servicio-tecnico.qr');
+            Route::post('servicio-tecnico/{orden}/confirmar', [ServicioTecnicoController::class, 'confirmar'])
+                ->whereNumber('orden')->name('servicio-tecnico.confirmar');
+
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])
                 ->name('servicio-tecnico.reparacion');
@@ -172,5 +181,18 @@ Route::middleware(['auth', 'permission:report production'])
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
 // install, antes de cualquier login). Ver public/sw.js.
 Route::get('offline', fn () => view('offline'))->name('offline');
+
+// Ingreso PUBLICO a servicio tecnico por QR (P-M12-01, piloto). Sin login: el
+// cliente escanea el QR del mostrador y llena el formulario en su celular. El
+// GET (link del QR) va firmado (lleva la sucursal); throttle en todo el grupo.
+// Ver App\Http\Controllers\Publico\IngresoTallerPublicoController.
+Route::middleware('throttle:6,1')->group(function () {
+    Route::get('ingreso-taller', [IngresoTallerPublicoController::class, 'create'])
+        ->middleware('signed')->name('ingreso-taller.create');
+    Route::post('ingreso-taller', [IngresoTallerPublicoController::class, 'store'])
+        ->name('ingreso-taller.store');
+    Route::get('ingreso-taller/listo/{orden}', [IngresoTallerPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('ingreso-taller.gracias');
+});
 
 require __DIR__.'/auth.php';

@@ -511,6 +511,46 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Gamma Importadora')->assertDontSee('Delta Comercial');
     }
 
+    /**
+     * El historial es COMPARTIDO por las 3 sucursales, pero se puede filtrar por
+     * la sucursal de recepcion (donde se ingreso el equipo). La reparacion siempre
+     * es en Mirador (casa matriz); Coquimbo y Abate Molina solo reciben.
+     */
+    public function test_index_filters_by_sucursal_de_recepcion(): void
+    {
+        $mirador = Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);
+        $coquimbo = Sucursal::factory()->create(['nombre' => 'Coquimbo', 'es_central' => false]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cliente Uno', 'sucursal_id' => $mirador->id]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cliente Dos', 'sucursal_id' => $coquimbo->id]);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?sucursal_id='.$coquimbo->id)
+            ->assertOk()->assertSee('Cliente Dos')->assertDontSee('Cliente Uno');
+    }
+
+    public function test_show_indica_reparacion_en_matriz_si_recepcion_no_central(): void
+    {
+        Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);
+        $coquimbo = Sucursal::factory()->create(['nombre' => 'Coquimbo', 'es_central' => false]);
+        $orden = OrdenServicio::factory()->create(['sucursal_id' => $coquimbo->id]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Coquimbo')
+            ->assertSee('Se repara en Mirador');
+    }
+
+    public function test_show_no_deriva_si_recepcion_es_la_matriz(): void
+    {
+        $mirador = Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);
+        $orden = OrdenServicio::factory()->create(['sucursal_id' => $mirador->id]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('Se repara en');
+    }
+
     // --- buscarCliente (autocompletado JSON) ---
 
     public function test_buscar_cliente_matches_normalized_rut(): void

@@ -427,9 +427,12 @@ boleta rápida (dependen de M05), cron de sync.
   (jefes/vendedores, lectura) y `manage servicio tecnico` (técnico, gestión completa).
 - **Vistas:** `admin/servicio-tecnico/*` (index con filtros, show, form, reparación con repuestos).
 - **Tests:** `ServicioTecnicoManagementTest` (~520 líneas).
-- **Lo que NO hace todavía** (M12 completo, unidad E9): pre-ingreso online con QR, cotización
+- **Piloto de P-M12-01 — ingreso público por QR** (rama `feature/m12-ingreso-qr-piloto`, **sin mergear** al 2026-07-06): ruta **sin auth** `ingreso-taller` con link **firmado** por sucursal (`URL::signedRoute` + `throttle:6,1` + honeypot); `Publico\IngresoTallerPublicoController` (create/store/gracias); vistas `publico/taller/*`. El cliente crea la orden desde su celular (`fuente='qr'`, `confirmada_at=null`); el encargado la confirma con `ServicioTecnicoController::confirmar` (`lockForUpdate`) y ahí sale el correo `Mail\IngresoTallerRecibido` (standalone, migrable a M15). Página QR imprimible `servicio-tecnico/qr` (dibujo client-side con `qrcode` npm, import dinámico). Nuevas columnas en `ordenes_servicio`: `cliente_email`, `confirmada_at`.
+- **Historial compartido + separación por sucursal de recepción:** el listado NO se filtra por la sucursal del usuario (las 3 sucursales ven todo); hay filtro y badge por **sucursal de recepción**. La **reparación es siempre en Mirador** (`es_central`): Coquimbo y Abate Molina reciben pero no reparan; el detalle rotula "se repara en Mirador (casa matriz)". El plazo de entrega ya lo refleja (`config/servicio_tecnico.php`: Mirador 10 días, las demás 15).
+- **Lo que NO hace todavía** (M12 completo, unidad E9): cotización
   estructurada con aprobación del cliente por link WhatsApp, alertas 3/6/12 meses, tablero de plazos,
-  sugerencia de repuestos por histórico, cobro de hora de servicio en no aprobadas.
+  sugerencia de repuestos por histórico, cobro de hora de servicio en no aprobadas. (El pre-ingreso online
+  con QR está como **piloto en rama**, ver arriba — pendiente de QA staging + merge.)
 
 ---
 

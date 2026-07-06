@@ -56,6 +56,7 @@ class OrdenServicio extends Model implements AuditableContract
         'cliente_nombre',
         'cliente_rut',
         'cliente_telefono',
+        'cliente_email',
         'producto_id',
         'sucursal_id',
         'fecha_ingreso',
@@ -76,6 +77,7 @@ class OrdenServicio extends Model implements AuditableContract
         'fecha_aviso',
         'fecha_retiro',
         'fuente',
+        'confirmada_at',
     ];
 
     protected function casts(): array
@@ -86,6 +88,7 @@ class OrdenServicio extends Model implements AuditableContract
             'garantia_doc_fecha' => 'date',
             'fecha_aviso' => 'date',
             'fecha_retiro' => 'date',
+            'confirmada_at' => 'datetime',
             'mano_obra' => 'integer',
         ];
     }
@@ -190,5 +193,24 @@ class OrdenServicio extends Model implements AuditableContract
     public function getFolioAttribute(): string
     {
         return '#'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Llego por QR y el encargado todavia no la confirmo (no recibio la maquina
+     * fisica). Estas son las que aparecen en el bloque "Por confirmar" del taller.
+     */
+    public function getPorConfirmarAttribute(): bool
+    {
+        return $this->fuente === 'qr' && $this->confirmada_at === null;
+    }
+
+    /**
+     * Ordenes ingresadas por QR que aun esperan la confirmacion del encargado.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<OrdenServicio>  $query
+     */
+    public function scopePorConfirmar($query)
+    {
+        return $query->where('fuente', 'qr')->whereNull('confirmada_at');
     }
 }

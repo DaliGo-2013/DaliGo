@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\IngresoTallerRecibido;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
 use App\Models\OrdenServicioRepuesto;
@@ -14,6 +15,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -56,14 +60,20 @@ class ServicioTecnicoController extends Controller
     public function index(Request $request): View
     {
         $ordenes = $this->filteredQuery($request)
-            ->with('producto')
+            ->with(['producto', 'sucursal'])
             ->latest('fecha_ingreso')->latest('id')
             ->paginate(25)
             ->withQueryString();
 
         return view('admin.servicio-tecnico.index', array_merge([
             'ordenes' => $ordenes,
-            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion']),
+            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion', 'sucursal_id']),
+            // Maquinas que llegaron por QR y esperan que el encargado confirme la
+            // recepcion (bloque destacado arriba del listado).
+            'porConfirmar' => OrdenServicio::porConfirmar()
+                ->with('sucursal')
+                ->latest('id')
+                ->get(),
         ], $this->formData()));
     }
 
@@ -89,10 +99,75 @@ class ServicioTecnicoController extends Controller
             ->with('status', "Orden {$orden->folio} registrada.");
     }
 
+    /**
+     * Confirmar la recepcion de una maquina que llego por QR (ingreso publico).
+     * El encargado ya reviso los datos con el cliente y la maquina fisica:
+     * marca confirmada_at y recien AHI se le manda el correo con el folio (asi
+     * el cliente recibe datos verificados). Lock para que dos clics no confirmen
+     * ni manden el correo dos veces (patron de locks del modulo).
+     */
+    public function confirmar(OrdenServicio $orden): RedirectResponse
+    {
+        $confirmadaAhora = DB::transaction(function () use ($orden) {
+            $fresh = OrdenServicio::whereKey($orden->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($fresh->confirmada_at !== null) {
+                return false;
+            }
+
+            $fresh->update(['confirmada_at' => now()]);
+
+            return true;
+        });
+
+        if (! $confirmadaAhora) {
+            return back()->with('status', "La orden {$orden->folio} ya estaba confirmada.");
+        }
+
+        $orden = $orden->fresh();
+
+        // El correo es SECUNDARIO: si el mailer del servidor no esta configurado
+        // (SMTP pendiente, P-M15-10), su fallo NO debe tumbar la recepcion ya
+        // confirmada. Se loguea y se sigue.
+        if (filled($orden->cliente_email)) {
+            try {
+                Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
+
+                return back()->with('status', "Recepción de la orden {$orden->folio} confirmada y avisada a {$orden->cliente_email}.");
+            } catch (\Throwable $e) {
+                report($e);
+
+                return back()->with('status', "Recepción de la orden {$orden->folio} confirmada. No se pudo enviar el correo al cliente (revisa la configuración de correo del servidor).");
+            }
+        }
+
+        return back()->with('status', "Recepción de la orden {$orden->folio} confirmada.");
+    }
+
+    /**
+     * Pagina imprimible con el QR de cada sucursal activa. Cada QR apunta al link
+     * FIRMADO del formulario publico con su sucursal_id embebido. El encargado la
+     * imprime y la pega en el mostrador. El QR se dibuja en el cliente desde la
+     * URL firmada (sin dependencia nueva de servidor).
+     */
+    public function qr(): View
+    {
+        $sucursales = Sucursal::where('activa', true)
+            ->orderBy('nombre')
+            ->get()
+            ->map(fn (Sucursal $s) => [
+                'sucursal' => $s,
+                'url' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $s->id]),
+            ]);
+
+        return view('admin.servicio-tecnico.qr', ['sucursales' => $sucursales]);
+    }
+
     public function show(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.show', [
             'orden' => $orden->load(['producto', 'sucursal', 'repuestos']),
+            'sucursalCentral' => Sucursal::firstWhere('es_central', true),
         ]);
     }
 
@@ -310,6 +385,10 @@ class ServicioTecnicoController extends Controller
             'estado' => ['nullable', Rule::in(OrdenServicio::ESTADOS)],
             'tipo_equipo' => ['nullable', Rule::in(OrdenServicio::TIPOS)],
             'facturacion' => ['nullable', Rule::in(OrdenServicio::FACTURACION)],
+            // Sucursal de RECEPCION (donde se ingreso el equipo). El historial es
+            // compartido por las 3 sucursales; este filtro deja ver "que se ingreso
+            // en Coquimbo/Abate/Mirador". La reparacion siempre es en Mirador.
+            'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
         ]);
 
         return OrdenServicio::query()
@@ -328,7 +407,8 @@ class ServicioTecnicoController extends Controller
             })
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
-            ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v));
+            ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v))
+            ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v));
     }
 
     private function validateData(Request $request, bool $creando = false): array
@@ -401,6 +481,10 @@ class ServicioTecnicoController extends Controller
             'garantiaDocTipos' => OrdenServicio::GARANTIA_DOC_TIPOS,
             // Feriados (Y-m-d) para calcular la fecha de entrega en dias habiles.
             'feriados' => array_values(config('feriados', [])),
+            // Casa matriz de reparacion (Mirador, es_central): en Coquimbo y Abate
+            // Molina se RECIBE pero no se repara. Se usa para rotular "se repara en
+            // Mirador" cuando la recepcion fue en otra sucursal.
+            'sucursalCentral' => Sucursal::firstWhere('es_central', true),
         ];
     }
 }

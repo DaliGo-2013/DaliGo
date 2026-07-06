@@ -337,3 +337,26 @@ const irAlPrimerError = () => {
 };
 if (document.readyState !== 'loading') irAlPrimerError();
 else document.addEventListener('DOMContentLoaded', irAlPrimerError);
+
+/**
+ * Códigos QR del mostrador (P-M12-01): en la página de QR de Servicio Técnico
+ * dibujamos en el cliente el QR del link firmado de cada sucursal. Import
+ * dinámico: 'qrcode' solo se descarga en esa página (chunk aparte), no en el
+ * bundle global de todas las vistas.
+ */
+const dibujarQrsMostrador = () => {
+    const nodos = document.querySelectorAll('canvas[data-qr]');
+    if (!nodos.length) return;
+    import('qrcode').then((mod) => {
+        // 'qrcode' es CommonJS: segun el interop de Vite puede llegar como
+        // mod.default o como el modulo mismo. Aceptamos ambos.
+        const QRCode = mod.default ?? mod;
+        nodos.forEach((canvas) => {
+            QRCode.toCanvas(canvas, canvas.dataset.qr, { width: 224, margin: 1 }, (err) => {
+                if (err) console.error('No se pudo dibujar el QR:', err);
+            });
+        });
+    });
+};
+if (document.readyState !== 'loading') dibujarQrsMostrador();
+else document.addEventListener('DOMContentLoaded', dibujarQrsMostrador);
