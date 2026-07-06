@@ -31,11 +31,20 @@
 | Cuenta | Tarea | Talla | Modelo·Esfuerzo | Hecho cuando |
 |---|---|---|---|---|
 | Max-1 | [~] **P-SPK-03** · Prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — *avance 06-07: memo redactado con sello, verificado adversarialmente (95% fiel), guardarraíl golden-hash. PRUEBA DE CAMPO APROBADA por el dueño 06-07 (capturas verificadas por Director): A OK (2 tandas offline con contador → sync sola al volver señal), B OK (matar app con cola pendiente → drena al reabrir), 4/4 tandas sin duplicados en el reporte del jefe, motivo por tanda ("2ª: Rebaba") sobrevivió la cola offline. Falta solo: Mauricio pega a Max-1 el resultado + material I-01 → push único de cierre + parte con /usage* | L | Opus 4.8 · high (memo con Fable 5) | Memo sellado; RUTA-MAESTRA marca P-SPK-01..03 |
-| Max-2 | [x] **P-M15-05** (reintentos backoff + vista `/admin/notificaciones`) + **P-M15-06** (campanita nav, cambio mínimo, build + grep del bundle) — *VERIFICADO por Director 06-07 con auditoría adversarial de 3 lentes sobre `fd31b2e` (22 archivos, 397 tests, Opus 4.8 ✓): claim atómico REAL (transaction+lockForUpdate+UPDATE, dispatch fuera), robusto a scheduler degradado, backoff de claves notif_*, compartidos 100% aditivos con conteos exactos, territorio limpio, RoleMatrixSeedTest +1 legítimo, bundle recompilado de verdad (lg\:flex/lg\:hidden + clases nuevas), 14/15 tests sólidos. HALLAZGOS → GATE de P-M15-09: (1) MEDIO móvil sin bandeja legible (operario en celular no puede LEER sus notificaciones — contra reglas de operario de CLAUDE.md); (2) marcarLeida sin guard canal=database (saca fallidas del reintentador); (3) withoutOverlapping() sin TTL (24h vs convención (15) del archivo); (4) pendientes huérfanas sin barrido si crash entre commit y dispatch. Menores anotados: claim no limpia programada_para, 1 test de humo, 3 queries/render duplicadas* | L | Opus 4.8 · high | Vistas funcionando en su local; suite verde en la rama |
+| Max-2 | [x] **P-M15-05** (reintentos backoff + vista `/admin/notificaciones`) + **P-M15-06** (campanita nav, cambio mínimo, build + grep del bundle) — *VERIFICADO por Director 06-07 con auditoría adversarial de 3 lentes sobre `fd31b2e` (22 archivos, 397 tests, Opus 4.8 ✓): claim atómico REAL (transaction+lockForUpdate+UPDATE, dispatch fuera), robusto a scheduler degradado, backoff de claves notif_*, compartidos 100% aditivos con conteos exactos, territorio limpio, RoleMatrixSeedTest +1 legítimo, bundle recompilado de verdad (lg\:flex/lg\:hidden + clases nuevas), 14/15 tests sólidos. HALLAZGOS de auditoría: 4 correcciones dictadas como gate → **GATE LEVANTADO 06-07** (ver fila siguiente, `f7353fb`)* | L | Opus 4.8 · high | Vistas funcionando en su local; suite verde en la rama |
 | Director | [ ] Informe ejecutivo de los 3 días para Mauricio (avance, consumo real por cuenta, tabla de tallas calibrada) + tablero de los próximos 3 días (propuesta) | M | Sonnet 5 · high | Informe entregado; CONSUMO.md con la tabla calibrada |
 | QA | [ ] QA integral del spike (guion adversarial: doble envío, foto grande, matar app) + guion QA-FUNCIONAL-STAGING para M15 (se usará post-merge) | M | Sonnet 5 · high | Ambos guiones entregados; hallazgos del spike reportados a Max-1 vía Director |
 | Investigador | [ ] Consolidado: estado de las 10 decisiones D-0xx con lo investigado (qué falta de quién) — insumo del informe del Director | S | Sonnet 5 · medium | Tabla actualizada entregada |
 | Escriba | [ ] Borrador `docs/manuales/BORRADOR-jefe-bodega.md` (1 página: asignar → cola → aprobar → kardex) | S | Haiku 4.5 · low | Página lista |
+
+## Día 4+ (post-tablero, directiva de ritmo del dueño)
+
+| Cuenta | Tarea | Talla | Modelo·Esfuerzo | Hecho cuando |
+|---|---|---|---|---|
+| Max-2 | [x] **Correcciones de auditoría (4+3) + P-M15-07 + P-M15-08** — *VERIFICADO por Director 06-07 en `f7353fb`: (1) página personal `/notificaciones` solo-auth ✓ (2) guard `canal=database` 404 ✓ (3) `withoutOverlapping(10)` ✓ (4) barrido self-healing de huérfanas (>10 min, re-dispatch idempotente — su llamada, bien justificada) ✓ + claim limpia `programada_para` ✓ + fix `data_get` (punto del evento interpretado como anidación — cazado por SU test) ✓. 9 tests nuevos en diff (405 netos), bundle recompilado, main intacto, Opus 4.8 ✓. MOTOR M15 COMPLETO EN LA RAMA* | L | Opus 4.8 · high | Correcciones aplicadas; preferencias respetadas por dispatcher con test; suite verde |
+| Max-1 | [x] **F-01** recetario como apoyo automático — *VERIFICADO: `07dbe92`, 4 archivos +10/−3 exactos, regla en CLAUDE.md (auto-carga en 6 cuentas), 3 descriptions con auto-disparo y keywords en español, cuerpos intactos. Desviación: corrió Fable 5 (ledger)* | S | Opus 4.8 · medium (corrió Fable 5) | Regla en CLAUDE.md + skills auto-disparables |
+| Max-2 | [ ] **P-M15-09** · Merge coordinado + QA staging — SECUENCIA en el dictado del Director 06-07; NO arranca hasta: cierre P-SPK-03 pusheado (Max-1) + I-01 cerrada (date-check + archivo) | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
+| Max-1 | [~] Cierre **P-SPK-03** en un push (memo+archivos I-01+RUTA) — esperando que Mauricio le pegue el paquete de cierre (entregado por el Director 06-07) | S | Opus 4.8 · high | Push único; parte con /usage |
 
 ## Incidencias
 
@@ -53,6 +62,12 @@ calce con sus momentos (planificar/construir/pre-merge/incidentes/cierre); (b) r
 los `description:` de las 3 skills para que el modelo las auto-dispare por contexto (así
 funciona el auto-trigger de skills: por descripción, no por invocación manual). Talla S,
 territorio stream 1 (CLAUDE.md + .claude/skills en main).
+
+### R-02 · Reconciliación pendiente: 3 commits en main sin parte (06-07)
+`ba24473` + `d5e02ee` (servicio técnico: teléfono cliente, estado fijo Recibido) y `04269ca`
+(ojo ver/ocultar contraseña), autor "Marcos Uribe" (compu del Director, sesión fuera de
+flota, 11:14–12:56). Territorio M12/auth NO asignado en el tablero. Pedir a Mauricio:
+¿qué sesión/cuenta fue, hay parte, se cumplió la regla del mismo push (RUTA-MAESTRA)?
 
 ### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
 Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,

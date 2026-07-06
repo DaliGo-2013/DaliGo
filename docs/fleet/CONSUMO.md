@@ -34,6 +34,8 @@ sesión restante.
 | 02-07 | Max-2 Forjador B | Cierre P-M15-03 (archivo evidencia + hallazgo I-01) | S | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada) |
 | 06-07 | Max-2 Forjador B | P-M15-05 + P-M15-06 (fd31b2e) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada, 4 correcciones → gate merge) |
 | 05-07 | Mauricio (compu alterna) | P-S0-18 recetario + skills (4d7caa1) | M | Opus 4.8 | n/d | n/d | n/d | HECHA (fuera de flota; corrección F-01 dictada) |
+| 06-07 | Max-1 Forjador A | F-01 recetario automático (07dbe92) | S | **Fable 5** (⁴) | n/d | n/d | n/d | HECHA (verificada) |
+| 06-07 | Max-2 Forjador B | Correcciones auditoría + P-M15-07/08 (f7353fb) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada; gate levantado) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
