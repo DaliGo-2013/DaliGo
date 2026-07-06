@@ -2,6 +2,9 @@
     use Illuminate\Support\Str;
 
     $o = $orden ?? null;
+    // Al registrar (no editar), el estado queda fijo en "recibido" y la fecha
+    // estimada se muestra pero no se puede tocar (la fija el servidor).
+    $esCreacion = $o === null;
     $productoActual = $o?->producto;
     $productoActualLabel = $productoActual ? ($productoActual->sku.' — '.$productoActual->nombre) : '';
 @endphp
@@ -11,6 +14,7 @@
         cond: '{{ old('facturacion', $o?->facturacion ?? '') }}',
         fechaEntrega: '{{ old('fecha_entrega', $o?->fecha_entrega?->format('Y-m-d')) }}',
         feriados: @js($feriados),
+        soloLectura: @js($esCreacion),
     })">
     {{-- Cliente: nombre y RUT obligatorios; autocompleta si existe en el catálogo. --}}
     <x-cliente-ingreso class="sm:col-span-2"
@@ -120,20 +124,37 @@
     </div>
 
     <div>
-        <x-input-label for="estado" value="Estado" />
-        <x-select id="estado" name="estado" class="mt-1.5" required>
-            @foreach ($estados as $e)
-                <option value="{{ $e }}" @selected(old('estado', $o?->estado ?? 'recibido') === $e)>{{ Str::headline($e) }}</option>
-            @endforeach
-        </x-select>
-        <x-input-error :messages="$errors->get('estado')" class="mt-2" />
+        <x-input-label value="Estado" />
+        @if ($esCreacion)
+            {{-- Toda orden nueva parte en "recibido"; el estado se avanza despues
+                 (editar o pantalla de reparacion). El servidor lo fuerza igual. --}}
+            <div class="mt-1.5 block w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-2.5 text-sm text-neutral-500 shadow-sm">
+                Recibido
+            </div>
+            <x-input-hint>Toda orden nueva parte en «Recibido».</x-input-hint>
+        @else
+            <x-select id="estado" name="estado" class="mt-1.5" required>
+                @foreach ($estados as $e)
+                    <option value="{{ $e }}" @selected(old('estado', $o?->estado ?? 'recibido') === $e)>{{ Str::headline($e) }}</option>
+                @endforeach
+            </x-select>
+            <x-input-error :messages="$errors->get('estado')" class="mt-2" />
+        @endif
     </div>
 
     <div>
         <x-input-label for="fecha_entrega" value="Fecha de entrega (estimada)" />
-        <x-text-input id="fecha_entrega" class="mt-1.5" type="date" name="fecha_entrega"
-            x-model="fechaEntrega" x-on:input="entregaManual = true" />
-        <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Puedes editarla.</x-input-hint>
+        @if ($esCreacion)
+            {{-- Solo informativa: la calcula el servidor (sucursal + dias habiles);
+                 el JS la muestra en vivo al elegir sucursal/fecha. --}}
+            <x-text-input id="fecha_entrega" class="mt-1.5 pointer-events-none bg-neutral-50 text-neutral-500" type="date" name="fecha_entrega"
+                x-model="fechaEntrega" readonly tabindex="-1" />
+            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados).</x-input-hint>
+        @else
+            <x-text-input id="fecha_entrega" class="mt-1.5" type="date" name="fecha_entrega"
+                x-model="fechaEntrega" x-on:input="entregaManual = true" />
+            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Puedes editarla.</x-input-hint>
+        @endif
         <x-input-error :messages="$errors->get('fecha_entrega')" class="mt-2" />
     </div>
 

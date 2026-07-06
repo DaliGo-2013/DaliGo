@@ -55,6 +55,29 @@ class Sucursal extends Model implements AuditableContract
     }
 
     /**
+     * Fecha de entrega estimada de una reparacion que ingresa en $desde:
+     * dias_reparacion dias habiles a partir del dia SIGUIENTE, saltando
+     * sabados, domingos y feriados (config/feriados.php). Espejo en PHP de
+     * sumarDiasHabiles de app.js (ordenServicioForm): el JS solo la muestra
+     * en vivo; la que se guarda la calcula el servidor.
+     */
+    public function fechaEntregaEstimada(\Illuminate\Support\Carbon|string $desde): \Illuminate\Support\Carbon
+    {
+        $d = \Illuminate\Support\Carbon::parse($desde);
+        $feriados = array_values(config('feriados', []));
+
+        for ($sumados = 0; $sumados < $this->dias_reparacion;) {
+            $d->addDay();
+            if ($d->isWeekend() || in_array($d->toDateString(), $feriados, true)) {
+                continue;
+            }
+            $sumados++;
+        }
+
+        return $d;
+    }
+
+    /**
      * Maquinas sopladoras de esta sucursal.
      *
      * @return HasMany<Maquina>

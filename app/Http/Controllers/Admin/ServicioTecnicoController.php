@@ -74,7 +74,16 @@ class ServicioTecnicoController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $orden = OrdenServicio::create($this->validateData($request));
+        $data = $this->validateData($request, creando: true);
+
+        // Al registrar, el mostrador no decide estado ni fecha: toda orden nueva
+        // parte en 'recibido' y la fecha estimada la fija el servidor segun la
+        // sucursal (el formulario los muestra pero no los deja editar).
+        $data['estado'] = 'recibido';
+        $data['fecha_entrega'] = Sucursal::findOrFail($data['sucursal_id'])
+            ->fechaEntregaEstimada($data['fecha_ingreso'])->toDateString();
+
+        $orden = OrdenServicio::create($data);
 
         return redirect()->route('admin.servicio-tecnico.index')
             ->with('status', "Orden {$orden->folio} registrada.");
@@ -322,7 +331,7 @@ class ServicioTecnicoController extends Controller
             ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v));
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, bool $creando = false): array
     {
         // Normalizar el RUT antes de validar (forma canonica 12345678-9), igual que
         // en Clientes; si no se puede normalizar, dejar el valor original para que
@@ -343,7 +352,11 @@ class ServicioTecnicoController extends Controller
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
             'falla_reportada' => ['required', 'string', 'min:3'],
-            'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
+            // Al crear, el estado no viene del formulario (store lo fuerza a
+            // 'recibido'); si igual llega, que al menos sea uno valido.
+            'estado' => $creando
+                ? ['nullable', Rule::in(OrdenServicio::ESTADOS)]
+                : ['required', Rule::in(OrdenServicio::ESTADOS)],
             'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
             // Si es garantia, el documento de compra y su fecha son obligatorios.
             // 'nullable' es clave: en reparacion el select oculto de garantia igual

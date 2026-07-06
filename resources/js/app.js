@@ -146,14 +146,23 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) =
  *     es "garantia".
  *  2. Fecha de entrega estimada: fecha de ingreso + N dias habiles segun la
  *     sucursal (data-dias en cada <option>), saltando sabados, domingos y
- *     feriados (lista pasada desde config/feriados.php). Se autocompleta pero
- *     es editable: si el usuario la cambia a mano, deja de recalcularse.
+ *     feriados (lista pasada desde config/feriados.php). Al REGISTRAR
+ *     (soloLectura) es solo informativa: siempre se recalcula y el servidor
+ *     fija la definitiva. Al EDITAR es editable: si el usuario la cambia a
+ *     mano, deja de recalcularse.
  */
-Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados }) => ({
+Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura }) => ({
     cond: cond || '',
     fechaEntrega: fechaEntrega || '',
-    entregaManual: !!fechaEntrega, // si ya traia fecha, no la pisamos
+    soloLectura: !!soloLectura,
+    entregaManual: !soloLectura && !!fechaEntrega, // si ya traia fecha (editar), no la pisamos
     feriados: new Set(feriados || []),
+
+    init() {
+        // Registrar: mostrar el estimado apenas haya sucursal (p. ej. al volver
+        // con errores de validacion, donde la sucursal ya viene elegida).
+        if (this.soloLectura) this.$nextTick(() => this.recalcularEntrega());
+    },
 
     iso(d) {
         const y = d.getFullYear();

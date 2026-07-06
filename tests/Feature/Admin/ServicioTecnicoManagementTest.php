@@ -229,8 +229,36 @@ class ServicioTecnicoManagementTest extends TestCase
             ])
             ->assertSessionHasErrors([
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'sucursal_id', 'numero_serie', 'falla_reportada', 'estado', 'facturacion',
+                'tipo_equipo', 'sucursal_id', 'numero_serie', 'falla_reportada', 'facturacion',
             ]);
+    }
+
+    /**
+     * Al registrar, el mostrador no decide estado ni fecha de entrega: aunque
+     * el POST traiga otros valores, toda orden nueva parte en 'recibido' y la
+     * fecha estimada la calcula el servidor (dias habiles de la sucursal,
+     * saltando fines de semana y feriados).
+     */
+    public function test_store_fuerza_estado_recibido_y_fecha_estimada_del_servidor(): void
+    {
+        config(['feriados' => ['2026-07-07']]); // martes feriado: corre el estimado un dia
+
+        // Sucursal con codigo fuera del mapa -> dias_reparacion_default (15).
+        $sucursal = Sucursal::factory()->create();
+
+        $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
+            'sucursal_id' => $sucursal->id,
+            'fecha_ingreso' => '2026-07-06',      // lunes
+            'estado' => 'entregado',              // intento de manipulacion
+            'fecha_entrega' => '2026-01-01',      // idem
+        ]))->assertSessionHasNoErrors();
+
+        // 15 habiles desde el martes 7 (feriado): termina el martes 28.
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'fecha_ingreso' => '2026-07-06 00:00:00',
+            'estado' => 'recibido',
+            'fecha_entrega' => '2026-07-28 00:00:00',
+        ]);
     }
 
     public function test_numero_serie_y_textos_exigen_minimo_3(): void
