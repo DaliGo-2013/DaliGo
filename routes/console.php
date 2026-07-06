@@ -41,5 +41,5 @@ Schedule::command('bsale:sync-stock')
 // degradado (incidencia I-01), igual procesa todo lo vencido (más latencia).
 Schedule::command('notificaciones:reintentar')
     ->everyFiveMinutes()
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->appendOutputTo(storage_path('logs/notificaciones.log'));

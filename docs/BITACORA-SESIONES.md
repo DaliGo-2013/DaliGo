@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-04] Stream 2 · día 4: 4 correcciones de auditoría + preferencias + tests (P-M15-07/08)
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8**)
+- **Objetivo declarado:** 4 correcciones del Director (gate del merge) + P-M15-07 + P-M15-08
+- **Qué se hizo:** **Correcciones:** (1) página personal `/notificaciones` mobile-first (lista in-app propia + marcar leída; el link móvil y el "Ver todas" del dropdown apuntan ahí) + panel admin agregado al dropdown Administración; (2) `leer` exige `canal=database` (404 si no — antes sacaba una mail/whatsapp fallida del reintentador); (3) `withoutOverlapping(10)` en el reintentador (TTL, convención); (4) **barrido self-healing** de pendientes huérfanas (crash post-claim): el mismo comando reclama `pendiente` con `updated_at <= now()-10min`, las toca y re-despacha (idempotente por el guard del job). **Menores:** claim limpia `programada_para`; campanita computa sus 2 queries una vez en el nav (antes 3); test de humo endurecido (assertea el badge del conteo). **P-M15-07:** preferencias en el perfil (`prefs[evento][canal]` con `updateOrCreate`); el dispatcher las respeta (test form→dispatch). **P-M15-08:** cobertura del checklist. **Suite 405 verdes.** Bug atrapado por test: `data_get($m, "sistema.prueba.mail")` interpreta el punto del evento como anidación → habría ignorado el opt-in; corregido a acceso directo `$m[$evento][$canal]`.
+- **Pasos marcados:** P-M15-07 [x], P-M15-08 [x]; 4 correcciones + menores aplicadas.
+- **Decisiones:** ninguna.
+- **Delegaciones:** ninguna nueva (P-M15-10 SPF/DKIM pendiente).
+- **Próximo paso:** **P-M15-09** — merge coordinado con Mauricio (fetch → merge origin/main → resolver docs → `view:clear`+`npm run build`+grep → suite verde → autoriza merge a main) + QA staging (plantilla QA-FUNCIONAL, IA-cPanel).
+
 ### [2026-07-04] Stream 2 · día 3: reintentador atómico + panel + campanita (P-M15-05/06)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8**) + 3 exploradores paralelos
 - **Objetivo declarado:** P-M15-05 + P-M15-06, dictado del Director

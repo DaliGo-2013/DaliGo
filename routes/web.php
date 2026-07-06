@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
@@ -32,7 +33,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Preferencias de notificación del usuario (M15): opt-out por evento×canal.
+    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])->name('perfil.notificaciones.update');
+
     // Campanita (M15): bandeja personal in-app; cualquier usuario gestiona LO SUYO.
+    Route::get('/notificaciones', [NotificacionUsuarioController::class, 'index'])->name('notificaciones.index');
     Route::post('/notificaciones/leer-todas', [NotificacionUsuarioController::class, 'leerTodas'])->name('notificaciones.leer-todas');
     Route::post('/notificaciones/{notificacion}/leer', [NotificacionUsuarioController::class, 'leer'])->name('notificaciones.leer');
 });

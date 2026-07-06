@@ -1,11 +1,6 @@
-{{-- Campanita in-app (M15). Bandeja personal del usuario autenticado: contador
-     de no-leídas + dropdown con las últimas 5 + marcar leída. v1 sin polling:
-     se refresca al navegar. La query es un count/scope indexado (barato). --}}
-@php
-    $dgNoLeidas = \App\Models\Notificacion::campanitaDe(auth()->id())->latest('id')->take(5)->get();
-    $dgConteo = \App\Models\Notificacion::campanitaDe(auth()->id())->count();
-@endphp
-
+{{-- Campanita in-app (M15). v1 sin polling: se refresca al navegar. Recibe
+     $dgNoLeidas (colección, 5 últimas) y $dgConteo (total no-leídas) ya
+     calculados en navigation.blade.php — así el nav no repite la query. --}}
 <x-dropdown align="right" width="w-80">
     <x-slot name="trigger">
         <button type="button" title="Notificaciones"
@@ -41,11 +36,9 @@
             <p class="border-t border-neutral-100 px-4 py-3 text-sm text-neutral-500">Sin notificaciones nuevas.</p>
         @endforelse
 
-        @can('view notificaciones')
-            <a href="{{ route('admin.notificaciones.index') }}"
-               class="block border-t border-neutral-100 px-4 py-2 text-center text-xs font-medium text-brand-600 transition hover:text-brand-700">
-                Ver todas
-            </a>
-        @endcan
+        <a href="{{ route('notificaciones.index') }}"
+           class="block border-t border-neutral-100 px-4 py-2 text-center text-xs font-medium text-brand-600 transition hover:text-brand-700">
+            Ver todas
+        </a>
     </x-slot>
 </x-dropdown>

@@ -31,10 +31,12 @@ class NotificacionReintentar extends Command
     {
         $max = (int) Configuracion::get('notif_reintentos_max', 3);
 
-        // Reclamo atómico: bloquea las vencidas, las marca pendiente y devuelve
-        // sus ids en una sola transacción (ninguna otra corrida las verá fallidas).
+        // Reclamo atómico: bloquea y marca en una sola transacción; ninguna otra
+        // corrida verá esas filas como reclamables (lock + cambio de estado).
         $ids = DB::transaction(function () use ($max) {
-            $ids = Notificacion::query()
+            // (a) Fallidas cuyo backoff ya venció (reintento normal). Se limpia
+            //     programada_para: se reintenta ahora, la fecha vieja no aplica.
+            $fallidas = Notificacion::query()
                 ->where('estado', Notificacion::FALLIDA)
                 ->whereNotNull('programada_para')
                 ->where('programada_para', '<=', now())
@@ -42,11 +44,27 @@ class NotificacionReintentar extends Command
                 ->lockForUpdate()
                 ->pluck('id');
 
-            if ($ids->isNotEmpty()) {
-                Notificacion::whereIn('id', $ids)->update(['estado' => Notificacion::PENDIENTE]);
+            if ($fallidas->isNotEmpty()) {
+                Notificacion::whereIn('id', $fallidas)
+                    ->update(['estado' => Notificacion::PENDIENTE, 'programada_para' => null]);
             }
 
-            return $ids;
+            // (b) Pendientes huérfanas: quedaron 'pendiente' pero fuera de la cola
+            //     (crash entre el commit del claim y el dispatch). queue:work corre
+            //     cada minuto, así que una pendiente de >10 min ya no está en vuelo.
+            //     Se re-despachan (touch de updated_at para no re-tomarlas cada 5 min);
+            //     el guard del job las ignora si en realidad ya se procesaron.
+            $huerfanas = Notificacion::query()
+                ->where('estado', Notificacion::PENDIENTE)
+                ->where('updated_at', '<=', now()->subMinutes(10))
+                ->lockForUpdate()
+                ->pluck('id');
+
+            if ($huerfanas->isNotEmpty()) {
+                Notificacion::whereIn('id', $huerfanas)->update(['updated_at' => now()]);
+            }
+
+            return $fallidas->merge($huerfanas);
         });
 
         // Fuera de la transacción: el job re-procesa cada notificación reclamada.

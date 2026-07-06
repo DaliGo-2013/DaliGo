@@ -78,8 +78,43 @@ class NotificacionReintentarTest extends TestCase
         $this->fallida();
 
         $this->artisan('notificaciones:reintentar'); // 1ª: reclama y encola
-        $this->artisan('notificaciones:reintentar'); // 2ª: ya está pendiente, nada que reclamar
+        $this->artisan('notificaciones:reintentar'); // 2ª: ya está pendiente (recién tocada), nada que reclamar
 
         Queue::assertPushed(EnviarNotificacion::class, 1);
+    }
+
+    public function test_reclama_limpia_programada_para(): void
+    {
+        Queue::fake();
+        $n = $this->fallida();
+
+        $this->artisan('notificaciones:reintentar');
+
+        $this->assertNull($n->fresh()->programada_para);
+    }
+
+    public function test_barre_pendiente_huerfana_vieja(): void
+    {
+        Queue::fake();
+        // Pendiente que quedó fuera de la cola hace >10 min (crash post-claim).
+        $huerfana = $this->fallida(['estado' => Notificacion::PENDIENTE, 'programada_para' => null]);
+        $huerfana->forceFill(['updated_at' => now()->subMinutes(20)])->saveQuietly();
+
+        $this->artisan('notificaciones:reintentar')->assertSuccessful();
+
+        Queue::assertPushed(EnviarNotificacion::class, 1);
+        // Se tocó updated_at para no re-tomarla en la próxima corrida.
+        $this->assertTrue($huerfana->fresh()->updated_at->greaterThan(now()->subMinute()));
+    }
+
+    public function test_no_barre_pendiente_reciente_en_vuelo(): void
+    {
+        Queue::fake();
+        // Pendiente recién encolada (en vuelo): no se re-despacha.
+        $this->fallida(['estado' => Notificacion::PENDIENTE, 'programada_para' => null]);
+
+        $this->artisan('notificaciones:reintentar')->assertSuccessful();
+
+        Queue::assertNothingPushed();
     }
 }

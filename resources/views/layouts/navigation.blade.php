@@ -1,4 +1,10 @@
 <nav x-data="{ open: false }" class="border-b border-neutral-200 bg-white">
+    {{-- Campanita M15: no-leídas del usuario, calculadas UNA vez y reusadas en
+         el dropdown desktop y el bloque móvil (evita repetir la query). --}}
+    @php
+        $dgNoLeidas = \App\Models\Notificacion::campanitaDe(auth()->id())->latest('id')->take(5)->get();
+        $dgConteo = \App\Models\Notificacion::campanitaDe(auth()->id())->count();
+    @endphp
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 justify-between">
             <div class="flex">
@@ -42,9 +48,9 @@
                         </x-nav-dropdown>
                     @endcanany
 
-                    @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit'])
+                    @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit', 'view notificaciones'])
                         <x-nav-dropdown label="Administración"
-                            :active="request()->routeIs('admin.users.*', 'admin.roles.*', 'admin.sucursales.*', 'admin.configuracion.*', 'admin.audits.*')">
+                            :active="request()->routeIs('admin.users.*', 'admin.roles.*', 'admin.sucursales.*', 'admin.configuracion.*', 'admin.audits.*', 'admin.notificaciones.*')">
                             @can('view users')
                                 <x-dropdown-link :href="route('admin.users.index')">Usuarios</x-dropdown-link>
                             @endcan
@@ -59,6 +65,9 @@
                             @endcan
                             @can('view audit')
                                 <x-dropdown-link :href="route('admin.audits.index')">Auditoría</x-dropdown-link>
+                            @endcan
+                            @can('view notificaciones')
+                                <x-dropdown-link :href="route('admin.notificaciones.index')">Notificaciones</x-dropdown-link>
                             @endcan
                         </x-nav-dropdown>
                     @endcanany
@@ -79,7 +88,7 @@
 
             <div class="hidden lg:ms-6 lg:flex lg:items-center">
                 {{-- Campanita in-app (M15) --}}
-                @include('layouts.partials.campanita')
+                @include('layouts.partials.campanita', ['dgNoLeidas' => $dgNoLeidas, 'dgConteo' => $dgConteo])
 
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
@@ -210,28 +219,25 @@
             @endcanany
         </div>
 
-        {{-- Campanita in-app (M15) — móvil --}}
-        @php $dgConteoMovil = \App\Models\Notificacion::campanitaDe(auth()->id())->count(); @endphp
+        {{-- Campanita in-app (M15) — móvil. Reusa $dgConteo del tope del nav. --}}
         <div class="border-t border-neutral-200 pb-1 pt-4">
             <div class="flex items-center justify-between px-4">
                 <span class="inline-flex items-center gap-2 text-base font-medium text-neutral-800">
                     Notificaciones
-                    @if ($dgConteoMovil > 0)
-                        <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">{{ $dgConteoMovil }}</span>
+                    @if ($dgConteo > 0)
+                        <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">{{ $dgConteo }}</span>
                     @endif
                 </span>
-                @if ($dgConteoMovil > 0)
+                @if ($dgConteo > 0)
                     <form method="POST" action="{{ route('notificaciones.leer-todas') }}">
                         @csrf
                         <button type="submit" class="text-sm font-medium text-brand-600">Marcar todas</button>
                     </form>
                 @endif
             </div>
-            @can('view notificaciones')
-                <div class="mt-1">
-                    <x-responsive-nav-link :href="route('admin.notificaciones.index')">Ver todas</x-responsive-nav-link>
-                </div>
-            @endcan
+            <div class="mt-1">
+                <x-responsive-nav-link :href="route('notificaciones.index')">Ver mis notificaciones</x-responsive-nav-link>
+            </div>
         </div>
 
         <div class="border-t border-neutral-200 pb-1 pt-4">

@@ -79,13 +79,52 @@ class CampanitaTest extends TestCase
         $this->assertSame(0, Notificacion::campanitaDe($user->id)->count());
     }
 
-    public function test_campanita_visible_en_el_nav(): void
+    public function test_campanita_muestra_el_conteo_en_el_nav(): void
     {
         $user = User::factory()->create();
         $this->inApp($user);
+        $this->inApp($user);
+        $this->inApp($user);
 
+        // El nav renderiza la campanita con el badge del conteo real (3).
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Notificaciones', false);
+            ->assertSee('Notificaciones', false)
+            ->assertSee('>3<', false);
+
+        // Marcar todas → el badge desaparece (conteo 0).
+        $this->actingAs($user)->post(route('notificaciones.leer-todas'));
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('>3<', false);
+    }
+
+    public function test_pagina_personal_lista_solo_lo_propio(): void
+    {
+        $user = User::factory()->create();
+        $this->inApp($user);
+        $ajena = $this->inApp(User::factory()->create());
+        $ajena->update(['titulo' => 'Ajena secreta']);
+
+        $this->actingAs($user)->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertViewIs('notificaciones.index')
+            ->assertDontSee('Ajena secreta');
+    }
+
+    public function test_no_se_puede_leer_una_no_database(): void
+    {
+        $user = User::factory()->create();
+        $mail = Notificacion::create([
+            'evento' => 'sistema.prueba', 'user_id' => $user->id,
+            'canal' => Notificacion::CANAL_MAIL, 'titulo' => 'T', 'cuerpo' => 'C',
+            'estado' => Notificacion::FALLIDA,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('notificaciones.leer', $mail))
+            ->assertNotFound();
+
+        $this->assertSame(Notificacion::FALLIDA, $mail->fresh()->estado);
     }
 }

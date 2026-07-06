@@ -21,6 +21,12 @@
 
             <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="max-w-xl">
+                    @include('profile.partials.preferencias-notificaciones', ['user' => $user])
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+                <div class="max-w-xl">
                     @include('profile.partials.delete-user-form')
                 </div>
             </div>
