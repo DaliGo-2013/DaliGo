@@ -47,6 +47,7 @@
 | Max-1 | [x] Cierre **P-SPK-03** + **I-01 modo compatibilidad** — *VERIFICADO 07-07: `faf772f` (grilla */15 + hourlyAt 15/30/45 + ScheduleBsaleTest + 2 evidencias QA + plantilla/kickoff actualizados), `d1db5ef` (memo SPIKE-PWA 165 líneas sellado, RUTA P-SPK-01..03 [x] con hashes, golden-hash test), `aa10d2b` (verificación EN VIVO del slot 16:15 UTC). SPIKE PWA COMPLETO. Parte formal recibido 07-07 (403 tests, deploy verde); /usage pendiente* | S | Fable 5 (decisión dueño) | Push único; parte con /usage |
 | Max-1 | [~] **E2 · M14 Aprobaciones digitales — arranque**: PLAN-M14 SELLADO en main (`8fb6763`, 167 líneas) y **VALIDADO por el Director 07-07** (spot-checks del sello: ajustar():677 con lock ✓, Configuracion::set firstOrFail ✓, umbral_aprobacion_clp sembrado ✓, grilla verificada ✓; diseño conforme: handlers por tipo_accion, payload-obsoleto→rechazo automático, escalamiento como nivel, contrato monto=null conservador). HALLAZGO ÚTIL del plan: reintentador M15 en everyFiveMinutes() viola convención I-01 → corrección dictada a Max-2 PRE-push. **Falta: visto bueno de Mauricio con 3 puntos de decisión** (umbral 50 unidades, unidades-vs-CLP, cambio UX jefe_bodega). De paso el sello CERRÓ I-03 (syncs verificadas por SSH). ⚠️ Ver R-03: P-M14-01 apareció en la rama sin visto bueno registrado | M (plan) | Fable 5 hoy · Opus 4.8 desde 08-07 | PLAN-M14 sellado + visto bueno; vigilancia reportada |
 | Max-2 | [~] **P-M15-10** · Entregabilidad — *redacción HECHA 07-07 (16 pasos, plantilla post-I-01, `MAIL_SCHEME` verificado contra `config/mail.php:42` ✓, no de memoria); el TEXTO del prompt aún NO llega al Director → revisión pendiente ANTES del despacho* | M | Opus 4.8 · high | Prompt revisado y despachado; SPF/DKIM OK; correo real a inbox; fila mail "Enviada" |
+| Max-1 | [x] **P-M14-01** · Esquema del motor de aprobaciones — *VERIFICADO por Director 07-07: `5d9286d` en `feature/m14-aprobaciones` (8 archivos +456 exactos), migración fiel al PLAN §1.2 (unique `tipo_accion(64)`, índices `[estado,rol_aprobador]` y `[estado,created_at]` con propósito comentado), seeder `firstOrCreate`, 6 tests de esquema, AuditController +2 modelos, suite 451 declarada, gobierno en main `6ae4d0e`. Visto bueno confirmado (R-03 cerrada). Excepción de verificación multi-agente aceptada (paso mecánico, diseño doblemente aprobado)* | M | Fable 5 | migrate:fresh --seed ×2 idempotente; suite verde |
 
 ## Incidencias
 
@@ -90,14 +91,14 @@ pasos exactos (var de env y ubicación). Cierra cuando un grep del log muestre s
 stale + `.env` SMTP a medio experimento — órdenes 5 y 6 salieron sin correo. Sin acción ahora:
 el cierre real del correo saliente es **P-M15-10** (SPF/DKIM + cuenta SMTP).
 
-### R-03 · P-M14-01 pusheado a la rama SIN visto bueno registrado — aclarar (07-07)
-Commit `5d9286d` (esquema M14) apareció en `feature/m14-aprobaciones`, pero el gate del plan
-("visto bueno de Mauricio ANTES de la primera migración", con 3 puntos de decisión) no consta
-como dado. Pregunta al dueño: ¿lo diste directo a Max-1? Si sí → registrar las 3 respuestas
-(umbral 50, unidades-vs-CLP, UX jefe_bodega) y el Director verifica P-M14-01 normal. Si no →
-Max-1 congela la rama hasta el visto bueno (daño acotado: rama sin merge, plan ya validado;
-riesgo real: la clave `umbral_ajuste_produccion_unidades` va en los seeds de P-M14-01 y
-depende de la decisión unidades-vs-CLP).
+### R-03 — CERRADA 07-07: visto bueno de M14 confirmado (dado en directo)
+El parte de P-M14-01 declara "visto bueno de Mauricio DADO" y el dueño lo transmitió sin
+corrección → se registra como confirmado. Los 3 puntos de decisión quedan REGISTRADOS COMO
+PROPUESTOS en el plan (umbral 50 unidades · umbral v1 en unidades, `umbral_aprobacion_clp`
+reservado a reglas monetarias · UX jefe_bodega: ajustes ≥50 esperan aprobación), salvo que
+Mauricio los corrija — el umbral es clave de configuración, cambiarlo después no cuesta código.
+Lección de proceso: los vistos buenos dados por canal directo se avisan al Director en el
+momento, no en el parte siguiente.
 
 ### I-01 — CERRADA 07-07 (modo compatibilidad verificado en vivo; evidencias en docs/qa/INFRA/)
 Cierre: `faf772f` + `aa10d2b`. Vigilancia: re-chequeo interino 07-07 11:18 — `*/15` INTACTO y
