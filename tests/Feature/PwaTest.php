@@ -62,6 +62,26 @@ class PwaTest extends TestCase
         $this->assertStringContainsString('.catch(() => paginaOffline())', $sw);
     }
 
+    public function test_tocar_offline_blade_exige_bump_de_cache(): void
+    {
+        // Guardarrail de la regla de invalidacion: el SW solo se actualiza por
+        // byte-diff de sw.js, asi que cambiar offline.blade.php SIN subir la
+        // version de CACHE dejaria la pagina offline vieja precacheada para
+        // siempre en los celulares. Este test acopla ambos a proposito:
+        // si editaste offline.blade.php -> sube CACHE en public/sw.js (v1 -> v2)
+        // y actualiza AQUI el hash y la version esperada.
+        $this->assertSame(
+            '7601b0bd240edd5dbe23ae0ca8fca787',
+            md5_file(resource_path('views/offline.blade.php')),
+            'Cambiaste offline.blade.php: sube la version de CACHE en public/sw.js y actualiza este hash.',
+        );
+        $this->assertStringContainsString(
+            "CACHE = 'daligo-v1'",
+            file_get_contents(public_path('sw.js')),
+            'La version de CACHE no coincide con la esperada por este test: actualiza ambos juntos.',
+        );
+    }
+
     public function test_layouts_declaran_el_manifest(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);

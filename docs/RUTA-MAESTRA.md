@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-06 (**P-M12-01 piloto** — ingreso a ST por QR sin login + correo al confirmar + historial compartido con separación por sucursal: gate R-31 aprobado y **mergeado a main (`1639d71`), LIVE en producción**; falta configurar SMTP en el server (P-M15-10) + QA real) · 2026-07-02 (P-SPK-01/02 hechos: PWA instalable + cola offline; P-S0-18: recetario + skills) |
+| **Última actualización** | 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — HostGator reescribe crons <15 min → cron `*/15` + syncs re-agendadas a :00/:15/:30/:45; **I-03 ABIERTA**: token Bsale muerto (401) desde el 06-07, espejo congelado, la destraba Mauricio en el panel Bsale · **P-SPK-03 hecho → spike PWA COMPLETO**: memo `docs/SPIKE-PWA.md` sellado + prueba de campo aprobada 06-07) · 2026-07-06 (**P-M12-01 piloto** — ingreso a ST por QR sin login + correo al confirmar, mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
-| **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
-| **Salud doc↔código** | VERIFICADA el 2026-07-02 (+ infra verificada por IA-QA: cron OK, 4 syncs corriendo, logs limpios) |
+| **Bloqueos activos** | **I-03: token Bsale 401 (espejo congelado — SOLO Mauricio, panel Bsale)** · D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
+| **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra re-verificada por SSH: crontab `*/15` aplicado; ojo — syncs paradas por I-03 hasta reponer el token Bsale) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04)
@@ -109,7 +109,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 - [ ] **P-M15-01** · Migraciones `notificaciones` (polimórfica: evento, canal, destinatario, payload, estado, reintentos) + `preferencias_canal` — MySQL 5.7: VARCHAR(191) en índices
 - [ ] **P-M15-02** · `NotificacionDispatcher` + contrato `Canal` (`CanalMail`, `CanalDatabase`, `CanalWhatsApp` stub que loguea)
-- [ ] **P-M15-03** · Cola database + delegación IA-cPanel: segundo cron `queue:work --stop-when-empty --max-time=55`
+- [ ] **P-M15-03** · Cola database — el cron de cola YA existe en el server (I-01, 2026-07-07): `*/15 … queue:work --stop-when-empty --max-time=840` (grilla `*/15`, latencia ≤15 min; NO re-delegar la spec vieja por-minuto/`--max-time=55`)
 - [ ] **P-M15-04** · Plantillas por evento + seeds idempotentes + claves en `Configuracion`
 - [ ] **P-M15-05** · Reintentos con backoff + vista `/admin/notificaciones` (permiso `view notificaciones`)
 - [ ] **P-M15-06** · Campanita in-app en nav (desktop + responsive) — `npm run build` + grep del bundle
@@ -131,9 +131,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-M14-05** · Cablear `ProduccionController::ajustar` como primer consumidor
 - [ ] **P-M14-06** · Historial + vista por aprobador/solicitante, auditable
 - [ ] **P-M14-07** · Tests + merge + QA staging desde celular
-- [x] **P-SPK-01** · Spike: manifest + service worker sobre `mi-reporte` (instalable, cache assets, detección online/offline) — `public/{manifest.json,sw.js,icons/}`, ruta `/offline` standalone, `Alpine.store('red')` + `<x-produccion.indicador-red>`; estrategia conservadora validada adversarialmente (fallback SOLO en catch por los opaqueredirect de auth, scope `/`, guard de localhost); 4 tests, 368 verdes (este push, 2026-07-02)
-- [x] **P-SPK-02** · Spike: cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente) — migración `cliente_uuid` + unique `[reporte_id, cliente_uuid]`, endpoint idempotente dentro del lock + respuesta JSON, `resources/js/offline-queue.js` (encolar/drenar con token CSRF fresco, clasificación transitorio/permanente), integración en el form del soplador (encola offline + contador + reload al reconciliar); 4 tests de idempotencia, 372 verdes; verificado E2E en preview (2 tandas offline → sincronizan sin duplicar) (este push, 2026-07-02)
-- [ ] **P-SPK-03** · Spike: prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08
+- [x] **P-SPK-01** · Spike: manifest + service worker sobre `mi-reporte` (instalable, cache assets, detección online/offline) — `public/{manifest.json,sw.js,icons/}`, ruta `/offline` standalone, `Alpine.store('red')` + `<x-produccion.indicador-red>`; estrategia conservadora validada adversarialmente (fallback SOLO en catch por los opaqueredirect de auth, scope `/`, guard de localhost); 4 tests, 368 verdes (`ee01204`, 2026-07-02)
+- [x] **P-SPK-02** · Spike: cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente) — migración `cliente_uuid` + unique `[reporte_id, cliente_uuid]`, endpoint idempotente dentro del lock + respuesta JSON, `resources/js/offline-queue.js` (encolar/drenar con token CSRF fresco, clasificación transitorio/permanente), integración en el form del soplador (encola offline + contador + reload al reconciliar); 4 tests de idempotencia, 372 verdes; verificado E2E en preview (2 tandas offline → sincronizan sin duplicar) (`793bfcc`, 2026-07-02)
+- [x] **P-SPK-03** · Spike: prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — memo sellado y verificado contra el código (7 secciones + guardarraíl golden-hash en `PwaTest`); **prueba de campo APROBADA por el dueño el 06-07** (capturas verificadas por el Director, tablero día 3 `50f8878`): A OK, B OK, 4/4 tandas sin duplicados, motivo por tanda sobrevivió la cola (este push, 2026-07-07)
 
 ### E10-v0 · M16 BI corte 0 (3–4 días, al cierre de E2 o intercalado)
 - [ ] **P-M16-01** · Tablero ejecutivo v0 con datos existentes: producción por soplador/mermas + stock crítico (solo admin)
@@ -143,7 +143,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 ## 5. F2 · Núcleo operativo
 
 ### E3 · M04-F1 Inventario: del espejo a módulo (~2.5 sem) — [B:D-003]
-**Base real:** el espejo read-only YA existe (`Bodega`, `Stock`, `StockSync`, cron `:50`) — documentado en `HANDOFF.md` §8e. E3 construye encima, no desde cero.
+**Base real:** el espejo read-only YA existe (`Bodega`, `Stock`, `StockSync`, cron `:45` — grilla `*/15` de I-01) — documentado en `HANDOFF.md` §8e. E3 construye encima, no desde cero.
 **Rama:** `feature/m04-inventario-f1` · **Depende de:** D-003 (levantamiento) — D-002 deseable, no bloqueante (default conservador).
 **Hecho cuando:** stock mostrado cuadra contra Bsale en 5 SKUs × 3 bodegas (QA staging); roles operativos reciben 403 en la vista cruzada.
 
