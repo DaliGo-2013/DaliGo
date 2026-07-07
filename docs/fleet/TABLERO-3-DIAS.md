@@ -64,16 +64,19 @@ los `description:` de las 3 skills para que el modelo las auto-dispare por conte
 funciona el auto-trigger de skills: por descripción, no por invocación manual). Talla S,
 territorio stream 1 (CLAUDE.md + .claude/skills en main).
 
-### R-02 · Stream 3 (M12 servicio técnico) identificado — formalizar
-Los commits "Marcos Uribe" resultaron ser un STREAM COMPLETO del dueño en paralelo: piloto
-P-M12-01 (ingreso público por QR, portada, buscador catálogo, permiso "confirmar servicio
-tecnico") — 14+ commits 06/07-07, RUTA-MAESTRA marcada, live en prod. ACCIONES: (1) el dueño
-confirma qué sesión/cuenta es y entrega partes al Director desde ahora (asiento "Stream-3
-M12" en el roster); (2) IMPACTO MERGE M15: M12 tocó RolesAndPermissionsSeeder,
-config/permissions.php y routes/web.php → los conflictos del merge de Max-2 ya NO son solo
-docs; ambos lados son aditivos → conservar ambos. Max-2 avisado en el dictado.
+### R-02 — CERRADA por política del dueño (07-07)
+El stream M12 (servicio técnico, "Marcos") trabaja AUTÓNOMO por decisión de Mauricio: no
+reporta partes ni entra al tablero. **Regla operativa para la flota:** el Director monitorea
+solo INTERFERENCIAS — si trabajo de la flota va a tocar archivos/territorio que M12 esté
+moviendo, se notifica a Mauricio ANTES de decidir; si no hay cruce, M12 se ignora. Cruce ya
+gestionado: superficie de conflicto del merge M15 (seeder/permissions/routes/nav) dictada a
+Max-2 con resolución verificada.
 
-### I-03 · Bsale responde 401 desde 06-07 ~16:00 CDT — token inválido (ABIERTA, urgente)
+### I-03 · Bsale 401 — TOKEN RENOVADO por el dueño 07-07, en verificación
+Cierra cuando el log muestre la primera sync OK post-renovación (grep de laravel.log en el
+próximo chequeo de infra; puede ir junto a la vigilancia crontab del 08-07).
+
+### I-03 (histórico) · Bsale responde 401 desde 06-07 ~16:00 CDT — token inválido (ABIERTA, urgente)
 Detectada por Max-1: «can not be authenticated» en todas las syncs → espejo congelado
 (stock desde 03-07 por I-01, catálogo/clientes/precios desde 06-07 por esto). Solo el dueño
 puede: revisar/regenerar el token en el panel de Bsale y ponerlo en el `.env` del servidor.
