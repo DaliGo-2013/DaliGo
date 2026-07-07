@@ -90,8 +90,10 @@ stale + `.env` SMTP a medio experimento — órdenes 5 y 6 salieron sin correo. 
 el cierre real del correo saliente es **P-M15-10** (SPF/DKIM + cuenta SMTP).
 
 ### I-01 — CERRADA 07-07 (modo compatibilidad verificado en vivo; evidencias en docs/qa/INFRA/)
-Cierre: `faf772f` + `aa10d2b`. Vigilancia residual: confirmar en ~24h que la grilla `*/15`
-sobrevive al reescritor; pregunta a soporte HostGator pendiente de despacho.
+Cierre: `faf772f` + `aa10d2b`. Vigilancia: re-chequeo interino 07-07 11:18 — `*/15` INTACTO y
+las 4 syncs disparando (señal fuerte). Chequeo formal de 24h: 08-07 al abrir sesión de Max-1
+(`crontab -l` textual); si el reescritor tocó `*/15` → escalar a soporte HostGator con el
+borrador ya redactado en la evidencia I-01.
 
 ### I-01 (histórico) · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
 Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,

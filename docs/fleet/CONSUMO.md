@@ -39,7 +39,7 @@ sesión restante.
 | 07-07 | Max-2 Forjador B | P-M15-09 fase merge (00297d5) | L | mixto Opus/Fable | n/d | **17% / 7%** (captura 07-07) | ≤17% | HECHA (verificada). Detalle: USD 19.48 · API 20min · salida 1.1M tok |
 | 07-07 | Pro-1 Director | Operación día del merge: verificación 3 partes + auditoría workflow + gates I-01/I-03 + validación PLAN-M14 + coordinación merge | M-L | Fable 5 100% (decisión dueño) | n/d | **64% / 16%** (captura 07-07) | ≤64% | Jornada completa. Detalle: USD 21.96 · salida 169.5k tok · 100% ejecuciones >150k ctx |
 | 06-07 | Max-1 Forjador A | Sesión post-F-01 (P-SPK-03 en curso) | — | **Fable 5** (⁴) | n/d | **100%** / 28% (captura ~14:50) | ventana AGOTADA | CORTADA a mitad de cierre — SIN relevo (dueño esperó el reset 15:29); titular retoma en la misma sesión |
-| 07-07 | Max-1 Forjador A | Cierre P-SPK-03 + I-01 modo compat. (faf772f/d1db5ef/aa10d2b) | L | Fable 5 96% / Opus 4% | n/d | **60% / 8%** (captura 07-07) | ≤60% | TODO HECHO (verificado; 403 tests). Detalle sesión: USD 60.08 · API 1h30m · activo 2h21m · salida 563k tok · cache-read 300M |
+| 07-07 | Max-1 Forjador A | Cierre P-SPK-03 + I-01 modo compat. + PLAN-M14 sellado (faf772f/d1db5ef/aa10d2b/8fb6763) | L | Fable 5 96% / Opus 4% | n/d | **60% / 8%** (captura 07-07, pre PLAN-M14) | ≥60% | TODO HECHO (verificado; 403 tests + plan validado). Detalle sesión: USD 60.08 · API 1h30m · salida 563k tok |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
