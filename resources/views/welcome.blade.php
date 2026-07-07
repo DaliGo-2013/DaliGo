@@ -10,18 +10,11 @@
 </head>
 <body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
     <div class="flex min-h-screen flex-col">
-        <header class="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
+        <header class="mx-auto flex w-full max-w-5xl items-center px-6 py-6">
             <div class="flex items-center gap-2">
                 <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</span>
                 <span class="text-lg font-semibold tracking-tight">DaliGo</span>
             </div>
-            <nav class="flex items-center gap-2 text-sm">
-                @auth
-                    <a href="{{ url('/dashboard') }}" class="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Dashboard') }}</a>
-                @else
-                    <a href="{{ route('login') }}" class="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Log in') }}</a>
-                @endauth
-            </nav>
         </header>
 
         <main class="flex flex-1 items-center justify-center px-6">
