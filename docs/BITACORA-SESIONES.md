@@ -21,6 +21,16 @@
 
 ## Sesiones
 
+### [2026-07-06] Formulario QR: paso previo «¿Cómo desea ingresar?» (código de barras «Pronto» | manual)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** dejar lista para presentar al jefe la opción FUTURA de ingreso por código de barras (con pistola lectora), sin construir el backend todavía.
+- **Qué se hizo:** (rama `feature/qr-modo-ingreso`) pantalla de elección previa al formulario público (Alpine `modo`):
+  - **«Con código de barras»** (badge **Pronto**) → vista de preview que explica el flujo futuro (al escanear se autocompleta modelo/factura/garantía/dónde-se-compró; el cliente solo ingresa nombre/correo/teléfono/RUT) + botón «por ahora, ingresar manualmente». **NO envía aún** (falta la pistola y el enlace a las compras) — es demo/placeholder.
+  - **«Ingresar manualmente»** → el formulario actual completo (equipos antiguos sin código).
+  - Si hay errores de validación, abre directo el modo manual (el cliente ve sus errores). 1 test nuevo → **399 verdes**. `view:clear` + build.
+- **Pasos marcados:** ninguno (P-M12-01 [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** QA del correo (confirmar orden como encargado → ver Gmail/Spam); a futuro, hacer funcional el ingreso por código de barras cuando llegue la pistola lectora.
+
 ### [2026-07-06] Portada: entrada pública a servicio técnico (pregunta → sucursal → QR)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Objetivo declarado:** que desde la portada (sin cuenta) se pueda entrar a servicio técnico eligiendo sucursal y viendo su QR.
