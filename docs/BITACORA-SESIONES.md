@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-07 · tarde] Stream 1 · P-M14-01 hecho en rama: esquema del motor de aprobaciones
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — visto bueno de Mauricio a PLAN-M14 dado
+- **Objetivo declarado:** P-M14-01 (esquema del motor, PLAN-M14 §1.2) en la rama `feature/m14-aprobaciones`.
+- **Qué se hizo:** commit `5d9286d` en la rama (nacida DESPUÉS del merge de M15 → el dispatcher ya está disponible; el guard `class_exists` de P-M14-02 quedó innecesario): migración `aprobaciones`+`reglas_aprobacion` (MySQL 5.7-safe, aditiva), modelos `Aprobacion`/`ReglaAprobacion` auditables (consts, scope `paraRol`, `umbral()` vía Configuracion), `ReglasAprobacionSeeder` (1 regla: ajuste de producción → admin, umbral en unidades) + claves `umbral_ajuste_produccion_unidades`=50 y `aprobacion_escala_minutos`=30, registro en `AuditController::MODELOS`, y `AprobacionesSchemaTest` (6 tests: idempotencia ×2, defaults, umbral vía config, morph+payload, scope, auditables). `migrate:fresh --seed` + segunda pasada verdes; **suite completa 451 verdes** (CI no corre en ramas → local obligatoria).
+- **Pasos marcados:** ninguno en RUTA (precedente M15: los `[x]` de trabajo en rama se marcan al aterrizar en main, en el merge de P-M14-07; avance fino en el tablero del Director). · **Decisiones:** ninguna (diseño ya aprobado en PLAN-M14). · **Delegaciones:** ninguna.
+- **Próximo paso:** P-M14-02 (servicio `Aprobaciones` + handler + tests) en la misma rama; antes, al abrir el 08-07: vigilancia crontab (¿sobrevive `*/15`?) y `/model` Opus 4.8.
+
 ### [2026-07-07 · tarde] Stream 2 · P-M15-09 fase 2: M15 mergeado a main = DEPLOY (doble llave Director+Mauricio)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — OK definitivo con doble llave (verificación del Director en tablero `5fd638a`)
 - **Objetivo declarado:** P-M15-09 micro-secuencia final — plegar el avance docs-only de main, push a main, deploy
