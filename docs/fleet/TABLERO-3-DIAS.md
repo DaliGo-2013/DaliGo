@@ -45,7 +45,7 @@
 | Max-1 | [x] **F-01** recetario como apoyo automático — *VERIFICADO: `07dbe92`, 4 archivos +10/−3 exactos, regla en CLAUDE.md (auto-carga en 6 cuentas), 3 descriptions con auto-disparo y keywords en español, cuerpos intactos. Desviación: corrió Fable 5 (ledger)* | S | Opus 4.8 · medium (corrió Fable 5) | Regla en CLAUDE.md + skills auto-disparables |
 | Max-2 | [~] **P-M15-09** · Merge coordinado + QA staging — **FASE MERGE HECHA Y VERIFICADA por el Director 07-07**: `00297d5` en la rama (padres `f7353fb`+`dff13c7`), 6 conflictos resueltos exacto al endoso (RoleMatrix con pinza ✓, uniones ✓, nav ambos lados ✓), bundle con los 4 greps ✓, package-lock limpio ✓, suite 444 declarada. **OK del Director DADO · esperando OK de Mauricio** para push a main (= deploy). Post-deploy: QA staging (prompt QA-FUNCIONAL) → cierra solo con APROBADO. Gotcha qrcode/npm → bitácora con el push | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
 | Max-1 | [x] Cierre **P-SPK-03** + **I-01 modo compatibilidad** — *VERIFICADO 07-07: `faf772f` (grilla */15 + hourlyAt 15/30/45 + ScheduleBsaleTest + 2 evidencias QA + plantilla/kickoff actualizados), `d1db5ef` (memo SPIKE-PWA 165 líneas sellado, RUTA P-SPK-01..03 [x] con hashes, golden-hash test), `aa10d2b` (verificación EN VIVO del slot 16:15 UTC). SPIKE PWA COMPLETO. Parte formal recibido 07-07 (403 tests, deploy verde); /usage pendiente* | S | Fable 5 (decisión dueño) | Push único; parte con /usage |
-| Max-1 | [ ] **E2 · M14 Aprobaciones digitales — arranque**: leer biblia §4/M14 + RUTA §4/E2 → `docs/planes/PLAN-M14.md` con sello de vigencia (patrón PLAN-M15) → visto bueno de Mauricio ANTES de la primera migración. Encargos anexos: vigilancia crontab 08-07 (¿sobrevive `*/15`?) + pasos del token I-03 a Mauricio si no los entregó | M (plan) | Fable 5 hoy · Opus 4.8 desde 08-07 | PLAN-M14 sellado + visto bueno; vigilancia reportada |
+| Max-1 | [~] **E2 · M14 Aprobaciones digitales — arranque**: PLAN-M14 SELLADO en main (`8fb6763`, 167 líneas) y **VALIDADO por el Director 07-07** (spot-checks del sello: ajustar():677 con lock ✓, Configuracion::set firstOrFail ✓, umbral_aprobacion_clp sembrado ✓, grilla verificada ✓; diseño conforme: handlers por tipo_accion, payload-obsoleto→rechazo automático, escalamiento como nivel, contrato monto=null conservador). HALLAZGO ÚTIL del plan: reintentador M15 en everyFiveMinutes() viola convención I-01 → corrección dictada a Max-2 PRE-push. **Falta: visto bueno de Mauricio con 3 puntos de decisión** (umbral 50 unidades, unidades-vs-CLP, cambio UX jefe_bodega). De paso el sello CERRÓ I-03 (syncs verificadas por SSH) | M (plan) | Fable 5 hoy · Opus 4.8 desde 08-07 | PLAN-M14 sellado + visto bueno; vigilancia reportada |
 
 ## Incidencias
 
@@ -72,9 +72,11 @@ moviendo, se notifica a Mauricio ANTES de decidir; si no hay cruce, M12 se ignor
 gestionado: superficie de conflicto del merge M15 (seeder/permissions/routes/nav) dictada a
 Max-2 con resolución verificada.
 
-### I-03 · Bsale 401 — TOKEN RENOVADO por el dueño 07-07, en verificación
-Cierra cuando el log muestre la primera sync OK post-renovación (grep de laravel.log en el
-próximo chequeo de infra; puede ir junto a la vigilancia crontab del 08-07).
+### I-03 — CERRADA 07-07: token renovado y VERIFICADO
+Evidencia (Max-1 por SSH, 12:26 CDT, en el sello de PLAN-M14): las 4 syncs corrieron OK en
+sus slots nuevos — prices 16:31, stock 16:49, catalog 17:00, clients 17:23 UTC. Espejo
+descongelado. De paso, señal temprana POSITIVA de la vigilancia I-01: la grilla `*/15`
+sobrevivió y opera (chequeo formal de 24h igual corre el 08-07).
 
 ### I-03 (histórico) · Bsale responde 401 desde 06-07 ~16:00 CDT — token inválido (ABIERTA, urgente)
 Detectada por Max-1: «can not be authenticated» en todas las syncs → espejo congelado
