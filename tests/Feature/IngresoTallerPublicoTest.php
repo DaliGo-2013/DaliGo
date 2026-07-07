@@ -302,6 +302,37 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_jefe_bodega_autoriza_la_recepcion_y_manda_correo(): void
+    {
+        // El jefe de bodega AUTORIZA la recepcion (permiso 'confirmar servicio
+        // tecnico') aunque NO tenga 'manage'. Al confirmar, sale el correo.
+        Mail::fake();
+        $jefe = tap(User::factory()->create())->assignRole('jefe_bodega');
+        $orden = OrdenServicio::factory()->create([
+            'fuente' => 'qr',
+            'confirmada_at' => null,
+            'cliente_email' => 'ana@correo.cl',
+        ]);
+
+        $this->actingAs($jefe)
+            ->post(route('admin.servicio-tecnico.confirmar', $orden))
+            ->assertRedirect();
+
+        $this->assertNotNull($orden->fresh()->confirmada_at);
+        Mail::assertSent(IngresoTallerRecibido::class);
+    }
+
+    public function test_vendedor_solo_lectura_no_puede_confirmar(): void
+    {
+        // El vendedor tiene 'view servicio tecnico' pero NO 'confirmar' -> 403.
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+        $orden = OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => null]);
+
+        $this->actingAs($vendedor)
+            ->post(route('admin.servicio-tecnico.confirmar', $orden))
+            ->assertForbidden();
+    }
+
     // --- Pagina de QR (admin) ---
 
     public function test_pagina_qr_lista_solo_sucursales_de_servicio_tecnico(): void

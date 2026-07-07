@@ -122,6 +122,15 @@ Route::middleware('auth')
                 ->whereNumber('orden')->name('servicio-tecnico.show');
         });
 
+        // Confirmar la recepcion de lo que llego por QR: lo AUTORIZA el jefe de
+        // bodega (revisa que los datos esten bien) o el tecnico. Setea
+        // confirmada_at + manda el correo al cliente. Permiso propio, separado de
+        // 'manage' (el jefe de bodega no ingresa/edita, solo autoriza).
+        Route::middleware('permission:confirmar servicio tecnico')->group(function () {
+            Route::post('servicio-tecnico/{orden}/confirmar', [ServicioTecnicoController::class, 'confirmar'])
+                ->whereNumber('orden')->name('servicio-tecnico.confirmar');
+        });
+
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
                 ->name('servicio-tecnico.buscar-cliente');
@@ -130,13 +139,9 @@ Route::middleware('auth')
             Route::get('servicio-tecnico/buscar-repuesto', [ServicioTecnicoController::class, 'buscarRepuesto'])
                 ->name('servicio-tecnico.buscar-repuesto');
 
-            // QR por sucursal (link firmado imprimible para el mostrador) e
-            // ingreso publico: el encargado confirma la recepcion de lo que
-            // llego por QR (setea confirmada_at + manda el correo al cliente).
+            // QR por sucursal (link firmado imprimible para el mostrador).
             Route::get('servicio-tecnico/qr', [ServicioTecnicoController::class, 'qr'])
                 ->name('servicio-tecnico.qr');
-            Route::post('servicio-tecnico/{orden}/confirmar', [ServicioTecnicoController::class, 'confirmar'])
-                ->whereNumber('orden')->name('servicio-tecnico.confirmar');
 
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])

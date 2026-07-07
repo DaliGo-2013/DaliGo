@@ -35,8 +35,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'report production',  // soplador: ve y envia su reporte diario
             'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve
             // Modulo Servicio Tecnico (taller).
-            'view servicio tecnico',    // jefes/vendedores: ver listado + detalle (solo lectura)
-            'manage servicio tecnico',  // tecnico: ingreso/edicion + etapa de taller
+            'view servicio tecnico',      // jefes/vendedores: ver listado + detalle (solo lectura)
+            'manage servicio tecnico',    // tecnico: ingreso/edicion + etapa de taller
+            'confirmar servicio tecnico', // jefe de bodega / tecnico: autorizar la recepcion de lo que llego por QR
         ];
 
         foreach ($permissions as $name) {
@@ -61,12 +62,16 @@ class RolesAndPermissionsSeeder extends Seeder
             ->givePermissionTo(['manage clientes', 'view servicio tecnico']);
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico']);
+        // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
+        // que los datos esten bien) y luego el tecnico repara. Por eso tiene
+        // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico']);
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);
-        // El tecnico gestiona el ingreso de maquinas/lavadoras al taller (M12).
+        // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
+        // reparacion y tambien confirmar la recepcion.
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico']);
+            ->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
     }

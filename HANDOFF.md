@@ -424,7 +424,8 @@ boleta rápida (dependen de M05), cron de sync.
 - **Estados:** `recibido → en_revision → cotizacion → esperando_repuesto → reparado → entregado | sin_solucion`.
 - **Controller:** `Admin\ServicioTecnicoController` (12 métodos: CRUD + `reparacion`/`guardarReparacion` +
   buscadores AJAX `buscarCliente`/`buscarProducto`/`buscarRepuesto`). Permisos: `view servicio tecnico`
-  (jefes/vendedores, lectura) y `manage servicio tecnico` (técnico, gestión completa).
+  (jefes/vendedores, lectura), `manage servicio tecnico` (técnico, gestión completa) y
+  `confirmar servicio tecnico` (jefe de bodega + técnico: autorizar la recepción de lo que llegó por QR).
 - **Vistas:** `admin/servicio-tecnico/*` (index con filtros, show, form, reparación con repuestos).
 - **Tests:** `ServicioTecnicoManagementTest` (~520 líneas).
 - **Piloto de P-M12-01 — ingreso público por QR** (rama `feature/m12-ingreso-qr-piloto`, **sin mergear** al 2026-07-06): ruta **sin auth** `ingreso-taller` con link **firmado** por sucursal (`URL::signedRoute` + `throttle:6,1` + honeypot); `Publico\IngresoTallerPublicoController` (create/store/gracias); vistas `publico/taller/*`. El cliente crea la orden desde su celular (`fuente='qr'`, `confirmada_at=null`); el encargado la confirma con `ServicioTecnicoController::confirmar` (`lockForUpdate`) y ahí sale el correo `Mail\IngresoTallerRecibido` (standalone, migrable a M15). Página QR imprimible `servicio-tecnico/qr` (dibujo client-side con `qrcode` npm, import dinámico). Nuevas columnas en `ordenes_servicio`: `cliente_email`, `confirmada_at`.

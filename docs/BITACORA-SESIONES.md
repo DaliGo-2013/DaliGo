@@ -21,6 +21,18 @@
 
 ## Sesiones
 
+### [2026-07-06] Permiso «confirmar servicio técnico»: el jefe de bodega autoriza la recepción del QR
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** que el **jefe de bodega** autorice la recepción de lo que llega por QR (revisa que los datos estén bien) y luego el técnico repare; y dejar el rol del técnico de ST (Fernando St) con todos los permisos.
+- **Qué se hizo:** (rama `feature/st-permiso-confirmar`)
+  - **Permiso nuevo `confirmar servicio tecnico`** (seeder idempotente) → asignado a `jefe_bodega` (autoriza, **sin** `manage` → no ingresa/edita) y a `tecnico` (ST completo). `admin` lo tiene por defecto.
+  - La ruta `confirmar`, el bloque **«Por confirmar»**, el botón «Confirmar recepción» y el auto-refresco pasan a gatearse con ese permiso (antes `manage`). «Revisar» apunta al **detalle** (show) para que el jefe (solo lectura) lo abra.
+  - El menú muestra «Servicio Técnico» con `view|manage` (antes solo `manage`) para que el jefe de bodega llegue al listado.
+  - 2 tests nuevos (jefe_bodega confirma + correo; vendedor solo-lectura → 403) → **401 verdes**.
+  - **Usuario Fernando St:** el rol `tecnico` YA trae todos los permisos de ST (view + manage + confirmar). El usuario se crea por la UI de admin (Usuarios → Crear, rol `tecnico`) o por la IA de cPanel — **no se seedea con contraseña** en el repo.
+- **Pasos marcados:** ninguno (P-M12-01 [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** crear el usuario Fernando St (UI) + QA del correo (confirmar orden → Gmail/Spam).
+
 ### [2026-07-06] Formulario QR: paso previo «¿Cómo desea ingresar?» (código de barras «Pronto» | manual)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Objetivo declarado:** dejar lista para presentar al jefe la opción FUTURA de ingreso por código de barras (con pistola lectora), sin construir el backend todavía.
