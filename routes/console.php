@@ -40,10 +40,11 @@ Schedule::command('bsale:sync-stock')
     ->appendOutputTo(storage_path('logs/bsale-sync.log'));
 
 // --- M15 · Reintentos de notificaciones fallidas -------------------------
-// Cada 5 min re-encola las fallidas cuyo backoff ya venció. El comando reclama
-// por `programada_para <= now()`, no por cadencia: si el scheduler estuviera
-// degradado (incidencia I-01), igual procesa todo lo vencido (más latencia).
+// Cada 15 min (grilla */15 de I-01: :00/:15/:30/:45) re-encola las fallidas
+// cuyo backoff ya venció. El comando reclama por `programada_para <= now()`,
+// no por cadencia: si el scheduler se degradara más, igual procesa todo lo
+// vencido (más latencia). Latencia máxima de un reintento: ~15 min.
 Schedule::command('notificaciones:reintentar')
-    ->everyFiveMinutes()
+    ->everyFifteenMinutes()
     ->withoutOverlapping(10)
     ->appendOutputTo(storage_path('logs/notificaciones.log'));

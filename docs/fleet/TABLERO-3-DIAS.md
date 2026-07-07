@@ -43,7 +43,7 @@
 |---|---|---|---|---|
 | Max-2 | [x] **Correcciones de auditoría (4+3) + P-M15-07 + P-M15-08** — *VERIFICADO por Director 06-07 en `f7353fb`: (1) página personal `/notificaciones` solo-auth ✓ (2) guard `canal=database` 404 ✓ (3) `withoutOverlapping(10)` ✓ (4) barrido self-healing de huérfanas (>10 min, re-dispatch idempotente — su llamada, bien justificada) ✓ + claim limpia `programada_para` ✓ + fix `data_get` (punto del evento interpretado como anidación — cazado por SU test) ✓. 9 tests nuevos en diff (405 netos), bundle recompilado, main intacto, Opus 4.8 ✓. MOTOR M15 COMPLETO EN LA RAMA* | L | Opus 4.8 · high | Correcciones aplicadas; preferencias respetadas por dispatcher con test; suite verde |
 | Max-1 | [x] **F-01** recetario como apoyo automático — *VERIFICADO: `07dbe92`, 4 archivos +10/−3 exactos, regla en CLAUDE.md (auto-carga en 6 cuentas), 3 descriptions con auto-disparo y keywords en español, cuerpos intactos. Desviación: corrió Fable 5 (ledger)* | S | Opus 4.8 · medium (corrió Fable 5) | Regla en CLAUDE.md + skills auto-disparables |
-| Max-2 | [~] **P-M15-09** · Merge coordinado + QA staging — **PRECONDICIONES CUMPLIDAS Y VERIFICADAS 07-07 → GO del Director** (P-SPK-03 en main `d1db5ef`; I-01 cerrada `faf772f`+`aa10d2b` con verificación en vivo). OJO conflictos: además de docs, M12 y la regrilla I-01 tocaron seeder/permissions/routes/web y routes/console — todos aditivos, conservar ambos lados. NO push a main sin OK explícito Director+Mauricio | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
+| Max-2 | [~] **P-M15-09** · Merge coordinado + QA staging — **FASE MERGE HECHA Y VERIFICADA por el Director 07-07**: `00297d5` en la rama (padres `f7353fb`+`dff13c7`), 6 conflictos resueltos exacto al endoso (RoleMatrix con pinza ✓, uniones ✓, nav ambos lados ✓), bundle con los 4 greps ✓, package-lock limpio ✓, suite 444 declarada. **OK del Director DADO · esperando OK de Mauricio** para push a main (= deploy). Post-deploy: QA staging (prompt QA-FUNCIONAL) → cierra solo con APROBADO. Gotcha qrcode/npm → bitácora con el push | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
 | Max-1 | [x] Cierre **P-SPK-03** + **I-01 modo compatibilidad** — *VERIFICADO 07-07: `faf772f` (grilla */15 + hourlyAt 15/30/45 + ScheduleBsaleTest + 2 evidencias QA + plantilla/kickoff actualizados), `d1db5ef` (memo SPIKE-PWA 165 líneas sellado, RUTA P-SPK-01..03 [x] con hashes, golden-hash test), `aa10d2b` (verificación EN VIVO del slot 16:15 UTC). SPIKE PWA COMPLETO. Parte formal recibido 07-07 (403 tests, deploy verde); /usage pendiente* | S | Fable 5 (decisión dueño) | Push único; parte con /usage |
 | Max-1 | [ ] **E2 · M14 Aprobaciones digitales — arranque**: leer biblia §4/M14 + RUTA §4/E2 → `docs/planes/PLAN-M14.md` con sello de vigencia (patrón PLAN-M15) → visto bueno de Mauricio ANTES de la primera migración. Encargos anexos: vigilancia crontab 08-07 (¿sobrevive `*/15`?) + pasos del token I-03 a Mauricio si no los entregó | M (plan) | Fable 5 hoy · Opus 4.8 desde 08-07 | PLAN-M14 sellado + visto bueno; vigilancia reportada |
 
@@ -64,16 +64,19 @@ los `description:` de las 3 skills para que el modelo las auto-dispare por conte
 funciona el auto-trigger de skills: por descripción, no por invocación manual). Talla S,
 territorio stream 1 (CLAUDE.md + .claude/skills en main).
 
-### R-02 · Stream 3 (M12 servicio técnico) identificado — formalizar
-Los commits "Marcos Uribe" resultaron ser un STREAM COMPLETO del dueño en paralelo: piloto
-P-M12-01 (ingreso público por QR, portada, buscador catálogo, permiso "confirmar servicio
-tecnico") — 14+ commits 06/07-07, RUTA-MAESTRA marcada, live en prod. ACCIONES: (1) el dueño
-confirma qué sesión/cuenta es y entrega partes al Director desde ahora (asiento "Stream-3
-M12" en el roster); (2) IMPACTO MERGE M15: M12 tocó RolesAndPermissionsSeeder,
-config/permissions.php y routes/web.php → los conflictos del merge de Max-2 ya NO son solo
-docs; ambos lados son aditivos → conservar ambos. Max-2 avisado en el dictado.
+### R-02 — CERRADA por política del dueño (07-07)
+El stream M12 (servicio técnico, "Marcos") trabaja AUTÓNOMO por decisión de Mauricio: no
+reporta partes ni entra al tablero. **Regla operativa para la flota:** el Director monitorea
+solo INTERFERENCIAS — si trabajo de la flota va a tocar archivos/territorio que M12 esté
+moviendo, se notifica a Mauricio ANTES de decidir; si no hay cruce, M12 se ignora. Cruce ya
+gestionado: superficie de conflicto del merge M15 (seeder/permissions/routes/nav) dictada a
+Max-2 con resolución verificada.
 
-### I-03 · Bsale responde 401 desde 06-07 ~16:00 CDT — token inválido (ABIERTA, urgente)
+### I-03 · Bsale 401 — TOKEN RENOVADO por el dueño 07-07, en verificación
+Cierra cuando el log muestre la primera sync OK post-renovación (grep de laravel.log en el
+próximo chequeo de infra; puede ir junto a la vigilancia crontab del 08-07).
+
+### I-03 (histórico) · Bsale responde 401 desde 06-07 ~16:00 CDT — token inválido (ABIERTA, urgente)
 Detectada por Max-1: «can not be authenticated» en todas las syncs → espejo congelado
 (stock desde 03-07 por I-01, catálogo/clientes/precios desde 06-07 por esto). Solo el dueño
 puede: revisar/regenerar el token en el panel de Bsale y ponerlo en el `.env` del servidor.

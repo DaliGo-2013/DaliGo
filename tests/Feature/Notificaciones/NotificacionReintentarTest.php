@@ -26,6 +26,18 @@ class NotificacionReintentarTest extends TestCase
         ], $overrides));
     }
 
+    public function test_reintentar_agendado_en_la_grilla_de_15(): void
+    {
+        // I-01 (2026-07-07): el cron de cPanel es `*/15` — la tarea debe caer
+        // EXACTO en :00/:15/:30/:45 (misma doctrina que ScheduleBsaleTest).
+        $evento = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+            ->first(fn ($e) => str_contains((string) $e->command, 'notificaciones:reintentar'));
+
+        $this->assertNotNull($evento, 'Falta notificaciones:reintentar en el scheduler.');
+        $this->assertSame('*/15 * * * *', $evento->expression, 'Fuera de la grilla */15 de I-01.');
+        $this->assertTrue($evento->withoutOverlapping, 'Debe tener withoutOverlapping.');
+    }
+
     public function test_reencola_fallida_vencida(): void
     {
         Queue::fake();

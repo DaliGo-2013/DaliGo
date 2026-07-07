@@ -21,6 +21,25 @@
 
 ## Sesiones
 
+### [2026-07-07 · tarde] Stream 2 · P-M15-09 fase 2: M15 mergeado a main = DEPLOY (doble llave Director+Mauricio)
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — OK definitivo con doble llave (verificación del Director en tablero `5fd638a`)
+- **Objetivo declarado:** P-M15-09 micro-secuencia final — plegar el avance docs-only de main, push a main, deploy
+- **Qué se hizo:** fetch trajo `dff13c7..8fb6763` (3 commits docs-only: fleet + PLAN-M14 — dentro de lo anunciado, sin freno); 1 conflicto solo-docs (esta bitácora, interleave). **Corrección dictada en main aplicada:** `notificaciones:reintentar` de `everyFiveMinutes()`→`everyFifteenMinutes()` (grilla `*/15` de I-01; con `*/5` disparaba en la grilla pero mentía la cadencia) + test nuevo `test_reintentar_agendado_en_la_grilla_de_15` que fija expresión `*/15 * * * *` y `withoutOverlapping` (misma doctrina que `ScheduleBsaleTest`). Gotcha del merge anterior registrado en CLAUDE.md (dep npm `qrcode` → `npm install` antes del build post-merge; package-lock `name` reescrito por el nombre de la carpeta local). Suite verde → push a main = deploy.
+- **Pasos marcados:** P-M15-09 [~] → fase deploy hecha; **cierra SOLO con veredicto APROBADO del QA staging archivado en docs/qa/**.
+- **Decisiones:** ninguna (la corrección de cadencia ya estaba dictada por el Director vía RUTA de main).
+- **Delegaciones:** prompt QA-FUNCIONAL-STAGING redactado y entregado vía Mauricio (correo real cuando aplique + campanita + página personal + fila admin + botón prueba + latencia ≤15 min).
+- **Próximo paso:** despacho del QA a IA-cPanel → veredicto APROBADO cierra P-M15-09 → P-M15-10 (SPF/DKIM/DMARC).
+
+### [2026-07-07 · tarde] Arranca E2: PLAN-M14 sellado (motor de aprobaciones) + I-03 verificada cerrada
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — dictado del Director (arranque E2 · M14)
+- **Objetivo declarado:** primer entregable de E2 = `docs/planes/PLAN-M14.md` con sello de vigencia (patrón PLAN-M15), SIN código; visto bueno de Mauricio antes de la primera migración.
+- **Qué se hizo:**
+  - **`docs/planes/PLAN-M14.md` sellado** (verificado contra `bf7ae27`): motor polimórfico `aprobaciones`+`reglas_aprobacion`; ejecución de la acción aprobada por payload+handlers (`AccionAprobable`) con re-check de `updated_at` bajo lock (conflicto → rechazo automático, jamás payload obsoleto); auto-aprobación con fila histórica (Héctor 5→1-2); escalamiento `everyFifteenMinutes()` alineado a la grilla `*/15` de I-01 (granularidad 15 min documentada como límite); eventos M15 post-merge con guard `class_exists` para construir 5 de 7 pasos ANTES del merge; permisos `aprobar solicitudes`/`view aprobaciones`; 1 regla semilla (`produccion.ajuste_reporte` → admin, umbral 50 unidades Σ|Δ|). Exploración con 2 agentes + 1 arquitecto; verificación del documento con workflow de 3 lentes antes del push.
+  - **Riesgo del merge M15 elevado al Director:** el `notificaciones:reintentar` de la rama usa `everyFiveMinutes()` (dispara en la grilla pero degrada en silencio a 15 min; corregir a `everyFifteenMinutes()` al mergear). El riesgo de la grilla vieja en su `console.php` ya NO existe: Max-2 mergeó main (`dff13c7`) en la rama hoy 13:15 (`00297d5`) — verificado por el workflow de 3 lentes.
+  - **I-03 VERIFICADA CERRADA:** token renovado por Mauricio 07-07; el deploy de `aa10d2b` re-cacheó config y las 4 syncs corrieron OK en sus slots nuevos (prices 16:31, stock 16:49, catalog 17:00, clients 17:23 UTC) — espejo descongelado. De paso, la grilla `*/15` quedó verificada con syncs REALES en los 4 slots.
+- **Pasos marcados:** ninguno (el plan no es un P-xxx; P-M14-01..07 arrancan tras el visto bueno). · **Decisiones:** diseño M14 propuesto en el plan — las 3 que requieren visto bueno humano están en PLAN-M14 §4. · **Delegaciones:** ninguna (PLAN-M14 §5: el cron ya existe por I-01).
+- **Próximo paso:** Mauricio da el visto bueno a PLAN-M14 (o corrige) → P-M14-01 en `feature/m14-aprobaciones`; Max-1 mañana 08-07: vigilancia crontab (¿sobrevive `*/15`?).
+
 ### [2026-07-07] Stream 2 · P-M15-09 fase 1: merge de main a la rama (444 verdes, sin push a main)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — GO definitivo del Director tras verificar precondiciones (P-SPK-03 en main `d1db5ef`, I-01 cerrada)
 - **Objetivo declarado:** P-M15-09 secuencia §5.6 — plegar `origin/main` (`dff13c7`) a `feature/m15-notificaciones`
