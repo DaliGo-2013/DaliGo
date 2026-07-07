@@ -77,6 +77,12 @@ nada por-minuto; grilla `*/15` alineada** (cron y `hourlyAt` deben coincidir EXA
 y código). Nota: la propia falla 401 de catalog sirve de latido para verificar que la grilla
 dispara (ver I-03).
 
+**Verificación en vivo post-deploy (07-07 11:15–11:18 CDT):** deploy `d1db5ef` llegó al
+server 11:07 CDT; en el primer slot de la grilla con el código nuevo (**16:15 UTC = 11:15
+CDT**) el scheduler disparó `bsale:sync-clients` — `bsale-sync.log` con mtime `Jul 7 11:15`
+y última línea "Sincronizando clientes desde Bsale…". **La grilla `*/15` dispara.** Crontab
+re-verificado textual a las 11:18: ambas líneas `*/15` intactas (vigilancia 24h sigue).
+
 **Hallazgos laterales (de paso, solo lectura):**
 
 1. **I-03 — token Bsale muerto (401):** desde `2026-07-06 21:00` UTC (≈16:00 CDT) TODA
