@@ -63,11 +63,22 @@ los `description:` de las 3 skills para que el modelo las auto-dispare por conte
 funciona el auto-trigger de skills: por descripción, no por invocación manual). Talla S,
 territorio stream 1 (CLAUDE.md + .claude/skills en main).
 
-### R-02 · Reconciliación pendiente: 3 commits en main sin parte (06-07)
-`ba24473` + `d5e02ee` (servicio técnico: teléfono cliente, estado fijo Recibido) y `04269ca`
-(ojo ver/ocultar contraseña), autor "Marcos Uribe" (compu del Director, sesión fuera de
-flota, 11:14–12:56). Territorio M12/auth NO asignado en el tablero. Pedir a Mauricio:
-¿qué sesión/cuenta fue, hay parte, se cumplió la regla del mismo push (RUTA-MAESTRA)?
+### R-02 · Stream 3 (M12 servicio técnico) identificado — formalizar
+Los commits "Marcos Uribe" resultaron ser un STREAM COMPLETO del dueño en paralelo: piloto
+P-M12-01 (ingreso público por QR, portada, buscador catálogo, permiso "confirmar servicio
+tecnico") — 14+ commits 06/07-07, RUTA-MAESTRA marcada, live en prod. ACCIONES: (1) el dueño
+confirma qué sesión/cuenta es y entrega partes al Director desde ahora (asiento "Stream-3
+M12" en el roster); (2) IMPACTO MERGE M15: M12 tocó RolesAndPermissionsSeeder,
+config/permissions.php y routes/web.php → los conflictos del merge de Max-2 ya NO son solo
+docs; ambos lados son aditivos → conservar ambos. Max-2 avisado en el dictado.
+
+### I-03 · Bsale responde 401 desde 06-07 ~16:00 CDT — token inválido (ABIERTA, urgente)
+Detectada por Max-1: «can not be authenticated» en todas las syncs → espejo congelado
+(stock desde 03-07 por I-01, catálogo/clientes/precios desde 06-07 por esto). Solo el dueño
+puede: revisar/regenerar el token en el panel de Bsale y ponerlo en el `.env` del servidor.
+REGLA DURA: el token JAMÁS pasa por un chat ni por el repo — se escribe directo en el `.env`
+(cPanel File Manager) y luego `php artisan config:cache` en la Terminal. Max-1 entrega los
+pasos exactos (var de env y ubicación). Cierra cuando un grep del log muestre syncs OK.
 
 ### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
 Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,
