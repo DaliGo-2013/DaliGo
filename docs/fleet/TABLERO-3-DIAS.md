@@ -43,8 +43,8 @@
 |---|---|---|---|---|
 | Max-2 | [x] **Correcciones de auditoría (4+3) + P-M15-07 + P-M15-08** — *VERIFICADO por Director 06-07 en `f7353fb`: (1) página personal `/notificaciones` solo-auth ✓ (2) guard `canal=database` 404 ✓ (3) `withoutOverlapping(10)` ✓ (4) barrido self-healing de huérfanas (>10 min, re-dispatch idempotente — su llamada, bien justificada) ✓ + claim limpia `programada_para` ✓ + fix `data_get` (punto del evento interpretado como anidación — cazado por SU test) ✓. 9 tests nuevos en diff (405 netos), bundle recompilado, main intacto, Opus 4.8 ✓. MOTOR M15 COMPLETO EN LA RAMA* | L | Opus 4.8 · high | Correcciones aplicadas; preferencias respetadas por dispatcher con test; suite verde |
 | Max-1 | [x] **F-01** recetario como apoyo automático — *VERIFICADO: `07dbe92`, 4 archivos +10/−3 exactos, regla en CLAUDE.md (auto-carga en 6 cuentas), 3 descriptions con auto-disparo y keywords en español, cuerpos intactos. Desviación: corrió Fable 5 (ledger)* | S | Opus 4.8 · medium (corrió Fable 5) | Regla en CLAUDE.md + skills auto-disparables |
-| Max-2 | [ ] **P-M15-09** · Merge coordinado + QA staging — SECUENCIA en el dictado del Director 06-07; NO arranca hasta: cierre P-SPK-03 pusheado (Max-1) + I-01 cerrada (date-check + archivo) | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
-| Max-1 | [~] Cierre **P-SPK-03** en un push (memo+archivos I-01+RUTA) — esperando que Mauricio le pegue el paquete de cierre (entregado por el Director 06-07) | S | Opus 4.8 · high | Push único; parte con /usage |
+| Max-2 | [~] **P-M15-09** · Merge coordinado + QA staging — **PRECONDICIONES CUMPLIDAS Y VERIFICADAS 07-07 → GO del Director** (P-SPK-03 en main `d1db5ef`; I-01 cerrada `faf772f`+`aa10d2b` con verificación en vivo). OJO conflictos: además de docs, M12 y la regrilla I-01 tocaron seeder/permissions/routes/web y routes/console — todos aditivos, conservar ambos lados. NO push a main sin OK explícito Director+Mauricio | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
+| Max-1 | [x] Cierre **P-SPK-03** + **I-01 modo compatibilidad** — *VERIFICADO 07-07: `faf772f` (grilla */15 + hourlyAt 15/30/45 + ScheduleBsaleTest + 2 evidencias QA + plantilla/kickoff actualizados), `d1db5ef` (memo SPIKE-PWA 165 líneas sellado, RUTA P-SPK-01..03 [x] con hashes, golden-hash test), `aa10d2b` (verificación EN VIVO del slot 16:15 UTC). SPIKE PWA COMPLETO. Falta su parte formal con /usage* | S | Fable 5 (decisión dueño) | Push único; parte con /usage |
 
 ## Incidencias
 
@@ -80,7 +80,11 @@ REGLA DURA: el token JAMÁS pasa por un chat ni por el repo — se escribe direc
 (cPanel File Manager) y luego `php artisan config:cache` en la Terminal. Max-1 entrega los
 pasos exactos (var de env y ubicación). Cierra cuando un grep del log muestre syncs OK.
 
-### I-01 · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
+### I-01 — CERRADA 07-07 (modo compatibilidad verificado en vivo; evidencias en docs/qa/INFRA/)
+Cierre: `faf772f` + `aa10d2b`. Vigilancia residual: confirmar en ~24h que la grilla `*/15`
+sobrevive al reescritor; pregunta a soporte HostGator pendiente de despacho.
+
+### I-01 (histórico) · Scheduler revertido a `*/20` (regresión de P-S0-07) — FIX APLICADO, en verificación
 Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md`,
 rama M15). Timeline afinada con el baseline del corrector: el fix de P-S0-07 operó toda la
 mañana (`sync-stock` corrió 07:54/08:54/09:54 hora log) y la reversión a `*/20` ocurrió entre
