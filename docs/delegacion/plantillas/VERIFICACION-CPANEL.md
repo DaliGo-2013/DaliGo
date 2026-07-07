@@ -26,8 +26,8 @@ TAREA
 PASOS EXACTOS
 {{Numerados; para cada uno: dónde clicar / qué comando correr, y qué valor anotar. Ejemplo del patrón:
 1. cPanel → Cron Jobs. Anota TODAS las líneas de cron existentes, textuales.
-2. [CAMBIO] Elimina SOLO la línea que empieza con "*/20 * * * *" y contiene "schedule:run".
-   Esperado: queda una única línea de schedule:run (la de "* * * * *").
+2. [CAMBIO] Edita SOLO la línea de "schedule:run" dejando su frecuencia en "*/15 * * * *".
+   Esperado: schedule:run queda en la grilla */15 (JAMÁS por-minuto: HostGator lo reescribe — I-01).
 3. cPanel → Terminal → ejecuta: /opt/cpanel/ea-php83/root/usr/bin/php /home4/impdali/daligo/artisan schedule:list
    Copia la salida completa.
 4. Abre /home4/impdali/daligo/storage/logs/laravel.log → copia las últimas 20 líneas.}}

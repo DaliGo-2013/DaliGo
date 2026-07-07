@@ -725,11 +725,13 @@ tail -50 storage/logs/bsale-sync.log
 ```
 
 ### Tareas programadas (cron)
-Las syncs de Bsale (catálogo, clientes, precios) corren **solas cada hora** gracias a un cron en
-cPanel que ejecuta `php artisan schedule:run` cada minuto (Laravel decide qué toca). Se definen en
-`routes/console.php`. Para cambiar la frecuencia, edita ahí (`->hourly()` → `->dailyAt('03:00')`,
-etc.) y haz push. El cron de cPanel se crea **una sola vez**:
-`* * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home4/impdali/daligo/artisan schedule:run >> /dev/null 2>&1`
+Las 4 syncs de Bsale (catálogo, clientes, precios, stock) corren **solas cada hora** gracias a un
+cron en cPanel que ejecuta `php artisan schedule:run` cada 15 minutos (Laravel decide qué toca).
+Se definen en `routes/console.php`. ⚠️ **La grilla es `*/15`** (HostGator reescribe los crons
+por-minuto — I-01, bitácora CLAUDE.md [2026-07-07]): el cron dispara :00/:15/:30/:45 y toda tarea
+agendada debe caer EXACTO en esos minutos (`hourly()` / `hourlyAt(15|30|45)`) o no correrá jamás.
+El cron de cPanel se crea **una sola vez**:
+`*/15 * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home4/impdali/daligo/artisan schedule:run >> /dev/null 2>&1`
 
 ---
 

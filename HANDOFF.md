@@ -292,10 +292,12 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
   "X de Y activos" en el index. **Tarea operativa en curso: el equipo carga peso/dimensiones.**
 
 - **Automatización (cron):** las 3 syncs (`bsale:sync-catalog/clients/prices`) están registradas en
-  el scheduler de Laravel (`routes/console.php`), escalonadas por hora (catálogo :00 → clientes :20
-  → precios :40; el catálogo va primero porque los precios matchean por `bsale_variant_id`), con
-  `withoutOverlapping(15)` y salida a `storage/logs/bsale-sync.log`. **Requiere el cron de cPanel**
-  `* * * * * php artisan schedule:run` (ver §5/CLAUDE.md). Frecuencia tunable en `routes/console.php`.
+  el scheduler de Laravel (`routes/console.php`), escalonadas por hora en la **grilla `*/15`**
+  (catálogo :00 → clientes :15 → precios :30; el catálogo va primero porque los precios matchean
+  por `bsale_variant_id`), con `withoutOverlapping(15)` y salida a `storage/logs/bsale-sync.log`.
+  **El cron del servidor es `*/15 * * * * php artisan schedule:run`** — NO por-minuto: HostGator
+  reescribe los crons <15 min (I-01; bitácora CLAUDE.md [2026-07-07]). Toda tarea nueva debe caer
+  EXACTO en :00/:15/:30/:45 o no correrá jamás.
 
 **Pendiente de M02+:** webhooks (sync incremental, alta self-service en el panel de Devs);
 enlace catálogo↔M04 (inventario).
@@ -397,12 +399,14 @@ boleta rápida (dependen de M05), cron de sync.
   `stock_disponible`, `bsale_stock_id`; unique compuesto bodega+producto).
 - **Sync `bsale:sync-stock`** (`App\Services\Bsale\StockSync`, patrón de `CatalogSync`): espeja
   offices (bodegas) y stock por variante desde Bsale, **read-only** (DaliGo jamás escribe stock en
-  Bsale). Agendado en `routes/console.php` a los **:50 de cada hora** (después de catálogo :00,
-  clientes :20, precios :40 — el catálogo va primero porque el match es por `bsale_variant_id`).
-  ⚠️ **Hallazgo 2026-07-01, RESUELTO el 2026-07-02 (P-S0-07):** con los crons reales del servidor
-  (`*/20` y `*/15`) el minuto :50 nunca coincidía → esta sync **no corría en producción**. Cron
-  corregido a `* * * * *` y **verificado**: primera corrida a las :50 con 16 bodegas y 28.350 stocks
-  actualizados, 0 errores (evidencia `docs/qa/INFRA/2026-07-02--INFRA--cron-deploysh-infra.md`).
+  Bsale). Agendado en `routes/console.php` a los **:45 de cada hora** (después de catálogo :00,
+  clientes :15, precios :30 — el catálogo va primero porque el match es por `bsale_variant_id`).
+  ⚠️ **Hallazgo 2026-07-01 (P-S0-07) + cierre definitivo 2026-07-07 (I-01):** con los crons reales
+  del servidor (`*/20`/`*/19`) los minutos :20/:40/:50 no coincidían jamás → syncs muertas en
+  producción. El fix `* * * * *` duró <24h (HostGator reescribe los crons por-minuto) → **modo
+  compatibilidad**: cron `*/15` + syncs re-agendadas a la grilla :00/:15/:30/:45 (evidencias
+  `docs/qa/INFRA/2026-07-02--INFRA--cron-deploysh-infra.md` y
+  `docs/qa/INFRA/2026-07-07--INFRA--i01-cierre-modo-compatibilidad.md`).
 - **UI** `/admin/bodegas` (`Admin\BodegaController`, index/show): listado de bodegas y stock por
   bodega. Vistas `admin/bodegas/{index,show}`.
 - **Tests:** `BodegaManagementTest` + `BsaleStockSyncTest`.
@@ -428,12 +432,12 @@ boleta rápida (dependen de M05), cron de sync.
   `confirmar servicio tecnico` (jefe de bodega + técnico: autorizar la recepción de lo que llegó por QR).
 - **Vistas:** `admin/servicio-tecnico/*` (index con filtros, show, form, reparación con repuestos).
 - **Tests:** `ServicioTecnicoManagementTest` (~520 líneas).
-- **Piloto de P-M12-01 — ingreso público por QR** (rama `feature/m12-ingreso-qr-piloto`, **sin mergear** al 2026-07-06): ruta **sin auth** `ingreso-taller` con link **firmado** por sucursal (`URL::signedRoute` + `throttle:6,1` + honeypot); `Publico\IngresoTallerPublicoController` (create/store/gracias); vistas `publico/taller/*`. El cliente crea la orden desde su celular (`fuente='qr'`, `confirmada_at=null`); el encargado la confirma con `ServicioTecnicoController::confirmar` (`lockForUpdate`) y ahí sale el correo `Mail\IngresoTallerRecibido` (standalone, migrable a M15). Página QR imprimible `servicio-tecnico/qr` (dibujo client-side con `qrcode` npm, import dinámico). Nuevas columnas en `ordenes_servicio`: `cliente_email`, `confirmada_at`.
+- **Piloto de P-M12-01 — ingreso público por QR** (**mergeado a main `1639d71`, LIVE en producción desde el 2026-07-06**; falta SMTP real → P-M15-10): ruta **sin auth** `ingreso-taller` con link **firmado** por sucursal (`URL::signedRoute` + `throttle:6,1` + honeypot); `Publico\IngresoTallerPublicoController` (create/store/gracias); vistas `publico/taller/*`. El cliente crea la orden desde su celular (`fuente='qr'`, `confirmada_at=null`); el encargado la confirma con `ServicioTecnicoController::confirmar` (`lockForUpdate`) y ahí sale el correo `Mail\IngresoTallerRecibido` (standalone, migrable a M15). Página QR imprimible `servicio-tecnico/qr` (dibujo client-side con `qrcode` npm, import dinámico). Nuevas columnas en `ordenes_servicio`: `cliente_email`, `confirmada_at`.
 - **Historial compartido + separación por sucursal de recepción:** el listado NO se filtra por la sucursal del usuario (las 3 sucursales ven todo); hay filtro y badge por **sucursal de recepción**. La **reparación es siempre en Mirador** (`es_central`): Coquimbo y Abate Molina reciben pero no reparan; el detalle rotula "se repara en Mirador (casa matriz)". El plazo de entrega ya lo refleja (`config/servicio_tecnico.php`: Mirador 10 días, las demás 15).
 - **Lo que NO hace todavía** (M12 completo, unidad E9): cotización
   estructurada con aprobación del cliente por link WhatsApp, alertas 3/6/12 meses, tablero de plazos,
   sugerencia de repuestos por histórico, cobro de hora de servicio en no aprobadas. (El pre-ingreso online
-  con QR está como **piloto en rama**, ver arriba — pendiente de QA staging + merge.)
+  con QR ya está **LIVE en producción** — ver arriba; pendiente QA real de uso + SMTP.)
 
 ---
 
@@ -443,7 +447,7 @@ boleta rápida (dependen de M05), cron de sync.
 
 - **Rotar la contraseña de la BD** `impdali_daligo`: se compartió por chat en algún momento → cambiarla en cPanel y actualizar `.env` del servidor.
 - **Dominios/entornos (D-011, 2026-07-02):** la app oficial vivirá en **`daligo.impdali.cl`**; `staging.impdali.cl` queda como pruebas (hoy sigue siendo UNA sola instancia/BD — la separación real se ejecuta en F3, P-F3-06). Los datos de prueba de Producción se resetean con `php artisan produccion:limpiar-pruebas` (on-demand, con confirmación; jamás agendarlo). Recordatorio: Bsale es solo-lectura por construcción (`BsaleClient` no tiene métodos de escritura).
-- **Cron de cola:** cuando llegue M15 (notificaciones), agregar un segundo cron `php artisan queue:work --stop-when-empty --max-time=55` (el server no tiene daemons).
+- **Cron de cola:** ✅ ya existe en el servidor (2026-07-07, I-01): `*/15 * * * * php artisan queue:work --stop-when-empty --max-time=840` (el server no tiene daemons; latencia de cola ≤15 min por la grilla `*/15`, aceptada).
 - **Matriz de permisos por módulo:** se define en Sprint 0 con el negocio; hoy solo hay permisos de usuarios/roles + los nuevos de M01.
 - **MySQL 5.7 EOL:** pedir upgrade a 8.x cuando el hosting lo permita.
 - **PWA offline:** es el mayor riesgo del proyecto (módulo posterior); diseñar con cuidado.
@@ -453,7 +457,9 @@ boleta rápida (dependen de M05), cron de sync.
   entradas de `schedule:run` (`*/20` y `*/15`) y ninguna por-minuto → `bsale:sync-stock` (hourlyAt 50)
   jamás corría. Se dejó UNA línea `* * * * *` y se verificó la primera corrida de :50 (16 bodegas,
   28.350 stocks, 0 errores). Evidencia: `docs/qa/INFRA/2026-07-02--INFRA--cron-deploysh-infra.md`.
-  Regla derivada: el cron de `schedule:run` es SIEMPRE `* * * * *` (bitácora CLAUDE.md 2026-07-02).
+  ⚠️ **Regla derivada SUPERADA (2026-07-07, I-01):** el `* * * * *` duró <24h — HostGator
+  reescribe los crons por-minuto. Rige la grilla `*/15` (bitácora CLAUDE.md [2026-07-07] y
+  `docs/qa/INFRA/2026-07-07--INFRA--i01-cierre-modo-compatibilidad.md`).
 
 ---
 
