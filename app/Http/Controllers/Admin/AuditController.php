@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Aprobacion;
 use App\Models\Bodega;
 use App\Models\Cliente;
 use App\Models\Configuracion;
@@ -11,6 +12,7 @@ use App\Models\Maquina;
 use App\Models\PreferenciaCanal;
 use App\Models\Producto;
 use App\Models\ProduccionReporte;
+use App\Models\ReglaAprobacion;
 use App\Models\Sucursal;
 use App\Models\TipoBotellon;
 use App\Models\User;
@@ -35,6 +37,8 @@ class AuditController extends Controller
         Maquina::class => 'Máquina',
         TipoBotellon::class => 'Tipo de botellón',
         PreferenciaCanal::class => 'Preferencia de canal',
+        Aprobacion::class => 'Aprobación',
+        ReglaAprobacion::class => 'Regla de aprobación',
     ];
 
     /**
