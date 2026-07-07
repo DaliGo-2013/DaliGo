@@ -36,6 +36,7 @@ sesión restante.
 | 05-07 | Mauricio (compu alterna) | P-S0-18 recetario + skills (4d7caa1) | M | Opus 4.8 | n/d | n/d | n/d | HECHA (fuera de flota; corrección F-01 dictada) |
 | 06-07 | Max-1 Forjador A | F-01 recetario automático (07dbe92) | S | **Fable 5** (⁴) | n/d | n/d | n/d | HECHA (verificada) |
 | 06-07 | Max-2 Forjador B | Correcciones auditoría + P-M15-07/08 (f7353fb) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada; gate levantado) |
+| 07-07 | Max-2 Forjador B | P-M15-09 fase merge (00297d5) | L | mixto Opus/Fable | n/d | **17% / 7%** (captura 07-07) | ≤17% | HECHA (verificada). Detalle: USD 19.48 · API 20min · salida 1.1M tok |
 | 06-07 | Max-1 Forjador A | Sesión post-F-01 (P-SPK-03 en curso) | — | **Fable 5** (⁴) | n/d | **100%** / 28% (captura ~14:50) | ventana AGOTADA | CORTADA a mitad de cierre — SIN relevo (dueño esperó el reset 15:29); titular retoma en la misma sesión |
 | 07-07 | Max-1 Forjador A | Cierre P-SPK-03 + I-01 modo compat. (faf772f/d1db5ef/aa10d2b) | L | Fable 5 96% / Opus 4% | n/d | **60% / 8%** (captura 07-07) | ≤60% | TODO HECHO (verificado; 403 tests). Detalle sesión: USD 60.08 · API 1h30m · activo 2h21m · salida 563k tok · cache-read 300M |
 |  |  |  |  |  |  |  |  |  |
@@ -73,6 +74,12 @@ sesión restante.
   Confirmado con dinero real: (a) el cuello es SIEMPRE la ventana de 5h, lo semanal sobra;
   (b) Fable 5 concentra ~96% del costo de sesión — al volver el roster Opus/Sonnet (08-07)
   el costo por talla debería caer fuerte; recalibrar entonces con Δ limpios.
+- **Calibración 07-07 (comparativa Max-1 vs Max-2, mismo día, ambas talla L):** Max-1
+  (Fable-dominante) = USD 60 · 60% ventana. Max-2 (merge, Opus-dominante en tokens) =
+  USD 19.5 · 17% ventana. **~3× más barato el mix con Opus** para trabajo del mismo
+  calibre — el roster Opus/Sonnet queda validado con datos. Nota del panel de Max-2:
+  62% de las ejecuciones de 24h con >150k de contexto — sesiones largas encarecen
+  incluso con caché; recomendar /clear entre tareas no relacionadas.
 
 ## 4. Notas
 
