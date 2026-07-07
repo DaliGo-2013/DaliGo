@@ -21,6 +21,16 @@
 
 ## Sesiones
 
+### [2026-07-07 · tarde] Arranca E2: PLAN-M14 sellado (motor de aprobaciones) + I-03 verificada cerrada
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — dictado del Director (arranque E2 · M14)
+- **Objetivo declarado:** primer entregable de E2 = `docs/planes/PLAN-M14.md` con sello de vigencia (patrón PLAN-M15), SIN código; visto bueno de Mauricio antes de la primera migración.
+- **Qué se hizo:**
+  - **`docs/planes/PLAN-M14.md` sellado** (verificado contra `bf7ae27`): motor polimórfico `aprobaciones`+`reglas_aprobacion`; ejecución de la acción aprobada por payload+handlers (`AccionAprobable`) con re-check de `updated_at` bajo lock (conflicto → rechazo automático, jamás payload obsoleto); auto-aprobación con fila histórica (Héctor 5→1-2); escalamiento `everyFifteenMinutes()` alineado a la grilla `*/15` de I-01 (granularidad 15 min documentada como límite); eventos M15 post-merge con guard `class_exists` para construir 5 de 7 pasos ANTES del merge; permisos `aprobar solicitudes`/`view aprobaciones`; 1 regla semilla (`produccion.ajuste_reporte` → admin, umbral 50 unidades Σ|Δ|). Exploración con 2 agentes + 1 arquitecto; verificación del documento con workflow de 3 lentes antes del push.
+  - **Riesgo del merge M15 elevado al Director:** el `notificaciones:reintentar` de la rama usa `everyFiveMinutes()` (dispara en la grilla pero degrada en silencio a 15 min; corregir a `everyFifteenMinutes()` al mergear). El riesgo de la grilla vieja en su `console.php` ya NO existe: Max-2 mergeó main (`dff13c7`) en la rama hoy 13:15 (`00297d5`) — verificado por el workflow de 3 lentes.
+  - **I-03 VERIFICADA CERRADA:** token renovado por Mauricio 07-07; el deploy de `aa10d2b` re-cacheó config y las 4 syncs corrieron OK en sus slots nuevos (prices 16:31, stock 16:49, catalog 17:00, clients 17:23 UTC) — espejo descongelado. De paso, la grilla `*/15` quedó verificada con syncs REALES en los 4 slots.
+- **Pasos marcados:** ninguno (el plan no es un P-xxx; P-M14-01..07 arrancan tras el visto bueno). · **Decisiones:** diseño M14 propuesto en el plan — las 3 que requieren visto bueno humano están en PLAN-M14 §4. · **Delegaciones:** ninguna (PLAN-M14 §5: el cron ya existe por I-01).
+- **Próximo paso:** Mauricio da el visto bueno a PLAN-M14 (o corrige) → P-M14-01 en `feature/m14-aprobaciones`; Max-1 mañana 08-07: vigilancia crontab (¿sobrevive `*/15`?).
+
 ### [2026-07-07] I-01 cerrada en modo compatibilidad + P-SPK-03 cerrado (spike PWA completo) + I-03 abierta
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — dictados del Director
 - **Objetivo declarado:** cerrar P-SPK-03 (Tarea 2: archivar I-01) + F-01 (hecha antes, `07dbe92`: recetario como apoyo automático — regla en CLAUDE.md + descriptions auto-trigger de las 3 skills).

@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — HostGator reescribe crons <15 min → cron `*/15` + syncs re-agendadas a :00/:15/:30/:45; **I-03 ABIERTA**: token Bsale muerto (401) desde el 06-07, espejo congelado, la destraba Mauricio en el panel Bsale · **P-SPK-03 hecho → spike PWA COMPLETO**: memo `docs/SPIKE-PWA.md` sellado + prueba de campo aprobada 06-07) · 2026-07-06 (**P-M12-01 piloto** — ingreso a ST por QR sin login + correo al confirmar, mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
+| **Última actualización** | 2026-07-07 tarde (**E2 arranca**: `docs/planes/PLAN-M14.md` sellado — motor de aprobaciones, espera VISTO BUENO de Mauricio antes de la primera migración · **I-03 CERRADA**: token renovado por Mauricio y verificado — las 4 syncs corrieron OK en sus slots nuevos, espejo descongelado) · 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — cron `*/15` + syncs en :00/:15/:30/:45 · **P-SPK-03 hecho → spike PWA COMPLETO**) · 2026-07-06 (**P-M12-01 piloto** QR mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
-| **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
-| **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
-| **Bloqueos activos** | **I-03: token Bsale 401 (espejo congelado — SOLO Mauricio, panel Bsale)** · D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
-| **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra re-verificada por SSH: crontab `*/15` aplicado; ojo — syncs paradas por I-03 hasta reponer el token Bsale) |
+| **Unidad activa** | **E1 · M15 Notificaciones** [stream 2, rama `feature/m15-notificaciones`, GO al merge dictado] · **E2 · M14 Aprobaciones** [stream 1, `docs/planes/PLAN-M14.md` sellado, esperando visto bueno] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
+| **Próximo paso** | Mauricio: **visto bueno de PLAN-M14** (3 decisiones clave en §4 del plan) → P-M14-01 · Stream 2: merge M15 (rama ya trae la grilla `*/15`; corregir su `everyFiveMinutes()`→`everyFifteenMinutes()` al mergear) · Mauricio: `P-S0-03/04` briefs |
+| **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
+| **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04)
