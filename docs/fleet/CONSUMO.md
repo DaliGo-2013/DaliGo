@@ -37,6 +37,7 @@ sesión restante.
 | 06-07 | Max-1 Forjador A | F-01 recetario automático (07dbe92) | S | **Fable 5** (⁴) | n/d | n/d | n/d | HECHA (verificada) |
 | 06-07 | Max-2 Forjador B | Correcciones auditoría + P-M15-07/08 (f7353fb) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada; gate levantado) |
 | 06-07 | Max-1 Forjador A | Sesión post-F-01 (P-SPK-03 en curso) | — | **Fable 5** (⁴) | n/d | **100%** / 28% (captura ~14:50) | ventana AGOTADA | CORTADA a mitad de cierre — SIN relevo (dueño esperó el reset 15:29); titular retoma en la misma sesión |
+| 07-07 | Max-1 Forjador A | Cierre P-SPK-03 + I-01 modo compat. (faf772f/d1db5ef/aa10d2b) | L | Fable 5 (⁴) | n/d | pendiente | pendiente | TODO HECHO (verificado por Director commit a commit; 403 tests, deploy verde) |
 |  |  |  |  |  |  |  |  |  |
 
 > (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
