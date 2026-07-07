@@ -35,8 +35,8 @@
 
             <x-status-alert :status="session('status')" />
 
-            {{-- Por confirmar: llego por QR y el encargado aun no recibe la maquina. --}}
-            @can('manage servicio tecnico')
+            {{-- Por confirmar: llego por QR y aun no se autoriza la recepcion. --}}
+            @can('confirmar servicio tecnico')
                 @if ($orden->por_confirmar)
                     <div class="flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                         <div>

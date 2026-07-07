@@ -20,8 +20,9 @@
             <x-status-alert :status="session('status')" />
 
             {{-- Por confirmar: maquinas que llegaron por QR (celular del cliente) y
-                 esperan que el encargado revise los datos y reciba el equipo. --}}
-            @can('manage servicio tecnico')
+                 esperan que quien autoriza (jefe de bodega / tecnico) revise los
+                 datos y confirme la recepcion. --}}
+            @can('confirmar servicio tecnico')
                 @if ($porConfirmar->isNotEmpty())
                     <div class="rounded-2xl border border-brand-200 bg-brand-50 p-4 shadow-sm sm:p-5">
                         <div class="mb-3 flex items-center gap-2">
@@ -41,7 +42,7 @@
                                         </p>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
-                                        <x-secondary-link :href="route('admin.servicio-tecnico.edit', $p)">Revisar</x-secondary-link>
+                                        <x-secondary-link :href="route('admin.servicio-tecnico.show', $p)">Revisar</x-secondary-link>
                                         <form method="POST" action="{{ route('admin.servicio-tecnico.confirmar', $p) }}"
                                               onsubmit="return confirm('¿Confirmar la recepción de la orden {{ $p->folio }}? Se le enviará el detalle al cliente por correo.');">
                                             @csrf
@@ -171,9 +172,9 @@
         </div>
     </div>
 
-    @can('manage servicio tecnico')
+    @can('confirmar servicio tecnico')
         {{-- Auto-refresco del mostrador: recarga sola para que aparezcan los
-             ingresos por QR sin apretar nada. Se pausa si el encargado esta
+             ingresos por QR sin apretar nada. Se pausa si quien autoriza esta
              escribiendo en un filtro o si la pestana no esta visible. --}}
         <script>
             setInterval(function () {
