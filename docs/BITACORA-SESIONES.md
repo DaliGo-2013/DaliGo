@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-07 · tarde] Stream 1 · P-M14-02 hecho en rama: el corazón del motor de aprobaciones
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — GO del Director (P-M14-01 verificado [x] por él)
+- **Objetivo declarado:** P-M14-02 — servicio `Aprobaciones` + contrato `AccionAprobable` + handler + excepciones, con la batería de tests dictada.
+- **Qué se hizo:** commit `5470f31` en `feature/m14-aprobaciones`: `Aprobaciones::solicitar()` (auto-aprueba sin regla activa / bajo umbral / solicitante-aprobador, aplicando el handler INLINE en la misma transacción; pendiente sobre umbral o con `monto=null` bajo regla con umbral — contrato conservador), `aprobar()`/`rechazar()` con lock+re-check (doble-tap → `AprobacionYaResueltaException`; rol vigente o admin), handler `AjusteReporteProduccion` con re-check de `updated_at` (conflicto → rechazo automático en la MISMA transacción, objetivo intacto). Eventos `aprobacion.solicitada/escalada/resuelta` registrados en `Notificacion::EVENTOS` (sin guard `class_exists` — aceptado por el Director; anotar al re-sellar el plan) y notificación real vía dispatcher M15 (post-transacción; auto-aprobadas NO notifican). 10 tests nuevos (batería completa del dictado). Ajuste a un test de M15: `PreferenciasCanalTest` hardcodeaba 2 filas esperadas — ahora deriva de `count(EVENTOS)*2` (el catálogo está DISEÑADO para crecer; con cada módulo integrándose el hardcode rompía). **Suite 461 verdes.**
+- **Pasos marcados:** ninguno en RUTA (rama; se marcan al merge de P-M14-07 — P-M14-01 ya verificado [x] por el Director en tablero). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** 08-07 al abrir: `/model claude-opus-4-8` PRIMERO + vigilancia crontab (reportar al Director ANTES de seguir) → P-M14-03 (bandeja móvil).
+
 ### [2026-07-07 · tarde] Stream 1 · P-M14-01 hecho en rama: esquema del motor de aprobaciones
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — visto bueno de Mauricio a PLAN-M14 dado
 - **Objetivo declarado:** P-M14-01 (esquema del motor, PLAN-M14 §1.2) en la rama `feature/m14-aprobaciones`.
