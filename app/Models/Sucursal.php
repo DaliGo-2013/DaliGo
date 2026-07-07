@@ -44,6 +44,21 @@ class Sucursal extends Model implements AuditableContract
     }
 
     /**
+     * Sucursales que RECIBEN servicio tecnico (activas y con su codigo en
+     * config/servicio_tecnico.php `sucursales_recepcion`). Se usa en el selector
+     * de la portada y en la pagina de codigos QR: Buzeta no recibe ST, asi que
+     * no aparece. La reparacion siempre es en Mirador (casa matriz).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Sucursal>  $query
+     */
+    public function scopeRecepcionServicioTecnico($query)
+    {
+        return $query->where('activa', true)
+            ->whereIn('codigo', config('servicio_tecnico.sucursales_recepcion', []))
+            ->orderBy('nombre');
+    }
+
+    /**
      * Dias habiles de reparacion de esta sucursal (plazo de entrega estimado).
      * Configurable en config/servicio_tecnico.php por codigo de sucursal.
      */

@@ -21,6 +21,16 @@
 
 ## Sesiones
 
+### [2026-07-06] Portada: entrada pública a servicio técnico (pregunta → sucursal → QR)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** que desde la portada (sin cuenta) se pueda entrar a servicio técnico eligiendo sucursal y viendo su QR.
+- **Qué se hizo:** (rama `feature/portada-ingreso-qr`)
+  - `welcome.blade.php`: selector Alpine de 3 pasos — «¿Vas a ingresar un producto a servicio técnico?» → botones de sucursal → QR firmado de esa sucursal (dibujado en el cliente con el mismo `canvas[data-qr]` + import dinámico de `qrcode`) + link «continúa aquí en este dispositivo». La ruta `/` pasa las sucursales con try/catch (la home nunca revienta si la BD no está lista; ExampleTest sigue verde).
+  - **Sucursales de ST configurables:** `config/servicio_tecnico.php` → `sucursales_recepcion` (MIRADOR, COQUIMBO, ABATE-MOLINA) + scope `Sucursal::recepcionServicioTecnico()`. **Buzeta excluida** (no recibe ST) tanto en la portada como en la página de QR admin (antes mostraba las 4 activas).
+  - Verificado `route:cache` OK (el closure de `/` es cacheable → sin riesgo de deploy). 3 tests nuevos/ajustados → **398 verdes**. `view:clear` + build.
+- **Pasos marcados:** ninguno (P-M12-01 sigue [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** QA real del correo (confirmar la orden como encargado → ver si llega a Gmail/Spam) + rotar clave SMTP.
+
 ### [2026-07-06] SMTP en prod + formulario del QR: código del producto (buscador de catálogo) y fecha de hoy
 - **Quién:** Marco + Claude (Opus 4.8) + IA de cPanel
 - **Objetivo declarado:** dejar operativo el correo del piloto P-M12-01 e iterar el formulario con feedback de prueba en vivo.

@@ -291,14 +291,43 @@ class IngresoTallerPublicoTest extends TestCase
 
     // --- Pagina de QR (admin) ---
 
-    public function test_pagina_qr_lista_sucursales_activas_para_el_encargado(): void
+    public function test_pagina_qr_lista_solo_sucursales_de_servicio_tecnico(): void
     {
-        $this->sucursal();
+        config(['servicio_tecnico.sucursales_recepcion' => ['MIRADOR', 'COQUIMBO', 'ABATE-MOLINA']]);
+        Sucursal::factory()->create(['codigo' => 'MIRADOR', 'nombre' => 'El Mirador', 'activa' => true]);
+        Sucursal::factory()->create(['codigo' => 'BUZETA', 'nombre' => 'Buzeta', 'activa' => true]);
 
         $this->actingAs($this->admin())
             ->get(route('admin.servicio-tecnico.qr'))
             ->assertOk()
-            ->assertSee('Mirador')
-            ->assertSee('data-qr', false);
+            ->assertSee('El Mirador')
+            ->assertSee('data-qr', false)
+            ->assertDontSee('Buzeta');   // Buzeta no recibe servicio técnico
+    }
+
+    // --- Portada: entrada pública a servicio técnico (pregunta → sucursal → QR) ---
+
+    public function test_portada_ofrece_ingreso_a_servicio_tecnico_por_sucursal(): void
+    {
+        config(['servicio_tecnico.sucursales_recepcion' => ['MIRADOR', 'COQUIMBO', 'ABATE-MOLINA']]);
+        Sucursal::factory()->create(['codigo' => 'MIRADOR', 'nombre' => 'El Mirador', 'activa' => true]);
+        Sucursal::factory()->create(['codigo' => 'COQUIMBO', 'nombre' => 'Coquimbo', 'activa' => true]);
+        Sucursal::factory()->create(['codigo' => 'ABATE-MOLINA', 'nombre' => 'Abate Molina', 'activa' => true]);
+        Sucursal::factory()->create(['codigo' => 'BUZETA', 'nombre' => 'Buzeta', 'activa' => true]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('servicio técnico', false)   // la pregunta de entrada
+            ->assertSee('El Mirador')
+            ->assertSee('Coquimbo')
+            ->assertSee('Abate Molina')
+            ->assertSee('data-qr', false)            // los QR se dibujan en el cliente
+            ->assertDontSee('Buzeta');               // Buzeta no recibe ST
+    }
+
+    public function test_portada_carga_aunque_no_haya_sucursales(): void
+    {
+        // Sin sucursales de ST el selector no aparece, pero la portada NO revienta.
+        $this->get('/')->assertOk()->assertSee('DaliGo');
     }
 }

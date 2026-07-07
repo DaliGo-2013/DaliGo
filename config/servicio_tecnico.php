@@ -23,4 +23,20 @@ return [
 
     'dias_reparacion_default' => 15,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Sucursales que RECIBEN servicio técnico
+    |--------------------------------------------------------------------------
+    |
+    | Códigos de las sucursales donde un cliente puede ingresar un equipo al
+    | taller (por QR o mostrador). La reparación siempre es en Mirador (casa
+    | matriz); Coquimbo y Abate Molina reciben pero no reparan. Buzeta NO recibe
+    | servicio técnico, por eso no aparece en el selector de la portada ni en la
+    | página de códigos QR. Si alguna sucursal empieza a recibir, agrega su
+    | código aquí (debe coincidir con `sucursales.codigo`).
+    |
+    */
+
+    'sucursales_recepcion' => ['MIRADOR', 'COQUIMBO', 'ABATE-MOLINA'],
+
 ];

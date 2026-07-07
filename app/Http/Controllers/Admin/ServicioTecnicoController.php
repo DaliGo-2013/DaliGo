@@ -152,8 +152,10 @@ class ServicioTecnicoController extends Controller
      */
     public function qr(): View
     {
-        $sucursales = Sucursal::where('activa', true)
-            ->orderBy('nombre')
+        // Solo las sucursales que RECIBEN servicio tecnico (config): Buzeta no
+        // recibe, asi que no se imprime su QR. Mismo criterio que el selector de
+        // la portada.
+        $sucursales = Sucursal::recepcionServicioTecnico()
             ->get()
             ->map(fn (Sucursal $s) => [
                 'sucursal' => $s,
