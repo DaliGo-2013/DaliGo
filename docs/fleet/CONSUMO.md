@@ -46,10 +46,11 @@ sesión restante.
 > duración según §4.
 > (³) Sesión anterior a la constitución de la flota: no reportó /usage. Desde su próxima
 > sesión debe reportarlo en el parte de cierre (FLOTA §5).
-> (⁴) DESVIACIÓN: la sesión corrió en Fable 5, no Opus 4.8 del roster/dictado — consumo
-> Max acelerado. Mauricio: fijar el modelo en el selector ANTES de abrir cada sesión y
-> correr /usage tú mismo para completar esta fila (la sesión no puede ejecutar comandos
-> de UI).
+> (⁴) DESVIACIÓN → RECALIFICADA 07-07: el uso de Fable 5 fue DECISIÓN DEL DUEÑO (el
+> modelo está disponible solo hasta el 07-07 en el plan actual; lo aprovecha mientras
+> dure, asumiendo el mayor consumo). Desde el 08-07 rige el roster normal (Opus 4.8 en
+> Max, Sonnet 5 en Pro) — fijar con /model al abrir. Los Δ de sesiones Fable no
+> calibran las tallas de Opus/Sonnet.
 > (⁵) Datos de capturas de Mauricio 02-07 ~12:57 (panel de uso, no /usage textual). Sin el
 > % de INICIO los Δ son techos (≤). Max-1 al 86% de ventana arrancando P-SPK-02 (XL):
 > ventana resetea 13:30 — riesgo de corte asumido.

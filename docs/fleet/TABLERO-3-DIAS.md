@@ -74,14 +74,19 @@ Detectada 02-07 por Max-2 (evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queu
 rama M15). Timeline afinada con el baseline del corrector: el fix de P-S0-07 operó toda la
 mañana (`sync-stock` corrió 07:54/08:54/09:54 hora log) y la reversión a `*/20` ocurrió entre
 ~09:54 y ~10:50 hora log — cambio NO registrado, cPanel sin historial de ediciones de cron
-(verificado). **Corrector aplicado 02-07 ~13:25 CDT** (IA-cPanel, 5/6 pasos OK): scheduler de
-vuelta a `* * * * *`, queue:work intacto, `schedule:list` muestra las 4 syncs. **FIX VERIFICADO
-06-07** (grep del dueño): `sync-stock` con 3 corridas horarias consecutivas post-fix (08:54 /
-09:54 / 10:54 hora-log). **Para CERRAR:** (1) chequeo `date && tail -5 laravel.log` — la última
-línea del grep es 03-07 hora-log y hoy es 06-07; probable desfase de reloj del log, pero hay que
-descartar re-reversión; (2) Max-1 archiva corrector + grep en docs/qa/INFRA/ (main).
-**Vigilancia:** si se revirtió de nuevo, ya no es accidente → cazar el proceso. GATE pre-P-M15-09
-se mantiene hasta (1) y (2).
+(verificado). **CAUSA RAÍZ IDENTIFICADA 07-07** (Max-1 + date-check del dueño): el crontab fue reescrito por
+TERCERA vez (~03-07 06:45 CDT: `schedule:run` → `*/19`, `queue:work` → `*/15`). Patrón de las 3
+reescrituras: intervalos ≥15 min → **automatización de HostGator que estrangula crons por-minuto
+en plan compartido** (hipótesis fuerte). Consecuencia actual: clients/prices/stock NO corren desde
+el 03-07 (con `*/19` solo el minuto :00 coincide con una sync). **DOCTRINA NUEVA — modo
+compatibilidad (dictada 07-07):** NO reponer `* * * * *` (churn perdido); crontab a `*/15`
+ALINEADO (0,15,30,45) + re-agendar las tareas de `routes/console.php` a esa grilla (catalog :00,
+clients :15, prices :30, stock :45) + delegación a IA-cPanel/soporte HostGator para confirmar la
+política (¿mínimo real?, ¿plan superior lo permite?). M15 sobrevive: reintentador ya es robusto a
+scheduler degradado (diseño validado); notificaciones con latencia ≤15 min interina. El GATE
+pre-P-M15-09 se REDEFINE: basta el modo compatibilidad aplicado y verificado (no volver a
+por-minuto). Evidencias (3 reescrituras + date-check con tail mostrando HTML en laravel.log — ojo
+lateral: algo volcó una página HTML de error al log, revisar al archivar) → docs/qa/INFRA/.
 
 ## Reglas del tablero
 
