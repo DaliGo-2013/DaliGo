@@ -102,6 +102,19 @@ class IngresoTallerPublicoTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_formulario_ofrece_elegir_modo_de_ingreso(): void
+    {
+        $sucursal = $this->sucursal();
+
+        // Paso previo: elegir cómo ingresar (código de barras "Pronto" | manual).
+        $this->get($this->linkCreate($sucursal))
+            ->assertOk()
+            ->assertSee('¿Cómo desea ingresar su producto?')
+            ->assertSee('Con código de barras')
+            ->assertSee('Pronto')
+            ->assertSee('Ingresar manualmente');
+    }
+
     public function test_formulario_muestra_codigo_y_fecha_de_hoy(): void
     {
         $sucursal = $this->sucursal();
