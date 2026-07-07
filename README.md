@@ -23,6 +23,7 @@ Aplicación web desarrollada con Laravel 12 sobre PHP 8.3, preparada para desple
 | [`HANDOFF.md`](HANDOFF.md) | Manual técnico: stack, infra, deploy, cómo quedó implementado | Devs/IAs |
 | [`CLAUDE.md`](CLAUDE.md) | Convenciones + bitácora de errores/soluciones | Devs/IAs |
 | [`docs/delegacion/`](docs/delegacion/PROTOCOLO-DELEGACION.md) | Protocolo y plantillas para la IA de cPanel/QA | Dirección + IA de QA |
+| [`docs/delegacion/RECETARIO-PROMPTS.md`](docs/delegacion/RECETARIO-PROMPTS.md) | Prompts copy/paste para las cuentas Claude de la flota, por momento del flujo (+ skills `/arranque` `/cierre` `/pre-merge`) | Dueño + flota |
 | [`docs/qa/`](docs/qa/README.md) | Evidencias de QA archivadas | Todos |
 | [`docs/planes/`](docs/planes/README.md) | Planes finos por módulo (con sello de vigencia) | Devs/IAs |
 | [`docs/GUIA-DALIGO.md`](docs/GUIA-DALIGO.md) · [`docs/BSALE_API.md`](docs/BSALE_API.md) | Tutorial de arquitectura · referencia API Bsale | Devs/IAs |

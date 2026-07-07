@@ -65,8 +65,9 @@ Pasos (la fuente viva es RUTA-MAESTRA §4/E1 — márcalos ahí, EN TU RAMA, al 
   estado, reintentos) + `preferencias_canal` — MySQL 5.7: VARCHAR(191) en índices
 - P-M15-02 · `NotificacionDispatcher` + contrato `Canal` (`CanalMail`, `CanalDatabase`,
   `CanalWhatsApp` stub que loguea)
-- P-M15-03 · Cola database + **delegación IA-cPanel**: segundo cron `queue:work
-  --stop-when-empty --max-time=55`
+- P-M15-03 · Cola database — el cron de cola YA existe (I-01, 2026-07-07): `*/15 …
+  queue:work --stop-when-empty --max-time=840` (grilla `*/15`, latencia ≤15 min; no
+  re-delegar la spec vieja por-minuto)
 - P-M15-04 · Plantillas por evento + seeds idempotentes + claves en `Configuracion`
 - P-M15-05 · Reintentos con backoff + vista `/admin/notificaciones` (permiso `view notificaciones`)
 - P-M15-06 · Campanita in-app en nav (desktop + responsive) — `npm run build` + grep del bundle
@@ -135,6 +136,9 @@ y commit) y preséntaselo a Mauricio para su visto bueno ANTES de la primera mig
 - No marcar pasos `[x]` sin commit/evidencia (regla anti-autoengaño de RUTA-MAESTRA).
 
 ---
+
+**Prompts del día a día:** `docs/delegacion/RECETARIO-PROMPTS.md` — tus secciones son §3 y §4
+(R-20…R-34; para traer main a tu rama usa R-33). Skills disponibles: `/arranque`, `/cierre`, `/pre-merge`.
 
 **Arranque sugerido de tu primera sesión:** setup (§2) → lectura (§3) → `docs/planes/PLAN-M15.md`
 con sello de vigencia → visto bueno de Mauricio → P-M15-01. Éxito 🚀

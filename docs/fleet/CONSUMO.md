@@ -25,13 +25,49 @@ sesión restante.
 | Fecha | Cuenta | Tarea (tablero) | Talla | Modelo·Esfuerzo | /usage inicio (ses/sem) | /usage fin (ses/sem) | Δ sesión | Resultado |
 |---|---|---|---|---|---|---|---|---|
 | _(ejemplo)_ 03-07 | Pro-2 QA | Guion regresión M11 | M | Sonnet5·high | 0% / 12% | 38% / 17% | 38% | HECHA |
+| 02-07 | Pro-1 Director | Constitución + validar PLAN-M15 + dictado día 1 + verificación de 2 partes | M | Fable 5 (¹) | n/d (²) | 22% / 3% (captura 12:57) | ≤22% | HECHA |
+| 02-07 | Max-2 Forjador B | Bootstrap stream 2 + PLAN-M15 (pre-flota) | L | Opus 4.8 · high | n/d (³) | n/d (³) | n/d | HECHA (plan aprobado con 2 ajustes) |
+| 02-07 | Max-2 Forjador B | Visto bueno + P-M15-01 + P-M15-02 (+ arranque P-M15-04) | L | **Fable 5** (⁴) | n/d | 26% / 11% (captura 12:57) | ≤26% | HECHA (verificada) |
+| 02-07 | Max-1 Forjador A | P-SPK-01 spike PWA (+ arranque P-SPK-02) | L | **Fable 5** (⁴)(⁵) | n/d | **86%** / 12% (captura 12:57) | ≤86% | HECHA (verificada, celular real OK) |
+| 02-07 | Max-2 Forjador B | P-M15-04 + prompt delegación P-M15-03 | L | **Fable 5** (⁴) | pendiente | pendiente | pendiente | P-M15-04 HECHA (verificada) · 03 PARCIAL |
+| 02-07 | Max-1 Forjador A | P-SPK-02 cola IndexedDB offline | XL | Opus 4.8 · xhigh ✓ | **0% / 12%** (captura 13:32) | **pendiente — Mauricio: /usage AHORA en Max-1** | pendiente | HECHA (verificada) — este Δ es el primer dato limpio de XL en Opus |
+| 02-07 | Max-2 Forjador B | Cierre P-M15-03 (archivo evidencia + hallazgo I-01) | S | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada) |
+| 06-07 | Max-2 Forjador B | P-M15-05 + P-M15-06 (fd31b2e) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada, 4 correcciones → gate merge) |
+| 05-07 | Mauricio (compu alterna) | P-S0-18 recetario + skills (4d7caa1) | M | Opus 4.8 | n/d | n/d | n/d | HECHA (fuera de flota; corrección F-01 dictada) |
+| 06-07 | Max-1 Forjador A | F-01 recetario automático (07dbe92) | S | **Fable 5** (⁴) | n/d | n/d | n/d | HECHA (verificada) |
+| 06-07 | Max-2 Forjador B | Correcciones auditoría + P-M15-07/08 (f7353fb) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada; gate levantado) |
+| 06-07 | Max-1 Forjador A | Sesión post-F-01 (P-SPK-03 en curso) | — | **Fable 5** (⁴) | n/d | **100%** / 28% (captura ~14:50) | ventana AGOTADA | CORTADA a mitad de cierre — SIN relevo (dueño esperó el reset 15:29); titular retoma en la misma sesión |
+| 07-07 | Max-1 Forjador A | Cierre P-SPK-03 + I-01 modo compat. (faf772f/d1db5ef/aa10d2b) | L | Fable 5 (⁴) | n/d | pendiente | pendiente | TODO HECHO (verificado por Director commit a commit; 403 tests, deploy verde) |
 |  |  |  |  |  |  |  |  |  |
+
+> (¹) El kickoff dicta Sonnet 5·medium para el Director, pero la sesión corrió con Fable 5 —
+> el modelo se elige en el selector de la app, no desde la sesión. Mauricio decide si la
+> cambia para las próximas sesiones del Director.
+> (²) `/usage` es comando de terminal interactivo, no disponible en esta sesión → proxy por
+> duración según §4.
+> (³) Sesión anterior a la constitución de la flota: no reportó /usage. Desde su próxima
+> sesión debe reportarlo en el parte de cierre (FLOTA §5).
+> (⁴) DESVIACIÓN → RECALIFICADA 07-07: el uso de Fable 5 fue DECISIÓN DEL DUEÑO (el
+> modelo está disponible solo hasta el 07-07 en el plan actual; lo aprovecha mientras
+> dure, asumiendo el mayor consumo). Desde el 08-07 rige el roster normal (Opus 4.8 en
+> Max, Sonnet 5 en Pro) — fijar con /model al abrir. Los Δ de sesiones Fable no
+> calibran las tallas de Opus/Sonnet.
+> (⁵) Datos de capturas de Mauricio 02-07 ~12:57 (panel de uso, no /usage textual). Sin el
+> % de INICIO los Δ son techos (≤). Max-1 al 86% de ventana arrancando P-SPK-02 (XL):
+> ventana resetea 13:30 — riesgo de corte asumido.
 
 ## 3. Calibración (el Director la actualiza al cierre de cada día)
 
-- Promedio real Δsesión por talla en Pro: S = __% · M = __% · L = __%
-- Promedio real Δsesión por talla en Max: S = __% · M = __% · L = __% · XL = __%
+- Promedio real Δsesión por talla en Pro: S = __% · M = ≤22% (1 dato, Director en Fable 5) · L = __%
+- Promedio real Δsesión por talla en Max: S = __% · M = __% · L = ≤26–86% (2 datos, ambos Fable 5) · XL = __%
 - Ajustes a la tabla de tallas: _(anotar cambios con fecha)_
+- **Calibración 02-07 (primeros datos, tomar con pinzas):** los 3 puntos son techos (sin %
+  de inicio) y TODAS las sesiones corrieron Fable 5, que consume mucho más rápido que el
+  modelo dictado — no sirven para calibrar Opus/Sonnet todavía. La dispersión Max (26% vs
+  86% para talla L) sugiere que P-SPK-01 fue realmente XL o que el contexto largo de Max-1
+  (622k tokens) pesó. Dato firme: lo SEMANAL va sano (3–12%) — el cuello es la ventana de
+  5h, que se resetea sola. Acción: fijar modelo del roster ANTES de cada sesión y reportar
+  /usage textual inicio+fin para tener Δ reales.
 
 ## 4. Notas
 

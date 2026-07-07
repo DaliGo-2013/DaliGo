@@ -21,6 +21,82 @@
 
 ## Sesiones
 
+### [2026-07-07] Stream 2 · P-M15-09 fase 1: merge de main a la rama (444 verdes, sin push a main)
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — GO definitivo del Director tras verificar precondiciones (P-SPK-03 en main `d1db5ef`, I-01 cerrada)
+- **Objetivo declarado:** P-M15-09 secuencia §5.6 — plegar `origin/main` (`dff13c7`) a `feature/m15-notificaciones`
+- **Qué se hizo:** freno inicial correcto (precondiciones □ verificadas en main antes de tocar, no asumidas); recon del merge-base `35e72db` endosado por el Director (2 correcciones a su brief: `navigation.blade.php` SÍ chocaba por el `@canany` de `7e2f552`; `CLAUDE.md` entraba limpio). Merge con 6 conflictos, todos resueltos por unión de ambos lados: `config/permissions.php` + `RolesAndPermissionsSeeder` (permisos `confirmar servicio tecnico` de M12 **y** `view notificaciones` de M15), `RoleMatrixSeedTest` (admin con ambos; jefe_bodega/tecnico solo M12), RUTA (mis `[x]` + dato I-01 de main plegado en P-M15-03), BITACORA (interleave newest-first vía awk), `public/build/manifest.json` (regenerado). Nav y rutas **auto-mergearon** conservando ambos (verificado). Build: `npm install` primero (main trajo dep `qrcode` — Rollup fallaba sin ella) → `view:clear` + `npm run build` → grep literal 4/4 (`lg\:flex`, `lg\:hidden`, `.w-80` campanita, `bg-white\/60` PWA). **Suite 444 verdes** (sobre ~430 esperada; cero cruce entre streams). Push SOLO a la rama; main intacto.
+- **Pasos marcados:** P-M15-09 [~] (fase merge lista; deploy+QA esperan OK).
+- **Decisiones:** ninguna (doctrina I-01 `*/15` ya dictada; QA staging la respetará: latencia reintentos ≤15 min).
+- **Delegaciones:** ninguna en esta fase (QA-FUNCIONAL-STAGING y P-M15-10 SPF/DKIM salen post-deploy).
+- **Próximo paso:** OK explícito Director+Mauricio → merge a main = deploy → prompt QA-FUNCIONAL-STAGING a IA-cPanel; P-M15-09 cierra SOLO con APROBADO.
+
+### [2026-07-07] I-01 cerrada en modo compatibilidad + P-SPK-03 cerrado (spike PWA completo) + I-03 abierta
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — dictados del Director
+- **Objetivo declarado:** cerrar P-SPK-03 (Tarea 2: archivar I-01) + F-01 (hecha antes, `07dbe92`: recetario como apoyo automático — regla en CLAUDE.md + descriptions auto-trigger de las 3 skills).
+- **Qué se hizo:**
+  - Al completar el paso 5 del corrector (verificación `:50` por SSH) se destapó la **TERCERA reescritura** del crontab (`*/19` + `*/15`, 03-07): syncs clients/prices/stock muertas desde el 03-07. Causa raíz aceptada por el Director: **HostGator estrangula crons por-minuto** → **I-01 CERRADA en modo compatibilidad**: crontab `*/15` en ambas líneas (aplicado por SSH 10:38 CDT, before/after archivado) + syncs re-agendadas a la grilla :00/:15/:30/:45 en `routes/console.php` + test que fija la grilla. Evidencias: `docs/qa/INFRA/2026-07-02--INFRA--i01-corrector-scheduler.md` (respuesta íntegra del corrector) y `docs/qa/INFRA/2026-07-07--INFRA--i01-cierre-modo-compatibilidad.md` (timeline completa). CLAUDE.md §Deploy + bitácora [2026-07-07] + HANDOFF actualizados (doctrina vieja marcada superada).
+  - **I-03 detectada y abierta:** token Bsale muerto (401) desde el 06-07 ~16:00 CDT — espejo congelado; la destraba SOLO Mauricio (panel Bsale → token directo al `.env` del server, jamás por chat). Lateral 2: correos del taller (M12) volcados al log — config cacheada `mail.default=log` vs `.env` `smtp` a medio experimentar (`MAIL_HOST=staging.impdali.cl`); el deploy de este push re-cachea → fallos visibles pero elegantes (try/catch de M12); cierre real = P-M15-10. Órdenes #000005/#000006: el cliente nunca recibió su correo.
+  - **P-SPK-03 CERRADO:** memo `docs/SPIKE-PWA.md` sellado (7 secciones, verificado contra el código, guardarraíl golden-hash de `offline.blade.php`↔`CACHE` en `PwaTest`); la prueba de campo la ejecutó el dueño el 06-07 y el Director la verificó con capturas (tablero día 3, `50f8878`): A OK, B OK, 4/4 tandas sin duplicados, motivo por tanda intacto → §6 del memo completada con esos resultados. Con esto el **spike PWA queda completo** (P-SPK-01/02/03) y gobierna M08.
+  - De la verificación pre-push (workflow de 3 lentes, 15 hallazgos): se corrigieron en este mismo push los restos PRESCRIPTIVOS de la doctrina vieja del cron en `GUIA-DALIGO.md`, `PROYECTO_DALIGO.md`, `RUTA-MAESTRA` (P-M15-03 y base E3), `KICKOFF-E1-M15.md`, plantilla `VERIFICACION-CPANEL.md` y `BSALE_API.md`, más el §8f de HANDOFF stale (M12 ya estaba LIVE) y el sello del memo. El tablero de flota (territorio del Director) quedó con 2 ajustes pendientes, reportados en el parte.
+- **Pasos marcados:** P-SPK-01 hash `ee01204`, P-SPK-02 hash `793bfcc` (estampados), P-SPK-03 `[x]`. · **Decisiones:** doctrina de infra I-01 (grilla `*/15`) dictada por el Director, registrada en CLAUDE.md. · **Delegaciones:** corrector I-01 recibida y archivada; borrador de pregunta a soporte HostGator entregado al Director (pendiente de despacho).
+- **Próximo paso:** Mauricio — reponer token Bsale (I-03, panel Bsale → `.env` directo); Max-1 — vigilancia 24h de que la grilla `*/15` sobrevive al reescritor.
+
+### [2026-07-06] Permiso «confirmar servicio técnico»: el jefe de bodega autoriza la recepción del QR
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** que el **jefe de bodega** autorice la recepción de lo que llega por QR (revisa que los datos estén bien) y luego el técnico repare; y dejar el rol del técnico de ST (Fernando St) con todos los permisos.
+- **Qué se hizo:** (rama `feature/st-permiso-confirmar`)
+  - **Permiso nuevo `confirmar servicio tecnico`** (seeder idempotente) → asignado a `jefe_bodega` (autoriza, **sin** `manage` → no ingresa/edita) y a `tecnico` (ST completo). `admin` lo tiene por defecto.
+  - La ruta `confirmar`, el bloque **«Por confirmar»**, el botón «Confirmar recepción» y el auto-refresco pasan a gatearse con ese permiso (antes `manage`). «Revisar» apunta al **detalle** (show) para que el jefe (solo lectura) lo abra.
+  - El menú muestra «Servicio Técnico» con `view|manage` (antes solo `manage`) para que el jefe de bodega llegue al listado.
+  - 2 tests nuevos (jefe_bodega confirma + correo; vendedor solo-lectura → 403) → **401 verdes**.
+  - **Usuario Fernando St:** el rol `tecnico` YA trae todos los permisos de ST (view + manage + confirmar). El usuario se crea por la UI de admin (Usuarios → Crear, rol `tecnico`) o por la IA de cPanel — **no se seedea con contraseña** en el repo.
+- **Pasos marcados:** ninguno (P-M12-01 [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** crear el usuario Fernando St (UI) + QA del correo (confirmar orden → Gmail/Spam).
+
+### [2026-07-06] Formulario QR: paso previo «¿Cómo desea ingresar?» (código de barras «Pronto» | manual)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** dejar lista para presentar al jefe la opción FUTURA de ingreso por código de barras (con pistola lectora), sin construir el backend todavía.
+- **Qué se hizo:** (rama `feature/qr-modo-ingreso`) pantalla de elección previa al formulario público (Alpine `modo`):
+  - **«Con código de barras»** (badge **Pronto**) → vista de preview que explica el flujo futuro (al escanear se autocompleta modelo/factura/garantía/dónde-se-compró; el cliente solo ingresa nombre/correo/teléfono/RUT) + botón «por ahora, ingresar manualmente». **NO envía aún** (falta la pistola y el enlace a las compras) — es demo/placeholder.
+  - **«Ingresar manualmente»** → el formulario actual completo (equipos antiguos sin código).
+  - Si hay errores de validación, abre directo el modo manual (el cliente ve sus errores). 1 test nuevo → **399 verdes**. `view:clear` + build.
+- **Pasos marcados:** ninguno (P-M12-01 [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** QA del correo (confirmar orden como encargado → ver Gmail/Spam); a futuro, hacer funcional el ingreso por código de barras cuando llegue la pistola lectora.
+
+### [2026-07-06] Portada: entrada pública a servicio técnico (pregunta → sucursal → QR)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** que desde la portada (sin cuenta) se pueda entrar a servicio técnico eligiendo sucursal y viendo su QR.
+- **Qué se hizo:** (rama `feature/portada-ingreso-qr`)
+  - `welcome.blade.php`: selector Alpine de 3 pasos — «¿Vas a ingresar un producto a servicio técnico?» → botones de sucursal → QR firmado de esa sucursal (dibujado en el cliente con el mismo `canvas[data-qr]` + import dinámico de `qrcode`) + link «continúa aquí en este dispositivo». La ruta `/` pasa las sucursales con try/catch (la home nunca revienta si la BD no está lista; ExampleTest sigue verde).
+  - **Sucursales de ST configurables:** `config/servicio_tecnico.php` → `sucursales_recepcion` (MIRADOR, COQUIMBO, ABATE-MOLINA) + scope `Sucursal::recepcionServicioTecnico()`. **Buzeta excluida** (no recibe ST) tanto en la portada como en la página de QR admin (antes mostraba las 4 activas).
+  - Verificado `route:cache` OK (el closure de `/` es cacheable → sin riesgo de deploy). 3 tests nuevos/ajustados → **398 verdes**. `view:clear` + build.
+- **Pasos marcados:** ninguno (P-M12-01 sigue [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** QA real del correo (confirmar la orden como encargado → ver si llega a Gmail/Spam) + rotar clave SMTP.
+
+### [2026-07-06] SMTP en prod + formulario del QR: código del producto (buscador de catálogo) y fecha de hoy
+- **Quién:** Marco + Claude (Opus 4.8) + IA de cPanel
+- **Objetivo declarado:** dejar operativo el correo del piloto P-M12-01 e iterar el formulario con feedback de prueba en vivo.
+- **Qué se hizo:**
+  - **SMTP configurado en producción** (delegación a IA-cPanel, veredicto APROBADO CON OBSERVACIONES): cuenta `servicio@impdali.cl`, `.env` con `MAIL_MAILER=smtp` / `mail.impdali.cl:465` / `smtps` / from `servicio@impdali.cl`; `config:cache`; prueba de envío `ENVIADO_SIN_ERROR`. El correo del QR ya se entrega de verdad. **Pendiente:** rotar la clave (quedó en `~/.bash_history` durante el setup) + prueba de entregabilidad a un dominio externo.
+  - **Formulario público del QR** (rama `feature/qr-form-producto-fecha`): campo **"Código del equipo (producto Dali)"** con autocompletado del catálogo (SKU/nombre) reusando `<x-buscador-remoto>`; endpoint público nuevo `ingreso-taller/buscar-producto` (sin auth, `throttle:30,1` por ser autocompletado; solo lee SKU/nombre). `producto_id` validado (`exists`) y guardado, y ahora sale en el correo. Campo **"Fecha de ingreso" = hoy** (solo lectura; el servidor sigue forzando la fecha).
+  - 5 tests nuevos (búsqueda pública, mínimo 2 caracteres, guarda `producto_id`, rechaza producto inexistente, render de código+fecha) → **396 verdes**. `view:clear` + build (CSS 43 kB).
+- **Pasos marcados:** ninguno (P-M12-01 sigue [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** SMTP (IA-cPanel) — reporte APROBADO CON OBSERVACIONES.
+- **Próximo paso:** rotar la clave del correo (prompt entregado) + QA real end-to-end (QR → enviar con un Gmail → confirmar → recibir el correo, ver si cae en Recibidos o Spam).
+
+### [2026-07-06] Ingreso a servicio técnico por QR (piloto de P-M12-01) + historial compartido con separación por sucursal
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** adelantar **P-M12-01** como piloto — que un cliente ingrese su máquina al taller escaneando un QR del mostrador, **sin crearse usuario**, y reciba el folio por correo.
+- **Qué se hizo:** (rama `feature/m12-ingreso-qr-piloto`, **sin mergear aún** — no se puede marcar `[x]` sin QA staging)
+  - **Flujo público por QR:** ruta sin auth `ingreso-taller` con link **firmado** (`URL::signedRoute`, sucursal embebida) + `throttle:6,1` + honeypot; `App\Http\Controllers\Publico\IngresoTallerPublicoController` (create/store/gracias); vistas `publico/taller/*` sobre `<x-guest-layout>` (mobile-first). El envío crea una orden **real** (`fuente='qr'`, `estado='recibido'`, `confirmada_at=null`) — NO un pre-ingreso aparte.
+  - **Confirmación del encargado:** `ServicioTecnicoController::confirmar` (permiso `manage`, `lockForUpdate` anti doble-envío) setea `confirmada_at` y AHÍ dispara el correo. Bloque "Por confirmar (QR)" + auto-refresco liviano en el índice; botón en el detalle.
+  - **Correo piloto standalone:** `App\Mail\IngresoTallerRecibido` + `emails/taller/recibido` (mailer nativo `config/mail.php`). Migrable al motor **M15** (evento `taller.recibido`) cuando llegue a main.
+  - **QR imprimible:** página admin `servicio-tecnico/qr` (un QR firmado por sucursal), dibujado en el cliente con `qrcode` (npm) vía **import dinámico** → chunk aparte, no engorda el bundle global; assets `public/build` commiteados.
+  - **Historial compartido + separación por sucursal de recepción** (pedido del dueño): el listado ya era compartido por las 3 sucursales; se agregó **filtro "Sucursal (recepción)"** + badge "Recibido en X" por fila; en el detalle se rotula **"Se repara en Mirador (casa matriz)"** cuando la recepción NO fue central (Coquimbo/Abate reciben pero no reparan). Derivado de `es_central`, **sin campo nuevo**.
+  - **Migración** `…140000_add_email_y_confirmacion_a_ordenes_servicio` (idempotente): `cliente_email`, `confirmada_at`.
+  - **Tests:** 14 del flujo público (`IngresoTallerPublicoTest`) + 3 del módulo (filtro por sucursal; detalle repara-en-Mirador) → **391 verdes**.
+- **Pasos marcados:** ninguno `[x]`; **P-M12-01 [EN CURSO]** (piloto en rama; falta QA staging + merge por el gate). · **Decisiones:** ninguna (regla Mirador-casa-matriz la confirmó el dueño; correo standalone-vs-M15 = decisión de implementación del piloto). · **Delegaciones:** ninguna.
+- **Próximo paso:** QA en staging del flujo QR (escanear → enviar → confirmar → correo real con SMTP) + gate `/pre-merge` antes de mergear a main; luego migrar el correo a M15.
+
 ### [2026-07-04] Stream 2 · día 4: 4 correcciones de auditoría + preferencias + tests (P-M15-07/08)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8**)
 - **Objetivo declarado:** 4 correcciones del Director (gate del merge) + P-M15-07 + P-M15-08
@@ -64,6 +140,31 @@
 - **Decisiones:** ninguna nueva (ajustes = dictado del visto bueno).
 - **Delegaciones:** ninguna enviada; la del cron de cola (P-M15-03) es el siguiente paso y su prompt sale de PLAN-M15 §5.
 - **Próximo paso:** **P-M15-03** — redactar la delegación del cron `queue:work` (plantilla VERIFICACION-CPANEL) y entregarla a Mauricio; en paralelo P-M15-04 (plantillas + seeds, no depende del cron).
+### [2026-07-02] Recetario de prompts oficial adaptado + 3 skills de flota (P-S0-18)
+- **Quién:** Mauricio + Claude (cuenta original/casa)
+- **Objetivo declarado:** evaluar la [biblioteca oficial de prompts de Claude Code](https://code.claude.com/docs/en/prompt-library) y sincronizar el repo local (18 commits detrás).
+- **Qué se hizo:**
+  - Pull fast-forward limpio de los 18 commits de la flota; entorno local migrado y suite verificada (**372 verdes**).
+  - Análisis de la biblioteca oficial (48 prompts, 5 fases SDLC): veredicto SÍ adaptable — ~22 llenan vacíos reales del flujo; el resto duplica el sistema documental o no aplica a HostGator.
+  - **`docs/delegacion/RECETARIO-PROMPTS.md`** creado: 24 fichas R-01…R-71 en español, organizadas por momento del flujo y por rol de la flota, con slots, ejemplos DaliGo reales, gotchas caros horneados (R-31) y veredictos unificados con PROTOCOLO-DELEGACION.
+  - **3 skills delgadas** en `.claude/skills/` que viajan a las 6 cuentas vía git pull: `/arranque` (PROTOCOLO-SESION §1), `/cierre` (checklist §3), `/pre-merge` (auditoría R-31). Regla anti-drift: la skill solo referencia el doc canónico. Regla de graduación en R-71: un prompt se vuelve skill cuando 2+ cuentas lo usan semanalmente.
+  - Integraciones: fila en el mapa del README, nota en PROTOCOLO-DELEGACION §4 (plantillas=IA externa vs recetario=flota), referencia en ambos KICKOFF-*.
+- **Pasos marcados:** P-S0-18 [x]. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** los del panel §0 (streams de la flota siguen su tablero; Mauricio: P-S0-03/04 briefs).
+
+### [2026-07-02] P-SPK-02 hecho: cola offline de tandas (el soplador registra sin señal)
+- **Quién:** Mauricio + Claude (Opus 4.8, Max-1/stream 1) — dictado del Director (Opus 4.8·xhigh)
+- **Objetivo declarado:** P-SPK-02 (día 2 del tablero) — cola IndexedDB con idempotencia.
+- **Qué se hizo:** migración `cliente_uuid` + unique compuesto `[reporte_id, cliente_uuid]`; `registroStore` idempotente dentro del lock + respuesta JSON (ValidationException para 422 reales); `resources/js/offline-queue.js` (encolar/drenar con CSRF fresco del meta, clasificación transitorio/permanente, guard de reentrada, reload al reconciliar); integración en el form del soplador (encola si offline, feedback optimista, contador de pendientes). Diseño validado adversarialmente ANTES de codear (3 bloqueantes: unique compuesto, CSRF sin serializar, clasificación de errores). 4 tests de idempotencia → 372 verdes. Verificado E2E en preview: 2 tandas offline → IndexedDB (sin `_token`) → online → drenan → 2 registros reales sin duplicar. Las decisiones quedaron en la bitácora de CLAUDE.md.
+- **Pasos marcados:** P-SPK-02 [x]. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso (Max-1):** P-SPK-03 — prueba de campo real (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08.
+
+### [2026-07-02] P-SPK-01 hecho: mi-reporte es instalable (spike PWA, día 1 del tablero de flota)
+- **Quién:** Mauricio + Claude (Opus, Max-1/stream 1)
+- **Objetivo declarado:** P-SPK-01 (tarea Día 1 del tablero — mayor riesgo técnico del proyecto, adelantado de W27 a W12)
+- **Qué se hizo:** manifest.json (scope `/`, start_url mi-reporte, iconos 192/512+maskable generados con GD), `public/sw.js` conservador (assets `/build/*` cache-first inmutables; navegaciones network-first con fallback `/offline` SOLO en catch; passthrough sin respondWith para el resto; jamás HTML autenticado), ruta+vista `/offline` standalone, `Alpine.store('red')` con confirmación vía `/up` y registro del SW con guard de localhost, componente `<x-produccion.indicador-red>` en las 2 vistas del soplador. Diseño validado adversarialmente ANTES de implementar (3 bloqueantes corregidos en papel: opaqueredirect, scope, passthrough). 4 tests nuevos → 368 verdes. Verificado en preview: SW activo, caches pobladas, indicador reactivo, login intacto; navegador de dev limpiado (unregister). Las 5 reglas del SW quedaron en la bitácora de CLAUDE.md como contrato para P-SPK-02/M08.
+- **Pasos marcados:** P-SPK-01 [x]. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** Mauricio instala en su celular desde staging (criterio "celular real"); mañana P-SPK-02 (cola IndexedDB offline con idempotencia UUID — sin Background Sync por iOS: vaciar en `online`).
 
 ### [2026-07-02] Se constituye la FLOTA: 6 cuentas Claude orquestadas + tablero de 3 días
 - **Quién:** Mauricio + Claude (Opus, stream 1)

@@ -31,6 +31,31 @@ class ScheduleBsaleTest extends TestCase
         $this->assertStringContainsString('bsale:sync-stock', $comandos);
     }
 
+    public function test_las_syncs_van_en_la_grilla_de_15(): void
+    {
+        // I-01 (2026-07-07): HostGator reescribe los crons <15 min, así que el
+        // cron real es `*/15` (dispara :00/:15/:30/:45). Toda sync debe caer
+        // EXACTO en esa grilla o no corre jamás (asi murieron :20/:40/:50).
+        $esperadas = [
+            'bsale:sync-catalog' => '0 * * * *',
+            'bsale:sync-clients' => '15 * * * *',
+            'bsale:sync-prices' => '30 * * * *',
+            'bsale:sync-stock' => '45 * * * *',
+        ];
+
+        foreach ($esperadas as $comando => $expresion) {
+            $evento = collect(app(Schedule::class)->events())
+                ->first(fn ($e) => str_contains((string) $e->command, $comando));
+
+            $this->assertNotNull($evento, "Falta la sync {$comando} en el scheduler.");
+            $this->assertSame(
+                $expresion,
+                $evento->expression,
+                "{$comando} fuera de la grilla */15: con el cron de cPanel en */15 no correría jamás.",
+            );
+        }
+    }
+
     public function test_las_syncs_no_se_solapan(): void
     {
         $eventos = collect(app(Schedule::class)->events())

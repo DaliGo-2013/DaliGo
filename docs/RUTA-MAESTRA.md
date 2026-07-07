@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-02 (P-S0-13…17: auditoría M11, panel, limpieza de pruebas + D-011, stream 2 y **flota de 6 cuentas con tablero de 3 días** — `docs/fleet/`) |
+| **Última actualización** | 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — HostGator reescribe crons <15 min → cron `*/15` + syncs re-agendadas a :00/:15/:30/:45; **I-03 ABIERTA**: token Bsale muerto (401) desde el 06-07, espejo congelado, la destraba Mauricio en el panel Bsale · **P-SPK-03 hecho → spike PWA COMPLETO**: memo `docs/SPIKE-PWA.md` sellado + prueba de campo aprobada 06-07) · 2026-07-06 (**P-M12-01 piloto** — ingreso a ST por QR sin login + correo al confirmar, mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E1 · M15 Notificaciones** [EN CURSO · stream 2, rama `feature/m15-notificaciones`, kickoff `docs/delegacion/KICKOFF-E1-M15.md`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | Stream 2: PLAN-M15 con sello → P-M15-01 · Mauricio: `P-S0-03/04` despachar briefs (D-003 con tabla lista) |
-| **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
-| **Salud doc↔código** | VERIFICADA el 2026-07-02 (+ infra verificada por IA-QA: cron OK, 4 syncs corriendo, logs limpios) |
+| **Bloqueos activos** | **I-03: token Bsale 401 (espejo congelado — SOLO Mauricio, panel Bsale)** · D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
+| **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra re-verificada por SSH: crontab `*/15` aplicado; ojo — syncs paradas por I-03 hasta reponer el token Bsale) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04)
@@ -79,6 +79,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-S0-15** · Aislamiento de pruebas: comando `produccion:limpiar-pruebas` (borra asignaciones/reportes/tandas/kardex + audits de reportes, con confirmación; catálogo intacto) + **D-011 TOMADA** (URL oficial `daligo.impdali.cl`, staging queda de pruebas, separación real en F3). Verificado: Bsale es solo-lectura por construcción (commit `3d1defd`, 2026-07-02)
 - [x] **P-S0-16** · Kickoff del **stream 2** (segunda cuenta Claude): arranca E1 · M15 en la rama `feature/m15-notificaciones` con brief completo en `docs/delegacion/KICKOFF-E1-M15.md` (lectura obligatoria de toda la doc, reglas anti-colisión, territorio prohibido, merge coordinado; deploy/CI verificados solo-main) (commit `4da5de2`, 2026-07-02)
 - [x] **P-S0-17** · **Flota constituida** (6 cuentas: 2 Max forjadores + 4 Pro con roles Director/QA/Investigador/Escriba) + tablero de 3 días: `docs/fleet/{FLOTA,TABLERO-3-DIAS,CONSUMO}.md` y `docs/delegacion/KICKOFF-DIRECTOR.md`. Incluye matriz modelo×esfuerzo (estado Anthropic verificado 2026-07-02) y ledger empírico de consumo vía `/usage` (este push, 2026-07-02)
+- [x] **P-S0-18** · **Recetario de prompts + 3 skills de flota**: biblioteca oficial de Claude Code (48 prompts) evaluada y adaptada → `docs/delegacion/RECETARIO-PROMPTS.md` (24 fichas R-xx en español, por momento del flujo y rol) + skills `/arranque`, `/cierre`, `/pre-merge` en `.claude/skills/` (delgadas, anti-drift: solo referencian el doc canónico; viajan a las 6 cuentas vía pull) (este push, 2026-07-02)
 
 ---
 
@@ -109,14 +110,14 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 - [x] **P-M15-01** · Migraciones `notificaciones` (polimórfica: evento, canal, destinatario, payload, estado, reintentos) + `preferencias_canal` — MySQL 5.7: VARCHAR(191) en índices; unique de preferencias con evento a 100 chars por el prefijo utf8mb4 (este push, 2026-07-02)
 - [x] **P-M15-02** · `NotificacionDispatcher` + contrato `Canal` (`CanalMail`, `CanalDatabase`, `CanalWhatsApp` stub que loguea) + job `EnviarNotificacion` (tries=1, reintento propio con backoff) + 14 tests — suite 378 verdes (este push, 2026-07-02)
-- [x] **P-M15-03** · Cola database + delegación IA-cPanel: segundo cron `queue:work --stop-when-empty --max-time=55` — despachado y verificado (worker corre, procesa, sale sin errores); evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md` (2026-07-04). ⚠️ La misma respuesta destapó que el cron del **scheduler** está en `*/20` (no `* * * * *`) → `bsale:sync-stock` (:50) no corre; **contradice P-S0-07** → escalado al Director (fuera de territorio M15)
+- [x] **P-M15-03** · Cola database + delegación IA-cPanel: cron `queue:work` — despachado y verificado (worker corre, procesa, sale sin errores); evidencia `docs/qa/INFRA/2026-07-04--INFRA--cron-queue-work-m15.md` (2026-07-04). ⚠️ La misma respuesta destapó que el cron del **scheduler** estaba en `*/20` → escalado al Director (I-01). **Actualización I-01 (2026-07-07):** HostGator estrangula crons por-minuto → grilla `*/15` alineada; el cron de cola quedó `*/15 … queue:work --stop-when-empty --max-time=840` (latencia ≤15 min; NO re-delegar la spec vieja por-minuto/`--max-time=55`)
 - [x] **P-M15-04** · Plantillas por evento + seeds idempotentes + claves en `Configuracion` (`notif_plantilla_sistema_prueba`, `notif_reintentos_max`, `notif_backoff_minutos`, `notif_remitente_nombre` — grupo `notificaciones`) + 4 tests; verificado seed 2× a mano sin duplicados; suite 382 verdes (este push, 2026-07-04)
 - [x] **P-M15-05** · Reintentos con backoff + vista `/admin/notificaciones` (permiso `view notificaciones`) — comando `notificaciones:reintentar` ATÓMICO (lockForUpdate + claim por UPDATE, robusto a scheduler degradado) agendado cada 5 min `withoutOverlapping`; panel read-only con filtros estado/canal/evento + botón "enviar prueba"; permiso aditivo en seeder + label; `PreferenciaCanal` en `AuditController::MODELOS`; 403 sin permiso con test (este push, 2026-07-04)
 - [x] **P-M15-06** · Campanita in-app en nav (desktop + responsive) — icono `bell`, partial `campanita` (contador no-leídas + dropdown + marcar leída/todas), bandeja personal en rutas `auth` (valida dueño, 403 ajeno); cambio mínimo en `navigation.blade.php`; `npm run build` + grep del bundle verificado (`lg\:flex`/`lg\:hidden` presentes, escapadas). Suite 397 verdes (este push, 2026-07-04)
 - [x] **P-M15-07** · Preferencias por usuario (canal por tipo de evento, opt-out) — tarjeta en el perfil (`prefs[evento][canal]`), `NotificacionPreferenciaController` con `updateOrCreate`; el dispatcher las respeta (test de integración form→dispatch). Canal database fijo (campanita siempre) (este push, 2026-07-04)
 - [x] **P-M15-08** · Tests (dispatch por preferencia, reintento, opt-out, 403) — cobertura del checklist completa; suite 405 verdes (este push, 2026-07-04)
 - **Correcciones de auditoría del Director (gate P-M15-09), aplicadas:** (1) página personal `/notificaciones` legible en móvil + panel admin en el nav Administración; (2) `leer` exige canal database (404 si no); (3) `withoutOverlapping(10)` en el reintentador; (4) barrido self-healing de pendientes huérfanas (>10 min) en el mismo comando; + menores (claim limpia `programada_para`, dedup de queries de la campanita, test de humo endurecido)
-- [ ] **P-M15-09** · Merge + deploy + QA staging (plantilla QA-FUNCIONAL: correo real + campanita + fila en admin)
+- [~] **P-M15-09** · Merge + deploy + QA staging (plantilla QA-FUNCIONAL: correo real + campanita + fila en admin) — merge de `origin/main` (`dff13c7`) a la rama hecho (2026-07-07): 6 conflictos resueltos por unión (permisos/seeder/matriz de roles/docs; nav y rutas auto-mergearon bien), bundle regenerado y grepeado (4/4 clases), **suite 444 verdes**; esperando OK Director+Mauricio para merge a main = deploy → luego QA staging (latencia reintentos ≤15 min por doctrina I-01 grilla `*/15`)
 - [ ] **P-M15-10** · Delegación IA-cPanel: SPF/DKIM/DMARC + test de entregabilidad a Gmail/Outlook externos
 
 ### E2 · M14 Aprobaciones digitales + spike PWA offline (~2.5 sem, spike en paralelo)
@@ -132,9 +133,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-M14-05** · Cablear `ProduccionController::ajustar` como primer consumidor
 - [ ] **P-M14-06** · Historial + vista por aprobador/solicitante, auditable
 - [ ] **P-M14-07** · Tests + merge + QA staging desde celular
-- [ ] **P-SPK-01** · Spike: manifest + service worker sobre `mi-reporte` (instalable, cache assets, detección online/offline)
-- [ ] **P-SPK-02** · Spike: cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente)
-- [ ] **P-SPK-03** · Spike: prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08
+- [x] **P-SPK-01** · Spike: manifest + service worker sobre `mi-reporte` (instalable, cache assets, detección online/offline) — `public/{manifest.json,sw.js,icons/}`, ruta `/offline` standalone, `Alpine.store('red')` + `<x-produccion.indicador-red>`; estrategia conservadora validada adversarialmente (fallback SOLO en catch por los opaqueredirect de auth, scope `/`, guard de localhost); 4 tests, 368 verdes (`ee01204`, 2026-07-02)
+- [x] **P-SPK-02** · Spike: cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente) — migración `cliente_uuid` + unique `[reporte_id, cliente_uuid]`, endpoint idempotente dentro del lock + respuesta JSON, `resources/js/offline-queue.js` (encolar/drenar con token CSRF fresco, clasificación transitorio/permanente), integración en el form del soplador (encola offline + contador + reload al reconciliar); 4 tests de idempotencia, 372 verdes; verificado E2E en preview (2 tandas offline → sincronizan sin duplicar) (`793bfcc`, 2026-07-02)
+- [x] **P-SPK-03** · Spike: prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — memo sellado y verificado contra el código (7 secciones + guardarraíl golden-hash en `PwaTest`); **prueba de campo APROBADA por el dueño el 06-07** (capturas verificadas por el Director, tablero día 3 `50f8878`): A OK, B OK, 4/4 tandas sin duplicados, motivo por tanda sobrevivió la cola (este push, 2026-07-07)
 
 ### E10-v0 · M16 BI corte 0 (3–4 días, al cierre de E2 o intercalado)
 - [ ] **P-M16-01** · Tablero ejecutivo v0 con datos existentes: producción por soplador/mermas + stock crítico (solo admin)
@@ -144,7 +145,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 ## 5. F2 · Núcleo operativo
 
 ### E3 · M04-F1 Inventario: del espejo a módulo (~2.5 sem) — [B:D-003]
-**Base real:** el espejo read-only YA existe (`Bodega`, `Stock`, `StockSync`, cron `:50`) — documentado en `HANDOFF.md` §8e. E3 construye encima, no desde cero.
+**Base real:** el espejo read-only YA existe (`Bodega`, `Stock`, `StockSync`, cron `:45` — grilla `*/15` de I-01) — documentado en `HANDOFF.md` §8e. E3 construye encima, no desde cero.
 **Rama:** `feature/m04-inventario-f1` · **Depende de:** D-003 (levantamiento) — D-002 deseable, no bloqueante (default conservador).
 **Hecho cuando:** stock mostrado cuadra contra Bsale en 5 SKUs × 3 bodegas (QA staging); roles operativos reciben 403 en la vista cruzada.
 
@@ -215,7 +216,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 **Rama:** `feature/m12-taller-completo` · **Depende de:** E1 (alertas), E5 (vincular documento para garantía).
 **Hecho cuando:** máquina de prueba recorre pre-ingreso→diagnóstico→aprobación por link→retiro; alertas 3/6/12 meses disparan con fechas simuladas.
 
-- [ ] **P-M12-01** · Pre-ingreso online con QR (cliente llena antes de llegar)
+- [ ] [EN CURSO] **P-M12-01** · Pre-ingreso online con QR (cliente llena antes de llegar) — **piloto adelantado** en rama `feature/m12-ingreso-qr-piloto` (2026-07-06): formulario público sin login vía QR firmado por sucursal (`URL::signedRoute` + throttle + honeypot) → orden real `fuente='qr'` sin confirmar → el encargado confirma la recepción (`confirmada_at`) y ahí se dispara el correo (Mailable standalone, migrable a M15). Historial **compartido** por las 3 sucursales con filtro/badge por **sucursal de recepción** y rótulo "se repara en **Mirador** (casa matriz)" — Coquimbo/Abate reciben pero no reparan. 391 tests verdes. Gate R-31 **APROBADO CON OBSERVACIONES** + **mergeado a main** (`1639d71`, deploy OK 16s) — **live en producción**. **Falta:** configurar SMTP en el `.env` del servidor (P-M15-10) para que el correo de confirmación se entregue (ya es resiliente si falta) + QA real en prod (escanear QR → enviar → confirmar).
 - [ ] **P-M12-02** · Cotización estructurada del técnico + aprobación del cliente por link WhatsApp (`wa.me` hasta D-007)
 - [ ] **P-M12-03** · Alertas 3m (fin garantía) / 6m (bodegaje $) / 12m (desarme/reventa/donación con registro de destino) + tablero de máquinas próximas a plazo
 - [ ] **P-M12-04** · Sugerencia automática de repuestos según histórico + cobro hora de servicio en no aprobadas

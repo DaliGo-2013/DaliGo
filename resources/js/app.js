@@ -1,6 +1,11 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { encolar, pendientes, iniciarColaOffline } from './offline-queue';
+
+// Cola offline de tandas (spike P-SPK-02). Se expone en window porque el x-data
+// del form del soplador es inline en el Blade y no puede importar el modulo.
+window.dgCola = { encolar, pendientes };
 
 /**
  * "Señalar en vez de narrar": ante una acción bloqueada por una precondición, en
@@ -91,10 +96,11 @@ Alpine.data('buscadorRemoto', ({ endpoint, inicialId, inicialLabel }) => ({
  * cliente_id; si no, se escriben a mano (cliente_id queda nulo). Editar el RUT a
  * mano rompe el enlace (cliente_id nulo) porque ya no corresponde a esa ficha.
  */
-Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, clienteId }) => ({
+Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) => ({
     endpoint,
     rut: rut || '',
     nombre: nombre || '',
+    telefono: telefono || '',
     clienteId: clienteId || null,
     resultados: [],
     abierto: false,
@@ -127,6 +133,8 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, clienteId }) => ({
         this.clienteId = r.id;
         this.rut = r.rut || '';
         this.nombre = r.razon_social || '';
+        // Si la ficha no trae telefono, conservar el que se haya tipeado.
+        this.telefono = r.telefono || this.telefono;
         this.abierto = false;
         this.resultados = [];
     },
@@ -138,14 +146,23 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, clienteId }) => ({
  *     es "garantia".
  *  2. Fecha de entrega estimada: fecha de ingreso + N dias habiles segun la
  *     sucursal (data-dias en cada <option>), saltando sabados, domingos y
- *     feriados (lista pasada desde config/feriados.php). Se autocompleta pero
- *     es editable: si el usuario la cambia a mano, deja de recalcularse.
+ *     feriados (lista pasada desde config/feriados.php). Al REGISTRAR
+ *     (soloLectura) es solo informativa: siempre se recalcula y el servidor
+ *     fija la definitiva. Al EDITAR es editable: si el usuario la cambia a
+ *     mano, deja de recalcularse.
  */
-Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados }) => ({
+Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura }) => ({
     cond: cond || '',
     fechaEntrega: fechaEntrega || '',
-    entregaManual: !!fechaEntrega, // si ya traia fecha, no la pisamos
+    soloLectura: !!soloLectura,
+    entregaManual: !soloLectura && !!fechaEntrega, // si ya traia fecha (editar), no la pisamos
     feriados: new Set(feriados || []),
+
+    init() {
+        // Registrar: mostrar el estimado apenas haya sucursal (p. ej. al volver
+        // con errores de validacion, donde la sucursal ya viene elegida).
+        if (this.soloLectura) this.$nextTick(() => this.recalcularEntrega());
+    },
 
     iso(d) {
         const y = d.getFullYear();
@@ -257,9 +274,52 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
     },
 }));
 
+/**
+ * Estado de red global (spike PWA, P-SPK-01). Indicador informativo para el
+ * operario: navigator.onLine tiene falsos positivos (WiFi sin internet), asi
+ * que al volver "online" se confirma con un HEAD al health check /up (ya
+ * existe, sin auth). Declarado ANTES de Alpine.start(): si va despues,
+ * $store.red es undefined al evaluar los x-show de las vistas.
+ */
+Alpine.store('red', {
+    online: navigator.onLine,
+
+    async confirmar() {
+        try {
+            const resp = await fetch('/up', { method: 'HEAD', cache: 'no-store' });
+            this.online = resp.ok;
+        } catch (e) {
+            this.online = false;
+        }
+    },
+});
+window.addEventListener('online', () => Alpine.store('red').confirmar());
+window.addEventListener('offline', () => (Alpine.store('red').online = false));
+
 window.Alpine = Alpine;
 
 Alpine.start();
+
+/**
+ * Registro del service worker (spike PWA). Guard de hostname: en localhost NO
+ * se registra (un SW persiste POR ORIGEN y contaminaria cualquier otro
+ * proyecto servido luego en el mismo puerto de dev); para probarlo en local:
+ * localStorage.daligoSW = '1'. updateViaCache:'none' blinda la revalidacion
+ * de sw.js contra headers de cache del hosting (LiteSpeed).
+ */
+if ('serviceWorker' in navigator) {
+    const esLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if (!esLocal || window.localStorage.getItem('daligoSW') === '1') {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker
+                .register('/sw.js', { updateViaCache: 'none' })
+                .catch(() => {}); // sin SW la app funciona igual (mejora progresiva)
+        });
+    }
+}
+
+// Drenado de la cola offline al volver la señal / al cargar (spike P-SPK-02).
+iniciarColaOffline();
 
 /**
  * Global: si la página cargó con errores de validación del servidor, llevar al
@@ -277,3 +337,26 @@ const irAlPrimerError = () => {
 };
 if (document.readyState !== 'loading') irAlPrimerError();
 else document.addEventListener('DOMContentLoaded', irAlPrimerError);
+
+/**
+ * Códigos QR del mostrador (P-M12-01): en la página de QR de Servicio Técnico
+ * dibujamos en el cliente el QR del link firmado de cada sucursal. Import
+ * dinámico: 'qrcode' solo se descarga en esa página (chunk aparte), no en el
+ * bundle global de todas las vistas.
+ */
+const dibujarQrsMostrador = () => {
+    const nodos = document.querySelectorAll('canvas[data-qr]');
+    if (!nodos.length) return;
+    import('qrcode').then((mod) => {
+        // 'qrcode' es CommonJS: segun el interop de Vite puede llegar como
+        // mod.default o como el modulo mismo. Aceptamos ambos.
+        const QRCode = mod.default ?? mod;
+        nodos.forEach((canvas) => {
+            QRCode.toCanvas(canvas, canvas.dataset.qr, { width: 224, margin: 1 }, (err) => {
+                if (err) console.error('No se pudo dibujar el QR:', err);
+            });
+        });
+    });
+};
+if (document.readyState !== 'loading') dibujarQrsMostrador();
+else document.addEventListener('DOMContentLoaded', dibujarQrsMostrador);

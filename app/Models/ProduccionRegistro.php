@@ -35,6 +35,7 @@ class ProduccionRegistro extends Model
 
     protected $fillable = [
         'reporte_id',
+        'cliente_uuid',
         'maquina_id',
         'tipo_botellon_id',
         'primera',

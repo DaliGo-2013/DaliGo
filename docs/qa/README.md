@@ -43,5 +43,7 @@ APROBADO | APROBADO CON OBSERVACIONES | RECHAZADO | INVÁLIDA (reenvío)
 
 | Fecha | Área | Tema | Veredicto | Archivo |
 |---|---|---|---|---|
+| 2026-07-07 | INFRA | I-01 cierre: modo compatibilidad con el reescritor de crons (grilla `*/15`) + laterales I-03/correo taller | CERRADA | [2026-07-07--INFRA--i01-cierre-modo-compatibilidad.md](INFRA/2026-07-07--INFRA--i01-cierre-modo-compatibilidad.md) |
+| 2026-07-02 | INFRA | I-01 corrector del scheduler (regresión a `*/20`) | APROBADO C/OBS | [2026-07-02--INFRA--i01-corrector-scheduler.md](INFRA/2026-07-02--INFRA--i01-corrector-scheduler.md) |
 | 2026-07-02 | INFRA | Cron scheduler (hallazgo `*/20`+`*/15`), deploy.sh, logs | APROBADO C/OBS | [2026-07-02--INFRA--cron-deploysh-infra.md](INFRA/2026-07-02--INFRA--cron-deploysh-infra.md) |
 | 2026-07-02 | INFRA | 0 duplicados `bsale_variant_id` + catastro real de bodegas (16) | APROBADO C/OBS | [2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md](INFRA/2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md) |

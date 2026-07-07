@@ -13,6 +13,8 @@
 
             <x-status-alert :status="session('status')" class="mb-4" />
 
+            <x-produccion.indicador-red />
+
             {{-- Reportes devueltos pendientes (de otros días/turnos) --}}
             @if ($devueltos->isNotEmpty())
                 <div class="dg-enter mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -119,6 +121,14 @@
                         },
                         agregando: false,
                         avisoTanda: false,
+                        pendientesOffline: 0,
+                        init() {
+                            /* Contador de tandas guardadas sin conexión (spike P-SPK-02). */
+                            if (window.dgCola) window.dgCola.pendientes().then((n) => { this.pendientesOffline = n; });
+                            window.addEventListener('daligo:cola-cambio', async () => {
+                                if (window.dgCola) this.pendientesOffline = await window.dgCola.pendientes();
+                            });
+                        },
                         get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0) + (Number(this.danada) || 0); },
                         get total() { return this.guardado + this.tanda; },
                         get vendible() { return this.guardadoVendible + (Number(this.primera) || 0) + (Number(this.segunda) || 0); },
@@ -131,7 +141,28 @@
                             if (this.$refs.grupoTipo && ! this.tipoId) { e.preventDefault(); this.paneles.tipo = true; this.$nextTick(() => this.$destacar(this.$refs.grupoTipo)); return; }
                             if (this.segunda > 0 && ! this.$refs.grupoMotivoSegunda.querySelector('input[type=radio]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoMotivoSegunda); return; }
                             if (this.malo > 0 && ! this.$refs.grupoMotivoMalo.querySelector('input[type=radio]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoMotivoMalo); return; }
+                            /* Sin señal: guardar la tanda en la cola local en vez de enviarla; se
+                               sincroniza sola al volver la conexión (spike P-SPK-02). Con señal,
+                               deja pasar el submit nativo de siempre. */
+                            if (window.dgCola && this.$store.red && ! this.$store.red.online) {
+                                e.preventDefault();
+                                this.guardarOffline(e.target);
+                                return;
+                            }
                             this.agregando = true;
+                        },
+                        async guardarOffline(form) {
+                            const fd = new FormData(form);
+                            fd.delete('_token'); /* el token se lee fresco al drenar; no encolar uno stale */
+                            const campos = Object.fromEntries(fd.entries());
+                            const uuid = (crypto.randomUUID && crypto.randomUUID()) || (Date.now() + '-' + Math.random());
+                            /* Acumular optimísticamente ANTES de resetear (el reload al reconectar
+                               reconcilia con los registros reales del servidor). */
+                            this.guardadoVendible += (Number(this.primera) || 0) + (Number(this.segunda) || 0);
+                            this.guardado += this.tanda;
+                            await window.dgCola.encolar({ uuid, url: form.action, campos });
+                            this.primera = 0; this.segunda = 0; this.malo = 0; this.danada = 0;
+                            this.pendientesOffline = await window.dgCola.pendientes();
                         },
                         enviar(e) {
                             if (this.tanda > 0) { e.preventDefault(); this.avisoTanda = true; this.$destacar(this.$refs.grupoTanda); return; }
@@ -211,6 +242,13 @@
                         <x-primary-button class="h-12 w-full" x-ref="grupoTanda" x-bind:disabled="agregando || tanda === 0">
                             Agregar al reporte
                         </x-primary-button>
+
+                        {{-- Tandas guardadas sin conexión, pendientes de enviar (spike P-SPK-02). --}}
+                        <p x-show="pendientesOffline > 0" x-cloak
+                           class="flex items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-xs font-medium text-neutral-600">
+                            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" aria-hidden="true"></span>
+                            <span><span x-text="pendientesOffline"></span> guardada(s) sin conexión — se enviarán solas al volver la señal.</span>
+                        </p>
                     </form>
 
                     {{-- Tandas registradas --}}

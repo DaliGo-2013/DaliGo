@@ -120,6 +120,22 @@ class ServicioTecnicoManagementTest extends TestCase
 
     // --- CRUD ---
 
+    /**
+     * El navegador SIEMPRE envia los campos del bloque de garantia (el x-show
+     * solo los oculta), asi que en una reparacion llegan como "" (-> null).
+     * Regresion: sin 'nullable', Rule::in rechazaba garantia_doc_tipo null.
+     */
+    public function test_reparacion_acepta_campos_de_garantia_vacios(): void
+    {
+        $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
+            'facturacion' => 'reparacion',
+            'garantia_doc_tipo' => '',
+            'garantia_doc_numero' => '',
+            'garantia_doc_fecha' => '',
+        ]))->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+    }
+
     public function test_admin_can_register_orden(): void
     {
         $cliente = Cliente::factory()->create();
@@ -128,6 +144,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
             'cliente_id' => $cliente->id,
             'producto_id' => $producto->id,
+            'cliente_telefono' => '+56 9 1234 5678',
             'tipo_equipo' => 'lavadora',
             'numero_serie' => 'SN-555',
             'facturacion' => 'reparacion',
@@ -138,6 +155,7 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_id' => $cliente->id,
             'cliente_nombre' => 'Juan Pérez',
             'cliente_rut' => '12345678-5',   // normalizado
+            'cliente_telefono' => '+56 9 1234 5678',
             'producto_id' => $producto->id,
             'tipo_equipo' => 'lavadora',
             'numero_serie' => 'SN-555',
@@ -211,8 +229,36 @@ class ServicioTecnicoManagementTest extends TestCase
             ])
             ->assertSessionHasErrors([
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'sucursal_id', 'numero_serie', 'falla_reportada', 'estado', 'facturacion',
+                'tipo_equipo', 'sucursal_id', 'numero_serie', 'falla_reportada', 'facturacion',
             ]);
+    }
+
+    /**
+     * Al registrar, el mostrador no decide estado ni fecha de entrega: aunque
+     * el POST traiga otros valores, toda orden nueva parte en 'recibido' y la
+     * fecha estimada la calcula el servidor (dias habiles de la sucursal,
+     * saltando fines de semana y feriados).
+     */
+    public function test_store_fuerza_estado_recibido_y_fecha_estimada_del_servidor(): void
+    {
+        config(['feriados' => ['2026-07-07']]); // martes feriado: corre el estimado un dia
+
+        // Sucursal con codigo fuera del mapa -> dias_reparacion_default (15).
+        $sucursal = Sucursal::factory()->create();
+
+        $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
+            'sucursal_id' => $sucursal->id,
+            'fecha_ingreso' => '2026-07-06',      // lunes
+            'estado' => 'entregado',              // intento de manipulacion
+            'fecha_entrega' => '2026-01-01',      // idem
+        ]))->assertSessionHasNoErrors();
+
+        // 15 habiles desde el martes 7 (feriado): termina el martes 28.
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'fecha_ingreso' => '2026-07-06 00:00:00',
+            'estado' => 'recibido',
+            'fecha_entrega' => '2026-07-28 00:00:00',
+        ]);
     }
 
     public function test_numero_serie_y_textos_exigen_minimo_3(): void
@@ -463,6 +509,46 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q=SN-XYZ-9')
             ->assertOk()->assertSee('Gamma Importadora')->assertDontSee('Delta Comercial');
+    }
+
+    /**
+     * El historial es COMPARTIDO por las 3 sucursales, pero se puede filtrar por
+     * la sucursal de recepcion (donde se ingreso el equipo). La reparacion siempre
+     * es en Mirador (casa matriz); Coquimbo y Abate Molina solo reciben.
+     */
+    public function test_index_filters_by_sucursal_de_recepcion(): void
+    {
+        $mirador = Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);
+        $coquimbo = Sucursal::factory()->create(['nombre' => 'Coquimbo', 'es_central' => false]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cliente Uno', 'sucursal_id' => $mirador->id]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cliente Dos', 'sucursal_id' => $coquimbo->id]);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?sucursal_id='.$coquimbo->id)
+            ->assertOk()->assertSee('Cliente Dos')->assertDontSee('Cliente Uno');
+    }
+
+    public function test_show_indica_reparacion_en_matriz_si_recepcion_no_central(): void
+    {
+        Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);
+        $coquimbo = Sucursal::factory()->create(['nombre' => 'Coquimbo', 'es_central' => false]);
+        $orden = OrdenServicio::factory()->create(['sucursal_id' => $coquimbo->id]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Coquimbo')
+            ->assertSee('Se repara en Mirador');
+    }
+
+    public function test_show_no_deriva_si_recepcion_es_la_matriz(): void
+    {
+        $mirador = Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);
+        $orden = OrdenServicio::factory()->create(['sucursal_id' => $mirador->id]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('Se repara en');
     }
 
     // --- buscarCliente (autocompletado JSON) ---

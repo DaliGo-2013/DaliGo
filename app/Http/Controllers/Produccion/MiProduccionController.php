@@ -8,10 +8,12 @@ use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\TipoBotellon;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MiProduccionController extends Controller
@@ -61,7 +63,7 @@ class MiProduccionController extends Controller
      * Append-only: cada tanda es una fila nueva; los totales del reporte se
      * recalculan en la misma transaccion.
      */
-    public function registroStore(Request $request, ProduccionReporte $reporte): RedirectResponse
+    public function registroStore(Request $request, ProduccionReporte $reporte): RedirectResponse|JsonResponse
     {
         abort_unless($reporte->soplador_id === $request->user()->id, 403);
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
@@ -79,6 +81,9 @@ class MiProduccionController extends Controller
         ]);
 
         $validated = $request->validate([
+            // Idempotencia de la cola offline (P-SPK-02): el cliente genera este
+            // UUID por tanda; si el drenado reintenta, el mismo UUID no duplica.
+            'cliente_uuid' => ['nullable', 'uuid'],
             'maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
             'tipo_botellon_id' => [$tipos->isEmpty() ? 'nullable' : 'required', Rule::in($tipos->pluck('id'))],
             // max como guardia anti-dedazo (un cero de mas ensucia el kardex).
@@ -98,20 +103,20 @@ class MiProduccionController extends Controller
             'motivo_malo.in' => 'Selecciona un motivo válido para las malas.',
         ]);
 
+        // Reglas de negocio como ValidationException (no back()->withErrors) para
+        // que el drenado de la cola offline (fetch con Accept: json) reciba un
+        // 422 real y las clasifique como permanentes; en web dan el mismo
+        // redirect-con-errores de siempre.
         if (($validated['primera'] + $validated['segunda'] + $validated['malo'] + $validated['danada']) <= 0) {
-            return back()->withInput()
-                ->withErrors(['primera' => 'Ingresa al menos una cantidad antes de agregar.']);
+            throw ValidationException::withMessages(['primera' => 'Ingresa al menos una cantidad antes de agregar.']);
         }
-
         // Si hay defectuosas, exigir su motivo (el select solo aparece con
         // cantidad > 0, asi que esto cubre el envio sin elegir).
         if ($validated['segunda'] > 0 && blank($validated['motivo_segunda'])) {
-            return back()->withInput()
-                ->withErrors(['motivo_segunda' => 'Indica el motivo de las de segunda.']);
+            throw ValidationException::withMessages(['motivo_segunda' => 'Indica el motivo de las de segunda.']);
         }
         if ($validated['malo'] > 0 && blank($validated['motivo_malo'])) {
-            return back()->withInput()
-                ->withErrors(['motivo_malo' => 'Indica el motivo de las malas.']);
+            throw ValidationException::withMessages(['motivo_malo' => 'Indica el motivo de las malas.']);
         }
 
         // Sin cantidad no hay motivo que guardar (descarta un select tocado y
@@ -128,9 +133,24 @@ class MiProduccionController extends Controller
             // SUM ante doble POST concurrente (doble tap / reintento en el celular),
             // evitando que el total denormalizado quede corto. No-op inofensivo en SQLite.
             ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
+
+            // Idempotencia: dentro del lock, si esta tanda (cliente_uuid) ya se
+            // registro en este reporte, no crear otra. El unique compuesto
+            // [reporte_id, cliente_uuid] es la red de seguridad final. UUID null
+            // (camino nativo con señal) siempre crea.
+            $uuid = $validated['cliente_uuid'] ?? null;
+            if ($uuid && $reporte->registros()->where('cliente_uuid', $uuid)->exists()) {
+                return;
+            }
+
             $reporte->registros()->create($validated);
             $reporte->recalcularDesdeRegistros();
         });
+
+        // El drenado de la cola offline espera JSON; el submit nativo, el redirect.
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
 
         return redirect()->to($this->rutaDelReporte($reporte))
             ->with('status', 'Producción agregada al reporte.');

@@ -40,7 +40,7 @@
 | Móvil | PWA instalable (service worker + IndexedDB), sincronización diferida offline — conductor y sopladores |
 | BD | MySQL 5.7.23, InnoDB, `utf8mb4` / `utf8mb4_unicode_ci` |
 | Auth/permisos | Laravel Fortify/Breeze + `spatie/laravel-permission`; auditoría con `owen-it/laravel-auditing` |
-| Colas/jobs | Driver `database`, procesadas por cron (`queue:work --stop-when-empty --max-time=55` cada minuto). SIN daemons |
+| Colas/jobs | Driver `database`, procesadas por cron (`queue:work --stop-when-empty --max-time=840` cada 15 min — grilla `*/15`, I-01). SIN daemons |
 | Cache/sesión | Driver `database` o `file` (no Redis) |
 | Correo | Sendmail al inicio; SMTP autenticado o Mailgun/SES para entregabilidad |
 | Assets | Vite con Node solo en build-time; el runtime NO necesita Node |
@@ -53,7 +53,7 @@
 - Diseñar para MySQL 5.7 (NO 8 / MariaDB): **sin CTE `WITH`, sin window functions, sin `JSON_TABLE`**, sin columnas generadas avanzadas. El tipo JSON existe en 5.7 — usarlo solo para metadata.
 - Collation `utf8mb4_unicode_ci` (NO `utf8mb4_0900_*`, es de MySQL 8).
 - Índices únicos en strings: `VARCHAR(191)` (patrón `Schema::defaultStringLength(191)`).
-- Sin procesos daemon: colas y schedule por cron cada minuto.
+- Sin procesos daemon: colas y schedule por cron en grilla `*/15` (HostGator reescribe los crons <15 min — I-01, CLAUDE.md [2026-07-07]; toda tarea agendada cae en :00/:15/:30/:45).
 - Código fuera de `public_html`; solo `/public` como docroot. `.env` jamás versionado ni en `/public`.
 - No interferir con los WordPress existentes (33 BBDD `wp_`/`wrdp_` en el mismo cPanel).
 - Staging en `daliprueba.cl`; producción en subdominio dedicado (p.ej. `app.impdali.cl`). SSL (AutoSSL) resuelto antes de producción.
@@ -73,7 +73,7 @@
 
 ### Despliegue (resumen)
 
-1. Subdominio staging → docroot `/daligo_staging/public`. 2. BD y usuario MySQL utf8mb4. 3. Clonar repo con Git de cPanel fuera del docroot. 4. `composer install --no-dev --optimize-autoloader`. 5. Configurar `.env` + `key:generate`. 6. `migrate --force` + `storage:link`. 7. `npm ci && npm run build` (build-time). 8. Cron 1: `schedule:run` cada minuto. Cron 2: `queue:work --stop-when-empty --max-time=55` cada minuto. 9. AutoSSL + HTTPS forzado. 10. Permisos de escritura a `storage/` y `bootstrap/cache/`. 11. Validar todo en staging antes de producción.
+1. Subdominio staging → docroot `/daligo_staging/public`. 2. BD y usuario MySQL utf8mb4. 3. Clonar repo con Git de cPanel fuera del docroot. 4. `composer install --no-dev --optimize-autoloader`. 5. Configurar `.env` + `key:generate`. 6. `migrate --force` + `storage:link`. 7. `npm ci && npm run build` (build-time). 8. Cron 1: `schedule:run` en `*/15` (NUNCA por-minuto: HostGator lo reescribe — I-01). Cron 2: `queue:work --stop-when-empty --max-time=840` en `*/15`. 9. AutoSSL + HTTPS forzado. 10. Permisos de escritura a `storage/` y `bootstrap/cache/`. 11. Validar todo en staging antes de producción.
 
 ### Riesgos técnicos declarados
 

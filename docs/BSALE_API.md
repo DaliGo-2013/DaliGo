@@ -305,7 +305,7 @@ Dado el stack (**Laravel 12 / PHP 8.3 / MySQL 5.7 / HostGator compartido, sin da
   → dimensionar el barrido inicial.
 
 ### Implicancia para el incremento de sincronización (futuro)
-Receptor de **webhooks** (controller que guarda `resourceId` y procesa con el cron por minuto) para
+Receptor de **webhooks** (controller que guarda `resourceId` y procesa con la grilla del scheduler `*/15`, latencia ≤15 min — I-01) para
 mantención + **comando de barrido inicial** (paginado a 50, respetando rate limit) para la carga.
 Upsert por `bsale_variant_id`. Token de la empresa de producción en `.env` (`BSALE_ACCESS_TOKEN`).
 Pendiente de confirmar contra la cuenta REAL: tamaño del catálogo DALI, sus `product_types`, y los

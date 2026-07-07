@@ -19,10 +19,21 @@ use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
+use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    // Sucursales que reciben servicio tecnico, para el selector de la portada
+    // (¿ingresar un equipo? -> sucursal -> QR). try/catch: la portada NUNCA debe
+    // reventar si la BD no esta lista (p.ej. tests sin migracion).
+    $sucursalesTaller = collect();
+    try {
+        $sucursalesTaller = \App\Models\Sucursal::recepcionServicioTecnico()->get();
+    } catch (\Throwable $e) {
+        // Sin selector si no se puede consultar; la portada igual carga.
+    }
+
+    return view('welcome', ['sucursalesTaller' => $sucursalesTaller]);
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -128,6 +139,15 @@ Route::middleware('auth')
                 ->whereNumber('orden')->name('servicio-tecnico.show');
         });
 
+        // Confirmar la recepcion de lo que llego por QR: lo AUTORIZA el jefe de
+        // bodega (revisa que los datos esten bien) o el tecnico. Setea
+        // confirmada_at + manda el correo al cliente. Permiso propio, separado de
+        // 'manage' (el jefe de bodega no ingresa/edita, solo autoriza).
+        Route::middleware('permission:confirmar servicio tecnico')->group(function () {
+            Route::post('servicio-tecnico/{orden}/confirmar', [ServicioTecnicoController::class, 'confirmar'])
+                ->whereNumber('orden')->name('servicio-tecnico.confirmar');
+        });
+
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
                 ->name('servicio-tecnico.buscar-cliente');
@@ -135,6 +155,10 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.buscar-producto');
             Route::get('servicio-tecnico/buscar-repuesto', [ServicioTecnicoController::class, 'buscarRepuesto'])
                 ->name('servicio-tecnico.buscar-repuesto');
+
+            // QR por sucursal (link firmado imprimible para el mostrador).
+            Route::get('servicio-tecnico/qr', [ServicioTecnicoController::class, 'qr'])
+                ->name('servicio-tecnico.qr');
 
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])
@@ -185,5 +209,27 @@ Route::middleware(['auth', 'permission:report production'])
         Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->name('mi.registros.store');
         Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->name('mi.registros.destroy');
     });
+
+// Fallback offline de la PWA (sin auth: el service worker la precachea en su
+// install, antes de cualquier login). Ver public/sw.js.
+Route::get('offline', fn () => view('offline'))->name('offline');
+
+// Ingreso PUBLICO a servicio tecnico por QR (P-M12-01, piloto). Sin login: el
+// cliente escanea el QR del mostrador y llena el formulario en su celular. El
+// GET (link del QR) va firmado (lleva la sucursal); throttle en todo el grupo.
+// Ver App\Http\Controllers\Publico\IngresoTallerPublicoController.
+Route::middleware('throttle:6,1')->group(function () {
+    Route::get('ingreso-taller', [IngresoTallerPublicoController::class, 'create'])
+        ->middleware('signed')->name('ingreso-taller.create');
+    Route::post('ingreso-taller', [IngresoTallerPublicoController::class, 'store'])
+        ->name('ingreso-taller.store');
+    Route::get('ingreso-taller/listo/{orden}', [IngresoTallerPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('ingreso-taller.gracias');
+});
+
+// Autocompletado publico del producto Dali para el formulario del QR. Throttle
+// propio (mas alto que el envio) porque dispara en cada tecla; solo lee catalogo.
+Route::get('ingreso-taller/buscar-producto', [IngresoTallerPublicoController::class, 'buscarProducto'])
+    ->middleware('throttle:30,1')->name('ingreso-taller.buscar-producto');
 
 require __DIR__.'/auth.php';

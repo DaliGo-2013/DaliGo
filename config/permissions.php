@@ -25,7 +25,9 @@ return [
         'manage clientes' => 'Gestionar clientes',
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
+        'view servicio tecnico' => 'Ver servicio técnico',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
+        'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
         'view notificaciones' => 'Ver notificaciones',
     ],
 ];
