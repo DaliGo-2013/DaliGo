@@ -20,7 +20,17 @@ use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    // Sucursales que reciben servicio tecnico, para el selector de la portada
+    // (¿ingresar un equipo? -> sucursal -> QR). try/catch: la portada NUNCA debe
+    // reventar si la BD no esta lista (p.ej. tests sin migracion).
+    $sucursalesTaller = collect();
+    try {
+        $sucursalesTaller = \App\Models\Sucursal::recepcionServicioTecnico()->get();
+    } catch (\Throwable $e) {
+        // Sin selector si no se puede consultar; la portada igual carga.
+    }
+
+    return view('welcome', ['sucursalesTaller' => $sucursalesTaller]);
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
