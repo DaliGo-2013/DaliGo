@@ -52,6 +52,20 @@
 
 ## Incidencias
 
+### I-04 · REPO PÚBLICO + alerta GitGuardian — ABIERTA, MÁXIMA PRIORIDAD (08-07)
+GitGuardian alertó "Company Email Password exposed" (push 15:12:25 UTC). Investigación del
+Director: los diffs de HOY en todas las ramas están limpios (todo `[CLAVE OCULTA]`/`«PEGAR»`)
+→ hipótesis principal: el detector se disparó con el placeholder junto a `MAIL_USERNAME` en la
+evidencia archivada. PERO el hallazgo grave del barrido es otro: **el repositorio es PÚBLICO**
+(verificado vía gh: visibility=PUBLIC) — biblia de negocio, HANDOFF con rutas de servidor,
+nombre de BD y evidencias de infra expuestos a internet. PLAN (en orden): (1) Mauricio pone el
+repo PRIVADO ya; (2) ANTES del próximo push a main: configurar auth de `git pull` en el
+servidor (deploy key/PAT de solo lectura) porque con repo privado el pull del deploy.sh FALLA;
+(3) rotación TOTAL R-04 ampliada: servicio@impdali.cl + admin staging + **clave de BD
+impdali_daligo (P-S0-09 deja de estar pospuesta — es obligatoria)**; (4) Mauricio abre la
+alerta de GitGuardian y entrega archivo/línea/commit (SIN el valor) para confirmar falso
+positivo vs real; (5) Max-2: barrido de secretos de TODA la historia en todas las ramas.
+
 ### R-01 · Reconciliación P-S0-18 — CERRADA (origen: Mauricio)
 Commit `4d7caa1` (recetario de prompts + skills) lo hizo Mauricio mismo en otra compu en
 tiempo muerto (fuente: biblioteca oficial de prompts de Claude Code). Ledger: /usage n/d.
