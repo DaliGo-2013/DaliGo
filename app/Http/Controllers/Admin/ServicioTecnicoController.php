@@ -86,10 +86,11 @@ class ServicioTecnicoController extends Controller
     {
         $data = $this->validateData($request, creando: true);
 
-        // Al registrar, el mostrador no decide estado ni fecha: toda orden nueva
-        // parte en 'recibido' y la fecha estimada la fija el servidor segun la
-        // sucursal (el formulario los muestra pero no los deja editar).
-        $data['estado'] = 'recibido';
+        // El staff (tecnico/admin) puede elegir el estado inicial al registrar
+        // para ir informando el paso a paso; por defecto parte en 'recibido'.
+        // El cliente no toca este campo (el ingreso por QR no lo tiene). La fecha
+        // estimada la sigue fijando el servidor segun la sucursal (no editable).
+        $data['estado'] = $data['estado'] ?? 'recibido';
         $data['fecha_entrega'] = Sucursal::findOrFail($data['sucursal_id'])
             ->fechaEntregaEstimada($data['fecha_ingreso'])->toDateString();
         // Quien registra en el mostrador es quien recibe el equipo.
@@ -462,8 +463,8 @@ class ServicioTecnicoController extends Controller
             'falla_reportada' => ['required', 'string', 'min:3'],
             // Falla del tecnico: opcional, notas aparte de las del cliente.
             'falla_tecnico' => ['nullable', 'string'],
-            // Al crear, el estado no viene del formulario (store lo fuerza a
-            // 'recibido'); si igual llega, que al menos sea uno valido.
+            // El staff puede elegir el estado inicial al crear (default 'recibido'
+            // si no llega); al editar es obligatorio. Siempre debe ser uno valido.
             'estado' => $creando
                 ? ['nullable', Rule::in(OrdenServicio::ESTADOS)]
                 : ['required', Rule::in(OrdenServicio::ESTADOS)],

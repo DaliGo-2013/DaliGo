@@ -128,22 +128,17 @@
     </div>
 
     <div>
-        <x-input-label value="Estado" />
-        @if ($esCreacion)
-            {{-- Toda orden nueva parte en "recibido"; el estado se avanza despues
-                 (editar o pantalla de reparacion). El servidor lo fuerza igual. --}}
-            <div class="mt-1.5 block w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-2.5 text-sm text-neutral-500 shadow-sm">
-                Recibido
-            </div>
-            <x-input-hint>Toda orden nueva parte en «Recibido».</x-input-hint>
-        @else
-            <x-select id="estado" name="estado" class="mt-1.5" required>
-                @foreach ($estados as $e)
-                    <option value="{{ $e }}" @selected(old('estado', $o?->estado ?? 'recibido') === $e)>{{ Str::headline($e) }}</option>
-                @endforeach
-            </x-select>
-            <x-input-error :messages="$errors->get('estado')" class="mt-2" />
-        @endif
+        <x-input-label for="estado" value="Estado" />
+        {{-- Editable por el staff (técnico/admin) tanto al registrar como al editar:
+             así van informando el paso a paso. Por defecto parte en «Recibido». El
+             cliente no ve este campo (el ingreso por QR no lo tiene). --}}
+        <x-select id="estado" name="estado" class="mt-1.5" required>
+            @foreach ($estados as $e)
+                <option value="{{ $e }}" @selected(old('estado', $o?->estado ?? 'recibido') === $e)>{{ Str::headline($e) }}</option>
+            @endforeach
+        </x-select>
+        <x-input-hint>Toda orden parte en «Recibido»; ve avanzándolo según el trabajo.</x-input-hint>
+        <x-input-error :messages="$errors->get('estado')" class="mt-2" />
     </div>
 
     <div>

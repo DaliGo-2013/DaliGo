@@ -275,12 +275,12 @@ class ServicioTecnicoManagementTest extends TestCase
     }
 
     /**
-     * Al registrar, el mostrador no decide estado ni fecha de entrega: aunque
-     * el POST traiga otros valores, toda orden nueva parte en 'recibido' y la
-     * fecha estimada la calcula el servidor (dias habiles de la sucursal,
-     * saltando fines de semana y feriados).
+     * Al registrar, el staff (tecnico/admin) SI puede elegir el estado inicial
+     * para ir informando el paso a paso; se respeta lo que envia. La fecha de
+     * entrega, en cambio, la sigue calculando el servidor (dias habiles de la
+     * sucursal, saltando fines de semana y feriados) e ignora lo que llegue.
      */
-    public function test_store_fuerza_estado_recibido_y_fecha_estimada_del_servidor(): void
+    public function test_store_respeta_estado_del_staff_y_calcula_fecha_del_servidor(): void
     {
         config(['feriados' => ['2026-07-07']]); // martes feriado: corre el estimado un dia
 
@@ -290,14 +290,14 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())->post('/admin/servicio-tecnico', $this->payload([
             'sucursal_id' => $sucursal->id,
             'fecha_ingreso' => '2026-07-06',      // lunes
-            'estado' => 'entregado',              // intento de manipulacion
-            'fecha_entrega' => '2026-01-01',      // idem
+            'estado' => 'en_revision',            // el staff elige el estado inicial
+            'fecha_entrega' => '2026-01-01',      // intento de manipulacion -> ignorado
         ]))->assertSessionHasNoErrors();
 
         // 15 habiles desde el martes 7 (feriado): termina el martes 28.
         $this->assertDatabaseHas('ordenes_servicio', [
             'fecha_ingreso' => '2026-07-06 00:00:00',
-            'estado' => 'recibido',
+            'estado' => 'en_revision',            // respetado
             'fecha_entrega' => '2026-07-28 00:00:00',
         ]);
     }
