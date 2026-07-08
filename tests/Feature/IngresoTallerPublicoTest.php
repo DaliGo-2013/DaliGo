@@ -349,29 +349,19 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertDontSee('Buzeta');   // Buzeta no recibe servicio técnico
     }
 
-    // --- Portada: entrada pública a servicio técnico (pregunta → sucursal → QR) ---
+    // --- Portada: NO expone el ingreso a servicio técnico (por seguridad) ---
 
-    public function test_portada_ofrece_ingreso_a_servicio_tecnico_por_sucursal(): void
+    public function test_portada_no_expone_entrada_a_servicio_tecnico(): void
     {
+        // El ingreso por QR NO se anuncia en la home (se llega solo por el QR físico
+        // del mostrador). La portada no debe mostrar la pregunta ni dibujar QRs.
         config(['servicio_tecnico.sucursales_recepcion' => ['MIRADOR', 'COQUIMBO', 'ABATE-MOLINA']]);
         Sucursal::factory()->create(['codigo' => 'MIRADOR', 'nombre' => 'El Mirador', 'activa' => true]);
-        Sucursal::factory()->create(['codigo' => 'COQUIMBO', 'nombre' => 'Coquimbo', 'activa' => true]);
-        Sucursal::factory()->create(['codigo' => 'ABATE-MOLINA', 'nombre' => 'Abate Molina', 'activa' => true]);
-        Sucursal::factory()->create(['codigo' => 'BUZETA', 'nombre' => 'Buzeta', 'activa' => true]);
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('servicio técnico', false)   // la pregunta de entrada
-            ->assertSee('El Mirador')
-            ->assertSee('Coquimbo')
-            ->assertSee('Abate Molina')
-            ->assertSee('data-qr', false)            // los QR se dibujan en el cliente
-            ->assertDontSee('Buzeta');               // Buzeta no recibe ST
-    }
-
-    public function test_portada_carga_aunque_no_haya_sucursales(): void
-    {
-        // Sin sucursales de ST el selector no aparece, pero la portada NO revienta.
-        $this->get('/')->assertOk()->assertSee('DaliGo');
+            ->assertSee('DaliGo')
+            ->assertDontSee('¿Vas a ingresar un producto a servicio técnico?', false)
+            ->assertDontSee('data-qr', false);
     }
 }
