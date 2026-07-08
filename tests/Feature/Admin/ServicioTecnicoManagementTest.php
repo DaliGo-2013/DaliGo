@@ -569,11 +569,11 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_form_muestra_ayuda_del_numero_de_serie(): void
     {
-        // El ejemplo de dónde está la serie (dispensadores) está en el formulario.
+        // El ícono "Ver ejemplo" y el modal de ayuda del N° de serie (dispensadores).
         $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.create'))
             ->assertOk()
-            ->assertSee('¿Dónde encuentro el N° de serie?')
-            ->assertSee('EST20260100251');
+            ->assertSee('Ver ejemplo')
+            ->assertSee('¿Dónde está el N° de serie?');
     }
 
     /**

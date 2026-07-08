@@ -37,10 +37,12 @@
         hint="Búscalo por el código (SKU) o el nombre en el catálogo." />
 
     <div>
-        <x-input-label for="numero_serie">N° de serie <span class="text-red-500">*</span></x-input-label>
+        <div class="flex flex-wrap items-center gap-2">
+            <x-input-label for="numero_serie">N° de serie <span class="text-red-500">*</span></x-input-label>
+            <x-ayuda-serie />
+        </div>
         <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" minlength="3" maxlength="191" required />
         <x-input-error :messages="$errors->get('numero_serie')" class="mt-2" />
-        <x-ayuda-serie />
     </div>
 
     <div>
