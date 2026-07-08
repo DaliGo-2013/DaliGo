@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-08] Stream 2 · P-M15-09 [x] CERRADO: veredicto QA archivado — M15 vivo en producción con QA aprobado
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — dictado de cierre del Director
+- **Objetivo declarado:** archivo del veredicto QA + P-M15-09 [x] + micro-backlog + gotcha tinker (mismo push)
+- **Qué se hizo:** veredicto **APROBADO CON OBSERVACIONES aceptado** archivado en `docs/qa/M15/2026-07-07--M15--qa-funcional-staging.md` (4 bloques según convención; el texto crudo de la IA ejecutora no llegó al stream — se archivaron los dictados del Director íntegros + referencia al tablero, con **nota de procedencia** explícita; la falla SMTP etiquetada **alcance P-M15-10**, no I-03). Lo notable del QA: el motor de reintentos quedó **probado en producción** (mail fallida real → intentos 1→2, tercera reprogramación, backoff `[5,15,60]` exacto; el caso terminal lo cubre `test_job_agota_reintentos_y_queda_fallida_terminal`). **P-M15-09 [x]** en RUTA con evidencia enlazada. Micro-backlog M15 anotado sin construir (correo de destino ausente en panel; `ultimo_error` truncado en UI; endurecer `test_campanita_visible_en_el_nav`). P-M15-10 **despachado con correcciones** del Director (quoting bash del `$m` en tinker + lógica circular del 5b → reseteo incondicional) — gotcha registrado en CLAUDE.md. Merges docs-only de main plegados sin conflicto (P-M14-01/02 de stream 1, fix portada).
+- **Pasos marcados:** **P-M15-09 [x]**. E1·M15 queda a UNA delegación de cerrar (P-M15-10).
+- **Decisiones:** ninguna.
+- **Delegaciones:** QA-FUNCIONAL recibida (vía dictados del Director) y archivada; P-M15-10 despachada por Mauricio (versión corregida del Director).
+- **Próximo paso:** respuesta del despacho P-M15-10 → archivo en `docs/qa/INFRA/` (o M15) + cierre → **E1·M15 COMPLETA**.
+
 ### [2026-07-08] Portada: quitada la entrada pública a servicio técnico (reducir exposición)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Objetivo declarado:** sacar de la home el bloque «¿Vas a ingresar un producto a servicio técnico?» por riesgo de exposición pública, SIN romper el flujo (los QR del mostrador lo siguen usando).
