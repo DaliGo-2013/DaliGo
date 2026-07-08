@@ -78,6 +78,7 @@ class OrdenServicio extends Model implements AuditableContract
         'fecha_retiro',
         'fuente',
         'confirmada_at',
+        'recibida_por',
     ];
 
     protected function casts(): array

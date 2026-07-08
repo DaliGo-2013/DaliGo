@@ -92,6 +92,8 @@ class ServicioTecnicoController extends Controller
         $data['estado'] = 'recibido';
         $data['fecha_entrega'] = Sucursal::findOrFail($data['sucursal_id'])
             ->fechaEntregaEstimada($data['fecha_ingreso'])->toDateString();
+        // Quien registra en el mostrador es quien recibe el equipo.
+        $data['recibida_por'] = $request->user()->name;
 
         $orden = OrdenServicio::create($data);
 
@@ -115,7 +117,11 @@ class ServicioTecnicoController extends Controller
                 return false;
             }
 
-            $fresh->update(['confirmada_at' => now()]);
+            // Queda registrado QUIEN recibio el equipo (el encargado que confirma).
+            $fresh->update([
+                'confirmada_at' => now(),
+                'recibida_por' => auth()->user()->name,
+            ]);
 
             return true;
         });

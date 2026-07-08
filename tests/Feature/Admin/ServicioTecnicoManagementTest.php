@@ -243,6 +243,21 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSessionHasErrors('producto_id');
     }
 
+    public function test_registro_guarda_quien_recibio(): void
+    {
+        // Queda el nombre del encargado que registro el ingreso en el mostrador.
+        $encargado = tap($this->admin())->update(['name' => 'Fernando St']);
+
+        $this->actingAs($encargado)
+            ->post('/admin/servicio-tecnico', $this->payload(['numero_serie' => 'SN-REC-1']))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'numero_serie' => 'SN-REC-1',
+            'recibida_por' => 'Fernando St',
+        ]);
+    }
+
     /**
      * Al registrar, el mostrador no decide estado ni fecha de entrega: aunque
      * el POST traiga otros valores, toda orden nueva parte en 'recibido' y la
