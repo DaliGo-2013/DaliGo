@@ -151,6 +151,16 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * Conteo (JSON) de ordenes por confirmar (llegaron por QR y sin confirmar).
+     * Lo consulta en segundo plano el listado para el "aviso suave": si el total
+     * sube respecto al de la carga, muestra un banner "hay nuevos" SIN recargar.
+     */
+    public function porConfirmarConteo(): JsonResponse
+    {
+        return response()->json(['total' => OrdenServicio::porConfirmar()->count()]);
+    }
+
+    /**
      * Pagina imprimible con el QR de cada sucursal activa. Cada QR apunta al link
      * FIRMADO del formulario publico con su sucursal_id embebido. El encargado la
      * imprime y la pega en el mostrador. El QR se dibuja en el cliente desde la

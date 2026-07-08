@@ -136,6 +136,10 @@ Route::middleware('auth')
         Route::middleware('permission:confirmar servicio tecnico')->group(function () {
             Route::post('servicio-tecnico/{orden}/confirmar', [ServicioTecnicoController::class, 'confirmar'])
                 ->whereNumber('orden')->name('servicio-tecnico.confirmar');
+            // Conteo liviano (JSON) de "por confirmar" para el aviso suave del listado
+            // (poll sin recargar la pagina).
+            Route::get('servicio-tecnico/por-confirmar/conteo', [ServicioTecnicoController::class, 'porConfirmarConteo'])
+                ->name('servicio-tecnico.por-confirmar.conteo');
         });
 
         Route::middleware('permission:manage servicio tecnico')->group(function () {

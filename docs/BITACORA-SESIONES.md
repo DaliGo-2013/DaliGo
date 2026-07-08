@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-08] Servicio Técnico: el auto-refresco (recarga sola cada 25s) → aviso suave sin recargar
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-aviso-suave-nuevos`) el listado de ST recargaba la página entera cada 25s (para quien tiene `confirmar servicio tecnico`), lo que daba "saltitos" molestos. Se **eliminó el `window.location.reload()`** y se reemplazó por un **aviso suave**: endpoint liviano `servicio-tecnico/por-confirmar/conteo` (JSON, permiso `confirmar servicio tecnico`) que el listado consulta cada 25s en segundo plano (pausado si la pestaña no está visible); si el total de "por confirmar" **subió** respecto a la carga, aparece un banner discreto "Llegaron N ingresos nuevos por QR — Actualizar" (el encargado actualiza cuando quiere, sin saltos). 2 tests nuevos (conteo + permiso). 450 verdes.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-08] Servicio Técnico: flecha "volver al inicio" en el listado + R de Reparación a naranjo (brand)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-volver-inicio-r-naranjo`) (1) botón "Volver al inicio" (icon-button `arrow-left` → `route('dashboard')`) en el encabezado del listado de Servicio Técnico, visible para TODOS los que ven el listado (fuera del `@can('manage')`). (2) El badge compacto **R (Reparación) pasó de rojo a `bg-brand-600` (naranjo)** para quedar en paleta. **Actualiza la excepción de paleta:** ahora **solo la G (Garantía) usa verde** (`bg-green-600`) como excepción intencional autorizada; la R ya NO es excepción. 448 verdes.
