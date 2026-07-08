@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-08] Stream 2 · E1·M15 CERRADA — primera unidad completa de la flota (kickoff→producción en 6 días)
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) + IA-cPanel — dictado de cierre final del Director
+- **Objetivo declarado:** archivar la respuesta de P-M15-10 + [x] + cerrar la unidad E1 (mismo push)
+- **Qué se hizo:** respuesta de la IA-cPanel archivada ÍNTEGRA en `docs/qa/INFRA/2026-07-08--INFRA--entregabilidad-correo-p-m15-10.md` (**APROBADO CON OBSERVACIONES**, 15/16 pasos; el paso 12 cerrado con captura del dueño: **Gmail=RECIBIDOS, no spam**; "Mostrar original" con SPF/DKIM/DMARC en cabeceras = pendiente-opcional, anotado como observación). Resultado técnico: causa raíz del correo roto era `servicio@staging.impdali.cl` con auth fallida → queda `servicio@impdali.cl`; **SPF reparado a VALID** (faltaba `ip4:108.167.161.119`), DKIM VALID, **DMARC creado** (`p=none`, monitoreo); `.env` MAIL_* definitivo + `config:cache`; fila mail del panel = **Enviada** (14:00) — el mismo panel que mostraba la Fallida de origen; bonus M12 verificado (mailer `smtp`, cero correos al log). Rotación de claves derivada como **R-04** (tablero del Director). **P-M15-10 [x]** → **E1·M15 CERRADA**: 10/10 pasos, QA funcional APROBADO en `docs/qa/M15/` + verificación de infra en `docs/qa/INFRA/`; encabezado de unidad y panel §0 marcados.
+- **Pasos marcados:** **P-M15-10 [x] → E1 CERRADA** (M15 agregado a "Hecho" del panel §0).
+- **Decisiones:** ninguna (R-04 es del tablero del Director).
+- **Delegaciones:** P-M15-10 recibida y archivada (APROBADO CON OBSERVACIONES).
+- **Próximo paso:** asignación del Director para el stream 2 (recomendación en el parte FLOTA §5: micro-backlog M15 como S inmediato + nueva unidad como plato fuerte).
+
 ### [2026-07-08] Stream 2 · P-M15-09 [x] CERRADO: veredicto QA archivado — M15 vivo en producción con QA aprobado
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — dictado de cierre del Director
 - **Objetivo declarado:** archivo del veredicto QA + P-M15-09 [x] + micro-backlog + gotcha tinker (mismo push)
