@@ -16,7 +16,7 @@
 | **Max-1** (Code) | 1) [ ] vigilancia crontab (¿`*/15` vivo?) — pendiente HOY al abrir · 2) [~] P-M14-03 bandeja móvil · 3) P-M14-04 escalamiento · 4) P-M14-05 cablear ajustar() |
 | **Max-2** (Code) | 1) [~] **I-04**: barrido de secretos full-history + prompt deploy key (dictado 08-07) · 2) micro-backlog M15 · 3) PLAN-M04 sellado |
 | **Director** (Code) | Coordinación I-04 · verificación de partes · **fábrica de paquetes de contexto** para asientos de navegador |
-| **N-Investigador** (navegador) | 1) [ ] Paquete D-007 WhatsApp API (entregado 08-07) · 2) [ ] Paquete matriz D-002 · 3) [ ] Paquete P-S0-10 |
+| **N-Investigador** (navegador) | 1) [x] **Ficha D-007 ENTREGADA Y ACEPTADA 08-07** (primera entrega de asiento navegador — modelo de paquetes VALIDADO): tarifas Chile 2026 por mensaje (utility ~CLP 19), comparativa Meta-directo vs 4 BSP, recomendación argumentada = Meta Cloud API directo (~CLP 3.700/mes al volumen previsto), 4 preguntas para Marco, 9 fuentes fechadas. RUTA: Mauricio despacha a Marco; el texto se anexa a DECISIONES.md D-007 vía asiento Code (cola Max-2) · 2) [ ] Paquete matriz D-002 · 3) [ ] Paquete P-S0-10 |
 | **N-Escriba** (navegador) | 1) [ ] BORRADOR-soplador (cuando el Director arme el paquete del flujo) |
 | **4º computador** (Code, por llegar) | Recomendación del Director: **Pro-2 QA** — verificación funcional local + suites + revisión con repo (el rol más mutilado sin Code) |
 
