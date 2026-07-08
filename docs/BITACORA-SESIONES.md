@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-08] Portada: quitada la entrada pública a servicio técnico (reducir exposición)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** sacar de la home el bloque «¿Vas a ingresar un producto a servicio técnico?» por riesgo de exposición pública, SIN romper el flujo (los QR del mostrador lo siguen usando).
+- **Qué se hizo:** (rama `fix/portada-sin-entrada-st`) removido el selector Alpine de la portada (`welcome.blade`) y revertida la ruta `/` a `view('welcome')` (ya no consulta sucursales). Se **MANTIENE intacto** todo el flujo: ruta pública `ingreso-taller.*` (link firmado + throttle + honeypot), formulario, confirmación del encargado, y la página admin **«Códigos QR»** para imprimir. El ingreso se alcanza ahora **solo escaneando el QR físico** del mostrador, no desde la home. El test de portada pasó a `assertDontSee`. **444 verdes.** `view:clear` + build.
+- **Pasos marcados:** ninguno (P-M12-01 sigue [EN CURSO]). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** imprimir los QR desde la página admin y pegarlos en el mostrador; verificar entrega del correo (SMTP desde `staging.impdali.cl`).
+
 ### [2026-07-07 · tarde] Stream 1 · P-M14-02 hecho en rama: el corazón del motor de aprobaciones
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — GO del Director (P-M14-01 verificado [x] por él)
 - **Objetivo declarado:** P-M14-02 — servicio `Aprobaciones` + contrato `AccionAprobable` + handler + excepciones, con la batería de tests dictada.
