@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-08] Servicio Técnico: ayuda "¿dónde está el N° de serie?" (ilustración SVG, solo dispensadores)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-ayuda-serie`) componente reutilizable `<x-ayuda-serie>`: un enlace "¿Dónde encuentro el N° de serie? Ver ejemplo" bajo el campo N° de serie que despliega una **ilustración SVG en línea** (liviana, sin foto ni archivo) de la etiqueta trasera del dispensador con la serie resaltada (ej. `EST20260100251`, empieza con "EST"). **Solo aparece para dispensadores** (lee el select `#tipo_equipo` por id y reacciona a su cambio; bombas/herramientas no tienen serie única). Se usa en el formulario **interno** (`_form`) y en el **público del QR** (`publico/taller/create`). Nota: se eligió ilustración SVG en vez de la foto real porque no era posible comprimir la foto pegada en el chat (no había archivo) — el SVG pesa <2 KB y es escalable. 2 tests (render en interno + público) → 451 verdes.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-08] Servicio Técnico: el auto-refresco (recarga sola cada 25s) → aviso suave sin recargar
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-aviso-suave-nuevos`) el listado de ST recargaba la página entera cada 25s (para quien tiene `confirmar servicio tecnico`), lo que daba "saltitos" molestos. Se **eliminó el `window.location.reload()`** y se reemplazó por un **aviso suave**: endpoint liviano `servicio-tecnico/por-confirmar/conteo` (JSON, permiso `confirmar servicio tecnico`) que el listado consulta cada 25s en segundo plano (pausado si la pestaña no está visible); si el total de "por confirmar" **subió** respecto a la carga, aparece un banner discreto "Llegaron N ingresos nuevos por QR — Actualizar" (el encargado actualiza cuando quiere, sin saltos). 2 tests nuevos (conteo + permiso). 450 verdes.

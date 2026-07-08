@@ -126,6 +126,7 @@
                     <x-text-input id="numero_serie" name="numero_serie" type="text" class="mt-1.5 block w-full"
                                   :value="old('numero_serie')" required placeholder="El número que trae el equipo" />
                     <x-input-error :messages="$errors->get('numero_serie')" class="mt-1.5" />
+                    <x-ayuda-serie />
                 </div>
 
                 <div>

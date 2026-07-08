@@ -567,6 +567,15 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Cliente Folio');
     }
 
+    public function test_form_muestra_ayuda_del_numero_de_serie(): void
+    {
+        // El ejemplo de dónde está la serie (dispensadores) está en el formulario.
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.create'))
+            ->assertOk()
+            ->assertSee('¿Dónde encuentro el N° de serie?')
+            ->assertSee('EST20260100251');
+    }
+
     /**
      * El historial es COMPARTIDO por las 3 sucursales, pero se puede filtrar por
      * la sucursal de recepcion (donde se ingreso el equipo). La reparacion siempre
