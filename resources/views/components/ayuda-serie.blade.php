@@ -4,18 +4,25 @@
     con "EST"). Bombas y herramientas no tienen N° de serie único, por eso solo
     aparece cuando el "Tipo de equipo" (select #tipo_equipo) es "dispensador".
 
-    Autocontenido: lee el select por id y reacciona a su cambio, sin depender del
-    x-data del formulario que lo contiene. Se usa en el form interno y en el público.
+    Autocontenido: en init() lee el select por id y reacciona a su cambio, sin
+    depender del x-data del formulario. FAIL-OPEN: el enlace se muestra por
+    defecto (sin x-cloak en el contenedor); si el equipo no es dispensador Alpine
+    lo oculta. Solo el bloque del ejemplo (SVG) usa x-cloak para no aparecer al cargar.
 --}}
-<div class="mt-1.5"
-     x-data="{ verEjemplo: false, esDispensador: true }"
-     x-init="
-        const sel = document.getElementById('tipo_equipo');
-        const upd = () => { esDispensador = !sel || sel.value === 'dispensador'; if (!esDispensador) verEjemplo = false; };
-        upd();
-        if (sel) sel.addEventListener('change', upd);
-     "
-     x-show="esDispensador" x-cloak>
+<div class="mt-1.5" x-show="esDispensador"
+     x-data="{
+        verEjemplo: false,
+        esDispensador: true,
+        init() {
+            const sel = document.getElementById('tipo_equipo');
+            const actualizar = () => {
+                this.esDispensador = !sel || sel.value === 'dispensador';
+                if (!this.esDispensador) this.verEjemplo = false;
+            };
+            actualizar();
+            if (sel) sel.addEventListener('change', actualizar);
+        },
+     }">
     <button type="button" @click="verEjemplo = !verEjemplo"
         class="text-xs font-medium text-brand-600 underline hover:text-brand-700">
         ¿Dónde encuentro el N° de serie? Ver ejemplo
