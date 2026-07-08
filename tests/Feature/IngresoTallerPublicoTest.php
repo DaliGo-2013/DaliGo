@@ -66,7 +66,8 @@ class IngresoTallerPublicoTest extends TestCase
         $this->get($this->linkCreate($sucursal))
             ->assertOk()
             ->assertSee('Ingreso a servicio técnico')
-            ->assertSee('Mirador');
+            ->assertSee('Mirador')
+            ->assertSee('¿Dónde encuentro el N° de serie?');   // ayuda del ejemplo de serie
     }
 
     public function test_sin_firma_valida_el_formulario_es_rechazado(): void
