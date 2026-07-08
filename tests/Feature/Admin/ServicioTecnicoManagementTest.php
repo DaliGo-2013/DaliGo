@@ -45,6 +45,7 @@ class ServicioTecnicoManagementTest extends TestCase
             'cliente_rut' => '12.345.678-5',
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => 'dispensador',
+            'producto_id' => Producto::factory()->create()->id,   // obligatorio: del catálogo Dali
             'sucursal_id' => Sucursal::factory()->create()->id,
             'numero_serie' => 'SN-1234',
             'falla_reportada' => 'No enciende',
@@ -229,8 +230,17 @@ class ServicioTecnicoManagementTest extends TestCase
             ])
             ->assertSessionHasErrors([
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'sucursal_id', 'numero_serie', 'falla_reportada', 'facturacion',
+                'tipo_equipo', 'producto_id', 'sucursal_id', 'numero_serie', 'falla_reportada', 'facturacion',
             ]);
+    }
+
+    public function test_producto_id_es_obligatorio(): void
+    {
+        // El codigo (producto Dali) es obligatorio en el mostrador y debe existir
+        // en el catalogo.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['producto_id' => '']))
+            ->assertSessionHasErrors('producto_id');
     }
 
     /**
