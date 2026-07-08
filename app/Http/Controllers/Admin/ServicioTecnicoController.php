@@ -450,6 +450,8 @@ class ServicioTecnicoController extends Controller
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
             'falla_reportada' => ['required', 'string', 'min:3'],
+            // Falla del tecnico: opcional, notas aparte de las del cliente.
+            'falla_tecnico' => ['nullable', 'string'],
             // Al crear, el estado no viene del formulario (store lo fuerza a
             // 'recibido'); si igual llega, que al menos sea uno valido.
             'estado' => $creando

@@ -162,6 +162,16 @@
     <div class="sm:col-span-2">
         <x-input-label for="falla_reportada">Falla reportada <span class="text-red-500">*</span></x-input-label>
         <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2" minlength="3" required>{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
+        <x-input-hint>Lo que reportó el cliente (con sus palabras).</x-input-hint>
         <x-input-error :messages="$errors->get('falla_reportada')" class="mt-2" />
+    </div>
+
+    {{-- Falla observada por el TECNICO: aparte de la del cliente, para no mezclar
+         ni cambiar lo que dijo. El tecnico agrega lo que el cliente no indico. --}}
+    <div class="sm:col-span-2">
+        <x-input-label for="falla_tecnico" value="Falla reportada (técnico)" />
+        <x-textarea id="falla_tecnico" class="mt-1.5" name="falla_tecnico" rows="2">{{ old('falla_tecnico', $o?->falla_tecnico) }}</x-textarea>
+        <x-input-hint>Opcional. Lo que agrega el técnico (fallas que el cliente no indicó). No modifica lo que reportó el cliente.</x-input-hint>
+        <x-input-error :messages="$errors->get('falla_tecnico')" class="mt-2" />
     </div>
 </div>

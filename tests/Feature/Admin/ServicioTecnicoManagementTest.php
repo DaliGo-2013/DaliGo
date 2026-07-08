@@ -258,6 +258,22 @@ class ServicioTecnicoManagementTest extends TestCase
         ]);
     }
 
+    public function test_falla_tecnico_se_guarda_aparte_de_la_del_cliente(): void
+    {
+        // La falla del cliente y la que agrega el tecnico se guardan por separado.
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload([
+                'falla_reportada' => 'No enciende (cliente)',
+                'falla_tecnico' => 'Ademas: abollado lateral derecho (tecnico)',
+            ]))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'falla_reportada' => 'No enciende (cliente)',
+            'falla_tecnico' => 'Ademas: abollado lateral derecho (tecnico)',
+        ]);
+    }
+
     /**
      * Al registrar, el mostrador no decide estado ni fecha de entrega: aunque
      * el POST traiga otros valores, toda orden nueva parte en 'recibido' y la
