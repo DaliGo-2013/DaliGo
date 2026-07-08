@@ -38,6 +38,7 @@ sesión restante.
 | 06-07 | Max-2 Forjador B | Correcciones auditoría + P-M15-07/08 (f7353fb) | L | Opus 4.8 ✓ | pendiente | pendiente | pendiente | HECHA (verificada; gate levantado) |
 | 07-07 | Max-2 Forjador B | P-M15-09 fase merge (00297d5) | L | mixto Opus/Fable | n/d | **17% / 7%** (captura 07-07) | ≤17% | HECHA (verificada). Detalle: USD 19.48 · API 20min · salida 1.1M tok |
 | 07-07 | Pro-1 Director | Operación día del merge: verificación 3 partes + auditoría workflow + gates I-01/I-03 + validación PLAN-M14 + coordinación merge | M-L | Fable 5 100% (decisión dueño) | n/d | **64% / 16%** (captura 07-07) | ≤64% | Jornada completa. Detalle: USD 21.96 · salida 169.5k tok · 100% ejecuciones >150k ctx |
+| 07/08-07 | Max-1 Forjador A | P-M14-01 + P-M14-02 (esquema + servicio) | 2×L | Fable 5 98% / Opus 2% | n/d | ventana 0% (reset) · semanal 11% · **Fable semanal 20%** | n/d | AMBAS HECHAS (verificadas). Detalle: **USD 99.60** · API 1h44m · salida 1.0M tok · 100% sesiones con subagentes |
 | 06-07 | Max-1 Forjador A | Sesión post-F-01 (P-SPK-03 en curso) | — | **Fable 5** (⁴) | n/d | **100%** / 28% (captura ~14:50) | ventana AGOTADA | CORTADA a mitad de cierre — SIN relevo (dueño esperó el reset 15:29); titular retoma en la misma sesión |
 | 07-07 | Max-1 Forjador A | Cierre P-SPK-03 + I-01 modo compat. + PLAN-M14 sellado (faf772f/d1db5ef/aa10d2b/8fb6763) | L | Fable 5 96% / Opus 4% | n/d | **60% / 8%** (captura 07-07, pre PLAN-M14) | ≥60% | TODO HECHO (verificado; 403 tests + plan validado). Detalle sesión: USD 60.08 · API 1h30m · salida 563k tok |
 |  |  |  |  |  |  |  |  |  |
@@ -81,6 +82,16 @@ sesión restante.
   calibre — el roster Opus/Sonnet queda validado con datos. Nota del panel de Max-2:
   62% de las ejecuciones de 24h con >150k de contexto — sesiones largas encarecen
   incluso con caché; recomendar /clear entre tareas no relacionadas.
+- **Calibración 08-07:** segunda sesión Fable de Max-1 (P-M14-01+02) = **USD 99.60** —
+  consistente: sesión intensa en Fable ≈ USD 60–100; equivalente en Opus ≈ USD 20–35.
+  Dato nuevo del panel: existe TOPE SEMANAL SEPARADO para Fable (20% consumido) además
+  del general (11%). Consejo del propio panel adoptado como regla de flota: en workflows
+  multi-agente, los subagentes simples (formateo, conteos, greps) deben correr en modelo
+  más barato — los Forjadores lo aplican al configurar sus workflows.
+- **Gasto acumulado visible de la flota (02→08-07):** ~USD 201 (Max-1: 159.7 · Max-2:
+  19.5 · Director: 22) por: spike PWA completo en prod + M15 completo en prod + M14 al
+  29% + 3 incidencias de infra resueltas. Referencia para evaluar el costo/valor del
+  esquema de flota.
 
 ## 4. Notas
 
