@@ -1,17 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
         <x-page-header title="Servicio Técnico" subtitle="Ingreso de máquinas y lavadoras al taller.">
-            @can('manage servicio tecnico')
-                <x-slot name="action">
-                    <div class="flex items-center gap-2">
+            <x-slot name="action">
+                <div class="flex items-center gap-2">
+                    {{-- Volver al inicio (visible para todos los que ven el listado). --}}
+                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
+                        <x-icon.arrow-left class="h-5 w-5" />
+                    </x-icon-button>
+                    @can('manage servicio tecnico')
                         <x-secondary-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-secondary-link>
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
                             <x-icon.plus class="h-4 w-4" />
                             Registrar ingreso
                         </x-button-link>
-                    </div>
-                </x-slot>
-            @endcan
+                    @endcan
+                </div>
+            </x-slot>
         </x-page-header>
     </x-slot>
 
@@ -140,7 +144,7 @@
                                 @if ($orden->condicion_efectiva === 'garantia')
                                     <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-green-600 text-xs font-bold text-white" title="Garantía">G</span>
                                 @else
-                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-red-600 text-xs font-bold text-white" title="Reparación">R</span>
+                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-brand-600 text-xs font-bold text-white" title="Reparación">R</span>
                                 @endif
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>

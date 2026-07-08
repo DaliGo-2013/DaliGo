@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-08] Servicio Técnico: flecha "volver al inicio" en el listado + R de Reparación a naranjo (brand)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-volver-inicio-r-naranjo`) (1) botón "Volver al inicio" (icon-button `arrow-left` → `route('dashboard')`) en el encabezado del listado de Servicio Técnico, visible para TODOS los que ven el listado (fuera del `@can('manage')`). (2) El badge compacto **R (Reparación) pasó de rojo a `bg-brand-600` (naranjo)** para quedar en paleta. **Actualiza la excepción de paleta:** ahora **solo la G (Garantía) usa verde** (`bg-green-600`) como excepción intencional autorizada; la R ya NO es excepción. 448 verdes.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-08] Badge de condición compacto (R rojo / G verde) en el listado de ST — excepción de paleta autorizada
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Objetivo declarado:** compactar el badge de condición del listado de Servicio Técnico a una letra para ahorrar espacio.
