@@ -27,17 +27,19 @@
         <div x-show="modo === null" class="space-y-3">
             <p class="text-center text-sm text-neutral-500">¿Cómo desea ingresar su producto?</p>
 
-            {{-- Opción A: código de barras (próximamente) --}}
-            <button type="button" @click="modo = 'barra'"
-                class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
+            {{-- Opción A: código de barras — DESHABILITADA. Solo se muestra como
+                 "Pronto"; NO es clicable (es un <div>, sin @click), así el cliente
+                 no abre ninguna vista interna. --}}
+            <div aria-disabled="true"
+                class="block w-full cursor-not-allowed select-none rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-left opacity-75">
                 <span class="flex items-center gap-2">
-                    <span class="font-semibold text-neutral-900">Con código de barras</span>
+                    <span class="font-semibold text-neutral-500">Con código de barras</span>
                     <span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">Pronto</span>
                 </span>
-                <span class="mt-1 block text-sm text-neutral-500">
-                    Escaneamos el código y completamos solos el producto, la factura, la garantía y dónde lo compraste. Tú solo ingresas tus datos.
+                <span class="mt-1 block text-sm text-neutral-400">
+                    Estará disponible cuando tengamos el lector de código de barras.
                 </span>
-            </button>
+            </div>
 
             {{-- Opción B: manual --}}
             <button type="button" @click="modo = 'manual'"
@@ -49,43 +51,7 @@
             </button>
         </div>
 
-        {{-- ───────── PASO 2a: código de barras (vista previa · próximamente) ───────── --}}
-        <div x-show="modo === 'barra'" x-cloak>
-            <div class="rounded-2xl border border-brand-200 bg-brand-50 p-4">
-                <p class="font-semibold text-brand-900">Función en preparación</p>
-                <p class="mt-1 text-sm text-brand-800">
-                    Cuando tengamos la pistola lectora, escanearás el código de barras del producto y el
-                    sistema completará solo: <span class="font-medium">modelo, factura, si es garantía o
-                    reparación y dónde lo compraste</span>. El cliente solo ingresa sus datos.
-                </p>
-            </div>
-
-            {{-- Zona de escaneo (placeholder) --}}
-            <div class="mt-4">
-                <x-input-label value="Código de barras del producto" />
-                <div class="mt-1.5 flex items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-3.5 py-6 text-center text-sm text-neutral-400">
-                    Escanea con la pistola lectora (próximamente)
-                </div>
-            </div>
-
-            {{-- Lo poco que tendría que llenar el cliente --}}
-            <p class="mt-4 text-sm text-neutral-500">El cliente solo ingresaría:</p>
-            <div class="mt-2 flex flex-wrap gap-2">
-                @foreach (['Nombre', 'Correo', 'Teléfono', 'RUT'] as $campo)
-                    <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">{{ $campo }}</span>
-                @endforeach
-            </div>
-
-            <div class="mt-6 space-y-2">
-                <x-primary-button type="button" class="w-full justify-center" x-on:click="modo = 'manual'">
-                    Por ahora, ingresar manualmente
-                </x-primary-button>
-                <button type="button" @click="modo = null"
-                    class="block w-full text-center text-sm text-neutral-400 underline hover:text-neutral-600">Volver</button>
-            </div>
-        </div>
-
-        {{-- ───────── PASO 2b: formulario manual (el actual) ───────── --}}
+        {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}
         <div x-show="modo === 'manual'" x-cloak>
             <p class="mb-5 text-center text-sm text-neutral-500">
                 Completa los datos de tu equipo. Cuando termines, muéstrale la pantalla al encargado del mostrador.
