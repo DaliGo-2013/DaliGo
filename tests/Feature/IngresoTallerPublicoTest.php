@@ -337,6 +337,27 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_conteo_por_confirmar_devuelve_solo_qr_sin_confirmar(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['fuente' => 'qr', 'confirmada_at' => null]);
+        OrdenServicio::factory()->create(['fuente' => 'mostrador', 'confirmada_at' => null]);  // no cuenta
+        OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => now()]);         // ya confirmada, no cuenta
+
+        $this->actingAs($this->admin())
+            ->getJson(route('admin.servicio-tecnico.por-confirmar.conteo'))
+            ->assertOk()
+            ->assertExactJson(['total' => 2]);
+    }
+
+    public function test_conteo_por_confirmar_requiere_permiso(): void
+    {
+        $member = tap(User::factory()->create())->assignRole('member');
+
+        $this->actingAs($member)
+            ->getJson(route('admin.servicio-tecnico.por-confirmar.conteo'))
+            ->assertForbidden();
+    }
+
     // --- Pagina de QR (admin) ---
 
     public function test_pagina_qr_lista_solo_sucursales_de_servicio_tecnico(): void

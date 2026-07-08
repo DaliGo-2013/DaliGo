@@ -182,17 +182,40 @@
     </div>
 
     @can('confirmar servicio tecnico')
-        {{-- Auto-refresco del mostrador: recarga sola para que aparezcan los
-             ingresos por QR sin apretar nada. Se pausa si quien autoriza esta
-             escribiendo en un filtro o si la pestana no esta visible. --}}
+        {{-- Aviso suave (SIN recargar la página): cada 25s consulta el conteo de
+             "por confirmar" en segundo plano; si llegaron ingresos nuevos por QR
+             desde que cargó la página, muestra este banner para actualizar cuando
+             el encargado quiera. Se pausa si la pestaña no está visible. --}}
+        <div id="aviso-nuevos" class="fixed inset-x-0 bottom-4 z-40 hidden text-center">
+            <button type="button" onclick="window.location.reload()"
+                class="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
+                <span id="aviso-nuevos-texto">Llegaron ingresos nuevos por QR</span>
+                <span class="opacity-90">&middot; Actualizar &#8635;</span>
+            </button>
+        </div>
         <script>
-            setInterval(function () {
-                var el = document.activeElement;
-                var escribiendo = el && ['INPUT', 'SELECT', 'TEXTAREA'].indexOf(el.tagName) !== -1;
-                if (!escribiendo && document.visibilityState === 'visible') {
-                    window.location.reload();
-                }
-            }, 25000);
+            (function () {
+                var base = {{ $porConfirmar->count() }};
+                var aviso = document.getElementById('aviso-nuevos');
+                var texto = document.getElementById('aviso-nuevos-texto');
+                var url = '{{ route('admin.servicio-tecnico.por-confirmar.conteo') }}';
+                setInterval(function () {
+                    if (document.visibilityState !== 'visible') return;
+                    fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                        .then(function (r) { return r.ok ? r.json() : null; })
+                        .then(function (d) {
+                            if (!d) return;
+                            var nuevos = d.total - base;
+                            if (nuevos > 0) {
+                                texto.textContent = nuevos === 1
+                                    ? 'Llegó 1 ingreso nuevo por QR'
+                                    : ('Llegaron ' + nuevos + ' ingresos nuevos por QR');
+                                aviso.classList.remove('hidden');
+                            }
+                        })
+                        .catch(function () {});
+                }, 25000);
+            })();
         </script>
     @endcan
 </x-app-layout>
