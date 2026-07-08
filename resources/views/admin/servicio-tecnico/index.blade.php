@@ -60,8 +60,8 @@
             <form method="GET" action="{{ route('admin.servicio-tecnico.index') }}"
                   class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
                 <div class="flex-1">
-                    <x-input-label for="q" value="Buscar (cliente, marca, modelo o serie)" />
-                    <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. 12.345.678-9, Samsung, SN-12345" />
+                    <x-input-label for="q" value="Buscar (folio, cliente, modelo o serie)" />
+                    <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. 000009, 12.345.678-9, SN-12345" />
                 </div>
                 <div class="sm:w-44">
                     <x-input-label for="estado" value="Estado" />

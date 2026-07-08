@@ -536,6 +536,21 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Gamma Importadora')->assertDontSee('Delta Comercial');
     }
 
+    public function test_index_busca_por_folio(): void
+    {
+        // El folio es el id con ceros (#000009). Buscar "000009" o "9" debe encontrarlo.
+        $orden = OrdenServicio::factory()->create([
+            'cliente_nombre' => 'Cliente Folio', 'cliente_rut' => null, 'numero_serie' => 'AAA', 'modelo' => null,
+        ]);
+        $folio = str_pad((string) $orden->id, 6, '0', STR_PAD_LEFT);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$folio)
+            ->assertOk()->assertSee('Cliente Folio');
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$orden->id)
+            ->assertOk()->assertSee('Cliente Folio');
+    }
+
     /**
      * El historial es COMPARTIDO por las 3 sucursales, pero se puede filtrar por
      * la sucursal de recepcion (donde se ingreso el equipo). La reparacion siempre
