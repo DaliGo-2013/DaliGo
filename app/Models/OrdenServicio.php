@@ -22,6 +22,12 @@ class OrdenServicio extends Model implements AuditableContract
 
     public const TIPOS = ['dispensador', 'lavadora', 'herramienta', 'otro'];
 
+    // Tipos cuyo N° de serie es OBLIGATORIO: tienen una serie unica e importante
+    // (dispensadores y lavadoras). El resto (herramienta/otro, ej. bombas de agua)
+    // es opcional -> no tienen serie unica por equipo. Usado por la validacion y
+    // por el formulario (asterisco + required dinamico segun el tipo elegido).
+    public const SERIE_OBLIGATORIA_TIPOS = ['dispensador', 'lavadora'];
+
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     // 'cotizacion' = se le paso presupuesto al cliente y se espera su aprobacion
     // del arreglo (va despues de la revision, antes de pedir repuestos/reparar).

@@ -447,6 +447,14 @@ class ServicioTecnicoController extends Controller
 
         $esGarantia = $request->input('facturacion') === 'garantia';
 
+        // El N° de serie es obligatorio solo para tipos con serie unica
+        // (dispensador/lavadora); para el resto (bombas/herramientas) es opcional.
+        $serieObligatoria = in_array(
+            $request->input('tipo_equipo'),
+            OrdenServicio::SERIE_OBLIGATORIA_TIPOS,
+            true,
+        );
+
         $data = $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
@@ -459,7 +467,7 @@ class ServicioTecnicoController extends Controller
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
+            'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],
             'falla_reportada' => ['required', 'string', 'min:3'],
             // Falla del tecnico: opcional, notas aparte de las del cliente.
             'falla_tecnico' => ['nullable', 'string'],

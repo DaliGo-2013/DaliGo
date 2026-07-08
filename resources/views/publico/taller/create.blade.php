@@ -121,13 +121,26 @@
                     placeholder="Escribe el código (SKU) o el nombre…"
                     hint="Opcional. Búscalo por el código que trae el equipo (ej. LB-07)." />
 
-                <div>
+                {{-- N° de serie: obligatorio solo para dispensador/lavadora (serie
+                     unica); opcional para bombas/herramientas. El asterisco y el
+                     'required' cambian en vivo segun el "Tipo de equipo". --}}
+                <div x-data="{
+                        serieObl: true,
+                        tiposObl: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS),
+                        init() {
+                            const sel = document.getElementById('tipo_equipo');
+                            const set = () => { this.serieObl = !sel || this.tiposObl.includes(sel.value); };
+                            set();
+                            if (sel) sel.addEventListener('change', set);
+                        },
+                     }">
                     <div class="flex flex-wrap items-center gap-2">
-                        <x-input-label for="numero_serie">N° de serie *</x-input-label>
+                        <x-input-label for="numero_serie">N° de serie <span x-show="serieObl" class="text-red-500">*</span></x-input-label>
                         <x-ayuda-serie />
                     </div>
                     <x-text-input id="numero_serie" name="numero_serie" type="text" class="mt-1.5 block w-full"
-                                  :value="old('numero_serie')" required placeholder="El número que trae el equipo" />
+                                  :value="old('numero_serie')" required x-bind:required="serieObl" placeholder="El número que trae el equipo" />
+                    <x-input-hint x-show="!serieObl" x-cloak>Opcional para este tipo (bombas y herramientas no tienen serie única).</x-input-hint>
                     <x-input-error :messages="$errors->get('numero_serie')" class="mt-1.5" />
                 </div>
 

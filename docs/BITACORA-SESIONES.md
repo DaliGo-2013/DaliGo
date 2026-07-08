@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-08] Servicio Técnico: N° de serie obligatorio solo para dispensador/lavadora (opcional para bombas/herramientas)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/serie-condicional-por-tipo`, merge pendiente en este push)
+  - Nueva regla: el **N° de serie es obligatorio solo para `dispensador` y `lavadora`** (serie única e importante) y **opcional para `herramienta`/`otro`** (bombas de agua/herramientas no tienen serie única por equipo). Fuente de verdad: constante `OrdenServicio::SERIE_OBLIGATORIA_TIPOS = ['dispensador','lavadora']`.
+  - **Validación condicional** (`Rule::requiredIf`) en el form interno (`validateData`) y en el público del QR; `numero_serie` ya era `nullable` en BD, así que se guarda `null` cuando no aplica.
+  - **UI en vivo (Alpine):** el asterisco `*` y el atributo `required` aparecen/desaparecen automáticamente al cambiar el "Tipo de equipo" (lee `#tipo_equipo`, mismo patrón que `<x-ayuda-serie>`); cuando es opcional muestra un hint "Opcional para este tipo…". En ambos formularios (interno + QR del cliente).
+  - 4 tests nuevos + ajustados 2 de "obligatorios" (numero_serie ya no es incondicional). **Suite 455 verdes.** Build sin cambios de bundle (solo atributos Alpine).
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna formal (regla operativa por el dueño). · **Delegaciones:** ninguna.
+
 ### [2026-07-08] Servicio Técnico: Estado editable por el staff al registrar + foto real del N° de serie
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/estado-editable-staff-y-foto-serie`, merge `f1bfe01`)

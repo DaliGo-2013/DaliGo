@@ -67,6 +67,14 @@ class IngresoTallerPublicoController extends Controller
             'cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput),
         ]);
 
+        // El N° de serie es obligatorio solo para tipos con serie unica
+        // (dispensador/lavadora); para bombas/herramientas es opcional.
+        $serieObligatoria = in_array(
+            $request->input('tipo_equipo'),
+            OrdenServicio::SERIE_OBLIGATORIA_TIPOS,
+            true,
+        );
+
         $data = $request->validate([
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')->where('activa', true)],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
@@ -75,7 +83,7 @@ class IngresoTallerPublicoController extends Controller
             'cliente_rut' => ['nullable', 'string', 'max:20', new RutChileno],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
+            'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],
             'falla_reportada' => ['required', 'string', 'min:3'],
         ]);
 
@@ -90,7 +98,7 @@ class IngresoTallerPublicoController extends Controller
             'producto_id' => $data['producto_id'] ?? null,
             'sucursal_id' => $sucursal->id,
             'tipo_equipo' => $data['tipo_equipo'],
-            'numero_serie' => $data['numero_serie'],
+            'numero_serie' => $data['numero_serie'] ?? null,
             'falla_reportada' => $data['falla_reportada'],
             'fecha_ingreso' => $hoy,
             'fecha_entrega' => $sucursal->fechaEntregaEstimada($hoy)->toDateString(),
