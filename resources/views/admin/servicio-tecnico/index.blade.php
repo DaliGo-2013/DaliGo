@@ -135,7 +135,13 @@
                                 {{-- Un solo badge de estado que incluye la sucursal de recepción:
                                      "Recibido en El Mirador" / "En Revisión en El Mirador"… --}}
                                 <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@endif</x-badge>
-                                <x-badge variant="neutral">{{ $orden->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación' }}</x-badge>
+                                {{-- Condición compacta (1 letra): R rojo = Reparación, G verde = Garantía.
+                                     Excepción intencional a la paleta (aprobada por el dueño); tooltip con la palabra. --}}
+                                @if ($orden->condicion_efectiva === 'garantia')
+                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-green-600 text-xs font-bold text-white" title="Garantía">G</span>
+                                @else
+                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-red-600 text-xs font-bold text-white" title="Reparación">R</span>
+                                @endif
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
                         </a>

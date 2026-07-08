@@ -21,6 +21,14 @@
 
 ## Sesiones
 
+### [2026-07-08] Badge de condición compacto (R rojo / G verde) en el listado de ST — excepción de paleta autorizada
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Objetivo declarado:** compactar el badge de condición del listado de Servicio Técnico a una letra para ahorrar espacio.
+- **Qué se hizo:** (rama `feature/st-badge-condicion-compacto`) en `admin/servicio-tecnico/index.blade`, el badge de condición pasa de la palabra completa a un **cuadrito de 1 letra**: **R** con `bg-red-600` (Reparación) y **G** con `bg-green-600` (Garantía), letra blanca + `title` (tooltip con la palabra). El detalle (`show`) mantiene la palabra completa. 446 verdes.
+- **⚠️ Excepción de paleta (autorizada por el dueño — NO revertir en pre-merge):** la paleta estricta de DaliGo prohíbe el verde y reserva el rojo para lo destructivo. El dueño pidió y **aprobó explícitamente** R rojo / G verde para distinción visual rápida en el mostrador. Es una excepción consciente y acotada a ESTE badge; se documenta aquí para que la auditoría R-31 no la marque como violación.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna (preferencia visual del dueño). · **Delegaciones:** ninguna.
+- **Próximo paso:** el dueño reprueba el correo del QR (la flota ya cerró la entregabilidad en P-M15-10 [x], incluido el mailer de M12).
+
 ### [2026-07-08] Stream 2 · E1·M15 CERRADA — primera unidad completa de la flota (kickoff→producción en 6 días)
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) + IA-cPanel — dictado de cierre final del Director
 - **Objetivo declarado:** archivar la respuesta de P-M15-10 + [x] + cerrar la unidad E1 (mismo push)
