@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-08] Servicio Técnico: Estado editable por el staff al registrar + foto real del N° de serie
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/estado-editable-staff-y-foto-serie`, merge `f1bfe01`)
+  - **Estado editable al registrar (pedido del dueño):** el campo Estado del form de ingreso ST (`_form`) pasó de display bloqueado «Recibido» a un desplegable editable para técnico/admin, para que el staff informe el paso a paso desde el registro (antes solo al editar). `store()` respeta el estado enviado (default `recibido` si no llega); la fecha de entrega la sigue calculando el servidor. **⚠️ REVIERTE la regla previa "el mostrador no decide estado al registrar" — fue pedido explícito del dueño; NO revertir.** El cliente NO cambia: el ingreso por QR no tiene el campo Estado y su store fija `recibido` de forma fija → **fijo para el cliente, editable para el staff**. Test renombrado `test_store_respeta_estado_del_staff_y_calcula_fecha_del_servidor` (antes `..._fuerza_estado_recibido_...`).
+  - **Foto real del N° de serie:** reemplazada la ilustración SVG de respaldo por la foto real (etiqueta trasera DALI LB-07D, serial `EST20260100251`), comprimida con GD a 560×420 = **9.9 KB** (<10 KB, pedido del dueño), en `public/img/ejemplo-serie.jpg`; el `<x-ayuda-serie>` ya la detecta con `file_exists` y la muestra en el modal «Ver ejemplo». Suite **451 verdes**; deploy `28971016293` OK.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna formal (cambio de regla operativa por el dueño, anotado arriba con ⚠️). · **Delegaciones:** ninguna.
+
 ### [2026-07-08] Stream 1 · Vigilancia I-01 POSITIVA + P-M14-03 hecho en rama: bandeja móvil de aprobaciones
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — orden del día del Director (P-M14-02 verificado [x] por él)
 - **Objetivo declarado:** 1º vigilancia crontab (reportada ANTES de codear) · 2º P-M14-03 bandeja móvil.
