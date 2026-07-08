@@ -187,11 +187,41 @@ class IngresoTallerPublicoTest extends TestCase
 
     public function test_envio_publico_valida_obligatorios(): void
     {
+        // numero_serie NO va aqui: es condicional al tipo (ver tests dedicados).
         $this->post(route('ingreso-taller.store'), [])
             ->assertSessionHasErrors([
                 'sucursal_id', 'cliente_nombre', 'cliente_email',
-                'tipo_equipo', 'numero_serie', 'falla_reportada',
+                'tipo_equipo', 'falla_reportada',
             ]);
+    }
+
+    /** Dispensador/lavadora: el N° de serie sigue siendo obligatorio en lo publico. */
+    public function test_envio_publico_exige_serie_para_dispensador(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'tipo_equipo' => 'dispensador',
+            'numero_serie' => '',
+        ]))->assertSessionHasErrors('numero_serie');
+    }
+
+    /** Bombas/herramientas: el N° de serie es OPCIONAL tambien en el flujo publico. */
+    public function test_envio_publico_serie_opcional_para_herramienta(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'tipo_equipo' => 'herramienta',
+            'numero_serie' => '',
+        ]))->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'tipo_equipo' => 'herramienta',
+            'numero_serie' => null,
+            'fuente' => 'qr',
+        ]);
     }
 
     public function test_rut_es_opcional_pero_invalido_se_rechaza(): void

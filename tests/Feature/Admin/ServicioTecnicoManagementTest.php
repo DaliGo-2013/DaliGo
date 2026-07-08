@@ -229,8 +229,9 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => '', 'facturacion' => '',
             ])
             ->assertSessionHasErrors([
+                // numero_serie NO va: es condicional al tipo (tests dedicados).
                 'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
-                'tipo_equipo', 'producto_id', 'sucursal_id', 'numero_serie', 'falla_reportada', 'facturacion',
+                'tipo_equipo', 'producto_id', 'sucursal_id', 'falla_reportada', 'facturacion',
             ]);
     }
 
@@ -300,6 +301,37 @@ class ServicioTecnicoManagementTest extends TestCase
             'estado' => 'en_revision',            // respetado
             'fecha_entrega' => '2026-07-28 00:00:00',
         ]);
+    }
+
+    /** Dispensador/lavadora: el N° de serie ES obligatorio (serie unica). */
+    public function test_store_exige_serie_para_dispensador_y_lavadora(): void
+    {
+        foreach (['dispensador', 'lavadora'] as $tipo) {
+            $this->actingAs($this->admin())
+                ->post('/admin/servicio-tecnico', $this->payload([
+                    'tipo_equipo' => $tipo,
+                    'numero_serie' => '',
+                ]))
+                ->assertSessionHasErrors('numero_serie');
+        }
+    }
+
+    /** Bombas/herramientas (herramienta/otro): el N° de serie es OPCIONAL. */
+    public function test_store_serie_opcional_para_herramienta_y_otro(): void
+    {
+        foreach (['herramienta', 'otro'] as $tipo) {
+            $this->actingAs($this->admin())
+                ->post('/admin/servicio-tecnico', $this->payload([
+                    'tipo_equipo' => $tipo,
+                    'numero_serie' => '',
+                ]))
+                ->assertSessionHasNoErrors();
+
+            $this->assertDatabaseHas('ordenes_servicio', [
+                'tipo_equipo' => $tipo,
+                'numero_serie' => null,
+            ]);
+        }
     }
 
     public function test_numero_serie_y_textos_exigen_minimo_3(): void
