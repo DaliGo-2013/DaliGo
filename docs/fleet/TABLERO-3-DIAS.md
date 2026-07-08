@@ -1,8 +1,28 @@
-# TABLERO — 3 días de flota (2026-07-03 → 2026-07-05)
+# TABLERO de la flota — continuo desde 2026-07-08 (histórico de 3 días abajo)
 
-> Lo opera el DIRECTOR (única cuenta que edita este archivo). Marcas: `[ ]` pendiente,
-> `[~]` en curso, `[x]` verificada con evidencia, `[!]` bloqueada. Cada tarea indica la
-> talla estimada (S/M/L/XL — ver `CONSUMO.md`) y el dictado modelo+esfuerzo.
+> Lo opera el DIRECTOR (única cuenta que edita este archivo). Marcas: `[ ]/[~]/[x]/[!]`.
+> **Modo continuo (directiva del dueño 08-07):** sin marco de días — cada asiento avanza su
+> cola en orden y el Director verifica/repone. Restricción física: 1 cuenta Code por
+> computador (3 en uso: Max-1, Max-2, Director). Los roles Pro restantes operan como
+> **asientos de NAVEGADOR** (claude.ai sin Code) vía *paquete de contexto*: el Director
+> redacta el prompt autocontenido → Mauricio lo pega en el navegador → el texto vuelve →
+> lo commitea el asiento Code que el Director designe. Los asientos de navegador JAMÁS
+> escriben en git. Fable disponible hasta el domingo 13-07 (extendido; tope semanal propio).
+
+## TABLERO CONTINUO — colas por asiento
+
+| Asiento | Cola (en orden) |
+|---|---|
+| **Max-1** (Code) | 1) [ ] vigilancia crontab (¿`*/15` vivo?) — pendiente HOY al abrir · 2) [~] P-M14-03 bandeja móvil · 3) P-M14-04 escalamiento · 4) P-M14-05 cablear ajustar() |
+| **Max-2** (Code) | 1) [~] **I-04**: barrido de secretos full-history + prompt deploy key (dictado 08-07) · 2) micro-backlog M15 · 3) PLAN-M04 sellado |
+| **Director** (Code) | Coordinación I-04 · verificación de partes · **fábrica de paquetes de contexto** para asientos de navegador |
+| **N-Investigador** (navegador) | 1) [ ] Paquete D-007 WhatsApp API (entregado 08-07) · 2) [ ] Paquete matriz D-002 · 3) [ ] Paquete P-S0-10 |
+| **N-Escriba** (navegador) | 1) [ ] BORRADOR-soplador (cuando el Director arme el paquete del flujo) |
+| **4º computador** (Code, por llegar) | Recomendación del Director: **Pro-2 QA** — verificación funcional local + suites + revisión con repo (el rol más mutilado sin Code) |
+
+**GATE GLOBAL I-04:** tras poner el repo PRIVADO, ningún push a main hasta verificar el
+`git pull` autenticado del servidor (deploy key) — el deploy se rompería. Pushes de docs
+se acumulan localmente si el gate está activo.
 
 ## Día 1 (2026-07-03)
 
