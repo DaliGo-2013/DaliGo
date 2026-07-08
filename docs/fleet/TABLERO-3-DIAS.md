@@ -82,7 +82,21 @@ completo de ambos .php, fechas de creación/modificación, dueño/permisos, tama
 otros .php fuera de public_html; crontab -l de paso) → revisión del Director → despacho.
 NADA se borra hasta ver el contenido.
 
-### I-04 — EN CIERRE: barrido limpio + deploy key operativa; falta privatizar y evidencia
+### I-04 — CERRADA 08-07: FALSO POSITIVO confirmado + rotaciones hechas + gate LIBERADO
+Causa confirmada con el detalle de la alerta (captura del dueño): GitGuardian tomó el
+placeholder `«PEGAR (la misma del paso 5)»` junto a `MAIL_USERNAME=servicio@impdali.cl`
+(líneas 87-88 del archivo de evidencia) como si fuera una clave real. Cero credenciales
+expuestas — consistente con el barrido limpio de Max-2 (T1). **Decisiones del dueño
+registradas:** (a) el repo PERMANECE PÚBLICO por su política — riesgo residual documentado
+(docs de negocio/infra visibles; merece ficha D-012 en DECISIONES.md, cola de Max-2);
+(b) rotaciones R-04 HECHAS (correo/admin/BD declaradas por el dueño; app verificada VIVA
+post-rotación por el Director). **GATE DE PUSHES LIBERADO** (sin privatización no hay
+ventana de deploy roto; bonus: el pull del server quedó por SSH con deploy key — más
+robusto). Higiene en cola de Max-2: borrar `.env.bak.*` (ya contienen claves muertas),
+redactar endpoint en 2 docs, ficha D-012, marcar la alerta como falso positivo en el
+panel de GitGuardian (botón resolve — lo hace Mauricio).
+
+### I-04 (histórico) — EN CIERRE: barrido limpio + deploy key operativa; falta privatizar y evidencia
 Estado 08-07: **T1 barrido de historia COMPLETO Y LIMPIO** (7 agentes + spot-check de Max-2,
 233 commits × 14 ramas: 0 credenciales reales; 1 ítem informativo bajo — endpoint SSH
 user@host:puerto en 2 docs, higiene). Sin purga necesaria. **T2 deploy key VERIFICADA**:
