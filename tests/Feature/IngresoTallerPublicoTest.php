@@ -248,11 +248,15 @@ class IngresoTallerPublicoTest extends TestCase
             'estado' => 'recibido',
         ]);
 
-        $this->actingAs($this->admin())
+        $encargado = tap($this->admin())->update(['name' => 'Fernando St']);
+
+        $this->actingAs($encargado)
             ->post(route('admin.servicio-tecnico.confirmar', $orden))
             ->assertRedirect();
 
-        $this->assertNotNull($orden->fresh()->confirmada_at);
+        $fresh = $orden->fresh();
+        $this->assertNotNull($fresh->confirmada_at);
+        $this->assertSame('Fernando St', $fresh->recibida_por);   // queda quién recibió
         Mail::assertSent(IngresoTallerRecibido::class, fn ($mail) => $mail->hasTo('ana@correo.cl'));
     }
 

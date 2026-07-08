@@ -92,6 +92,7 @@
                     </div>
                     <div><dt class="text-xs text-neutral-400">Fecha de ingreso</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_ingreso?->format('d-m-Y') ?: '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Fecha de entrega (estimada)</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_entrega?->format('d-m-Y') ?: '—' }}</dd></div>
+                    <div><dt class="text-xs text-neutral-400">Recibido por</dt><dd class="text-sm text-neutral-900">{{ $orden->recibida_por ?: '—' }}</dd></div>
                 </dl>
             </div>
 

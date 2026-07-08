@@ -132,11 +132,10 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
-                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
+                                {{-- Un solo badge de estado que incluye la sucursal de recepción:
+                                     "Recibido en El Mirador" / "En Revisión en El Mirador"… --}}
+                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@endif</x-badge>
                                 <x-badge variant="neutral">{{ $orden->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación' }}</x-badge>
-                                @if ($orden->sucursal)
-                                    <x-badge variant="info">Recibido en {{ $orden->sucursal->nombre }}</x-badge>
-                                @endif
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
                         </a>
