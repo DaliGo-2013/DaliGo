@@ -428,7 +428,10 @@ class ServicioTecnicoController extends Controller
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
+            // Obligatorio en el mostrador: toda orden se vincula a un producto del
+            // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
+            // lo maneja aparte (alli sigue opcional).
+            'producto_id' => ['required', 'integer', Rule::exists('productos', 'id')],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],

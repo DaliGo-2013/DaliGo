@@ -29,11 +29,12 @@
         name="producto_id"
         label="Código (producto Dali)"
         chip="Producto"
+        :required="true"
         :endpoint="route('admin.servicio-tecnico.buscar-producto')"
         :inicialId="$productoActual?->id ?? 0"
         :inicialLabel="$productoActualLabel"
         placeholder="Escribe el código (SKU) o el nombre…"
-        hint="Opcional. Es el producto Dali del catálogo." />
+        hint="Búscalo por el código (SKU) o el nombre en el catálogo." />
 
     <div>
         <x-input-label for="numero_serie">N° de serie <span class="text-red-500">*</span></x-input-label>
