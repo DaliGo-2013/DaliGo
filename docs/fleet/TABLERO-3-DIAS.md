@@ -72,7 +72,30 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
-### I-04 · REPO PÚBLICO + alerta GitGuardian — ABIERTA, MÁXIMA PRIORIDAD (08-07)
+### I-05 · PHP dentro de ~/.ssh del servidor — ABIERTA, ALTA (posible webshell) (08-07)
+Hallazgo colateral del despacho deploy-key (paso 2 del operador): `~/.ssh/` del server
+contiene `blog.php` y `lufi.php` — PHP en ese directorio NO es normal (basura vieja o
+webshell) — más un `daligo.pub` huérfano sin privada visible. NO tocados (correcto).
+**Si fuera webshell, re-abre la pregunta de I-01** (¿el "reescritor de crons" era HostGator
+o alguien con acceso?). ACCIÓN: Max-2 redacta prompt de inspección SOLO LECTURA (contenido
+completo de ambos .php, fechas de creación/modificación, dueño/permisos, tamaño; buscar
+otros .php fuera de public_html; crontab -l de paso) → revisión del Director → despacho.
+NADA se borra hasta ver el contenido.
+
+### I-04 — EN CIERRE: barrido limpio + deploy key operativa; falta privatizar y evidencia
+Estado 08-07: **T1 barrido de historia COMPLETO Y LIMPIO** (7 agentes + spot-check de Max-2,
+233 commits × 14 ramas: 0 credenciales reales; 1 ítem informativo bajo — endpoint SSH
+user@host:puerto en 2 docs, higiene). Sin purga necesaria. **T2 deploy key VERIFICADA**:
+fetch SSH autenticado operativo, host key cotejado, privada jamás expuesta, remote ya en
+git@github.com. **SECUENCIA APROBADA POR EL DIRECTOR**: (1) Mauricio PRIVATIZA ahora →
+(2) doble evidencia: fetch SSH sigue OK + ls-remote HTTPS anónimo FALLA + API 404 →
+(3) Director libera el gate de pushes. Alerta GitGuardian: causa AÚN sin confirmar (la
+historia git está limpia → probable falso positivo por placeholder o algo fuera del git;
+falta el detalle textual de la alerta — 4º pedido a Mauricio). HIGIENE derivada (cola, no
+bloquea): borrar los 3 `.env.bak.*` del app root DESPUÉS de las rotaciones R-04; redactar
+el endpoint en los 2 docs.
+
+### I-04 (histórico) · REPO PÚBLICO + alerta GitGuardian — ABIERTA, MÁXIMA PRIORIDAD (08-07)
 GitGuardian alertó "Company Email Password exposed" (push 15:12:25 UTC). Investigación del
 Director: los diffs de HOY en todas las ramas están limpios (todo `[CLAVE OCULTA]`/`«PEGAR»`)
 → hipótesis principal: el detector se disparó con el placeholder junto a `MAIL_USERNAME` en la
