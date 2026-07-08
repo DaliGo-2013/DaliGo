@@ -3,6 +3,7 @@
 namespace App\Services\Aprobaciones;
 
 use App\Models\Aprobacion;
+use App\Models\Configuracion;
 use App\Models\ReglaAprobacion;
 use App\Models\User;
 use App\Services\Aprobaciones\Acciones\AjusteReporteProduccion;
@@ -161,6 +162,67 @@ class Aprobaciones
         $this->notificarSolicitante('aprobacion.resuelta', $resuelta);
 
         return $resuelta;
+    }
+
+    /**
+     * Barrido del escalamiento (P-M14-04; lo invoca `aprobaciones:escalar`
+     * en la grilla de 15 min de I-01 — latencia real N..N+15, limite aceptado).
+     * Pendientes nivel 0 mas viejas que N minutos cuya regla activa tenga
+     * `rol_escalamiento`: lock + re-check por fila (mismo idioma que
+     * notificaciones:reintentar), luego re-notificacion al rol NUEVO.
+     *
+     * @return int cuantas escalaron en esta corrida
+     */
+    public function escalarVencidas(): int
+    {
+        $minutos = (int) Configuracion::get('aprobacion_escala_minutos', 30);
+
+        $candidatas = Aprobacion::query()
+            ->where('estado', Aprobacion::ESTADO_PENDIENTE)
+            ->where('nivel_escalamiento', 0)
+            ->where('created_at', '<=', now()->subMinutes($minutos))
+            ->whereHas('regla', fn ($q) => $q->where('activa', true)->whereNotNull('rol_escalamiento'))
+            ->pluck('id');
+
+        $escaladas = collect();
+
+        foreach ($candidatas as $id) {
+            $aprobacion = DB::transaction(function () use ($id) {
+                $fresh = Aprobacion::whereKey($id)->lockForUpdate()->first();
+
+                // Re-check con la fila bloqueada: pudo resolverse o escalar
+                // en una corrida concurrente (withoutOverlapping es el
+                // cinturon; esto son los tirantes).
+                if ($fresh === null || ! $fresh->esPendiente() || $fresh->nivel_escalamiento > 0) {
+                    return null;
+                }
+
+                $rolNuevo = $fresh->regla?->rol_escalamiento;
+
+                if ($rolNuevo === null) {
+                    return null;
+                }
+
+                $fresh->update([
+                    'nivel_escalamiento' => 1,
+                    'rol_aprobador' => $rolNuevo,
+                    'escalada_at' => now(),
+                ]);
+
+                return $fresh;
+            });
+
+            if ($aprobacion !== null) {
+                $escaladas->push($aprobacion);
+            }
+        }
+
+        // Fuera de las transacciones: re-notificacion al rol nuevo.
+        foreach ($escaladas as $aprobacion) {
+            $this->notificarRol('aprobacion.escalada', $aprobacion, $aprobacion->rol_aprobador);
+        }
+
+        return $escaladas->count();
     }
 
     /**
