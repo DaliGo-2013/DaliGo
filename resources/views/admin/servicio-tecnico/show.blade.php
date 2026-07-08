@@ -112,6 +112,12 @@
             <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Falla reportada</h3>
                 <p class="whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_reportada ?: '—' }}</p>
+                @if ($orden->falla_tecnico)
+                    <div class="mt-4 border-t border-neutral-100 pt-4">
+                        <dt class="text-xs text-neutral-400">Agregado por el técnico</dt>
+                        <dd class="mt-0.5 whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_tecnico }}</dd>
+                    </div>
+                @endif
             </div>
 
             {{-- Reparacion (taller) --}}
