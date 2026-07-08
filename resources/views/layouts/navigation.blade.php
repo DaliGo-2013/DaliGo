@@ -78,6 +78,12 @@
                         </x-nav-link>
                     @endcan
 
+                    @can('aprobar solicitudes')
+                        <x-nav-link :href="route('aprobaciones.index')" :active="request()->routeIs('aprobaciones.*')" class="whitespace-nowrap">
+                            Aprobaciones
+                        </x-nav-link>
+                    @endcan
+
                     @canany(['view servicio tecnico', 'manage servicio tecnico'])
                         <x-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')" class="whitespace-nowrap">
                             Servicio Técnico
@@ -140,6 +146,12 @@
             @can('report production')
                 <x-responsive-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')">
                     Mi producción
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('aprobar solicitudes')
+                <x-responsive-nav-link :href="route('aprobaciones.index')" :active="request()->routeIs('aprobaciones.*')">
+                    Aprobaciones
                 </x-responsive-nav-link>
             @endcan
 

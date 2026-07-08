@@ -49,6 +49,18 @@ class Aprobacion extends Model implements AuditableContract
         self::ACCION_AJUSTE_REPORTE => 'Ajuste de reporte de producción',
     ];
 
+    /**
+     * Motivos frecuentes de rechazo para la bandeja (chips tocables; el
+     * aprobador resuelve desde el celular). Fuente unica para la vista
+     * (<x-reason-chips>) y de referencia — el texto libre via "Otro" sigue
+     * permitido (sin Rule::in, misma salida de escape que produccion).
+     */
+    public const MOTIVOS_RECHAZO = [
+        'Los datos no cuadran',
+        'Falta respaldo del motivo',
+        'Corresponde pedirlo de nuevo',
+    ];
+
     protected $fillable = [
         'tipo_accion',
         'regla_id',
