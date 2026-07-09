@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Servicio Técnico: renombrar "Falla reportada (técnico)" → "Condiciones de entrega"
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-renombrar-condiciones-entrega`) El campo `falla_tecnico` se re-rotuló de "Falla reportada (técnico)" a **"Condiciones de entrega"** en el form del mostrador (`_form`) y en el detalle (`show`, antes "Agregado por el técnico"), con hint acorde. **La columna `falla_tecnico` NO cambia** (solo el rótulo visible) → datos existentes intactos y sin migración. Los tests usan el nombre de campo (no el rótulo), siguen verdes. Build sin cambios de bundle (solo texto).
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-09] Servicio Técnico (QR público): documento de garantía condicional (factura/boleta) al elegir Garantía
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-qr-doc-garantia`) En el form público del QR, al elegir **Condición = Garantía** ahora se despliegan los campos del **documento de compra** (Documento factura/boleta + N° + Fecha de compra), igual que en el mostrador. Alpine local (`x-data="{ cond }"` + `x-model` en el select + `x-show="cond === 'garantia'"` con `x-cloak`/`x-transition`). Controlador público: validación condicional `Rule::requiredIf($esGarantia)` para `garantia_doc_tipo` (Rule::in GARANTIA_DOC_TIPOS) / `garantia_doc_numero` / `garantia_doc_fecha` (`before_or_equal:today`, no `fecha_ingreso` porque el QR la fija server-side), y se guardan en la orden. 3 tests (garantía exige doc, garantía con doc guarda, condición reparación guarda) → **462 verdes**. ⚠️ El CSS cambió de hash (`app-BbFJck3_.css`) por clases nuevas del bloque → se commiteó `public/build`.
