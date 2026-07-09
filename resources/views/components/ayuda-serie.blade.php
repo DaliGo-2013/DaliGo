@@ -39,8 +39,15 @@
             </p>
 
             <div class="mt-3 overflow-hidden rounded-lg border border-neutral-200">
-                @if (file_exists(public_path('img/ejemplo-serie.jpg')))
-                    <img src="{{ asset('img/ejemplo-serie.jpg') }}" alt="Ejemplo: etiqueta trasera del dispensador con el N° de serie" class="block w-full">
+                @php
+                    // La foto va EMBEBIDA como data URI (base64) leyendo el archivo del
+                    // filesystem de la app. Asi NO depende de que el servidor sirva
+                    // /img/ como estatico (el docroot de staging no lo hace -> 404); la
+                    // imagen viaja dentro del HTML y siempre se ve.
+                    $rutaEjemploSerie = public_path('img/ejemplo-serie.jpg');
+                @endphp
+                @if (is_file($rutaEjemploSerie))
+                    <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents($rutaEjemploSerie)) }}" alt="Ejemplo: etiqueta trasera del dispensador con el N° de serie" class="block w-full">
                 @else
                     {{-- Ilustración de respaldo mientras no esté la foto real. --}}
                     <svg viewBox="0 0 300 180" class="block w-full" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ejemplo del número de serie">
