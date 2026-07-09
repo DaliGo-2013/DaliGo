@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Servicio Técnico (QR público): documento de garantía condicional (factura/boleta) al elegir Garantía
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-qr-doc-garantia`) En el form público del QR, al elegir **Condición = Garantía** ahora se despliegan los campos del **documento de compra** (Documento factura/boleta + N° + Fecha de compra), igual que en el mostrador. Alpine local (`x-data="{ cond }"` + `x-model` en el select + `x-show="cond === 'garantia'"` con `x-cloak`/`x-transition`). Controlador público: validación condicional `Rule::requiredIf($esGarantia)` para `garantia_doc_tipo` (Rule::in GARANTIA_DOC_TIPOS) / `garantia_doc_numero` / `garantia_doc_fecha` (`before_or_equal:today`, no `fecha_ingreso` porque el QR la fija server-side), y se guardan en la orden. 3 tests (garantía exige doc, garantía con doc guarda, condición reparación guarda) → **462 verdes**. ⚠️ El CSS cambió de hash (`app-BbFJck3_.css`) por clases nuevas del bloque → se commiteó `public/build`.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-09] Servicio Técnico (QR público): Teléfono y RUT obligatorios + campo Condición (garantía/reparación)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-qr-condicion-obligatorios`) En el formulario público del QR (`publico/taller/create`): **Teléfono y RUT pasan a obligatorios** (antes opcionales) y se agregó el campo **Condición (Garantía / Reparación)** — el que solo estaba en el form del mostrador — para saber desde el ingreso si la reparación se cobra o no. El cliente la indica y el mostrador la verifica al confirmar (y pide el documento de garantía si aplica). Controlador público: `cliente_telefono` y `cliente_rut` → `required`, nuevo `facturacion` → `required` + `Rule::in(FACTURACION)`, y se guarda en la orden. Tests: `payload()` con rut+facturacion, obligatorios ampliados, rut ahora obligatorio (renombrado), + teléfono obligatorio + condición guardada → **460 verdes**. Build sin cambios de bundle.

@@ -75,6 +75,10 @@ class IngresoTallerPublicoController extends Controller
             true,
         );
 
+        // Si el cliente marca Garantia, el documento de compra que la respalda es
+        // obligatorio (factura/boleta + N° + fecha, no futura).
+        $esGarantia = $request->input('facturacion') === 'garantia';
+
         $data = $request->validate([
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')->where('activa', true)],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
@@ -87,6 +91,9 @@ class IngresoTallerPublicoController extends Controller
             // Condicion (garantia/reparacion): el cliente la indica; el mostrador
             // la verifica al confirmar (y pide el documento de garantia si aplica).
             'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
+            'garantia_doc_tipo' => [Rule::requiredIf($esGarantia), 'nullable', Rule::in(OrdenServicio::GARANTIA_DOC_TIPOS)],
+            'garantia_doc_numero' => [Rule::requiredIf($esGarantia), 'nullable', 'string', 'max:191'],
+            'garantia_doc_fecha' => [Rule::requiredIf($esGarantia), 'nullable', 'date', 'before_or_equal:today'],
             'falla_reportada' => ['required', 'string', 'min:3'],
         ]);
 
@@ -103,6 +110,9 @@ class IngresoTallerPublicoController extends Controller
             'tipo_equipo' => $data['tipo_equipo'],
             'numero_serie' => $data['numero_serie'] ?? null,
             'facturacion' => $data['facturacion'],
+            'garantia_doc_tipo' => $data['garantia_doc_tipo'] ?? null,
+            'garantia_doc_numero' => $data['garantia_doc_numero'] ?? null,
+            'garantia_doc_fecha' => $data['garantia_doc_fecha'] ?? null,
             'falla_reportada' => $data['falla_reportada'],
             'fecha_ingreso' => $hoy,
             'fecha_entrega' => $sucursal->fechaEntregaEstimada($hoy)->toDateString(),
