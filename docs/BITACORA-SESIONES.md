@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Servicio Técnico (QR público): Teléfono y RUT obligatorios + campo Condición (garantía/reparación)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-qr-condicion-obligatorios`) En el formulario público del QR (`publico/taller/create`): **Teléfono y RUT pasan a obligatorios** (antes opcionales) y se agregó el campo **Condición (Garantía / Reparación)** — el que solo estaba en el form del mostrador — para saber desde el ingreso si la reparación se cobra o no. El cliente la indica y el mostrador la verifica al confirmar (y pide el documento de garantía si aplica). Controlador público: `cliente_telefono` y `cliente_rut` → `required`, nuevo `facturacion` → `required` + `Rule::in(FACTURACION)`, y se guarda en la orden. Tests: `payload()` con rut+facturacion, obligatorios ampliados, rut ahora obligatorio (renombrado), + teléfono obligatorio + condición guardada → **460 verdes**. Build sin cambios de bundle.
+- **Pasos marcados:** ninguno. · **Decisiones:** en el QR el cliente declara la condición (garantía/reparación); el mostrador la verifica (los documentos de garantía se piden al confirmar/editar, no en el QR). · **Delegaciones:** ninguna.
+
 ### [2026-07-09] Servicio Técnico: Correo obligatorio en el mostrador + envío del folio al registrar
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-correo-mostrador`) El formulario del mostrador (`_form` vía `<x-cliente-ingreso>`) no capturaba el **Correo** del cliente (el form público del QR sí, para enviarle el folio) → un ingreso de mostrador nunca podía avisar por correo. Se agregó el campo **Correo OBLIGATORIO** al `<x-cliente-ingreso>` (nueva prop `inicialEmail`; guarda en `cliente_email`), validación `required|email|max:191` en `validateData`, y `store()` ahora **envía el folio por correo** al registrar (mismo `IngresoTallerRecibido` que el flujo QR, en try/catch: si el mailer falla no tumba el registro). Aclaración importante: la vista PC (mostrador/staff) y la móvil (QR del cliente) NO son el mismo form responsive — son formularios distintos (staff tiene Estado/Condición/Sucursal/Falla técnico; el cliente no). El único campo que faltaba alinear era el Correo. 3 tests nuevos/ajustados (exige correo, envía folio, obligatorios) → **458 verdes**. Build sin cambios de bundle.

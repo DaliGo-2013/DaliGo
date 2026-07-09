@@ -79,11 +79,14 @@ class IngresoTallerPublicoController extends Controller
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')->where('activa', true)],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_email' => ['required', 'email', 'max:191'],
-            'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            'cliente_rut' => ['nullable', 'string', 'max:20', new RutChileno],
+            'cliente_telefono' => ['required', 'string', 'max:30'],
+            'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],
+            // Condicion (garantia/reparacion): el cliente la indica; el mostrador
+            // la verifica al confirmar (y pide el documento de garantia si aplica).
+            'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
             'falla_reportada' => ['required', 'string', 'min:3'],
         ]);
 
@@ -99,6 +102,7 @@ class IngresoTallerPublicoController extends Controller
             'sucursal_id' => $sucursal->id,
             'tipo_equipo' => $data['tipo_equipo'],
             'numero_serie' => $data['numero_serie'] ?? null,
+            'facturacion' => $data['facturacion'],
             'falla_reportada' => $data['falla_reportada'],
             'fecha_ingreso' => $hoy,
             'fecha_entrega' => $sucursal->fechaEntregaEstimada($hoy)->toDateString(),

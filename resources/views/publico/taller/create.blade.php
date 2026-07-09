@@ -84,17 +84,17 @@
                 </div>
 
                 <div>
-                    <x-input-label for="cliente_telefono" value="Teléfono" />
+                    <x-input-label for="cliente_telefono" value="Teléfono *" />
                     <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 block w-full"
-                                  :value="old('cliente_telefono')" placeholder="Ej. +56 9 1234 5678" />
+                                  :value="old('cliente_telefono')" required placeholder="Ej. +56 9 1234 5678" />
+                    <x-input-hint>Para avisarte cuando tu equipo esté listo.</x-input-hint>
                     <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-1.5" />
                 </div>
 
                 <div>
-                    <x-input-label for="cliente_rut" value="RUT" />
+                    <x-input-label for="cliente_rut" value="RUT *" />
                     <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 block w-full"
-                                  :value="old('cliente_rut')" placeholder="Ej. 12.345.678-9" />
-                    <x-input-hint>Opcional.</x-input-hint>
+                                  :value="old('cliente_rut')" required placeholder="Ej. 12.345.678-9" />
                     <x-input-error :messages="$errors->get('cliente_rut')" class="mt-1.5" />
                 </div>
 
@@ -149,6 +149,20 @@
                                   class="mt-1.5 block w-full pointer-events-none bg-neutral-50 text-neutral-500"
                                   :value="now()->format('Y-m-d')" readonly tabindex="-1" />
                     <x-input-hint>Es la fecha de hoy.</x-input-hint>
+                </div>
+
+                {{-- Condición: garantía o reparación. Clave para saber si se cobra al
+                     arreglar. El cliente lo indica; el mostrador lo verifica al recibir. --}}
+                <div>
+                    <x-input-label for="facturacion" value="Condición *" />
+                    <x-select id="facturacion" name="facturacion" class="mt-1.5 block w-full">
+                        <option value="" disabled @selected(old('facturacion', '') === '')>— Selecciona —</option>
+                        @foreach (\App\Models\OrdenServicio::FACTURACION as $f)
+                            <option value="{{ $f }}" @selected(old('facturacion') === $f)>{{ ucfirst($f) }}</option>
+                        @endforeach
+                    </x-select>
+                    <x-input-hint>Garantía: equipo con garantía vigente (trae la boleta o factura). Reparación: fuera de garantía (tiene costo).</x-input-hint>
+                    <x-input-error :messages="$errors->get('facturacion')" class="mt-1.5" />
                 </div>
 
                 <div>
