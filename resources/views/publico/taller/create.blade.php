@@ -134,12 +134,11 @@
                             if (sel) sel.addEventListener('change', set);
                         },
                      }">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <x-input-label for="numero_serie">N° de serie <span x-show="serieObl" class="text-red-500">*</span></x-input-label>
-                        <x-ayuda-serie />
-                    </div>
+                    <x-input-label for="numero_serie">N° de serie <span x-show="serieObl" class="text-red-500">*</span></x-input-label>
                     <x-text-input id="numero_serie" name="numero_serie" type="text" class="mt-1.5 block w-full"
                                   :value="old('numero_serie')" required x-bind:required="serieObl" placeholder="El número que trae el equipo" />
+                    {{-- Botón "Ver ejemplo del N° de serie" (foto de la etiqueta trasera), justo debajo del campo. --}}
+                    <x-ayuda-serie />
                     <x-input-hint x-show="!serieObl" x-cloak>Opcional para este tipo (bombas y herramientas no tienen serie única).</x-input-hint>
                     <x-input-error :messages="$errors->get('numero_serie')" class="mt-1.5" />
                 </div>

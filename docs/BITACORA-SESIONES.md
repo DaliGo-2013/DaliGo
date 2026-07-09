@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Servicio Técnico: botón "Ver ejemplo del N° de serie" más visible (bajo el campo)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-serie-ejemplo-visible`) el `<x-ayuda-serie>` (que abre el modal con la foto real de la etiqueta trasera) pasó de un pill chico pegado a la etiqueta a un **botón claro y visible justo DEBAJO del campo N° de serie** (borde brand, ícono `eye`, texto "Ver ejemplo del N° de serie"). En ambos formularios (interno `_form` + público del QR). Sigue siendo solo para dispensadores y fail-open. Motivo: el dueño no lograba verlo (el pill era muy sutil). Sin cambios de lógica ni de tests (asserts de "Ver ejemplo" y "¿Dónde está el N° de serie?" siguen válidos); build sin cambios de bundle.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-09] Servicio Técnico: "Recibido por" también en el listado
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-listado-recibido-por`) el listado de ST ahora muestra una línea "Recibido por {nombre}" bajo los datos de cada orden (solo si `recibida_por` está poblado), para ver de un vistazo quién registró/confirmó sin abrir la orden. El dato ya existía en el detalle (`show.blade.php:95`) y se guarda al registrar en mostrador (`store`) y al confirmar un ingreso por QR (`confirmar`, queda el nombre del que confirma, ej. "JefeBodega Test"). Órdenes previas a la función (`recibida_por` null) simplemente no muestran la línea. 1 test nuevo (`test_index_muestra_recibido_por`). Suite 456 verdes; build sin cambios de bundle.
