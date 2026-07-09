@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Servicio Técnico: "Recibido por" también en el listado
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-listado-recibido-por`) el listado de ST ahora muestra una línea "Recibido por {nombre}" bajo los datos de cada orden (solo si `recibida_por` está poblado), para ver de un vistazo quién registró/confirmó sin abrir la orden. El dato ya existía en el detalle (`show.blade.php:95`) y se guarda al registrar en mostrador (`store`) y al confirmar un ingreso por QR (`confirmar`, queda el nombre del que confirma, ej. "JefeBodega Test"). Órdenes previas a la función (`recibida_por` null) simplemente no muestran la línea. 1 test nuevo (`test_index_muestra_recibido_por`). Suite 456 verdes; build sin cambios de bundle.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-08] Servicio Técnico: N° de serie obligatorio solo para dispensador/lavadora (opcional para bombas/herramientas)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/serie-condicional-por-tipo`, merge pendiente en este push)
