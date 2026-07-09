@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\Precio;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Mail\IngresoTallerRecibido;
@@ -731,5 +732,21 @@ class ServicioTecnicoManagementTest extends TestCase
             ->getJson('/admin/servicio-tecnico/buscar-producto?q=Dispensador')
             ->assertOk()
             ->assertJsonFragment(['sku' => 'MAQ-001']);
+    }
+
+    /** El buscador de repuestos incluye el catalogo (por SKU) con precio con IVA. */
+    public function test_buscar_repuesto_incluye_catalogo_con_precio(): void
+    {
+        $producto = Producto::factory()->create(['sku' => 'REP-001', 'nombre' => 'Caldera X']);
+        Precio::factory()->create([
+            'producto_id' => $producto->id,
+            'precio_con_iva' => 4990,
+        ]);
+
+        // Buscando por el codigo (SKU) trae el nombre y el precio con IVA.
+        $this->actingAs($this->admin())
+            ->getJson('/admin/servicio-tecnico/buscar-repuesto?q=REP-001')
+            ->assertOk()
+            ->assertJsonFragment(['sku' => 'REP-001', 'nombre' => 'Caldera X', 'precio' => 4990]);
     }
 }

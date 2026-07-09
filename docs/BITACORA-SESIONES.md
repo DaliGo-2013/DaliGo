@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Servicio Técnico (reparación): repuestos buscables en el catálogo por código, con precio con IVA
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-repuesto-catalogo-precio`) El buscador de "Repuestos usados" (pantalla de reparación) ahora también consulta el **catálogo `productos` por SKU o nombre** y, al elegir, rellena **nombre + precio (con IVA)** — antes solo sugería nombres del historial/comunes y no traía precio. Endpoint `buscarRepuesto`: agrega resultados del catálogo `[{nombre, sku, precio}]` (precio con IVA de la lista activa que encuentre; si no, cualquiera; redondeado a entero) + los nombres del historial (sku/precio null), catálogo primero. Front: la sugerencia muestra `SKU · nombre · $precio`; `elegirRepuesto(i, s)` setea nombre y, si viene, precio_unitario (sigue siendo editable). Placeholder → "Código o nombre del repuesto". 1 test nuevo (catálogo con precio) → **463 verdes**. Ojo: `activa` está en `listas_precios`, NO en `precios` (se filtra por `precios.lista.activa`). Build commiteado (CSS `app-CGe6_F1d.css` + JS `app-B5Mpkvpz.js`). Nota: los precios reales solo existen en prod (Bsale); en local no hay datos para verlo, pero la lógica quedó testeada.
+- **Pasos marcados:** ninguno. · **Decisiones:** repuesto trae precio CON IVA de "la lista de venta que encuentre" (editable), pedido del dueño. · **Delegaciones:** ninguna.
+
 ### [2026-07-09] Servicio Técnico: renombrar "Falla reportada (técnico)" → "Condiciones de entrega"
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-renombrar-condiciones-entrega`) El campo `falla_tecnico` se re-rotuló de "Falla reportada (técnico)" a **"Condiciones de entrega"** en el form del mostrador (`_form`) y en el detalle (`show`, antes "Agregado por el técnico"), con hint acorde. **La columna `falla_tecnico` NO cambia** (solo el rótulo visible) → datos existentes intactos y sin migración. Los tests usan el nombre de campo (no el rótulo), siguen verdes. Build sin cambios de bundle (solo texto).
