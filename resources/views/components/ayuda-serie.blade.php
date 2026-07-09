@@ -1,16 +1,15 @@
 {{--
-    Ayuda del N° de serie (SOLO dispensadores): un ícono clicable que va AL LADO
-    de la etiqueta "N° de serie" y abre un modal con la FOTO de ejemplo (etiqueta
-    trasera del dispensador). Si aún no está la foto real
-    (public/img/ejemplo-serie.jpg) se muestra una ilustración de respaldo, así
-    nunca queda una imagen rota.
+    Ayuda del N° de serie (SOLO dispensadores): un boton CLARO y visible, ubicado
+    JUSTO DEBAJO del campo N° de serie, que abre un modal con la FOTO de ejemplo
+    (etiqueta trasera del dispensador). Si aun no esta la foto real
+    (public/img/ejemplo-serie.jpg) muestra una ilustracion de respaldo, asi nunca
+    queda una imagen rota.
 
     Solo aparece cuando el "Tipo de equipo" (#tipo_equipo) es "dispensador" —
-    bombas/herramientas no tienen serie única. FAIL-OPEN: el ícono se ve por
+    bombas/herramientas no tienen serie unica. FAIL-OPEN: el boton se ve por
     defecto (sin x-cloak); si el equipo no es dispensador, Alpine lo oculta.
 --}}
-<span class="inline-flex" x-show="esDispensador"
-      x-data="{
+<div x-data="{
         abierto: false,
         esDispensador: true,
         init() {
@@ -22,15 +21,14 @@
             actualizar();
             if (sel) sel.addEventListener('change', actualizar);
         },
-      }">
+     }" x-show="esDispensador">
     <button type="button" @click="abierto = true"
-        class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-600 ring-1 ring-inset ring-brand-100 transition hover:bg-brand-100"
-        title="Ver ejemplo del N° de serie">
-        <x-icon.information-circle class="h-3.5 w-3.5" />
-        Ver ejemplo
+        class="mt-2 inline-flex items-center gap-2 rounded-lg border border-brand-300 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-100 active:scale-[0.99]">
+        <x-icon.eye class="h-5 w-5" />
+        Ver ejemplo del N° de serie
     </button>
 
-    {{-- Modal con la foto/ilustración de ejemplo --}}
+    {{-- Modal con la foto/ilustracion de ejemplo --}}
     <div x-show="abierto" x-cloak x-transition.opacity
          class="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/50 p-4"
          @click.self="abierto = false" @keydown.escape.window="abierto = false">
@@ -66,4 +64,4 @@
             </button>
         </div>
     </div>
-</span>
+</div>
