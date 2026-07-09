@@ -98,8 +98,18 @@ class ServicioTecnicoController extends Controller
 
         $orden = OrdenServicio::create($data);
 
-        return redirect()->route('admin.servicio-tecnico.index')
-            ->with('status', "Orden {$orden->folio} registrada.");
+        // Se le envia el folio al cliente (mismo correo que el flujo QR). Es
+        // SECUNDARIO: si el mailer del servidor falla, NO tumba el registro; se
+        // loguea y se avisa en el mensaje.
+        try {
+            Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
+            $status = "Orden {$orden->folio} registrada. Folio enviado a {$orden->cliente_email}.";
+        } catch (\Throwable $e) {
+            report($e);
+            $status = "Orden {$orden->folio} registrada. No se pudo enviar el correo (revisa la configuración de correo del servidor).";
+        }
+
+        return redirect()->route('admin.servicio-tecnico.index')->with('status', $status);
     }
 
     /**
@@ -460,6 +470,9 @@ class ServicioTecnicoController extends Controller
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
+            // Correo OBLIGATORIO en el mostrador: se le envia el folio al registrar
+            // y sirve para avisos futuros del equipo.
+            'cliente_email' => ['required', 'email', 'max:191'],
             // Obligatorio en el mostrador: toda orden se vincula a un producto del
             // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
             // lo maneja aparte (alli sigue opcional).

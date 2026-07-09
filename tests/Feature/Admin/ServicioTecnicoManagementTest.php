@@ -6,9 +6,11 @@ use App\Models\Cliente;
 use App\Models\OrdenServicio;
 use App\Models\Producto;
 use App\Models\Sucursal;
+use App\Mail\IngresoTallerRecibido;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -43,6 +45,7 @@ class ServicioTecnicoManagementTest extends TestCase
         return array_merge([
             'cliente_nombre' => 'Juan Pérez',
             'cliente_rut' => '12.345.678-5',
+            'cliente_email' => 'cliente@correo.cl',
             'fecha_ingreso' => now()->toDateString(),
             'tipo_equipo' => 'dispensador',
             'producto_id' => Producto::factory()->create()->id,   // obligatorio: del catálogo Dali
@@ -230,9 +233,30 @@ class ServicioTecnicoManagementTest extends TestCase
             ])
             ->assertSessionHasErrors([
                 // numero_serie NO va: es condicional al tipo (tests dedicados).
-                'cliente_nombre', 'cliente_rut', 'fecha_ingreso',
+                'cliente_nombre', 'cliente_rut', 'cliente_email', 'fecha_ingreso',
                 'tipo_equipo', 'producto_id', 'sucursal_id', 'falla_reportada', 'facturacion',
             ]);
+    }
+
+    /** El correo del cliente es obligatorio al registrar en el mostrador. */
+    public function test_store_exige_correo(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['cliente_email' => '']))
+            ->assertSessionHasErrors('cliente_email');
+    }
+
+    /** Al registrar en el mostrador se le envia el folio al cliente por correo. */
+    public function test_store_envia_folio_por_correo(): void
+    {
+        Mail::fake();
+
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['cliente_email' => 'ana@correo.cl']))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', ['cliente_email' => 'ana@correo.cl']);
+        Mail::assertSent(IngresoTallerRecibido::class, fn ($mail) => $mail->hasTo('ana@correo.cl'));
     }
 
     public function test_producto_id_es_obligatorio(): void
