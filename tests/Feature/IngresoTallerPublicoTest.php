@@ -51,8 +51,10 @@ class IngresoTallerPublicoTest extends TestCase
             'cliente_nombre' => 'Ana Cliente',
             'cliente_email' => 'ana@correo.cl',
             'cliente_telefono' => '+56 9 8888 7777',
+            'cliente_rut' => '12.345.678-5',
             'tipo_equipo' => 'dispensador',
             'numero_serie' => 'SN-9090',
+            'facturacion' => 'reparacion',
             'falla_reportada' => 'Gotea por abajo',
         ], $overrides);
     }
@@ -190,8 +192,8 @@ class IngresoTallerPublicoTest extends TestCase
         // numero_serie NO va aqui: es condicional al tipo (ver tests dedicados).
         $this->post(route('ingreso-taller.store'), [])
             ->assertSessionHasErrors([
-                'sucursal_id', 'cliente_nombre', 'cliente_email',
-                'tipo_equipo', 'falla_reportada',
+                'sucursal_id', 'cliente_nombre', 'cliente_email', 'cliente_telefono',
+                'cliente_rut', 'tipo_equipo', 'facturacion', 'falla_reportada',
             ]);
     }
 
@@ -224,17 +226,40 @@ class IngresoTallerPublicoTest extends TestCase
         ]);
     }
 
-    public function test_rut_es_opcional_pero_invalido_se_rechaza(): void
+    public function test_rut_obligatorio_y_dv_invalido_se_rechaza(): void
     {
         $sucursal = $this->sucursal();
 
-        // Sin RUT: pasa.
-        $this->post(route('ingreso-taller.store'), $this->payload($sucursal))
-            ->assertSessionHasNoErrors();
+        // Sin RUT: ahora es obligatorio en el flujo publico -> error.
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['cliente_rut' => '']))
+            ->assertSessionHasErrors('cliente_rut');
 
         // RUT con DV incorrecto: se rechaza.
         $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['cliente_rut' => '12.345.678-9']))
             ->assertSessionHasErrors('cliente_rut');
+    }
+
+    /** Telefono ahora obligatorio en el flujo publico. */
+    public function test_telefono_obligatorio(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['cliente_telefono' => '']))
+            ->assertSessionHasErrors('cliente_telefono');
+    }
+
+    /** La condicion (garantia/reparacion) elegida por el cliente se guarda. */
+    public function test_envio_publico_guarda_condicion(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['facturacion' => 'garantia']))
+            ->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'garantia',
+            'fuente' => 'qr',
+        ]);
     }
 
     public function test_sucursal_inactiva_es_rechazada(): void
