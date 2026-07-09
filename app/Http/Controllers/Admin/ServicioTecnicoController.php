@@ -381,24 +381,51 @@ class ServicioTecnicoController extends Controller
             return response()->json([]);
         }
 
+        // 1) Catalogo Dali (productos): por codigo (SKU) o nombre. Trae el precio
+        //    de venta CON IVA que encuentre (sugerencia editable; el tecnico ajusta).
+        $catalogo = Producto::query()
+            ->where(fn (Builder $w) => $w
+                ->where('sku', 'like', "%{$q}%")
+                ->orWhere('nombre', 'like', "%{$q}%"))
+            ->with('precios.lista')
+            ->orderBy('sku')
+            ->limit(10)
+            ->get(['id', 'sku', 'nombre'])
+            ->map(function (Producto $p) {
+                // El precio de venta que encuentre: prioriza una lista activa; si no, cualquiera.
+                $pr = $p->precios->first(fn ($x) => (bool) ($x->lista?->activa)) ?? $p->precios->first();
+
+                return [
+                    'nombre' => $p->nombre,
+                    'sku' => $p->sku,
+                    'precio' => $pr ? (int) round((float) $pr->precio_con_iva) : null,
+                ];
+            });
+
+        // 2) Historial de reparaciones + repuestos comunes (solo nombres).
         $historial = OrdenServicioRepuesto::query()
             ->where('nombre', 'like', "%{$q}%")
             ->distinct()
             ->orderBy('nombre')
-            ->limit(15)
+            ->limit(10)
             ->pluck('nombre');
 
         $comunes = collect(self::REPUESTOS_COMUNES)
             ->filter(fn (string $n) => mb_stripos($n, $q) !== false);
 
+        // No repetir un nombre que ya vino del catalogo (ahi trae codigo + precio).
+        $yaEnCatalogo = $catalogo->pluck('nombre')->map(fn ($n) => mb_strtolower($n))->all();
+
         $nombres = $historial->merge($comunes)
             ->map(fn (string $n) => trim($n))
             ->filter()
             ->unique(fn (string $n) => mb_strtolower($n))
-            ->take(15)
-            ->values();
+            ->reject(fn (string $n) => in_array(mb_strtolower($n), $yaEnCatalogo, true))
+            ->take(10)
+            ->map(fn (string $n) => ['nombre' => $n, 'sku' => null, 'precio' => null]);
 
-        return response()->json($nombres->map(fn (string $n) => ['nombre' => $n]));
+        // Catalogo primero (con codigo + precio), luego los nombres sueltos.
+        return response()->json($catalogo->concat($nombres)->take(15)->values());
     }
 
     // --- Helpers --------------------------------------------------------

@@ -106,7 +106,7 @@
                                 <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
                                     <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
                                         <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
-                                            placeholder="Nombre del repuesto" maxlength="191" autocomplete="off"
+                                            placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
                                             x-on:input.debounce.250ms="buscarRepuesto(i)"
                                             x-on:focus="buscarRepuesto(i)"
                                             x-on:keydown.escape="cerrarSugerencias()"
@@ -120,9 +120,13 @@
                                             <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
                                                 <template x-for="(s, si) in sugerencias" :key="si">
                                                     <li>
-                                                        <button type="button" x-on:click="elegirRepuesto(i, s.nombre)"
-                                                            class="block w-full px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
-                                                            <span x-text="s.nombre"></span>
+                                                        <button type="button" x-on:click="elegirRepuesto(i, s)"
+                                                            class="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
+                                                            <span class="min-w-0">
+                                                                <span x-show="s.sku" class="font-mono text-xs text-neutral-400" x-text="s.sku"></span>
+                                                                <span x-text="s.nombre"></span>
+                                                            </span>
+                                                            <span x-show="s.precio !== null && s.precio !== undefined" class="shrink-0 text-xs font-medium text-neutral-500" x-text="'$' + Number(s.precio).toLocaleString('es-CL')"></span>
                                                         </button>
                                                     </li>
                                                 </template>
