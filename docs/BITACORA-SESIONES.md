@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-09] Fix: la foto del N° de serie daba 404 en prod → embebida como data URI
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `fix/st-serie-img-embed`) el modal de `<x-ayuda-serie>` mostraba la foto rota: `GET https://staging.impdali.cl/img/ejemplo-serie.jpg` devolvía **404** aunque `public/img/ejemplo-serie.jpg` está en git (deploy = `git reset --hard`). Diagnóstico (curl a prod): la app vive (`/up` 200) pero **el docroot de staging NO sirve `public/img/` como estático** (sí sirve `public/build/*`). **Fix:** en vez de `asset('img/ejemplo-serie.jpg')` (URL), la foto se **incrusta como data URI base64** leyéndola del filesystem con `file_get_contents(public_path(...))` → viaja dentro del HTML, ya no depende de que el servidor sirva estáticos. ~13.5 KB embebidos en el modal. Verificado local con `php artisan serve` + curl (data URI presente, URL vieja ausente). Tests 456 verdes (sin cambios de asserts). ⚠️ Nota infra pendiente: revisar por qué el docroot no sirve `public/img/` (¿docroot separado / assets sincronizados selectivamente?) — otros assets estáticos nuevos fuera de `build/` sufrirían lo mismo.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-09] Servicio Técnico: botón "Ver ejemplo del N° de serie" más visible (bajo el campo)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-serie-ejemplo-visible`) el `<x-ayuda-serie>` (que abre el modal con la foto real de la etiqueta trasera) pasó de un pill chico pegado a la etiqueta a un **botón claro y visible justo DEBAJO del campo N° de serie** (borde brand, ícono `eye`, texto "Ver ejemplo del N° de serie"). En ambos formularios (interno `_form` + público del QR). Sigue siendo solo para dispensadores y fail-open. Motivo: el dueño no lograba verlo (el pill era muy sutil). Sin cambios de lógica ni de tests (asserts de "Ver ejemplo" y "¿Dónde está el N° de serie?" siguen válidos); build sin cambios de bundle.
