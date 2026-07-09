@@ -248,16 +248,45 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertSessionHasErrors('cliente_telefono');
     }
 
-    /** La condicion (garantia/reparacion) elegida por el cliente se guarda. */
+    /** La condicion (reparacion) elegida por el cliente se guarda. */
     public function test_envio_publico_guarda_condicion(): void
     {
         $sucursal = $this->sucursal();
 
-        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['facturacion' => 'garantia']))
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['facturacion' => 'reparacion']))
             ->assertRedirectContains('/ingreso-taller/listo');
 
         $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'reparacion',
+            'fuente' => 'qr',
+        ]);
+    }
+
+    /** Si el cliente marca Garantia, el documento de compra es obligatorio. */
+    public function test_garantia_exige_documento_de_compra(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['facturacion' => 'garantia']))
+            ->assertSessionHasErrors(['garantia_doc_tipo', 'garantia_doc_numero', 'garantia_doc_fecha']);
+    }
+
+    /** Garantia con documento completo se guarda. */
+    public function test_garantia_con_documento_se_guarda(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
             'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-12345',
+            'garantia_doc_fecha' => now()->subMonth()->toDateString(),
+        ]))->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-12345',
             'fuente' => 'qr',
         ]);
     }
