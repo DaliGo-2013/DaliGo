@@ -180,9 +180,9 @@
     {{-- Falla observada por el TECNICO: aparte de la del cliente, para no mezclar
          ni cambiar lo que dijo. El tecnico agrega lo que el cliente no indico. --}}
     <div class="sm:col-span-2">
-        <x-input-label for="falla_tecnico" value="Falla reportada (técnico)" />
+        <x-input-label for="falla_tecnico" value="Condiciones de entrega" />
         <x-textarea id="falla_tecnico" class="mt-1.5" name="falla_tecnico" rows="2">{{ old('falla_tecnico', $o?->falla_tecnico) }}</x-textarea>
-        <x-input-hint>Opcional. Lo que agrega el técnico (fallas que el cliente no indicó). No modifica lo que reportó el cliente.</x-input-hint>
+        <x-input-hint>Opcional. Condiciones en que se recibe o entrega el equipo (estado, accesorios, acuerdos con el cliente).</x-input-hint>
         <x-input-error :messages="$errors->get('falla_tecnico')" class="mt-2" />
     </div>
 </div>

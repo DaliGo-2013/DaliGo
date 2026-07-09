@@ -114,7 +114,7 @@
                 <p class="whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_reportada ?: '—' }}</p>
                 @if ($orden->falla_tecnico)
                     <div class="mt-4 border-t border-neutral-100 pt-4">
-                        <dt class="text-xs text-neutral-400">Agregado por el técnico</dt>
+                        <dt class="text-xs text-neutral-400">Condiciones de entrega</dt>
                         <dd class="mt-0.5 whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_tecnico }}</dd>
                     </div>
                 @endif
