@@ -13,8 +13,8 @@
 
 | Asiento | Cola (en orden) |
 |---|---|
-| **Max-1** (Code) | 1) [ ] vigilancia crontab (¿`*/15` vivo?) — pendiente HOY al abrir · 2) [~] P-M14-03 bandeja móvil · 3) P-M14-04 escalamiento · 4) P-M14-05 cablear ajustar() |
-| **Max-2** (Code) | 1) [~] **I-04**: barrido de secretos full-history + prompt deploy key (dictado 08-07) · 2) micro-backlog M15 · 3) PLAN-M04 sellado |
+| **Max-1** (Code) | 1) [x] vigilancia crontab 24h — `*/15` VIVA con crontab idéntico + 4 syncs en sus slots (I-01 vigilancia CERRADA) · 2) [x] **P-M14-03** VERIFICADO 08-07 (`7a14927`, 14 archivos +501 exactos, 8 tests HTTP calzan el estándar dictado incl. doble-tap y motivo obligatorio, bundle nuevo con grep 5/5, preview 3 anchos, suite 469; el gotcha qrcode mordió y la bitácora lo resolvió en 1 min — el sistema aprende; gotcha nuevo anotado: login exige dominio @impdali.cl por validación de M12) · 3) [ ] **GO P-M14-04 + P-M14-05** · 4) P-M14-07 tests/merge/QA |
+| **Max-2** (Code) | 1) [x] I-04/I-05 despachos ejecutados · 2) [ ] **Lote DECISIONES.md** (8 fichas: D-001 TOMADA=DaliGo, D-002 TOMADA=estrategia por módulo + matriz archivada como referencia, D-003 despachada, D-005 redefinida sin contacto Bsale + Víctor=sysadmin interno, D-007 decisor=Mauricio (confusión Marco/Marcos), D-009 DESCARTADA, D-010 CERRADA, D-006 info de zonas de Héctor) + expediente I-05 a docs/qa/INFRA/ + bitácora del compromiso · 3) micro-backlog M15 · 4) PLAN-M04 sellado |
 | **Director** (Code) | Coordinación I-04 · verificación de partes · **fábrica de paquetes de contexto** para asientos de navegador |
 | **N-Investigador** (navegador) | 1) [x] Ficha D-007 entregada y aceptada 08-07 (despacho a Marco en manos del dueño) · 2) [ ] Matriz D-002 (paquete entregado 08-07) · 3) [ ] Prompt P-S0-10 (paquete entregado 08-07) |
 | **N-Escriba** (navegador) | 1) [ ] BORRADOR-soplador (paquete del flujo entregado 08-07) |
@@ -72,15 +72,23 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
-### I-05 · PHP dentro de ~/.ssh del servidor — ABIERTA, ALTA (posible webshell) (08-07)
-Hallazgo colateral del despacho deploy-key (paso 2 del operador): `~/.ssh/` del server
-contiene `blog.php` y `lufi.php` — PHP en ese directorio NO es normal (basura vieja o
-webshell) — más un `daligo.pub` huérfano sin privada visible. NO tocados (correcto).
-**Si fuera webshell, re-abre la pregunta de I-01** (¿el "reescritor de crons" era HostGator
-o alguien con acceso?). ACCIÓN: Max-2 redacta prompt de inspección SOLO LECTURA (contenido
-completo de ambos .php, fechas de creación/modificación, dueño/permisos, tamaño; buscar
-otros .php fuera de public_html; crontab -l de paso) → revisión del Director → despacho.
-NADA se borra hasta ver el contenido.
+### I-05 · SERVIDOR COMPROMETIDO — malware confirmado; remediación ASIGNADA A VÍCTOR (08-07)
+Inspección ejecutada (11/11 pasos, evidencia en el parte del operador): **405 archivos PHP
+maliciosos fuera del docroot** — `blog.php` (webshell file-manager, ofuscación `$GNJ[]()`),
+`lufi.php` (backdoor `eval(base64_decode)`), `xxx.php`/`about.php` (eval+ofuscación) —
+sembrados en `~/.ssh`, `~/.cpanel`, `~/.htpasswds`, `~/etc`, `~/mail`, `~/tmp`, `public_ftp`
+y más. Fechas: infección era **Nov 2022** (pre-DaliGo) con **Change 2026-03-09** (retoque/
+movimiento reciente). Crontab LIMPIO y grilla `*/15` viva. `.env.bak` viejos borrados (único
+[CAMBIO] autorizado). **ACLARADO POR EL DIRECTOR con evidencia criptográfica:** `daligo.pub`
+(comentario `daligo-deploy`) es la llave LEGÍTIMA de GitHub Actions→server — fingerprint
+computado `SHA256:m2QhGnkDrl3a...` = exacto al de bitácora 2026-06-05; su privada vive en
+GitHub Secrets (por eso parece huérfana). La llave "creada hoy 10:55" que alertó Max-1 =
+nuestra deploy key T2. `authorized_keys` (1 llave) correcto — NO TOCAR. **REMEDIACIÓN: fuera
+del alcance de la flota → asignada a VÍCTOR (sysadmin humano de DALI)** con paquete de
+evidencia + pedidos: limpieza/scan (o ticket a HostGator con la lista de 405), rotar la clave
+del cPanel, revisar cuentas FTP/correo/usuarios desconocidos. Nota I-01: con malware activo
+el "reescritor de crons" admite segunda hipótesis, pero el patrón ≥15 min + crontab hoy limpio
+mantienen a HostGator como principal; re-evaluar tras la limpieza.
 
 ### I-04 — CERRADA 08-07: FALSO POSITIVO confirmado + rotaciones hechas + gate LIBERADO
 Causa confirmada con el detalle de la alerta (captura del dueño): GitGuardian tomó el

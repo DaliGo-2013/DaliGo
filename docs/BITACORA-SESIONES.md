@@ -26,6 +26,16 @@
 - **Qué se hizo:** (rama `feature/st-listado-recibido-por`) el listado de ST ahora muestra una línea "Recibido por {nombre}" bajo los datos de cada orden (solo si `recibida_por` está poblado), para ver de un vistazo quién registró/confirmó sin abrir la orden. El dato ya existía en el detalle (`show.blade.php:95`) y se guarda al registrar en mostrador (`store`) y al confirmar un ingreso por QR (`confirmar`, queda el nombre del que confirma, ej. "JefeBodega Test"). Órdenes previas a la función (`recibida_por` null) simplemente no muestran la línea. 1 test nuevo (`test_index_muestra_recibido_por`). Suite 456 verdes; build sin cambios de bundle.
 - **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
 
+### [2026-07-08 · tarde] Stream 1 · P-M14-04/05 hechos en rama: escalamiento + `ajustar()` cableado — el motor ya opera E2E
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — GO del Director (P-M14-03 verificado [x] por él; I-05 aclarada: malware 2022 real → remediación con Víctor, llaves limpias)
+- **Objetivo declarado:** P-M14-04 (escalamiento por scheduler) + P-M14-05 (cablear `ajustar()`).
+- **Qué se hizo:** commit `7a01da2` en `feature/m14-aprobaciones`:
+  - **P-M14-04:** `Aprobaciones::escalarVencidas()` (pendientes nivel 0 más viejas que `aprobacion_escala_minutos` con regla escalable: lock+re-check por fila — idioma de `notificaciones:reintentar` — y re-notificación `aprobacion.escalada` al rol NUEVO); comando `aprobaciones:escalar` agendado `everyFifteenMinutes()`+`withoutOverlapping(15)` con test que fija la expresión `*/15` (doctrina I-01). Escalada NO es estado: nivel+timestamp+rol reescrito; badge ya estaba en la bandeja.
+  - **P-M14-05:** `ProduccionController::ajustar()` pasa por el motor — validación INTACTA, la transacción migró al handler. Magnitud = Σ|Δ| de las 5 cantidades: bajo umbral se auto-aprueba y aplica en el mismo request (UX de siempre + fila histórica); sobre umbral queda pendiente para admin con el reporte INTACTO y flash honesto; el propio admin fluye sin fricción. **Los tests históricos de `ajustar` siguieron verdes SIN cambios** (no siembran la regla → auto-aprueban → cubren la semántica original por construcción).
+  - 10 tests nuevos (5+5, incluye el conflicto real: solicitud vieja vs ajuste interino → rechazo automático y el estado interino sobrevive). **Suite 479 verdes.** Gotcha PHP para la posteridad: `*/15` dentro de un docblock CIERRA el comentario — en docblocks se escribe "grilla de 15 min".
+- **Pasos marcados:** ninguno en RUTA (rama; al merge de P-M14-07). · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+- **Próximo paso:** **P-M14-07** (suite + gate `/pre-merge` R-31 + merge a main + QA staging desde celular) — E2·M14 completa 6 de 7 pasos; P-M14-06 (historial admin) puede ir antes o después del merge según dicte el Director.
+
 ### [2026-07-08] Servicio Técnico: N° de serie obligatorio solo para dispensador/lavadora (opcional para bombas/herramientas)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/serie-condicional-por-tipo`, merge pendiente en este push)
