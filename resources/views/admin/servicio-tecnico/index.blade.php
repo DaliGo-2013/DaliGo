@@ -148,6 +148,11 @@
                                 @endif
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
+                            {{-- Quién recibió/confirmó la orden (al registrar en mostrador o al
+                                 confirmar un ingreso por QR). Solo si el dato existe. --}}
+                            @if ($orden->recibida_por)
+                                <p class="truncate text-xs text-neutral-400">Recibido por {{ $orden->recibida_por }}</p>
+                            @endif
                         </a>
 
                         <x-slot name="meta">

@@ -572,6 +572,14 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Beta Ltda')->assertDontSee('Alfa SpA');
     }
 
+    public function test_index_muestra_recibido_por(): void
+    {
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Epsilon SpA', 'recibida_por' => 'JefeBodega Test']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico')
+            ->assertOk()->assertSee('Recibido por JefeBodega Test');
+    }
+
     public function test_index_search_matches_cliente_and_serie(): void
     {
         OrdenServicio::factory()->create(['cliente_nombre' => 'Gamma Importadora', 'numero_serie' => 'SN-XYZ-9']);
