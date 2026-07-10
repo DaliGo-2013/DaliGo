@@ -125,6 +125,9 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
+            // Informe de estadisticas por periodo (año o mes) para los jefes.
+            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informe'])
+                ->name('servicio-tecnico.informe');
             // Foto de recepcion (disco privado, servida con sesion). ANTES del show
             // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
             Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])
