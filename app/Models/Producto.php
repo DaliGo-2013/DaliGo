@@ -54,28 +54,52 @@ class Producto extends Model implements AuditableContract
     }
 
     /**
+     * Normaliza un nombre de categoría para comparar de forma tolerante:
+     * minúsculas, sin acentos, sin puntuación (el punto de "disp." u otros) y
+     * espacios colapsados. Así "AGUA DISP. PEDESTAL…" (Bsale) calza con
+     * "agua disp pedestal…" (config) aunque difieran en puntuación/mayúsculas.
+     */
+    public static function normalizarCategoria(?string $s): string
+    {
+        $s = \Illuminate\Support\Str::ascii(mb_strtolower(trim((string) $s)));
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+
+        return trim(preg_replace('/\s+/', ' ', $s));
+    }
+
+    /**
      * Solo "equipos de taller" (dispensadores, lavadoras, bombas, herramientas):
-     * productos cuya `categoria` (el product_type espejado de Bsale) esté en
-     * config('servicio_tecnico.categorias_equipo'). Excluye accesorios/repuestos
-     * del buscador público del QR. Comparación case-insensitive (LOWER) para
-     * tolerar diferencias de mayúsculas entre lo configurado y lo que manda
-     * Bsale; portable MySQL 5.7 / SQLite. Lista vacía = no filtra (evita dejar
-     * el buscador sin resultados por una config faltante).
+     * productos cuya `categoria` (el product_type espejado de Bsale), NORMALIZADA,
+     * calce con alguna de `config('servicio_tecnico.categorias_equipo')`. Excluye
+     * accesorios/repuestos del buscador público del QR. El match es tolerante a
+     * mayúsculas/acentos/puntuación (ver normalizarCategoria) para no depender de
+     * que el nombre en Bsale coincida carácter a carácter con el config. Lista
+     * vacía = no filtra (evita dejar el buscador sin resultados por config faltante).
      */
     public function scopeEquipoTaller(Builder $query): Builder
     {
-        $categorias = collect(config('servicio_tecnico.categorias_equipo', []))
-            ->map(fn ($c) => mb_strtolower(trim((string) $c)))
+        $objetivo = collect(config('servicio_tecnico.categorias_equipo', []))
+            ->map(fn ($c) => self::normalizarCategoria($c))
             ->filter()
+            ->unique()
             ->values();
 
-        if ($categorias->isEmpty()) {
+        if ($objetivo->isEmpty()) {
             return $query;
         }
 
-        $placeholders = $categorias->map(fn () => '?')->implode(',');
+        // Categorías reales del catálogo (los product_types son pocas decenas)
+        // cuya forma normalizada calza con el allowlist. Se filtra por el valor
+        // ORIGINAL para no depender de normalización en SQL (portable 5.7/SQLite).
+        $categoriasOk = static::query()
+            ->whereNotNull('categoria')
+            ->distinct()
+            ->pluck('categoria')
+            ->filter(fn ($c) => $objetivo->contains(self::normalizarCategoria($c)))
+            ->values()
+            ->all();
 
-        return $query->whereRaw("LOWER(categoria) IN ({$placeholders})", $categorias->all());
+        return $query->whereIn('categoria', $categoriasOk);
     }
 
     /** @return HasMany<Precio, $this> */
