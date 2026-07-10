@@ -366,3 +366,59 @@ const dibujarQrsMostrador = () => {
 };
 if (document.readyState !== 'loading') dibujarQrsMostrador();
 else document.addEventListener('DOMContentLoaded', dibujarQrsMostrador);
+
+/**
+ * Optimización de fotos EN EL NAVEGADOR antes de subir (ingreso por QR).
+ * Las fotos de celular (12MP+) pesan varios MB y decodificarlas en el servidor
+ * con GD agota la memoria del hosting (error 500 y no se envía). Aquí se
+ * redimensionan a MAX_LADO_FOTO px y se re-encodan a JPEG, dejando el archivo en
+ * ~200-400 KB: subida liviana y rápida, y el servidor la procesa sin problema.
+ * Convierte HEIC de iPhone a JPEG de paso (Safari decodifica HEIC en el <img>).
+ * Si algo falla, se sube el original (el servidor igual comprime como respaldo).
+ */
+const MAX_LADO_FOTO = 1600;
+
+async function comprimirImagenCliente(file) {
+    const url = URL.createObjectURL(file);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const im = new Image();
+            im.onload = () => resolve(im);
+            im.onerror = reject;
+            im.src = url;
+        });
+
+        const lado = Math.max(img.naturalWidth, img.naturalHeight);
+        const escala = Math.min(1, MAX_LADO_FOTO / lado);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * escala);
+        canvas.height = Math.round(img.naturalHeight * escala);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+        if (!blob) return null;
+
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+// Reemplaza el archivo del input por su versión liviana. Se llama desde el
+// onchange de los inputs de foto del formulario del QR. No deshabilita el input
+// (para no perder el archivo si el usuario envía justo durante el proceso).
+window.optimizarFotoInput = async function (input) {
+    const file = input.files && input.files[0];
+    if (!file || !file.type.startsWith('image/')) return; // no-imagen (o vacío): dejar al servidor
+
+    try {
+        const liviana = await comprimirImagenCliente(file);
+        if (liviana && liviana.size < file.size) {
+            const dt = new DataTransfer();
+            dt.items.add(liviana);
+            input.files = dt.files;
+        }
+    } catch (e) {
+        // Si falla, se sube el original; el servidor comprime igual (con más memoria).
+    }
+};
