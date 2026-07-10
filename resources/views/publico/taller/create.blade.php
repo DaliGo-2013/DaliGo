@@ -221,13 +221,13 @@
                     <div class="mt-3 space-y-3">
                         <div>
                             <label for="foto_1" class="mb-1 block text-sm font-medium text-neutral-700">Foto 1</label>
-                            <input id="foto_1" name="fotos[]" type="file" accept="image/*" capture="environment" required
+                            <input id="foto_1" name="fotos[]" type="file" accept="image/*" capture="environment" required onchange="optimizarFotoInput(this)"
                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
                             <x-input-error :messages="$errors->get('fotos.0')" class="mt-1.5" />
                         </div>
                         <div>
                             <label for="foto_2" class="mb-1 block text-sm font-medium text-neutral-700">Foto 2</label>
-                            <input id="foto_2" name="fotos[]" type="file" accept="image/*" capture="environment" required
+                            <input id="foto_2" name="fotos[]" type="file" accept="image/*" capture="environment" required onchange="optimizarFotoInput(this)"
                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
                             <x-input-error :messages="$errors->get('fotos.1')" class="mt-1.5" />
                         </div>
