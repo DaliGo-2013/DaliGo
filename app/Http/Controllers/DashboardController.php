@@ -60,12 +60,20 @@ class DashboardController extends Controller
         }
 
         if ($user->can('manage servicio tecnico')) {
-            $indicadores[] = [
-                'label' => 'Equipos en taller',
-                'valor' => OrdenServicio::where('estado', '!=', 'entregado')->count(),
-                'href' => route('admin.servicio-tecnico.index'),
-                'alerta' => true,
-            ];
+            // Un solo COUNT agrupado por estado (sin N+1). Cada card enlaza al
+            // listado ya filtrado por ese estado (donde se ve tipo/equipo).
+            $porEstado = OrdenServicio::selectRaw('estado, COUNT(*) as c')
+                ->groupBy('estado')->pluck('c', 'estado');
+            $enTaller = (int) $porEstado->except(['entregado'])->sum();
+            $link = fn (?string $estado = null) => route('admin.servicio-tecnico.index', $estado ? ['estado' => $estado] : []);
+
+            $indicadores[] = ['label' => 'Equipos en taller', 'valor' => $enTaller, 'href' => $link(), 'alerta' => true];
+            // Los 4 estados clave del paso a paso. "Cotización" = esperando la
+            // respuesta del cliente (lo más urgente) → se destaca.
+            $indicadores[] = ['label' => 'Cotización (espera cliente)', 'valor' => (int) ($porEstado['cotizacion'] ?? 0), 'href' => $link('cotizacion'), 'alerta' => true];
+            $indicadores[] = ['label' => 'Reparado', 'valor' => (int) ($porEstado['reparado'] ?? 0), 'href' => $link('reparado'), 'alerta' => false];
+            $indicadores[] = ['label' => 'Entregado', 'valor' => (int) ($porEstado['entregado'] ?? 0), 'href' => $link('entregado'), 'alerta' => false];
+            $indicadores[] = ['label' => 'Sin solución', 'valor' => (int) ($porEstado['sin_solucion'] ?? 0), 'href' => $link('sin_solucion'), 'alerta' => false];
         }
 
         if ($user->can('view users')) {

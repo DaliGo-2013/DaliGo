@@ -38,7 +38,7 @@
 
             {{-- Indicadores accionables --}}
             @if (count($indicadores))
-                <div class="dg-enter grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                     @foreach ($indicadores as $ind)
                         <x-stat-card :label="$ind['label']" :valor="$ind['valor']" :href="$ind['href']" :alerta="$ind['alerta']" />
                     @endforeach
