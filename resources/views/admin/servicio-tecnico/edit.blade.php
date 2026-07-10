@@ -32,6 +32,11 @@
                 <x-icon.arrow-right class="h-5 w-5 shrink-0 text-brand-600" />
             </a>
 
+            {{-- Fotos que sacó el cliente al ingresar (estado del equipo). --}}
+            <div class="mb-4">
+                @include('admin.servicio-tecnico._fotos')
+            </div>
+
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
                 <form id="orden-servicio-form" method="POST" action="{{ route('admin.servicio-tecnico.update', $orden) }}" class="space-y-6">
                     @csrf
