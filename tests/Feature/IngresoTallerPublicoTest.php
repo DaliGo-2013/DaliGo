@@ -203,6 +203,21 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertExactJson([]);
     }
 
+    public function test_buscar_producto_publico_matchea_categoria_con_puntuacion_distinta(): void
+    {
+        // El match es tolerante a puntuación/mayúsculas: la categoría real de
+        // Bsale "AGUA DISP PEDESTAL COMPRESOR Y VENTILADOR" (sin el punto de
+        // "disp.") debe calzar igual con el config y mostrar el dispensador.
+        $disp = Producto::factory()->create([
+            'sku' => '1040001', 'nombre' => 'DISP. LB-16 L/D BLUE/SILVER',
+            'categoria' => 'AGUA DISP PEDESTAL COMPRESOR Y VENTILADOR',
+        ]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-16']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $disp->id]);
+    }
+
     public function test_buscar_producto_publico_exige_dos_caracteres(): void
     {
         Producto::factory()->create(['sku' => 'X1']);
