@@ -155,7 +155,11 @@ class IngresoTallerPublicoController extends Controller
             return response()->json([]);
         }
 
+        // Solo equipos de taller (dispensadores, lavadoras, bombas, herramientas):
+        // el cliente no debe ver accesorios/repuestos del catálogo. El buscador
+        // del mostrador (staff) NO aplica este filtro.
         $productos = Producto::query()
+            ->equipoTaller()
             ->where(fn (Builder $w) => $w
                 ->where('sku', 'like', "%{$q}%")
                 ->orWhere('nombre', 'like', "%{$q}%"))

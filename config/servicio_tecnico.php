@@ -39,4 +39,33 @@ return [
 
     'sucursales_recepcion' => ['MIRADOR', 'COQUIMBO', 'ABATE-MOLINA'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Categorías consideradas "equipo de taller"
+    |--------------------------------------------------------------------------
+    |
+    | El buscador de código del formulario PÚBLICO (QR del cliente) solo sugiere
+    | productos cuyo `categoria` (el "tipo de producto" espejado desde Bsale)
+    | esté en esta lista: los cuatro tipos que sí van a servicio técnico
+    | (dispensadores, lavadoras, bombas, herramientas). Así el cliente no ve
+    | accesorios/repuestos (ej. "Soporte rosa") que no aplican.
+    |
+    | La comparación es case-insensitive, pero el resto del nombre (acentos,
+    | puntuación) debe coincidir EXACTO con lo que Bsale manda en el sync. Si un
+    | tipo de dispensador/bomba nuevo no aparece en el buscador, agrega aquí su
+    | categoría tal como sale en el catálogo (admin → Productos muestra la
+    | categoría de cada uno). Lista vacía = no filtra (muestra todo el catálogo).
+    |
+    | El buscador del MOSTRADOR (staff) NO usa este filtro: ve todo el catálogo.
+    |
+    */
+
+    'categorias_equipo' => [
+        'agua bomba usb',
+        'agua disp. pedestal compresor y ventilador',
+        'agua disp. sobremesa compresor y ventilador',
+        'agua lavadora',
+        'herramientas',
+    ],
+
 ];
