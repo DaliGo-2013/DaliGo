@@ -155,6 +155,50 @@ class ServicioTecnicoInformeTest extends TestCase
             });
     }
 
+    public function test_filtra_todos_los_indicadores_por_tipo_de_equipo(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['fecha_ingreso' => '2026-06-10', 'tipo_equipo' => 'bomba']);
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2026-06-12', 'tipo_equipo' => 'dispensador']);
+
+        // Filtrado a bomba: solo cuenta las 2 bombas.
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6&tipo=bomba')
+            ->assertOk()
+            ->assertViewHas('kpis.total', 2)
+            ->assertViewHas('tipo', 'bomba')
+            ->assertViewHas('tipoLabel', 'Bomba de agua');
+
+        // Sin tipo = todos (las 3).
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+            ->assertOk()
+            ->assertViewHas('kpis.total', 3)
+            ->assertViewHas('tipo', null)
+            ->assertViewHas('tipoLabel', 'Todos los equipos');
+    }
+
+    public function test_rechaza_tipo_invalido(): void
+    {
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?tipo=camion')
+            ->assertSessionHasErrors('tipo');
+    }
+
+    public function test_desglose_por_causa_de_falla(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['fecha_ingreso' => '2026-06-10', 'causa_falla' => 'mal_uso']);
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2026-06-12', 'causa_falla' => 'uso_normal']);
+        // Sin diagnosticar => se agrupa como "sin_determinar".
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2026-06-15', 'causa_falla' => null]);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+            ->assertOk()
+            ->assertViewHas('porCausa', function ($causas) {
+                $porClave = $causas->keyBy('causa');
+
+                return (int) $porClave['mal_uso']->cantidad === 2
+                    && (int) $porClave['uso_normal']->cantidad === 1
+                    && (int) $porClave['sin_determinar']->cantidad === 1;
+            });
+    }
+
     // --- Repuestos ---
 
     public function test_repuestos_se_agregan_por_periodo(): void

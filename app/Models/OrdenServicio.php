@@ -20,13 +20,36 @@ class OrdenServicio extends Model implements AuditableContract
     /** @use HasFactory<\Database\Factories\OrdenServicioFactory> */
     use HasFactory, AuditableTrait;
 
-    public const TIPOS = ['dispensador', 'lavadora', 'herramienta', 'otro'];
+    // 'otro' es el comodin (equipos que no calzan con los tipos con nombre).
+    public const TIPOS = ['dispensador', 'lavadora', 'bomba', 'herramienta', 'otro'];
+
+    // Etiqueta visible por tipo (el valor guardado es la clave, en minuscula y
+    // sin espacios). Se usa en selectores, listados, detalle e informe para que
+    // el rotulo sea consistente en todos lados (ej. 'bomba' -> "Bomba de agua").
+    public const TIPO_ETIQUETAS = [
+        'dispensador' => 'Dispensador',
+        'lavadora' => 'Lavadora',
+        'bomba' => 'Bomba de agua',
+        'herramienta' => 'Herramienta',
+        'otro' => 'Otro',
+    ];
 
     // Tipos cuyo N° de serie es OBLIGATORIO: tienen una serie unica e importante
-    // (dispensadores y lavadoras). El resto (herramienta/otro, ej. bombas de agua)
-    // es opcional -> no tienen serie unica por equipo. Usado por la validacion y
-    // por el formulario (asterisco + required dinamico segun el tipo elegido).
+    // (dispensadores y lavadoras). El resto (bomba/herramienta/otro) es opcional
+    // -> no tienen serie unica por equipo. Usado por la validacion y por el
+    // formulario (asterisco + required dinamico segun el tipo elegido).
     public const SERIE_OBLIGATORIA_TIPOS = ['dispensador', 'lavadora'];
+
+    // Causa de la falla que diagnostica el TECNICO al reparar (opcional; null =
+    // sin determinar). Indicador clave: separa las fallas por mal uso del cliente
+    // (oportunidad de capacitacion) de las de desgaste normal o defecto de fabrica.
+    public const CAUSAS_FALLA = ['mal_uso', 'uso_normal', 'falla_fabrica'];
+
+    public const CAUSA_FALLA_ETIQUETAS = [
+        'mal_uso' => 'Mal uso del cliente',
+        'uso_normal' => 'Desgaste por uso normal',
+        'falla_fabrica' => 'Falla de fábrica / defecto',
+    ];
 
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     // 'cotizacion' = se le paso presupuesto al cliente y se espera su aprobacion
@@ -71,6 +94,7 @@ class OrdenServicio extends Model implements AuditableContract
         'numero_serie',
         'falla_reportada',
         'falla_tecnico',
+        'causa_falla',
         'estado',
         'facturacion',
         'garantia_doc_tipo',
@@ -139,6 +163,33 @@ class OrdenServicio extends Model implements AuditableContract
     public function getEstadoVarianteAttribute(): string
     {
         return self::ESTADO_VARIANTES[$this->estado] ?? 'brand';
+    }
+
+    /**
+     * Etiqueta visible del tipo de equipo (ej. 'bomba' -> "Bomba de agua").
+     * Fallback a ucfirst para tipos historicos que no esten en el mapa.
+     */
+    public static function etiquetaTipo(?string $tipo): string
+    {
+        if ($tipo === null || $tipo === '') {
+            return '';
+        }
+
+        return self::TIPO_ETIQUETAS[$tipo] ?? ucfirst($tipo);
+    }
+
+    public function getTipoEquipoLabelAttribute(): string
+    {
+        return self::etiquetaTipo($this->tipo_equipo);
+    }
+
+    /**
+     * Etiqueta visible de la causa de la falla. Null = "Sin determinar" (el
+     * tecnico aun no la diagnostico o no aplica).
+     */
+    public function getCausaFallaLabelAttribute(): string
+    {
+        return self::CAUSA_FALLA_ETIQUETAS[$this->causa_falla] ?? 'Sin determinar';
     }
 
     /**

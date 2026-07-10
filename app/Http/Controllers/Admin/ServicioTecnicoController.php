@@ -90,7 +90,7 @@ class ServicioTecnicoController extends Controller
      */
     public function informe(Request $request): View
     {
-        [$desde, $hasta, $anio, $mes] = $this->periodoInforme($request);
+        [$desde, $hasta, $anio, $mes, $tipo] = $this->periodoInforme($request);
 
         // KPIs en una pasada. Se agrega sobre la columna cruda `facturacion`
         // (la condicion registrada al ingreso): condicion_efectiva es un
@@ -98,48 +98,63 @@ class ServicioTecnicoController extends Controller
         // 'reparacion' al registrar, asi que en la practica coinciden.
         // Reparaciones = total - garantias (igual que condicion_efectiva:
         // las ordenes viejas con facturacion NULL cuentan como reparacion).
-        $kpis = $this->ordenesDelPeriodo($desde, $hasta)->selectRaw("
+        $kpis = $this->ordenesDelPeriodo($desde, $hasta, $tipo)->selectRaw("
             COUNT(*) AS total,
             SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) AS garantias
         ")->first();
 
-        $porTipo = $this->ordenesDelPeriodo($desde, $hasta)
+        $porTipo = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
             ->selectRaw('tipo_equipo AS nombre, COUNT(*) AS cantidad')
             ->groupBy('tipo_equipo')->orderByDesc('cantidad')->get();
 
-        $porEstado = $this->ordenesDelPeriodo($desde, $hasta)
+        $porEstado = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
             ->selectRaw('estado AS nombre, COUNT(*) AS cantidad')
             ->groupBy('estado')->orderByDesc('cantidad')->get();
+
+        // Por causa de la falla (indicador de capacitacion): mal uso / desgaste
+        // / fabrica; las NULL se agrupan como "sin_determinar". COALESCE es
+        // portable MySQL 5.7 / SQLite.
+        $porCausa = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->selectRaw("COALESCE(causa_falla, 'sin_determinar') AS causa, COUNT(*) AS cantidad")
+            ->groupBy('causa')->orderByDesc('cantidad')->get();
 
         // "Que equipo ingresa mas": por producto del catalogo (el campo `modelo`
         // es texto libre y no agrupa bien). Los ingresos por QR sin codigo caen
         // en la fila "Sin código". MAX() por ONLY_FULL_GROUP_BY (MySQL 5.7).
-        $topEquipos = $this->ordenesDelPeriodo($desde, $hasta)
+        $topEquipos = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
             ->leftJoin('productos', 'productos.id', '=', 'ordenes_servicio.producto_id')
             ->selectRaw('ordenes_servicio.producto_id AS id, MAX(productos.nombre) AS nombre, MAX(productos.sku) AS sku, COUNT(*) AS cantidad')
             ->groupBy('ordenes_servicio.producto_id')
             ->orderByDesc('cantidad')->limit(10)->get();
 
-        $topClientes = $this->ordenesDelPeriodo($desde, $hasta)
+        $topClientes = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
             ->selectRaw('cliente_rut, MAX(cliente_nombre) AS nombre, COUNT(*) AS cantidad')
             ->groupBy('cliente_rut')
             ->orderByDesc('cantidad')->limit(10)->get();
 
         // Repuestos usados en las ordenes del periodo, agregados por nombre.
+        // Mismo filtro de tipo que el resto del informe (para calcular compras
+        // por tipo de equipo).
         $repuestos = OrdenServicioRepuesto::query()
             ->join('ordenes_servicio', 'ordenes_servicio.id', '=', 'orden_servicio_repuestos.orden_servicio_id')
             ->whereDate('ordenes_servicio.fecha_ingreso', '>=', $desde)
             ->whereDate('ordenes_servicio.fecha_ingreso', '<=', $hasta)
+            ->when($tipo, fn (Builder $qb) => $qb->where('ordenes_servicio.tipo_equipo', $tipo))
             ->selectRaw('orden_servicio_repuestos.nombre AS nombre, SUM(orden_servicio_repuestos.cantidad) AS unidades, COUNT(DISTINCT orden_servicio_repuestos.orden_servicio_id) AS ordenes')
             ->groupBy('orden_servicio_repuestos.nombre')
             ->orderByDesc('unidades')->get();
 
         $total = (int) ($kpis->total ?? 0);
+        $periodoLabel = $mes
+            ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
+            : 'Año '.$anio;
 
         return view('admin.servicio-tecnico.informe', [
             'anio' => $anio,
             'mes' => $mes,
+            'tipo' => $tipo,
             'anios' => $this->aniosDisponibles(),
+            'tipos' => OrdenServicio::TIPOS,
             'kpis' => [
                 'total' => $total,
                 'garantias' => (int) ($kpis->garantias ?? 0),
@@ -148,14 +163,14 @@ class ServicioTecnicoController extends Controller
             ],
             'porTipo' => $porTipo,
             'porEstado' => $porEstado,
+            'porCausa' => $porCausa,
             'topEquipos' => $topEquipos,
             'topClientes' => $topClientes,
             'repuestos' => $repuestos->take(15)->values(),
             'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
             'totalNombresRepuestos' => $repuestos->count(),
-            'periodoLabel' => $mes
-                ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
-                : 'Año '.$anio,
+            'periodoLabel' => $periodoLabel,
+            'tipoLabel' => $tipo ? OrdenServicio::etiquetaTipo($tipo) : 'Todos los equipos',
         ]);
     }
 
@@ -328,6 +343,7 @@ class ServicioTecnicoController extends Controller
         return view('admin.servicio-tecnico.reparacion', [
             'orden' => $orden->load(['producto', 'repuestos']),
             'estados' => OrdenServicio::ESTADOS,
+            'causasFalla' => OrdenServicio::CAUSAS_FALLA,
         ]);
     }
 
@@ -339,6 +355,8 @@ class ServicioTecnicoController extends Controller
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
+            // Causa de la falla (diagnostico del tecnico): opcional; '' -> null.
+            'causa_falla' => ['nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             'mano_obra' => ['nullable', 'integer', 'min:0'],
             'fecha_aviso' => ['nullable', 'date'],
             'fecha_retiro' => ['nullable', 'date'],
@@ -375,6 +393,7 @@ class ServicioTecnicoController extends Controller
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
+            'causa_falla' => $data['causa_falla'] ?? null,
             'mano_obra' => $data['mano_obra'] ?? null,
             'fecha_aviso' => $data['fecha_aviso'] ?? null,
             'fecha_retiro' => $data['fecha_retiro'] ?? null,
@@ -621,19 +640,22 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Periodo del informe: un mes puntual o el año completo. Sin parametros =
-     * mes actual; con solo `anio` = ese año completo ("Todo el año").
-     * Devuelve [desde Y-m-d, hasta Y-m-d, anio, mes|null].
+     * Periodo del informe: un mes puntual o el año completo, opcionalmente
+     * acotado a un tipo de equipo. Sin parametros = mes actual y todos los
+     * tipos; con solo `anio` = ese año completo ("Todo el año").
+     * Devuelve [desde Y-m-d, hasta Y-m-d, anio, mes|null, tipo|null].
      */
     private function periodoInforme(Request $request): array
     {
         $v = $request->validate([
             'anio' => ['nullable', 'integer', 'between:2020,2100'],
             'mes' => ['nullable', 'integer', 'between:1,12'],
+            'tipo' => ['nullable', Rule::in(OrdenServicio::TIPOS)],
         ]);
 
         $anio = isset($v['anio']) ? (int) $v['anio'] : null;
         $mes = isset($v['mes']) ? (int) $v['mes'] : null;
+        $tipo = $v['tipo'] ?? null;
 
         if ($anio === null) {
             $anio = now()->year;
@@ -643,19 +665,20 @@ class ServicioTecnicoController extends Controller
         $desde = Carbon::create($anio, $mes ?? 1, 1);
         $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
 
-        return [$desde->toDateString(), $hasta->toDateString(), $anio, $mes];
+        return [$desde->toDateString(), $hasta->toDateString(), $anio, $mes, $tipo];
     }
 
     /**
-     * Ordenes cuyo ingreso cae dentro del rango [desde, hasta] (Y-m-d).
-     * whereDate en ambos bordes: portable (MySQL 5.7 / SQLite) y usa el
-     * indice de fecha_ingreso.
+     * Ordenes cuyo ingreso cae dentro del rango [desde, hasta] (Y-m-d),
+     * opcionalmente de un solo tipo de equipo. whereDate en ambos bordes:
+     * portable (MySQL 5.7 / SQLite) y usa el indice de fecha_ingreso.
      */
-    private function ordenesDelPeriodo(string $desde, string $hasta): Builder
+    private function ordenesDelPeriodo(string $desde, string $hasta, ?string $tipo = null): Builder
     {
         return OrdenServicio::query()
             ->whereDate('fecha_ingreso', '>=', $desde)
-            ->whereDate('fecha_ingreso', '<=', $hasta);
+            ->whereDate('fecha_ingreso', '<=', $hasta)
+            ->when($tipo, fn (Builder $qb, $t) => $qb->where('tipo_equipo', $t));
     }
 
     /**

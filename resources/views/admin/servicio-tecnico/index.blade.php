@@ -9,7 +9,7 @@
                     </x-icon-button>
                     {{-- Informe de estadísticas (visible también para roles de solo
                          lectura); se lleva el período que esté seleccionado. --}}
-                    <x-secondary-link :href="route('admin.servicio-tecnico.informe', array_filter(['anio' => $filtros['anio'] ?? null, 'mes' => $filtros['mes'] ?? null], fn ($v) => $v !== null && $v !== ''))">Informe</x-secondary-link>
+                    <x-secondary-link :href="route('admin.servicio-tecnico.informe', array_filter(['anio' => $filtros['anio'] ?? null, 'mes' => $filtros['mes'] ?? null, 'tipo' => $filtros['tipo_equipo'] ?? null], fn ($v) => $v !== null && $v !== ''))">Informe</x-secondary-link>
                     @can('manage servicio tecnico')
                         <x-secondary-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-secondary-link>
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
@@ -45,7 +45,7 @@
                                             <span class="truncate font-medium text-neutral-900">{{ $p->cliente_nombre }}</span>
                                         </div>
                                         <p class="truncate text-sm text-neutral-500">
-                                            {{ collect([ucfirst($p->tipo_equipo), $p->numero_serie ? 'N° '.$p->numero_serie : null, $p->sucursal?->nombre])->filter()->implode(' · ') }}
+                                            {{ collect([$p->tipo_equipo_label, $p->numero_serie ? 'N° '.$p->numero_serie : null, $p->sucursal?->nombre])->filter()->implode(' · ') }}
                                         </p>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
@@ -84,7 +84,7 @@
                     <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5">
                         <option value="">Todos</option>
                         @foreach ($tipos as $t)
-                            <option value="{{ $t }}" @selected(($filtros['tipo_equipo'] ?? '') === $t)>{{ ucfirst($t) }}</option>
+                            <option value="{{ $t }}" @selected(($filtros['tipo_equipo'] ?? '') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
                         @endforeach
                     </x-select>
                 </div>
@@ -195,7 +195,7 @@
                         @php
                             $detalle = collect([
                                 $orden->cliente_rut,
-                                ucfirst($orden->tipo_equipo),
+                                $orden->tipo_equipo_label,
                                 $orden->producto?->sku,
                                 $orden->modelo ?: null,
                                 $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
