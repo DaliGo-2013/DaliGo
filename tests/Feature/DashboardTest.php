@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
 use App\Models\Producto;
@@ -58,6 +59,33 @@ class DashboardTest extends TestCase
             ->assertDontSee('Reportes por revisar')
             ->assertDontSee('Administración')
             ->assertDontSee('Usuarios');
+    }
+
+    public function test_tecnico_ve_cards_por_estado_con_conteos_y_enlaces(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['estado' => 'cotizacion']);
+        OrdenServicio::factory()->create(['estado' => 'reparado']);
+        OrdenServicio::factory()->count(3)->create(['estado' => 'entregado']);
+        OrdenServicio::factory()->create(['estado' => 'sin_solucion']);
+        OrdenServicio::factory()->create(['estado' => 'recibido']);
+
+        $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
+
+        $res->assertOk()
+            ->assertSee('Equipos en taller')
+            ->assertSee('Cotización (espera cliente)')
+            ->assertSee('Reparado')
+            ->assertSee('Entregado')
+            ->assertSee('Sin solución')
+            // enlaces al listado filtrado por estado
+            ->assertSee(route('admin.servicio-tecnico.index', ['estado' => 'cotizacion']), false)
+            ->assertSee(route('admin.servicio-tecnico.index', ['estado' => 'sin_solucion']), false);
+
+        // "Equipos en taller" = todo lo que no está entregado (2+1+1+1 = 5).
+        $indicadores = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(5, $indicadores['Equipos en taller']['valor']);
+        $this->assertSame(2, $indicadores['Cotización (espera cliente)']['valor']);
+        $this->assertSame(3, $indicadores['Entregado']['valor']);
     }
 
     public function test_member_sees_only_greeting(): void
