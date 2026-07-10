@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\OrdenServicioFoto;
 use App\Models\OrdenServicioRepuesto;
 use App\Models\Producto;
 use App\Models\Sucursal;
@@ -17,10 +18,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Servicio Tecnico (taller): ingreso de maquinas y lavadoras. Version basica =
@@ -195,9 +198,21 @@ class ServicioTecnicoController extends Controller
     public function show(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.show', [
-            'orden' => $orden->load(['producto', 'sucursal', 'repuestos']),
+            'orden' => $orden->load(['producto', 'sucursal', 'repuestos', 'fotos']),
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
         ]);
+    }
+
+    /**
+     * Sirve una foto de recepcion desde el disco PRIVADO `local`. Solo para
+     * usuarios con sesion y permiso de ver servicio tecnico (la ruta lo exige);
+     * NO es una URL publica adivinable.
+     */
+    public function foto(OrdenServicioFoto $foto): StreamedResponse
+    {
+        abort_unless(Storage::disk('local')->exists($foto->ruta), 404);
+
+        return Storage::disk('local')->response($foto->ruta);
     }
 
     public function edit(OrdenServicio $orden): View

@@ -57,7 +57,7 @@
                 Completa los datos de tu equipo. Cuando termines, muéstrale la pantalla al encargado del mostrador.
             </p>
 
-            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5">
+            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
 
@@ -206,6 +206,33 @@
                     <x-textarea id="falla_reportada" name="falla_reportada" rows="4" class="mt-1.5 block w-full"
                                 required placeholder="Cuéntanos la falla que notaste">{{ old('falla_reportada') }}</x-textarea>
                     <x-input-error :messages="$errors->get('falla_reportada')" class="mt-1.5" />
+                </div>
+
+                <hr class="border-neutral-200">
+
+                {{-- 2 fotos obligatorias del estado físico del equipo (respaldo de
+                     rayones/golpes). accept=image/* + capture abre la cámara en móvil. --}}
+                <div>
+                    <x-input-label value="Fotos del equipo *" />
+                    <p class="mt-1 text-sm text-neutral-500">
+                        Saca <span class="font-medium">2 fotos</span> del equipo como respaldo de su estado (rayones, golpes o abolladuras): una general y una de cualquier daño que tenga.
+                    </p>
+
+                    <div class="mt-3 space-y-3">
+                        <div>
+                            <label for="foto_1" class="mb-1 block text-sm font-medium text-neutral-700">Foto 1</label>
+                            <input id="foto_1" name="fotos[]" type="file" accept="image/*" capture="environment" required
+                                   class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
+                            <x-input-error :messages="$errors->get('fotos.0')" class="mt-1.5" />
+                        </div>
+                        <div>
+                            <label for="foto_2" class="mb-1 block text-sm font-medium text-neutral-700">Foto 2</label>
+                            <input id="foto_2" name="fotos[]" type="file" accept="image/*" capture="environment" required
+                                   class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
+                            <x-input-error :messages="$errors->get('fotos.1')" class="mt-1.5" />
+                        </div>
+                    </div>
+                    <x-input-error :messages="$errors->get('fotos')" class="mt-1.5" />
                 </div>
 
                 <x-primary-button class="w-full justify-center">

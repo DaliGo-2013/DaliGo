@@ -125,6 +125,10 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
+            // Foto de recepcion (disco privado, servida con sesion). ANTES del show
+            // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
+            Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])
+                ->whereNumber('foto')->name('servicio-tecnico.foto');
             Route::get('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'show'])
                 ->whereNumber('orden')->name('servicio-tecnico.show');
         });

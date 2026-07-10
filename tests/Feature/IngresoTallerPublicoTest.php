@@ -9,7 +9,9 @@ use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -27,6 +29,17 @@ class IngresoTallerPublicoTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
+        // Las fotos van al disco privado 'local'; lo falseamos para no escribir en disco real.
+        Storage::fake('local');
+    }
+
+    /** @return array<int, UploadedFile> 2 fotos de prueba (JPEG reales via GD). */
+    private function fotos(): array
+    {
+        return [
+            UploadedFile::fake()->image('foto1.jpg', 800, 600),
+            UploadedFile::fake()->image('foto2.jpg', 800, 600),
+        ];
     }
 
     private function admin(): User
@@ -56,6 +69,7 @@ class IngresoTallerPublicoTest extends TestCase
             'numero_serie' => 'SN-9090',
             'facturacion' => 'reparacion',
             'falla_reportada' => 'Gotea por abajo',
+            'fotos' => $this->fotos(),
         ], $overrides);
     }
 
@@ -193,7 +207,7 @@ class IngresoTallerPublicoTest extends TestCase
         $this->post(route('ingreso-taller.store'), [])
             ->assertSessionHasErrors([
                 'sucursal_id', 'cliente_nombre', 'cliente_email', 'cliente_telefono',
-                'cliente_rut', 'tipo_equipo', 'facturacion', 'falla_reportada',
+                'cliente_rut', 'tipo_equipo', 'facturacion', 'falla_reportada', 'fotos',
             ]);
     }
 
@@ -473,5 +487,57 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertSee('DaliGo')
             ->assertDontSee('¿Vas a ingresar un producto a servicio técnico?', false)
             ->assertDontSee('data-qr', false);
+    }
+
+    // --- Fotos de respaldo del estado del equipo ---
+
+    public function test_fotos_son_obligatorias(): void
+    {
+        $sucursal = $this->sucursal();
+        $data = $this->payload($sucursal);
+        unset($data['fotos']);
+
+        $this->post(route('ingreso-taller.store'), $data)
+            ->assertSessionHasErrors('fotos');
+    }
+
+    public function test_exige_exactamente_dos_fotos(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'fotos' => [UploadedFile::fake()->image('una.jpg')],
+        ]))->assertSessionHasErrors('fotos');
+    }
+
+    public function test_dos_fotos_se_guardan_comprimidas(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal))
+            ->assertRedirectContains('/ingreso-taller/listo');
+
+        $orden = OrdenServicio::latest('id')->firstOrFail();
+        $this->assertCount(2, $orden->fotos);
+        foreach ($orden->fotos as $foto) {
+            $this->assertStringEndsWith('.jpg', $foto->ruta);
+            Storage::disk('local')->assertExists($foto->ruta);
+        }
+    }
+
+    public function test_la_foto_se_sirve_solo_con_sesion(): void
+    {
+        $sucursal = $this->sucursal();
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal));
+        $foto = \App\Models\OrdenServicioFoto::firstOrFail();
+
+        // Sin sesión → no se sirve (redirige al login).
+        $this->get(route('admin.servicio-tecnico.foto', $foto))
+            ->assertRedirect(route('login'));
+
+        // Con sesión (admin) → 200 e imagen.
+        $resp = $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.foto', $foto));
+        $resp->assertOk();
+        $this->assertStringStartsWith('image/', (string) $resp->headers->get('Content-Type'));
     }
 }
