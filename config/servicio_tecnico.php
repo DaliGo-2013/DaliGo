@@ -98,7 +98,6 @@ return [
             'Reparación o cambio de base — queda en óptimas condiciones',
             'Cambio de ventilador — funciona normal',
             'Cambio de relé — funciona normal',
-            'Cambio de compresor — funciona normal',
             'Cambio de bomba de agua — funciona normal',
             'Cambio de limitador de temperatura — funciona normal',
             'Cambio de filtro — funciona normal',
@@ -110,9 +109,7 @@ return [
         'Sin solución (irreparable)' => [
             'Motor/compresor trabado o pegado — irreparable',
             'Fuga o falta de gas refrigerante — irreparable',
-            'Sin repuesto disponible — no se puede reparar',
             'Se desarma para repuestos (unidad dada de baja)',
-            'Irreparable (otra causa)',
         ],
     ],
 
