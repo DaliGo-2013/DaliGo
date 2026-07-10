@@ -2,7 +2,7 @@
     @php
         $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
         $tieneReparacion = $orden->trabajo_realizado || $orden->repuestos->isNotEmpty()
-            || $orden->mano_obra || $orden->fecha_aviso || $orden->fecha_retiro;
+            || $orden->mano_obra || $orden->fecha_aviso || $orden->fecha_retiro || $orden->causa_falla;
         $esGarantia = $orden->condicion_efectiva === 'garantia';
         $esReparacion = ! $esGarantia;
         // En Coquimbo y Abate Molina se RECIBE pero no se repara: la reparacion es
@@ -76,7 +76,7 @@
             <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Equipo</h3>
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                    <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ ucfirst($orden->tipo_equipo) }}</dd></div>
+                    <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ $orden->tipo_equipo_label }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Código (producto Dali)</dt><dd class="text-sm text-neutral-900">{{ $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">N° de serie</dt><dd class="text-sm text-neutral-900">{{ $orden->numero_serie ?: '—' }}</dd></div>
                     <div>
@@ -138,6 +138,13 @@
                         <div class="mb-4">
                             <dt class="text-xs text-neutral-400">Trabajo realizado</dt>
                             <dd class="whitespace-pre-line text-sm text-neutral-900">{{ $orden->trabajo_realizado }}</dd>
+                        </div>
+                    @endif
+
+                    @if ($orden->causa_falla)
+                        <div class="mb-4">
+                            <dt class="text-xs text-neutral-400">Causa de la falla</dt>
+                            <dd class="text-sm text-neutral-900">{{ $orden->causa_falla_label }}</dd>
                         </div>
                     @endif
 

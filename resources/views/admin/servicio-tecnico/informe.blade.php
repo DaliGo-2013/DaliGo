@@ -18,6 +18,7 @@
                     <div>
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Período</h3>
                         <p class="mt-0.5 text-lg font-semibold text-neutral-900">{{ $periodoLabel }}</p>
+                        <p class="text-sm text-neutral-500">{{ $tipoLabel }}</p>
                     </div>
                     <form method="GET" action="{{ route('admin.servicio-tecnico.informe') }}" class="flex flex-wrap items-end gap-2">
                         <div class="w-28">
@@ -34,6 +35,15 @@
                                 <option value="">Todo el año</option>
                                 @foreach (range(1, 12) as $m)
                                     <option value="{{ $m }}" @selected($mes === $m)>{{ ucfirst(\Illuminate\Support\Carbon::create($anio, $m, 1)->translatedFormat('F')) }}</option>
+                                @endforeach
+                            </x-select>
+                        </div>
+                        <div class="w-44">
+                            <x-input-label for="tipo" value="Tipo de equipo" />
+                            <x-select id="tipo" name="tipo" class="mt-1">
+                                <option value="">Todos los equipos</option>
+                                @foreach ($tipos as $t)
+                                    <option value="{{ $t }}" @selected($tipo === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
                                 @endforeach
                             </x-select>
                         </div>
@@ -96,7 +106,7 @@
                         <x-info-tip align="left">Cuántos equipos de cada tipo (dispensador, lavadora, herramienta…) ingresaron en el período.</x-info-tip>
                     </div>
                     @include('admin.servicio-tecnico.partials._ranking', [
-                        'items' => $porTipo->map(fn ($t) => (object) ['nombre' => ucfirst($t->nombre), 'cantidad' => $t->cantidad]),
+                        'items' => $porTipo->map(fn ($t) => (object) ['nombre' => \App\Models\OrdenServicio::etiquetaTipo($t->nombre), 'cantidad' => $t->cantidad]),
                         'vacio' => 'Sin ingresos en el período.',
                     ])
                 </div>
@@ -107,6 +117,19 @@
                     </div>
                     @include('admin.servicio-tecnico.partials._ranking', [
                         'items' => $porEstado->map(fn ($e) => (object) ['nombre' => \Illuminate\Support\Str::headline($e->nombre), 'cantidad' => $e->cantidad]),
+                        'vacio' => 'Sin ingresos en el período.',
+                    ])
+                </div>
+                <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
+                    <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por causa de la falla</h3>
+                        <x-info-tip align="left">Diagnóstico del técnico al reparar. Sirve para reforzar la capacitación al cliente: si muchas fallas son por mal uso, conviene enseñar mejor el uso del producto. "Sin determinar" = el técnico aún no la registró.</x-info-tip>
+                    </div>
+                    @include('admin.servicio-tecnico.partials._ranking', [
+                        'items' => $porCausa->map(fn ($c) => (object) [
+                            'nombre' => \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$c->causa] ?? 'Sin determinar',
+                            'cantidad' => $c->cantidad,
+                        ]),
                         'vacio' => 'Sin ingresos en el período.',
                     ])
                 </div>

@@ -89,6 +89,20 @@
                         <x-input-error :messages="$errors->get('trabajo_realizado')" class="mt-2" />
                     </div>
 
+                    {{-- Causa de la falla (diagnóstico del técnico): alimenta el
+                         indicador del informe para reforzar capacitación al cliente. --}}
+                    <div>
+                        <x-input-label for="causa_falla" value="Causa de la falla" />
+                        <x-select id="causa_falla" name="causa_falla" class="mt-1.5">
+                            <option value="">Sin determinar</option>
+                            @foreach ($causasFalla as $c)
+                                <option value="{{ $c }}" @selected(old('causa_falla', $orden->causa_falla) === $c)>{{ \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$c] }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>¿La máquina falló por mal uso del cliente, desgaste normal o defecto de fábrica?</x-input-hint>
+                        <x-input-error :messages="$errors->get('causa_falla')" class="mt-2" />
+                    </div>
+
                     {{-- Repuestos (lista variable) --}}
                     <div>
                         <div class="flex items-center justify-between">

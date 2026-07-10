@@ -105,7 +105,7 @@
                     <x-input-label for="tipo_equipo" value="Tipo de equipo *" />
                     <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5 block w-full">
                         @foreach ($tipos as $t)
-                            <option value="{{ $t }}" @selected(old('tipo_equipo', 'dispensador') === $t)>{{ ucfirst($t) }}</option>
+                            <option value="{{ $t }}" @selected(old('tipo_equipo', 'dispensador') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
                         @endforeach
                     </x-select>
                     <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-1.5" />

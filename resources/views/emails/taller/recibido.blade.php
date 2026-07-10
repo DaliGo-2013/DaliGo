@@ -1,5 +1,5 @@
 @php
-    $tipo = ucfirst($orden->tipo_equipo);
+    $tipo = $orden->tipo_equipo_label;
 @endphp
 <!DOCTYPE html>
 <html lang="es">

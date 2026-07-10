@@ -394,6 +394,16 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->assertDatabaseHas('ordenes_servicio', ['tipo_equipo' => 'herramienta']);
     }
 
+    public function test_bomba_es_un_tipo_valido(): void
+    {
+        // Bomba de agua: N° de serie opcional (no está en SERIE_OBLIGATORIA_TIPOS).
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload(['tipo_equipo' => 'bomba', 'numero_serie' => '']))
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', ['tipo_equipo' => 'bomba', 'numero_serie' => null]);
+    }
+
     public function test_invalid_tipo_estado_y_facturacion_are_rejected(): void
     {
         $this->actingAs($this->admin())
@@ -539,6 +549,47 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->assertCount(2, $fresh->repuestos);                 // la vacia no se guarda
         $this->assertSame(55000, $fresh->costo_total);            // 30000 + (2*5000) + 15000
         $this->assertDatabaseHas('orden_servicio_repuestos', ['orden_servicio_id' => $orden->id, 'nombre' => 'Motor']);
+    }
+
+    public function test_guardar_reparacion_registra_la_causa_de_falla(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'causa_falla' => null]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => 'mal_uso',
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertSame('mal_uso', $orden->fresh()->causa_falla);
+    }
+
+    public function test_guardar_reparacion_rechaza_causa_de_falla_invalida(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => 'inventada',
+            ])
+            ->assertSessionHasErrors('causa_falla');
+    }
+
+    public function test_guardar_reparacion_permite_causa_de_falla_vacia(): void
+    {
+        // "Sin determinar" (opcion vacia) -> null, sin error.
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'causa_falla' => 'mal_uso']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => '',
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertNull($orden->fresh()->causa_falla);
     }
 
     public function test_guardar_reparacion_reemplaza_repuestos_anteriores(): void
