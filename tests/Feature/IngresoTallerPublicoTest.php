@@ -145,7 +145,10 @@ class IngresoTallerPublicoTest extends TestCase
 
     public function test_buscar_producto_publico_devuelve_coincidencias(): void
     {
-        $producto = Producto::factory()->create(['sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black']);
+        $producto = Producto::factory()->create([
+            'sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black',
+            'categoria' => 'agua disp. sobremesa compresor y ventilador',
+        ]);
 
         // Sin login (es público): matchea por SKU y por nombre.
         $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-07']))
@@ -155,6 +158,49 @@ class IngresoTallerPublicoTest extends TestCase
         $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Silver']))
             ->assertOk()
             ->assertJsonFragment(['sku' => 'LB-07']);
+    }
+
+    public function test_buscar_producto_publico_solo_muestra_equipos(): void
+    {
+        // Equipo (categoría de taller) vs accesorio (otra categoría). El cliente
+        // solo debe ver el equipo, aunque ambos matcheen la búsqueda por nombre.
+        $equipo = Producto::factory()->create([
+            'sku' => '1040001', 'nombre' => 'Dispensador Rosa LB-16',
+            'categoria' => 'agua disp. pedestal compresor y ventilador',
+        ]);
+        $accesorio = Producto::factory()->create([
+            'sku' => '1020104', 'nombre' => 'Soporte Rosa Nacional',
+            'categoria' => 'Accesorios',
+        ]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Rosa']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $equipo->id])
+            ->assertJsonMissing(['id' => $accesorio->id]);
+    }
+
+    public function test_buscar_producto_publico_filtra_categoria_sin_importar_mayusculas(): void
+    {
+        // La categoría que manda Bsale puede venir en otra capitalización que la
+        // configurada; el filtro compara en minúsculas.
+        $producto = Producto::factory()->create([
+            'sku' => 'BX-500', 'nombre' => 'Bomba de agua USB portátil',
+            'categoria' => 'AGUA BOMBA USB',
+        ]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'BX-500']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $producto->id]);
+    }
+
+    public function test_buscar_producto_publico_excluye_sin_categoria(): void
+    {
+        // Un producto sin categoría (no calza con ningún equipo) no se sugiere.
+        Producto::factory()->create(['sku' => 'SC-01', 'nombre' => 'Cosa sin categoria', 'categoria' => null]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'SC-01']))
+            ->assertOk()
+            ->assertExactJson([]);
     }
 
     public function test_buscar_producto_publico_exige_dos_caracteres(): void

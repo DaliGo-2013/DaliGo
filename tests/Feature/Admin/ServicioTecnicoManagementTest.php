@@ -524,6 +524,48 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
     }
 
+    public function test_reparacion_ofrece_respuestas_fijas_de_trabajo(): void
+    {
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            // rótulos de grupo (optgroup) y algunas respuestas del config
+            ->assertSee('Reparada')
+            ->assertSee('Sin solución (irreparable)')
+            ->assertSee('Cambio de celda de peltier — funciona normal')
+            ->assertSee('Motor/compresor trabado o pegado — irreparable');
+    }
+
+    public function test_guardar_reparacion_persiste_la_respuesta_de_trabajo(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+        $respuesta = 'Cambio de caldera — funciona normal';
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',
+                'trabajo_realizado' => $respuesta,
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertSame($respuesta, $orden->fresh()->trabajo_realizado);
+    }
+
+    public function test_reparacion_conserva_trabajo_historico_fuera_de_lista(): void
+    {
+        // Órdenes viejas con texto libre: no está en la lista fija pero se conserva.
+        $historico = 'se reparo con un truco especial que no esta en la lista';
+        $orden = OrdenServicio::factory()->create(['trabajo_realizado' => $historico]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertSee($historico);
+    }
+
     public function test_guardar_reparacion_registra_arreglo_y_repuestos(): void
     {
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
@@ -531,6 +573,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',   // obligatoria al cerrar como reparado
                 'trabajo_realizado' => 'Cambio de motor y correa',
                 'mano_obra' => 15000,
                 'fecha_aviso' => now()->toDateString(),
@@ -577,19 +620,47 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSessionHasErrors('causa_falla');
     }
 
-    public function test_guardar_reparacion_permite_causa_de_falla_vacia(): void
+    public function test_guardar_reparacion_permite_causa_vacia_en_estado_intermedio(): void
     {
+        // En estados intermedios (no terminales) la causa sigue siendo opcional:
         // "Sin determinar" (opcion vacia) -> null, sin error.
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'causa_falla' => 'mal_uso']);
 
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
-                'estado' => 'reparado',
+                'estado' => 'en_revision',
                 'causa_falla' => '',
             ])
             ->assertRedirect(route('admin.servicio-tecnico.index'));
 
         $this->assertNull($orden->fresh()->causa_falla);
+    }
+
+    public function test_reparado_exige_diagnostico_final(): void
+    {
+        // Toda maquina cerrada como "reparado" debe llevar la causa de la falla.
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => '',   // Sin determinar -> null -> rechazado
+            ])
+            ->assertSessionHasErrors('causa_falla');
+
+        $this->assertNotSame('reparado', $orden->fresh()->estado);
+    }
+
+    public function test_sin_solucion_exige_diagnostico_final(): void
+    {
+        // "Sin solucion" tambien exige diagnostico (por que no se pudo reparar).
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'sin_solucion',
+            ])
+            ->assertSessionHasErrors('causa_falla');
     }
 
     public function test_guardar_reparacion_reemplaza_repuestos_anteriores(): void
@@ -600,6 +671,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',
                 'repuestos' => [
                     ['nombre' => 'Nuevo', 'cantidad' => 1, 'precio_unitario' => 2000],
                 ],
@@ -627,6 +699,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',   // para llegar a la validación de repuestos
                 'repuestos' => [
                     ['nombre' => 'XY', 'cantidad' => 1, 'precio_unitario' => 0], // nombre corto + sin precio
                 ],

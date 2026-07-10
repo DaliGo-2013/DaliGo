@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -50,6 +51,31 @@ class Producto extends Model implements AuditableContract
             'ancho_cm' => 'decimal:2',
             'largo_cm' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Solo "equipos de taller" (dispensadores, lavadoras, bombas, herramientas):
+     * productos cuya `categoria` (el product_type espejado de Bsale) esté en
+     * config('servicio_tecnico.categorias_equipo'). Excluye accesorios/repuestos
+     * del buscador público del QR. Comparación case-insensitive (LOWER) para
+     * tolerar diferencias de mayúsculas entre lo configurado y lo que manda
+     * Bsale; portable MySQL 5.7 / SQLite. Lista vacía = no filtra (evita dejar
+     * el buscador sin resultados por una config faltante).
+     */
+    public function scopeEquipoTaller(Builder $query): Builder
+    {
+        $categorias = collect(config('servicio_tecnico.categorias_equipo', []))
+            ->map(fn ($c) => mb_strtolower(trim((string) $c)))
+            ->filter()
+            ->values();
+
+        if ($categorias->isEmpty()) {
+            return $query;
+        }
+
+        $placeholders = $categorias->map(fn () => '?')->implode(',');
+
+        return $query->whereRaw("LOWER(categoria) IN ({$placeholders})", $categorias->all());
     }
 
     /** @return HasMany<Precio, $this> */

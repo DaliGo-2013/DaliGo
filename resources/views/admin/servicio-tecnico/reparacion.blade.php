@@ -81,25 +81,58 @@
                         <x-input-error :messages="$errors->get('estado')" class="mt-2" />
                     </div>
 
-                    {{-- Trabajo realizado --}}
+                    {{-- Trabajo realizado: respuestas FIJAS del historial (el técnico
+                         solo elige, no escribe). Agrupadas por resultado. Si la orden
+                         ya trae un texto histórico que no está en la lista, se preserva
+                         como opción seleccionada para no perderlo. --}}
+                    @php
+                        $trabajoActual = old('trabajo_realizado', $orden->trabajo_realizado);
+                        $opcionesTrabajo = collect($respuestasTrabajo)->flatten()->all();
+                        $trabajoFueraDeLista = filled($trabajoActual) && ! in_array($trabajoActual, $opcionesTrabajo, true);
+                    @endphp
                     <div>
                         <x-input-label for="trabajo_realizado" value="Trabajo realizado" />
-                        <x-textarea id="trabajo_realizado" class="mt-1.5" name="trabajo_realizado" rows="3"
-                            placeholder="Describe el arreglo hecho a la máquina/herramienta…">{{ old('trabajo_realizado', $orden->trabajo_realizado) }}</x-textarea>
+                        <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5">
+                            <option value="">— Selecciona —</option>
+                            @if ($trabajoFueraDeLista)
+                                {{-- Valor histórico (texto libre anterior): se conserva. --}}
+                                <option value="{{ $trabajoActual }}" selected>{{ $trabajoActual }}</option>
+                            @endif
+                            @foreach ($respuestasTrabajo as $grupo => $opciones)
+                                <optgroup label="{{ $grupo }}">
+                                    @foreach ($opciones as $op)
+                                        <option value="{{ $op }}" @selected($trabajoActual === $op)>{{ $op }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>Elige la respuesta que más se acerque al trabajo hecho.</x-input-hint>
                         <x-input-error :messages="$errors->get('trabajo_realizado')" class="mt-2" />
                     </div>
 
                     {{-- Causa de la falla (diagnóstico del técnico): alimenta el
-                         indicador del informe para reforzar capacitación al cliente. --}}
-                    <div>
-                        <x-input-label for="causa_falla" value="Causa de la falla" />
-                        <x-select id="causa_falla" name="causa_falla" class="mt-1.5">
+                         indicador del informe para reforzar capacitación al cliente.
+                         OBLIGATORIA al cerrar como «Reparado» o «Sin solución»: el
+                         asterisco y el 'required' aparecen en vivo según el estado
+                         elegido arriba (mismo patrón que el N° de serie del ingreso). --}}
+                    <div x-data="{
+                            exige: false,
+                            init() {
+                                const sel = document.getElementById('estado');
+                                const set = () => { this.exige = !!sel && ['reparado', 'sin_solucion'].includes(sel.value); };
+                                set();
+                                if (sel) sel.addEventListener('change', set);
+                            },
+                         }">
+                        <x-input-label for="causa_falla">Causa de la falla <span x-show="exige" class="text-red-500">*</span></x-input-label>
+                        <x-select id="causa_falla" name="causa_falla" class="mt-1.5" x-bind:required="exige">
                             <option value="">Sin determinar</option>
                             @foreach ($causasFalla as $c)
                                 <option value="{{ $c }}" @selected(old('causa_falla', $orden->causa_falla) === $c)>{{ \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$c] }}</option>
                             @endforeach
                         </x-select>
                         <x-input-hint>¿La máquina falló por mal uso del cliente, desgaste normal o defecto de fábrica?</x-input-hint>
+                        <x-input-hint x-show="exige" x-cloak>Obligatoria para cerrar la orden como «Reparado» o «Sin solución» (diagnóstico final).</x-input-hint>
                         <x-input-error :messages="$errors->get('causa_falla')" class="mt-2" />
                     </div>
 
