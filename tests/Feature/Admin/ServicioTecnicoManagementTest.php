@@ -524,6 +524,48 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
     }
 
+    public function test_reparacion_ofrece_respuestas_fijas_de_trabajo(): void
+    {
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            // rótulos de grupo (optgroup) y algunas respuestas del config
+            ->assertSee('Reparada')
+            ->assertSee('Sin solución (irreparable)')
+            ->assertSee('Cambio de celda de peltier — funciona normal')
+            ->assertSee('Motor/compresor trabado o pegado — irreparable');
+    }
+
+    public function test_guardar_reparacion_persiste_la_respuesta_de_trabajo(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+        $respuesta = 'Cambio de caldera — funciona normal';
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',
+                'trabajo_realizado' => $respuesta,
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertSame($respuesta, $orden->fresh()->trabajo_realizado);
+    }
+
+    public function test_reparacion_conserva_trabajo_historico_fuera_de_lista(): void
+    {
+        // Órdenes viejas con texto libre: no está en la lista fija pero se conserva.
+        $historico = 'se reparo con un truco especial que no esta en la lista';
+        $orden = OrdenServicio::factory()->create(['trabajo_realizado' => $historico]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertSee($historico);
+    }
+
     public function test_guardar_reparacion_registra_arreglo_y_repuestos(): void
     {
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);

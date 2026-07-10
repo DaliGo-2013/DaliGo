@@ -68,4 +68,52 @@ return [
         'herramientas',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Respuestas fijas de "Trabajo realizado" (pantalla de reparación)
+    |--------------------------------------------------------------------------
+    |
+    | El técnico ELIGE de esta lista (no escribe): son las resoluciones más
+    | recurrentes del historial real del taller, agrupadas por resultado. El
+    | orden dentro de cada grupo es por frecuencia (de más a menos usado).
+    | Para agregar una respuesta nueva, súmala al grupo que corresponda: la
+    | pantalla la ofrece de inmediato, sin tocar código.
+    |
+    | La clave de cada grupo es el rótulo del <optgroup> que ve el técnico.
+    |
+    */
+
+    'respuestas_trabajo' => [
+        'Reparada' => [
+            'Revisión general, mantención y limpieza — funciona normal',
+            'Ajuste o cambio de termostato — funciona normal',
+            'Cambio de llave(s) de agua (fría/caliente), se corrige filtración — funciona normal',
+            'Cambio de celda de peltier — funciona normal',
+            'Cambio de caldera — funciona normal',
+            'Máquina bloqueada: se desbloquea — funciona normal',
+            'Cambio de manguera, se corrige filtración — funciona normal',
+            'Se ajusta cable/conexión suelta — funciona normal',
+            'Cambio de placa eléctrica — funciona normal',
+            'Cambio de tapa lateral (derecha/izquierda) — queda en óptimas condiciones',
+            'Reparación o cambio de base — queda en óptimas condiciones',
+            'Cambio de ventilador — funciona normal',
+            'Cambio de relé — funciona normal',
+            'Cambio de compresor — funciona normal',
+            'Cambio de bomba de agua — funciona normal',
+            'Cambio de limitador de temperatura — funciona normal',
+            'Cambio de filtro — funciona normal',
+        ],
+        'Revisada sin falla' => [
+            'Revisión general, se deja en observación y no presenta fallas — funciona normal',
+            'Se verifica buen funcionamiento, temperatura dentro del rango normal',
+        ],
+        'Sin solución (irreparable)' => [
+            'Motor/compresor trabado o pegado — irreparable',
+            'Fuga o falta de gas refrigerante — irreparable',
+            'Sin repuesto disponible — no se puede reparar',
+            'Se desarma para repuestos (unidad dada de baja)',
+            'Irreparable (otra causa)',
+        ],
+    ],
+
 ];

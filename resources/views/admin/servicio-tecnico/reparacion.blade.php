@@ -81,11 +81,32 @@
                         <x-input-error :messages="$errors->get('estado')" class="mt-2" />
                     </div>
 
-                    {{-- Trabajo realizado --}}
+                    {{-- Trabajo realizado: respuestas FIJAS del historial (el técnico
+                         solo elige, no escribe). Agrupadas por resultado. Si la orden
+                         ya trae un texto histórico que no está en la lista, se preserva
+                         como opción seleccionada para no perderlo. --}}
+                    @php
+                        $trabajoActual = old('trabajo_realizado', $orden->trabajo_realizado);
+                        $opcionesTrabajo = collect($respuestasTrabajo)->flatten()->all();
+                        $trabajoFueraDeLista = filled($trabajoActual) && ! in_array($trabajoActual, $opcionesTrabajo, true);
+                    @endphp
                     <div>
                         <x-input-label for="trabajo_realizado" value="Trabajo realizado" />
-                        <x-textarea id="trabajo_realizado" class="mt-1.5" name="trabajo_realizado" rows="3"
-                            placeholder="Describe el arreglo hecho a la máquina/herramienta…">{{ old('trabajo_realizado', $orden->trabajo_realizado) }}</x-textarea>
+                        <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5">
+                            <option value="">— Selecciona —</option>
+                            @if ($trabajoFueraDeLista)
+                                {{-- Valor histórico (texto libre anterior): se conserva. --}}
+                                <option value="{{ $trabajoActual }}" selected>{{ $trabajoActual }}</option>
+                            @endif
+                            @foreach ($respuestasTrabajo as $grupo => $opciones)
+                                <optgroup label="{{ $grupo }}">
+                                    @foreach ($opciones as $op)
+                                        <option value="{{ $op }}" @selected($trabajoActual === $op)>{{ $op }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>Elige la respuesta que más se acerque al trabajo hecho.</x-input-hint>
                         <x-input-error :messages="$errors->get('trabajo_realizado')" class="mt-2" />
                     </div>
 

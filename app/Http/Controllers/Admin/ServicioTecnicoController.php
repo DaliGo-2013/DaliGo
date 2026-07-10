@@ -344,6 +344,8 @@ class ServicioTecnicoController extends Controller
             'orden' => $orden->load(['producto', 'repuestos']),
             'estados' => OrdenServicio::ESTADOS,
             'causasFalla' => OrdenServicio::CAUSAS_FALLA,
+            // Respuestas fijas de "Trabajo realizado" agrupadas (config).
+            'respuestasTrabajo' => config('servicio_tecnico.respuestas_trabajo', []),
         ]);
     }
 
