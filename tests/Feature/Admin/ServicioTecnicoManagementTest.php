@@ -657,6 +657,61 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Cliente Dos')->assertDontSee('Cliente Uno');
     }
 
+    public function test_index_filtra_por_anio_y_mes(): void
+    {
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cliente Marzo', 'fecha_ingreso' => '2025-03-10']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cliente Enero', 'fecha_ingreso' => '2026-01-05']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?anio=2025&mes=3')
+            ->assertOk()->assertSee('Cliente Marzo')->assertDontSee('Cliente Enero');
+
+        // Solo el año (sin mes) = el año completo.
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?anio=2026')
+            ->assertOk()->assertSee('Cliente Enero')->assertDontSee('Cliente Marzo');
+    }
+
+    public function test_index_muestra_cards_de_anios_y_meses(): void
+    {
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2025-03-10']);
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2025-03-20']);
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2026-01-05']);
+
+        // Sin período: cards de años con sus conteos.
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico')
+            ->assertOk()
+            ->assertSee('Historial')
+            ->assertSee('2 órdenes')   // card 2025
+            ->assertSee('1 orden');    // card 2026
+
+        // Dentro de un año: cards de los 12 meses (con y sin órdenes) + volver.
+        $marzo = ucfirst(\Illuminate\Support\Carbon::create(2025, 3, 1)->translatedFormat('F'));
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?anio=2025')
+            ->assertOk()
+            ->assertSee('Todos los años')
+            ->assertSee($marzo)
+            ->assertSee('Sin órdenes');
+    }
+
+    public function test_index_muestra_separadores_de_mes_en_la_lista(): void
+    {
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2026-03-10']);
+        OrdenServicio::factory()->create(['fecha_ingreso' => '2026-01-05']);
+
+        $sep = fn (int $m) => ucfirst(\Illuminate\Support\Carbon::create(2026, $m, 1)->translatedFormat('F Y'));
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico')
+            ->assertOk()->assertSee($sep(3))->assertSee($sep(1));
+    }
+
+    public function test_index_rechaza_periodo_invalido(): void
+    {
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?mes=13')
+            ->assertSessionHasErrors('mes');
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?anio=1999')
+            ->assertSessionHasErrors('anio');
+    }
+
     public function test_show_indica_reparacion_en_matriz_si_recepcion_no_central(): void
     {
         Sucursal::factory()->create(['nombre' => 'Mirador', 'es_central' => true]);

@@ -7,6 +7,9 @@
                     <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
+                    {{-- Informe de estadísticas (visible también para roles de solo
+                         lectura); se lleva el período que esté seleccionado. --}}
+                    <x-secondary-link :href="route('admin.servicio-tecnico.informe', array_filter(['anio' => $filtros['anio'] ?? null, 'mes' => $filtros['mes'] ?? null], fn ($v) => $v !== null && $v !== ''))">Informe</x-secondary-link>
                     @can('manage servicio tecnico')
                         <x-secondary-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-secondary-link>
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
@@ -103,6 +106,13 @@
                         @endforeach
                     </x-select>
                 </div>
+                {{-- El período elegido en las cards de historial se conserva al filtrar. --}}
+                @if (($filtros['anio'] ?? '') !== '')
+                    <input type="hidden" name="anio" value="{{ $filtros['anio'] }}">
+                @endif
+                @if (($filtros['mes'] ?? '') !== '')
+                    <input type="hidden" name="mes" value="{{ $filtros['mes'] }}">
+                @endif
                 <div class="flex items-center gap-3">
                     <x-primary-button>Filtrar</x-primary-button>
                     @if (array_filter($filtros))
@@ -111,8 +121,72 @@
                 </div>
             </form>
 
-            <x-list-card title="Órdenes" :count="$ordenes->total()" :countLabel="\Illuminate\Support\Str::plural('orden', $ordenes->total())">
+            {{-- Historial por período: cards de años y, dentro de un año, cards de
+                 sus 12 meses. Navegan con los parámetros anio/mes del mismo listado
+                 (la lista de abajo obedece el período elegido). --}}
+            @php
+                $anioActivo = ($filtros['anio'] ?? '') !== '' ? (int) $filtros['anio'] : null;
+                $mesActivo = ($filtros['mes'] ?? '') !== '' ? (int) $filtros['mes'] : null;
+                // Conservar el resto de los filtros al navegar por período.
+                $qsBase = array_filter(
+                    collect($filtros)->except(['anio', 'mes'])->all(),
+                    fn ($v) => $v !== null && $v !== ''
+                );
+            @endphp
+            @if ($historial['anios']->isNotEmpty())
+                <div>
+                    <div class="mb-2 flex items-baseline justify-between gap-3">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                            Historial{{ $anioActivo ? ' · '.$anioActivo : '' }}
+                        </h3>
+                        @if ($anioActivo)
+                            <a href="{{ route('admin.servicio-tecnico.index', $qsBase) }}" class="text-xs font-medium text-brand-600 transition duration-150 hover:text-brand-700">&larr; Todos los años</a>
+                        @endif
+                    </div>
+                    @if (! $anioActivo)
+                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                            @foreach ($historial['anios'] as $a => $r)
+                                <a href="{{ route('admin.servicio-tecnico.index', array_merge($qsBase, ['anio' => $a])) }}"
+                                   class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:border-brand-300 hover:shadow">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Año</p>
+                                    <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ $a }}</p>
+                                    <p class="mt-1 text-sm text-neutral-600">{{ $r['total'] }} {{ $r['total'] === 1 ? 'orden' : 'órdenes' }}</p>
+                                    <p class="text-xs text-neutral-400">{{ $r['garantia'] }} garantía · {{ $r['reparacion'] }} reparación</p>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                            @foreach ($historial['meses'] as $m => $conteo)
+                                @php $nombreMes = ucfirst(\Illuminate\Support\Carbon::create($anioActivo, $m, 1)->translatedFormat('F')); @endphp
+                                @if ($conteo > 0)
+                                    <a href="{{ route('admin.servicio-tecnico.index', array_merge($qsBase, ['anio' => $anioActivo, 'mes' => $m])) }}"
+                                       class="rounded-2xl border p-3 shadow-sm transition duration-150 {{ $mesActivo === $m ? 'border-brand-500 bg-brand-50' : 'border-neutral-200 bg-white hover:border-brand-300 hover:shadow' }}">
+                                        <p class="text-sm font-semibold {{ $mesActivo === $m ? 'text-brand-700' : 'text-neutral-900' }}">{{ $nombreMes }}</p>
+                                        <p class="text-xs {{ $mesActivo === $m ? 'text-brand-600' : 'text-neutral-500' }}">{{ $conteo }} {{ $conteo === 1 ? 'orden' : 'órdenes' }}</p>
+                                    </a>
+                                @else
+                                    <div class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-3">
+                                        <p class="text-sm font-medium text-neutral-400">{{ $nombreMes }}</p>
+                                        <p class="text-xs text-neutral-300">Sin órdenes</p>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <x-list-card title="Órdenes" :count="$ordenes->total()" :countLabel="$ordenes->total() === 1 ? 'orden' : 'órdenes'">
+                @php $mesSeparador = null; @endphp
                 @forelse ($ordenes as $orden)
+                    {{-- Separador visual cuando la lista cambia de mes (viene ordenada
+                         por fecha desc, así que los meses quedan contiguos). --}}
+                    @php $mesOrden = $orden->fecha_ingreso ? ucfirst($orden->fecha_ingreso->translatedFormat('F Y')) : 'Sin fecha'; @endphp
+                    @if ($mesOrden !== $mesSeparador)
+                        @php $mesSeparador = $mesOrden; @endphp
+                        <li class="bg-neutral-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 sm:px-6">{{ $mesOrden }}</li>
+                    @endif
                     <x-list-row>
                         <x-slot name="leading">
                             <x-avatar>{{ mb_strtoupper(mb_substr($orden->tipo_equipo, 0, 1)) }}</x-avatar>

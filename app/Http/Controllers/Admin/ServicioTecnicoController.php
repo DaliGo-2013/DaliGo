@@ -70,7 +70,9 @@ class ServicioTecnicoController extends Controller
 
         return view('admin.servicio-tecnico.index', array_merge([
             'ordenes' => $ordenes,
-            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion', 'sucursal_id']),
+            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion', 'sucursal_id', 'anio', 'mes']),
+            // Cards de navegacion del historial (Año → Mes) sobre el listado.
+            'historial' => $this->resumenHistorial($request->filled('anio') ? (int) $request->input('anio') : null),
             // Maquinas que llegaron por QR y esperan que el encargado confirme la
             // recepcion (bloque destacado arriba del listado).
             'porConfirmar' => OrdenServicio::porConfirmar()
@@ -78,6 +80,83 @@ class ServicioTecnicoController extends Controller
                 ->latest('id')
                 ->get(),
         ], $this->formData()));
+    }
+
+    /**
+     * Informe de estadisticas del taller por periodo (un mes o el año completo).
+     * Lectura para los jefes (permiso 'view servicio tecnico'): cuantas ordenes
+     * ingresaron, garantia vs reparacion, que equipos y clientes se repiten y
+     * que repuestos se usaron (apoyo al control de inventario del taller).
+     */
+    public function informe(Request $request): View
+    {
+        [$desde, $hasta, $anio, $mes] = $this->periodoInforme($request);
+
+        // KPIs en una pasada. Se agrega sobre la columna cruda `facturacion`
+        // (la condicion registrada al ingreso): condicion_efectiva es un
+        // accessor PHP, y validateData ya fuerza garantia vencida a
+        // 'reparacion' al registrar, asi que en la practica coinciden.
+        // Reparaciones = total - garantias (igual que condicion_efectiva:
+        // las ordenes viejas con facturacion NULL cuentan como reparacion).
+        $kpis = $this->ordenesDelPeriodo($desde, $hasta)->selectRaw("
+            COUNT(*) AS total,
+            SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) AS garantias
+        ")->first();
+
+        $porTipo = $this->ordenesDelPeriodo($desde, $hasta)
+            ->selectRaw('tipo_equipo AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('tipo_equipo')->orderByDesc('cantidad')->get();
+
+        $porEstado = $this->ordenesDelPeriodo($desde, $hasta)
+            ->selectRaw('estado AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('estado')->orderByDesc('cantidad')->get();
+
+        // "Que equipo ingresa mas": por producto del catalogo (el campo `modelo`
+        // es texto libre y no agrupa bien). Los ingresos por QR sin codigo caen
+        // en la fila "Sin código". MAX() por ONLY_FULL_GROUP_BY (MySQL 5.7).
+        $topEquipos = $this->ordenesDelPeriodo($desde, $hasta)
+            ->leftJoin('productos', 'productos.id', '=', 'ordenes_servicio.producto_id')
+            ->selectRaw('ordenes_servicio.producto_id AS id, MAX(productos.nombre) AS nombre, MAX(productos.sku) AS sku, COUNT(*) AS cantidad')
+            ->groupBy('ordenes_servicio.producto_id')
+            ->orderByDesc('cantidad')->limit(10)->get();
+
+        $topClientes = $this->ordenesDelPeriodo($desde, $hasta)
+            ->selectRaw('cliente_rut, MAX(cliente_nombre) AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('cliente_rut')
+            ->orderByDesc('cantidad')->limit(10)->get();
+
+        // Repuestos usados en las ordenes del periodo, agregados por nombre.
+        $repuestos = OrdenServicioRepuesto::query()
+            ->join('ordenes_servicio', 'ordenes_servicio.id', '=', 'orden_servicio_repuestos.orden_servicio_id')
+            ->whereDate('ordenes_servicio.fecha_ingreso', '>=', $desde)
+            ->whereDate('ordenes_servicio.fecha_ingreso', '<=', $hasta)
+            ->selectRaw('orden_servicio_repuestos.nombre AS nombre, SUM(orden_servicio_repuestos.cantidad) AS unidades, COUNT(DISTINCT orden_servicio_repuestos.orden_servicio_id) AS ordenes')
+            ->groupBy('orden_servicio_repuestos.nombre')
+            ->orderByDesc('unidades')->get();
+
+        $total = (int) ($kpis->total ?? 0);
+
+        return view('admin.servicio-tecnico.informe', [
+            'anio' => $anio,
+            'mes' => $mes,
+            'anios' => $this->aniosDisponibles(),
+            'kpis' => [
+                'total' => $total,
+                'garantias' => (int) ($kpis->garantias ?? 0),
+                'reparaciones' => $total - (int) ($kpis->garantias ?? 0),
+                'pctGarantia' => $total > 0 ? (int) round(($kpis->garantias ?? 0) / $total * 100) : 0,
+            ],
+            'porTipo' => $porTipo,
+            'porEstado' => $porEstado,
+            'topEquipos' => $topEquipos,
+            'topClientes' => $topClientes,
+            'repuestos' => $repuestos->take(15)->values(),
+            'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
+            'totalNombresRepuestos' => $repuestos->count(),
+            'periodoLabel' => $mes
+                ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
+                : 'Año '.$anio,
+        ]);
     }
 
     public function create(): View
@@ -460,6 +539,9 @@ class ServicioTecnicoController extends Controller
             // compartido por las 3 sucursales; este filtro deja ver "que se ingreso
             // en Coquimbo/Abate/Mirador". La reparacion siempre es en Mirador.
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
+            // Periodo del historial (cards Año → Mes del listado).
+            'anio' => ['nullable', 'integer', 'between:2020,2100'],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
         ]);
 
         return OrdenServicio::query()
@@ -486,7 +568,109 @@ class ServicioTecnicoController extends Controller
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
             ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v))
-            ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v));
+            ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v))
+            // Periodo Año/Mes: rango de fechas con whereDate en ambos bordes
+            // (portable MySQL 5.7 / SQLite y usa el indice; nada de YEAR() en
+            // SQL). Mes sin año asume el año actual.
+            ->when($f['anio'] ?? $f['mes'] ?? null, function (Builder $qb) use ($f) {
+                $anio = (int) ($f['anio'] ?? now()->year);
+                $mes = isset($f['mes']) ? (int) $f['mes'] : null;
+                $desde = Carbon::create($anio, $mes ?? 1, 1);
+                $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+                $qb->whereDate('fecha_ingreso', '>=', $desde->toDateString())
+                    ->whereDate('fecha_ingreso', '<=', $hasta->toDateString());
+            });
+    }
+
+    /**
+     * Resumen para las cards de navegacion del historial (Año → Mes) del
+     * listado. Una sola query liviana (solo fecha y condicion) agrupada en
+     * PHP: el volumen es bajo (cientos de ordenes por año) y evita SQL de
+     * fechas no portable entre MySQL 5.7 y el SQLite de los tests.
+     */
+    private function resumenHistorial(?int $anioActivo): array
+    {
+        $ordenes = OrdenServicio::query()
+            ->whereNotNull('fecha_ingreso')
+            ->get(['fecha_ingreso', 'facturacion']);
+
+        // Reparacion = total - garantia (igual que condicion_efectiva: las
+        // ordenes viejas con facturacion NULL cuentan como reparacion).
+        $anios = $ordenes
+            ->groupBy(fn (OrdenServicio $o) => $o->fecha_ingreso->year)
+            ->map(function ($grupo) {
+                $garantia = $grupo->where('facturacion', 'garantia')->count();
+
+                return [
+                    'total' => $grupo->count(),
+                    'garantia' => $garantia,
+                    'reparacion' => $grupo->count() - $garantia,
+                ];
+            })
+            ->sortKeysDesc();
+
+        $meses = null;
+        if ($anioActivo !== null) {
+            $delAnio = $ordenes->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->year === $anioActivo);
+            $meses = collect(range(1, 12))
+                ->mapWithKeys(fn (int $m) => [$m => $delAnio->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->month === $m)->count()])
+                ->all();
+        }
+
+        return ['anios' => $anios, 'meses' => $meses];
+    }
+
+    /**
+     * Periodo del informe: un mes puntual o el año completo. Sin parametros =
+     * mes actual; con solo `anio` = ese año completo ("Todo el año").
+     * Devuelve [desde Y-m-d, hasta Y-m-d, anio, mes|null].
+     */
+    private function periodoInforme(Request $request): array
+    {
+        $v = $request->validate([
+            'anio' => ['nullable', 'integer', 'between:2020,2100'],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
+        ]);
+
+        $anio = isset($v['anio']) ? (int) $v['anio'] : null;
+        $mes = isset($v['mes']) ? (int) $v['mes'] : null;
+
+        if ($anio === null) {
+            $anio = now()->year;
+            $mes ??= now()->month;
+        }
+
+        $desde = Carbon::create($anio, $mes ?? 1, 1);
+        $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+
+        return [$desde->toDateString(), $hasta->toDateString(), $anio, $mes];
+    }
+
+    /**
+     * Ordenes cuyo ingreso cae dentro del rango [desde, hasta] (Y-m-d).
+     * whereDate en ambos bordes: portable (MySQL 5.7 / SQLite) y usa el
+     * indice de fecha_ingreso.
+     */
+    private function ordenesDelPeriodo(string $desde, string $hasta): Builder
+    {
+        return OrdenServicio::query()
+            ->whereDate('fecha_ingreso', '>=', $desde)
+            ->whereDate('fecha_ingreso', '<=', $hasta);
+    }
+
+    /**
+     * Años con ordenes registradas (descendente) para el selector del informe.
+     * Siempre incluye el año actual aunque aun no tenga ordenes.
+     */
+    private function aniosDisponibles(): array
+    {
+        $min = OrdenServicio::min('fecha_ingreso');
+        $max = OrdenServicio::max('fecha_ingreso');
+
+        $primero = $min ? Carbon::parse($min)->year : now()->year;
+        $ultimo = max($max ? Carbon::parse($max)->year : now()->year, now()->year);
+
+        return array_reverse(range(min($primero, $ultimo), $ultimo));
     }
 
     private function validateData(Request $request, bool $creando = false): array
