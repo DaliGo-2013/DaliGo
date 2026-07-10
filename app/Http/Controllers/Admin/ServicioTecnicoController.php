@@ -352,11 +352,17 @@ class ServicioTecnicoController extends Controller
         // Garantia vencida o sin documento = reparacion (se cobra): exige precio.
         $esReparacion = $orden->condicion_efectiva === 'reparacion';
 
+        // Diagnostico final OBLIGATORIO al cerrar la orden: toda maquina que se
+        // marca como 'reparado' o 'sin_solucion' debe quedar con la causa de la
+        // falla (para que el informe refleje la realidad). En los estados
+        // intermedios sigue siendo opcional. '' -> null por el middleware
+        // ConvertEmptyStringsToNull, asi que 'Sin determinar' no pasa el required.
+        $exigeDiagnostico = in_array($request->input('estado'), ['reparado', 'sin_solucion'], true);
+
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
-            // Causa de la falla (diagnostico del tecnico): opcional; '' -> null.
-            'causa_falla' => ['nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
+            'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             'mano_obra' => ['nullable', 'integer', 'min:0'],
             'fecha_aviso' => ['nullable', 'date'],
             'fecha_retiro' => ['nullable', 'date'],
@@ -364,6 +370,8 @@ class ServicioTecnicoController extends Controller
             'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
+        ], [
+            'causa_falla.required' => 'Indica la causa de la falla (diagnóstico final) para cerrar la orden como «Reparado» o «Sin solución».',
         ]);
 
         // Validacion por fila: si el tecnico empezo a llenar un repuesto, exige

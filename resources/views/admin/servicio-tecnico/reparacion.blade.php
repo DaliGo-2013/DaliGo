@@ -90,16 +90,28 @@
                     </div>
 
                     {{-- Causa de la falla (diagnóstico del técnico): alimenta el
-                         indicador del informe para reforzar capacitación al cliente. --}}
-                    <div>
-                        <x-input-label for="causa_falla" value="Causa de la falla" />
-                        <x-select id="causa_falla" name="causa_falla" class="mt-1.5">
+                         indicador del informe para reforzar capacitación al cliente.
+                         OBLIGATORIA al cerrar como «Reparado» o «Sin solución»: el
+                         asterisco y el 'required' aparecen en vivo según el estado
+                         elegido arriba (mismo patrón que el N° de serie del ingreso). --}}
+                    <div x-data="{
+                            exige: false,
+                            init() {
+                                const sel = document.getElementById('estado');
+                                const set = () => { this.exige = !!sel && ['reparado', 'sin_solucion'].includes(sel.value); };
+                                set();
+                                if (sel) sel.addEventListener('change', set);
+                            },
+                         }">
+                        <x-input-label for="causa_falla">Causa de la falla <span x-show="exige" class="text-red-500">*</span></x-input-label>
+                        <x-select id="causa_falla" name="causa_falla" class="mt-1.5" x-bind:required="exige">
                             <option value="">Sin determinar</option>
                             @foreach ($causasFalla as $c)
                                 <option value="{{ $c }}" @selected(old('causa_falla', $orden->causa_falla) === $c)>{{ \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$c] }}</option>
                             @endforeach
                         </x-select>
                         <x-input-hint>¿La máquina falló por mal uso del cliente, desgaste normal o defecto de fábrica?</x-input-hint>
+                        <x-input-hint x-show="exige" x-cloak>Obligatoria para cerrar la orden como «Reparado» o «Sin solución» (diagnóstico final).</x-input-hint>
                         <x-input-error :messages="$errors->get('causa_falla')" class="mt-2" />
                     </div>
 
