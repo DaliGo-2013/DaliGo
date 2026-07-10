@@ -169,6 +169,16 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Fotos de respaldo del estado fisico del equipo al ingresarlo.
+     *
+     * @return HasMany<OrdenServicioFoto>
+     */
+    public function fotos(): HasMany
+    {
+        return $this->hasMany(OrdenServicioFoto::class, 'orden_servicio_id');
+    }
+
+    /**
      * @return BelongsTo<Cliente, $this>
      */
     public function cliente(): BelongsTo

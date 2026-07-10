@@ -8,6 +8,7 @@ use App\Models\OrdenServicio;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
+use App\Support\ImagenComprimida;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -95,6 +96,12 @@ class IngresoTallerPublicoController extends Controller
             'garantia_doc_numero' => [Rule::requiredIf($esGarantia), 'nullable', 'string', 'max:191'],
             'garantia_doc_fecha' => [Rule::requiredIf($esGarantia), 'nullable', 'date', 'before_or_equal:today'],
             'falla_reportada' => ['required', 'string', 'min:3'],
+            // Exactamente 2 fotos de respaldo del estado fisico del equipo. No se
+            // usa la regla `image` (falla con HEIC de iPhone); se valida por mimetype
+            // y tamano, y luego GD re-encoda (saneando el archivo). Endpoint publico:
+            // ya hay throttle + honeypot en el grupo.
+            'fotos' => ['required', 'array', 'size:2'],
+            'fotos.*' => ['required', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif', 'max:8192'],
         ]);
 
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
@@ -120,6 +127,13 @@ class IngresoTallerPublicoController extends Controller
             'fuente' => 'qr',
             'confirmada_at' => null,
         ]);
+
+        // Guardar las 2 fotos: se comprimen (GD) y van al disco PRIVADO `local`.
+        foreach ($request->file('fotos', []) as $foto) {
+            $orden->fotos()->create([
+                'ruta' => ImagenComprimida::guardar($foto, "ordenes-servicio/fotos/{$orden->id}"),
+            ]);
+        }
 
         // El correo NO se manda aqui: sale cuando el encargado confirma la
         // recepcion (asi el cliente recibe datos ya verificados).
