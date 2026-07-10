@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-10] Servicio Técnico: las fotos del equipo también se ven al EDITAR (no solo en el detalle)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `fix/st-fotos-visibles-al-editar`) Las fotos que sube el cliente por QR solo aparecían en el **detalle** (`show`), pero los roles con `manage` (admin/técnico) al abrir una orden caen en el **formulario de edición** → no las veían (lo reportó Marco). Se extrajo la galería a un parcial `admin/servicio-tecnico/_fotos.blade.php` y se incluye en `show` **y** en `edit` (bajo el enlace "Ver parte del técnico"). `edit()` ahora eager-loadea `fotos`. 1 test (`test_edit_y_show_muestran_las_fotos_del_equipo`). **468 verdes.** Build CSS nuevo.
+- **Pasos marcados:** ninguno. · **Decisiones:** ninguna. · **Delegaciones:** ninguna.
+
 ### [2026-07-10] Fix: la subida de fotos del QR moría con fotos reales (memoria GD) → resize en el navegador
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `fix/st-fotos-resize-cliente`) Marco reportó que el ingreso por QR con 2 fotos reales de celular "no se enviaba" (todo completo, clic, nada). **Diagnóstico reproducido:** una foto de 12MP (4032×3024) consume **~104 MB** al decodificarla con GD; dentro de un request Laravel (~40 MB base) supera los **128 MB** típicos del hosting compartido → **error 500** y no se crea la orden (las fotos fake de los tests son chicas → por eso pasaban). **Fix:** redimensionar la foto **en el navegador** antes de subir (`canvas` → JPEG q0.8, lado largo ≤1600) → el archivo queda en ~200-400 KB, la subida es liviana y el servidor la procesa sin agotar memoria; de paso convierte HEIC de iPhone a JPEG. Se conecta por `onchange` en los 2 inputs (`window.optimizarFotoInput` en `app.js`). Belt-and-suspenders en `public/.user.ini`: `memory_limit=256M` (+ post/upload holgados) por si sube el original. Build JS nuevo (`app-DprWvY-i.js`). 35 tests públicos verdes (server-side intacto).

@@ -218,7 +218,7 @@ class ServicioTecnicoController extends Controller
     public function edit(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.edit', array_merge(
-            ['orden' => $orden->load('producto')],
+            ['orden' => $orden->load('producto', 'fotos')],
             $this->formData($orden)
         ));
     }

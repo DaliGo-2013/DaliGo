@@ -749,4 +749,19 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['sku' => 'REP-001', 'nombre' => 'Caldera X', 'precio' => 4990]);
     }
+
+    /** Las fotos del equipo se ven tanto al EDITAR como en el DETALLE (staff). */
+    public function test_edit_y_show_muestran_las_fotos_del_equipo(): void
+    {
+        $orden = OrdenServicio::factory()->create();
+        $orden->fotos()->create(['ruta' => 'ordenes-servicio/fotos/'.$orden->id.'/abc.jpg']);
+
+        foreach (['edit', 'show'] as $accion) {
+            $this->actingAs($this->admin())
+                ->get(route("admin.servicio-tecnico.{$accion}", $orden))
+                ->assertOk()
+                ->assertSee('Fotos del equipo (recepción)', false)
+                ->assertSee(route('admin.servicio-tecnico.foto', $orden->fotos->first()), false);
+        }
+    }
 }
