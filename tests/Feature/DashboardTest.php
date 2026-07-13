@@ -88,6 +88,41 @@ class DashboardTest extends TestCase
         $this->assertSame(3, $indicadores['Entregado']['valor']);
     }
 
+    public function test_barra_muestra_contador_de_pendientes_de_servicio_tecnico(): void
+    {
+        // Pendientes = recibido + cotizacion. Otros estados no cuentan.
+        OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
+        OrdenServicio::factory()->create(['estado' => 'cotizacion']);
+        OrdenServicio::factory()->create(['estado' => 'entregado']);   // no cuenta
+        OrdenServicio::factory()->create(['estado' => 'reparado']);    // no cuenta
+
+        $this->assertSame(3, OrdenServicio::pendientesTecnico()->count());
+
+        // El técnico ve el badge con el número en la barra.
+        $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard')
+            ->assertOk()
+            ->assertSee('3 equipo(s) por atender');
+    }
+
+    public function test_barra_no_muestra_contador_a_rol_sin_acceso_a_servicio_tecnico(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
+
+        // Un rol sin permiso de servicio técnico no ve el link ni el contador.
+        $this->actingAs($this->userWithRole('soplador'))->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('equipo(s) por atender');
+    }
+
+    public function test_barra_no_muestra_badge_si_no_hay_pendientes(): void
+    {
+        OrdenServicio::factory()->create(['estado' => 'entregado']);   // no pendiente
+
+        $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('equipo(s) por atender');
+    }
+
     public function test_member_sees_only_greeting(): void
     {
         $res = $this->actingAs($this->userWithRole('member'))->get('/dashboard');
