@@ -10,8 +10,17 @@ COLA (en orden):
 - Matriz D-002, respuestas de Ricardo (D-003), zonas de Héctor (D-006) y BONUS respuestas de
   Melisa (D-004) → `docs/fleet/buzon/anexos-decisiones.md` (recopilados y verificados por el
   Director; usa esos textos verbatim para las fichas).
-- Respuesta ÍNTEGRA de I-05 (405 .php, tabla 11 pasos) → `docs/fleet/buzon/anexo-i05-respuesta-integra.md`;
-  archívala tal cual en docs/qa/INFRA/2026-07-08--INFRA--servidor-comprometido-i05.md + bitácora.
+- Expediente I-05 **REDACTADO** → `docs/fleet/buzon/anexo-i05-respuesta-integra.md`; archívalo
+  ASÍ (redactado) en docs/qa/INFRA/2026-07-08--INFRA--servidor-comprometido-i05.md + bitácora.
+
+⚠️ DECISIÓN DE SEGURIDAD DEL DIRECTOR (13-07) — tu pregunta sobre el I-05 público, resuelta:
+- NO se reescribe historia de git (el contenido sensible YA estaba en main, no solo en la
+  rama; reescribir main en repo compartido rompe todos los clones y no des-publica nada).
+- El Director YA redactó el anexo público (quitó rutas/patrón/blobs; dejó veredicto +
+  "comprometido era-2022, remediación a Víctor"). Commit normal ENCIMA, sin rewrite.
+- El detalle operativo completo (con rutas) va a VÍCTOR por canal privado — Mauricio lo
+  traslada, NO al repo.
+- Tú: archiva la versión REDACTADA. No reintroduzcas rutas/patrón/blobs en docs/qa.
 Con eso cierras el lote SIN depender de Mauricio.
 
 ## 1. LOTE DECISIONES.md (rápido, un push)
