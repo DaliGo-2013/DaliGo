@@ -6,6 +6,14 @@ MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño usarlo); si no, 
 
 COLA (en orden):
 
+## ✅ DESBLOQUEADO 13-07: los 4 insumos que pediste YA ESTÁN EN EL BUZÓN (no esperes pastes)
+- Matriz D-002, respuestas de Ricardo (D-003), zonas de Héctor (D-006) y BONUS respuestas de
+  Melisa (D-004) → `docs/fleet/buzon/anexos-decisiones.md` (recopilados y verificados por el
+  Director; usa esos textos verbatim para las fichas).
+- Respuesta ÍNTEGRA de I-05 (405 .php, tabla 11 pasos) → `docs/fleet/buzon/anexo-i05-respuesta-integra.md`;
+  archívala tal cual en docs/qa/INFRA/2026-07-08--INFRA--servidor-comprometido-i05.md + bitácora.
+Con eso cierras el lote SIN depender de Mauricio.
+
 ## 1. LOTE DECISIONES.md (rápido, un push)
 - D-001 TOMADA (Mauricio, 08-07): nombre = DaliGo. D-009 DESCARTADA. D-010 CERRADA.
 - D-002 TOMADA como estrategia: accesos se definen al CERRAR cada módulo; matriz del
