@@ -21,6 +21,14 @@ otro assert del PWA quedó desalineado + suite completa verde + push a main. Ano
 en la bitácora: "cambio de manifest.json requiere alinear PwaTest — CI de main es la red".
 NO implementes redirect por rol todavía (pregunta de producto en manos de Mauricio).
 
+⚠️ 13-07 tarde: tu hotfix del PwaTest quedó VERDE ✓. PERO main sigue rojo por OTRO test que
+NO es tuyo: `ServicioTecnicoManagementTest > reparado_exige_...` (línea 687), territorio M12
+de Marcos (lo rompió su commit 2d8fd73). NO lo toques sin permiso — el Director lo escaló a
+Mauricio. P-M14-07 (merge) NO puede entrar con main rojo, así que ESPERA: (a) que Marcos
+arregle su test, o (b) dictado nuevo del Director si Mauricio autoriza que TÚ lo arregles como
+excepción. Mientras tanto, si quieres adelantar: haz el re-sellado de PLAN-M14 y el gate
+/pre-merge EN TU RAMA (no requieren main verde), y deja el merge para cuando main esté limpio.
+
 TAREA SIGUIENTE — P-M14-07 (con main verde): re-sellado de PLAN-M14 (guard omitido +
 eventos en 02) + suite completa + gate /pre-merge (R-31) + MERGE COORDINADO: parte al buzón
 con hash del merge EN TU RAMA + grep + conteo ANTES de pushear a main; push solo con doble

@@ -79,14 +79,19 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
-### I-06 · MAIN EN ROJO por cruce M12×PWA — hotfix dictado (13-07)
-El stream M12 cambió `start_url` del manifest a `/dashboard` (fix legítimo: no-sopladores
-recibían 403 al abrir la app instalada) sin alinear `PwaTest:41` → Tests de main en FAILURE
-desde `2c396b7` (el deploy salió igual: workflows independientes — ojo con esa trampa).
-Bloquea el merge de M14. HOTFIX dictado a Max-1 (alinear el test, NO tocar el cambio de
-M12). PREGUNTA DE PRODUCTO para Mauricio: ¿los sopladores deberían rebotar de /dashboard a
-mi-reporte automáticamente (redirect por rol), o el tap extra es aceptable? Primera
-interferencia real M12↔flota — la política de "avisar antes de decidir" operó.
+### I-06 · MAIN EN ROJO — parte 1 RESUELTA, parte 2 ABIERTA (territorio M12)
+**Parte 1 (PwaTest, CERRADA):** Max-1 alineó `PwaTest:41` al nuevo `start_url=/dashboard`
+(hotfix verificado, su fix del PWA quedó verde). Pregunta de producto para Mauricio sigue
+viva: ¿rebote automático de soplador /dashboard→mi-reporte, o el tap extra es aceptable?
+**Parte 2 (ServicioTecnicoManagementTest, ABIERTA — NO es de la flota):** el CI de main SIGUE
+rojo por OTRO test: `Tests\Feature\Admin\ServicioTecnicoManagementTest > reparado_exige_...`
+falla (línea 687: `assertNotSame('reparado', ...)`). Es territorio M12 (Marcos) — el último
+commit que lo tocó es suyo (`2d8fd73`, descuento en reparaciones, 12:29). Marcos rompió su
+propio test y pusheó a main rojo (los workflows independientes dejan pasar el deploy — trampa
+ya anotada). **Bloquea el merge de M14** (P-M14-07 exige suite verde). Por política del dueño
+M12 es autónomo y la flota NO toca su código → ESCALAMIENTO A MAURICIO: avisar a Marcos que
+main está rojo por su test; alternativa si urge el merge de M14: Max-1 arregla solo ESE test
+con permiso explícito del dueño (excepción puntual a la regla de territorio).
 
 ### I-05 · SERVIDOR COMPROMETIDO — malware confirmado; remediación ASIGNADA A VÍCTOR (08-07)
 Inspección ejecutada (11/11 pasos, evidencia en el parte del operador): **405 archivos PHP
