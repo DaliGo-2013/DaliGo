@@ -90,18 +90,20 @@ class DashboardTest extends TestCase
 
     public function test_barra_muestra_contador_de_pendientes_de_servicio_tecnico(): void
     {
-        // Pendientes = recibido + cotizacion. Otros estados no cuentan.
+        // Pendientes = todos los estados activos (recibido, en_revision, cotizacion,
+        // esperando_repuesto, reparado). Solo entregado y sin_solucion NO cuentan.
         OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
         OrdenServicio::factory()->create(['estado' => 'cotizacion']);
-        OrdenServicio::factory()->create(['estado' => 'entregado']);   // no cuenta
-        OrdenServicio::factory()->create(['estado' => 'reparado']);    // no cuenta
+        OrdenServicio::factory()->create(['estado' => 'reparado']);       // ahora SÍ cuenta
+        OrdenServicio::factory()->create(['estado' => 'entregado']);      // no cuenta
+        OrdenServicio::factory()->create(['estado' => 'sin_solucion']);   // no cuenta
 
-        $this->assertSame(3, OrdenServicio::pendientesTecnico()->count());
+        $this->assertSame(4, OrdenServicio::pendientesTecnico()->count());
 
         // El técnico ve el badge con el número en la barra.
         $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard')
             ->assertOk()
-            ->assertSee('3 equipo(s) por atender');
+            ->assertSee('4 equipo(s) por atender');
     }
 
     public function test_barra_no_muestra_contador_a_rol_sin_acceso_a_servicio_tecnico(): void

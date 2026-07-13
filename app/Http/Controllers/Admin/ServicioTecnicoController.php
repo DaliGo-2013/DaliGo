@@ -603,22 +603,17 @@ class ServicioTecnicoController extends Controller
         return OrdenServicio::query()
             ->when($f['q'] ?? null, function (Builder $qb, $q) {
                 $rutQ = preg_replace('/[.\s]/', '', $q);
-                // Folio: es el id con ceros (#000009). Si la busqueda son solo
-                // digitos (con o sin # o ceros), tambien matcheamos por id.
-                $folioId = (int) preg_replace('/\D/', '', $q);
 
-                $qb->where(function (Builder $w) use ($q, $rutQ, $folioId) {
-                    $w->where('cliente_nombre', 'like', "%{$q}%")
+                $qb->where(function (Builder $w) use ($q, $rutQ) {
+                    // El folio ahora es el codigo unico (ST-XXXXXXXX): se busca por ese.
+                    $w->where('codigo', 'like', "%{$q}%")
+                        ->orWhere('cliente_nombre', 'like', "%{$q}%")
                         ->orWhere('cliente_rut', 'like', "%{$rutQ}%")
                         ->orWhere('modelo', 'like', "%{$q}%")
                         ->orWhere('numero_serie', 'like', "%{$q}%")
                         ->orWhereHas('producto', fn (Builder $p) => $p
                             ->where('sku', 'like', "%{$q}%")
                             ->orWhere('nombre', 'like', "%{$q}%"));
-
-                    if ($folioId > 0) {
-                        $w->orWhere('id', $folioId);
-                    }
                 });
             })
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
