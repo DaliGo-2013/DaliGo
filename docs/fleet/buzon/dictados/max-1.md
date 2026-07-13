@@ -44,6 +44,28 @@ para no-aleatoria es refactor de M12 que le toca a Marcos — no lo hagas). Anot
 el gotcha: "factory con estado aleatorio → tests que asertan estado deben FIJARLO en el create".
 Deja constancia en tu parte de que tocaste territorio M12 por autorización del dueño (I-06).
 
+🟢 13-07 v4: MAIN VERDE (tu fix flaky I-06 pasó CI; el lote de Max-2 ya integrado por el
+Director). Tu prep de P-M14-07 (re-sello + gate) ya está HECHO en la rama. VÍA LIBRE PARA EL
+MERGE — es la demo de la reunión. Ejecuta P-M14-07 en 2 fases:
+
+FASE A (hazla YA con «revisa tu buzón») — merge en TU rama, sin tocar main:
+- La rama está **118 commits detrás de main** (M12 avanzó full). `git fetch origin` y merge de
+  `origin/main` HACIA `feature/m14-aprobaciones`.
+- Conflictos reales esperados (aditivos, conserva AMBOS lados): `routes/web.php` (rutas M12+M14)
+  y `navigation.blade.php` (nav M12+M14). `public/build/*` y `manifest.json`: JAMÁS a mano →
+  tras resolver, `php artisan view:clear && npm run build` (recuerda `npm install` primero por
+  el chunk qrcode — gotcha en bitácora) y commitea el bundle regenerado. Grep del bundle:
+  lg\:flex, lg\:hidden + una clase de M14 + una del PWA/ST de main.
+- Suite COMPLETA verde en el árbol mergeado (esperada bastante > 485: tus tests + todo M12).
+- PARTE AL BUZÓN con: hash del merge EN TU RAMA + salida del grep + conteo de suite.
+  **NO PUSHEES A MAIN en la fase A.**
+
+FASE B (solo tras OK doble llave) — el Director verifica tu parte y, con el visto bueno de
+Mauricio, se libera el push a main = DEPLOY. Luego QA staging desde el celular de Mauricio
+(ajuste grande de producción → campanita+correo → aprobar desde el teléfono → aplicado) →
+P-M14-07 [x] en RUTA → E2·M14 CERRADA.
+
+--- referencia del prep (ya hecho) ---
 TAREA SIGUIENTE — P-M14-07 (con main verde): re-sellado de PLAN-M14 (guard omitido +
 eventos en 02) + suite completa + gate /pre-merge (R-31) + MERGE COORDINADO: parte al buzón
 con hash del merge EN TU RAMA + grep + conteo ANTES de pushear a main; push solo con doble
