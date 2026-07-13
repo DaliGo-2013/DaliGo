@@ -38,6 +38,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view servicio tecnico',      // jefes/vendedores: ver listado + detalle (solo lectura)
             'manage servicio tecnico',    // tecnico: ingreso/edicion + etapa de taller
             'confirmar servicio tecnico', // jefe de bodega / tecnico: autorizar la recepcion de lo que llego por QR
+            'crear lote servicio',        // conductor: ingreso por lote en ruta (acotado, NO edita el taller)
             // Modulo Notificaciones (M15).
             'view notificaciones',        // ver el panel de todas las notificaciones del sistema
         ];
@@ -69,11 +70,14 @@ class RolesAndPermissionsSeeder extends Seeder
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
             ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico']);
-        Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web']);
+        // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
+        // edita órdenes ni la etapa de taller.
+        Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
+            ->givePermissionTo(['crear lote servicio']);
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
-        // reparacion y tambien confirmar la recepcion.
+        // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico']);
+            ->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
     }

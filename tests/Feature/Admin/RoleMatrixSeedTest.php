@@ -28,15 +28,15 @@ class RoleMatrixSeedTest extends TestCase
                 'view users', 'create users', 'edit users', 'delete users',
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
-                'view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico',
+                'view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio',
                 'view notificaciones',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico'],
             'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico'],
             'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico'],
-            'conductor' => [],
-            'tecnico' => ['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico'],
+            'conductor' => ['crear lote servicio'],
+            'tecnico' => ['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio'],
             'soplador' => ['report production'],
         ];
     }

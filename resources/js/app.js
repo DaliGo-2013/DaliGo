@@ -307,6 +307,120 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
 }));
 
 /**
+ * Ingreso por LOTE de Servicio Tecnico (conductor en ruta). Tabla de maquinas
+ * como filas livianas: cada fila lleva el codigo Dali (autocompletado por
+ * fila, mismo patron que reparacionForm), serie/modelo y una foto de respaldo
+ * (comprimida en el navegador con optimizarFotoInput). La empresa y los
+ * defaults del lote se eligen una vez fuera de este componente.
+ */
+Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente }) => ({
+    endpointProducto: endpointProducto || '',
+    endpointCliente: endpointCliente || '',
+
+    // Empresa del lote (se elige una vez). El RUT es el buscador; al elegir de
+    // la lista autocompleta nombre/correo/teléfono y enlaza cliente_id.
+    clienteId: 0,
+    rut: '',
+    nombre: '',
+    email: '',
+    telefono: '',
+    empresaResultados: [],
+    empresaAbierto: false,
+    empresaBuscando: false,
+
+    maquinas: [],
+    sugerencias: [],
+    filaActiva: null,
+    buscando: false,
+
+    init() {
+        if (this.maquinas.length === 0) this.agregar();
+    },
+
+    async buscarEmpresa() {
+        const q = (this.rut || '').trim();
+        if (q.length < 2 || !this.endpointCliente) {
+            this.empresaResultados = [];
+            return;
+        }
+        this.empresaBuscando = true;
+        try {
+            const { data } = await window.axios.get(this.endpointCliente, { params: { q } });
+            this.empresaResultados = data;
+            this.empresaAbierto = true;
+        } catch (e) {
+            this.empresaResultados = [];
+        } finally {
+            this.empresaBuscando = false;
+        }
+    },
+
+    elegirEmpresa(r) {
+        this.clienteId = r.id || 0;
+        this.rut = r.rut || '';
+        this.nombre = r.razon_social || '';
+        this.telefono = r.telefono || '';
+        this.email = r.email || '';
+        this.empresaAbierto = false;
+        this.empresaResultados = [];
+    },
+
+    filaVacia() {
+        return { producto_id: '', producto_label: '', numero_serie: '', modelo: '', foto_nombre: '' };
+    },
+
+    agregar() {
+        this.maquinas.push(this.filaVacia());
+    },
+
+    quitar(i) {
+        this.maquinas.splice(i, 1);
+        if (this.maquinas.length === 0) this.agregar();
+    },
+
+    async buscar(i) {
+        this.filaActiva = i;
+        const q = (this.maquinas[i]?.producto_label || '').trim();
+        if (q.length < 2 || !this.endpointProducto) {
+            this.sugerencias = [];
+            return;
+        }
+        this.buscando = true;
+        try {
+            const { data } = await window.axios.get(this.endpointProducto, { params: { q } });
+            this.sugerencias = data;
+        } catch (e) {
+            this.sugerencias = [];
+        } finally {
+            this.buscando = false;
+        }
+    },
+
+    elegir(i, s) {
+        this.maquinas[i].producto_id = s.id;
+        this.maquinas[i].producto_label = s.label;
+        this.cerrar();
+    },
+
+    cerrar() {
+        this.sugerencias = [];
+        this.filaActiva = null;
+    },
+
+    // Comprime la foto en el navegador (optimizarFotoInput reemplaza el archivo
+    // del input por la version liviana) y marca la fila como "con foto".
+    async fotoInput(i, input) {
+        await window.optimizarFotoInput(input);
+        this.maquinas[i].foto_nombre = input.files?.[0]?.name || 'Foto lista';
+    },
+
+    // Antes de enviar: cada fila necesita un codigo elegido del catalogo.
+    filaIncompleta(m) {
+        return !m.producto_id;
+    },
+}));
+
+/**
  * Estado de red global (spike PWA, P-SPK-01). Indicador informativo para el
  * operario: navigator.onLine tiene falsos positivos (WiFi sin internet), asi
  * que al volver "online" se confirma con un HEAD al health check /up (ya

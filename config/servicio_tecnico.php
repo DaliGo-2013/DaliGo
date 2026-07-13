@@ -74,6 +74,20 @@ return [
 
     'sku_hora_servicio' => '9771001',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ciudades de ruta (ingreso por lote del conductor)
+    |--------------------------------------------------------------------------
+    |
+    | Orígenes desde donde el conductor retira máquinas en ruta para el ingreso
+    | por lote. NO son sucursales (no reparan): es el lugar de retiro. Alimentan
+    | el selector "Origen" del formulario de lote y su validación. Agregá acá las
+    | ciudades donde haya recorrido.
+    |
+    */
+
+    'ciudades_ruta' => ['Los Andes', 'Curicó', 'Talca', 'Rancagua', 'San Fernando'],
+
     'categorias_equipo' => [
         'agua bomba usb',
         // Dispensadores: en Bsale son 4 categorías separadas (pedestal/sobremesa
