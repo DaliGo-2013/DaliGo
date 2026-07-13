@@ -227,47 +227,50 @@
                         {{-- Mano de obra + costo total (solo si se cobra) --}}
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div class="space-y-3">
-                                @if ($precioHoraServicio)
-                                    {{-- Calculadora por horas: valor hora del catálogo (SKU config)
-                                         × horas trabajadas → llena la mano de obra (editable igual). --}}
+                                {{-- Horas + Mano de obra, lado a lado (compacto). La calculadora
+                                     por horas llena la mano de obra (editable igual). --}}
+                                <div class="grid grid-cols-2 gap-3">
+                                    @if ($precioHoraServicio)
+                                        <div>
+                                            <x-input-label for="horas_servicio" value="Horas de servicio técnico" />
+                                            <x-text-input id="horas_servicio" class="mt-1.5" type="number" min="0" step="0.5"
+                                                x-model.number="horas" x-on:input="calcularManoObra()" placeholder="Ej. 1, 1.5, 2" />
+                                            <x-input-hint>
+                                                Valor hora: {{ '$'.number_format($precioHoraServicio, 0, ',', '.') }} (cód. {{ config('servicio_tecnico.sku_hora_servicio') }}). La mano de obra se calcula sola; la puedes ajustar.
+                                            </x-input-hint>
+                                        </div>
+                                    @endif
                                     <div>
-                                        <x-input-label for="horas_servicio" value="Horas de servicio técnico" />
-                                        <x-text-input id="horas_servicio" class="mt-1.5" type="number" min="0" step="0.5"
-                                            x-model.number="horas" x-on:input="calcularManoObra()" placeholder="Ej. 1, 1.5, 2" />
-                                        <x-input-hint>
-                                            Valor hora: {{ '$'.number_format($precioHoraServicio, 0, ',', '.') }} (cód. {{ config('servicio_tecnico.sku_hora_servicio') }}).
-                                            La mano de obra se calcula sola (horas × valor hora); la puedes ajustar.
-                                        </x-input-hint>
+                                        <x-input-label for="mano_obra" value="Mano de obra ($)" />
+                                        <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
+                                            x-model.number="manoObra" :value="old('mano_obra', $orden->mano_obra)" />
+                                        <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
                                     </div>
-                                @endif
-                                <div>
-                                    <x-input-label for="mano_obra" value="Mano de obra ($)" />
-                                    <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
-                                        x-model.number="manoObra" :value="old('mano_obra', $orden->mano_obra)" />
-                                    <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
                                 </div>
 
-                                {{-- Descuento sobre el total (opcional). Si se aplica, el motivo es obligatorio. --}}
-                                <div>
-                                    <x-input-label for="descuento_pct" value="Descuento" />
-                                    <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
-                                        <option value="0">Sin descuento</option>
-                                        @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
-                                            <option value="{{ $pct }}">{{ $pct }}%</option>
-                                        @endforeach
-                                    </x-select>
-                                    <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
-                                </div>
-                                <div x-show="descuentoPct > 0" x-cloak>
-                                    <x-input-label for="descuento_motivo" value="Motivo del descuento *" />
-                                    <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
-                                        <option value="">— Selecciona —</option>
-                                        @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
-                                            <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
-                                        @endforeach
-                                    </x-select>
-                                    <x-input-hint>Justifica el descuento (queda registrado en la orden).</x-input-hint>
-                                    <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                                {{-- Descuento + Motivo, lado a lado (el motivo solo aparece si hay
+                                     descuento; obligatorio cuando se aplica). --}}
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <x-input-label for="descuento_pct" value="Descuento" />
+                                        <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
+                                            <option value="0">Sin descuento</option>
+                                            @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
+                                                <option value="{{ $pct }}">{{ $pct }}%</option>
+                                            @endforeach
+                                        </x-select>
+                                        <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                                    </div>
+                                    <div x-show="descuentoPct > 0" x-cloak>
+                                        <x-input-label for="descuento_motivo" value="Motivo *" />
+                                        <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
+                                            <option value="">— Selecciona —</option>
+                                            @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
+                                                <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
+                                            @endforeach
+                                        </x-select>
+                                        <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                                    </div>
                                 </div>
                             </div>
                             <div class="flex flex-col justify-end">
