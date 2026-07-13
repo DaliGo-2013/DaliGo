@@ -109,6 +109,11 @@ Route::middleware('auth')
         Route::get('audits', [AuditController::class, 'index'])
             ->middleware('permission:view audit')->name('audits.index');
 
+        // Aprobaciones (M14): historial completo del motor (solo lectura, admin).
+        // La bandeja del aprobador vive en /aprobaciones (permiso 'aprobar solicitudes').
+        Route::get('aprobaciones', [AprobacionController::class, 'historial'])
+            ->middleware('permission:view aprobaciones')->name('aprobaciones.index');
+
         // Notificaciones (M15): panel de todas las notificaciones + envio de prueba.
         Route::get('notificaciones', [NotificacionController::class, 'index'])
             ->middleware('permission:view notificaciones')->name('notificaciones.index');
