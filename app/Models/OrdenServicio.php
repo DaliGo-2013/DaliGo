@@ -125,6 +125,7 @@ class OrdenServicio extends Model implements AuditableContract
         'cliente_email',
         'producto_id',
         'sucursal_id',
+        'lote_id',
         'fecha_ingreso',
         'tipo_equipo',
         'modelo',
@@ -332,23 +333,37 @@ class OrdenServicio extends Model implements AuditableContract
         return $this->codigo ?: '#'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
     }
 
+    // Origen del ingreso. 'mostrador' (staff en persona, no requiere confirmar),
+    // 'qr' (cliente por QR) y 'ruta' (conductor retira en ruta, lote). Las dos
+    // ultimas llegan fisicamente despues -> se confirman en Mirador.
+    public const FUENTE_RUTA = 'ruta';
+
+    public const FUENTES_POR_CONFIRMAR = ['qr', 'ruta'];
+
     /**
-     * Llego por QR y el encargado todavia no la confirmo (no recibio la maquina
-     * fisica). Estas son las que aparecen en el bloque "Por confirmar" del taller.
+     * Llego por QR o por lote en ruta y el encargado todavia no la confirmo (no
+     * recibio la maquina fisica). Estas aparecen en el bloque "Por confirmar".
      */
     public function getPorConfirmarAttribute(): bool
     {
-        return $this->fuente === 'qr' && $this->confirmada_at === null;
+        return in_array($this->fuente, self::FUENTES_POR_CONFIRMAR, true)
+            && $this->confirmada_at === null;
     }
 
     /**
-     * Ordenes ingresadas por QR que aun esperan la confirmacion del encargado.
+     * Ordenes ingresadas por QR o por lote en ruta que aun esperan confirmacion.
      *
      * @param  Builder<OrdenServicio>  $query
      */
     public function scopePorConfirmar($query)
     {
-        return $query->where('fuente', 'qr')->whereNull('confirmada_at');
+        return $query->whereIn('fuente', self::FUENTES_POR_CONFIRMAR)->whereNull('confirmada_at');
+    }
+
+    /** @return BelongsTo<LoteServicio, $this> */
+    public function lote(): BelongsTo
+    {
+        return $this->belongsTo(LoteServicio::class, 'lote_id');
     }
 
     // Estados "activos" para el contador de la barra: TODO lo que sigue en el

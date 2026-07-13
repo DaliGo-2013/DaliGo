@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
+use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
@@ -147,6 +148,20 @@ Route::middleware('auth')
             // (poll sin recargar la pagina).
             Route::get('servicio-tecnico/por-confirmar/conteo', [ServicioTecnicoController::class, 'porConfirmarConteo'])
                 ->name('servicio-tecnico.por-confirmar.conteo');
+        });
+
+        // Ingreso por LOTE (conductor en ruta): permiso acotado, NO gestiona el
+        // taller. Rutas literales 'servicio-tecnico/lote...' (no chocan con el
+        // show {orden} que exige whereNumber).
+        Route::middleware('permission:crear lote servicio')->group(function () {
+            Route::get('servicio-tecnico/lote', [LoteServicioController::class, 'create'])
+                ->name('servicio-tecnico.lote.create');
+            Route::post('servicio-tecnico/lote', [LoteServicioController::class, 'store'])
+                ->name('servicio-tecnico.lote.store');
+            Route::get('servicio-tecnico/lote/buscar-cliente', [LoteServicioController::class, 'buscarCliente'])
+                ->name('servicio-tecnico.lote.buscar-cliente');
+            Route::get('servicio-tecnico/lote/buscar-producto', [LoteServicioController::class, 'buscarProducto'])
+                ->name('servicio-tecnico.lote.buscar-producto');
         });
 
         Route::middleware('permission:manage servicio tecnico')->group(function () {
