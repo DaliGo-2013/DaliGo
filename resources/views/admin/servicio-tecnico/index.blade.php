@@ -189,7 +189,12 @@
                     @endif
                     <x-list-row>
                         <x-slot name="leading">
-                            <x-avatar>{{ mb_strtoupper(mb_substr($orden->tipo_equipo, 0, 1)) }}</x-avatar>
+                            {{-- Condición del ingreso como avatar: R = Reparación, G = Garantía.
+                                 Ambas en fondo naranja (marca) por pedido del dueño; la letra y el
+                                 tooltip distinguen el significado. Reemplaza al avatar del tipo. --}}
+                            @php $esGarantia = $orden->condicion_efectiva === 'garantia'; @endphp
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="{{ $esGarantia ? 'Garantía' : 'Reparación' }}">{{ $esGarantia ? 'G' : 'R' }}</div>
                         </x-slot>
 
                         @php
@@ -213,13 +218,6 @@
                                 {{-- Un solo badge de estado que incluye la sucursal de recepción:
                                      "Recibido en El Mirador" / "En Revisión en El Mirador"… --}}
                                 <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@endif</x-badge>
-                                {{-- Condición compacta (1 letra): R rojo = Reparación, G verde = Garantía.
-                                     Excepción intencional a la paleta (aprobada por el dueño); tooltip con la palabra. --}}
-                                @if ($orden->condicion_efectiva === 'garantia')
-                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-green-600 text-xs font-bold text-white" title="Garantía">G</span>
-                                @else
-                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-brand-600 text-xs font-bold text-white" title="Reparación">R</span>
-                                @endif
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
                             {{-- Quién recibió/confirmó la orden (al registrar en mostrador o al
