@@ -62,8 +62,12 @@ return [
 
     'categorias_equipo' => [
         'agua bomba usb',
-        'agua disp. pedestal compresor y ventilador',
-        'agua disp. sobremesa compresor y ventilador',
+        // Dispensadores: en Bsale son 4 categorías separadas (pedestal/sobremesa
+        // × compresor/ventilador), no una sola "compresor y ventilador".
+        'agua disp. pedestal compresor',
+        'agua disp. pedestal ventilador',
+        'agua disp. sobremesa compresor',
+        'agua disp. sobremesa ventilador',
         'agua lavadora',
         'herramientas',
     ],

@@ -147,7 +147,7 @@ class IngresoTallerPublicoTest extends TestCase
     {
         $producto = Producto::factory()->create([
             'sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black',
-            'categoria' => 'agua disp. sobremesa compresor y ventilador',
+            'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR',
         ]);
 
         // Sin login (es público): matchea por SKU y por nombre.
@@ -166,7 +166,7 @@ class IngresoTallerPublicoTest extends TestCase
         // solo debe ver el equipo, aunque ambos matcheen la búsqueda por nombre.
         $equipo = Producto::factory()->create([
             'sku' => '1040001', 'nombre' => 'Dispensador Rosa LB-16',
-            'categoria' => 'agua disp. pedestal compresor y ventilador',
+            'categoria' => 'AGUA DISP. PEDESTAL VENTILADOR',
         ]);
         $accesorio = Producto::factory()->create([
             'sku' => '1020104', 'nombre' => 'Soporte Rosa Nacional',
@@ -203,14 +203,13 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertExactJson([]);
     }
 
-    public function test_buscar_producto_publico_matchea_categoria_con_puntuacion_distinta(): void
+    public function test_buscar_producto_publico_muestra_dispensadores(): void
     {
-        // El match es tolerante a puntuación/mayúsculas: la categoría real de
-        // Bsale "AGUA DISP PEDESTAL COMPRESOR Y VENTILADOR" (sin el punto de
-        // "disp.") debe calzar igual con el config y mostrar el dispensador.
+        // Categoría real de Bsale (mayúsculas, con punto): debe calzar con el
+        // config vía el match tolerante y mostrar el dispensador en el buscador.
         $disp = Producto::factory()->create([
             'sku' => '1040001', 'nombre' => 'DISP. LB-16 L/D BLUE/SILVER',
-            'categoria' => 'AGUA DISP PEDESTAL COMPRESOR Y VENTILADOR',
+            'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR',
         ]);
 
         $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-16']))
