@@ -79,6 +79,15 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
+### I-06 · MAIN EN ROJO por cruce M12×PWA — hotfix dictado (13-07)
+El stream M12 cambió `start_url` del manifest a `/dashboard` (fix legítimo: no-sopladores
+recibían 403 al abrir la app instalada) sin alinear `PwaTest:41` → Tests de main en FAILURE
+desde `2c396b7` (el deploy salió igual: workflows independientes — ojo con esa trampa).
+Bloquea el merge de M14. HOTFIX dictado a Max-1 (alinear el test, NO tocar el cambio de
+M12). PREGUNTA DE PRODUCTO para Mauricio: ¿los sopladores deberían rebotar de /dashboard a
+mi-reporte automáticamente (redirect por rol), o el tap extra es aceptable? Primera
+interferencia real M12↔flota — la política de "avisar antes de decidir" operó.
+
 ### I-05 · SERVIDOR COMPROMETIDO — malware confirmado; remediación ASIGNADA A VÍCTOR (08-07)
 Inspección ejecutada (11/11 pasos, evidencia en el parte del operador): **405 archivos PHP
 maliciosos fuera del docroot** — `blog.php` (webshell file-manager, ofuscación `$GNJ[]()`),
