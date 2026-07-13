@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-13] Stream 1 · I-06: main verde — el test de M12 era FLAKY (factory con estado aleatorio), no roto
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón; **hotfix autorizado por el dueño** (excepción puntual de territorio M12, I-06).
+- **Objetivo declarado:** desbloquear main (rojo intermitente) sin invadir M12 de más.
+- **Qué se hizo:** diagnóstico del Director confirmado empíricamente: `OrdenServicioFactory` asigna `estado` ALEATORIO; `ServicioTecnicoManagementTest::test_reparado_exige_diagnostico_final` creaba sin fijarlo y asertaba `assertNotSame('reparado', …)` → fallaba ~1/7 corridas (de ahí el verde/rojo entre pushes idénticos). Fix mínimo: fijar `'estado' => 'en_revision'` en el `create()` de ese test y del hermano `sin_solucion` (flaky latente). NO se tocó la factory ni el controller (el código de Marcos estaba correcto). **Verificación anti-flaky: 20 corridas en procesos frescos → 20/20 verdes** (`(6/7)^20 ≈ 4.6%` sin el fix). Suite completa verde. Gotcha en CLAUDE.md ("factory con campo aleatorio → tests que asertan ese campo lo fijan en el create; cazar flaky = 20+ corridas"). Commit + push a main. Parte en `docs/fleet/buzon/partes/2026-07-13--max-1--i06-flaky-m12.md`.
+- **Pasos marcados:** ninguno (hotfix de CI, territorio M12 autorizado). · **Decisiones:** ninguna. · **Delegaciones:** parte al buzón.
+- **Próximo paso:** con main verde, **P-M14-07** queda desbloqueado del lado del CI (gate R-31 ya APROBADO C/OBS); espera la ventana de doble llave (Director + Mauricio) + QA staging desde el celular.
+
 ### [2026-07-13] Stream 1 · P-M14-07 PREP: re-sello de PLAN-M14 + gate /pre-merge (adelanto en rama)
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón; dictado v2 permite adelantar lo que no requiere main verde.
 - **Objetivo declarado:** con el merge en espera (main rojo por test de M12 + doble llave), adelantar el re-sellado de PLAN-M14 y el gate `/pre-merge` R-31 EN LA RAMA.
