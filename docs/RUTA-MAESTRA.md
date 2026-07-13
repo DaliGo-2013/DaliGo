@@ -13,9 +13,9 @@
 |---|---|
 | **Última actualización** | 2026-07-13 (**P-M14-06 hecho en rama** — historial admin `/admin/aprobaciones` con filtros + resumen, `8c8d3e2`, 485 tests, verificado en preview 375/768/1280; E2·M14 va **6/7**, solo falta P-M14-07 merge coordinado) · 2026-07-08 (**E1·M15 CERRADA — primera unidad completa de la flota, kickoff→producción en 6 días**: P-M15-10 [x] con entregabilidad verificada — SPF/DKIM VALID + DMARC creado, Gmail=RECIBIDOS con captura del dueño, fila mail Enviada, correos M12 des-atascados del log; evidencia en `docs/qa/INFRA/`) · 2026-07-07 noche (**P-M15-09 [x] CERRADO** — QA staging APROBADO CON OBSERVACIONES aceptado y archivado en `docs/qa/M15/`; motor de reintentos probado EN PRODUCCIÓN · 2026-07-07 tarde (**M15 MERGEADO A MAIN = DEPLOY** — P-M15-09 fase deploy hecha con doble llave, reintentador corregido a `everyFifteenMinutes()` · **E2 arranca**: `docs/planes/PLAN-M14.md` sellado — motor de aprobaciones, espera VISTO BUENO de Mauricio antes de la primera migración · **I-03 CERRADA**: token renovado por Mauricio y verificado — las 4 syncs corrieron OK en sus slots nuevos, espejo descongelado) · 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — cron `*/15` + syncs en :00/:15/:30/:45 · **P-SPK-03 hecho → spike PWA COMPLETO**) · 2026-07-06 (**P-M12-01 piloto** QR mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
-| **Unidad activa** | **E1 · M15 Notificaciones CERRADA 2026-07-08** [stream 2 libre — esperando asignación del Director] · **E2 · M14 Aprobaciones** [stream 1, EN CONSTRUCCIÓN — **6/7**, P-M14-01..06 hechos en rama `feature/m14-aprobaciones`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
-| **Próximo paso** | Stream 1: **P-M14-07** (re-sellado PLAN-M14 + gate `/pre-merge` R-31 + MERGE COORDINADO doble llave + QA staging celular) — P-M14-01..06 hechos en rama `feature/m14-aprobaciones` (último `8c8d3e2`, 485 tests; motor E2E + bandeja + historial) · Stream 2: **E1 cerrada** — esperando asignación del Director · Mauricio: `P-S0-03/04` briefs |
-| **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
+| **Unidad activa** | **E1 · M15 Notificaciones CERRADA 2026-07-08** [stream 2 → PIVOTE A DESPACHOS] · **E2 · M14 Aprobaciones** [stream 1, EN CONSTRUCCIÓN — **6/7**, P-M14-01..06 hechos en rama `feature/m14-aprobaciones`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
+| **Próximo paso** | Stream 1: **P-M14-07** (re-sellado PLAN-M14 + gate `/pre-merge` R-31 + MERGE COORDINADO doble llave + QA staging celular) — P-M14-01..06 hechos en rama `feature/m14-aprobaciones` (último `8c8d3e2`, 485 tests; motor E2E + bandeja + historial) · Stream 2: lote DECISIONES/I-04/I-05 (este push) → **PLAN-DESPACHOS-V1 sellado** (M04 pospuesto por el dueño) → micro-backlog M15 · Mauricio: `P-S0-03/04` briefs |
+| **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
 
@@ -152,7 +152,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 - [ ] [B:D-003] **P-M04-01** · Campos locales en `bodegas`: clasificación física/virtual, propósito, `sucursal_id`
 - [ ] **P-M04-02** · Vistas de stock por producto/bodega/sucursal + permisos `view stock`/`manage inventario`
-- [ ] [B:D-002] **P-M04-03** · Vista cruzada filtrada por perfil (interim: solo admin/jefes)
+- [ ] **P-M04-03** · Vista cruzada filtrada por perfil (accesos por rol se definen al CIERRE del módulo — estrategia D-002; interim: solo admin/jefes)
 - [ ] **P-M04-04** · Alertas básicas: bajo mínimo, sin movimiento 10 días; punto de reorden por SKU
 - [ ] **P-M04-05** · Migración `unique` en `bsale_variant_id` — ✔ habilitada: P-S0-08 confirmó **0 duplicados** en prod (evidencia 2026-07-02)
 - [ ] **P-M04-06** · Tests + merge + QA staging
@@ -239,7 +239,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-F3-01** · Hardening: índices/carga (~48k clientes, ~28k stocks), revisión de seguridad de rutas públicas (M12/M13)
 - [ ] **P-F3-02** · Backup automatizado + **restore ENSAYADO** (delegación IA-cPanel: dry-run en BD aparte)
 - [ ] **P-F3-03** · Migración de datos: peso/dimensiones por SKU, usuarios reales con roles/sucursal
-- [ ] [B:D-001] **P-F3-04** · Manuales de 1 página por rol + capacitación (Pedro, Ricardo, Héctor, sopladores)
+- [ ] **P-F3-04** · Manuales de 1 página por rol + capacitación (Pedro, Ricardo, Héctor, sopladores)
 - [ ] **P-F3-05** · Marcha blanca diciembre (doble registro) + monitoreo semanal
 - [ ] **P-F3-06** · Ejecutar la separación real staging/producción antes de usuarios reales (hoy staging = prod): prod = `daligo.impdali.cl` con BD limpia, staging queda en `staging.impdali.cl` (decisión D-011, 2026-07-02)
 - [ ] **P-F3-07** · Go-live + criterio "1 semana sin P1" antes de cortar papel

@@ -12,7 +12,7 @@ El documento es la **especificación modular impresa** ("Especificación modular
 
 | # | Anotación detectada en el escaneo (pág.) | ¿Está en la biblia? | Nota |
 |---|---|---|---|
-| 1 | Flecha a "Modelo de usuarios con roles" + "Bsale / Víctor (VB)" (p.1, M01) | **SÍ** §3.1, §4 M01, §7 | Validar con Víctor qué se reutiliza de Bsale. |
+| 1 | Flecha a "Modelo de usuarios con roles" + "Bsale / Víctor (VB)" (p.1, M01) | **SÍ** §3.1, §4 M01, §7 | Validar qué se reutiliza de Bsale. *(Aclaración 2026-07-08: "Víctor" es el sysadmin INTERNO de DALI, no un contacto de Bsale — ver D-005; la anotación de Luis lo asocia a Bsale porque Víctor administra esa integración internamente.)* |
 | 2 | "(APP a Futuro" junto a Bloque A / M01 (p.1) | **PARCIAL** §7 (Identidad: "APP DALI / Importadora DALI") | Anotación ambigua; podría referirse al nombre/app propia o a una app móvil futura. |
 | 3 | "peso y dimensiones" encerrado + recuadro "14 m³" + "(1.0)" (p.2, M02) | **PARCIAL** §4 M02, §6 | Peso/dimensiones para cotizar despacho: SÍ. La cifra "14 m³" no aparece en la biblia. |
 | 4 | Serie numérica manuscrita "10 10 / 10 20 00Z (encerrado) / 10 30 / 10 40 030 / 10 50 / 80 10 001 / 80 20 …" (p.2) | **NO** | Críptica; posible esquema de códigos (SKU/folios/cuentas). Anotación adyacente [ilegible]. |

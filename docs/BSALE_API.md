@@ -54,7 +54,7 @@ Obtención en **producción**, dos vías: (1) solicitarlo por correo a ayuda@bsa
 
 **Categorías y marcas.**
 - **Categorías = product_types**: CRUD completo (GET/POST/PUT/DELETE), GET /v1/product_types/{id}/products.json, .../attributes.json. ✅ [CONFIRMADO] — https://docs.bsale.dev/tipos-de-productos-y-servicios
-- **Marcas:** **no hay endpoint público documentado.** Aparece brandId en la respuesta del POST de pack (sugiere manejo interno), pero sin endpoint para listarlas/crearlas. ❓ [NO ENCONTRADO — a confirmar con Víctor]
+- **Marcas:** **no hay endpoint público documentado.** Aparece brandId en la respuesta del POST de pack (sugiere manejo interno), pero sin endpoint para listarlas/crearlas. ❓ [NO ENCONTRADO — a confirmar con soporte oficial Bsale]
 
 **Escritura.** Lectura **y** escritura: productos POST/PUT/DELETE (virtual → state 1); variantes POST/PUT/DELETE (PUT acepta attribute_values). **Escribir peso/dimensiones directamente: NO** (no hay campos); solo vía atributo del product_type. ✅ [CONFIRMADO] / 🔎 [INFERIDO]
 
@@ -227,7 +227,7 @@ Detección de cambios: **webhooks** (product, variant, price, stock, document; r
 
 ---
 
-## Huecos / lo que NO encontré (a resolver con Víctor — contacto Bsale)
+## Huecos / lo que NO encontré (a resolver con soporte oficial Bsale — D-005; aclaración 2026-07-08: "Víctor" NO es contacto Bsale, es el sysadmin interno de DALI)
 
 1. **Marcas:** ¿existe endpoint para listar/crear marcas? (brandId aparece en packs pero sin endpoint público).
 2. **Peso/dimensiones:** ¿hay algún campo nativo no documentado, o se recomienda oficialmente usar attribute_values? ¿Bsale los usa para courier/despacho?
@@ -261,7 +261,7 @@ Dado el stack (**Laravel 12 / PHP 8.3 / MySQL 5.7 / HostGator compartido, sin da
 > **aún no hay credenciales** de la API de Bsale. La **sincronización real** (espejo lectura
 > productos/variantes/precios/stock por cron o webhooks, según este documento) y las **listas de
 > precios** quedan para incrementos posteriores, una vez se obtenga el access_token (correo a
-> ayuda@bsale.app u OAuth) y se valide con Víctor los huecos de arriba.
+> ayuda@bsale.app u OAuth) y se validen con soporte oficial Bsale los huecos de arriba.
 
 ---
 

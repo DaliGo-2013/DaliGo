@@ -4,7 +4,7 @@
 > completar el paso 5 del corrector, más el **[CAMBIO]** de crontab dictado por el Director.
 > Se conserva el formato de 4 bloques para uniformidad del archivo.
 
-## 1. Comandos ejecutados (SSH `impdali@impdali.cl`, 2026-07-07 09:35–10:38 CDT)
+## 1. Comandos ejecutados (SSH `«REDACTADO»`, 2026-07-07 09:35–10:38 CDT)
 
 Solo lectura: `grep 'bsale:sync-stock' laravel.log` (por día y `tail`), `crontab -l`,
 `tail laravel.log`, última entrada por cada sync, `ls storage/logs/`, `tail bsale-sync.log`,

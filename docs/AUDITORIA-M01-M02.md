@@ -158,7 +158,7 @@ afectado (los 4 usuarios son `admin`), pero confunde apenas se asignen los roles
 ---
 
 ## Consultas SSH read-only de referencia (verificación en prod)
-Servidor: `impdali@impdali.cl:2222`, app en `/home4/impdali/daligo`, PHP `/opt/cpanel/ea-php83/root/usr/bin/php`.
+Servidor: `«REDACTADO» (endpoint SSH — vive en los secrets del workflow)`, app en `/home4/impdali/daligo`, PHP `/opt/cpanel/ea-php83/root/usr/bin/php`.
 > En Windows/PowerShell, base64-encodear el comando para evitar problemas de comillas y falsos positivos
 > del sandbox (usar `dangerouslyDisableSandbox` si el sandbox bloquea por heurística de borrado).
 
