@@ -282,4 +282,19 @@ class OrdenServicio extends Model implements AuditableContract
     {
         return $query->where('fuente', 'qr')->whereNull('confirmada_at');
     }
+
+    // Estados que cuentan como "pendientes del tecnico" para el contador de la
+    // barra: recien recibidas (por diagnosticar/reparar) y en cotizacion
+    // (esperando respuesta del cliente). Es lo que el tecnico tiene "en mano".
+    public const ESTADOS_PENDIENTES_TECNICO = ['recibido', 'cotizacion'];
+
+    /**
+     * Ordenes pendientes de atencion del tecnico (recibido + cotizacion).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<OrdenServicio>  $query
+     */
+    public function scopePendientesTecnico($query)
+    {
+        return $query->whereIn('estado', self::ESTADOS_PENDIENTES_TECNICO);
+    }
 }

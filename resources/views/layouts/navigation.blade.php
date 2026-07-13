@@ -81,6 +81,11 @@
                     @canany(['view servicio tecnico', 'manage servicio tecnico'])
                         <x-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')" class="whitespace-nowrap">
                             Servicio Técnico
+                            {{-- Contador: máquinas pendientes del técnico (recibidas + en cotización). --}}
+                            @if (($pendientesServicioTecnico ?? 0) > 0)
+                                <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
+                                      title="{{ $pendientesServicioTecnico }} equipo(s) por atender (recibidos + en cotización)">{{ $pendientesServicioTecnico }}</span>
+                            @endif
                         </x-nav-link>
                     @endcanany
                 </div>
@@ -146,6 +151,9 @@
             @canany(['view servicio tecnico', 'manage servicio tecnico'])
                 <x-responsive-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')">
                     Servicio Técnico
+                    @if (($pendientesServicioTecnico ?? 0) > 0)
+                        <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">{{ $pendientesServicioTecnico }}</span>
+                    @endif
                 </x-responsive-nav-link>
             @endcanany
 
