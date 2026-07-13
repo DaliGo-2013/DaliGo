@@ -11,15 +11,15 @@
 
 | Campo | Valor |
 |---|---|
-| **Última actualización** | 2026-07-07 tarde (**M15 MERGEADO A MAIN = DEPLOY** — P-M15-09 fase deploy hecha con doble llave, reintentador corregido a `everyFifteenMinutes()`; falta QA staging APROBADO · **E2 arranca**: `docs/planes/PLAN-M14.md` sellado — motor de aprobaciones, espera VISTO BUENO de Mauricio antes de la primera migración · **I-03 CERRADA**: token renovado por Mauricio y verificado — las 4 syncs corrieron OK en sus slots nuevos, espejo descongelado) · 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — cron `*/15` + syncs en :00/:15/:30/:45 · **P-SPK-03 hecho → spike PWA COMPLETO**) · 2026-07-06 (**P-M12-01 piloto** QR mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
+| **Última actualización** | 2026-07-13 (**P-M14-06 hecho en rama** — historial admin `/admin/aprobaciones` con filtros + resumen, `8c8d3e2`, 485 tests, verificado en preview 375/768/1280; E2·M14 va **6/7**, solo falta P-M14-07 merge coordinado) · 2026-07-08 (**E1·M15 CERRADA — primera unidad completa de la flota, kickoff→producción en 6 días**: P-M15-10 [x] con entregabilidad verificada — SPF/DKIM VALID + DMARC creado, Gmail=RECIBIDOS con captura del dueño, fila mail Enviada, correos M12 des-atascados del log; evidencia en `docs/qa/INFRA/`) · 2026-07-07 noche (**P-M15-09 [x] CERRADO** — QA staging APROBADO CON OBSERVACIONES aceptado y archivado en `docs/qa/M15/`; motor de reintentos probado EN PRODUCCIÓN · 2026-07-07 tarde (**M15 MERGEADO A MAIN = DEPLOY** — P-M15-09 fase deploy hecha con doble llave, reintentador corregido a `everyFifteenMinutes()` · **E2 arranca**: `docs/planes/PLAN-M14.md` sellado — motor de aprobaciones, espera VISTO BUENO de Mauricio antes de la primera migración · **I-03 CERRADA**: token renovado por Mauricio y verificado — las 4 syncs corrieron OK en sus slots nuevos, espejo descongelado) · 2026-07-07 (**I-01 CERRADA en modo compatibilidad** — cron `*/15` + syncs en :00/:15/:30/:45 · **P-SPK-03 hecho → spike PWA COMPLETO**) · 2026-07-06 (**P-M12-01 piloto** QR mergeado `1639d71` LIVE; SMTP pendiente P-M15-10) |
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
-| **Unidad activa** | **E1 · M15 Notificaciones** [stream 2, rama `feature/m15-notificaciones`, GO al merge dictado] · **E2 · M14 Aprobaciones** [stream 1, `docs/planes/PLAN-M14.md` sellado, esperando visto bueno] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
-| **Próximo paso** | Mauricio: **visto bueno de PLAN-M14** (3 decisiones clave en §4 del plan) → P-M14-01 · Stream 2: QA-FUNCIONAL-STAGING de M15 vía IA-cPanel (veredicto APROBADO cierra P-M15-09) → P-M15-10 SPF/DKIM · Mauricio: `P-S0-03/04` briefs |
-| **Bloqueos activos** | D-003 (bodegas, bloquea E3 — catastro YA obtenido, falta respuesta de Luis/Ricardo), D-005 (Víctor, bloquea M05-F2) — semáforo en `docs/DECISIONES.md` §2 |
+| **Unidad activa** | **E1 · M15 Notificaciones CERRADA 2026-07-08** [stream 2 → PIVOTE A DESPACHOS] · **E2 · M14 Aprobaciones** [stream 1, EN CONSTRUCCIÓN — **6/7**, P-M14-01..06 hechos en rama `feature/m14-aprobaciones`] · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
+| **Próximo paso** | Stream 1: **P-M14-07** (re-sellado PLAN-M14 + gate `/pre-merge` R-31 + MERGE COORDINADO doble llave + QA staging celular) — P-M14-01..06 hechos en rama `feature/m14-aprobaciones` (último `8c8d3e2`, 485 tests; motor E2E + bandeja + historial) · Stream 2: lote DECISIONES/I-04/I-05 (este push) → **PLAN-DESPACHOS-V1 sellado** (M04 pospuesto por el dueño) → micro-backlog M15 · Mauricio: `P-S0-03/04` briefs |
+| **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
 | **Avance global** | **≈ 21 %** (tracker en §10) |
 
-**Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04)
+**Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04) · **M15 Notificaciones (E1, cerrada 2026-07-08)**
 **En curso:** E0 (esta consolidación)
 **Especificado sin código:** M04 · M05 · M07 · M08 · M12 (resto) · **M13 (sin código — ver nota §5.6)** · M14 · M15 · M16
 **Standby/backlog:** M06 · M09 · M10
@@ -100,7 +100,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 |---|---|---|---|
 | biblia §4/M03 | CRUD + sync ~47.800 clientes + vendedor_id | `HANDOFF.md` §8c | tests clientes + sync |
 
-### E1 · M15 Notificaciones — núcleo multi-canal, email primero (~2 sem) — [EN CURSO · stream 2]
+### E1 · M15 Notificaciones — núcleo multi-canal, email primero (~2 sem) — [CERRADA 2026-07-08 · stream 2 · 6 días de kickoff a producción]
 > Asignada el 2026-07-02 al stream 2 (segunda cuenta Claude), rama `feature/m15-notificaciones`.
 > Kickoff/contrato: `docs/delegacion/KICKOFF-E1-M15.md`. Los `[x]` de esta unidad se marcan en la rama.
 > **Plan fino:** `docs/planes/PLAN-M15.md` (sello 2026-07-02, commit `4da5de2`) — **APROBADO por Mauricio el 2026-07-02** con 2 ajustes obligatorios incorporados (Notificacion sin audit / PreferenciaCanal sí; reintentador atómico con `withoutOverlapping` + claim por UPDATE) y 3 notas menores documentadas. Luz verde P-M15-01/02.
@@ -117,8 +117,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-M15-07** · Preferencias por usuario (canal por tipo de evento, opt-out) — tarjeta en el perfil (`prefs[evento][canal]`), `NotificacionPreferenciaController` con `updateOrCreate`; el dispatcher las respeta (test de integración form→dispatch). Canal database fijo (campanita siempre) (este push, 2026-07-04)
 - [x] **P-M15-08** · Tests (dispatch por preferencia, reintento, opt-out, 403) — cobertura del checklist completa; suite 405 verdes (este push, 2026-07-04)
 - **Correcciones de auditoría del Director (gate P-M15-09), aplicadas:** (1) página personal `/notificaciones` legible en móvil + panel admin en el nav Administración; (2) `leer` exige canal database (404 si no); (3) `withoutOverlapping(10)` en el reintentador; (4) barrido self-healing de pendientes huérfanas (>10 min) en el mismo comando; + menores (claim limpia `programada_para`, dedup de queries de la campanita, test de humo endurecido)
-- [~] **P-M15-09** · Merge + deploy + QA staging (plantilla QA-FUNCIONAL: correo real + campanita + fila en admin) — merge de `origin/main` (`dff13c7`) a la rama hecho (2026-07-07): 6 conflictos resueltos por unión, bundle regenerado y grepeado (4/4 clases), suite 444 verdes; **doble llave Director+Mauricio dada → M15 MERGEADO A MAIN = DEPLOY (este push)**, con la corrección dictada `everyFiveMinutes()`→`everyFifteenMinutes()` en el reintentador + test que fija la grilla `*/15`. **Falta SOLO: QA staging con veredicto APROBADO archivado en docs/qa/** (latencia reintentos ≤15 min por doctrina I-01)
-- [ ] **P-M15-10** · Delegación IA-cPanel: SPF/DKIM/DMARC + test de entregabilidad a Gmail/Outlook externos
+- [x] **P-M15-09** · Merge + deploy + QA staging — HECHO (2026-07-07): merge a main `cfae59a` (6 conflictos por unión, bundle grepeado 4/4, suite 444→445 verdes con la corrección `everyFifteenMinutes()` + test de grilla), deploy Actions verde (migraciones M15 DONE en MySQL prod + 6 seeders en el log), **QA staging/producción APROBADO CON OBSERVACIONES — aceptado por el Director** (database punta a punta OK: panel→cola→campanita→página personal→badge 0; mail Fallida = alcance P-M15-10; motor de reintentos PROBADO EN PRODUCCIÓN: intentos 1→2 + backoff `[5,15,60]` en vivo). Evidencia: `docs/qa/M15/2026-07-07--M15--qa-funcional-staging.md`
+- [x] **P-M15-10** · Delegación IA-cPanel: SPF/DKIM/DMARC + entregabilidad — HECHO (2026-07-08): APROBADO CON OBSERVACIONES, 15/16 pasos + paso 12 cerrado con captura del dueño (**Gmail=RECIBIDOS, no spam**). Causa raíz del correo roto: cuenta `servicio@staging.impdali.cl` con auth fallida → queda `servicio@impdali.cl`; SPF reparado a VALID (faltaba la IP del server), DKIM VALID, DMARC creado `p=none`; fila mail del panel = **Enviada**; bonus M12 verificado (mailer `smtp`, nada al log). "Mostrar original" (SPF/DKIM/DMARC en cabeceras) pendiente-opcional; Outlook sin casilla; rotación de claves → R-04 del tablero. Evidencia: `docs/qa/INFRA/2026-07-08--INFRA--entregabilidad-correo-p-m15-10.md`
+- **Micro-backlog M15** (del QA staging 2026-07-07, sin bloqueo — construir cuando toque, NO ahora): (a) el panel `/admin/notificaciones` no muestra el correo de destino, solo el nombre; (b) el error SMTP (`ultimo_error`) sale truncado en la UI del panel; (c) endurecer `test_campanita_visible_en_el_nav` (assertear el badge)
 
 ### E2 · M14 Aprobaciones digitales + spike PWA offline (~2.5 sem, spike en paralelo)
 **Objetivo M14:** motor polimórfico (`aprobaciones`, `reglas_aprobacion`), umbral desde `Configuracion` (`umbral_aprobacion_clp` ya sembrado), bandeja del aprobador usable desde celular, escalamiento por scheduler, notifica vía M15. Primer consumidor real: ajuste de reporte de producción (M11).
@@ -151,7 +152,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 - [ ] [B:D-003] **P-M04-01** · Campos locales en `bodegas`: clasificación física/virtual, propósito, `sucursal_id`
 - [ ] **P-M04-02** · Vistas de stock por producto/bodega/sucursal + permisos `view stock`/`manage inventario`
-- [ ] [B:D-002] **P-M04-03** · Vista cruzada filtrada por perfil (interim: solo admin/jefes)
+- [ ] **P-M04-03** · Vista cruzada filtrada por perfil (accesos por rol se definen al CIERRE del módulo — estrategia D-002; interim: solo admin/jefes)
 - [ ] **P-M04-04** · Alertas básicas: bajo mínimo, sin movimiento 10 días; punto de reorden por SKU
 - [ ] **P-M04-05** · Migración `unique` en `bsale_variant_id` — ✔ habilitada: P-S0-08 confirmó **0 duplicados** en prod (evidencia 2026-07-02)
 - [ ] **P-M04-06** · Tests + merge + QA staging
@@ -238,7 +239,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [ ] **P-F3-01** · Hardening: índices/carga (~48k clientes, ~28k stocks), revisión de seguridad de rutas públicas (M12/M13)
 - [ ] **P-F3-02** · Backup automatizado + **restore ENSAYADO** (delegación IA-cPanel: dry-run en BD aparte)
 - [ ] **P-F3-03** · Migración de datos: peso/dimensiones por SKU, usuarios reales con roles/sucursal
-- [ ] [B:D-001] **P-F3-04** · Manuales de 1 página por rol + capacitación (Pedro, Ricardo, Héctor, sopladores)
+- [ ] **P-F3-04** · Manuales de 1 página por rol + capacitación (Pedro, Ricardo, Héctor, sopladores)
 - [ ] **P-F3-05** · Marcha blanca diciembre (doble registro) + monitoreo semanal
 - [ ] **P-F3-06** · Ejecutar la separación real staging/producción antes de usuarios reales (hoy staging = prod): prod = `daligo.impdali.cl` con BD limpia, staging queda en `staging.impdali.cl` (decisión D-011, 2026-07-02)
 - [ ] **P-F3-07** · Go-live + criterio "1 semana sin P1" antes de cortar papel

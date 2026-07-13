@@ -22,6 +22,7 @@
         :inicialRut="$o?->cliente_rut ?? ''"
         :inicialNombre="$o?->cliente_nombre ?? ''"
         :inicialTelefono="$o?->cliente_telefono ?? ''"
+        :inicialEmail="$o?->cliente_email ?? ''"
         :inicialClienteId="$o?->cliente_id ?? 0" />
 
     {{-- Codigo (producto Dali) + N° de serie en el mismo renglon. --}}
@@ -29,15 +30,31 @@
         name="producto_id"
         label="Código (producto Dali)"
         chip="Producto"
+        :required="true"
         :endpoint="route('admin.servicio-tecnico.buscar-producto')"
         :inicialId="$productoActual?->id ?? 0"
         :inicialLabel="$productoActualLabel"
         placeholder="Escribe el código (SKU) o el nombre…"
-        hint="Opcional. Es el producto Dali del catálogo." />
+        hint="Búscalo por el código (SKU) o el nombre en el catálogo." />
 
-    <div>
-        <x-input-label for="numero_serie">N° de serie <span class="text-red-500">*</span></x-input-label>
-        <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" minlength="3" maxlength="191" required />
+    {{-- N° de serie: obligatorio solo para dispensador/lavadora (serie unica);
+         opcional para bombas/herramientas. El asterisco y el 'required' cambian
+         en vivo segun el "Tipo de equipo" elegido. --}}
+    <div x-data="{
+            serieObl: true,
+            tiposObl: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS),
+            init() {
+                const sel = document.getElementById('tipo_equipo');
+                const set = () => { this.serieObl = !sel || this.tiposObl.includes(sel.value); };
+                set();
+                if (sel) sel.addEventListener('change', set);
+            },
+         }">
+        <x-input-label for="numero_serie">N° de serie <span x-show="serieObl" class="text-red-500">*</span></x-input-label>
+        <x-text-input id="numero_serie" class="mt-1.5" type="text" name="numero_serie" :value="old('numero_serie', $o?->numero_serie)" minlength="3" maxlength="191" required x-bind:required="serieObl" />
+        {{-- Botón "Ver ejemplo del N° de serie" (foto de la etiqueta trasera), justo debajo del campo. --}}
+        <x-ayuda-serie />
+        <x-input-hint x-show="!serieObl" x-cloak>Opcional para este tipo (bombas y herramientas no tienen serie única).</x-input-hint>
         <x-input-error :messages="$errors->get('numero_serie')" class="mt-2" />
     </div>
 
@@ -53,7 +70,7 @@
         <x-input-label for="tipo_equipo" value="Tipo de equipo" />
         <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5" required>
             @foreach ($tipos as $t)
-                <option value="{{ $t }}" @selected(old('tipo_equipo', $o?->tipo_equipo) === $t)>{{ ucfirst($t) }}</option>
+                <option value="{{ $t }}" @selected(old('tipo_equipo', $o?->tipo_equipo) === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
             @endforeach
         </x-select>
         <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-2" />
@@ -124,22 +141,17 @@
     </div>
 
     <div>
-        <x-input-label value="Estado" />
-        @if ($esCreacion)
-            {{-- Toda orden nueva parte en "recibido"; el estado se avanza despues
-                 (editar o pantalla de reparacion). El servidor lo fuerza igual. --}}
-            <div class="mt-1.5 block w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-2.5 text-sm text-neutral-500 shadow-sm">
-                Recibido
-            </div>
-            <x-input-hint>Toda orden nueva parte en «Recibido».</x-input-hint>
-        @else
-            <x-select id="estado" name="estado" class="mt-1.5" required>
-                @foreach ($estados as $e)
-                    <option value="{{ $e }}" @selected(old('estado', $o?->estado ?? 'recibido') === $e)>{{ Str::headline($e) }}</option>
-                @endforeach
-            </x-select>
-            <x-input-error :messages="$errors->get('estado')" class="mt-2" />
-        @endif
+        <x-input-label for="estado" value="Estado" />
+        {{-- Editable por el staff (técnico/admin) tanto al registrar como al editar:
+             así van informando el paso a paso. Por defecto parte en «Recibido». El
+             cliente no ve este campo (el ingreso por QR no lo tiene). --}}
+        <x-select id="estado" name="estado" class="mt-1.5" required>
+            @foreach ($estados as $e)
+                <option value="{{ $e }}" @selected(old('estado', $o?->estado ?? 'recibido') === $e)>{{ Str::headline($e) }}</option>
+            @endforeach
+        </x-select>
+        <x-input-hint>Toda orden parte en «Recibido»; ve avanzándolo según el trabajo.</x-input-hint>
+        <x-input-error :messages="$errors->get('estado')" class="mt-2" />
     </div>
 
     <div>
@@ -161,6 +173,16 @@
     <div class="sm:col-span-2">
         <x-input-label for="falla_reportada">Falla reportada <span class="text-red-500">*</span></x-input-label>
         <x-textarea id="falla_reportada" class="mt-1.5" name="falla_reportada" rows="2" minlength="3" required>{{ old('falla_reportada', $o?->falla_reportada) }}</x-textarea>
+        <x-input-hint>Lo que reportó el cliente (con sus palabras).</x-input-hint>
         <x-input-error :messages="$errors->get('falla_reportada')" class="mt-2" />
+    </div>
+
+    {{-- Falla observada por el TECNICO: aparte de la del cliente, para no mezclar
+         ni cambiar lo que dijo. El tecnico agrega lo que el cliente no indico. --}}
+    <div class="sm:col-span-2">
+        <x-input-label for="falla_tecnico" value="Condiciones de entrega" />
+        <x-textarea id="falla_tecnico" class="mt-1.5" name="falla_tecnico" rows="2">{{ old('falla_tecnico', $o?->falla_tecnico) }}</x-textarea>
+        <x-input-hint>Opcional. Condiciones en que se recibe o entrega el equipo (estado, accesorios, acuerdos con el cliente).</x-input-hint>
+        <x-input-error :messages="$errors->get('falla_tecnico')" class="mt-2" />
     </div>
 </div>

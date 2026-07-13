@@ -7,6 +7,7 @@
     'inicialLabel' => '',   // etiqueta del modelo actual (al editar)
     'placeholder' => 'Escribe para buscar…',
     'hint' => null,
+    'required' => false,    // muestra el asterisco rojo en la etiqueta (la validacion la hace el servidor)
 ])
 
 @php $inputId = $name.'_buscar'; @endphp
@@ -20,7 +21,7 @@
         inicialId: {{ (int) old($name, $inicialId) }},
         inicialLabel: @js(old($name.'_label', $inicialLabel))
      })">
-    <x-input-label :for="$inputId" :value="$label" />
+    <x-input-label :for="$inputId">{{ $label }}@if ($required)<span class="text-red-500"> *</span>@endif</x-input-label>
 
     <input type="hidden" name="{{ $name }}" :value="seleccionId">
     <input type="hidden" name="{{ $name }}_label" :value="elegidoLabel">

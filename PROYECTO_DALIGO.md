@@ -81,7 +81,7 @@
 - PWA offline (ruta Atacama): sincronización diferida y resolución de conflictos es **el punto técnico más delicado — prototipar pronto**.
 - Hosting compartido: vecinos ruidosos, sin long-running processes.
 - Entregabilidad de correo: configurar SPF/DKIM/DMARC.
-- Dependencia de Bsale: validar con Víctor qué se reutiliza antes de construir.
+- Dependencia de Bsale: validar con soporte oficial Bsale qué se reutiliza antes de construir (aclaración 2026-07-08: "Víctor" es sysadmin interno de DALI, no contacto Bsale — ver D-005).
 
 ---
 
@@ -89,7 +89,7 @@
 
 Decisiones tomadas en la reunión del 11–12 de mayo de 2026 que condicionan TODO el diseño:
 
-1. **Bsale se mantiene como base.** El sistema lo complementa. Toda funcionalidad se valida con Víctor (Bsale) antes de duplicar.
+1. **Bsale se mantiene como base.** El sistema lo complementa. Toda funcionalidad se valida contra la documentación oficial de Bsale y su soporte antes de duplicar.
 2. **La gestión es por VENDEDOR, no por sucursal.** Reservas y permisos se asocian al vendedor que las gestiona. Cambia la base del modelo de inventario (M04).
 3. **Limpieza de bodegas virtuales:** hoy hay ~25 virtuales para 3 físicas. Rediseñar (anotación "MEJORAR" de Luis). Requiere levantamiento antes de M04.
 4. **Providencia eliminada** como bodega física. Quedan: Mirador, Coquimbo, Abate Molina, Buzeta.
@@ -118,7 +118,7 @@ Estados: VALIDADO / CON AJUSTES / NUEVO / YA EN BSALE / STANDBY.
 ### Bloque A · Transversales (las 3 sucursales, desde el día 1)
 
 **M01 · Core / Plataforma base** — YA EN BSALE parcial · M (3–4 sem) · sin dependencias
-Autenticación, roles configurables, multi-sucursal (Mirador, Coquimbo, Abate Molina, Buzeta), permisos granulares por módulo/acción, log de auditoría (quién/qué/cuándo/dónde), configuración global (parámetros, % distribución por sucursal, umbrales), API gateway interno. Validar con Víctor qué parte del modelo de usuarios se reutiliza de Bsale.
+Autenticación, roles configurables, multi-sucursal (Mirador, Coquimbo, Abate Molina, Buzeta), permisos granulares por módulo/acción, log de auditoría (quién/qué/cuándo/dónde), configuración global (parámetros, % distribución por sucursal, umbrales), API gateway interno. Validar contra docs/soporte oficial Bsale qué parte del modelo de usuarios se reutiliza.
 
 **M02 · Catálogo + listas de precios** — YA EN BSALE ~90% · S-M (2–3 sem) · dep: M01
 SKU maestro con categoría, marca, **peso y dimensiones (lo principal que falta cargar — necesario para cotizar despacho)**. Listas de precios por canal (presencial, Mercado Libre, Falabella, web, mayorista). Reglas por cliente/segmento. Import/export CSV **con botón de filtro previo a exportar** (confirmado por Luis). Versionado de precios con vigencia.
@@ -271,7 +271,7 @@ Bsale API (SII, catálogo, stock — central; **detalle de endpoints/auth/límit
 
 | Fase | Semanas | Contenido | Hito |
 |---|---|---|---|
-| F0 Discovery | W1–W8 (may–jun) | Kickoff, requerimientos, entrevistas 3 sucursales, evaluación Odoo vs alternativas vs extender Bsale, validación con Víctor (Bsale), nombre del sistema, doc. técnica, presupuesto, setup de entornos/repos/CI-CD | H1 W8: discovery aprobado + presupuesto firmado |
+| F0 Discovery | W1–W8 (may–jun) | Kickoff, requerimientos, entrevistas 3 sucursales, evaluación Odoo vs alternativas vs extender Bsale, validación con soporte Bsale, nombre del sistema, doc. técnica, presupuesto, setup de entornos/repos/CI-CD | H1 W8: discovery aprobado + presupuesto firmado |
 | F1 Transversales | W9–W22 (jul–sep) | M01 Core (Dev A, W9–12) → M02 Catálogo (Dev B, W11–13) → M03 Clientes (W13–15) → M15 Notificaciones (W15–18) → M14 Aprobaciones (Dev A, W14–17) → M16 BI iterativo (W18–26) | H2 W11 login operativo · H3 W22 transversales completos |
 | F2 Núcleo operativo | W16–W32 (sep–nov) | M04 Inventario (Dev A, W16–22) → M11 Sopladores (Dev B, W19–23, ★adelantado) → M05 Ciclo factura (Dev A, W22–28) → M13 Devoluciones (Dev B, W24–27, ★adelantado) → M07 QR (W27–29) → M08 PWA conductor MVP reducido (Dev A, W27–32) → M12 Serv. técnico MVP reducido (Dev B, W29–32) | Hs W23 sopladores operativo · H4 W32 núcleo listo |
 | F3 Piloto Mirador | W30–W34 (nov–dic) | Hardening (carga, seguridad, respaldos), migración de datos + carga peso/dimensiones SKU, capacitación (Pedro, Ricardo, sopladores), marcha blanca | **H5 W34: MVP EN PRODUCCIÓN EN MIRADOR 150** |
@@ -284,7 +284,7 @@ Bsale API (SII, catálogo, stock — central; **detalle de endpoints/auth/límit
 ### Riesgos del plan
 
 - Rollout a 3 sucursales en 9 meses es agresivo (spec original: 15 meses).
-- Dependencia de Bsale/Víctor: validar temprano qué se reutiliza.
+- Dependencia de Bsale: validar temprano qué se reutiliza (vía docs/soporte oficial).
 - M08 (PWA conductor) es XL con modo offline — riesgo de subestimación.
 - 2 devs = poca holgura ante imprevistos.
 - Limpieza de ~25 bodegas virtuales puede destapar complejidad de datos.
@@ -296,7 +296,7 @@ Bsale API (SII, catálogo, stock — central; **detalle de endpoints/auth/límit
 
 | Área | Decisión | Cuándo |
 |---|---|---|
-| Bsale | Reunión con Víctor: qué ya está cubierto en Bsale | Antes de Sprint 0 |
+| Bsale | Investigación docs oficiales + correo a soporte Bsale: qué ya está cubierto | Antes de Sprint 0 |
 | Identidad | Nombre del sistema (APP DALI / Importadora DALI) | Antes de Sprint 0 |
 | Hardware | Computadores nuevos para devs: costo vs tiempo | Antes de Sprint 0 |
 | Alcance | CRM / sistema de zonas para vendedores: ¿entra o no? | Sprint 0 |
@@ -326,7 +326,7 @@ Notación: prefijo de sucursal + número de proceso. **A** = Abate Molina, **M**
 | Scarleth | Cierra el ciclo factura por factura (Mirador) |
 | Matías | RRHH; paga bono al conductor por rutas fuera de Santiago |
 | Fernando | Técnico del taller (diagnóstico, cotiza de puño y letra) |
-| Víctor | Contacto Bsale; también ingresa producción a Bsale |
+| Víctor | Sysadmin INTERNO de DALI (sistemas/redes/cPanel/correos); también ingresa producción a Bsale. (Corrección 2026-07-08: NO es contacto de Bsale — D-005) |
 | Gonzalo | Jefe Abate Molina; único que compra a China |
 | Paulina | Ventas/oficina Coquimbo |
 | Julio | Encargado de bodega Coquimbo |

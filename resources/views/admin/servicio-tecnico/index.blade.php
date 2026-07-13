@@ -1,17 +1,27 @@
 <x-app-layout>
     <x-slot name="header">
         <x-page-header title="Servicio Técnico" subtitle="Ingreso de máquinas y lavadoras al taller.">
-            @can('manage servicio tecnico')
-                <x-slot name="action">
-                    <div class="flex items-center gap-2">
+            <x-slot name="action">
+                <div class="flex items-center gap-2">
+                    {{-- Volver al inicio (visible para todos los que ven el listado). --}}
+                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
+                        <x-icon.arrow-left class="h-5 w-5" />
+                    </x-icon-button>
+                    {{-- Informe de estadísticas (visible también para roles de solo
+                         lectura); se lleva el período que esté seleccionado. --}}
+                    <x-secondary-link :href="route('admin.servicio-tecnico.informe', array_filter(['anio' => $filtros['anio'] ?? null, 'mes' => $filtros['mes'] ?? null, 'tipo' => $filtros['tipo_equipo'] ?? null], fn ($v) => $v !== null && $v !== ''))">Informe</x-secondary-link>
+                    @can('crear lote servicio')
+                        <x-secondary-link :href="route('admin.servicio-tecnico.lote.create')">Ingreso por lote</x-secondary-link>
+                    @endcan
+                    @can('manage servicio tecnico')
                         <x-secondary-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-secondary-link>
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
                             <x-icon.plus class="h-4 w-4" />
                             Registrar ingreso
                         </x-button-link>
-                    </div>
-                </x-slot>
-            @endcan
+                    @endcan
+                </div>
+            </x-slot>
         </x-page-header>
     </x-slot>
 
@@ -38,7 +48,7 @@
                                             <span class="truncate font-medium text-neutral-900">{{ $p->cliente_nombre }}</span>
                                         </div>
                                         <p class="truncate text-sm text-neutral-500">
-                                            {{ collect([ucfirst($p->tipo_equipo), $p->numero_serie ? 'N° '.$p->numero_serie : null, $p->sucursal?->nombre])->filter()->implode(' · ') }}
+                                            {{ collect([$p->tipo_equipo_label, $p->numero_serie ? 'N° '.$p->numero_serie : null, $p->sucursal?->nombre])->filter()->implode(' · ') }}
                                         </p>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
@@ -60,8 +70,8 @@
             <form method="GET" action="{{ route('admin.servicio-tecnico.index') }}"
                   class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
                 <div class="flex-1">
-                    <x-input-label for="q" value="Buscar (cliente, marca, modelo o serie)" />
-                    <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. 12.345.678-9, Samsung, SN-12345" />
+                    <x-input-label for="q" value="Buscar (folio, cliente, modelo o serie)" />
+                    <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. 000009, 12.345.678-9, SN-12345" />
                 </div>
                 <div class="sm:w-44">
                     <x-input-label for="estado" value="Estado" />
@@ -77,7 +87,7 @@
                     <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5">
                         <option value="">Todos</option>
                         @foreach ($tipos as $t)
-                            <option value="{{ $t }}" @selected(($filtros['tipo_equipo'] ?? '') === $t)>{{ ucfirst($t) }}</option>
+                            <option value="{{ $t }}" @selected(($filtros['tipo_equipo'] ?? '') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
                         @endforeach
                     </x-select>
                 </div>
@@ -99,6 +109,13 @@
                         @endforeach
                     </x-select>
                 </div>
+                {{-- El período elegido en las cards de historial se conserva al filtrar. --}}
+                @if (($filtros['anio'] ?? '') !== '')
+                    <input type="hidden" name="anio" value="{{ $filtros['anio'] }}">
+                @endif
+                @if (($filtros['mes'] ?? '') !== '')
+                    <input type="hidden" name="mes" value="{{ $filtros['mes'] }}">
+                @endif
                 <div class="flex items-center gap-3">
                     <x-primary-button>Filtrar</x-primary-button>
                     @if (array_filter($filtros))
@@ -107,17 +124,86 @@
                 </div>
             </form>
 
-            <x-list-card title="Órdenes" :count="$ordenes->total()" :countLabel="\Illuminate\Support\Str::plural('orden', $ordenes->total())">
+            {{-- Historial por período: cards de años y, dentro de un año, cards de
+                 sus 12 meses. Navegan con los parámetros anio/mes del mismo listado
+                 (la lista de abajo obedece el período elegido). --}}
+            @php
+                $anioActivo = ($filtros['anio'] ?? '') !== '' ? (int) $filtros['anio'] : null;
+                $mesActivo = ($filtros['mes'] ?? '') !== '' ? (int) $filtros['mes'] : null;
+                // Conservar el resto de los filtros al navegar por período.
+                $qsBase = array_filter(
+                    collect($filtros)->except(['anio', 'mes'])->all(),
+                    fn ($v) => $v !== null && $v !== ''
+                );
+            @endphp
+            @if ($historial['anios']->isNotEmpty())
+                <div>
+                    <div class="mb-2 flex items-baseline justify-between gap-3">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                            Historial{{ $anioActivo ? ' · '.$anioActivo : '' }}
+                        </h3>
+                        @if ($anioActivo)
+                            <a href="{{ route('admin.servicio-tecnico.index', $qsBase) }}" class="text-xs font-medium text-brand-600 transition duration-150 hover:text-brand-700">&larr; Todos los años</a>
+                        @endif
+                    </div>
+                    @if (! $anioActivo)
+                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                            @foreach ($historial['anios'] as $a => $r)
+                                <a href="{{ route('admin.servicio-tecnico.index', array_merge($qsBase, ['anio' => $a])) }}"
+                                   class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:border-brand-300 hover:shadow">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Año</p>
+                                    <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ $a }}</p>
+                                    <p class="mt-1 text-sm text-neutral-600">{{ $r['total'] }} {{ $r['total'] === 1 ? 'orden' : 'órdenes' }}</p>
+                                    <p class="text-xs text-neutral-400">{{ $r['garantia'] }} garantía · {{ $r['reparacion'] }} reparación</p>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                            @foreach ($historial['meses'] as $m => $conteo)
+                                @php $nombreMes = ucfirst(\Illuminate\Support\Carbon::create($anioActivo, $m, 1)->translatedFormat('F')); @endphp
+                                @if ($conteo > 0)
+                                    <a href="{{ route('admin.servicio-tecnico.index', array_merge($qsBase, ['anio' => $anioActivo, 'mes' => $m])) }}"
+                                       class="rounded-2xl border p-3 shadow-sm transition duration-150 {{ $mesActivo === $m ? 'border-brand-500 bg-brand-50' : 'border-neutral-200 bg-white hover:border-brand-300 hover:shadow' }}">
+                                        <p class="text-sm font-semibold {{ $mesActivo === $m ? 'text-brand-700' : 'text-neutral-900' }}">{{ $nombreMes }}</p>
+                                        <p class="text-xs {{ $mesActivo === $m ? 'text-brand-600' : 'text-neutral-500' }}">{{ $conteo }} {{ $conteo === 1 ? 'orden' : 'órdenes' }}</p>
+                                    </a>
+                                @else
+                                    <div class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-3">
+                                        <p class="text-sm font-medium text-neutral-400">{{ $nombreMes }}</p>
+                                        <p class="text-xs text-neutral-300">Sin órdenes</p>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <x-list-card title="Órdenes" :count="$ordenes->total()" :countLabel="$ordenes->total() === 1 ? 'orden' : 'órdenes'">
+                @php $mesSeparador = null; @endphp
                 @forelse ($ordenes as $orden)
+                    {{-- Separador visual cuando la lista cambia de mes (viene ordenada
+                         por fecha desc, así que los meses quedan contiguos). --}}
+                    @php $mesOrden = $orden->fecha_ingreso ? ucfirst($orden->fecha_ingreso->translatedFormat('F Y')) : 'Sin fecha'; @endphp
+                    @if ($mesOrden !== $mesSeparador)
+                        @php $mesSeparador = $mesOrden; @endphp
+                        <li class="bg-neutral-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 sm:px-6">{{ $mesOrden }}</li>
+                    @endif
                     <x-list-row>
                         <x-slot name="leading">
-                            <x-avatar>{{ mb_strtoupper(mb_substr($orden->tipo_equipo, 0, 1)) }}</x-avatar>
+                            {{-- Condición del ingreso como avatar: R = Reparación, G = Garantía.
+                                 Ambas en fondo naranja (marca) por pedido del dueño; la letra y el
+                                 tooltip distinguen el significado. Reemplaza al avatar del tipo. --}}
+                            @php $esGarantia = $orden->condicion_efectiva === 'garantia'; @endphp
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="{{ $esGarantia ? 'Garantía' : 'Reparación' }}">{{ $esGarantia ? 'G' : 'R' }}</div>
                         </x-slot>
 
                         @php
                             $detalle = collect([
                                 $orden->cliente_rut,
-                                ucfirst($orden->tipo_equipo),
+                                $orden->tipo_equipo_label,
                                 $orden->producto?->sku,
                                 $orden->modelo ?: null,
                                 $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
@@ -132,13 +218,16 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
-                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
-                                <x-badge variant="neutral">{{ $orden->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación' }}</x-badge>
-                                @if ($orden->sucursal)
-                                    <x-badge variant="info">Recibido en {{ $orden->sucursal->nombre }}</x-badge>
-                                @endif
+                                {{-- Un solo badge de estado que incluye la sucursal de recepción:
+                                     "Recibido en El Mirador" / "En Revisión en El Mirador"… --}}
+                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@endif</x-badge>
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
+                            {{-- Quién recibió/confirmó la orden (al registrar en mostrador o al
+                                 confirmar un ingreso por QR). Solo si el dato existe. --}}
+                            @if ($orden->recibida_por)
+                                <p class="truncate text-xs text-neutral-400">Recibido por {{ $orden->recibida_por }}</p>
+                            @endif
                         </a>
 
                         <x-slot name="meta">
@@ -173,17 +262,40 @@
     </div>
 
     @can('confirmar servicio tecnico')
-        {{-- Auto-refresco del mostrador: recarga sola para que aparezcan los
-             ingresos por QR sin apretar nada. Se pausa si quien autoriza esta
-             escribiendo en un filtro o si la pestana no esta visible. --}}
+        {{-- Aviso suave (SIN recargar la página): cada 25s consulta el conteo de
+             "por confirmar" en segundo plano; si llegaron ingresos nuevos por QR
+             desde que cargó la página, muestra este banner para actualizar cuando
+             el encargado quiera. Se pausa si la pestaña no está visible. --}}
+        <div id="aviso-nuevos" class="fixed inset-x-0 bottom-4 z-40 hidden text-center">
+            <button type="button" onclick="window.location.reload()"
+                class="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
+                <span id="aviso-nuevos-texto">Llegaron ingresos nuevos por QR</span>
+                <span class="opacity-90">&middot; Actualizar &#8635;</span>
+            </button>
+        </div>
         <script>
-            setInterval(function () {
-                var el = document.activeElement;
-                var escribiendo = el && ['INPUT', 'SELECT', 'TEXTAREA'].indexOf(el.tagName) !== -1;
-                if (!escribiendo && document.visibilityState === 'visible') {
-                    window.location.reload();
-                }
-            }, 25000);
+            (function () {
+                var base = {{ $porConfirmar->count() }};
+                var aviso = document.getElementById('aviso-nuevos');
+                var texto = document.getElementById('aviso-nuevos-texto');
+                var url = '{{ route('admin.servicio-tecnico.por-confirmar.conteo') }}';
+                setInterval(function () {
+                    if (document.visibilityState !== 'visible') return;
+                    fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                        .then(function (r) { return r.ok ? r.json() : null; })
+                        .then(function (d) {
+                            if (!d) return;
+                            var nuevos = d.total - base;
+                            if (nuevos > 0) {
+                                texto.textContent = nuevos === 1
+                                    ? 'Llegó 1 ingreso nuevo por QR'
+                                    : ('Llegaron ' + nuevos + ' ingresos nuevos por QR');
+                                aviso.classList.remove('hidden');
+                            }
+                        })
+                        .catch(function () {});
+                }, 25000);
+            })();
         </script>
     @endcan
 </x-app-layout>

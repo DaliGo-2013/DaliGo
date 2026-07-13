@@ -3,6 +3,7 @@
     'inicialRut' => '',
     'inicialNombre' => '',
     'inicialTelefono' => '',
+    'inicialEmail' => '',
     'inicialClienteId' => 0,
 ])
 
@@ -73,6 +74,16 @@
                 x-model="telefono" />
             <x-input-hint>Para avisarle cuando el equipo esté listo.</x-input-hint>
             <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-2" />
+        </div>
+
+        {{-- Correo (obligatorio): se le envia el folio y los avisos del equipo. --}}
+        <div>
+            <x-input-label for="cliente_email">Correo <span class="text-red-500">*</span></x-input-label>
+            <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full" required
+                maxlength="191" placeholder="cliente@correo.cl"
+                :value="old('cliente_email', $inicialEmail)" />
+            <x-input-hint>Se le envía el folio y los avisos del equipo.</x-input-hint>
+            <x-input-error :messages="$errors->get('cliente_email')" class="mt-2" />
         </div>
     </div>
 </div>

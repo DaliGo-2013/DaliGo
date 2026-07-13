@@ -8,6 +8,7 @@ use App\Models\OrdenServicio;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
+use App\Support\ImagenComprimida;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -67,16 +68,40 @@ class IngresoTallerPublicoController extends Controller
             'cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput),
         ]);
 
+        // El N° de serie es obligatorio solo para tipos con serie unica
+        // (dispensador/lavadora); para bombas/herramientas es opcional.
+        $serieObligatoria = in_array(
+            $request->input('tipo_equipo'),
+            OrdenServicio::SERIE_OBLIGATORIA_TIPOS,
+            true,
+        );
+
+        // Si el cliente marca Garantia, el documento de compra que la respalda es
+        // obligatorio (factura/boleta + N° + fecha, no futura).
+        $esGarantia = $request->input('facturacion') === 'garantia';
+
         $data = $request->validate([
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')->where('activa', true)],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_email' => ['required', 'email', 'max:191'],
-            'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            'cliente_rut' => ['nullable', 'string', 'max:20', new RutChileno],
+            'cliente_telefono' => ['required', 'string', 'max:30'],
+            'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
+            'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],
+            // Condicion (garantia/reparacion): el cliente la indica; el mostrador
+            // la verifica al confirmar (y pide el documento de garantia si aplica).
+            'facturacion' => ['required', Rule::in(OrdenServicio::FACTURACION)],
+            'garantia_doc_tipo' => [Rule::requiredIf($esGarantia), 'nullable', Rule::in(OrdenServicio::GARANTIA_DOC_TIPOS)],
+            'garantia_doc_numero' => [Rule::requiredIf($esGarantia), 'nullable', 'string', 'max:191'],
+            'garantia_doc_fecha' => [Rule::requiredIf($esGarantia), 'nullable', 'date', 'before_or_equal:today'],
             'falla_reportada' => ['required', 'string', 'min:3'],
+            // Exactamente 2 fotos de respaldo del estado fisico del equipo. No se
+            // usa la regla `image` (falla con HEIC de iPhone); se valida por mimetype
+            // y tamano, y luego GD re-encoda (saneando el archivo). Endpoint publico:
+            // ya hay throttle + honeypot en el grupo.
+            'fotos' => ['required', 'array', 'size:2'],
+            'fotos.*' => ['required', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif', 'max:8192'],
         ]);
 
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
@@ -90,7 +115,11 @@ class IngresoTallerPublicoController extends Controller
             'producto_id' => $data['producto_id'] ?? null,
             'sucursal_id' => $sucursal->id,
             'tipo_equipo' => $data['tipo_equipo'],
-            'numero_serie' => $data['numero_serie'],
+            'numero_serie' => $data['numero_serie'] ?? null,
+            'facturacion' => $data['facturacion'],
+            'garantia_doc_tipo' => $data['garantia_doc_tipo'] ?? null,
+            'garantia_doc_numero' => $data['garantia_doc_numero'] ?? null,
+            'garantia_doc_fecha' => $data['garantia_doc_fecha'] ?? null,
             'falla_reportada' => $data['falla_reportada'],
             'fecha_ingreso' => $hoy,
             'fecha_entrega' => $sucursal->fechaEntregaEstimada($hoy)->toDateString(),
@@ -98,6 +127,13 @@ class IngresoTallerPublicoController extends Controller
             'fuente' => 'qr',
             'confirmada_at' => null,
         ]);
+
+        // Guardar las 2 fotos: se comprimen (GD) y van al disco PRIVADO `local`.
+        foreach ($request->file('fotos', []) as $foto) {
+            $orden->fotos()->create([
+                'ruta' => ImagenComprimida::guardar($foto, "ordenes-servicio/fotos/{$orden->id}"),
+            ]);
+        }
 
         // El correo NO se manda aqui: sale cuando el encargado confirma la
         // recepcion (asi el cliente recibe datos ya verificados).
@@ -119,7 +155,11 @@ class IngresoTallerPublicoController extends Controller
             return response()->json([]);
         }
 
+        // Solo equipos de taller (dispensadores, lavadoras, bombas, herramientas):
+        // el cliente no debe ver accesorios/repuestos del catálogo. El buscador
+        // del mostrador (staff) NO aplica este filtro.
         $productos = Producto::query()
+            ->equipoTaller()
             ->where(fn (Builder $w) => $w
                 ->where('sku', 'like', "%{$q}%")
                 ->orWhere('nombre', 'like', "%{$q}%"))

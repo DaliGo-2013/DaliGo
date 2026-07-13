@@ -27,17 +27,19 @@
         <div x-show="modo === null" class="space-y-3">
             <p class="text-center text-sm text-neutral-500">¿Cómo desea ingresar su producto?</p>
 
-            {{-- Opción A: código de barras (próximamente) --}}
-            <button type="button" @click="modo = 'barra'"
-                class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
+            {{-- Opción A: código de barras — DESHABILITADA. Solo se muestra como
+                 "Pronto"; NO es clicable (es un <div>, sin @click), así el cliente
+                 no abre ninguna vista interna. --}}
+            <div aria-disabled="true"
+                class="block w-full cursor-not-allowed select-none rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-left opacity-75">
                 <span class="flex items-center gap-2">
-                    <span class="font-semibold text-neutral-900">Con código de barras</span>
+                    <span class="font-semibold text-neutral-500">Con código de barras</span>
                     <span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">Pronto</span>
                 </span>
-                <span class="mt-1 block text-sm text-neutral-500">
-                    Escaneamos el código y completamos solos el producto, la factura, la garantía y dónde lo compraste. Tú solo ingresas tus datos.
+                <span class="mt-1 block text-sm text-neutral-400">
+                    Estará disponible cuando tengamos el lector de código de barras.
                 </span>
-            </button>
+            </div>
 
             {{-- Opción B: manual --}}
             <button type="button" @click="modo = 'manual'"
@@ -49,49 +51,13 @@
             </button>
         </div>
 
-        {{-- ───────── PASO 2a: código de barras (vista previa · próximamente) ───────── --}}
-        <div x-show="modo === 'barra'" x-cloak>
-            <div class="rounded-2xl border border-brand-200 bg-brand-50 p-4">
-                <p class="font-semibold text-brand-900">Función en preparación</p>
-                <p class="mt-1 text-sm text-brand-800">
-                    Cuando tengamos la pistola lectora, escanearás el código de barras del producto y el
-                    sistema completará solo: <span class="font-medium">modelo, factura, si es garantía o
-                    reparación y dónde lo compraste</span>. El cliente solo ingresa sus datos.
-                </p>
-            </div>
-
-            {{-- Zona de escaneo (placeholder) --}}
-            <div class="mt-4">
-                <x-input-label value="Código de barras del producto" />
-                <div class="mt-1.5 flex items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-3.5 py-6 text-center text-sm text-neutral-400">
-                    Escanea con la pistola lectora (próximamente)
-                </div>
-            </div>
-
-            {{-- Lo poco que tendría que llenar el cliente --}}
-            <p class="mt-4 text-sm text-neutral-500">El cliente solo ingresaría:</p>
-            <div class="mt-2 flex flex-wrap gap-2">
-                @foreach (['Nombre', 'Correo', 'Teléfono', 'RUT'] as $campo)
-                    <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">{{ $campo }}</span>
-                @endforeach
-            </div>
-
-            <div class="mt-6 space-y-2">
-                <x-primary-button type="button" class="w-full justify-center" x-on:click="modo = 'manual'">
-                    Por ahora, ingresar manualmente
-                </x-primary-button>
-                <button type="button" @click="modo = null"
-                    class="block w-full text-center text-sm text-neutral-400 underline hover:text-neutral-600">Volver</button>
-            </div>
-        </div>
-
-        {{-- ───────── PASO 2b: formulario manual (el actual) ───────── --}}
+        {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}
         <div x-show="modo === 'manual'" x-cloak>
             <p class="mb-5 text-center text-sm text-neutral-500">
                 Completa los datos de tu equipo. Cuando termines, muéstrale la pantalla al encargado del mostrador.
             </p>
 
-            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5">
+            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
 
@@ -118,17 +84,17 @@
                 </div>
 
                 <div>
-                    <x-input-label for="cliente_telefono" value="Teléfono" />
+                    <x-input-label for="cliente_telefono" value="Teléfono *" />
                     <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 block w-full"
-                                  :value="old('cliente_telefono')" placeholder="Ej. +56 9 1234 5678" />
+                                  :value="old('cliente_telefono')" required placeholder="Ej. +56 9 1234 5678" />
+                    <x-input-hint>Para avisarte cuando tu equipo esté listo.</x-input-hint>
                     <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-1.5" />
                 </div>
 
                 <div>
-                    <x-input-label for="cliente_rut" value="RUT" />
+                    <x-input-label for="cliente_rut" value="RUT *" />
                     <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 block w-full"
-                                  :value="old('cliente_rut')" placeholder="Ej. 12.345.678-9" />
-                    <x-input-hint>Opcional.</x-input-hint>
+                                  :value="old('cliente_rut')" required placeholder="Ej. 12.345.678-9" />
                     <x-input-error :messages="$errors->get('cliente_rut')" class="mt-1.5" />
                 </div>
 
@@ -139,7 +105,7 @@
                     <x-input-label for="tipo_equipo" value="Tipo de equipo *" />
                     <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5 block w-full">
                         @foreach ($tipos as $t)
-                            <option value="{{ $t }}" @selected(old('tipo_equipo', 'dispensador') === $t)>{{ ucfirst($t) }}</option>
+                            <option value="{{ $t }}" @selected(old('tipo_equipo', 'dispensador') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
                         @endforeach
                     </x-select>
                     <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-1.5" />
@@ -155,10 +121,25 @@
                     placeholder="Escribe el código (SKU) o el nombre…"
                     hint="Opcional. Búscalo por el código que trae el equipo (ej. LB-07)." />
 
-                <div>
-                    <x-input-label for="numero_serie" value="N° de serie *" />
+                {{-- N° de serie: obligatorio solo para dispensador/lavadora (serie
+                     unica); opcional para bombas/herramientas. El asterisco y el
+                     'required' cambian en vivo segun el "Tipo de equipo". --}}
+                <div x-data="{
+                        serieObl: true,
+                        tiposObl: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS),
+                        init() {
+                            const sel = document.getElementById('tipo_equipo');
+                            const set = () => { this.serieObl = !sel || this.tiposObl.includes(sel.value); };
+                            set();
+                            if (sel) sel.addEventListener('change', set);
+                        },
+                     }">
+                    <x-input-label for="numero_serie">N° de serie <span x-show="serieObl" class="text-red-500">*</span></x-input-label>
                     <x-text-input id="numero_serie" name="numero_serie" type="text" class="mt-1.5 block w-full"
-                                  :value="old('numero_serie')" required placeholder="El número que trae el equipo" />
+                                  :value="old('numero_serie')" required x-bind:required="serieObl" placeholder="El número que trae el equipo" />
+                    {{-- Botón "Ver ejemplo del N° de serie" (foto de la etiqueta trasera), justo debajo del campo. --}}
+                    <x-ayuda-serie />
+                    <x-input-hint x-show="!serieObl" x-cloak>Opcional para este tipo (bombas y herramientas no tienen serie única).</x-input-hint>
                     <x-input-error :messages="$errors->get('numero_serie')" class="mt-1.5" />
                 </div>
 
@@ -170,11 +151,88 @@
                     <x-input-hint>Es la fecha de hoy.</x-input-hint>
                 </div>
 
+                {{-- Condición: garantía o reparación. Si elige Garantía, se despliegan
+                     los datos del documento de compra que la respalda (igual que en el
+                     mostrador). El cliente los indica; el mostrador los verifica. --}}
+                <div x-data="{ cond: @js(old('facturacion', '')) }">
+                    <x-input-label for="facturacion" value="Condición *" />
+                    <x-select id="facturacion" name="facturacion" class="mt-1.5 block w-full" x-model="cond">
+                        <option value="" disabled>— Selecciona —</option>
+                        @foreach (\App\Models\OrdenServicio::FACTURACION as $f)
+                            <option value="{{ $f }}">{{ ucfirst($f) }}</option>
+                        @endforeach
+                    </x-select>
+                    <x-input-hint>Garantía: equipo con garantía vigente (trae la boleta o factura). Reparación: fuera de garantía (tiene costo).</x-input-hint>
+                    <x-input-error :messages="$errors->get('facturacion')" class="mt-1.5" />
+
+                    {{-- Documento de compra: aparece solo si eligió Garantía. --}}
+                    <div class="mt-3 rounded-lg border border-brand-200 bg-brand-50 p-4"
+                         x-show="cond === 'garantia'" x-cloak x-transition>
+                        <p class="mb-3 text-sm font-medium text-brand-700">
+                            Documento de compra (respalda la garantía · 6 meses desde la compra)
+                        </p>
+                        <div class="space-y-4">
+                            <div>
+                                <x-input-label for="garantia_doc_tipo" value="Documento" />
+                                <x-select id="garantia_doc_tipo" name="garantia_doc_tipo" class="mt-1.5 block w-full"
+                                    x-bind:required="cond === 'garantia'">
+                                    <option value="">— Selecciona —</option>
+                                    @foreach (\App\Models\OrdenServicio::GARANTIA_DOC_TIPOS as $gt)
+                                        <option value="{{ $gt }}" @selected(old('garantia_doc_tipo') === $gt)>{{ ucfirst($gt) }}</option>
+                                    @endforeach
+                                </x-select>
+                                <x-input-error :messages="$errors->get('garantia_doc_tipo')" class="mt-1.5" />
+                            </div>
+                            <div>
+                                <x-input-label for="garantia_doc_numero" value="N° de documento" />
+                                <x-text-input id="garantia_doc_numero" name="garantia_doc_numero" type="text" class="mt-1.5 block w-full"
+                                    :value="old('garantia_doc_numero')" maxlength="191"
+                                    x-bind:required="cond === 'garantia'" />
+                                <x-input-error :messages="$errors->get('garantia_doc_numero')" class="mt-1.5" />
+                            </div>
+                            <div>
+                                <x-input-label for="garantia_doc_fecha" value="Fecha de compra" />
+                                <x-text-input id="garantia_doc_fecha" name="garantia_doc_fecha" type="date" class="mt-1.5 block w-full"
+                                    :value="old('garantia_doc_fecha')"
+                                    x-bind:required="cond === 'garantia'" />
+                                <x-input-error :messages="$errors->get('garantia_doc_fecha')" class="mt-1.5" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <x-input-label for="falla_reportada" value="¿Qué le pasa al equipo? *" />
                     <x-textarea id="falla_reportada" name="falla_reportada" rows="4" class="mt-1.5 block w-full"
                                 required placeholder="Cuéntanos la falla que notaste">{{ old('falla_reportada') }}</x-textarea>
                     <x-input-error :messages="$errors->get('falla_reportada')" class="mt-1.5" />
+                </div>
+
+                <hr class="border-neutral-200">
+
+                {{-- 2 fotos obligatorias del estado físico del equipo (respaldo de
+                     rayones/golpes). accept=image/* + capture abre la cámara en móvil. --}}
+                <div>
+                    <x-input-label value="Fotos del equipo *" />
+                    <p class="mt-1 text-sm text-neutral-500">
+                        Saca <span class="font-medium">2 fotos</span> del equipo como respaldo de su estado (rayones, golpes o abolladuras): una general y una de cualquier daño que tenga.
+                    </p>
+
+                    <div class="mt-3 space-y-3">
+                        <div>
+                            <label for="foto_1" class="mb-1 block text-sm font-medium text-neutral-700">Foto 1</label>
+                            <input id="foto_1" name="fotos[]" type="file" accept="image/*" capture="environment" required onchange="optimizarFotoInput(this)"
+                                   class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
+                            <x-input-error :messages="$errors->get('fotos.0')" class="mt-1.5" />
+                        </div>
+                        <div>
+                            <label for="foto_2" class="mb-1 block text-sm font-medium text-neutral-700">Foto 2</label>
+                            <input id="foto_2" name="fotos[]" type="file" accept="image/*" capture="environment" required onchange="optimizarFotoInput(this)"
+                                   class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
+                            <x-input-error :messages="$errors->get('fotos.1')" class="mt-1.5" />
+                        </div>
+                    </div>
+                    <x-input-error :messages="$errors->get('fotos')" class="mt-1.5" />
                 </div>
 
                 <x-primary-button class="w-full justify-center">

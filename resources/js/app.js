@@ -206,9 +206,25 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura })
  * (agregar/quitar filas) y calcula en vivo el costo total: suma de cada
  * repuesto (cantidad x precio) + mano de obra. Montos en pesos chilenos.
  */
-Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
+Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioHora, descuentoPct }) => ({
     repuestos: Array.isArray(repuestos) ? repuestos : [],
     manoObra: manoObra || 0,
+    // Descuento (%) sobre el total; 0 = sin descuento.
+    descuentoPct: Number(descuentoPct) || 0,
+
+    // Mano de obra por horas: valor hora del catalogo (SKU config, con IVA) x
+    // las horas trabajadas. Si hay valor hora, `horas` calcula `manoObra`; el
+    // campo de mano de obra sigue editable (override manual). `horas` arranca
+    // en 0 aunque la orden ya tenga mano de obra guardada (esta se conserva
+    // hasta que el tecnico toque las horas).
+    precioHora: Number(precioHora) || 0,
+    horas: 0,
+
+    calcularManoObra() {
+        if (this.precioHora > 0) {
+            this.manoObra = Math.round((Number(this.horas) || 0) * this.precioHora);
+        }
+    },
 
     // Autocompletado de repuestos (historial + comunes). `filaActiva` marca
     // que fila tiene el dropdown abierto; `sugerencias` son los nombres del
@@ -247,8 +263,14 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
         }
     },
 
-    elegirRepuesto(i, nombre) {
-        this.repuestos[i].nombre = nombre;
+    elegirRepuesto(i, s) {
+        // `s` puede ser {nombre, sku, precio} del catalogo, o {nombre} del historial.
+        this.repuestos[i].nombre = s.nombre;
+        // Si el catalogo trae precio (con IVA), se pre-rellena como sugerencia
+        // editable; el tecnico lo puede ajustar.
+        if (s.precio !== null && s.precio !== undefined && s.precio !== '') {
+            this.repuestos[i].precio_unitario = Number(s.precio);
+        }
         this.cerrarSugerencias();
     },
 
@@ -265,12 +287,136 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
         return this.repuestos.reduce((s, r) => s + this.subtotal(r), 0);
     },
 
-    get total() {
+    // Costo bruto (antes de descuento): repuestos + mano de obra.
+    get costoBruto() {
         return this.totalRepuestos + (Number(this.manoObra) || 0);
+    },
+
+    get descuentoMonto() {
+        return Math.round((this.costoBruto * (Number(this.descuentoPct) || 0)) / 100);
+    },
+
+    // Total a pagar: bruto menos el descuento.
+    get total() {
+        return this.costoBruto - this.descuentoMonto;
     },
 
     clp(n) {
         return '$' + new Intl.NumberFormat('es-CL').format(Number(n) || 0);
+    },
+}));
+
+/**
+ * Ingreso por LOTE de Servicio Tecnico (conductor en ruta). Tabla de maquinas
+ * como filas livianas: cada fila lleva el codigo Dali (autocompletado por
+ * fila, mismo patron que reparacionForm), serie/modelo y una foto de respaldo
+ * (comprimida en el navegador con optimizarFotoInput). La empresa y los
+ * defaults del lote se eligen una vez fuera de este componente.
+ */
+Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente }) => ({
+    endpointProducto: endpointProducto || '',
+    endpointCliente: endpointCliente || '',
+
+    // Empresa del lote (se elige una vez). El RUT es el buscador; al elegir de
+    // la lista autocompleta nombre/correo/teléfono y enlaza cliente_id.
+    clienteId: 0,
+    rut: '',
+    nombre: '',
+    email: '',
+    telefono: '',
+    empresaResultados: [],
+    empresaAbierto: false,
+    empresaBuscando: false,
+
+    maquinas: [],
+    sugerencias: [],
+    filaActiva: null,
+    buscando: false,
+
+    init() {
+        if (this.maquinas.length === 0) this.agregar();
+    },
+
+    async buscarEmpresa() {
+        const q = (this.rut || '').trim();
+        if (q.length < 2 || !this.endpointCliente) {
+            this.empresaResultados = [];
+            return;
+        }
+        this.empresaBuscando = true;
+        try {
+            const { data } = await window.axios.get(this.endpointCliente, { params: { q } });
+            this.empresaResultados = data;
+            this.empresaAbierto = true;
+        } catch (e) {
+            this.empresaResultados = [];
+        } finally {
+            this.empresaBuscando = false;
+        }
+    },
+
+    elegirEmpresa(r) {
+        this.clienteId = r.id || 0;
+        this.rut = r.rut || '';
+        this.nombre = r.razon_social || '';
+        this.telefono = r.telefono || '';
+        this.email = r.email || '';
+        this.empresaAbierto = false;
+        this.empresaResultados = [];
+    },
+
+    filaVacia() {
+        return { producto_id: '', producto_label: '', numero_serie: '', modelo: '', foto_nombre: '' };
+    },
+
+    agregar() {
+        this.maquinas.push(this.filaVacia());
+    },
+
+    quitar(i) {
+        this.maquinas.splice(i, 1);
+        if (this.maquinas.length === 0) this.agregar();
+    },
+
+    async buscar(i) {
+        this.filaActiva = i;
+        const q = (this.maquinas[i]?.producto_label || '').trim();
+        if (q.length < 2 || !this.endpointProducto) {
+            this.sugerencias = [];
+            return;
+        }
+        this.buscando = true;
+        try {
+            const { data } = await window.axios.get(this.endpointProducto, { params: { q } });
+            this.sugerencias = data;
+        } catch (e) {
+            this.sugerencias = [];
+        } finally {
+            this.buscando = false;
+        }
+    },
+
+    elegir(i, s) {
+        this.maquinas[i].producto_id = s.id;
+        this.maquinas[i].producto_label = s.label;
+        this.cerrar();
+    },
+
+    cerrar() {
+        this.sugerencias = [];
+        this.filaActiva = null;
+    },
+
+    // Comprime la foto en el navegador (optimizarFotoInput reemplaza el archivo
+    // del input por la version liviana) y marca la fila como "con foto".
+    async fotoInput(i, input) {
+        await window.optimizarFotoInput(input);
+        this.maquinas[i].foto_nombre = input.files?.[0]?.name || 'Foto lista';
+    },
+
+    // Antes de enviar: cada fila necesita un codigo elegido del catalogo.
+    filaIncompleta(m) {
+        return !m.producto_id;
     },
 }));
 
@@ -360,3 +506,59 @@ const dibujarQrsMostrador = () => {
 };
 if (document.readyState !== 'loading') dibujarQrsMostrador();
 else document.addEventListener('DOMContentLoaded', dibujarQrsMostrador);
+
+/**
+ * Optimización de fotos EN EL NAVEGADOR antes de subir (ingreso por QR).
+ * Las fotos de celular (12MP+) pesan varios MB y decodificarlas en el servidor
+ * con GD agota la memoria del hosting (error 500 y no se envía). Aquí se
+ * redimensionan a MAX_LADO_FOTO px y se re-encodan a JPEG, dejando el archivo en
+ * ~200-400 KB: subida liviana y rápida, y el servidor la procesa sin problema.
+ * Convierte HEIC de iPhone a JPEG de paso (Safari decodifica HEIC en el <img>).
+ * Si algo falla, se sube el original (el servidor igual comprime como respaldo).
+ */
+const MAX_LADO_FOTO = 1600;
+
+async function comprimirImagenCliente(file) {
+    const url = URL.createObjectURL(file);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const im = new Image();
+            im.onload = () => resolve(im);
+            im.onerror = reject;
+            im.src = url;
+        });
+
+        const lado = Math.max(img.naturalWidth, img.naturalHeight);
+        const escala = Math.min(1, MAX_LADO_FOTO / lado);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * escala);
+        canvas.height = Math.round(img.naturalHeight * escala);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+        if (!blob) return null;
+
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+// Reemplaza el archivo del input por su versión liviana. Se llama desde el
+// onchange de los inputs de foto del formulario del QR. No deshabilita el input
+// (para no perder el archivo si el usuario envía justo durante el proceso).
+window.optimizarFotoInput = async function (input) {
+    const file = input.files && input.files[0];
+    if (!file || !file.type.startsWith('image/')) return; // no-imagen (o vacío): dejar al servidor
+
+    try {
+        const liviana = await comprimirImagenCliente(file);
+        if (liviana && liviana.size < file.size) {
+            const dt = new DataTransfer();
+            dt.items.add(liviana);
+            input.files = dt.files;
+        }
+    } catch (e) {
+        // Si falla, se sube el original; el servidor comprime igual (con más memoria).
+    }
+};

@@ -1,8 +1,35 @@
-# TABLERO — 3 días de flota (2026-07-03 → 2026-07-05)
+# TABLERO de la flota — continuo desde 2026-07-08 (histórico de 3 días abajo)
 
-> Lo opera el DIRECTOR (única cuenta que edita este archivo). Marcas: `[ ]` pendiente,
-> `[~]` en curso, `[x]` verificada con evidencia, `[!]` bloqueada. Cada tarea indica la
-> talla estimada (S/M/L/XL — ver `CONSUMO.md`) y el dictado modelo+esfuerzo.
+> Lo opera el DIRECTOR (única cuenta que edita este archivo). Marcas: `[ ]/[~]/[x]/[!]`.
+> **Modo continuo (directiva del dueño 08-07):** sin marco de días — cada asiento avanza su
+> cola en orden y el Director verifica/repone. Restricción física: 1 cuenta Code por
+> computador (3 en uso: Max-1, Max-2, Director). Los roles Pro restantes operan como
+> **asientos de NAVEGADOR** (claude.ai sin Code) vía *paquete de contexto*: el Director
+> redacta el prompt autocontenido → Mauricio lo pega en el navegador → el texto vuelve →
+> lo commitea el asiento Code que el Director designe. Los asientos de navegador JAMÁS
+> escriben en git. Fable disponible hasta el domingo 13-07 (extendido; tope semanal propio).
+
+> **RE-ARRANQUE 13-07** (dueño de vuelta tras licencia 08→13-07): mientras tanto M12 avanzó
+> autónomo (presentación de ST exitosa — el QR gustó) y Max-1 dejó P-M14-04/05 pusheado
+> (VERIFICADO [x] por el Director: 7a01da2, 10 tests exactos al plan) → E2·M14 va 5/7.
+> **BUZÓN operativo** (`docs/fleet/buzon/`): dictados y partes por git, fin del copy/paste.
+> Fable 5 extendido hasta el **19-07** (ledger). Meta de la ventana: reunión del ~28-07 con
+> M14 EN VIVO + M04 arrancado + candidato dashboard.
+
+## TABLERO CONTINUO — colas por asiento
+
+| Asiento | Cola (en orden) |
+|---|---|
+| **Max-1** (Code) | 1) [x] vigilancia crontab 24h — `*/15` VIVA con crontab idéntico + 4 syncs en sus slots (I-01 vigilancia CERRADA) · 2) [x] **P-M14-03** VERIFICADO 08-07 (`7a14927`, 14 archivos +501 exactos, 8 tests HTTP calzan el estándar dictado incl. doble-tap y motivo obligatorio, bundle nuevo con grep 5/5, preview 3 anchos, suite 469; el gotcha qrcode mordió y la bitácora lo resolvió en 1 min — el sistema aprende; gotcha nuevo anotado: login exige dominio @impdali.cl por validación de M12) · 3) [x] P-M14-04/05 (7a01da2) · 4) [x] P-M14-06 historial (8c8d3e2) · 5) [x] hotfix PwaTest + fix flaky I-06 (main verde) · 6) [~] **P-M14-07 MERGE de M14 = aprobaciones a producción**: prep hecho; rama 118 commits detrás → fase A (merge+build+suite en rama, parte al buzón) → fase B (push a main con DOBLE LLAVE Director+Mauricio) → QA staging celular. Es la demo de la reunión |
+| **Max-2** (Code) | **PIVOTE 13-07: foco DESPACHOS.** 1) [x] Lote DECISIONES + expedientes I-04/I-05 redactados — integrados a main por el Director (a01636b, integración selectiva; guardrail de push del asiento resuelto por la vía del Director) · 2) [ ] **PLAN-DESPACHOS-V1** en RAMA NUEVA `feature/despachos-v1` desde main fresco. **[antiguo texto ↓ conservado]** 1) Lote DECISIONES (incluye D-007 APLAZADA por el dueño, D-003 con media-respuesta de Ricardo, I-05 a archivo) · 2) [ ] **PLAN-DESPACHOS-V1 sellado** (carve-out M05-parcial+M07+M08-MVP: espejo de documentos Bsale + entidad despacho con estados/zona + QR anti-fraude con pantalla de cola + PWA conductor con firma/foto/hora sobre el memo SPIKE-PWA; M04 POSPUESTO) · 3) micro-backlog M15 (baja) — detalle completo en buzon/dictados/max-2.md |
+| **Director** (Code) | Coordinación I-04 · verificación de partes · **fábrica de paquetes de contexto** para asientos de navegador |
+| **N-Investigador** (navegador) | 1) [x] Ficha D-007 entregada y aceptada 08-07 (despacho a Marco en manos del dueño) · 2) [ ] Matriz D-002 (paquete entregado 08-07) · 3) [ ] Prompt P-S0-10 (paquete entregado 08-07) |
+| **N-Escriba** (navegador) | 1) [ ] BORRADOR-soplador (paquete del flujo entregado 08-07) |
+| **4º computador** (Code, por llegar) | Recomendación del Director: **Pro-2 QA** — verificación funcional local + suites + revisión con repo (el rol más mutilado sin Code) |
+
+**GATE GLOBAL I-04:** tras poner el repo PRIVADO, ningún push a main hasta verificar el
+`git pull` autenticado del servidor (deploy key) — el deploy se rompería. Pushes de docs
+se acumulan localmente si el gate está activo.
 
 ## Día 1 (2026-07-03)
 
@@ -43,11 +70,100 @@
 |---|---|---|---|---|
 | Max-2 | [x] **Correcciones de auditoría (4+3) + P-M15-07 + P-M15-08** — *VERIFICADO por Director 06-07 en `f7353fb`: (1) página personal `/notificaciones` solo-auth ✓ (2) guard `canal=database` 404 ✓ (3) `withoutOverlapping(10)` ✓ (4) barrido self-healing de huérfanas (>10 min, re-dispatch idempotente — su llamada, bien justificada) ✓ + claim limpia `programada_para` ✓ + fix `data_get` (punto del evento interpretado como anidación — cazado por SU test) ✓. 9 tests nuevos en diff (405 netos), bundle recompilado, main intacto, Opus 4.8 ✓. MOTOR M15 COMPLETO EN LA RAMA* | L | Opus 4.8 · high | Correcciones aplicadas; preferencias respetadas por dispatcher con test; suite verde |
 | Max-1 | [x] **F-01** recetario como apoyo automático — *VERIFICADO: `07dbe92`, 4 archivos +10/−3 exactos, regla en CLAUDE.md (auto-carga en 6 cuentas), 3 descriptions con auto-disparo y keywords en español, cuerpos intactos. Desviación: corrió Fable 5 (ledger)* | S | Opus 4.8 · medium (corrió Fable 5) | Regla en CLAUDE.md + skills auto-disparables |
-| Max-2 | [~] **P-M15-09** · Merge coordinado + QA staging — **MERGE EN MAIN Y DESPLEGADO 07-07** ✅: doble OK dado, corrección pre-push aplicada (`everyFifteenMinutes()` verificado en main:48), merge `dd54f8c`+`cfae59a`, deploy Actions `success` 17:47, tests de main verdes. **M15 VIVO en producción** (migraciones DONE en MySQL prod, 6 seeders en el log, corrección grilla + test `test_reintentar_agendado_en_la_grilla_de_15` en main ✓, gotcha qrcode en bitácora ✓, 445 tests). **QA STAGING EN CURSO 07-07: pasos 1-7 OK** (database→Enviada, campanita contador+lectura, página personal, badge a 0; mail→Fallida con error SMTP registrado — ESPERADO, alcance de P-M15-10, NO es I-03 aunque el reporte la citó: corregir etiqueta al archivar). **Paso 8 EN ESPERA por fallo del Director**: observar reintentador en prod (~30-40 min, intentos 1→2→3 → terminal). FALTA para [x]: veredicto APROBADO archivado en docs/qa/M15/ | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
+| Max-2 | [~] **P-M15-09** · Merge coordinado + QA staging — **MERGE EN MAIN Y DESPLEGADO 07-07** ✅: doble OK dado, corrección pre-push aplicada (`everyFifteenMinutes()` verificado en main:48), merge `dd54f8c`+`cfae59a`, deploy Actions `success` 17:47, tests de main verdes. **M15 VIVO en producción** (migraciones DONE en MySQL prod, 6 seeders en el log, corrección grilla + test `test_reintentar_agendado_en_la_grilla_de_15` en main ✓, gotcha qrcode en bitácora ✓, 445 tests). **QA STAGING EN CURSO 07-07: pasos 1-7 OK** (database→Enviada, campanita contador+lectura, página personal, badge a 0; mail→Fallida con error SMTP registrado — ESPERADO, alcance de P-M15-10, NO es I-03 aunque el reporte la citó: corregir etiqueta al archivar). **[x] CERRADO 08-07**: veredicto QA APROBADO CON OBSERVACIONES aceptado y ARCHIVADO (`cb0015a` → docs/qa/M15/2026-07-07--M15--qa-funcional-staging.md, 152 líneas, RUTA [x] verificada por el Director, gotcha tinker en bitácora, micro-backlog anotado). Reintentador probado EN PRODUCCIÓN | L | Opus 4.8 · high | Merge en main con suite verde + QA staging APROBADO (correo real + campanita + fila admin) |
 | Max-1 | [x] Cierre **P-SPK-03** + **I-01 modo compatibilidad** — *VERIFICADO 07-07: `faf772f` (grilla */15 + hourlyAt 15/30/45 + ScheduleBsaleTest + 2 evidencias QA + plantilla/kickoff actualizados), `d1db5ef` (memo SPIKE-PWA 165 líneas sellado, RUTA P-SPK-01..03 [x] con hashes, golden-hash test), `aa10d2b` (verificación EN VIVO del slot 16:15 UTC). SPIKE PWA COMPLETO. Parte formal recibido 07-07 (403 tests, deploy verde); /usage pendiente* | S | Fable 5 (decisión dueño) | Push único; parte con /usage |
-| Max-1 | [~] **E2 · M14 Aprobaciones digitales — arranque**: PLAN-M14 SELLADO en main (`8fb6763`, 167 líneas) y **VALIDADO por el Director 07-07** (spot-checks del sello: ajustar():677 con lock ✓, Configuracion::set firstOrFail ✓, umbral_aprobacion_clp sembrado ✓, grilla verificada ✓; diseño conforme: handlers por tipo_accion, payload-obsoleto→rechazo automático, escalamiento como nivel, contrato monto=null conservador). HALLAZGO ÚTIL del plan: reintentador M15 en everyFiveMinutes() viola convención I-01 → corrección dictada a Max-2 PRE-push. **Falta: visto bueno de Mauricio con 3 puntos de decisión** (umbral 50 unidades, unidades-vs-CLP, cambio UX jefe_bodega). De paso el sello CERRÓ I-03 (syncs verificadas por SSH) | M (plan) | Fable 5 hoy · Opus 4.8 desde 08-07 | PLAN-M14 sellado + visto bueno; vigilancia reportada |
+| Max-1 | [~] **E2 · M14 Aprobaciones digitales — arranque**: PLAN-M14 SELLADO en main (`8fb6763`, 167 líneas) y **VALIDADO por el Director 07-07** (spot-checks del sello: ajustar():677 con lock ✓, Configuracion::set firstOrFail ✓, umbral_aprobacion_clp sembrado ✓, grilla verificada ✓; diseño conforme: handlers por tipo_accion, payload-obsoleto→rechazo automático, escalamiento como nivel, contrato monto=null conservador). HALLAZGO ÚTIL del plan: reintentador M15 en everyFiveMinutes() viola convención I-01 → corrección dictada a Max-2 PRE-push. **Falta: visto bueno de Mauricio con 3 puntos de decisión** (umbral 50 unidades, unidades-vs-CLP, cambio UX jefe_bodega). De paso el sello CERRÓ I-03 (syncs verificadas por SSH). ⚠️ Ver R-03: P-M14-01 apareció en la rama sin visto bueno registrado | M (plan) | Fable 5 hoy · Opus 4.8 desde 08-07 | PLAN-M14 sellado + visto bueno; vigilancia reportada |
+| Max-2 | [~] **P-M15-10** · Entregabilidad — *prompt REVISADO por el Director 07-07 (2 lentes adversariales): estructura, seguridad y valores MAIL_* correctos (smtps/465 coherente con Laravel 12 ✓, DMARC p=none prudente ✓, salvaguardas ✓), PERO 2 BLOQUEANTES cazados: (1) paso 11 — `$m` dentro de comillas dobles: bash lo expande a vacío → Parse error de PHP, el envío de prueba jamás corre; (2) paso 5b — lógica circular (condiciona el reseteo de clave a una validación que ocurre 6 pasos después). **[x] CERRADO 08-07 → E1·M15 UNIDAD COMPLETA (10/10 pasos)**: entregabilidad APROBADA (SPF/DKIM VALID, DMARC creado, Gmail=RECIBIDOS con captura, fila Mail Enviada, correos M12 des-atascados), respuesta archivada íntegra en docs/qa/INFRA/2026-07-08 (verificada por Director), RUTA con E1 [CERRADA 2026-07-08] y M15 en "Hecho" del panel. Primera unidad completa de la flota: kickoff→producción con QA archivado en 6 días. R-04 (rotación de claves) sigue pendiente del dueño* | M | Opus 4.8 · high | Prompt revisado y despachado; SPF/DKIM OK; correo real a inbox; fila mail "Enviada" |
+| Max-1 | [x] **P-M14-02** · Servicio Aprobaciones + handler + excepciones — *VERIFICADO por Director 08-07: `5470f31` (8 archivos +588 exactos), batería 10/10 IDÉNTICA a la dictada (auto×3, pendiente×2 incl. monto=null, aplicar bajo lock, doble-aprobar excepción, conflicto updated_at, rechazo, rol vigente), lock+re-check presente, 3 eventos `aprobacion.*` en Notificacion::EVENTOS (integración post-merge legítima), retoque a PreferenciasCanalTest justificado (conteo derivado del catálogo — más robusto). Suite 461 declarada. Desviaciones del plan pre-aceptadas (sin guard, eventos en 02) — anotar al re-sellar. GO P-M14-03 vigente; mañana: /model Opus + vigilancia crontab ANTES de la bandeja* | L | Fable 5 | Batería de tests del plan verde; suite completa verde |
+| Max-1 | [x] **P-M14-01** · Esquema del motor de aprobaciones — *VERIFICADO por Director 07-07: `5d9286d` en `feature/m14-aprobaciones` (8 archivos +456 exactos), migración fiel al PLAN §1.2 (unique `tipo_accion(64)`, índices `[estado,rol_aprobador]` y `[estado,created_at]` con propósito comentado), seeder `firstOrCreate`, 6 tests de esquema, AuditController +2 modelos, suite 451 declarada, gobierno en main `6ae4d0e`. Visto bueno confirmado (R-03 cerrada). Excepción de verificación multi-agente aceptada (paso mecánico, diseño doblemente aprobado)* | M | Fable 5 | migrate:fresh --seed ×2 idempotente; suite verde |
 
 ## Incidencias
+
+### I-06 · MAIN EN ROJO — parte 1 RESUELTA, parte 2 ABIERTA (territorio M12)
+**Parte 1 (PwaTest, CERRADA):** Max-1 alineó `PwaTest:41` al nuevo `start_url=/dashboard`
+(hotfix verificado, su fix del PWA quedó verde). Pregunta de producto para Mauricio sigue
+viva: ¿rebote automático de soplador /dashboard→mi-reporte, o el tap extra es aceptable?
+**Parte 2 (ServicioTecnicoManagementTest — CAUSA RAÍZ HALLADA, fix dictado a Max-1 con
+autorización del dueño):** NO era un test roto determinista sino **FLAKY** — eso explica que
+el CI alternara verde/rojo entre pushes idénticos de solo-docs. Diagnóstico del Director: la
+factory `OrdenServicioFactory` pone `estado` ALEATORIO; el test `test_reparado_exige_
+diagnostico_final` (agregado por Marcos en 2d8fd73) crea la orden sin fijar estado, la
+validación rechaza bien el PUT a 'reparado' sin causa_falla (no hay update), y el
+`assertNotSame('reparado', ...)` falla cuando el estado aleatorio inicial cayó en 'reparado'.
+El CÓDIGO de Marcos está correcto; el defecto es solo del test. FIX (1 línea, fijar estado
+inicial ≠ reparado — como Marcos ya hizo en su test hermano) dictado a Max-1 como EXCEPCIÓN
+de territorio autorizada por Mauricio, con verificación anti-flaky obligatoria (20+ corridas)
+y tocando SOLO el/los test(s), no controller ni factory. Revisar también
+`test_sin_solucion_exige_diagnostico_final` (mismo flaky latente).
+
+### I-05b · Detalle de I-05 en repo público — REDACTADO por el Director (13-07)
+Max-2 alertó (bien): el expediente I-05 con rutas de webshells quedó en superficie pública.
+Decisión del Director: NO reescribir historia (ya estaba en main público, no solo la rama;
+rewrite de main compartido rompe clones y no des-publica). SÍ redactar hacia adelante: el
+anexo público (`buzon/anexo-i05-respuesta-integra.md`) reescrito a veredicto+datación+estado
+limpio de nuestra superficie, SIN rutas/patrón/blobs; commit normal encima. Detalle operativo
+completo → Víctor por canal privado. Riesgo de lo ya expuesto: bajo (webshells fuera del
+docroot, inalcanzables por web sin acceso al server); mitigación real = limpieza de Víctor.
+Lección: en repo público, incidente de seguridad se documenta redactado desde el 1er commit.
+
+### I-05 · SERVIDOR COMPROMETIDO — malware confirmado; remediación ASIGNADA A VÍCTOR (08-07)
+Inspección ejecutada (11/11 pasos, evidencia en el parte del operador): **405 archivos PHP
+maliciosos fuera del docroot** — `blog.php` (webshell file-manager, ofuscación `$GNJ[]()`),
+`lufi.php` (backdoor `eval(base64_decode)`), `xxx.php`/`about.php` (eval+ofuscación) —
+sembrados en `~/.ssh`, `~/.cpanel`, `~/.htpasswds`, `~/etc`, `~/mail`, `~/tmp`, `public_ftp`
+y más. Fechas: infección era **Nov 2022** (pre-DaliGo) con **Change 2026-03-09** (retoque/
+movimiento reciente). Crontab LIMPIO y grilla `*/15` viva. `.env.bak` viejos borrados (único
+[CAMBIO] autorizado). **ACLARADO POR EL DIRECTOR con evidencia criptográfica:** `daligo.pub`
+(comentario `daligo-deploy`) es la llave LEGÍTIMA de GitHub Actions→server — fingerprint
+computado `SHA256:m2QhGnkDrl3a...` = exacto al de bitácora 2026-06-05; su privada vive en
+GitHub Secrets (por eso parece huérfana). La llave "creada hoy 10:55" que alertó Max-1 =
+nuestra deploy key T2. `authorized_keys` (1 llave) correcto — NO TOCAR. **REMEDIACIÓN: fuera
+del alcance de la flota → asignada a VÍCTOR (sysadmin humano de DALI)** con paquete de
+evidencia + pedidos: limpieza/scan (o ticket a HostGator con la lista de 405), rotar la clave
+del cPanel, revisar cuentas FTP/correo/usuarios desconocidos. Nota I-01: con malware activo
+el "reescritor de crons" admite segunda hipótesis, pero el patrón ≥15 min + crontab hoy limpio
+mantienen a HostGator como principal; re-evaluar tras la limpieza.
+
+### I-04 — CERRADA 08-07: FALSO POSITIVO confirmado + rotaciones hechas + gate LIBERADO
+Causa confirmada con el detalle de la alerta (captura del dueño): GitGuardian tomó el
+placeholder `«PEGAR (la misma del paso 5)»` junto a `MAIL_USERNAME=servicio@impdali.cl`
+(líneas 87-88 del archivo de evidencia) como si fuera una clave real. Cero credenciales
+expuestas — consistente con el barrido limpio de Max-2 (T1). **Decisiones del dueño
+registradas:** (a) el repo PERMANECE PÚBLICO por su política — riesgo residual documentado
+(docs de negocio/infra visibles; merece ficha D-012 en DECISIONES.md, cola de Max-2);
+(b) rotaciones R-04 HECHAS (correo/admin/BD declaradas por el dueño; app verificada VIVA
+post-rotación por el Director). **GATE DE PUSHES LIBERADO** (sin privatización no hay
+ventana de deploy roto; bonus: el pull del server quedó por SSH con deploy key — más
+robusto). Higiene en cola de Max-2: borrar `.env.bak.*` (ya contienen claves muertas),
+redactar endpoint en 2 docs, ficha D-012, marcar la alerta como falso positivo en el
+panel de GitGuardian (botón resolve — lo hace Mauricio).
+
+### I-04 (histórico) — EN CIERRE: barrido limpio + deploy key operativa; falta privatizar y evidencia
+Estado 08-07: **T1 barrido de historia COMPLETO Y LIMPIO** (7 agentes + spot-check de Max-2,
+233 commits × 14 ramas: 0 credenciales reales; 1 ítem informativo bajo — endpoint SSH
+user@host:puerto en 2 docs, higiene). Sin purga necesaria. **T2 deploy key VERIFICADA**:
+fetch SSH autenticado operativo, host key cotejado, privada jamás expuesta, remote ya en
+git@github.com. **SECUENCIA APROBADA POR EL DIRECTOR**: (1) Mauricio PRIVATIZA ahora →
+(2) doble evidencia: fetch SSH sigue OK + ls-remote HTTPS anónimo FALLA + API 404 →
+(3) Director libera el gate de pushes. Alerta GitGuardian: causa AÚN sin confirmar (la
+historia git está limpia → probable falso positivo por placeholder o algo fuera del git;
+falta el detalle textual de la alerta — 4º pedido a Mauricio). HIGIENE derivada (cola, no
+bloquea): borrar los 3 `.env.bak.*` del app root DESPUÉS de las rotaciones R-04; redactar
+el endpoint en los 2 docs.
+
+### I-04 (histórico) · REPO PÚBLICO + alerta GitGuardian — ABIERTA, MÁXIMA PRIORIDAD (08-07)
+GitGuardian alertó "Company Email Password exposed" (push 15:12:25 UTC). Investigación del
+Director: los diffs de HOY en todas las ramas están limpios (todo `[CLAVE OCULTA]`/`«PEGAR»`)
+→ hipótesis principal: el detector se disparó con el placeholder junto a `MAIL_USERNAME` en la
+evidencia archivada. PERO el hallazgo grave del barrido es otro: **el repositorio es PÚBLICO**
+(verificado vía gh: visibility=PUBLIC) — biblia de negocio, HANDOFF con rutas de servidor,
+nombre de BD y evidencias de infra expuestos a internet. PLAN (en orden): (1) Mauricio pone el
+repo PRIVADO ya; (2) ANTES del próximo push a main: configurar auth de `git pull` en el
+servidor (deploy key/PAT de solo lectura) porque con repo privado el pull del deploy.sh FALLA;
+(3) rotación TOTAL R-04 ampliada: servicio@impdali.cl + admin staging + **clave de BD
+impdali_daligo (P-S0-09 deja de estar pospuesta — es obligatoria)**; (4) Mauricio abre la
+alerta de GitGuardian y entrega archivo/línea/commit (SIN el valor) para confirmar falso
+positivo vs real; (5) Max-2: barrido de secretos de TODA la historia en todas las ramas.
 
 ### R-01 · Reconciliación P-S0-18 — CERRADA (origen: Mauricio)
 Commit `4d7caa1` (recetario de prompts + skills) lo hizo Mauricio mismo en otra compu en
@@ -88,6 +204,15 @@ pasos exactos (var de env y ubicación). Cierra cuando un grep del log muestre s
 **Lateral anexo (Max-1, 07-07):** los correos del taller (M12) caen al LOG por `config:cache`
 stale + `.env` SMTP a medio experimento — órdenes 5 y 6 salieron sin correo. Sin acción ahora:
 el cierre real del correo saliente es **P-M15-10** (SPF/DKIM + cuenta SMTP).
+
+### R-03 — CERRADA 07-07: visto bueno de M14 confirmado (dado en directo)
+El parte de P-M14-01 declara "visto bueno de Mauricio DADO" y el dueño lo transmitió sin
+corrección → se registra como confirmado. Los 3 puntos de decisión quedan REGISTRADOS COMO
+PROPUESTOS en el plan (umbral 50 unidades · umbral v1 en unidades, `umbral_aprobacion_clp`
+reservado a reglas monetarias · UX jefe_bodega: ajustes ≥50 esperan aprobación), salvo que
+Mauricio los corrija — el umbral es clave de configuración, cambiarlo después no cuesta código.
+Lección de proceso: los vistos buenos dados por canal directo se avisan al Director en el
+momento, no en el parte siguiente.
 
 ### I-01 — CERRADA 07-07 (modo compatibilidad verificado en vivo; evidencias en docs/qa/INFRA/)
 Cierre: `faf772f` + `aa10d2b`. Vigilancia: re-chequeo interino 07-07 11:18 — `*/15` INTACTO y

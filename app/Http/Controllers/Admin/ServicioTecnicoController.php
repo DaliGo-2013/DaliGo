@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\OrdenServicioFoto;
 use App\Models\OrdenServicioRepuesto;
 use App\Models\Producto;
 use App\Models\Sucursal;
@@ -17,10 +18,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Servicio Tecnico (taller): ingreso de maquinas y lavadoras. Version basica =
@@ -67,7 +70,9 @@ class ServicioTecnicoController extends Controller
 
         return view('admin.servicio-tecnico.index', array_merge([
             'ordenes' => $ordenes,
-            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion', 'sucursal_id']),
+            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion', 'sucursal_id', 'anio', 'mes']),
+            // Cards de navegacion del historial (Año → Mes) sobre el listado.
+            'historial' => $this->resumenHistorial($request->filled('anio') ? (int) $request->input('anio') : null),
             // Maquinas que llegaron por QR y esperan que el encargado confirme la
             // recepcion (bloque destacado arriba del listado).
             'porConfirmar' => OrdenServicio::porConfirmar()
@@ -75,6 +80,98 @@ class ServicioTecnicoController extends Controller
                 ->latest('id')
                 ->get(),
         ], $this->formData()));
+    }
+
+    /**
+     * Informe de estadisticas del taller por periodo (un mes o el año completo).
+     * Lectura para los jefes (permiso 'view servicio tecnico'): cuantas ordenes
+     * ingresaron, garantia vs reparacion, que equipos y clientes se repiten y
+     * que repuestos se usaron (apoyo al control de inventario del taller).
+     */
+    public function informe(Request $request): View
+    {
+        [$desde, $hasta, $anio, $mes, $tipo] = $this->periodoInforme($request);
+
+        // KPIs en una pasada. Se agrega sobre la columna cruda `facturacion`
+        // (la condicion registrada al ingreso): condicion_efectiva es un
+        // accessor PHP, y validateData ya fuerza garantia vencida a
+        // 'reparacion' al registrar, asi que en la practica coinciden.
+        // Reparaciones = total - garantias (igual que condicion_efectiva:
+        // las ordenes viejas con facturacion NULL cuentan como reparacion).
+        $kpis = $this->ordenesDelPeriodo($desde, $hasta, $tipo)->selectRaw("
+            COUNT(*) AS total,
+            SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) AS garantias
+        ")->first();
+
+        $porTipo = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->selectRaw('tipo_equipo AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('tipo_equipo')->orderByDesc('cantidad')->get();
+
+        $porEstado = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->selectRaw('estado AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('estado')->orderByDesc('cantidad')->get();
+
+        // Por causa de la falla (indicador de capacitacion): mal uso / desgaste
+        // / fabrica; las NULL se agrupan como "sin_determinar". COALESCE es
+        // portable MySQL 5.7 / SQLite.
+        $porCausa = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->selectRaw("COALESCE(causa_falla, 'sin_determinar') AS causa, COUNT(*) AS cantidad")
+            ->groupBy('causa')->orderByDesc('cantidad')->get();
+
+        // "Que equipo ingresa mas": por producto del catalogo (el campo `modelo`
+        // es texto libre y no agrupa bien). Los ingresos por QR sin codigo caen
+        // en la fila "Sin código". MAX() por ONLY_FULL_GROUP_BY (MySQL 5.7).
+        $topEquipos = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->leftJoin('productos', 'productos.id', '=', 'ordenes_servicio.producto_id')
+            ->selectRaw('ordenes_servicio.producto_id AS id, MAX(productos.nombre) AS nombre, MAX(productos.sku) AS sku, COUNT(*) AS cantidad')
+            ->groupBy('ordenes_servicio.producto_id')
+            ->orderByDesc('cantidad')->limit(10)->get();
+
+        $topClientes = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->selectRaw('cliente_rut, MAX(cliente_nombre) AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('cliente_rut')
+            ->orderByDesc('cantidad')->limit(10)->get();
+
+        // Repuestos usados en las ordenes del periodo, agregados por nombre.
+        // Mismo filtro de tipo que el resto del informe (para calcular compras
+        // por tipo de equipo).
+        $repuestos = OrdenServicioRepuesto::query()
+            ->join('ordenes_servicio', 'ordenes_servicio.id', '=', 'orden_servicio_repuestos.orden_servicio_id')
+            ->whereDate('ordenes_servicio.fecha_ingreso', '>=', $desde)
+            ->whereDate('ordenes_servicio.fecha_ingreso', '<=', $hasta)
+            ->when($tipo, fn (Builder $qb) => $qb->where('ordenes_servicio.tipo_equipo', $tipo))
+            ->selectRaw('orden_servicio_repuestos.nombre AS nombre, SUM(orden_servicio_repuestos.cantidad) AS unidades, COUNT(DISTINCT orden_servicio_repuestos.orden_servicio_id) AS ordenes')
+            ->groupBy('orden_servicio_repuestos.nombre')
+            ->orderByDesc('unidades')->get();
+
+        $total = (int) ($kpis->total ?? 0);
+        $periodoLabel = $mes
+            ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
+            : 'Año '.$anio;
+
+        return view('admin.servicio-tecnico.informe', [
+            'anio' => $anio,
+            'mes' => $mes,
+            'tipo' => $tipo,
+            'anios' => $this->aniosDisponibles(),
+            'tipos' => OrdenServicio::TIPOS,
+            'kpis' => [
+                'total' => $total,
+                'garantias' => (int) ($kpis->garantias ?? 0),
+                'reparaciones' => $total - (int) ($kpis->garantias ?? 0),
+                'pctGarantia' => $total > 0 ? (int) round(($kpis->garantias ?? 0) / $total * 100) : 0,
+            ],
+            'porTipo' => $porTipo,
+            'porEstado' => $porEstado,
+            'porCausa' => $porCausa,
+            'topEquipos' => $topEquipos,
+            'topClientes' => $topClientes,
+            'repuestos' => $repuestos->take(15)->values(),
+            'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
+            'totalNombresRepuestos' => $repuestos->count(),
+            'periodoLabel' => $periodoLabel,
+            'tipoLabel' => $tipo ? OrdenServicio::etiquetaTipo($tipo) : 'Todos los equipos',
+        ]);
     }
 
     public function create(): View
@@ -86,17 +183,30 @@ class ServicioTecnicoController extends Controller
     {
         $data = $this->validateData($request, creando: true);
 
-        // Al registrar, el mostrador no decide estado ni fecha: toda orden nueva
-        // parte en 'recibido' y la fecha estimada la fija el servidor segun la
-        // sucursal (el formulario los muestra pero no los deja editar).
-        $data['estado'] = 'recibido';
+        // El staff (tecnico/admin) puede elegir el estado inicial al registrar
+        // para ir informando el paso a paso; por defecto parte en 'recibido'.
+        // El cliente no toca este campo (el ingreso por QR no lo tiene). La fecha
+        // estimada la sigue fijando el servidor segun la sucursal (no editable).
+        $data['estado'] = $data['estado'] ?? 'recibido';
         $data['fecha_entrega'] = Sucursal::findOrFail($data['sucursal_id'])
             ->fechaEntregaEstimada($data['fecha_ingreso'])->toDateString();
+        // Quien registra en el mostrador es quien recibe el equipo.
+        $data['recibida_por'] = $request->user()->name;
 
         $orden = OrdenServicio::create($data);
 
-        return redirect()->route('admin.servicio-tecnico.index')
-            ->with('status', "Orden {$orden->folio} registrada.");
+        // Se le envia el folio al cliente (mismo correo que el flujo QR). Es
+        // SECUNDARIO: si el mailer del servidor falla, NO tumba el registro; se
+        // loguea y se avisa en el mensaje.
+        try {
+            Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
+            $status = "Orden {$orden->folio} registrada. Folio enviado a {$orden->cliente_email}.";
+        } catch (\Throwable $e) {
+            report($e);
+            $status = "Orden {$orden->folio} registrada. No se pudo enviar el correo (revisa la configuración de correo del servidor).";
+        }
+
+        return redirect()->route('admin.servicio-tecnico.index')->with('status', $status);
     }
 
     /**
@@ -115,7 +225,11 @@ class ServicioTecnicoController extends Controller
                 return false;
             }
 
-            $fresh->update(['confirmada_at' => now()]);
+            // Queda registrado QUIEN recibio el equipo (el encargado que confirma).
+            $fresh->update([
+                'confirmada_at' => now(),
+                'recibida_por' => auth()->user()->name,
+            ]);
 
             return true;
         });
@@ -145,6 +259,16 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * Conteo (JSON) de ordenes por confirmar (llegaron por QR y sin confirmar).
+     * Lo consulta en segundo plano el listado para el "aviso suave": si el total
+     * sube respecto al de la carga, muestra un banner "hay nuevos" SIN recargar.
+     */
+    public function porConfirmarConteo(): JsonResponse
+    {
+        return response()->json(['total' => OrdenServicio::porConfirmar()->count()]);
+    }
+
+    /**
      * Pagina imprimible con el QR de cada sucursal activa. Cada QR apunta al link
      * FIRMADO del formulario publico con su sucursal_id embebido. El encargado la
      * imprime y la pega en el mostrador. El QR se dibuja en el cliente desde la
@@ -168,15 +292,27 @@ class ServicioTecnicoController extends Controller
     public function show(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.show', [
-            'orden' => $orden->load(['producto', 'sucursal', 'repuestos']),
+            'orden' => $orden->load(['producto', 'sucursal', 'repuestos', 'fotos']),
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
         ]);
+    }
+
+    /**
+     * Sirve una foto de recepcion desde el disco PRIVADO `local`. Solo para
+     * usuarios con sesion y permiso de ver servicio tecnico (la ruta lo exige);
+     * NO es una URL publica adivinable.
+     */
+    public function foto(OrdenServicioFoto $foto): StreamedResponse
+    {
+        abort_unless(Storage::disk('local')->exists($foto->ruta), 404);
+
+        return Storage::disk('local')->response($foto->ruta);
     }
 
     public function edit(OrdenServicio $orden): View
     {
         return view('admin.servicio-tecnico.edit', array_merge(
-            ['orden' => $orden->load('producto')],
+            ['orden' => $orden->load('producto', 'fotos')],
             $this->formData($orden)
         ));
     }
@@ -207,7 +343,37 @@ class ServicioTecnicoController extends Controller
         return view('admin.servicio-tecnico.reparacion', [
             'orden' => $orden->load(['producto', 'repuestos']),
             'estados' => OrdenServicio::ESTADOS,
+            'causasFalla' => OrdenServicio::CAUSAS_FALLA,
+            // Respuestas fijas de "Trabajo realizado" agrupadas (config).
+            'respuestasTrabajo' => config('servicio_tecnico.respuestas_trabajo', []),
+            // Valor hora de mano de obra (precio con IVA del SKU de servicio
+            // tecnico). Null si no existe/no tiene precio -> mano de obra manual.
+            'precioHoraServicio' => $this->precioHoraServicio(),
         ]);
+    }
+
+    /**
+     * Valor hora de mano de obra: precio CON IVA del producto configurado como
+     * "hora de servicio tecnico" (config sku_hora_servicio). Prioriza una lista
+     * de precios activa; si no hay, cualquiera. Null si no existe o no tiene
+     * precio (mismo criterio de precio que buscarRepuesto).
+     */
+    private function precioHoraServicio(): ?int
+    {
+        $sku = config('servicio_tecnico.sku_hora_servicio');
+        if (! $sku) {
+            return null;
+        }
+
+        $producto = Producto::where('sku', $sku)->with('precios.lista')->first();
+        if (! $producto) {
+            return null;
+        }
+
+        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
+            ?? $producto->precios->first();
+
+        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
     }
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
@@ -215,16 +381,31 @@ class ServicioTecnicoController extends Controller
         // Garantia vencida o sin documento = reparacion (se cobra): exige precio.
         $esReparacion = $orden->condicion_efectiva === 'reparacion';
 
+        // Diagnostico final OBLIGATORIO al cerrar la orden: toda maquina que se
+        // marca como 'reparado' o 'sin_solucion' debe quedar con la causa de la
+        // falla (para que el informe refleje la realidad). En los estados
+        // intermedios sigue siendo opcional. '' -> null por el middleware
+        // ConvertEmptyStringsToNull, asi que 'Sin determinar' no pasa el required.
+        $exigeDiagnostico = in_array($request->input('estado'), ['reparado', 'sin_solucion'], true);
+
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
+            'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             'mano_obra' => ['nullable', 'integer', 'min:0'],
+            // Descuento sobre el total (solo reparacion cobrable). Si hay descuento,
+            // el motivo que lo justifica es obligatorio.
+            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
+            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
             'fecha_aviso' => ['nullable', 'date'],
             'fecha_retiro' => ['nullable', 'date'],
             'repuestos' => ['array'],
             'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
+        ], [
+            'causa_falla.required' => 'Indica la causa de la falla (diagnóstico final) para cerrar la orden como «Reparado» o «Sin solución».',
+            'descuento_motivo.required' => 'Indica el motivo del descuento.',
         ]);
 
         // Validacion por fila: si el tecnico empezo a llenar un repuesto, exige
@@ -251,10 +432,16 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
+        // El descuento solo aplica cuando se cobra (reparacion); en garantia se anula.
+        $descuentoPct = $esReparacion ? (int) ($data['descuento_pct'] ?? 0) : 0;
+
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
+            'causa_falla' => $data['causa_falla'] ?? null,
             'mano_obra' => $data['mano_obra'] ?? null,
+            'descuento_pct' => $descuentoPct,
+            'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
             'fecha_aviso' => $data['fecha_aviso'] ?? null,
             'fecha_retiro' => $data['fecha_retiro'] ?? null,
         ]);
@@ -354,24 +541,51 @@ class ServicioTecnicoController extends Controller
             return response()->json([]);
         }
 
+        // 1) Catalogo Dali (productos): por codigo (SKU) o nombre. Trae el precio
+        //    de venta CON IVA que encuentre (sugerencia editable; el tecnico ajusta).
+        $catalogo = Producto::query()
+            ->where(fn (Builder $w) => $w
+                ->where('sku', 'like', "%{$q}%")
+                ->orWhere('nombre', 'like', "%{$q}%"))
+            ->with('precios.lista')
+            ->orderBy('sku')
+            ->limit(10)
+            ->get(['id', 'sku', 'nombre'])
+            ->map(function (Producto $p) {
+                // El precio de venta que encuentre: prioriza una lista activa; si no, cualquiera.
+                $pr = $p->precios->first(fn ($x) => (bool) ($x->lista?->activa)) ?? $p->precios->first();
+
+                return [
+                    'nombre' => $p->nombre,
+                    'sku' => $p->sku,
+                    'precio' => $pr ? (int) round((float) $pr->precio_con_iva) : null,
+                ];
+            });
+
+        // 2) Historial de reparaciones + repuestos comunes (solo nombres).
         $historial = OrdenServicioRepuesto::query()
             ->where('nombre', 'like', "%{$q}%")
             ->distinct()
             ->orderBy('nombre')
-            ->limit(15)
+            ->limit(10)
             ->pluck('nombre');
 
         $comunes = collect(self::REPUESTOS_COMUNES)
             ->filter(fn (string $n) => mb_stripos($n, $q) !== false);
 
+        // No repetir un nombre que ya vino del catalogo (ahi trae codigo + precio).
+        $yaEnCatalogo = $catalogo->pluck('nombre')->map(fn ($n) => mb_strtolower($n))->all();
+
         $nombres = $historial->merge($comunes)
             ->map(fn (string $n) => trim($n))
             ->filter()
             ->unique(fn (string $n) => mb_strtolower($n))
-            ->take(15)
-            ->values();
+            ->reject(fn (string $n) => in_array(mb_strtolower($n), $yaEnCatalogo, true))
+            ->take(10)
+            ->map(fn (string $n) => ['nombre' => $n, 'sku' => null, 'precio' => null]);
 
-        return response()->json($nombres->map(fn (string $n) => ['nombre' => $n]));
+        // Catalogo primero (con codigo + precio), luego los nombres sueltos.
+        return response()->json($catalogo->concat($nombres)->take(15)->values());
     }
 
     // --- Helpers --------------------------------------------------------
@@ -391,6 +605,9 @@ class ServicioTecnicoController extends Controller
             // compartido por las 3 sucursales; este filtro deja ver "que se ingreso
             // en Coquimbo/Abate/Mirador". La reparacion siempre es en Mirador.
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
+            // Periodo del historial (cards Año → Mes del listado).
+            'anio' => ['nullable', 'integer', 'between:2020,2100'],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
         ]);
 
         return OrdenServicio::query()
@@ -398,7 +615,9 @@ class ServicioTecnicoController extends Controller
                 $rutQ = preg_replace('/[.\s]/', '', $q);
 
                 $qb->where(function (Builder $w) use ($q, $rutQ) {
-                    $w->where('cliente_nombre', 'like', "%{$q}%")
+                    // El folio ahora es el codigo unico (ST-XXXXXXXX): se busca por ese.
+                    $w->where('codigo', 'like', "%{$q}%")
+                        ->orWhere('cliente_nombre', 'like', "%{$q}%")
                         ->orWhere('cliente_rut', 'like', "%{$rutQ}%")
                         ->orWhere('modelo', 'like', "%{$q}%")
                         ->orWhere('numero_serie', 'like', "%{$q}%")
@@ -410,7 +629,113 @@ class ServicioTecnicoController extends Controller
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
             ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v))
-            ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v));
+            ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v))
+            // Periodo Año/Mes: rango de fechas con whereDate en ambos bordes
+            // (portable MySQL 5.7 / SQLite y usa el indice; nada de YEAR() en
+            // SQL). Mes sin año asume el año actual.
+            ->when($f['anio'] ?? $f['mes'] ?? null, function (Builder $qb) use ($f) {
+                $anio = (int) ($f['anio'] ?? now()->year);
+                $mes = isset($f['mes']) ? (int) $f['mes'] : null;
+                $desde = Carbon::create($anio, $mes ?? 1, 1);
+                $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+                $qb->whereDate('fecha_ingreso', '>=', $desde->toDateString())
+                    ->whereDate('fecha_ingreso', '<=', $hasta->toDateString());
+            });
+    }
+
+    /**
+     * Resumen para las cards de navegacion del historial (Año → Mes) del
+     * listado. Una sola query liviana (solo fecha y condicion) agrupada en
+     * PHP: el volumen es bajo (cientos de ordenes por año) y evita SQL de
+     * fechas no portable entre MySQL 5.7 y el SQLite de los tests.
+     */
+    private function resumenHistorial(?int $anioActivo): array
+    {
+        $ordenes = OrdenServicio::query()
+            ->whereNotNull('fecha_ingreso')
+            ->get(['fecha_ingreso', 'facturacion']);
+
+        // Reparacion = total - garantia (igual que condicion_efectiva: las
+        // ordenes viejas con facturacion NULL cuentan como reparacion).
+        $anios = $ordenes
+            ->groupBy(fn (OrdenServicio $o) => $o->fecha_ingreso->year)
+            ->map(function ($grupo) {
+                $garantia = $grupo->where('facturacion', 'garantia')->count();
+
+                return [
+                    'total' => $grupo->count(),
+                    'garantia' => $garantia,
+                    'reparacion' => $grupo->count() - $garantia,
+                ];
+            })
+            ->sortKeysDesc();
+
+        $meses = null;
+        if ($anioActivo !== null) {
+            $delAnio = $ordenes->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->year === $anioActivo);
+            $meses = collect(range(1, 12))
+                ->mapWithKeys(fn (int $m) => [$m => $delAnio->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->month === $m)->count()])
+                ->all();
+        }
+
+        return ['anios' => $anios, 'meses' => $meses];
+    }
+
+    /**
+     * Periodo del informe: un mes puntual o el año completo, opcionalmente
+     * acotado a un tipo de equipo. Sin parametros = mes actual y todos los
+     * tipos; con solo `anio` = ese año completo ("Todo el año").
+     * Devuelve [desde Y-m-d, hasta Y-m-d, anio, mes|null, tipo|null].
+     */
+    private function periodoInforme(Request $request): array
+    {
+        $v = $request->validate([
+            'anio' => ['nullable', 'integer', 'between:2020,2100'],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
+            'tipo' => ['nullable', Rule::in(OrdenServicio::TIPOS)],
+        ]);
+
+        $anio = isset($v['anio']) ? (int) $v['anio'] : null;
+        $mes = isset($v['mes']) ? (int) $v['mes'] : null;
+        $tipo = $v['tipo'] ?? null;
+
+        if ($anio === null) {
+            $anio = now()->year;
+            $mes ??= now()->month;
+        }
+
+        $desde = Carbon::create($anio, $mes ?? 1, 1);
+        $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+
+        return [$desde->toDateString(), $hasta->toDateString(), $anio, $mes, $tipo];
+    }
+
+    /**
+     * Ordenes cuyo ingreso cae dentro del rango [desde, hasta] (Y-m-d),
+     * opcionalmente de un solo tipo de equipo. whereDate en ambos bordes:
+     * portable (MySQL 5.7 / SQLite) y usa el indice de fecha_ingreso.
+     */
+    private function ordenesDelPeriodo(string $desde, string $hasta, ?string $tipo = null): Builder
+    {
+        return OrdenServicio::query()
+            ->whereDate('fecha_ingreso', '>=', $desde)
+            ->whereDate('fecha_ingreso', '<=', $hasta)
+            ->when($tipo, fn (Builder $qb, $t) => $qb->where('tipo_equipo', $t));
+    }
+
+    /**
+     * Años con ordenes registradas (descendente) para el selector del informe.
+     * Siempre incluye el año actual aunque aun no tenga ordenes.
+     */
+    private function aniosDisponibles(): array
+    {
+        $min = OrdenServicio::min('fecha_ingreso');
+        $max = OrdenServicio::max('fecha_ingreso');
+
+        $primero = $min ? Carbon::parse($min)->year : now()->year;
+        $ultimo = max($max ? Carbon::parse($max)->year : now()->year, now()->year);
+
+        return array_reverse(range(min($primero, $ultimo), $ultimo));
     }
 
     private function validateData(Request $request, bool $creando = false): array
@@ -423,19 +748,35 @@ class ServicioTecnicoController extends Controller
 
         $esGarantia = $request->input('facturacion') === 'garantia';
 
+        // El N° de serie es obligatorio solo para tipos con serie unica
+        // (dispensador/lavadora); para el resto (bombas/herramientas) es opcional.
+        $serieObligatoria = in_array(
+            $request->input('tipo_equipo'),
+            OrdenServicio::SERIE_OBLIGATORIA_TIPOS,
+            true,
+        );
+
         $data = $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
+            // Correo OBLIGATORIO en el mostrador: se le envia el folio al registrar
+            // y sirve para avisos futuros del equipo.
+            'cliente_email' => ['required', 'email', 'max:191'],
+            // Obligatorio en el mostrador: toda orden se vincula a un producto del
+            // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
+            // lo maneja aparte (alli sigue opcional).
+            'producto_id' => ['required', 'integer', Rule::exists('productos', 'id')],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'numero_serie' => ['required', 'string', 'min:3', 'max:191'],
+            'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],
             'falla_reportada' => ['required', 'string', 'min:3'],
-            // Al crear, el estado no viene del formulario (store lo fuerza a
-            // 'recibido'); si igual llega, que al menos sea uno valido.
+            // Falla del tecnico: opcional, notas aparte de las del cliente.
+            'falla_tecnico' => ['nullable', 'string'],
+            // El staff puede elegir el estado inicial al crear (default 'recibido'
+            // si no llega); al editar es obligatorio. Siempre debe ser uno valido.
             'estado' => $creando
                 ? ['nullable', Rule::in(OrdenServicio::ESTADOS)]
                 : ['required', Rule::in(OrdenServicio::ESTADOS)],

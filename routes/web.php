@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
+use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
@@ -24,17 +25,7 @@ use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    // Sucursales que reciben servicio tecnico, para el selector de la portada
-    // (¿ingresar un equipo? -> sucursal -> QR). try/catch: la portada NUNCA debe
-    // reventar si la BD no esta lista (p.ej. tests sin migracion).
-    $sucursalesTaller = collect();
-    try {
-        $sucursalesTaller = \App\Models\Sucursal::recepcionServicioTecnico()->get();
-    } catch (\Throwable $e) {
-        // Sin selector si no se puede consultar; la portada igual carga.
-    }
-
-    return view('welcome', ['sucursalesTaller' => $sucursalesTaller]);
+    return view('welcome');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -157,6 +148,13 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
+            // Informe de estadisticas por periodo (año o mes) para los jefes.
+            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informe'])
+                ->name('servicio-tecnico.informe');
+            // Foto de recepcion (disco privado, servida con sesion). ANTES del show
+            // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
+            Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])
+                ->whereNumber('foto')->name('servicio-tecnico.foto');
             Route::get('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'show'])
                 ->whereNumber('orden')->name('servicio-tecnico.show');
         });
@@ -168,6 +166,24 @@ Route::middleware('auth')
         Route::middleware('permission:confirmar servicio tecnico')->group(function () {
             Route::post('servicio-tecnico/{orden}/confirmar', [ServicioTecnicoController::class, 'confirmar'])
                 ->whereNumber('orden')->name('servicio-tecnico.confirmar');
+            // Conteo liviano (JSON) de "por confirmar" para el aviso suave del listado
+            // (poll sin recargar la pagina).
+            Route::get('servicio-tecnico/por-confirmar/conteo', [ServicioTecnicoController::class, 'porConfirmarConteo'])
+                ->name('servicio-tecnico.por-confirmar.conteo');
+        });
+
+        // Ingreso por LOTE (conductor en ruta): permiso acotado, NO gestiona el
+        // taller. Rutas literales 'servicio-tecnico/lote...' (no chocan con el
+        // show {orden} que exige whereNumber).
+        Route::middleware('permission:crear lote servicio')->group(function () {
+            Route::get('servicio-tecnico/lote', [LoteServicioController::class, 'create'])
+                ->name('servicio-tecnico.lote.create');
+            Route::post('servicio-tecnico/lote', [LoteServicioController::class, 'store'])
+                ->name('servicio-tecnico.lote.store');
+            Route::get('servicio-tecnico/lote/buscar-cliente', [LoteServicioController::class, 'buscarCliente'])
+                ->name('servicio-tecnico.lote.buscar-cliente');
+            Route::get('servicio-tecnico/lote/buscar-producto', [LoteServicioController::class, 'buscarProducto'])
+                ->name('servicio-tecnico.lote.buscar-producto');
         });
 
         Route::middleware('permission:manage servicio tecnico')->group(function () {

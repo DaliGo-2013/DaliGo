@@ -9,7 +9,9 @@ use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -27,6 +29,17 @@ class IngresoTallerPublicoTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
+        // Las fotos van al disco privado 'local'; lo falseamos para no escribir en disco real.
+        Storage::fake('local');
+    }
+
+    /** @return array<int, UploadedFile> 2 fotos de prueba (JPEG reales via GD). */
+    private function fotos(): array
+    {
+        return [
+            UploadedFile::fake()->image('foto1.jpg', 800, 600),
+            UploadedFile::fake()->image('foto2.jpg', 800, 600),
+        ];
     }
 
     private function admin(): User
@@ -51,9 +64,12 @@ class IngresoTallerPublicoTest extends TestCase
             'cliente_nombre' => 'Ana Cliente',
             'cliente_email' => 'ana@correo.cl',
             'cliente_telefono' => '+56 9 8888 7777',
+            'cliente_rut' => '12.345.678-5',
             'tipo_equipo' => 'dispensador',
             'numero_serie' => 'SN-9090',
+            'facturacion' => 'reparacion',
             'falla_reportada' => 'Gotea por abajo',
+            'fotos' => $this->fotos(),
         ], $overrides);
     }
 
@@ -66,7 +82,8 @@ class IngresoTallerPublicoTest extends TestCase
         $this->get($this->linkCreate($sucursal))
             ->assertOk()
             ->assertSee('Ingreso a servicio técnico')
-            ->assertSee('Mirador');
+            ->assertSee('Mirador')
+            ->assertSee('Ver ejemplo');   // ícono de ayuda del N° de serie
     }
 
     public function test_sin_firma_valida_el_formulario_es_rechazado(): void
@@ -128,7 +145,10 @@ class IngresoTallerPublicoTest extends TestCase
 
     public function test_buscar_producto_publico_devuelve_coincidencias(): void
     {
-        $producto = Producto::factory()->create(['sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black']);
+        $producto = Producto::factory()->create([
+            'sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black',
+            'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR',
+        ]);
 
         // Sin login (es público): matchea por SKU y por nombre.
         $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-07']))
@@ -138,6 +158,63 @@ class IngresoTallerPublicoTest extends TestCase
         $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Silver']))
             ->assertOk()
             ->assertJsonFragment(['sku' => 'LB-07']);
+    }
+
+    public function test_buscar_producto_publico_solo_muestra_equipos(): void
+    {
+        // Equipo (categoría de taller) vs accesorio (otra categoría). El cliente
+        // solo debe ver el equipo, aunque ambos matcheen la búsqueda por nombre.
+        $equipo = Producto::factory()->create([
+            'sku' => '1040001', 'nombre' => 'Dispensador Rosa LB-16',
+            'categoria' => 'AGUA DISP. PEDESTAL VENTILADOR',
+        ]);
+        $accesorio = Producto::factory()->create([
+            'sku' => '1020104', 'nombre' => 'Soporte Rosa Nacional',
+            'categoria' => 'Accesorios',
+        ]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Rosa']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $equipo->id])
+            ->assertJsonMissing(['id' => $accesorio->id]);
+    }
+
+    public function test_buscar_producto_publico_filtra_categoria_sin_importar_mayusculas(): void
+    {
+        // La categoría que manda Bsale puede venir en otra capitalización que la
+        // configurada; el filtro compara en minúsculas.
+        $producto = Producto::factory()->create([
+            'sku' => 'BX-500', 'nombre' => 'Bomba de agua USB portátil',
+            'categoria' => 'AGUA BOMBA USB',
+        ]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'BX-500']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $producto->id]);
+    }
+
+    public function test_buscar_producto_publico_excluye_sin_categoria(): void
+    {
+        // Un producto sin categoría (no calza con ningún equipo) no se sugiere.
+        Producto::factory()->create(['sku' => 'SC-01', 'nombre' => 'Cosa sin categoria', 'categoria' => null]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'SC-01']))
+            ->assertOk()
+            ->assertExactJson([]);
+    }
+
+    public function test_buscar_producto_publico_muestra_dispensadores(): void
+    {
+        // Categoría real de Bsale (mayúsculas, con punto): debe calzar con el
+        // config vía el match tolerante y mostrar el dispensador en el buscador.
+        $disp = Producto::factory()->create([
+            'sku' => '1040001', 'nombre' => 'DISP. LB-16 L/D BLUE/SILVER',
+            'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR',
+        ]);
+
+        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-16']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $disp->id]);
     }
 
     public function test_buscar_producto_publico_exige_dos_caracteres(): void
@@ -186,24 +263,106 @@ class IngresoTallerPublicoTest extends TestCase
 
     public function test_envio_publico_valida_obligatorios(): void
     {
+        // numero_serie NO va aqui: es condicional al tipo (ver tests dedicados).
         $this->post(route('ingreso-taller.store'), [])
             ->assertSessionHasErrors([
-                'sucursal_id', 'cliente_nombre', 'cliente_email',
-                'tipo_equipo', 'numero_serie', 'falla_reportada',
+                'sucursal_id', 'cliente_nombre', 'cliente_email', 'cliente_telefono',
+                'cliente_rut', 'tipo_equipo', 'facturacion', 'falla_reportada', 'fotos',
             ]);
     }
 
-    public function test_rut_es_opcional_pero_invalido_se_rechaza(): void
+    /** Dispensador/lavadora: el N° de serie sigue siendo obligatorio en lo publico. */
+    public function test_envio_publico_exige_serie_para_dispensador(): void
     {
         $sucursal = $this->sucursal();
 
-        // Sin RUT: pasa.
-        $this->post(route('ingreso-taller.store'), $this->payload($sucursal))
-            ->assertSessionHasNoErrors();
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'tipo_equipo' => 'dispensador',
+            'numero_serie' => '',
+        ]))->assertSessionHasErrors('numero_serie');
+    }
+
+    /** Bombas/herramientas: el N° de serie es OPCIONAL tambien en el flujo publico. */
+    public function test_envio_publico_serie_opcional_para_herramienta(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'tipo_equipo' => 'herramienta',
+            'numero_serie' => '',
+        ]))->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'tipo_equipo' => 'herramienta',
+            'numero_serie' => null,
+            'fuente' => 'qr',
+        ]);
+    }
+
+    public function test_rut_obligatorio_y_dv_invalido_se_rechaza(): void
+    {
+        $sucursal = $this->sucursal();
+
+        // Sin RUT: ahora es obligatorio en el flujo publico -> error.
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['cliente_rut' => '']))
+            ->assertSessionHasErrors('cliente_rut');
 
         // RUT con DV incorrecto: se rechaza.
         $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['cliente_rut' => '12.345.678-9']))
             ->assertSessionHasErrors('cliente_rut');
+    }
+
+    /** Telefono ahora obligatorio en el flujo publico. */
+    public function test_telefono_obligatorio(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['cliente_telefono' => '']))
+            ->assertSessionHasErrors('cliente_telefono');
+    }
+
+    /** La condicion (reparacion) elegida por el cliente se guarda. */
+    public function test_envio_publico_guarda_condicion(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['facturacion' => 'reparacion']))
+            ->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'reparacion',
+            'fuente' => 'qr',
+        ]);
+    }
+
+    /** Si el cliente marca Garantia, el documento de compra es obligatorio. */
+    public function test_garantia_exige_documento_de_compra(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['facturacion' => 'garantia']))
+            ->assertSessionHasErrors(['garantia_doc_tipo', 'garantia_doc_numero', 'garantia_doc_fecha']);
+    }
+
+    /** Garantia con documento completo se guarda. */
+    public function test_garantia_con_documento_se_guarda(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-12345',
+            'garantia_doc_fecha' => now()->subMonth()->toDateString(),
+        ]))->assertRedirectContains('/ingreso-taller/listo');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-12345',
+            'fuente' => 'qr',
+        ]);
     }
 
     public function test_sucursal_inactiva_es_rechazada(): void
@@ -248,11 +407,15 @@ class IngresoTallerPublicoTest extends TestCase
             'estado' => 'recibido',
         ]);
 
-        $this->actingAs($this->admin())
+        $encargado = tap($this->admin())->update(['name' => 'Fernando St']);
+
+        $this->actingAs($encargado)
             ->post(route('admin.servicio-tecnico.confirmar', $orden))
             ->assertRedirect();
 
-        $this->assertNotNull($orden->fresh()->confirmada_at);
+        $fresh = $orden->fresh();
+        $this->assertNotNull($fresh->confirmada_at);
+        $this->assertSame('Fernando St', $fresh->recibida_por);   // queda quién recibió
         Mail::assertSent(IngresoTallerRecibido::class, fn ($mail) => $mail->hasTo('ana@correo.cl'));
     }
 
@@ -333,6 +496,27 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_conteo_por_confirmar_devuelve_solo_qr_sin_confirmar(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['fuente' => 'qr', 'confirmada_at' => null]);
+        OrdenServicio::factory()->create(['fuente' => 'mostrador', 'confirmada_at' => null]);  // no cuenta
+        OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => now()]);         // ya confirmada, no cuenta
+
+        $this->actingAs($this->admin())
+            ->getJson(route('admin.servicio-tecnico.por-confirmar.conteo'))
+            ->assertOk()
+            ->assertExactJson(['total' => 2]);
+    }
+
+    public function test_conteo_por_confirmar_requiere_permiso(): void
+    {
+        $member = tap(User::factory()->create())->assignRole('member');
+
+        $this->actingAs($member)
+            ->getJson(route('admin.servicio-tecnico.por-confirmar.conteo'))
+            ->assertForbidden();
+    }
+
     // --- Pagina de QR (admin) ---
 
     public function test_pagina_qr_lista_solo_sucursales_de_servicio_tecnico(): void
@@ -349,29 +533,71 @@ class IngresoTallerPublicoTest extends TestCase
             ->assertDontSee('Buzeta');   // Buzeta no recibe servicio técnico
     }
 
-    // --- Portada: entrada pública a servicio técnico (pregunta → sucursal → QR) ---
+    // --- Portada: NO expone el ingreso a servicio técnico (por seguridad) ---
 
-    public function test_portada_ofrece_ingreso_a_servicio_tecnico_por_sucursal(): void
+    public function test_portada_no_expone_entrada_a_servicio_tecnico(): void
     {
+        // El ingreso por QR NO se anuncia en la home (se llega solo por el QR físico
+        // del mostrador). La portada no debe mostrar la pregunta ni dibujar QRs.
         config(['servicio_tecnico.sucursales_recepcion' => ['MIRADOR', 'COQUIMBO', 'ABATE-MOLINA']]);
         Sucursal::factory()->create(['codigo' => 'MIRADOR', 'nombre' => 'El Mirador', 'activa' => true]);
-        Sucursal::factory()->create(['codigo' => 'COQUIMBO', 'nombre' => 'Coquimbo', 'activa' => true]);
-        Sucursal::factory()->create(['codigo' => 'ABATE-MOLINA', 'nombre' => 'Abate Molina', 'activa' => true]);
-        Sucursal::factory()->create(['codigo' => 'BUZETA', 'nombre' => 'Buzeta', 'activa' => true]);
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('servicio técnico', false)   // la pregunta de entrada
-            ->assertSee('El Mirador')
-            ->assertSee('Coquimbo')
-            ->assertSee('Abate Molina')
-            ->assertSee('data-qr', false)            // los QR se dibujan en el cliente
-            ->assertDontSee('Buzeta');               // Buzeta no recibe ST
+            ->assertSee('DaliGo')
+            ->assertDontSee('¿Vas a ingresar un producto a servicio técnico?', false)
+            ->assertDontSee('data-qr', false);
     }
 
-    public function test_portada_carga_aunque_no_haya_sucursales(): void
+    // --- Fotos de respaldo del estado del equipo ---
+
+    public function test_fotos_son_obligatorias(): void
     {
-        // Sin sucursales de ST el selector no aparece, pero la portada NO revienta.
-        $this->get('/')->assertOk()->assertSee('DaliGo');
+        $sucursal = $this->sucursal();
+        $data = $this->payload($sucursal);
+        unset($data['fotos']);
+
+        $this->post(route('ingreso-taller.store'), $data)
+            ->assertSessionHasErrors('fotos');
+    }
+
+    public function test_exige_exactamente_dos_fotos(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'fotos' => [UploadedFile::fake()->image('una.jpg')],
+        ]))->assertSessionHasErrors('fotos');
+    }
+
+    public function test_dos_fotos_se_guardan_comprimidas(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal))
+            ->assertRedirectContains('/ingreso-taller/listo');
+
+        $orden = OrdenServicio::latest('id')->firstOrFail();
+        $this->assertCount(2, $orden->fotos);
+        foreach ($orden->fotos as $foto) {
+            $this->assertStringEndsWith('.jpg', $foto->ruta);
+            Storage::disk('local')->assertExists($foto->ruta);
+        }
+    }
+
+    public function test_la_foto_se_sirve_solo_con_sesion(): void
+    {
+        $sucursal = $this->sucursal();
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal));
+        $foto = \App\Models\OrdenServicioFoto::firstOrFail();
+
+        // Sin sesión → no se sirve (redirige al login).
+        $this->get(route('admin.servicio-tecnico.foto', $foto))
+            ->assertRedirect(route('login'));
+
+        // Con sesión (admin) → 200 e imagen.
+        $resp = $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.foto', $foto));
+        $resp->assertOk();
+        $this->assertStringStartsWith('image/', (string) $resp->headers->get('Content-Type'));
     }
 }

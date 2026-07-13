@@ -2,7 +2,7 @@
     @php
         $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
         $tieneReparacion = $orden->trabajo_realizado || $orden->repuestos->isNotEmpty()
-            || $orden->mano_obra || $orden->fecha_aviso || $orden->fecha_retiro;
+            || $orden->mano_obra || $orden->descuento_pct || $orden->fecha_aviso || $orden->fecha_retiro || $orden->causa_falla;
         $esGarantia = $orden->condicion_efectiva === 'garantia';
         $esReparacion = ! $esGarantia;
         // En Coquimbo y Abate Molina se RECIBE pero no se repara: la reparacion es
@@ -76,7 +76,7 @@
             <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Equipo</h3>
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                    <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ ucfirst($orden->tipo_equipo) }}</dd></div>
+                    <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ $orden->tipo_equipo_label }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Código (producto Dali)</dt><dd class="text-sm text-neutral-900">{{ $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">N° de serie</dt><dd class="text-sm text-neutral-900">{{ $orden->numero_serie ?: '—' }}</dd></div>
                     <div>
@@ -92,8 +92,11 @@
                     </div>
                     <div><dt class="text-xs text-neutral-400">Fecha de ingreso</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_ingreso?->format('d-m-Y') ?: '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Fecha de entrega (estimada)</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_entrega?->format('d-m-Y') ?: '—' }}</dd></div>
+                    <div><dt class="text-xs text-neutral-400">Recibido por</dt><dd class="text-sm text-neutral-900">{{ $orden->recibida_por ?: '—' }}</dd></div>
                 </dl>
             </div>
+
+            @include('admin.servicio-tecnico._fotos')
 
             {{-- Garantia (solo si esta vigente; si vencio se trata como reparacion) --}}
             @if ($esGarantia)
@@ -111,6 +114,12 @@
             <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Falla reportada</h3>
                 <p class="whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_reportada ?: '—' }}</p>
+                @if ($orden->falla_tecnico)
+                    <div class="mt-4 border-t border-neutral-100 pt-4">
+                        <dt class="text-xs text-neutral-400">Condiciones de entrega</dt>
+                        <dd class="mt-0.5 whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_tecnico }}</dd>
+                    </div>
+                @endif
             </div>
 
             {{-- Reparacion (taller) --}}
@@ -129,6 +138,13 @@
                         <div class="mb-4">
                             <dt class="text-xs text-neutral-400">Trabajo realizado</dt>
                             <dd class="whitespace-pre-line text-sm text-neutral-900">{{ $orden->trabajo_realizado }}</dd>
+                        </div>
+                    @endif
+
+                    @if ($orden->causa_falla)
+                        <div class="mb-4">
+                            <dt class="text-xs text-neutral-400">Causa de la falla</dt>
+                            <dd class="text-sm text-neutral-900">{{ $orden->causa_falla_label }}</dd>
                         </div>
                     @endif
 
@@ -151,6 +167,13 @@
                     <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                         @if ($esReparacion)
                             <div><dt class="text-xs text-neutral-400">Mano de obra</dt><dd class="text-sm text-neutral-900">{{ $clp($orden->mano_obra ?? 0) }}</dd></div>
+                            @if ($orden->descuento_pct > 0)
+                                <div>
+                                    <dt class="text-xs text-neutral-400">Descuento</dt>
+                                    <dd class="text-sm text-neutral-900">{{ $orden->descuento_pct }}% · −{{ $clp($orden->descuento_monto) }}
+                                        <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></dd>
+                                </div>
+                            @endif
                             <div><dt class="text-xs text-neutral-400">Costo total</dt><dd class="text-sm font-semibold text-neutral-900">{{ $clp($orden->costo_total) }}</dd></div>
                         @endif
                         <div><dt class="text-xs text-neutral-400">Fecha de aviso al cliente</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_aviso?->format('d-m-Y') ?: '—' }}</dd></div>
