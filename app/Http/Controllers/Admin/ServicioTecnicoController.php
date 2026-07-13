@@ -393,6 +393,10 @@ class ServicioTecnicoController extends Controller
             'trabajo_realizado' => ['nullable', 'string'],
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             'mano_obra' => ['nullable', 'integer', 'min:0'],
+            // Descuento sobre el total (solo reparacion cobrable). Si hay descuento,
+            // el motivo que lo justifica es obligatorio.
+            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
+            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
             'fecha_aviso' => ['nullable', 'date'],
             'fecha_retiro' => ['nullable', 'date'],
             'repuestos' => ['array'],
@@ -401,6 +405,7 @@ class ServicioTecnicoController extends Controller
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
             'causa_falla.required' => 'Indica la causa de la falla (diagnóstico final) para cerrar la orden como «Reparado» o «Sin solución».',
+            'descuento_motivo.required' => 'Indica el motivo del descuento.',
         ]);
 
         // Validacion por fila: si el tecnico empezo a llenar un repuesto, exige
@@ -427,11 +432,16 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
+        // El descuento solo aplica cuando se cobra (reparacion); en garantia se anula.
+        $descuentoPct = $esReparacion ? (int) ($data['descuento_pct'] ?? 0) : 0;
+
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
             'causa_falla' => $data['causa_falla'] ?? null,
             'mano_obra' => $data['mano_obra'] ?? null,
+            'descuento_pct' => $descuentoPct,
+            'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
             'fecha_aviso' => $data['fecha_aviso'] ?? null,
             'fecha_retiro' => $data['fecha_retiro'] ?? null,
         ]);

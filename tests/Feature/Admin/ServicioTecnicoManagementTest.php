@@ -594,6 +594,42 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->assertDatabaseHas('orden_servicio_repuestos', ['orden_servicio_id' => $orden->id, 'nombre' => 'Motor']);
     }
 
+    public function test_guardar_reparacion_aplica_descuento_con_motivo(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',
+                'mano_obra' => 10000,
+                'descuento_pct' => 20,
+                'descuento_motivo' => 'cliente_grande',
+                'repuestos' => [],
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $fresh = $orden->fresh();
+        $this->assertSame(20, $fresh->descuento_pct);
+        $this->assertSame('cliente_grande', $fresh->descuento_motivo);
+        $this->assertSame(2000, $fresh->descuento_monto);   // 20% de 10000
+        $this->assertSame(8000, $fresh->costo_total);        // 10000 - 2000
+    }
+
+    public function test_descuento_exige_motivo(): void
+    {
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'en_revision',   // no exige causa_falla; aisla el error del motivo
+                'mano_obra' => 10000,
+                'descuento_pct' => 15,       // con descuento pero SIN motivo
+                'repuestos' => [],
+            ])
+            ->assertSessionHasErrors('descuento_motivo');
+    }
+
     public function test_guardar_reparacion_registra_la_causa_de_falla(): void
     {
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'causa_falla' => null]);

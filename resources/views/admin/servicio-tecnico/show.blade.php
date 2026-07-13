@@ -2,7 +2,7 @@
     @php
         $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
         $tieneReparacion = $orden->trabajo_realizado || $orden->repuestos->isNotEmpty()
-            || $orden->mano_obra || $orden->fecha_aviso || $orden->fecha_retiro || $orden->causa_falla;
+            || $orden->mano_obra || $orden->descuento_pct || $orden->fecha_aviso || $orden->fecha_retiro || $orden->causa_falla;
         $esGarantia = $orden->condicion_efectiva === 'garantia';
         $esReparacion = ! $esGarantia;
         // En Coquimbo y Abate Molina se RECIBE pero no se repara: la reparacion es
@@ -167,6 +167,13 @@
                     <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                         @if ($esReparacion)
                             <div><dt class="text-xs text-neutral-400">Mano de obra</dt><dd class="text-sm text-neutral-900">{{ $clp($orden->mano_obra ?? 0) }}</dd></div>
+                            @if ($orden->descuento_pct > 0)
+                                <div>
+                                    <dt class="text-xs text-neutral-400">Descuento</dt>
+                                    <dd class="text-sm text-neutral-900">{{ $orden->descuento_pct }}% · −{{ $clp($orden->descuento_monto) }}
+                                        <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></dd>
+                                </div>
+                            @endif
                             <div><dt class="text-xs text-neutral-400">Costo total</dt><dd class="text-sm font-semibold text-neutral-900">{{ $clp($orden->costo_total) }}</dd></div>
                         @endif
                         <div><dt class="text-xs text-neutral-400">Fecha de aviso al cliente</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_aviso?->format('d-m-Y') ?: '—' }}</dd></div>

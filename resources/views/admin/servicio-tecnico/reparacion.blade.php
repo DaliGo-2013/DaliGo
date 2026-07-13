@@ -66,7 +66,7 @@
 
                 <form id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
                     class="space-y-6"
-                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }} })">
+                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
                     @csrf
                     @method('PUT')
 
@@ -246,6 +246,29 @@
                                         x-model.number="manoObra" :value="old('mano_obra', $orden->mano_obra)" />
                                     <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
                                 </div>
+
+                                {{-- Descuento sobre el total (opcional). Si se aplica, el motivo es obligatorio. --}}
+                                <div>
+                                    <x-input-label for="descuento_pct" value="Descuento" />
+                                    <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
+                                        <option value="0">Sin descuento</option>
+                                        @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
+                                            <option value="{{ $pct }}">{{ $pct }}%</option>
+                                        @endforeach
+                                    </x-select>
+                                    <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                                </div>
+                                <div x-show="descuentoPct > 0" x-cloak>
+                                    <x-input-label for="descuento_motivo" value="Motivo del descuento *" />
+                                    <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
+                                        <option value="">— Selecciona —</option>
+                                        @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
+                                            <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
+                                        @endforeach
+                                    </x-select>
+                                    <x-input-hint>Justifica el descuento (queda registrado en la orden).</x-input-hint>
+                                    <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                                </div>
                             </div>
                             <div class="flex flex-col justify-end">
                                 <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
@@ -254,6 +277,10 @@
                                     <p class="mt-0.5 text-xs text-neutral-500">
                                         Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
                                         <span x-show="precioHora > 0 && Number(horas) > 0">(<span x-text="horas"></span> h × <span x-text="clp(precioHora)"></span>)</span>
+                                    </p>
+                                    <p x-show="descuentoPct > 0" x-cloak class="mt-1 text-xs font-medium text-brand-700">
+                                        Descuento <span x-text="descuentoPct"></span>%: −<span x-text="clp(descuentoMonto)"></span>
+                                        <span class="text-neutral-400">· subtotal <span x-text="clp(costoBruto)"></span></span>
                                     </p>
                                 </div>
                             </div>

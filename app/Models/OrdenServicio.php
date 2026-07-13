@@ -103,6 +103,16 @@ class OrdenServicio extends Model implements AuditableContract
     // Duracion de la garantia desde la fecha de compra.
     public const GARANTIA_MESES = 6;
 
+    // Descuentos permitidos sobre el total de una reparacion cobrable (%).
+    public const DESCUENTOS_PCT = [10, 15, 20];
+
+    // Motivo que justifica un descuento (obligatorio si hay descuento > 0).
+    public const DESCUENTO_MOTIVOS = [
+        'cliente_grande' => 'Cliente grande',
+        'negociacion' => 'Negociación con el cliente',
+        'demora' => 'Demora en la reparación',
+    ];
+
     // El pluralizador ingles haria 'orden_servicios'; fijamos la tabla correcta.
     protected $table = 'ordenes_servicio';
 
@@ -132,6 +142,8 @@ class OrdenServicio extends Model implements AuditableContract
         // Etapa de taller (tecnico).
         'trabajo_realizado',
         'mano_obra',
+        'descuento_pct',
+        'descuento_motivo',
         'fecha_aviso',
         'fecha_retiro',
         'fuente',
@@ -149,6 +161,7 @@ class OrdenServicio extends Model implements AuditableContract
             'fecha_retiro' => 'date',
             'confirmada_at' => 'datetime',
             'mano_obra' => 'integer',
+            'descuento_pct' => 'integer',
         ];
     }
 
@@ -228,12 +241,38 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
-     * Costo total a pagar: repuestos + mano de obra. Solo tiene sentido cobrar
+     * Costo bruto (antes de descuento): repuestos + mano de obra.
+     */
+    public function getCostoBrutoAttribute(): int
+    {
+        return $this->costo_repuestos + (int) ($this->mano_obra ?? 0);
+    }
+
+    /**
+     * Monto del descuento en pesos (porcentaje sobre el costo bruto).
+     */
+    public function getDescuentoMontoAttribute(): int
+    {
+        return (int) round($this->costo_bruto * ((int) ($this->descuento_pct ?? 0)) / 100);
+    }
+
+    /**
+     * Costo total a pagar: bruto menos el descuento. Solo tiene sentido cobrar
      * cuando la condicion es reparacion (garantia no cobra).
      */
     public function getCostoTotalAttribute(): int
     {
-        return $this->costo_repuestos + (int) ($this->mano_obra ?? 0);
+        return $this->costo_bruto - $this->descuento_monto;
+    }
+
+    /**
+     * Etiqueta visible del motivo del descuento (null si no hay descuento).
+     */
+    public function getDescuentoMotivoLabelAttribute(): ?string
+    {
+        return $this->descuento_motivo
+            ? (self::DESCUENTO_MOTIVOS[$this->descuento_motivo] ?? $this->descuento_motivo)
+            : null;
     }
 
     /**
