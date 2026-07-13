@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-13] Reparación: layout compacto de mano de obra/descuento (pares lado a lado)
+- **Quién:** Marco + Claude (Fable 5)
+- **Qué se hizo:** (rama `fix/reparacion-layout-compacto`, desde `main`) Pedido del dueño: achicar el alto del bloque de cobro en la pantalla de reparación. Antes eran 4 campos apilados (Horas, Mano de obra, Descuento, Motivo). Ahora van en **dos filas de a dos** (`grid grid-cols-2 gap-3`): **Horas | Mano de obra** y **Descuento | Motivo** (el motivo sigue apareciendo solo si hay descuento, ahora a la derecha del select de descuento). Se acortó el label a "Motivo *" y se quitó el hint redundante para ganar espacio. Solo Blade (sin lógica). 70 tests de ST verdes; ningún test dependía del label acortado (solo se referencia "Horas de servicio técnico", que se conserva). Build CSS nuevo. **Verificado E2E** (coordenadas DOM): Horas/Mano de obra misma fila; Descuento/Motivo misma fila al activar descuento.
+- **Pasos marcados:** ninguno. · **Decisiones:** pares lado a lado para reducir alto (pedido del dueño). · **Delegaciones:** ninguna.
+
 ### [2026-07-13] Stream 1 · P-M14-07 PREP: re-sello de PLAN-M14 + gate /pre-merge (adelanto en rama)
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón; dictado v2 permite adelantar lo que no requiere main verde.
 - **Objetivo declarado:** con el merge en espera (main rojo por test de M12 + doble llave), adelantar el re-sellado de PLAN-M14 y el gate `/pre-merge` R-31 EN LA RAMA.
