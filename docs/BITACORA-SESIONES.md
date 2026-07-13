@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-13] Stream 1 · HOTFIX: main verde otra vez (PwaTest alineado con el nuevo start_url)
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón (TAREA 0 del dictado de max-1)
+- **Objetivo declarado:** desbloquear main (CI en rojo desde `2c396b7`) antes de P-M14-07.
+- **Qué se hizo:** el fix de M12 `fix/pwa-start-url-403` movió el `start_url` del manifest a `/dashboard` (los no-sopladores abrían la app instalada con 403) pero `PwaTest:41` seguía asertando `/produccion/mi-reporte` → Tests de main en FAILURE. Alineé la aserción a `/dashboard` (+ comentario del porqué); verifiqué que la línea 93 (GET a la pantalla del soplador) sigue válida y que el test golden-hash de `offline.blade.php` quedó intacto. NO toqué el `manifest.json` de Marcos ni implementé redirect por rol (pregunta de producto, Mauricio). Entrada de bitácora en CLAUDE.md con el gotcha ("tocar manifest/sw ⇒ revisar PwaTest en el mismo push"). `PwaTest` 5/5, **suite de main 507 verdes**, sin build (test+doc). Commit + push a main.
+- **Pasos marcados:** ninguno (hotfix de CI). · **Decisiones:** ninguna. · **Delegaciones:** parte en `docs/fleet/buzon/partes/2026-07-13--max-1--hotfix-pwa-start-url.md`.
+- **Próximo paso:** con main verde, **P-M14-07** (merge coordinado de `feature/m14-aprobaciones` con doble llave Director+Mauricio + QA staging desde celular) — gate humano, no se arranca sin la ventana del merge abierta.
+
 ### [2026-07-13] Servicio Técnico: descuento en reparaciones (10/15/20%) con motivo justificado
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-descuento-reparacion`) En la pantalla de reparación (solo cuando se cobra) se puede aplicar un **descuento sobre el total**: dropdown `Sin descuento / 10% / 15% / 20%` + dropdown **"Motivo del descuento"** (Cliente grande / Negociación con el cliente / Demora en la reparación), **obligatorio si hay descuento**. Columnas nuevas `descuento_pct` (default 0) + `descuento_motivo`. El total se recalcula en vivo (Alpine: `costoBruto → descuentoMonto → total`) y en el modelo (`getCostoTotalAttribute` = bruto − descuento; + `costo_bruto` / `descuento_monto` / `descuento_motivo_label`). Se guarda en `guardarReparacion` (`descuento_motivo` requiredIf pct>0; el descuento se anula si la condición es garantía). El detalle muestra la línea de descuento. Constantes `DESCUENTOS_PCT` + `DESCUENTO_MOTIVOS` en el modelo. 2 tests nuevos → **507 verdes.** Build nuevo (CSS+JS).

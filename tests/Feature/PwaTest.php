@@ -38,7 +38,11 @@ class PwaTest extends TestCase
         // y login/logout quedarian "fuera de la app" instalada.
         $this->assertSame('/', $manifest['scope']);
         $this->assertSame('standalone', $manifest['display']);
-        $this->assertSame('/produccion/mi-reporte', $manifest['start_url']);
+        // start_url = /dashboard: raiz comun valida para TODOS los roles. Antes
+        // era /produccion/mi-reporte, pero a los no-sopladores la app instalada
+        // les abria con 403 (fix M12 fix/pwa-start-url-403). El dashboard
+        // redirige a cada rol a lo suyo.
+        $this->assertSame('/dashboard', $manifest['start_url']);
 
         $sizes = collect($manifest['icons'])->pluck('sizes');
         $this->assertTrue($sizes->contains('192x192'));
