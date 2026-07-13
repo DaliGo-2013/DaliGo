@@ -206,9 +206,11 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura })
  * (agregar/quitar filas) y calcula en vivo el costo total: suma de cada
  * repuesto (cantidad x precio) + mano de obra. Montos en pesos chilenos.
  */
-Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioHora }) => ({
+Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioHora, descuentoPct }) => ({
     repuestos: Array.isArray(repuestos) ? repuestos : [],
     manoObra: manoObra || 0,
+    // Descuento (%) sobre el total; 0 = sin descuento.
+    descuentoPct: Number(descuentoPct) || 0,
 
     // Mano de obra por horas: valor hora del catalogo (SKU config, con IVA) x
     // las horas trabajadas. Si hay valor hora, `horas` calcula `manoObra`; el
@@ -285,8 +287,18 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
         return this.repuestos.reduce((s, r) => s + this.subtotal(r), 0);
     },
 
-    get total() {
+    // Costo bruto (antes de descuento): repuestos + mano de obra.
+    get costoBruto() {
         return this.totalRepuestos + (Number(this.manoObra) || 0);
+    },
+
+    get descuentoMonto() {
+        return Math.round((this.costoBruto * (Number(this.descuentoPct) || 0)) / 100);
+    },
+
+    // Total a pagar: bruto menos el descuento.
+    get total() {
+        return this.costoBruto - this.descuentoMonto;
     },
 
     clp(n) {

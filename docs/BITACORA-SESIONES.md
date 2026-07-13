@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-13] Servicio Técnico: descuento en reparaciones (10/15/20%) con motivo justificado
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/st-descuento-reparacion`) En la pantalla de reparación (solo cuando se cobra) se puede aplicar un **descuento sobre el total**: dropdown `Sin descuento / 10% / 15% / 20%` + dropdown **"Motivo del descuento"** (Cliente grande / Negociación con el cliente / Demora en la reparación), **obligatorio si hay descuento**. Columnas nuevas `descuento_pct` (default 0) + `descuento_motivo`. El total se recalcula en vivo (Alpine: `costoBruto → descuentoMonto → total`) y en el modelo (`getCostoTotalAttribute` = bruto − descuento; + `costo_bruto` / `descuento_monto` / `descuento_motivo_label`). Se guarda en `guardarReparacion` (`descuento_motivo` requiredIf pct>0; el descuento se anula si la condición es garantía). El detalle muestra la línea de descuento. Constantes `DESCUENTOS_PCT` + `DESCUENTO_MOTIVOS` en el modelo. 2 tests nuevos → **507 verdes.** Build nuevo (CSS+JS).
+- **Pasos marcados:** ninguno. · **Decisiones:** descuentos preset 10/15/20% con 3 motivos (pedido del dueño). · **Delegaciones:** ninguna.
+
 ### [2026-07-13] Servicio Técnico: folio impredecible (código único) + contador ampliado + visor de fotos con X
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/st-codigo-folio-contador-visor`) Tres mejoras:
