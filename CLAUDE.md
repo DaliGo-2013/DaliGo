@@ -148,6 +148,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-07-13] Repo PÚBLICO: un incidente de seguridad se documenta REDACTADO desde el primer commit
+- **Síntoma:** al archivar el expediente I-05 (servidor HostGator comprometido con webshells) en `docs/qa/INFRA/`, el detalle sensible (rutas de los webshells + crontab + detalle de llaves) alcanzó la rama pública antes de notarlo — en repo público (D-012) eso es un mapa útil para un atacante.
+- **Causa:** se documentó el incidente con TODO el detalle operativo directo en un doc del repo, sin recordar que el repo es **público** (D-012).
+- **Solución:** decisión del Director — **NO reescribir historia** (rompe todos los clones de la flota y no des-publica lo ya clonado); **commit REDACTADO encima**: dejar veredicto + datación + "comprometido era-2022, remediación asignada a [sysadmin], superficie de la app limpia" y **quitar rutas/patrón/crontab/blobs**. El informe operativo completo viaja al responsable de infra por **canal privado** (fuera del repo). Ver `docs/qa/INFRA/2026-07-08--INFRA--servidor-comprometido-i05.md` (versión redactada).
+- **Evitar a futuro:** en repo público, **todo incidente de seguridad se archiva REDACTADO desde el primer commit** (veredicto/impacto sí; rutas/comandos/credenciales/mapa de atacante no) y el detalle va por canal privado. Vale también para logs de GitHub Actions (públicos).
+
 ### [2026-07-13] Factory con `estado` aleatorio → un test que asertaba el estado era FLAKY (main verde/rojo entre pushes idénticos)
 - **Síntoma:** la CI de main alternaba verde y rojo entre pushes de solo-docs (idénticos en código) — señal clásica de test flaky. El culpable: `ServicioTecnicoManagementTest::test_reparado_exige_diagnostico_final` (M12). Fallaba en `assertNotSame('reparado', $orden->fresh()->estado)` de forma intermitente.
 - **Causa:** `OrdenServicioFactory` asigna `estado => fake()->randomElement(OrdenServicio::ESTADOS)` (ALEATORIO, 7 estados). El test creaba la orden **sin fijar `estado`**, intentaba `PUT` a `reparado` con `causa_falla=''` (la validación lo rechaza bien → no hay update), y luego asertaba que el estado NO fuera `reparado`. Cuando el estado aleatorio inicial caía en `reparado` por azar (~1/7 de las corridas), la orden YA estaba en `reparado` antes del PUT → el assert fallaba. El código de producción (la validación de `causa_falla`) estaba CORRECTO; el defecto era solo del test.

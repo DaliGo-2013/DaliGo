@@ -21,6 +21,17 @@
 
 ## Sesiones
 
+### [2026-07-13] Stream 2 · Lote DECISIONES + I-05 (servidor comprometido era-2022) vía buzón
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — dictado v2 (buzón) + anexos del Director
+- **Objetivo declarado:** cerrar el lote DECISIONES.md (dictados 08-07 + 13-07) + archivar I-05 con los anexos del buzón (sin pastes)
+- **Qué se hizo:** primer ciclo completo por el **buzón** (`docs/fleet/buzon/`). **DECISIONES:** D-001 TOMADA (nombre=DaliGo), D-002 TOMADA como estrategia (accesos al cierre de cada módulo) + matriz del Investigador anexada como referencia, D-009 DESCARTADA, D-010 CERRADA, **D-012** creada (repo público), D-007 APLAZADA, D-003 con respuesta de Ricardo (16 bodegas; Luis pendiente), D-006 con zonas de Héctor + modelo `zonas`, D-004 con respuesta de Melisa (el dolor no es el cobro sino conciliación transferencia/Webpay + traspaso entre sucursales; Getnet→M13). **D-005 corregida:** Víctor es sysadmin INTERNO, no contacto Bsale. **I-05 archivado REDACTADO** (repo público): HostGator comprometido era Nov-2022, anterior a la app y sin afectarla → remediación a Víctor, detalle por canal privado; 3 `.env.bak` muertos borrados.
+- **Próximo paso:** PLAN-DESPACHOS-V1 sellado (M04 pospuesto) → micro-backlog M15.
+
+### [2026-07-08] Stream 2 · I-04 CERRADA (falso positivo GitGuardian): barrido limpio + deploy key SSH + D-012
+- **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) + IA-cPanel — dictados I-04 del Director
+- **Qué se hizo:** **T1** barrido de la historia git (233 commits, 14 ramas, workflow de 7 agentes + spot-check) → **0 credenciales reales**; 1 ítem bajo (endpoint SSH, redactado). **T2** deploy key SSH read-only 12/12 (fingerprint cotejado, sin MITM, fetch autenticado inmune a la visibilidad). **Cierre:** el detalle de la alerta confirmó **falso positivo** (placeholder «PEGAR» junto a `MAIL_USERNAME`); rotaciones hechas; **repo queda PÚBLICO por política del dueño → D-012**; gate de pushes liberado. Derivada **I-05** (PHP anómalos en `~/.ssh/`).
+- **Próximo paso:** despacho I-05 → lote DECISIONES → despachos.
+
 ### [2026-07-13] Stream 1 · I-06: main verde — el test de M12 era FLAKY (factory con estado aleatorio), no roto
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón; **hotfix autorizado por el dueño** (excepción puntual de territorio M12, I-06).
 - **Objetivo declarado:** desbloquear main (rojo intermitente) sin invadir M12 de más.
