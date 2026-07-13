@@ -79,14 +79,32 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
-### I-06 · MAIN EN ROJO por cruce M12×PWA — hotfix dictado (13-07)
-El stream M12 cambió `start_url` del manifest a `/dashboard` (fix legítimo: no-sopladores
-recibían 403 al abrir la app instalada) sin alinear `PwaTest:41` → Tests de main en FAILURE
-desde `2c396b7` (el deploy salió igual: workflows independientes — ojo con esa trampa).
-Bloquea el merge de M14. HOTFIX dictado a Max-1 (alinear el test, NO tocar el cambio de
-M12). PREGUNTA DE PRODUCTO para Mauricio: ¿los sopladores deberían rebotar de /dashboard a
-mi-reporte automáticamente (redirect por rol), o el tap extra es aceptable? Primera
-interferencia real M12↔flota — la política de "avisar antes de decidir" operó.
+### I-06 · MAIN EN ROJO — parte 1 RESUELTA, parte 2 ABIERTA (territorio M12)
+**Parte 1 (PwaTest, CERRADA):** Max-1 alineó `PwaTest:41` al nuevo `start_url=/dashboard`
+(hotfix verificado, su fix del PWA quedó verde). Pregunta de producto para Mauricio sigue
+viva: ¿rebote automático de soplador /dashboard→mi-reporte, o el tap extra es aceptable?
+**Parte 2 (ServicioTecnicoManagementTest — CAUSA RAÍZ HALLADA, fix dictado a Max-1 con
+autorización del dueño):** NO era un test roto determinista sino **FLAKY** — eso explica que
+el CI alternara verde/rojo entre pushes idénticos de solo-docs. Diagnóstico del Director: la
+factory `OrdenServicioFactory` pone `estado` ALEATORIO; el test `test_reparado_exige_
+diagnostico_final` (agregado por Marcos en 2d8fd73) crea la orden sin fijar estado, la
+validación rechaza bien el PUT a 'reparado' sin causa_falla (no hay update), y el
+`assertNotSame('reparado', ...)` falla cuando el estado aleatorio inicial cayó en 'reparado'.
+El CÓDIGO de Marcos está correcto; el defecto es solo del test. FIX (1 línea, fijar estado
+inicial ≠ reparado — como Marcos ya hizo en su test hermano) dictado a Max-1 como EXCEPCIÓN
+de territorio autorizada por Mauricio, con verificación anti-flaky obligatoria (20+ corridas)
+y tocando SOLO el/los test(s), no controller ni factory. Revisar también
+`test_sin_solucion_exige_diagnostico_final` (mismo flaky latente).
+
+### I-05b · Detalle de I-05 en repo público — REDACTADO por el Director (13-07)
+Max-2 alertó (bien): el expediente I-05 con rutas de webshells quedó en superficie pública.
+Decisión del Director: NO reescribir historia (ya estaba en main público, no solo la rama;
+rewrite de main compartido rompe clones y no des-publica). SÍ redactar hacia adelante: el
+anexo público (`buzon/anexo-i05-respuesta-integra.md`) reescrito a veredicto+datación+estado
+limpio de nuestra superficie, SIN rutas/patrón/blobs; commit normal encima. Detalle operativo
+completo → Víctor por canal privado. Riesgo de lo ya expuesto: bajo (webshells fuera del
+docroot, inalcanzables por web sin acceso al server); mitigación real = limpieza de Víctor.
+Lección: en repo público, incidente de seguridad se documenta redactado desde el 1er commit.
 
 ### I-05 · SERVIDOR COMPROMETIDO — malware confirmado; remediación ASIGNADA A VÍCTOR (08-07)
 Inspección ejecutada (11/11 pasos, evidencia en el parte del operador): **405 archivos PHP
