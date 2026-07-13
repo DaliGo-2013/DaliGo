@@ -743,17 +743,25 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_index_busca_por_folio(): void
     {
-        // El folio es el id con ceros (#000009). Buscar "000009" o "9" debe encontrarlo.
+        // El folio ahora es el codigo unico impredecible; buscar por ese codigo lo encuentra.
         $orden = OrdenServicio::factory()->create([
             'cliente_nombre' => 'Cliente Folio', 'cliente_rut' => null, 'numero_serie' => 'AAA', 'modelo' => null,
         ]);
-        $folio = str_pad((string) $orden->id, 6, '0', STR_PAD_LEFT);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$folio)
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$orden->codigo)
             ->assertOk()->assertSee('Cliente Folio');
+    }
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$orden->id)
-            ->assertOk()->assertSee('Cliente Folio');
+    public function test_cada_orden_recibe_un_codigo_unico_impredecible(): void
+    {
+        $a = OrdenServicio::factory()->create();
+        $b = OrdenServicio::factory()->create();
+
+        $this->assertNotEmpty($a->codigo);
+        $this->assertNotSame($a->codigo, $b->codigo);
+        $this->assertStringStartsWith('ST-', $a->codigo);
+        // El folio visible ES el codigo (no el correlativo #id).
+        $this->assertSame($a->codigo, $a->folio);
     }
 
     public function test_form_muestra_ayuda_del_numero_de_serie(): void

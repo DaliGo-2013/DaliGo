@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\OrdenServicioFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -17,8 +21,30 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  */
 class OrdenServicio extends Model implements AuditableContract
 {
-    /** @use HasFactory<\Database\Factories\OrdenServicioFactory> */
-    use HasFactory, AuditableTrait;
+    /** @use HasFactory<OrdenServicioFactory> */
+    use AuditableTrait, HasFactory;
+
+    protected static function booted(): void
+    {
+        // Cada orden recibe al crearse un codigo unico impredecible (reemplaza al
+        // folio correlativo, que era enumerable). Cubre QR, mostrador y factory
+        // sin tocar los controladores.
+        static::creating(function (self $orden) {
+            if (blank($orden->codigo)) {
+                $orden->codigo = self::generarCodigoUnico();
+            }
+        });
+    }
+
+    /** Codigo unico e impredecible para el folio (ej. ST-K7QM2X9P). Reintenta ante colision. */
+    public static function generarCodigoUnico(): string
+    {
+        do {
+            $codigo = 'ST-'.Str::upper(Str::random(8));
+        } while (static::where('codigo', $codigo)->exists());
+
+        return $codigo;
+    }
 
     // 'otro' es el comodin (equipos que no calzan con los tipos con nombre).
     public const TIPOS = ['dispensador', 'lavadora', 'bomba', 'herramienta', 'otro'];
@@ -81,6 +107,7 @@ class OrdenServicio extends Model implements AuditableContract
     protected $table = 'ordenes_servicio';
 
     protected $fillable = [
+        'codigo',
         'cliente_id',
         'cliente_nombre',
         'cliente_rut',
@@ -129,7 +156,7 @@ class OrdenServicio extends Model implements AuditableContract
      * Fecha en que vence la garantia: 6 meses desde la compra. Null si no hay
      * documento de compra cargado.
      */
-    public function getGarantiaVenceAttribute(): ?\Illuminate\Support\Carbon
+    public function getGarantiaVenceAttribute(): ?Carbon
     {
         return $this->garantia_doc_fecha?->copy()->addMonths(self::GARANTIA_MESES);
     }
@@ -256,12 +283,14 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
-     * Folio visible derivado del id: #000123. No hay columna propia (evita un
-     * contador paralelo); el id ya es unico e indexado.
+     * Folio visible = codigo unico impredecible (ST-XXXXXXXX). Se reemplazo el
+     * correlativo #000123 porque era enumerable (un cliente podia espiar ordenes
+     * ajenas). El fallback al id con ceros es solo defensivo por si alguna fila
+     * historica quedara sin codigo.
      */
     public function getFolioAttribute(): string
     {
-        return '#'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+        return $this->codigo ?: '#'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -276,22 +305,23 @@ class OrdenServicio extends Model implements AuditableContract
     /**
      * Ordenes ingresadas por QR que aun esperan la confirmacion del encargado.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<OrdenServicio>  $query
+     * @param  Builder<OrdenServicio>  $query
      */
     public function scopePorConfirmar($query)
     {
         return $query->where('fuente', 'qr')->whereNull('confirmada_at');
     }
 
-    // Estados que cuentan como "pendientes del tecnico" para el contador de la
-    // barra: recien recibidas (por diagnosticar/reparar) y en cotizacion
-    // (esperando respuesta del cliente). Es lo que el tecnico tiene "en mano".
-    public const ESTADOS_PENDIENTES_TECNICO = ['recibido', 'cotizacion'];
+    // Estados "activos" para el contador de la barra: TODO lo que sigue en el
+    // taller, desde que se recibe hasta antes de cerrarse. Deja fuera solo los
+    // dos estados terminales (entregado, sin_solucion).
+    public const ESTADOS_PENDIENTES_TECNICO = ['recibido', 'en_revision', 'cotizacion', 'esperando_repuesto', 'reparado'];
 
     /**
-     * Ordenes pendientes de atencion del tecnico (recibido + cotizacion).
+     * Ordenes activas (aun en el taller): cualquier estado salvo entregado /
+     * sin_solucion. Es el numero del contador de la barra.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<OrdenServicio>  $query
+     * @param  Builder<OrdenServicio>  $query
      */
     public function scopePendientesTecnico($query)
     {
