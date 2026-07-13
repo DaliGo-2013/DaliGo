@@ -60,6 +60,20 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | SKU de la "hora de servicio técnico" (mano de obra)
+    |--------------------------------------------------------------------------
+    |
+    | Producto del catálogo cuyo precio (con IVA) es el VALOR HORA de mano de
+    | obra. En la pantalla de reparación el técnico indica cuántas horas trabajó
+    | y la app calcula la mano de obra = horas × valor hora. Si el SKU no existe
+    | o no tiene precio, el campo de mano de obra sigue siendo manual.
+    |
+    */
+
+    'sku_hora_servicio' => '9771001',
+
     'categorias_equipo' => [
         'agua bomba usb',
         // Dispensadores: en Bsale son 4 categorías separadas (pedestal/sobremesa

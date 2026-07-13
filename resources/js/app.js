@@ -206,9 +206,23 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura })
  * (agregar/quitar filas) y calcula en vivo el costo total: suma de cada
  * repuesto (cantidad x precio) + mano de obra. Montos en pesos chilenos.
  */
-Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos }) => ({
+Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioHora }) => ({
     repuestos: Array.isArray(repuestos) ? repuestos : [],
     manoObra: manoObra || 0,
+
+    // Mano de obra por horas: valor hora del catalogo (SKU config, con IVA) x
+    // las horas trabajadas. Si hay valor hora, `horas` calcula `manoObra`; el
+    // campo de mano de obra sigue editable (override manual). `horas` arranca
+    // en 0 aunque la orden ya tenga mano de obra guardada (esta se conserva
+    // hasta que el tecnico toque las horas).
+    precioHora: Number(precioHora) || 0,
+    horas: 0,
+
+    calcularManoObra() {
+        if (this.precioHora > 0) {
+            this.manoObra = Math.round((Number(this.horas) || 0) * this.precioHora);
+        }
+    },
 
     // Autocompletado de repuestos (historial + comunes). `filaActiva` marca
     // que fila tiene el dropdown abierto; `sugerencias` son los nombres del

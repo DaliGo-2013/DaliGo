@@ -346,7 +346,34 @@ class ServicioTecnicoController extends Controller
             'causasFalla' => OrdenServicio::CAUSAS_FALLA,
             // Respuestas fijas de "Trabajo realizado" agrupadas (config).
             'respuestasTrabajo' => config('servicio_tecnico.respuestas_trabajo', []),
+            // Valor hora de mano de obra (precio con IVA del SKU de servicio
+            // tecnico). Null si no existe/no tiene precio -> mano de obra manual.
+            'precioHoraServicio' => $this->precioHoraServicio(),
         ]);
+    }
+
+    /**
+     * Valor hora de mano de obra: precio CON IVA del producto configurado como
+     * "hora de servicio tecnico" (config sku_hora_servicio). Prioriza una lista
+     * de precios activa; si no hay, cualquiera. Null si no existe o no tiene
+     * precio (mismo criterio de precio que buscarRepuesto).
+     */
+    private function precioHoraServicio(): ?int
+    {
+        $sku = config('servicio_tecnico.sku_hora_servicio');
+        if (! $sku) {
+            return null;
+        }
+
+        $producto = Producto::where('sku', $sku)->with('precios.lista')->first();
+        if (! $producto) {
+            return null;
+        }
+
+        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
+            ?? $producto->precios->first();
+
+        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
     }
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse

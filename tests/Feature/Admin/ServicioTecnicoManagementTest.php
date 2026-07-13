@@ -929,6 +929,33 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertJsonFragment(['sku' => 'REP-001', 'nombre' => 'Caldera X', 'precio' => 4990]);
     }
 
+    public function test_reparacion_pasa_el_valor_hora_de_servicio(): void
+    {
+        // El producto SKU 9771001 (config) con precio con IVA es el valor hora.
+        $hora = Producto::factory()->create(['sku' => '9771001', 'nombre' => 'Hora servicio técnico']);
+        Precio::factory()->create(['producto_id' => $hora->id, 'precio_con_iva' => 4500]);
+
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertViewHas('precioHoraServicio', 4500)
+            ->assertSee('Horas de servicio técnico');
+    }
+
+    public function test_reparacion_sin_producto_hora_deja_mano_de_obra_manual(): void
+    {
+        // Sin el SKU de la hora, no hay valor hora (mano de obra manual).
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertViewHas('precioHoraServicio', null)
+            ->assertDontSee('Horas de servicio técnico');
+    }
+
     /** Las fotos del equipo se ven tanto al EDITAR como en el DETALLE (staff). */
     public function test_edit_y_show_muestran_las_fotos_del_equipo(): void
     {

@@ -66,7 +66,7 @@
 
                 <form id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
                     class="space-y-6"
-                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}' })">
+                    x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }} })">
                     @csrf
                     @method('PUT')
 
@@ -226,11 +226,26 @@
                     @if ($esReparacion)
                         {{-- Mano de obra + costo total (solo si se cobra) --}}
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                            <div>
-                                <x-input-label for="mano_obra" value="Mano de obra ($)" />
-                                <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
-                                    x-model.number="manoObra" :value="old('mano_obra', $orden->mano_obra)" />
-                                <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
+                            <div class="space-y-3">
+                                @if ($precioHoraServicio)
+                                    {{-- Calculadora por horas: valor hora del catálogo (SKU config)
+                                         × horas trabajadas → llena la mano de obra (editable igual). --}}
+                                    <div>
+                                        <x-input-label for="horas_servicio" value="Horas de servicio técnico" />
+                                        <x-text-input id="horas_servicio" class="mt-1.5" type="number" min="0" step="0.5"
+                                            x-model.number="horas" x-on:input="calcularManoObra()" placeholder="Ej. 1, 1.5, 2" />
+                                        <x-input-hint>
+                                            Valor hora: {{ '$'.number_format($precioHoraServicio, 0, ',', '.') }} (cód. {{ config('servicio_tecnico.sku_hora_servicio') }}).
+                                            La mano de obra se calcula sola (horas × valor hora); la puedes ajustar.
+                                        </x-input-hint>
+                                    </div>
+                                @endif
+                                <div>
+                                    <x-input-label for="mano_obra" value="Mano de obra ($)" />
+                                    <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
+                                        x-model.number="manoObra" :value="old('mano_obra', $orden->mano_obra)" />
+                                    <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
+                                </div>
                             </div>
                             <div class="flex flex-col justify-end">
                                 <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
@@ -238,6 +253,7 @@
                                     <p class="mt-0.5 text-2xl font-semibold text-neutral-900" x-text="clp(total)"></p>
                                     <p class="mt-0.5 text-xs text-neutral-500">
                                         Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
+                                        <span x-show="precioHora > 0 && Number(horas) > 0">(<span x-text="horas"></span> h × <span x-text="clp(precioHora)"></span>)</span>
                                     </p>
                                 </div>
                             </div>
