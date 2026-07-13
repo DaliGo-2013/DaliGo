@@ -21,13 +21,28 @@ otro assert del PWA quedó desalineado + suite completa verde + push a main. Ano
 en la bitácora: "cambio de manifest.json requiere alinear PwaTest — CI de main es la red".
 NO implementes redirect por rol todavía (pregunta de producto en manos de Mauricio).
 
-⚠️ 13-07 tarde: tu hotfix del PwaTest quedó VERDE ✓. PERO main sigue rojo por OTRO test que
-NO es tuyo: `ServicioTecnicoManagementTest > reparado_exige_...` (línea 687), territorio M12
-de Marcos (lo rompió su commit 2d8fd73). NO lo toques sin permiso — el Director lo escaló a
-Mauricio. P-M14-07 (merge) NO puede entrar con main rojo, así que ESPERA: (a) que Marcos
-arregle su test, o (b) dictado nuevo del Director si Mauricio autoriza que TÚ lo arregles como
-excepción. Mientras tanto, si quieres adelantar: haz el re-sellado de PLAN-M14 y el gate
-/pre-merge EN TU RAMA (no requieren main verde), y deja el merge para cuando main esté limpio.
+⚡ 13-07 tarde v3 — HOTFIX AUTORIZADO por Mauricio (excepción de territorio M12, puntual):
+DIAGNÓSTICO DEL DIRECTOR (causa raíz confirmada, read-only): el test
+`ServicioTecnicoManagementTest::test_reparado_exige_diagnostico_final` (lo agregó Marcos en
+2d8fd73) es **FLAKY** — por eso el CI alternó verde/rojo entre pushes idénticos de solo-docs.
+La factory `OrdenServicioFactory` asigna `estado => fake()->randomElement(OrdenServicio::ESTADOS)`
+(ALEATORIO). El test crea la orden sin fijar estado, intenta PUT a 'reparado' con causa_falla=''
+(la validación lo RECHAZA bien — no hay update), y luego `assertNotSame('reparado', estado)`
+FALLA cuando el estado aleatorio inicial cayó en 'reparado' por azar. El código de Marcos
+(validación del descuento/causa_falla) está CORRECTO — el defecto es solo del test.
+FIX (mínimo, 1 línea, SOLO ese test): que la orden nazca con estado ≠ 'reparado', igual que
+Marcos ya hizo en su test hermano del descuento:
+  `OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'en_revision'])`
+Revisa de paso `test_sin_solucion_exige_diagnostico_final` (mismo patrón, línea ~691) — si
+también crea sin estado fijo, tiene el mismo flaky latente; aplícale el mismo fix.
+VERIFICACIÓN OBLIGATORIA (es flaky — una corrida verde puede ser suerte): corre ESE test
+20+ veces seguidas (`php artisan test --filter=ServicioTecnico` en bucle, o
+`--repeat=20` si tu versión lo soporta) y confirma 20/20 verdes ANTES de pushear. Suite
+completa verde. Push a main.
+TERRITORIO: tocas SOLO ese(os) test(s), NO el controller ni la factory (arreglar la factory
+para no-aleatoria es refactor de M12 que le toca a Marcos — no lo hagas). Anota en la bitácora
+el gotcha: "factory con estado aleatorio → tests que asertan estado deben FIJARLO en el create".
+Deja constancia en tu parte de que tocaste territorio M12 por autorización del dueño (I-06).
 
 TAREA SIGUIENTE — P-M14-07 (con main verde): re-sellado de PLAN-M14 (guard omitido +
 eventos en 02) + suite completa + gate /pre-merge (R-31) + MERGE COORDINADO: parte al buzón

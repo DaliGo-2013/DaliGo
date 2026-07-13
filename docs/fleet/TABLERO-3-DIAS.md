@@ -83,15 +83,18 @@ se acumulan localmente si el gate está activo.
 **Parte 1 (PwaTest, CERRADA):** Max-1 alineó `PwaTest:41` al nuevo `start_url=/dashboard`
 (hotfix verificado, su fix del PWA quedó verde). Pregunta de producto para Mauricio sigue
 viva: ¿rebote automático de soplador /dashboard→mi-reporte, o el tap extra es aceptable?
-**Parte 2 (ServicioTecnicoManagementTest, ABIERTA — NO es de la flota):** el CI de main SIGUE
-rojo por OTRO test: `Tests\Feature\Admin\ServicioTecnicoManagementTest > reparado_exige_...`
-falla (línea 687: `assertNotSame('reparado', ...)`). Es territorio M12 (Marcos) — el último
-commit que lo tocó es suyo (`2d8fd73`, descuento en reparaciones, 12:29). Marcos rompió su
-propio test y pusheó a main rojo (los workflows independientes dejan pasar el deploy — trampa
-ya anotada). **Bloquea el merge de M14** (P-M14-07 exige suite verde). Por política del dueño
-M12 es autónomo y la flota NO toca su código → ESCALAMIENTO A MAURICIO: avisar a Marcos que
-main está rojo por su test; alternativa si urge el merge de M14: Max-1 arregla solo ESE test
-con permiso explícito del dueño (excepción puntual a la regla de territorio).
+**Parte 2 (ServicioTecnicoManagementTest — CAUSA RAÍZ HALLADA, fix dictado a Max-1 con
+autorización del dueño):** NO era un test roto determinista sino **FLAKY** — eso explica que
+el CI alternara verde/rojo entre pushes idénticos de solo-docs. Diagnóstico del Director: la
+factory `OrdenServicioFactory` pone `estado` ALEATORIO; el test `test_reparado_exige_
+diagnostico_final` (agregado por Marcos en 2d8fd73) crea la orden sin fijar estado, la
+validación rechaza bien el PUT a 'reparado' sin causa_falla (no hay update), y el
+`assertNotSame('reparado', ...)` falla cuando el estado aleatorio inicial cayó en 'reparado'.
+El CÓDIGO de Marcos está correcto; el defecto es solo del test. FIX (1 línea, fijar estado
+inicial ≠ reparado — como Marcos ya hizo en su test hermano) dictado a Max-1 como EXCEPCIÓN
+de territorio autorizada por Mauricio, con verificación anti-flaky obligatoria (20+ corridas)
+y tocando SOLO el/los test(s), no controller ni factory. Revisar también
+`test_sin_solucion_exige_diagnostico_final` (mismo flaky latente).
 
 ### I-05b · Detalle de I-05 en repo público — REDACTADO por el Director (13-07)
 Max-2 alertó (bien): el expediente I-05 con rutas de webshells quedó en superficie pública.
