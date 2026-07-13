@@ -37,6 +37,14 @@ Con eso cierras el lote SIN depender de Mauricio.
   nueva orden. La ficha conserva la investigación del 08-07 para cuando se retome.**
 - Expediente I-05 a docs/qa/INFRA/ + bitácora (pendiente del dictado anterior).
 
+✅ 13-07: LOTE 1 CERRADO. El Director integró tu lote (DECISIONES + expedientes I-04/I-05
+redactados) a main por integración selectiva — está en main (`a01636b`), NO tuviste que
+forzar el push. Tu rama `feature/m15-notificaciones` ya cumplió su ciclo.
+⚠️ FLUJO PARA DESPACHOS: NO sigas en feature/m15-notificaciones (rama de M15, ya mergeada —
+es cajón viejo). Arranca en RAMA NUEVA desde main FRESCO:
+`git fetch origin && git checkout -b feature/despachos-v1 origin/main`
+(main ya está VERDE — el flaky de M12 lo cerró Max-1).
+
 ## 2. PLAN-DESPACHOS-V1 sellado (reemplaza a PLAN-M04 — M04 pospuesto por el dueño)
 Unidad carve-out "DESPACHOS-v1" sobre 3 módulos de la biblia (M05 parcial + M07 + M08 MVP).
 Alcance dictado por el Director (el plan lo refina y lo sella contra el código):
