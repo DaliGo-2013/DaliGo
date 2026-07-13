@@ -93,6 +93,16 @@ M12 es autónomo y la flota NO toca su código → ESCALAMIENTO A MAURICIO: avis
 main está rojo por su test; alternativa si urge el merge de M14: Max-1 arregla solo ESE test
 con permiso explícito del dueño (excepción puntual a la regla de territorio).
 
+### I-05b · Detalle de I-05 en repo público — REDACTADO por el Director (13-07)
+Max-2 alertó (bien): el expediente I-05 con rutas de webshells quedó en superficie pública.
+Decisión del Director: NO reescribir historia (ya estaba en main público, no solo la rama;
+rewrite de main compartido rompe clones y no des-publica). SÍ redactar hacia adelante: el
+anexo público (`buzon/anexo-i05-respuesta-integra.md`) reescrito a veredicto+datación+estado
+limpio de nuestra superficie, SIN rutas/patrón/blobs; commit normal encima. Detalle operativo
+completo → Víctor por canal privado. Riesgo de lo ya expuesto: bajo (webshells fuera del
+docroot, inalcanzables por web sin acceso al server); mitigación real = limpieza de Víctor.
+Lección: en repo público, incidente de seguridad se documenta redactado desde el 1er commit.
+
 ### I-05 · SERVIDOR COMPROMETIDO — malware confirmado; remediación ASIGNADA A VÍCTOR (08-07)
 Inspección ejecutada (11/11 pasos, evidencia en el parte del operador): **405 archivos PHP
 maliciosos fuera del docroot** — `blog.php` (webshell file-manager, ofuscación `$GNJ[]()`),
