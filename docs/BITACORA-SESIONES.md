@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-13] Listado ST: la condición (R/G) reemplaza al avatar de tipo; G pasa a fondo naranja
+- **Quién:** Marco + Claude (Fable 5)
+- **Qué se hizo:** (rama `feature/st-badge-condicion-en-avatar`) Ajuste visual pedido por el dueño en el listado de Servicio Técnico (`index.blade.php`): (1) se **eliminó el avatar gris con la inicial del tipo** ("D" de Dispensador) y en su lugar (slot `leading`) va la **condición R/G** como círculo `h-10 w-10`; (2) se **quitó la R/G de su posición anterior** (al lado del badge de estado); (3) la **G pasa de verde a fondo naranja** (`bg-brand-600`), igual que la R. Ahora R (Reparación) y G (Garantía) comparten el naranja de marca; la letra + el `title` distinguen el significado. Solo cambia el Blade (sin lógica, sin CSS nuevo — las clases ya existían). 502 verdes (sin tests nuevos: cambio puramente visual; ningún test dependía del avatar viejo ni del verde).
+- **Pasos marcados:** ninguno. · **Decisiones:** R y G ambas en naranja (pedido del dueño), la condición ocupa el lugar del avatar. · **Delegaciones:** ninguna.
+
 ### [2026-07-13] Barra: contador (badge naranjo) de pendientes de Servicio Técnico al lado del menú
 - **Quién:** Marco + Claude (Fable 5)
 - **Qué se hizo:** (rama `feature/nav-contador-servicio-tecnico`) Pedido del dueño: al lado de "Servicio Técnico" en la barra superior, un **cuadrado naranjo con un número** que sube/baja según las máquinas que el técnico tiene "en mano", para que al entrar sepa cuántas debe atender. Se definió pendiente = **recibido + cotización** (`OrdenServicio::ESTADOS_PENDIENTES_TECNICO` + scope `pendientesTecnico()`). El conteo se inyecta a la barra con un **View Composer** sobre `layouts.navigation` (en `AppServiceProvider`), solo para quien tiene acceso a servicio técnico (`canAny view|manage`); COUNT liviano sobre la columna indexada `estado`. Badge en el `<x-nav-link>` (desktop) y en el responsive: `bg-brand-600` (naranjo), `rounded` (cuadrado), `h-5 min-w-5`, con `title` explicativo; **se oculta si el conteo es 0**. 3 tests (muestra el número para el técnico; no aparece para rol sin acceso; se oculta sin pendientes) → **502 verdes**. Build CSS nuevo (`app-CEwHL82u.css`) por las clases del badge. Verificación por feature tests (renderizan la barra real); el navegador liviano no estaba disponible esta sesión.
