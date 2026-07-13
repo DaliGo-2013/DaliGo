@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-13] Stream 1 · P-M14-07 PREP: re-sello de PLAN-M14 + gate /pre-merge (adelanto en rama)
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón; dictado v2 permite adelantar lo que no requiere main verde.
+- **Objetivo declarado:** con el merge en espera (main rojo por test de M12 + doble llave), adelantar el re-sellado de PLAN-M14 y el gate `/pre-merge` R-31 EN LA RAMA.
+- **Qué se hizo:** (1) **Re-sello** `2ad7bf4` en `feature/m14-aprobaciones`: sello → 2026-07-13 (@ `8c8d3e2`) + nota de las 2 desviaciones benignas (guard `class_exists` omitido y eventos registrados en P-M14-02 — ambas por nacer la rama post-merge M15). (2) **Gate R-31 adversarial** (dry-run rama vs origin/main): 8/9 gates **OK** (tests 485 verdes, build al día, MySQL 5.7 —índices ≤191, 0 whereBetween reales, 0 dropIndex—, locks, permisos, x-componentes, responsive, sin reincidencia de bitácora); el 9º ("suite post-merge verde") **NO VERIFICABLE** porque main está rojo por `ServicioTecnicoManagementTest:687` (M12/Marcos, `2d8fd73`) — ajeno a M14. Superficie de merge = 2 archivos aditivos (`routes/web.php`, `navigation.blade.php`) + 2 build (regenerar). **VEREDICTO: APROBADO CON OBSERVACIONES** — código merge-ready; el merge espera main verde + doble llave. Parte con la tabla en `docs/fleet/buzon/partes/2026-07-13--max-1--p-m14-07-prep.md`.
+- **Pasos marcados:** ninguno (prep; P-M14-07 cierra con el merge). · **Decisiones:** ninguna. · **Delegaciones:** parte al buzón (re-sello + gate).
+- **Próximo paso:** con main verde (fix de Marcos o autorización de Mauricio) + ventana de doble llave → ejecutar el merge coordinado de M14 y su QA staging.
+
 ### [2026-07-13] Stream 1 · HOTFIX: main verde otra vez (PwaTest alineado con el nuevo start_url)
 - **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — vía buzón (TAREA 0 del dictado de max-1)
 - **Objetivo declarado:** desbloquear main (CI en rojo desde `2c396b7`) antes de P-M14-07.
