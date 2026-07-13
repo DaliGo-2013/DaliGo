@@ -675,7 +675,9 @@ class ServicioTecnicoManagementTest extends TestCase
     public function test_reparado_exige_diagnostico_final(): void
     {
         // Toda maquina cerrada como "reparado" debe llevar la causa de la falla.
-        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+        // estado fijo != 'reparado': la factory lo asigna ALEATORIO y este test
+        // assertNotSame('reparado', ...) seria flaky si el azar cae en 'reparado' (I-06).
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'en_revision']);
 
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
@@ -690,7 +692,8 @@ class ServicioTecnicoManagementTest extends TestCase
     public function test_sin_solucion_exige_diagnostico_final(): void
     {
         // "Sin solucion" tambien exige diagnostico (por que no se pudo reparar).
-        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
+        // estado fijo (mismo flaky latente que el test hermano de arriba, I-06).
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'en_revision']);
 
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
