@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-07-13] Stream 1 · P-M14-07 FASE A: main plegado a la rama de M14 — 560 verdes, listo para la doble llave
+- **Quién:** Mauricio + Claude (Fable 5, Max-1/stream 1) — dictado v4 del buzón (VÍA LIBRE fase A; main NO se toca hasta la doble llave).
+- **Objetivo declarado:** P-M14-07 fase A — merge de `origin/main` (118 commits, M12 completo) HACIA `feature/m14-aprobaciones`.
+- **Qué se hizo:** merge `db627d9` en la rama (base plegada `fcb9466`). 3 conflictos según doctrina: `RolesAndPermissionsSeeder` y `RoleMatrixSeedTest` por **unión de ambos lados** (M14 `aprobar solicitudes`/`view aprobaciones` + M12 `crear lote servicio` conviven; matriz completa verificada), `public/build/manifest.json` **regenerado por build, jamás a mano**. `npm install` previo (el gotcha del chunk `qrcode` mordió y la bitácora lo resolvió al tiro) → `view:clear` → build → `app-B1OCUURN.css` con **grep 8/8** (nav crítico + clases M14 + campanita/PWA de main). **Suite completa del árbol mergeado: 560 verdes (1723 aserciones)** — cero cruce entre streams. Parte con hash+grep+conteo en `docs/fleet/buzon/partes/2026-07-13--max-1--p-m14-07-fase-a.md`. Hallazgo lateral (deuda M12, no tocada): `crear lote servicio` sin etiqueta en `config/permissions.php` (falta también en main).
+- **Pasos marcados:** ninguno aún (P-M14-07 `[x]` va con la fase B: push a main + QA staging). · **Decisiones:** ninguna. · **Delegaciones:** parte al buzón.
+- **Próximo paso:** **FASE B** — OK del Director sobre el parte + OK de Mauricio (doble llave) → push de la rama a main = DEPLOY → QA staging desde el celular (ajuste grande → campanita+correo → aprobar desde el teléfono → aplicado) → P-M14-07 [x] → **E2·M14 CERRADA**.
+
 ### [2026-07-13] Stream 2 · Lote DECISIONES + I-05 (servidor comprometido era-2022) vía buzón
 - **Quién:** Mauricio + Claude (Max-2 · Forjador B, **Opus 4.8 · high**) — dictado v2 (buzón) + anexos del Director
 - **Objetivo declarado:** cerrar el lote DECISIONES.md (dictados 08-07 + 13-07) + archivar I-05 con los anexos del buzón (sin pastes)
