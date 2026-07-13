@@ -20,10 +20,16 @@
 Además existe la **IA externa de cPanel/QA** (no es de la flota; protocolo en
 `docs/delegacion/PROTOCOLO-DELEGACION.md`): única con acceso a servidor/staging.
 
+> **ENMIENDA 2026-07-13 (Director) — BUZÓN:** los dictados y partes ya NO viajan por
+> copy/paste: viven en `docs/fleet/buzon/` (protocolo en su README). Excepción de
+> territorio: los Forjadores pueden escribir SOLO en `docs/fleet/buzon/partes/`; el resto
+> de `docs/fleet/**` sigue siendo exclusivo del Director. La frase única de arranque que
+> dice Mauricio en cada sesión: «revisa tu buzón y ejecuta».
+
 ## 2. Reglas del bus (comunicación)
 
-1. **Las cuentas NO se hablan entre sí.** El bus es: (a) el repo git (docs + commits) y
-   (b) Mauricio copy/pasteando entre sesiones.
+1. **Las cuentas NO se hablan entre sí.** El bus es: (a) el repo git (docs + commits +
+   **buzón**) y (b) Mauricio para decisiones y asientos de navegador.
 2. Todas reportan **al Director** (vía Mauricio): al cerrar una tarea entregan el "parte de
    cierre" (§5). El Director verifica y actualiza el tablero.
 3. **Territorio de escritura exclusivo por cuenta** (tabla §1). Fuera de tu territorio: manos

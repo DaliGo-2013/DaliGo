@@ -9,6 +9,13 @@
 > lo commitea el asiento Code que el Director designe. Los asientos de navegador JAMÁS
 > escriben en git. Fable disponible hasta el domingo 13-07 (extendido; tope semanal propio).
 
+> **RE-ARRANQUE 13-07** (dueño de vuelta tras licencia 08→13-07): mientras tanto M12 avanzó
+> autónomo (presentación de ST exitosa — el QR gustó) y Max-1 dejó P-M14-04/05 pusheado
+> (VERIFICADO [x] por el Director: 7a01da2, 10 tests exactos al plan) → E2·M14 va 5/7.
+> **BUZÓN operativo** (`docs/fleet/buzon/`): dictados y partes por git, fin del copy/paste.
+> Fable 5 extendido hasta el **19-07** (ledger). Meta de la ventana: reunión del ~28-07 con
+> M14 EN VIVO + M04 arrancado + candidato dashboard.
+
 ## TABLERO CONTINUO — colas por asiento
 
 | Asiento | Cola (en orden) |
