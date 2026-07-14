@@ -213,6 +213,28 @@ class ProduccionReporte extends Model implements AuditableContract
         return $this->estado === self::ENVIADO;
     }
 
+    /**
+     * Arma un resumen de produccion (producido/merma/tasas/avance) a partir de
+     * las 4 cantidades y lo asignado. Fuente unica de las formulas para el
+     * panel del jefe y el tablero del Inicio, asi todos calculan igual.
+     */
+    public static function armarResumen(int $p1, int $p2, int $mal, int $dan, int $asignadas): array
+    {
+        $producido = $p1 + $p2;
+        $merma = $mal + $dan;
+        $total = $producido + $merma;
+
+        return [
+            'asignadas' => $asignadas,
+            'producido' => $producido,
+            'merma' => $merma,
+            'total' => $total,
+            'merma_pct' => $total > 0 ? (int) round($merma / $total * 100) : 0,
+            'tasa1' => $total > 0 ? (int) round($p1 / $total * 100) : 0,
+            'avance' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0,
+        ];
+    }
+
     // --- Scopes ---
 
     public function scopePendientes(Builder $query): Builder

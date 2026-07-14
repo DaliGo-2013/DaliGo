@@ -34,20 +34,20 @@ class DashboardController extends Controller
         if ($user->can('manage production')) {
             $hoy = now()->toDateString();
             // Una sola pasada SUM sobre los reportes de hoy (scope delDia =
-            // whereDate) + el asignado del día; mismas fórmulas que el panel
-            // del jefe (armarResumen), con guard de división por cero.
+            // whereDate) + el asignado del día; las fórmulas viven en
+            // ProduccionReporte::armarResumen (compartidas con el panel del jefe).
             $sumas = ProduccionReporte::delDia($hoy)
                 ->selectRaw('COALESCE(SUM(primera),0) as p1, COALESCE(SUM(segunda),0) as p2, COALESCE(SUM(malo),0) as mal, COALESCE(SUM(danada),0) as dan')
                 ->first();
-            $producido = (int) $sumas->p1 + (int) $sumas->p2;
-            $merma = (int) $sumas->mal + (int) $sumas->dan;
-            $total = $producido + $merma;
-            $asignadas = (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas');
+            $resumen = ProduccionReporte::armarResumen(
+                (int) $sumas->p1, (int) $sumas->p2, (int) $sumas->mal, (int) $sumas->dan,
+                (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
+            );
 
             $secciones[] = ['label' => 'Producción · hoy', 'cards' => [
-                ['label' => 'Producido hoy', 'valor' => $producido, 'href' => route('admin.produccion.dia', ['fecha' => $hoy]), 'alerta' => false],
-                ['label' => 'Avance de hoy (%)', 'valor' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0, 'href' => route('admin.produccion.index'), 'alerta' => false],
-                ['label' => 'Merma de hoy (%)', 'valor' => $total > 0 ? (int) round($merma / $total * 100) : 0, 'href' => route('admin.produccion.index'), 'alerta' => false],
+                ['label' => 'Producido hoy', 'valor' => $resumen['producido'], 'href' => route('admin.produccion.dia', ['fecha' => $hoy]), 'alerta' => false],
+                ['label' => 'Avance de hoy (%)', 'valor' => $resumen['avance'], 'href' => route('admin.produccion.index'), 'alerta' => false],
+                ['label' => 'Merma de hoy (%)', 'valor' => $resumen['merma_pct'], 'href' => route('admin.produccion.index'), 'alerta' => false],
                 ['label' => 'Reportes por revisar', 'valor' => ProduccionReporte::pendientes()->count(), 'href' => route('admin.produccion.index'), 'alerta' => true],
             ]];
         }
@@ -71,7 +71,11 @@ class DashboardController extends Controller
             $servicioTecnico[] = ['label' => 'Sin solución', 'valor' => (int) ($porEstado['sin_solucion'] ?? 0), 'href' => $link('sin_solucion'), 'alerta' => false];
         }
 
-        if ($user->can('confirmar servicio tecnico')) {
+        // El gate exige ADEMÁS poder abrir el destino: el href apunta al
+        // listado ST, cuya ruta pide view|manage servicio tecnico — sin esto,
+        // un rol con SOLO 'confirmar' vería la card y recibiría 403 al click.
+        if ($user->can('confirmar servicio tecnico')
+            && $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])) {
             $servicioTecnico[] = [
                 'label' => 'Recepciones por confirmar',
                 'valor' => OrdenServicio::porConfirmar()->count(),
@@ -171,8 +175,6 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'secciones' => $secciones,
-            // Plano (todas las cards en orden): contrato de DashboardTest.
-            'indicadores' => collect($secciones)->flatMap(fn (array $s) => $s['cards'])->values()->all(),
             'accesos' => $accesos,
         ]);
     }
