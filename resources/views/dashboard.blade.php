@@ -36,14 +36,17 @@
                 </div>
             @endcan
 
-            {{-- Indicadores accionables --}}
-            @if (count($indicadores))
-                <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                    @foreach ($indicadores as $ind)
-                        <x-stat-card :label="$ind['label']" :valor="$ind['valor']" :href="$ind['href']" :alerta="$ind['alerta']" />
-                    @endforeach
+            {{-- Tablero ejecutivo: indicadores de lectura agrupados por módulo (M16-v0) --}}
+            @foreach ($secciones as $seccion)
+                <div class="dg-enter">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $seccion['label'] }}</h3>
+                    <div class="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                        @foreach ($seccion['cards'] as $ind)
+                            <x-stat-card :label="$ind['label']" :valor="$ind['valor']" :href="$ind['href']" :alerta="$ind['alerta']" />
+                        @endforeach
+                    </div>
                 </div>
-            @endif
+            @endforeach
 
             {{-- Accesos rápidos por área (mismos grupos que la navegación) --}}
             @foreach ($accesos as $grupo => $items)
