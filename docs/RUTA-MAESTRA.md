@@ -144,6 +144,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-M16-02** · Vista `/dashboard` por secciones (encabezado de módulo + misma grilla `x-stat-card`) — responsive verificado 375/768/1280 sin scroll horizontal, build con grep 7/7 (`f268997`, 2026-07-14)
 - [x] **P-M16-03** · Gate pre-merge R-31 adversarial 16/16 OK con 3 observaciones anotadas para v0.1 (`f9b0721`) + merge coordinado con doble llave Director+Mauricio a main (`4900d5b`, Deploy+Tests verdes, bundle verificado servido en staging) — **E10-v0 CERRADA**; la rama `feature/m16-v0-dashboard` cumplió su ciclo (2026-07-14)
 
+### E10-v1.0 · M16-v1 «Pulso del día» — rediseño de decisión (plan: `docs/planes/PLAN-M16-V1.md`, opción A con visto bueno del dueño 14-07)
+> Veredicto del dueño sobre v0 ("solo accesos directos") → investigación con fuentes (NN/g, Few, Eckerson, Lean, ProKanban) → opción A: excepciones con edad arriba (andon), pulso producción/taller con medida directa + serie 7d, accesos como zócalo. v1.1 post-merge despachos: franja de ventas por zona.
+- [x] **P-M16V1-01+02** · Capa de datos + vista (rama `feature/m16-v1-pulso`): franja de excepciones (solo lo desviado, con edad del más viejo y destino; «Operación al día» quieto), pulso de producción (producido vs asignado en barra directa + merma con prom. 7 días previos + mini-serie CSS) y taller (aging 0-7/8-30/30+ portable PHP+`whereDate` + flujo semanal), zócalo compacto con TODOS los accesos (+Notificaciones/Aprobaciones); series expuestas como estáticos de modelo (`seriePorDia`/`asignadasPorDia`, delegación sin duplicar); 13 tests nuevos, 593 verdes, grep 9/9, responsive 375/768/1280 (`3f8b98f`, 2026-07-14)
+- [ ] **P-M16V1-03** · Gate R-31 ✔ HECHO (14/14 OK, 2 lentes, obs. menores anotadas) → falta: merge doble llave (Director + Mauricio) → deploy → **QA de 5 segundos con el dueño en staging** (criterio de aceptación del rediseño)
+
 ---
 
 ## 5. F2 · Núcleo operativo
