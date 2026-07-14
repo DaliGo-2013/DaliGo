@@ -77,6 +77,16 @@ class OrdenServicio extends Model implements AuditableContract
         'falla_fabrica' => 'Falla de fábrica / defecto',
     ];
 
+    // Categoría de cierre SOLO para máquinas propias (IMP. DALI) que se
+    // reacondicionan para revender: con qué calidad termina la máquina.
+    public const CATEGORIAS = ['primera', 'segunda', 'desarme'];
+
+    public const CATEGORIA_ETIQUETAS = [
+        'primera' => 'Primera',
+        'segunda' => 'Segunda',
+        'desarme' => 'Desarme',
+    ];
+
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     // 'cotizacion' = se le paso presupuesto al cliente y se espera su aprobacion
     // del arreglo (va despues de la revision, antes de pedir repuestos/reparar).
@@ -134,6 +144,7 @@ class OrdenServicio extends Model implements AuditableContract
         'falla_reportada',
         'falla_tecnico',
         'causa_falla',
+        'categoria',
         'estado',
         'facturacion',
         'garantia_doc_tipo',
@@ -223,6 +234,29 @@ class OrdenServicio extends Model implements AuditableContract
     public function getTipoEquipoLabelAttribute(): string
     {
         return self::etiquetaTipo($this->tipo_equipo);
+    }
+
+    /**
+     * ¿Es una máquina PROPIA de la empresa (IMP. DALI / IMPORTADORA DALI)?
+     * Se detecta por el nombre del "cliente" (ignora puntos, espacios y mayús/minús).
+     * Cuando es propia: RUT/teléfono/correo dejan de ser obligatorios y se habilita
+     * la categoría de cierre (primera/segunda/desarme) para reventa.
+     */
+    public static function esMaquinaPropia(?string $nombre): bool
+    {
+        $n = strtoupper(trim(preg_replace('/\s+/', ' ', str_replace('.', '', (string) $nombre))));
+
+        return in_array($n, ['IMP DALI', 'IMPORTADORA DALI'], true);
+    }
+
+    public function getEsPropiaAttribute(): bool
+    {
+        return self::esMaquinaPropia($this->cliente_nombre);
+    }
+
+    public function getCategoriaLabelAttribute(): ?string
+    {
+        return $this->categoria ? (self::CATEGORIA_ETIQUETAS[$this->categoria] ?? ucfirst($this->categoria)) : null;
     }
 
     /**

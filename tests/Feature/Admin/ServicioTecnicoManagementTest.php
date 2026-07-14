@@ -118,6 +118,64 @@ class ServicioTecnicoManagementTest extends TestCase
         ]);
     }
 
+    public function test_maquina_propia_no_exige_rut_ni_correo(): void
+    {
+        $payload = $this->payload(['cliente_nombre' => 'IMP. DALI']);
+        unset($payload['cliente_rut'], $payload['cliente_email']);
+
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.servicio-tecnico.index'));
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'cliente_nombre' => 'IMP. DALI',
+            'cliente_rut' => null,
+            'cliente_email' => null,
+        ]);
+    }
+
+    public function test_maquina_propia_detecta_variantes_del_nombre(): void
+    {
+        foreach (['importadora dali', 'IMP DALI', 'Imp. Dali'] as $nombre) {
+            $payload = $this->payload(['cliente_nombre' => $nombre]);
+            unset($payload['cliente_rut'], $payload['cliente_email']);
+
+            $this->actingAs($this->admin())
+                ->post('/admin/servicio-tecnico', $payload)
+                ->assertSessionHasNoErrors();
+        }
+    }
+
+    public function test_cliente_comun_sigue_exigiendo_rut_y_correo(): void
+    {
+        $payload = $this->payload(['cliente_nombre' => 'Juan Pérez']);
+        unset($payload['cliente_rut'], $payload['cliente_email']);
+
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $payload)
+            ->assertSessionHasErrors(['cliente_rut', 'cliente_email']);
+    }
+
+    public function test_categoria_se_guarda_solo_para_maquina_propia(): void
+    {
+        // Propia: se guarda la categoría de cierre.
+        $propia = OrdenServicio::factory()->create(['cliente_nombre' => 'IMP. DALI', 'facturacion' => 'reparacion']);
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $propia), [
+                'estado' => 'entregado', 'categoria' => 'segunda', 'repuestos' => [],
+            ])->assertRedirect();
+        $this->assertDatabaseHas('ordenes_servicio', ['id' => $propia->id, 'categoria' => 'segunda']);
+
+        // Cliente común: aunque llegue 'categoria', se ignora (queda null).
+        $normal = OrdenServicio::factory()->create(['cliente_nombre' => 'Juan Pérez', 'facturacion' => 'reparacion']);
+        $this->actingAs($this->admin())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $normal), [
+                'estado' => 'entregado', 'categoria' => 'segunda', 'repuestos' => [],
+            ])->assertRedirect();
+        $this->assertDatabaseHas('ordenes_servicio', ['id' => $normal->id, 'categoria' => null]);
+    }
+
     // --- Acceso ---
 
     public function test_guest_is_redirected(): void

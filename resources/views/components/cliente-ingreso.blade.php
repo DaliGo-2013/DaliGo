@@ -23,9 +23,10 @@
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {{-- RUT (buscador) --}}
         <div>
-            <x-input-label for="cliente_rut">RUT <span class="text-red-500">*</span></x-input-label>
+            <x-input-label for="cliente_rut">RUT <span class="text-red-500" x-show="!esPropia">*</span></x-input-label>
             <div class="relative mt-1.5">
-                <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="w-full" autocomplete="off" required
+                <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="w-full" autocomplete="off"
+                    x-bind:required="!esPropia"
                     x-ref="input" placeholder="Ej. 12.345.678-9"
                     x-model="rut"
                     @input.debounce.300ms="buscar()"
@@ -54,6 +55,7 @@
                 </div>
             </div>
             <x-input-hint>Si ya existe, elígelo de la lista; si no, escríbelo.</x-input-hint>
+            <x-input-hint x-show="esPropia" x-cloak class="text-brand-600">Máquina propia (IMP. DALI): RUT, teléfono y correo son opcionales.</x-input-hint>
             <x-input-error :messages="$errors->get('cliente_rut')" class="mt-2" />
         </div>
 
@@ -78,8 +80,9 @@
 
         {{-- Correo (obligatorio): se le envia el folio y los avisos del equipo. --}}
         <div>
-            <x-input-label for="cliente_email">Correo <span class="text-red-500">*</span></x-input-label>
-            <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full" required
+            <x-input-label for="cliente_email">Correo <span class="text-red-500" x-show="!esPropia">*</span></x-input-label>
+            <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full"
+                x-bind:required="!esPropia"
                 maxlength="191" placeholder="cliente@correo.cl"
                 :value="old('cliente_email', $inicialEmail)" />
             <x-input-hint>Se le envía el folio y los avisos del equipo.</x-input-hint>

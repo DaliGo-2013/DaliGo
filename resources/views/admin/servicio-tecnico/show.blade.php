@@ -148,6 +148,13 @@
                         </div>
                     @endif
 
+                    @if ($orden->es_propia && $orden->categoria)
+                        <div class="mb-4">
+                            <dt class="text-xs text-neutral-400">Categoría (reventa)</dt>
+                            <dd class="text-sm text-neutral-900">{{ $orden->categoria_label }}</dd>
+                        </div>
+                    @endif
+
                     @if ($orden->repuestos->isNotEmpty())
                         <div class="mb-4">
                             <dt class="mb-1 text-xs text-neutral-400">Repuestos</dt>
