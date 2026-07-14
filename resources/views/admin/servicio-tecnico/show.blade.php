@@ -80,7 +80,7 @@
                     <div><dt class="text-xs text-neutral-400">Código (producto Dali)</dt><dd class="text-sm text-neutral-900">{{ $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">N° de serie</dt><dd class="text-sm text-neutral-900">{{ $orden->numero_serie ?: '—' }}</dd></div>
                     <div>
-                        <dt class="text-xs text-neutral-400">Sucursal de recepción</dt>
+                        <dt class="text-xs text-neutral-400">Sucursal/Ruta</dt>
                         <dd class="text-sm text-neutral-900">
                             {{ $orden->sucursal?->nombre ?: ($orden->ruta ? 'Ruta · '.$orden->ruta : '—') }}
                             @if ($reparaEnMatriz)

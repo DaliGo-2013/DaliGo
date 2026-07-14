@@ -81,7 +81,7 @@
     </div>
 
     <div>
-        <x-input-label for="sucursal_id">Sucursal de recepción <span class="text-red-500">*</span></x-input-label>
+        <x-input-label for="sucursal_id">Sucursal/Ruta <span class="text-red-500">*</span></x-input-label>
         <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5" required
             x-ref="sucursal" x-model="sucursalSel" x-on:change="recalcularEntrega()">
             <option value="" disabled @selected($sucInicial === null || $sucInicial === '')>— Selecciona —</option>
