@@ -65,6 +65,12 @@ class DocumentoVenta extends Model implements AuditableContract
         return $this->hasMany(DocumentoVentaDetalle::class, 'documento_venta_id');
     }
 
+    /** @return HasMany<Despacho, $this> */
+    public function despachos(): HasMany
+    {
+        return $this->hasMany(Despacho::class, 'documento_venta_id');
+    }
+
     /** @return BelongsTo<Cliente, $this> */
     public function cliente(): BelongsTo
     {

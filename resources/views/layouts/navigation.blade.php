@@ -36,14 +36,17 @@
                         </x-nav-dropdown>
                     @endcanany
 
-                    @canany(['manage productos', 'manage production'])
+                    @canany(['manage productos', 'manage production', 'manage despachos'])
                         <x-nav-dropdown label="Operación"
-                            :active="request()->routeIs('admin.bodegas.*', 'admin.produccion.*')">
+                            :active="request()->routeIs('admin.bodegas.*', 'admin.produccion.*', 'admin.despachos.*')">
                             @can('manage productos')
                                 <x-dropdown-link :href="route('admin.bodegas.index')">Inventario</x-dropdown-link>
                             @endcan
                             @can('manage production')
                                 <x-dropdown-link :href="route('admin.produccion.index')">Producción</x-dropdown-link>
+                            @endcan
+                            @can('manage despachos')
+                                <x-dropdown-link :href="route('admin.despachos.index')">Despachos</x-dropdown-link>
                             @endcan
                         </x-nav-dropdown>
                     @endcanany
@@ -235,7 +238,7 @@
                 @endcan
             @endcanany
 
-            @canany(['manage productos', 'manage production'])
+            @canany(['manage productos', 'manage production', 'manage despachos'])
                 <x-responsive-nav-heading>Operación</x-responsive-nav-heading>
 
                 @can('manage productos')
@@ -247,6 +250,12 @@
                 @can('manage production')
                     <x-responsive-nav-link :href="route('admin.produccion.index')" :active="request()->routeIs('admin.produccion.*')">
                         Producción
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('manage despachos')
+                    <x-responsive-nav-link :href="route('admin.despachos.index')" :active="request()->routeIs('admin.despachos.*')">
+                        Despachos
                     </x-responsive-nav-link>
                 @endcan
             @endcanany

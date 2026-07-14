@@ -31,5 +31,7 @@ return [
         'view notificaciones' => 'Ver notificaciones',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
+        'manage despachos' => 'Gestionar despachos',
+        'confirmar entrega' => 'Confirmar entrega (conductor)',
     ],
 ];

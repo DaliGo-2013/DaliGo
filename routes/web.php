@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
+use App\Http\Controllers\Admin\DespachoController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
@@ -233,6 +234,15 @@ Route::middleware('auth')
             Route::resource('tipos-botellon', TipoBotellonController::class)
                 ->parameters(['tipos-botellon' => 'tipoBotellon'])
                 ->except(['show']);
+        });
+
+        // Despachos (Jefe de Bodega): crear despacho desde un documento
+        // espejado + listado. Escaneo QR (P-DSP-04) y entrega (P-DSP-05)
+        // llegan en pasos siguientes. Bloque AL FINAL del grupo (anti-colision).
+        Route::middleware('permission:manage despachos')->group(function () {
+            Route::get('despachos', [DespachoController::class, 'index'])->name('despachos.index');
+            Route::get('despachos/nuevo', [DespachoController::class, 'create'])->name('despachos.create');
+            Route::post('despachos', [DespachoController::class, 'store'])->name('despachos.store');
         });
     });
 

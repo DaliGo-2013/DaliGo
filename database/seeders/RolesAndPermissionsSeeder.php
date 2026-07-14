@@ -44,6 +44,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Modulo Aprobaciones (M14).
             'aprobar solicitudes',        // bandeja /aprobaciones: resolver pendientes del propio rol
             'view aprobaciones',          // historial completo del motor (admin)
+            // Unidad DESPACHOS-v1 (M05 parcial + M07 + M08 MVP).
+            'manage despachos',           // jefe de bodega: crea despachos y valida retiros (QR)
+            'confirmar entrega',          // conductor: confirma la entrega con firma+foto (PWA)
         ];
 
         foreach ($permissions as $name) {
@@ -75,11 +78,11 @@ class RolesAndPermissionsSeeder extends Seeder
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
-            ->givePermissionTo(['crear lote servicio']);
+            ->givePermissionTo(['crear lote servicio', 'confirmar entrega']);
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
         // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
