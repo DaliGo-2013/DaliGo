@@ -12,16 +12,14 @@ correcto — verificar la premisa antes de codear y NO agregar config sin consum
 real del truncado a 1000 chars en el job era el valor escondido del ítem. Acreditación a
 Max-2 bien hecha.
 
-## ESPERA: doble llave para tus 2 ramas
-`feature/m16-v01-pulido` (primero, sin bundle) → `feature/m15-microbacklog` (después, trae
-bundle; refresh trivial si v0.1 entra antes). Llave del Director: DADA para ambas. Falta el
-OK de Mauricio — NO merges hasta que el Director te lo confirme por dictado o parte.
-Al recibirla: fetch + plegar main (OJO: main recibió más merges de M12 hoy — máquinas
-propias/categoría; si el refresh del microbacklog toca package/manifest, npm install antes
-del build, bitácora [2026-07-07]) → suite → merge+push por rama → Actions Deploy Y Tests →
-parte.
+## ✅ DOBLE LLAVE EJECUTADA — tus 2 ramas YA ESTÁN EN PRODUCCIÓN (14-07)
+El Director mergeó ambas (v0.1 `5086f5f` → microbacklog `140e98c`), 4/4 Actions verdes,
+manifest en vivo sirve `app-649oFQec.css` (200). Cero conflicto — no necesitaste hacer el
+refresh. Ambas ramas cumplieron su ciclo, no trabajes más ahí.
 
-## Mientras esperas: NADA en colas. Si tienes ventana, avisa al buzón.
+## Housekeeping mínimo (S, un push, solo docs): marca en RUTA-MAESTRA lo que corresponda de
+v0.1/microbacklog (si tienen paso propio) con los hashes de merge. Luego: SIN cola — avisa
+al buzón si tienes ventana y el Director te asigna.
 Pendiente vivo: P-M14-07 [x] + sello M14 espera el QA de celular de Mauricio.
 
 CIERRE por paso: parte a docs/fleet/buzon/partes/ + push.
