@@ -34,4 +34,24 @@ Rama `feature/m15-microbacklog` desde main FRESCO. Alcance (talla S/M):
 Suite verde por commit. Parte al buzón por ítem. Cuando llegue la salida del shape al buzón,
 PAUSA el micro-backlog y vuelve a P-DSP-01 (prioridad: destrabar la unidad grande).
 
+## PRE-STAGE para cuando llegue el shape (delegación YA despachada a IA-cPanel 14-07)
+Para que el turnaround sea inmediato, cuando la salida aterrice en el buzón reconcilia
+contra el plan ANTES de escribir la migración:
+1. **details:** ¿"✅ details PRESENTE"? Si NO → GET a `documents/{id}/details.json` como plan B
+   y la migración no cambia (solo el `DocumentSync` hace 1+N con `each`); documenta cuál fue.
+2. **Cabecera vs §1.2:** diff claves reales vs columnas asumidas (`number`, `totalAmount`,
+   `netAmount`, `taxAmount`, `state`, `informedSii`, `urlPdf`, `emissionDate`,
+   `document_type`/`client`/`office` como nodos). Columna asumida que NO existe → fuera de la
+   migración (no inventar); clave real útil no prevista → anótala, decide si entra a v1.
+3. **Fechas:** confirmar epoch (int ~10 dígitos — el explorador marca "(¿epoch?)") → cast
+   epoch→datetime en el sync, como las 4 syncs existentes.
+4. **client/office:** confirmar que traen `id` de Bsale para el match contra
+   `clientes.bsale_client_id` / `bodegas.bsale_office_id` (mapas `pluck`, patrón existente).
+5. Archiva la salida (ya redactada) en `docs/qa/INFRA/2026-07-14--INFRA--p-dsp-00-shape-documents.md`
+   — es la evidencia que cierra P-DSP-00 [x].
+Observación del Director al plan (no bloquea): `hourlyAt(45)` comparte slot con `sync-stock`
+(corren secuenciales en el mismo `schedule:run`; stock procesa ~28k filas). Si el minuto :45
+queda pesado, considera `hourlyAt(30)` junto a prices (más liviana) — decisión tuya al
+implementar, documentada en el plan.
+
 CIERRE por ítem: parte a docs/fleet/buzon/partes/ + push.
