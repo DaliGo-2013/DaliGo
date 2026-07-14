@@ -11,6 +11,8 @@ use App\Models\Producto;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -29,6 +31,14 @@ class DashboardTest extends TestCase
         $user->assignRole($role);
 
         return $user;
+    }
+
+    /** Todas las cards del tablero (aplana viewData 'secciones'), indexadas por label. */
+    private function cards(TestResponse $res): Collection
+    {
+        return collect($res->viewData('secciones'))
+            ->flatMap(fn (array $s) => $s['cards'])
+            ->keyBy('label');
     }
 
     public function test_guest_is_redirected_to_login(): void
@@ -84,7 +94,7 @@ class DashboardTest extends TestCase
             ->assertSee(route('admin.servicio-tecnico.index', ['estado' => 'sin_solucion']), false);
 
         // "Equipos en taller" = todo lo que no está entregado (2+1+1+1 = 5).
-        $indicadores = collect($res->viewData('indicadores'))->keyBy('label');
+        $indicadores = $this->cards($res);
         $this->assertSame(5, $indicadores['Equipos en taller']['valor']);
         $this->assertSame(2, $indicadores['Cotización (espera cliente)']['valor']);
         $this->assertSame(3, $indicadores['Entregado']['valor']);
@@ -207,7 +217,7 @@ class DashboardTest extends TestCase
 
         $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
 
-        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $cards = $this->cards($res);
         $this->assertSame(180, $cards['Producido hoy']['valor']);
         $this->assertSame(90, $cards['Avance de hoy (%)']['valor']);
         $this->assertSame(10, $cards['Merma de hoy (%)']['valor']);
@@ -218,7 +228,7 @@ class DashboardTest extends TestCase
     {
         $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
 
-        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $cards = $this->cards($res);
         $this->assertSame(0, $cards['Producido hoy']['valor']);
         $this->assertSame(0, $cards['Avance de hoy (%)']['valor']);
         $this->assertSame(0, $cards['Merma de hoy (%)']['valor']);
@@ -235,7 +245,7 @@ class DashboardTest extends TestCase
         // sección de Servicio Técnico trae SOLO esta card (semilla intacta).
         $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
 
-        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $cards = $this->cards($res);
         $this->assertSame(3, $cards['Recepciones por confirmar']['valor']);
         $this->assertArrayNotHasKey('Equipos en taller', $cards->all());
 
@@ -252,13 +262,13 @@ class DashboardTest extends TestCase
 
         // El jefe ve solo las pendientes de SU rol.
         $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
-        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $cards = $this->cards($res);
         $this->assertSame(1, $cards['Aprobaciones pendientes']['valor']);
         $this->assertSame(route('aprobaciones.index'), $cards['Aprobaciones pendientes']['href']);
 
         // El admin ve TODAS las pendientes (espejo de su bandeja).
         $res = $this->actingAs($this->userWithRole('admin'))->get('/dashboard');
-        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $cards = $this->cards($res);
         $this->assertSame(2, $cards['Aprobaciones pendientes']['valor']);
     }
 
@@ -271,7 +281,7 @@ class DashboardTest extends TestCase
 
         $res = $this->actingAs($this->userWithRole('admin'))->get('/dashboard');
 
-        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $cards = $this->cards($res);
         $this->assertSame(2, $cards['Notificaciones fallidas']['valor']);
         $this->assertSame(
             route('admin.notificaciones.index', ['estado' => 'fallida']),
@@ -283,7 +293,7 @@ class DashboardTest extends TestCase
     {
         $res = $this->actingAs($this->userWithRole('jefe_ventas'))->get('/dashboard');
 
-        $labels = collect($res->viewData('indicadores'))->pluck('label');
+        $labels = $this->cards($res)->keys();
         $this->assertEqualsCanonicalizing(
             ['Aprobaciones pendientes', 'Clientes', 'Usuarios'],
             $labels->all(),
@@ -294,7 +304,7 @@ class DashboardTest extends TestCase
     {
         $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
 
-        $labels = collect($res->viewData('indicadores'))->pluck('label');
+        $labels = $this->cards($res)->keys();
         $this->assertContains('Equipos en taller', $labels);
         $this->assertContains('Recepciones por confirmar', $labels);
         $this->assertNotContains('Aprobaciones pendientes', $labels);
@@ -306,17 +316,13 @@ class DashboardTest extends TestCase
     {
         $res = $this->actingAs($this->userWithRole('vendedor'))->get('/dashboard');
 
-        $this->assertSame(
-            ['Clientes'],
-            collect($res->viewData('indicadores'))->pluck('label')->all(),
-        );
+        $this->assertSame(['Clientes'], $this->cards($res)->keys()->all());
     }
 
     public function test_soplador_y_member_no_tienen_cards(): void
     {
         foreach (['soplador', 'member'] as $rol) {
             $res = $this->actingAs($this->userWithRole($rol))->get('/dashboard');
-            $this->assertSame([], $res->viewData('indicadores'), "El rol {$rol} no debe ver cards.");
             $this->assertSame([], $res->viewData('secciones'), "El rol {$rol} no debe ver secciones.");
         }
     }
@@ -329,5 +335,20 @@ class DashboardTest extends TestCase
             ['Producción · hoy', 'Servicio Técnico', 'Aprobaciones', 'Administración'],
             collect($res->viewData('secciones'))->pluck('label')->all(),
         );
+    }
+
+    public function test_solo_confirmar_sin_acceso_al_listado_no_ve_la_card(): void
+    {
+        OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => null]);
+
+        // Permiso directo, sin rol: puede confirmar pero NO abrir el listado
+        // ST (el href exige view|manage servicio tecnico) → la card se oculta
+        // en vez de invitar a un 403.
+        $user = User::factory()->create();
+        $user->givePermissionTo('confirmar servicio tecnico');
+
+        $res = $this->actingAs($user)->get('/dashboard');
+
+        $this->assertArrayNotHasKey('Recepciones por confirmar', $this->cards($res)->all());
     }
 }

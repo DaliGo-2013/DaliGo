@@ -69,7 +69,7 @@ class ProduccionController extends Controller
         $t = ProduccionReporte::delDia($hoy)
             ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
             ->first();
-        $hoyResumen = $this->armarResumen(
+        $hoyResumen = ProduccionReporte::armarResumen(
             (int) $t->p1, (int) $t->p2, (int) $t->mal, (int) $t->dan,
             (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
         );
@@ -97,28 +97,6 @@ class ProduccionController extends Controller
             'porMaquina' => $porMaquina,
             'porMaquinaMultiSucursal' => $porMaquinaMultiSucursal,
         ]);
-    }
-
-    /**
-     * Arma un resumen de produccion (producido/merma/tasas/avance) a partir de
-     * las 4 cantidades y lo asignado. Fuente unica para hoy, cada dia y el total
-     * del rango, asi todos calculan igual.
-     */
-    private function armarResumen(int $p1, int $p2, int $mal, int $dan, int $asignadas): array
-    {
-        $producido = $p1 + $p2;
-        $merma = $mal + $dan;
-        $total = $producido + $merma;
-
-        return [
-            'asignadas' => $asignadas,
-            'producido' => $producido,
-            'merma' => $merma,
-            'total' => $total,
-            'merma_pct' => $total > 0 ? (int) round($merma / $total * 100) : 0,
-            'tasa1' => $total > 0 ? (int) round($p1 / $total * 100) : 0,
-            'avance' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0,
-        ];
     }
 
     // ============================================================
@@ -201,7 +179,7 @@ class ProduccionController extends Controller
             $asig = (int) ($asignadasPorDia[$k] ?? 0);
             $rep = (int) ($r->reportes ?? 0);
 
-            $dias[] = $this->armarResumen($p1, $p2, $mal, $dan, $asig) + ['fecha' => $cursor->copy(), 'reportes' => $rep];
+            $dias[] = ProduccionReporte::armarResumen($p1, $p2, $mal, $dan, $asig) + ['fecha' => $cursor->copy(), 'reportes' => $rep];
             $sp1 += $p1;
             $sp2 += $p2;
             $smal += $mal;
@@ -213,7 +191,7 @@ class ProduccionController extends Controller
         return [
             // Mas reciente primero (arriba de la lista).
             'dias' => array_reverse($dias),
-            'totales' => $this->armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
+            'totales' => ProduccionReporte::armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
             'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
         ];
     }
@@ -227,7 +205,7 @@ class ProduccionController extends Controller
             ->groupBy('produccion_reportes.soplador_id', 'users.name')
             ->selectRaw('produccion_reportes.soplador_id AS id, users.name AS nombre, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
             ->get()
-            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre, 'reportes' => (int) $r->reportes]))
+            ->map(fn ($r) => (object) (ProduccionReporte::armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre, 'reportes' => (int) $r->reportes]))
             ->sortByDesc('producido')->values();
     }
 
@@ -245,7 +223,7 @@ class ProduccionController extends Controller
             ->groupBy("produccion_registros.$groupCol", "$joinTable.nombre")
             ->selectRaw("produccion_registros.$groupCol AS id, $joinTable.nombre AS nombre, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan")
             ->get()
-            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
+            ->map(fn ($r) => (object) (ProduccionReporte::armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
             ->sortByDesc('producido')->values();
     }
 
@@ -260,7 +238,7 @@ class ProduccionController extends Controller
             ->groupBy('produccion_reportes.soplador_id', 'users.name')
             ->selectRaw('produccion_reportes.soplador_id AS id, users.name AS nombre, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan')
             ->get()
-            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
+            ->map(fn ($r) => (object) (ProduccionReporte::armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
             ->sortByDesc('producido')->values();
     }
 
@@ -296,7 +274,7 @@ class ProduccionController extends Controller
         $t = ProduccionReporte::whereDate('fecha', $fecha)
             ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
             ->first();
-        $resumen = $this->armarResumen(
+        $resumen = ProduccionReporte::armarResumen(
             (int) $t->p1, (int) $t->p2, (int) $t->mal, (int) $t->dan,
             (int) ProduccionAsignacion::whereDate('fecha', $fecha)->sum('asignadas'),
         );
