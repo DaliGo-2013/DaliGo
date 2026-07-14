@@ -127,6 +127,26 @@ class ServicioTecnicoInformeTest extends TestCase
             });
     }
 
+    public function test_top_clientes_sin_rut_cuentan_por_nombre(): void
+    {
+        // Sin RUT (muchas órdenes históricas): deben contar por NOMBRE, no
+        // juntarse todos en una sola bolsa inflando a un cliente.
+        OrdenServicio::factory()->count(2)->create([
+            'fecha_ingreso' => '2026-06-10', 'cliente_rut' => null, 'cliente_nombre' => 'Zzz Cliente',
+        ]);
+        OrdenServicio::factory()->create([
+            'fecha_ingreso' => '2026-06-11', 'cliente_rut' => null, 'cliente_nombre' => 'Aaa Cliente',
+        ]);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+            ->assertOk()
+            ->assertViewHas('topClientes', function (Collection $clientes) {
+                $zzz = $clientes->firstWhere('nombre', 'Zzz Cliente');
+
+                return $clientes->count() === 2 && $zzz && (int) $zzz->cantidad === 2;
+            });
+    }
+
     public function test_desglose_por_tipo_y_top_equipos_del_catalogo(): void
     {
         $producto = Producto::factory()->create(['nombre' => 'Dispensador D-100', 'sku' => '1030034']);
