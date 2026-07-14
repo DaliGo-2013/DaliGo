@@ -1,27 +1,42 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-14 (v8 — M16-v0 EN PRODUCCIÓN, doble llave ejecutada). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-14 (v9 — ventana reseteada; cola nueva post-M16). Manda sobre lo anterior.
 
-MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño); si no, Opus 4.8 · high.
+MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño); OJO ledger: tu sesión M16 costó
+USD 77.99 en Fable — para esta cola (tallas S/M) basta **Opus 4.8 · high**; reserva Fable para
+diseño/planes. El dueño fija el selector.
 
-## ✅ DOBLE LLAVE DADA Y EJECUTADA — M16-v0 YA ESTÁ EN PRODUCCIÓN
-Mauricio dio el OK; el Director mergeó `feature/m16-v0-dashboard` a main (`4900d5b`, sin
-conflictos) y verificó en vivo: **Deploy Actions success + Tests success 14-07 15:26**,
-`/dashboard` responde 302 (ruta viva), `manifest.json` del server apunta a `app-OhPY6b0u.css`
-y el asset responde 200 — el bundle nuevo está SERVIDO, no solo desplegado.
+CONTEXTO: M16-v0 YA ESTÁ EN PRODUCCIÓN (merge `4900d5b` por el Director con doble llave,
+Deploy+Tests verdes, bundle `OhPY6b0u` verificado servido; M12 recompiló el bundle después —
+interferencia descartada por el Director, 6/6 clases del dashboard presentes en el nuevo).
+Max-2 avanza DESPACHOS (P-DSP-01 hecho, va por P-DSP-03) — NO toques nada de despachos.
 
-## Housekeeping que falta (talla S, un push, NO requiere nueva llave — es documentación)
-1. P-M16-03 [x] en RUTA-MAESTRA + tu propio sello si quedó pendiente en la rama.
-2. Tu rama `feature/m16-v0-dashboard` ya cumplió su ciclo — no sigas trabajando ahí. Próxima
-   unidad arranca en rama nueva desde main fresco (`git fetch origin && git checkout -b
-   feature/<lo-que-sea> origin/main`).
-3. Parte de cierre a `docs/fleet/buzon/partes/` confirmando el housekeeping + /usage.
+## COLA (en orden):
 
-## Siguiente unidad: a la espera de dictado
-Aún no hay siguiente unidad grande asignada. Si terminas el housekeeping y tienes ventana
-libre, avisa al buzón — no inventes alcance nuevo por tu cuenta.
+### 1. Housekeeping M16 (S, un push, solo docs)
+- P-M16-03 [x] + sello 01→07 en RUTA-MAESTRA → E10-v0 CERRADA.
+- Tu rama `feature/m16-v0-dashboard` cumplió su ciclo — no trabajes más ahí.
 
-RECORDATORIO: E2·M14 cierra formalmente cuando Mauricio corra el QA de celular (tu guion ya
-está en su poder). Cuando te confirme que salió OK, marca P-M14-07 [x] + sello 01→07 en
-RUTA-MAESTRA (docs, un push).
+### 2. M16-v0.1 — las 3 observaciones de TU gate R-31 (S/M, rama nueva desde main fresco)
+Rama `feature/m16-v01-pulido`. Las 3 que tu propio gate dejó anotadas:
+a. Extraer las fórmulas producido/merma%/avance a un helper compartido con `armarResumen`
+   (hoy duplicadas línea a línea — eliminar el drift futuro).
+b. Migrar los asserts de los tests de `$indicadores` plano a `secciones` y eliminar el dato
+   muerto de la vista.
+c. La card «Recepciones por confirmar»: alinear gate del `@can` con el middleware del href
+   (hoy un rol futuro con SOLO `confirmar servicio tecnico` daría 403 al click) — resuélvelo
+   con el gate más restrictivo, sin permisos nuevos.
+Suite verde; si tocas Blade → npm install + build + grep bundle (las 6 clases del dashboard
++ `lg\:flex`/`lg\:hidden`).
 
+### 3. Micro-backlog M15 (S/M — REASIGNADO desde Max-2, que está en DESPACHOS)
+Rama `feature/m15-microbacklog` desde main fresco:
+- Correo destino de notificaciones configurable en el panel (hoy hardcodeado — confirma dónde).
+- Error SMTP sin truncar en la vista/log de notificación fallida.
+- Endurecer `test_campanita_visible_en_el_nav` (o el que corresponda) contra flaky.
+
+### Recordatorio E2·M14 (no bloquea, depende del dueño)
+Cuando Mauricio confirme el QA de celular → P-M14-07 [x] + sello en RUTA (mismo push que el
+housekeeping si coincide).
+
+Los merges a main de 2 y 3 esperan doble llave (parte al buzón cuando estén listos).
 CIERRE por paso: parte a docs/fleet/buzon/partes/ + push.
