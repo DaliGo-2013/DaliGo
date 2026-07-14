@@ -67,7 +67,7 @@
                 Completa los datos de tu equipo. Cuando termines, muéstrale la pantalla al encargado del mostrador.
             </p>
 
-            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5" enctype="multipart/form-data" data-una-vez>
                 @csrf
                 <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
 

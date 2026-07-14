@@ -1,7 +1,20 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-14 (v13 — tweak campanita móvil, aprobado por el dueño). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-14 (v14 — tweak VERIFICADO pero el merge conflictúa: refresh + rebuild). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high (talla S).
+
+## ⚡ ACCIÓN INMEDIATA: refresca `feature/campanita-movil` — el merge a main conflictúa
+Tu tweak está VERIFICADO por el Director (bundle `FGPKmQ6Z` grep 6/6 incluidas las clases
+M16-v1, diff mínimo, decisión sin-dropdown bien razonada, reuso de `x-icon.bell` ✓). PERO el
+Director intentó el merge y **conflictúa en `public/build/manifest.json`**: M12 pusheó a main
+DESPUÉS de que nació tu rama (back-button + variantes DALI, con rebuilds — el bundle de main
+ahora es `CvkXwK7I`). La resolución exige RECOMPILAR contra el Blade mergeado (tu campana +
+lo nuevo de M12) — trabajo tuyo, no del Director:
+1. `git fetch` → merge de `origin/main` a tu rama → resolver (el conflicto real es solo
+   manifest/assets: regenéralos, no los elijas a mano).
+2. `npm install` si el merge tocó package* (bitácora [2026-07-07]) → `npm run build` →
+   grep del bundle (6 de M16-v1 + `lg\:*` + las del badge) → suite verde.
+3. Push de la rama + parte corto. El Director mergea al toque (doble llave ya completa).
 
 ## Contexto (hallazgo del QA de celular del dueño, 14-07)
 El dueño intentó el QA de M14 desde el teléfono y **no encontró la campana**: en móvil no

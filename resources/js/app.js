@@ -34,6 +34,26 @@ window.dgDestacar = dgDestacar;
 Alpine.magic('destacar', () => (el) => dgDestacar(el)); // uso en vistas: $destacar($refs.x)
 
 /**
+ * Anti doble-envío. En formularios con [data-una-vez], al enviarse se
+ * deshabilitan sus botones de submit —incluidos los EXTERNOS ligados por
+ * form="<id>" (ej. el ✓ del mostrador)— para que un segundo clic (típico en
+ * móvil con conexión lenta) NO cree órdenes ni correos duplicados. Si la
+ * validación HTML5 falla, el evento submit no se dispara, así que el usuario
+ * puede corregir y reenviar sin quedar bloqueado.
+ */
+document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-una-vez')) return;
+    if (form.dataset.enviando) { e.preventDefault(); return; }
+    form.dataset.enviando = '1';
+    setTimeout(() => {
+        const propios = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])'));
+        const externos = form.id ? Array.from(document.querySelectorAll(`[type="submit"][form="${form.id}"]`)) : [];
+        [...propios, ...externos].forEach((b) => { b.disabled = true; b.style.opacity = '0.6'; b.style.pointerEvents = 'none'; });
+    }, 0);
+}, true);
+
+/**
  * Buscador remoto reutilizable (Servicio Tecnico): autocompletado contra un
  * endpoint JSON (limit 15). Se usa para cliente (por RUT/nombre) y para producto
  * (por SKU/nombre); el id elegido se guarda en un <input hidden> que define la
@@ -109,8 +129,8 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) =
     // Máquina propia de la empresa (IMP. DALI / IMPORTADORA DALI): ignora puntos,
     // espacios y mayús/minús. Cuando es propia, RUT/teléfono/correo son opcionales.
     get esPropia() {
-        const n = (this.nombre || '').toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
-        return n === 'IMP DALI' || n === 'IMPORTADORA DALI';
+        const n = (this.nombre || '').toUpperCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+        return ['IMP DALI', 'IMPORTADORA DALI', 'DALI'].includes(n);
     },
 
     async buscar() {
