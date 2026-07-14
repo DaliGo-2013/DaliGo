@@ -48,3 +48,12 @@ Schedule::command('notificaciones:reintentar')
     ->everyFifteenMinutes()
     ->withoutOverlapping(10)
     ->appendOutputTo(storage_path('logs/notificaciones.log'));
+
+// --- M14 · Escalamiento de aprobaciones pendientes ------------------------
+// Cada 15 min (grilla */15 de I-01): pendientes sin respuesta tras N min
+// (`aprobacion_escala_minutos`) pasan al rol_escalamiento de su regla y se
+// re-notifica. Latencia real del escalamiento: N..N+15 min (limite aceptado).
+Schedule::command('aprobaciones:escalar')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(15)
+    ->appendOutputTo(storage_path('logs/aprobaciones.log'));

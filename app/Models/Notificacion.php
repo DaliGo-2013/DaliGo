@@ -43,6 +43,10 @@ class Notificacion extends Model
      */
     public const EVENTOS = [
         'sistema.prueba' => 'Notificación de prueba',
+        // M14 · Aprobaciones (PLAN-M14 §1.3)
+        'aprobacion.solicitada' => 'Solicitud de aprobación pendiente',
+        'aprobacion.escalada' => 'Solicitud de aprobación escalada',
+        'aprobacion.resuelta' => 'Solicitud de aprobación resuelta',
     ];
 
     protected $fillable = [

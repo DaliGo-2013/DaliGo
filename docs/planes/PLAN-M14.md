@@ -1,10 +1,15 @@
 # PLAN-M14 · Aprobaciones digitales — plan fino de la unidad E2
-> **Estado: VIGENTE — verificado contra el código el 2026-07-07 (commit bf7ae27)**
+> **Estado: VIGENTE — re-sellado contra el código el 2026-07-13 (rama `feature/m14-aprobaciones` @ `8c8d3e2`)**
 
 > **Unidad:** E2 · M14 Aprobaciones digitales (RUTA-MAESTRA §4/E2) · **Rama:** `feature/m14-aprobaciones` · **Stream:** 1 (Max-1)
 > **Objetivo:** motor polimórfico de aprobaciones (`aprobaciones` + `reglas_aprobacion`) que reemplaza WhatsApp y aprobaciones verbales: el consumidor llama `Aprobaciones::solicitar()` y el motor **auto-aprueba si ninguna regla matchea** (clave "Héctor 5→1-2 pasos") o crea una solicitud pendiente que el aprobador resuelve **desde el celular**, con escalamiento automático y notificación vía M15.
 > **Hecho cuando:** flujo solicitar→notificar→aprobar/rechazar→escalar con tests; QA aprueba desde celular real; `ProduccionController::ajustar` cableado como primer consumidor.
 > **Gate previo al código:** visto bueno de Mauricio sobre este plan ANTES de la primera migración (dictado del Director, 07-07).
+
+> **📌 Re-sellado 2026-07-13 (pre-merge P-M14-07) — dos desviaciones del plan tal como se construyó, ambas benignas:**
+> 1. **Guard `class_exists` OMITIDO** (§1.3 lo proponía como puente pre-merge): la rama nació DESPUÉS del merge de M15 a main, así que el `NotificacionDispatcher` ya estaba disponible desde P-M14-02 → el servicio lo llama directo, sin el guard degradador a `Log`. Menos código, sin deuda.
+> 2. **Eventos registrados en P-M14-02, no en P-M14-07** (§2 los ponía en la fila de 07): por lo mismo, los 3 eventos (`aprobacion.solicitada/escalada/resuelta`) se sumaron a `Notificacion::EVENTOS` al construir el servicio, y las notificaciones son reales desde entonces (no diferidas).
+> **Estado de la unidad:** P-M14-01..06 HECHOS y verificados por el Director en rama (`5d9286d`→`8c8d3e2`, suite 485 verde en la rama). Falta SOLO **P-M14-07** (merge coordinado con doble llave + QA staging). Bloqueo externo al abrir este re-sello: main está rojo por un test de M12 ajeno (`ServicioTecnicoManagementTest:687`, commit `2d8fd73`) — el merge espera main limpio.
 
 ## 0. Verificación de vigencia (qué se revisó del código)
 

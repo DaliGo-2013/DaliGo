@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Aprobacion;
 use App\Models\Maquina;
 use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
@@ -11,6 +12,7 @@ use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\TipoBotellon;
 use App\Models\User;
+use App\Services\Aprobaciones\Aprobaciones;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -687,16 +689,32 @@ class ProduccionController extends Controller
             '*.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
 
-        // Reporte + asignacion en una transaccion (con lock): si el segundo
-        // update falla, no queda el snapshot de asignadas desfasado; y dos
-        // ajustes concurrentes no se entrelazan con un recalculo del soplador.
-        DB::transaction(function () use ($reporte, $validated) {
-            ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
-            $reporte->update($validated);
-            $reporte->asignacion?->update(['asignadas' => $validated['asignadas']]);
-        });
+        // M14 (P-M14-05): el ajuste pasa por el motor de aprobaciones. La
+        // magnitud es la suma de las diferencias |Δ| de las 5 cantidades: el
+        // dedazo chico se auto-aprueba y aplica AQUI mismo (misma UX de
+        // siempre, via el handler con lock — la transaccion vive en el
+        // servicio); la reescritura grande queda pendiente para el admin y
+        // el reporte NO se toca hasta que la apruebe.
+        $monto = collect(['asignadas', 'primera', 'segunda', 'malo', 'danada'])
+            ->sum(fn (string $campo) => abs($validated[$campo] - $reporte->{$campo}));
+
+        $aprobacion = app(Aprobaciones::class)->solicitar(
+            tipoAccion: Aprobacion::ACCION_AJUSTE_REPORTE,
+            aprobable: $reporte,
+            solicitante: $request->user(),
+            motivo: $validated['motivo_ajuste'],
+            datos: [
+                'nuevo' => $validated,
+                'anterior' => $reporte->only(['asignadas', 'primera', 'segunda', 'malo', 'danada', 'motivo_ajuste']),
+                'objetivo_updated_at' => $reporte->updated_at?->toJSON(),
+            ],
+            monto: $monto,
+            descripcion: "Ajuste reporte #{$reporte->id} de {$reporte->soplador->name}",
+        );
 
         return redirect()->route('admin.produccion.reporte.show', $reporte)
-            ->with('status', 'Reporte actualizado.');
+            ->with('status', $aprobacion->esPendiente()
+                ? 'El ajuste supera el umbral: quedó pendiente de aprobación (el reporte no cambia hasta que lo aprueben).'
+                : 'Reporte actualizado.');
     }
 }

@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             SucursalSeeder::class,
             ConfiguracionSeeder::class,
+            // Despues de ConfiguracionSeeder: las reglas apuntan a claves de config.
+            ReglasAprobacionSeeder::class,
             TipoBotellonSeeder::class,
             MaquinaSeeder::class,
             // Despues de TipoBotellonSeeder: enlaza los tipos a sus productos.

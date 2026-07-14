@@ -41,6 +41,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'crear lote servicio',        // conductor: ingreso por lote en ruta (acotado, NO edita el taller)
             // Modulo Notificaciones (M15).
             'view notificaciones',        // ver el panel de todas las notificaciones del sistema
+            // Modulo Aprobaciones (M14).
+            'aprobar solicitudes',        // bandeja /aprobaciones: resolver pendientes del propio rol
+            'view aprobaciones',          // historial completo del motor (admin)
         ];
 
         foreach ($permissions as $name) {
@@ -63,13 +66,16 @@ class RolesAndPermissionsSeeder extends Seeder
         // lectura), aunque no las gestionen.
         Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web'])
             ->givePermissionTo(['manage clientes', 'view servicio tecnico']);
+        // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
+        // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
+        // ademas, resolver exige portar el rol_aprobador de la solicitud.
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])

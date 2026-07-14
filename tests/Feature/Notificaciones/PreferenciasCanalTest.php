@@ -52,8 +52,11 @@ class PreferenciasCanalTest extends TestCase
         $this->actingAs($user)->put(route('perfil.notificaciones.update'), $payload);
         $this->actingAs($user)->put(route('perfil.notificaciones.update'), $payload);
 
-        // Una fila por (user, evento, canal) para los 2 canales togglables.
-        $this->assertSame(2, PreferenciaCanal::where('user_id', $user->id)->count());
+        // Una fila por (user, evento, canal) para los 2 canales togglables —
+        // derivado del catalogo (EVENTOS crece cuando un modulo se integra,
+        // p.ej. M14 sumo los suyos; hardcodear el conteo rompia con cada alta).
+        $esperadas = count(Notificacion::EVENTOS) * 2;
+        $this->assertSame($esperadas, PreferenciaCanal::where('user_id', $user->id)->count());
     }
 
     public function test_requiere_autenticacion(): void
