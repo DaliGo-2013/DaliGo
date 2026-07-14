@@ -42,7 +42,7 @@
             </div>
 
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-                <form id="orden-servicio-form" method="POST" action="{{ route('admin.servicio-tecnico.update', $orden) }}" class="space-y-6">
+                <form id="orden-servicio-form" method="POST" action="{{ route('admin.servicio-tecnico.update', $orden) }}" class="space-y-6" data-una-vez>
                     @csrf
                     @method('PUT')
                     @include('admin.servicio-tecnico._form', ['orden' => $orden])

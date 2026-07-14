@@ -22,7 +22,7 @@
 
             <form method="POST" action="{{ route('admin.servicio-tecnico.lote.store') }}" enctype="multipart/form-data"
                   x-data="loteServicioForm({ endpointProducto: '{{ route('admin.servicio-tecnico.lote.buscar-producto') }}', endpointCliente: '{{ route('admin.servicio-tecnico.lote.buscar-cliente') }}' })"
-                  class="space-y-5">
+                  class="space-y-5" data-una-vez>
                 @csrf
 
                 {{-- Empresa (una vez) --}}
