@@ -30,7 +30,7 @@
 
 No hay página nueva: `/dashboard` ya es la landing de todos los roles (y el `start_url` de la PWA).
 v0 = **reagrupar** los indicadores existentes **por módulo** (encabezado de sección `text-xs uppercase`
-del design system) y **sumar 5 cards nuevas** de lectura. `<x-stat-card>` intacto (sus 4 props bastan).
+del design system) y **sumar 6 cards nuevas** de lectura (las marcadas NUEVA en las tablas: #1-3, #10, #11 y #15). `<x-stat-card>` intacto (sus 4 props bastan).
 Cero markup nuevo; cero componentes nuevos.
 
 ### Las cards, una a una (sección · card · fuente exacta · permiso · quién la ve)
