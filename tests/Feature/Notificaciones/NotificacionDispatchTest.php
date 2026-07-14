@@ -175,6 +175,32 @@ class NotificacionDispatchTest extends TestCase
         );
     }
 
+    public function test_job_guarda_el_error_completo_mas_alla_del_corte_viejo(): void
+    {
+        Queue::fake();
+        // Micro-backlog M15-b: el job truncaba ultimo_error a 1000 chars y la
+        // cola del error SMTP (donde suele estar la causa) se perdia ANTES de
+        // llegar a la vista. Un error de 1500 chars debe guardarse integro.
+        $errorLargo = str_repeat('a', 1400).' [CAUSA-REAL-AL-FINAL]';
+        $this->app->bind(CanalMail::class, fn () => new class($errorLargo) implements Canal
+        {
+            public function __construct(private string $mensaje)
+            {
+            }
+
+            public function enviar(Notificacion $notificacion): void
+            {
+                throw new RuntimeException($this->mensaje);
+            }
+        });
+        $mail = $this->dispatcher()->despachar('sistema.prueba', null, 'x@example.com')->first();
+
+        (new EnviarNotificacion($mail->id))->handle();
+
+        $this->assertSame($errorLargo, $mail->fresh()->ultimo_error);
+        $this->assertStringEndsWith('[CAUSA-REAL-AL-FINAL]', $mail->fresh()->ultimo_error);
+    }
+
     public function test_job_agota_reintentos_y_queda_fallida_terminal(): void
     {
         Queue::fake();
