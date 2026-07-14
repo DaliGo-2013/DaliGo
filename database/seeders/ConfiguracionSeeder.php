@@ -63,6 +63,21 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Nombre del remitente en los correos del sistema (placeholder hasta decidir D-001).',
             ],
+            // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
+            [
+                'clave' => 'umbral_ajuste_produccion_unidades',
+                'valor' => '50',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'aprobaciones',
+                'descripcion' => 'Unidades (suma de las diferencias |Δ| de las 5 cantidades) desde las cuales un ajuste de reporte de producción requiere aprobación; bajo el umbral se auto-aprueba con registro.',
+            ],
+            [
+                'clave' => 'aprobacion_escala_minutos',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'aprobaciones',
+                'descripcion' => 'Minutos sin respuesta antes de escalar una solicitud pendiente al siguiente rol (granularidad efectiva 15 min por la grilla */15 del scheduler: escala en el siguiente slot tras vencer).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

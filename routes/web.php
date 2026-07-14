@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
@@ -42,7 +43,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/notificaciones', [NotificacionUsuarioController::class, 'index'])->name('notificaciones.index');
     Route::post('/notificaciones/leer-todas', [NotificacionUsuarioController::class, 'leerTodas'])->name('notificaciones.leer-todas');
     Route::post('/notificaciones/{notificacion}/leer', [NotificacionUsuarioController::class, 'leer'])->name('notificaciones.leer');
+
+    // Mis solicitudes de aprobacion (M14): el solicitante ve LO SUYO (patron
+    // /notificaciones). Literal ANTES del grupo {aprobacion} de abajo.
+    Route::get('/aprobaciones/mias', [AprobacionController::class, 'mias'])->name('aprobaciones.mias');
 });
+
+// Bandeja movil del aprobador (M14): pendientes del rol vigente, resolver
+// desde el celular. Permiso propio; ademas el servicio exige portar el
+// rol_aprobador de la solicitud (o admin) — defensa en profundidad.
+Route::middleware(['auth', 'permission:aprobar solicitudes'])
+    ->prefix('aprobaciones')
+    ->name('aprobaciones.')
+    ->group(function () {
+        Route::get('/', [AprobacionController::class, 'index'])->name('index');
+        Route::post('{aprobacion}/aprobar', [AprobacionController::class, 'aprobar'])->name('aprobar');
+        Route::post('{aprobacion}/rechazar', [AprobacionController::class, 'rechazar'])->name('rechazar');
+    });
 
 // Administracion: cada ruta declara su permiso especifico (granular).
 Route::middleware('auth')
@@ -82,6 +99,11 @@ Route::middleware('auth')
         // Auditoria: historial de cambios (solo lectura).
         Route::get('audits', [AuditController::class, 'index'])
             ->middleware('permission:view audit')->name('audits.index');
+
+        // Aprobaciones (M14): historial completo del motor (solo lectura, admin).
+        // La bandeja del aprobador vive en /aprobaciones (permiso 'aprobar solicitudes').
+        Route::get('aprobaciones', [AprobacionController::class, 'historial'])
+            ->middleware('permission:view aprobaciones')->name('aprobaciones.index');
 
         // Notificaciones (M15): panel de todas las notificaciones + envio de prueba.
         Route::get('notificaciones', [NotificacionController::class, 'index'])

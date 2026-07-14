@@ -29,5 +29,7 @@ return [
         'manage servicio tecnico' => 'Gestionar servicio técnico',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
         'view notificaciones' => 'Ver notificaciones',
+        'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
+        'view aprobaciones' => 'Ver historial de aprobaciones',
     ],
 ];

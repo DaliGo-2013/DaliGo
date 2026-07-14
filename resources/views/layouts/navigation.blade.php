@@ -48,9 +48,9 @@
                         </x-nav-dropdown>
                     @endcanany
 
-                    @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit', 'view notificaciones'])
+                    @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit', 'view notificaciones', 'view aprobaciones'])
                         <x-nav-dropdown label="Administración"
-                            :active="request()->routeIs('admin.users.*', 'admin.roles.*', 'admin.sucursales.*', 'admin.configuracion.*', 'admin.audits.*', 'admin.notificaciones.*')">
+                            :active="request()->routeIs('admin.users.*', 'admin.roles.*', 'admin.sucursales.*', 'admin.configuracion.*', 'admin.audits.*', 'admin.notificaciones.*', 'admin.aprobaciones.*')">
                             @can('view users')
                                 <x-dropdown-link :href="route('admin.users.index')">Usuarios</x-dropdown-link>
                             @endcan
@@ -69,12 +69,21 @@
                             @can('view notificaciones')
                                 <x-dropdown-link :href="route('admin.notificaciones.index')">Notificaciones</x-dropdown-link>
                             @endcan
+                            @can('view aprobaciones')
+                                <x-dropdown-link :href="route('admin.aprobaciones.index')">Aprobaciones</x-dropdown-link>
+                            @endcan
                         </x-nav-dropdown>
                     @endcanany
 
                     @can('report production')
                         <x-nav-link :href="route('produccion.mi.index')" :active="request()->routeIs('produccion.mi.*')" class="whitespace-nowrap">
                             Mi producción
+                        </x-nav-link>
+                    @endcan
+
+                    @can('aprobar solicitudes')
+                        <x-nav-link :href="route('aprobaciones.index')" :active="request()->routeIs('aprobaciones.*')" class="whitespace-nowrap">
+                            Aprobaciones
                         </x-nav-link>
                     @endcan
 
@@ -148,6 +157,12 @@
                 </x-responsive-nav-link>
             @endcan
 
+            @can('aprobar solicitudes')
+                <x-responsive-nav-link :href="route('aprobaciones.index')" :active="request()->routeIs('aprobaciones.*')">
+                    Aprobaciones
+                </x-responsive-nav-link>
+            @endcan
+
             @canany(['view servicio tecnico', 'manage servicio tecnico'])
                 <x-responsive-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')">
                     Servicio Técnico
@@ -192,7 +207,7 @@
                 @endcan
             @endcanany
 
-            @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit'])
+            @canany(['view users', 'manage roles', 'manage sucursales', 'manage settings', 'view audit', 'view aprobaciones'])
                 <x-responsive-nav-heading>Administración</x-responsive-nav-heading>
 
                 @can('view users')
@@ -222,6 +237,12 @@
                 @can('view audit')
                     <x-responsive-nav-link :href="route('admin.audits.index')" :active="request()->routeIs('admin.audits.*')">
                         Auditoría
+                    </x-responsive-nav-link>
+                @endcan
+
+                @can('view aprobaciones')
+                    <x-responsive-nav-link :href="route('admin.aprobaciones.index')" :active="request()->routeIs('admin.aprobaciones.*')">
+                        Aprobaciones
                     </x-responsive-nav-link>
                 @endcan
             @endcanany
