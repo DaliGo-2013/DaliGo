@@ -60,6 +60,36 @@ class NotificacionPanelTest extends TestCase
             ->assertViewHas('notificaciones', fn ($p) => $p->total() === 1 && $p->first()->estado === Notificacion::FALLIDA);
     }
 
+    public function test_panel_muestra_el_correo_de_destino_y_el_error_completo(): void
+    {
+        // Micro-backlog M15 (obs. del QA de P-M15-09): (a) el correo de destino
+        // debe verse aunque la notificación tenga usuario interno (antes solo
+        // salía el nombre); (b) el ultimo_error se muestra ÍNTEGRO (expandible),
+        // no solo el resumen truncado de 80 chars.
+        $admin = $this->conPermiso();
+        $errorLargo = 'Failed to authenticate on SMTP server with username "servicio@example.com" using 3 possible authenticators: (1) LOGIN rechazado; (2) PLAIN rechazado; (3) XOAUTH2 no soportado por el servidor remoto.';
+
+        Notificacion::create([
+            'evento' => 'sistema.prueba',
+            'canal' => Notificacion::CANAL_MAIL,
+            'user_id' => $admin->id,
+            'destinatario' => 'destino-real@example.com',
+            'titulo' => 'T',
+            'cuerpo' => 'C',
+            'estado' => Notificacion::FALLIDA,
+            'ultimo_error' => $errorLargo,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.notificaciones.index'))
+            ->assertOk()
+            ->assertSee('destino-real@example.com')   // (a) correo visible junto al nombre
+            ->assertSee($admin->name)
+            ->assertSee('XOAUTH2 no soportado');       // (b) la cola del error (>80 chars) está en la página
+
+        $this->assertTrue(mb_strlen($errorLargo) > 80, 'El fixture debe superar el truncado viejo de 80 chars.');
+    }
+
     public function test_boton_prueba_despacha_al_usuario_actual(): void
     {
         Queue::fake();
