@@ -127,9 +127,14 @@ class ServicioTecnicoController extends Controller
             ->groupBy('ordenes_servicio.producto_id')
             ->orderByDesc('cantidad')->limit(10)->get();
 
+        // Agrupar por RUT cuando existe; si no hay RUT (muchas órdenes históricas
+        // no lo traen), agrupar por NOMBRE para no juntar clientes distintos en una
+        // sola bolsa. Antes, todo lo sin-RUT caía en un mismo grupo y MAX(nombre)
+        // le ponía el nombre alfabeticamente mayor (inflaba un solo cliente).
+        $claveCliente = "COALESCE(NULLIF(cliente_rut, ''), cliente_nombre)";
         $topClientes = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
-            ->selectRaw('cliente_rut, MAX(cliente_nombre) AS nombre, COUNT(*) AS cantidad')
-            ->groupBy('cliente_rut')
+            ->selectRaw('MAX(cliente_nombre) AS nombre, MAX(cliente_rut) AS cliente_rut, COUNT(*) AS cantidad')
+            ->groupBy(DB::raw($claveCliente))
             ->orderByDesc('cantidad')->limit(10)->get();
 
         // Repuestos usados en las ordenes del periodo, agregados por nombre.
