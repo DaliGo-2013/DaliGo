@@ -3,7 +3,11 @@
         <x-page-header :title="'Recepción · '.$orden->folio" subtitle="Datos del equipo recibido en el taller.">
             <x-slot name="action">
                 <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado">
+                    {{-- Vuelve a la vista anterior del listado (mes abierto + scroll)
+                         con el "atrás" del navegador; el link al índice es el respaldo
+                         si se abrió sin historial (carga directa). --}}
+                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado"
+                        onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }">
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
                     <x-icon-button type="submit" form="orden-servicio-form" size="lg" variant="primary" label="Guardar" title="Guardar cambios">
