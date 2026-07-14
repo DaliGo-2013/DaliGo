@@ -86,11 +86,18 @@ class CampanitaTest extends TestCase
         $this->inApp($user);
         $this->inApp($user);
 
-        // El nav renderiza la campanita con el badge del conteo real (3).
+        // El nav renderiza la campanita con el badge del conteo real (3), el
+        // CONTENIDO del dropdown (título de la notificación) y sus acciones —
+        // no solo el conteo (micro-backlog M15-c: endurecer el test de humo).
+        $ultima = Notificacion::campanitaDe($user->id)->latest('id')->first();
+
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Notificaciones', false)
-            ->assertSee('>3<', false);
+            ->assertSee('>3<', false)
+            ->assertSee($ultima->titulo)
+            ->assertSee('Marcar todas')
+            ->assertSee('Ver todas');
 
         // Marcar todas → el badge desaparece (conteo 0).
         $this->actingAs($user)->post(route('notificaciones.leer-todas'));

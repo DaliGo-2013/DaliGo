@@ -71,12 +71,21 @@
                                 <x-badge variant="neutral">{{ $notificacion->intentos }} {{ \Illuminate\Support\Str::plural('intento', $notificacion->intentos) }}</x-badge>
                             @endif
                         </div>
+                        @php
+                            // Correo/teléfono de destino SIEMPRE visible (micro-backlog M15-a):
+                            // con usuario interno se muestra nombre + destino; sin usuario, el destino solo.
+                            $destino = $notificacion->destinatario ?: $notificacion->user?->email;
+                        @endphp
                         <p class="truncate text-sm text-neutral-500">
                             {{ $eventos[$notificacion->evento] ?? $notificacion->evento }}
-                            · {{ $notificacion->user?->name ?? $notificacion->destinatario ?? 'Sin destinatario' }}
+                            · {{ $notificacion->user?->name ?? $destino ?? 'Sin destinatario' }}@if ($notificacion->user && $destino) · <span class="text-neutral-400">{{ $destino }}</span>@endif
                         </p>
                         @if ($notificacion->ultimo_error)
-                            <p class="mt-1 truncate text-xs text-red-600">{{ \Illuminate\Support\Str::limit($notificacion->ultimo_error, 80) }}</p>
+                            {{-- Error completo, expandible (micro-backlog M15-b): el resumen corto abre el texto íntegro sin truncar. --}}
+                            <details class="mt-1 text-xs text-red-600">
+                                <summary class="cursor-pointer truncate">{{ \Illuminate\Support\Str::limit($notificacion->ultimo_error, 80) }}</summary>
+                                <p class="mt-1 whitespace-pre-wrap break-words rounded-lg bg-red-50 p-2">{{ $notificacion->ultimo_error }}</p>
+                            </details>
                         @endif
 
                         <x-slot name="meta">
