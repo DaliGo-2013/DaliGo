@@ -7,6 +7,9 @@
     $esCreacion = $o === null;
     $productoActual = $o?->producto;
     $productoActualLabel = $productoActual ? ($productoActual->sku.' — '.$productoActual->nombre) : '';
+    // Recepción inicial: id de sucursal, o el centinela 'ruta' si la orden se
+    // recibió en ruta (tiene ciudad en `ruta` y sucursal_id nulo).
+    $sucInicial = old('sucursal_id', $o ? ($o->ruta ? 'ruta' : $o->sucursal_id) : null);
 @endphp
 
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -15,6 +18,7 @@
         fechaEntrega: '{{ old('fecha_entrega', $o?->fecha_entrega?->format('Y-m-d')) }}',
         feriados: @js($feriados),
         soloLectura: @js($esCreacion),
+        sucursalSel: '{{ $sucInicial }}',
     })">
     {{-- Cliente: nombre y RUT obligatorios; autocompleta si existe en el catálogo. --}}
     <x-cliente-ingreso class="sm:col-span-2"
@@ -79,15 +83,29 @@
     <div>
         <x-input-label for="sucursal_id">Sucursal de recepción <span class="text-red-500">*</span></x-input-label>
         <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5" required
-            x-ref="sucursal" x-on:change="recalcularEntrega()">
-            <option value="" disabled @selected(old('sucursal_id', $o?->sucursal_id) === null)>— Selecciona —</option>
+            x-ref="sucursal" x-model="sucursalSel" x-on:change="recalcularEntrega()">
+            <option value="" disabled @selected($sucInicial === null || $sucInicial === '')>— Selecciona —</option>
             @foreach ($sucursales as $s)
                 <option value="{{ $s->id }}" data-dias="{{ $s->dias_reparacion }}"
-                    @selected((int) old('sucursal_id', $o?->sucursal_id) === $s->id)>{{ $s->nombre }}</option>
+                    @selected((string) $sucInicial === (string) $s->id)>{{ $s->nombre }}</option>
             @endforeach
+            {{-- Recepción en ruta (conductor): no es una sucursal física; se escribe
+                 la ciudad/localidad debajo. data-dias=15 para estimar igual la entrega. --}}
+            <option value="ruta" data-dias="15" @selected($sucInicial === 'ruta')>Ruta (cliente en ruta)</option>
         </x-select>
         <x-input-hint>Define el plazo de entrega: Mirador 10 días hábiles; Coquimbo, Abate Molina y Buzeta 15.</x-input-hint>
         <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
+
+        {{-- Ciudad/localidad de la ruta: aparece solo al elegir «Ruta». --}}
+        <div x-show="sucursalSel === 'ruta'" x-cloak class="mt-3">
+            <x-input-label for="ruta">Ciudad / localidad de la ruta <span class="text-red-500">*</span></x-input-label>
+            <x-text-input id="ruta" class="mt-1.5" type="text" name="ruta"
+                :value="old('ruta', $o?->ruta)" maxlength="120"
+                x-bind:required="sucursalSel === 'ruta'"
+                placeholder="Ej. Rancagua, Los Andes, Viña del Mar…" />
+            <x-input-hint>Dónde se recibió el equipo en ruta (para el conductor y clientes de ruta).</x-input-hint>
+            <x-input-error :messages="$errors->get('ruta')" class="mt-2" />
+        </div>
     </div>
 
     <div>

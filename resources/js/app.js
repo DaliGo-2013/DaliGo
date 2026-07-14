@@ -151,12 +151,15 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) =
  *     fija la definitiva. Al EDITAR es editable: si el usuario la cambia a
  *     mano, deja de recalcularse.
  */
-Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura }) => ({
+Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura, sucursalSel }) => ({
     cond: cond || '',
     fechaEntrega: fechaEntrega || '',
     soloLectura: !!soloLectura,
     entregaManual: !soloLectura && !!fechaEntrega, // si ya traia fecha (editar), no la pisamos
     feriados: new Set(feriados || []),
+    // Recepción elegida: id de sucursal o el centinela 'ruta' (muestra el campo
+    // de ciudad y evita exigir una sucursal física).
+    sucursalSel: sucursalSel || '',
 
     init() {
         // Registrar: mostrar el estimado apenas haya sucursal (p. ej. al volver

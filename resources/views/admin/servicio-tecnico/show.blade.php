@@ -82,7 +82,7 @@
                     <div>
                         <dt class="text-xs text-neutral-400">Sucursal de recepción</dt>
                         <dd class="text-sm text-neutral-900">
-                            {{ $orden->sucursal?->nombre ?: '—' }}
+                            {{ $orden->sucursal?->nombre ?: ($orden->ruta ? 'Ruta · '.$orden->ruta : '—') }}
                             @if ($reparaEnMatriz)
                                 <span class="mt-0.5 block text-xs text-neutral-500">Se repara en {{ $sucursalCentral->nombre }} (casa matriz)</span>
                             @elseif ($orden->sucursal?->es_central)

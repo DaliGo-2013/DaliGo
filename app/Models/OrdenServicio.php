@@ -125,6 +125,7 @@ class OrdenServicio extends Model implements AuditableContract
         'cliente_email',
         'producto_id',
         'sucursal_id',
+        'ruta',
         'lote_id',
         'fecha_ingreso',
         'tipo_equipo',
