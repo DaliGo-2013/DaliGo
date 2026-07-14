@@ -1,5 +1,24 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-07-14 (v4 — el código de P-DSP-00 llegó a producción; delegación puede reintentarse). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-14 (v5 — **SHAPE RECIBIDO: GO P-DSP-01**). Manda sobre lo anterior.
+
+## 🟢 DESBLOQUEADO: el shape de documents.json ESTÁ EN EL BUZÓN
+`docs/fleet/buzon/anexo-p-dsp-00-shape-documents.md` — salida íntegra de la IA-cPanel
+(APROBADO 1/1) + reconciliación del Director contra el plan §1.2. Riesgo #1 RESUELTO:
+`details` viene en el GET (sobre anidado `{items}`). PAUSA el micro-backlog M15 si lo
+empezaste y arranca P-DSP-01 con estos 4 ajustes OBLIGATORIOS a la migración/sync:
+1. `state` es **INT** (no string(32) como asumía el plan) — igual `commercialState` y
+   `cancellationStatus` (guárdalos: detectan anulación, mitigan el riesgo #2).
+2. El nodo `client` puede NO venir (los 3 docs de muestra no lo traían — probable boleta):
+   sync tolerante a ausencia, match solo cuando venga; verifica contra una factura durante
+   la implementación.
+3. La línea de detalle NO trae `description`: el fallback `descripcion` sale del nodo
+   `variant` (4 claves — confirma si trae code/description) o del producto espejado.
+4. **675.912 documentos totales**: backfill completo PROHIBIDO. Sync por ventana
+   `emissiondaterange` con fecha de arranque configurable (default conservador: últimos 7
+   días al primer run). El Director le plantea la fecha definitiva al dueño — no te bloquea.
+Confirmado sin cambios: epoch→datetime, montos int/decimal(14,4) OK, `office.id` para el
+match, `document_type.id` anidado. Al cerrar P-DSP-01 archiva el anexo (ya redactado) en
+`docs/qa/INFRA/2026-07-14--INFRA--p-dsp-00-shape-documents.md` y marca P-DSP-00 [x].
 
 MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño usarlo); si no, Opus 4.8 · high.
 
