@@ -42,8 +42,18 @@ class IngresoTallerLotePublicoTest extends TestCase
         ];
     }
 
+    private function producto(): Producto
+    {
+        return Producto::firstOrCreate(
+            ['sku' => '1030034'],
+            ['nombre' => 'DISP LB-07B', 'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR']
+        );
+    }
+
     private function payload(Sucursal $sucursal, array $overrides = []): array
     {
+        $prod = $this->producto();
+
         return array_merge([
             'sucursal_id' => $sucursal->id,
             'cliente_nombre' => 'Aguas JB SpA',
@@ -52,10 +62,9 @@ class IngresoTallerLotePublicoTest extends TestCase
             'cliente_telefono' => '+56 9 1234 5678',
             'facturacion' => 'reparacion',
             'tipo_default' => 'dispensador',
-            'falla_default' => 'No enfría, no calienta',
             'maquinas' => [
-                ['numero_serie' => 'SN-01', 'fotos' => $this->fotos()],
-                ['numero_serie' => 'SN-02', 'fotos' => $this->fotos()],
+                ['producto_id' => $prod->id, 'numero_serie' => 'SN-01', 'falla_reportada' => 'No enfría. Golpeada, sin caja.', 'fotos' => $this->fotos()],
+                ['producto_id' => $prod->id, 'numero_serie' => 'SN-02', 'falla_reportada' => 'No calienta. Rayada en tapa.', 'fotos' => $this->fotos()],
             ],
         ], $overrides);
     }
@@ -106,9 +115,13 @@ class IngresoTallerLotePublicoTest extends TestCase
             $this->assertSame('qr', $o->fuente);
             $this->assertNull($o->confirmada_at);
             $this->assertSame('dispensador', $o->tipo_equipo);
-            $this->assertSame('No enfría, no calienta', $o->falla_reportada);
+            $this->assertNotNull($o->producto_id);                   // código obligatorio
             $this->assertCount(2, $o->fotos);                        // 2 fotos por máquina
         }
+
+        // La falla/estado es POR máquina (cada folio con su detalle).
+        $this->assertSame('No enfría. Golpeada, sin caja.', $ordenes[0]->falla_reportada);
+        $this->assertSame('No calienta. Rayada en tapa.', $ordenes[1]->falla_reportada);
 
         // Entran a la cola "por confirmar" del mostrador.
         $this->assertSame(2, OrdenServicio::porConfirmar()->count());
@@ -146,10 +159,13 @@ class IngresoTallerLotePublicoTest extends TestCase
     public function test_tipo_por_fila_puede_diferir_del_default(): void
     {
         $sucursal = $this->sucursal();
+        $prod = $this->producto();
         $payload = $this->payload($sucursal, [
             'maquinas' => [
-                ['numero_serie' => 'SN-01', 'fotos' => $this->fotos()],                       // dispensador (default)
-                ['tipo' => 'herramienta', 'numero_serie' => '', 'fotos' => $this->fotos()],   // herramienta sin serie: OK
+                // dispensador (default)
+                ['producto_id' => $prod->id, 'numero_serie' => 'SN-01', 'falla_reportada' => 'No enfría', 'fotos' => $this->fotos()],
+                // herramienta sin serie: OK
+                ['tipo' => 'herramienta', 'producto_id' => $prod->id, 'numero_serie' => '', 'falla_reportada' => 'No gira', 'fotos' => $this->fotos()],
             ],
         ]);
 
@@ -157,6 +173,22 @@ class IngresoTallerLotePublicoTest extends TestCase
 
         $this->assertSame(1, OrdenServicio::where('tipo_equipo', 'herramienta')->count());
         $this->assertSame(1, OrdenServicio::where('tipo_equipo', 'dispensador')->count());
+    }
+
+    public function test_falla_y_estado_es_obligatoria_por_maquina(): void
+    {
+        $sucursal = $this->sucursal();
+        $prod = $this->producto();
+        $payload = $this->payload($sucursal, [
+            'maquinas' => [
+                ['producto_id' => $prod->id, 'numero_serie' => 'SN-01', 'falla_reportada' => '', 'fotos' => $this->fotos()],
+            ],
+        ]);
+
+        $this->post(route('ingreso-taller.lote.store'), $payload)
+            ->assertSessionHasErrors('maquinas.0.falla_reportada');
+
+        $this->assertSame(0, LoteServicio::count());
     }
 
     public function test_garantia_exige_documento_una_vez_para_el_lote(): void
@@ -204,19 +236,26 @@ class IngresoTallerLotePublicoTest extends TestCase
         }
     }
 
-    public function test_producto_opcional_pero_valido_si_viene(): void
+    public function test_codigo_es_obligatorio_por_maquina(): void
     {
         $sucursal = $this->sucursal();
-        $prod = Producto::firstOrCreate(['sku' => '1030034'], ['nombre' => 'DISP LB-07B', 'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR']);
+        $prod = $this->producto();
 
-        // Producto inexistente → error por fila.
+        // Sin código → error por fila (no se crea nada).
         $this->post(route('ingreso-taller.lote.store'), $this->payload($sucursal, [
-            'maquinas' => [['numero_serie' => 'SN-01', 'producto_id' => 999999, 'fotos' => $this->fotos()]],
+            'maquinas' => [['numero_serie' => 'SN-01', 'falla_reportada' => 'No enfría', 'fotos' => $this->fotos()]],
         ]))->assertSessionHasErrors('maquinas.0.producto_id');
 
-        // Producto válido → se guarda.
+        // Código inexistente → error por fila.
         $this->post(route('ingreso-taller.lote.store'), $this->payload($sucursal, [
-            'maquinas' => [['numero_serie' => 'SN-02', 'producto_id' => $prod->id, 'fotos' => $this->fotos()]],
+            'maquinas' => [['numero_serie' => 'SN-01', 'producto_id' => 999999, 'falla_reportada' => 'No enfría', 'fotos' => $this->fotos()]],
+        ]))->assertSessionHasErrors('maquinas.0.producto_id');
+
+        $this->assertSame(0, LoteServicio::count());
+
+        // Código válido → se guarda.
+        $this->post(route('ingreso-taller.lote.store'), $this->payload($sucursal, [
+            'maquinas' => [['numero_serie' => 'SN-02', 'producto_id' => $prod->id, 'falla_reportada' => 'No enfría', 'fotos' => $this->fotos()]],
         ]))->assertSessionHasNoErrors();
 
         $this->assertSame(1, OrdenServicio::where('producto_id', $prod->id)->count());
