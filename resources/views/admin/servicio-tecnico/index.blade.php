@@ -74,33 +74,6 @@
                     <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. 000009, 12.345.678-9, SN-12345" />
                 </div>
                 <div class="sm:w-44">
-                    <x-input-label for="estado" value="Estado" />
-                    <x-select id="estado" name="estado" class="mt-1.5">
-                        <option value="">Todos</option>
-                        @foreach ($estados as $e)
-                            <option value="{{ $e }}" @selected(($filtros['estado'] ?? '') === $e)>{{ \Illuminate\Support\Str::headline($e) }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-40">
-                    <x-input-label for="tipo_equipo" value="Tipo" />
-                    <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5">
-                        <option value="">Todos</option>
-                        @foreach ($tipos as $t)
-                            <option value="{{ $t }}" @selected(($filtros['tipo_equipo'] ?? '') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-44">
-                    <x-input-label for="facturacion" value="Condición" />
-                    <x-select id="facturacion" name="facturacion" class="mt-1.5">
-                        <option value="">Todas</option>
-                        @foreach ($facturaciones as $f)
-                            <option value="{{ $f }}" @selected(($filtros['facturacion'] ?? '') === $f)>{{ ucfirst($f) }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-44">
                     <x-input-label for="sucursal_id" value="Sucursal (recepción)" />
                     <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5">
                         <option value="">Todas</option>
