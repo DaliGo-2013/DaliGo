@@ -110,9 +110,70 @@ class BsaleExplore extends Command
         }
         $this->newLine();
 
+        // 7. Documentos de venta (P-DSP-00: fija el SHAPE para el espejo/sync #5 de DESPACHOS-v1).
+        // Imprime SOLO la ESTRUCTURA (claves + tipos), con los valores REDACTADOS: los documentos
+        // reales traen nombre/RUT del cliente y montos de facturas — datos sensibles que NO deben
+        // quedar en el log ni en un repo público. Confirma si `details` viene en la respuesta GET.
+        $this->line('== Documentos de venta (shape para DESPACHOS-v1 — valores redactados) ==');
+        $docs = $this->get("{$base}/documents.json?limit=3&expand=[details,client,office,references]");
+        if ($docs) {
+            $items = $docs['items'] ?? [];
+            $this->line('  total (envelope count): '.($docs['count'] ?? '?').'  ·  en esta página: '.count($items));
+            $first = $items[0] ?? null;
+            if (is_array($first)) {
+                $this->line('  claves de la CABECERA del documento:');
+                $this->line('    '.implode(', ', array_keys($first)));
+
+                // El nodo details puede venir como {items:[...]} (sobre anidado) o como lista directa.
+                $det = $first['details']['items'][0] ?? ($first['details'][0] ?? null);
+                if (is_array($det)) {
+                    $this->line('  ✅ details PRESENTE en la respuesta GET. Claves de una LÍNEA de detalle:');
+                    $this->line('    '.implode(', ', array_keys($det)));
+                    $this->line('  tipos de la línea de detalle (redactado):');
+                    foreach ($det as $k => $v) {
+                        $this->line(sprintf('    %-22s : %s', $k, $this->tipoRedactado($v)));
+                    }
+                } else {
+                    $this->warn('  ⚠️ details NO vino como lista utilizable (tipo: '.gettype($first['details'] ?? null).'). ');
+                    $this->warn('     Revisar si documents.json requiere otro expand o un GET a documents/{id}.json.');
+                }
+
+                foreach (['client', 'office'] as $nodo) {
+                    if (isset($first[$nodo]) && is_array($first[$nodo])) {
+                        $this->line("  claves del nodo {$nodo}: ".implode(', ', array_keys($first[$nodo])));
+                    }
+                }
+
+                $this->line('  tipos de la CABECERA (redactado — sin valores reales):');
+                foreach ($first as $k => $v) {
+                    $this->line(sprintf('    %-22s : %s', $k, $this->tipoRedactado($v)));
+                }
+            } else {
+                $this->warn('  Sin documentos en la respuesta (cuenta sin ventas o filtro por defecto vacío).');
+            }
+        }
+        $this->newLine();
+
         $this->info('Listo. Exploración de solo lectura completada.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Describe el TIPO de un valor sin exponer el valor real (datos sensibles de
+     * facturas/clientes). Escalares → tipo + longitud/rango; arrays → n de claves.
+     */
+    private function tipoRedactado(mixed $v): string
+    {
+        return match (true) {
+            is_array($v) => 'array['.count($v).(array_is_list($v) ? ' items' : ' claves').']',
+            is_bool($v) => 'bool',
+            is_int($v) => 'int'.($v > 1_000_000_000 ? ' (¿epoch?)' : ''),
+            is_float($v) => 'float',
+            is_string($v) => 'string(len='.mb_strlen($v).')',
+            is_null($v) => 'null',
+            default => gettype($v),
+        };
     }
 
     private function get(string $url): ?array
