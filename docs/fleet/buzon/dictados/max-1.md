@@ -1,98 +1,27 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-13. Este archivo manda sobre instrucciones anteriores.
+> Emitido por el Director el 2026-07-14 (v8 — M16-v0 EN PRODUCCIÓN, doble llave ejecutada). Manda sobre lo anterior.
 
-MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño usarlo); si no, Opus 4.8 · high.
+MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño); si no, Opus 4.8 · high.
 
-VEREDICTO PREVIO: P-M14-04 y P-M14-05 [x] VERIFICADOS por el Director (7a01da2 — escalar con
-everyFifteenMinutes()+withoutOverlapping(15) y test de grilla ✓, ajustar() cableado con la
-batería completa de 10 tests exacta al plan ✓, gotcha del docblock */15 bien cazado). E2·M14
-va 5/7. Tu parte formal de 04/05 nunca llegó — escríbelo al buzón (partes/) junto con el de
-esta tarea, con /usage si Mauricio te lo pasa.
+## ✅ DOBLE LLAVE DADA Y EJECUTADA — M16-v0 YA ESTÁ EN PRODUCCIÓN
+Mauricio dio el OK; el Director mergeó `feature/m16-v0-dashboard` a main (`4900d5b`, sin
+conflictos) y verificó en vivo: **Deploy Actions success + Tests success 14-07 15:26**,
+`/dashboard` responde 302 (ruta viva), `manifest.json` del server apunta a `app-OhPY6b0u.css`
+y el asset responde 200 — el bundle nuevo está SERVIDO, no solo desplegado.
 
-⚡ ACTUALIZACIÓN 13-07 (v2): P-M14-06 [x] VERIFICADO (parte del buzón leído — impecable:
-whereDate con test de borde, sin N+1, 6 tests, preview 3 anchos). E2·M14 = 6/7.
+## Housekeeping que falta (talla S, un push, NO requiere nueva llave — es documentación)
+1. P-M16-03 [x] en RUTA-MAESTRA + tu propio sello si quedó pendiente en la rama.
+2. Tu rama `feature/m16-v0-dashboard` ya cumplió su ciclo — no sigas trabajando ahí. Próxima
+   unidad arranca en rama nueva desde main fresco (`git fetch origin && git checkout -b
+   feature/<lo-que-sea> origin/main`).
+3. Parte de cierre a `docs/fleet/buzon/partes/` confirmando el housekeeping + /usage.
 
-TAREA NUEVA 0 — HOTFIX URGENTE (main está ROJO): el stream M12 cambió el start_url del
-manifest a /dashboard (fix legítimo: a los no-sopladores la app les abría con 403 —
-rama fix/pwa-start-url-403) pero PwaTest:41 sigue asertando '/produccion/mi-reporte' →
-Tests de main en FAILURE desde 2c396b7. ARREGLO (tu territorio, NO toques el cambio de
-Marcos): actualiza la aserción del test al nuevo start_url '/dashboard' + evalúa si algún
-otro assert del PWA quedó desalineado + suite completa verde + push a main. Anota el gotcha
-en la bitácora: "cambio de manifest.json requiere alinear PwaTest — CI de main es la red".
-NO implementes redirect por rol todavía (pregunta de producto en manos de Mauricio).
+## Siguiente unidad: a la espera de dictado
+Aún no hay siguiente unidad grande asignada. Si terminas el housekeeping y tienes ventana
+libre, avisa al buzón — no inventes alcance nuevo por tu cuenta.
 
-⚡ 13-07 tarde v3 — HOTFIX AUTORIZADO por Mauricio (excepción de territorio M12, puntual):
-DIAGNÓSTICO DEL DIRECTOR (causa raíz confirmada, read-only): el test
-`ServicioTecnicoManagementTest::test_reparado_exige_diagnostico_final` (lo agregó Marcos en
-2d8fd73) es **FLAKY** — por eso el CI alternó verde/rojo entre pushes idénticos de solo-docs.
-La factory `OrdenServicioFactory` asigna `estado => fake()->randomElement(OrdenServicio::ESTADOS)`
-(ALEATORIO). El test crea la orden sin fijar estado, intenta PUT a 'reparado' con causa_falla=''
-(la validación lo RECHAZA bien — no hay update), y luego `assertNotSame('reparado', estado)`
-FALLA cuando el estado aleatorio inicial cayó en 'reparado' por azar. El código de Marcos
-(validación del descuento/causa_falla) está CORRECTO — el defecto es solo del test.
-FIX (mínimo, 1 línea, SOLO ese test): que la orden nazca con estado ≠ 'reparado', igual que
-Marcos ya hizo en su test hermano del descuento:
-  `OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'en_revision'])`
-Revisa de paso `test_sin_solucion_exige_diagnostico_final` (mismo patrón, línea ~691) — si
-también crea sin estado fijo, tiene el mismo flaky latente; aplícale el mismo fix.
-VERIFICACIÓN OBLIGATORIA (es flaky — una corrida verde puede ser suerte): corre ESE test
-20+ veces seguidas (`php artisan test --filter=ServicioTecnico` en bucle, o
-`--repeat=20` si tu versión lo soporta) y confirma 20/20 verdes ANTES de pushear. Suite
-completa verde. Push a main.
-TERRITORIO: tocas SOLO ese(os) test(s), NO el controller ni la factory (arreglar la factory
-para no-aleatoria es refactor de M12 que le toca a Marcos — no lo hagas). Anota en la bitácora
-el gotcha: "factory con estado aleatorio → tests que asertan estado deben FIJARLO en el create".
-Deja constancia en tu parte de que tocaste territorio M12 por autorización del dueño (I-06).
+RECORDATORIO: E2·M14 cierra formalmente cuando Mauricio corra el QA de celular (tu guion ya
+está en su poder). Cuando te confirme que salió OK, marca P-M14-07 [x] + sello 01→07 en
+RUTA-MAESTRA (docs, un push).
 
-🟢 13-07 v4: MAIN VERDE (tu fix flaky I-06 pasó CI; el lote de Max-2 ya integrado por el
-Director). Tu prep de P-M14-07 (re-sello + gate) ya está HECHO en la rama. VÍA LIBRE PARA EL
-MERGE — es la demo de la reunión. Ejecuta P-M14-07 en 2 fases:
-
-FASE A (hazla YA con «revisa tu buzón») — merge en TU rama, sin tocar main:
-- La rama está **118 commits detrás de main** (M12 avanzó full). `git fetch origin` y merge de
-  `origin/main` HACIA `feature/m14-aprobaciones`.
-- Conflictos reales esperados (aditivos, conserva AMBOS lados): `routes/web.php` (rutas M12+M14)
-  y `navigation.blade.php` (nav M12+M14). `public/build/*` y `manifest.json`: JAMÁS a mano →
-  tras resolver, `php artisan view:clear && npm run build` (recuerda `npm install` primero por
-  el chunk qrcode — gotcha en bitácora) y commitea el bundle regenerado. Grep del bundle:
-  lg\:flex, lg\:hidden + una clase de M14 + una del PWA/ST de main.
-- Suite COMPLETA verde en el árbol mergeado (esperada bastante > 485: tus tests + todo M12).
-- PARTE AL BUZÓN con: hash del merge EN TU RAMA + salida del grep + conteo de suite.
-  **NO PUSHEES A MAIN en la fase A.**
-
-FASE A: ✅ VERIFICADA por el Director 13-07 (rama `feature/m14-aprobaciones` @ f4f4484):
-bundle con lg\:flex/lg\:hidden/min-w-[1.5rem] presentes, superficie 100% M14 (cero fuga a
-territorio M12; compartidos aditivos), 3 conflictos resueltos por unión correcta, 570 verdes
-declarados. **LLAVE DEL DIRECTOR: DADA.**
-
-FASE B — GO CONDICIONADO a la 2ª llave (Mauricio). Cuando Mauricio autorice el deploy:
-1. `git fetch origin` (la rama está ~1 commit detrás — addendum docs, merge trivial).
-2. Merge de `feature/m14-aprobaciones` a `main` + push = DEPLOY (Mauricio aprueba el prompt
-   del guardrail en tu sesión). Mira Actions hasta verde.
-3. QA staging desde el celular de Mauricio: ajuste de producción con Σ|Δ| ≥ 50 → campanita+
-   correo al admin → aprobar desde el teléfono → ajuste aplicado al reporte. Parte al buzón.
-4. P-M14-07 [x] en RUTA → **E2·M14 CERRADA**.
-Deuda M12 que hallaste (permiso `crear lote servicio` sin etiqueta en config/permissions.php):
-anotada por el Director para Marcos — NO la toques.
-
---- referencia del prep (ya hecho) ---
-TAREA SIGUIENTE — P-M14-07 (con main verde): re-sellado de PLAN-M14 (guard omitido +
-eventos en 02) + suite completa + gate /pre-merge (R-31) + MERGE COORDINADO: parte al buzón
-con hash del merge EN TU RAMA + grep + conteo ANTES de pushear a main; push solo con doble
-llave (Director + Mauricio) → deploy → QA staging desde el celular de Mauricio (ajuste
-grande de producción → campanita+correo → aprobar desde el teléfono → aplicado).
-
-TAREA ANTERIOR (ya cumplida, se conserva por contexto): P-M14-06 · Historial de aprobaciones
-- /admin/aprobaciones (permiso 'view aprobaciones'): filtros estado/tipo/solicitante/
-  aprobador/rango de fechas (whereDate, NUNCA whereBetween — bitácora) + resumen por
-  aprobador/solicitante. Componentes x-* del catálogo, paginación con withQueryString.
-- «Mis solicitudes» del lado del solicitante ya existe (P-M14-03) — enlázala desde donde
-  corresponda si falta.
-- Transiciones visibles en /admin/auditoria (los modelos ya están en MODELOS).
-- Responsive 3 anchos, build + grep del bundle, suite verde, RUTA mismo push.
-
-DESPUÉS (no arranques sin dictado nuevo): P-M14-07 = re-sellado de PLAN-M14 (anotar guard
-omitido + eventos en 02) + suite completa + gate /pre-merge + MERGE COORDINADO con doble
-llave (Director + Mauricio) + QA staging desde celular real.
-
-CIERRE: parte a docs/fleet/buzon/partes/2026-07-13--max-1--p-m14-06.md + push.
+CIERRE por paso: parte a docs/fleet/buzon/partes/ + push.

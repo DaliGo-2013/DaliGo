@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Aprobacion;
+use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
@@ -158,5 +160,174 @@ class DashboardTest extends TestCase
 
         $res->assertOk()->assertSee('Reportes por revisar');
         $this->assertSame(1, ProduccionReporte::pendientes()->count());
+    }
+
+    // --- M16-v0: tablero ejecutivo (cards nuevas + visibilidad por rol) ------
+
+    /** Asignación + reporte mínimos para las cards de producción. */
+    private function produccionDe(string $fecha, array $reporte = [], int $asignadas = 200): ProduccionReporte
+    {
+        $soplador = User::factory()->create();
+        $asignacion = ProduccionAsignacion::create([
+            'soplador_id' => $soplador->id,
+            'fecha' => $fecha,
+            'turno' => 'dia',
+            'asignadas' => $asignadas,
+        ]);
+
+        return ProduccionReporte::create($reporte + [
+            'asignacion_id' => $asignacion->id,
+            'soplador_id' => $soplador->id,
+            'fecha' => $fecha,
+            'turno' => 'dia',
+            'asignadas' => $asignadas,
+            'estado' => ProduccionReporte::APROBADO,
+        ]);
+    }
+
+    private function aprobacionPendiente(string $rol): Aprobacion
+    {
+        return Aprobacion::create([
+            'tipo_accion' => Aprobacion::ACCION_AJUSTE_REPORTE,
+            'motivo' => 'm',
+            'descripcion' => 'd',
+            'rol_aprobador' => $rol,
+        ]);
+    }
+
+    public function test_cards_de_produccion_cuentan_solo_hoy(): void
+    {
+        // Hoy: 150+30 producido, 15+5 merma, 200 asignadas → avance 90%, merma 10%.
+        $this->produccionDe(now()->toDateString(), [
+            'primera' => 150, 'segunda' => 30, 'malo' => 15, 'danada' => 5,
+            'estado' => ProduccionReporte::ENVIADO,
+        ]);
+        // Ayer: números grandes que NO deben contaminar las cards de hoy.
+        $this->produccionDe(now()->subDay()->toDateString(), ['primera' => 999], 1000);
+
+        $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
+
+        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(180, $cards['Producido hoy']['valor']);
+        $this->assertSame(90, $cards['Avance de hoy (%)']['valor']);
+        $this->assertSame(10, $cards['Merma de hoy (%)']['valor']);
+        $this->assertSame(1, $cards['Reportes por revisar']['valor']); // solo el enviado
+    }
+
+    public function test_cards_de_produccion_en_cero_sin_division_por_cero(): void
+    {
+        $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
+
+        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(0, $cards['Producido hoy']['valor']);
+        $this->assertSame(0, $cards['Avance de hoy (%)']['valor']);
+        $this->assertSame(0, $cards['Merma de hoy (%)']['valor']);
+    }
+
+    public function test_recepciones_por_confirmar_cuenta_qr_y_ruta_sin_confirmar(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['fuente' => 'qr', 'confirmada_at' => null]);
+        OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => now()]);   // ya confirmada
+        OrdenServicio::factory()->create(['fuente' => 'ruta', 'confirmada_at' => null]);
+        OrdenServicio::factory()->create(['fuente' => 'mostrador']);                      // no requiere
+
+        // jefe_bodega: confirma recepciones pero NO gestiona el taller → su
+        // sección de Servicio Técnico trae SOLO esta card (semilla intacta).
+        $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
+
+        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(3, $cards['Recepciones por confirmar']['valor']);
+        $this->assertArrayNotHasKey('Equipos en taller', $cards->all());
+
+        $st = collect($res->viewData('secciones'))->firstWhere('label', 'Servicio Técnico');
+        $this->assertCount(1, $st['cards']);
+    }
+
+    public function test_aprobaciones_pendientes_es_espejo_de_la_bandeja(): void
+    {
+        $this->aprobacionPendiente('jefe_bodega');
+        $this->aprobacionPendiente('admin');
+        $this->aprobacionPendiente('jefe_bodega')
+            ->update(['estado' => Aprobacion::ESTADO_APROBADA, 'resuelta_at' => now()]);
+
+        // El jefe ve solo las pendientes de SU rol.
+        $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
+        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(1, $cards['Aprobaciones pendientes']['valor']);
+        $this->assertSame(route('aprobaciones.index'), $cards['Aprobaciones pendientes']['href']);
+
+        // El admin ve TODAS las pendientes (espejo de su bandeja).
+        $res = $this->actingAs($this->userWithRole('admin'))->get('/dashboard');
+        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(2, $cards['Aprobaciones pendientes']['valor']);
+    }
+
+    public function test_notificaciones_fallidas_cuenta_solo_fallidas_y_linkea_filtrado(): void
+    {
+        $base = ['evento' => 'sistema.prueba', 'canal' => 'mail', 'titulo' => 't', 'cuerpo' => 'c'];
+        Notificacion::create($base + ['estado' => Notificacion::FALLIDA]);
+        Notificacion::create($base + ['estado' => Notificacion::FALLIDA]);
+        Notificacion::create($base + ['estado' => Notificacion::ENVIADA]);
+
+        $res = $this->actingAs($this->userWithRole('admin'))->get('/dashboard');
+
+        $cards = collect($res->viewData('indicadores'))->keyBy('label');
+        $this->assertSame(2, $cards['Notificaciones fallidas']['valor']);
+        $this->assertSame(
+            route('admin.notificaciones.index', ['estado' => 'fallida']),
+            $cards['Notificaciones fallidas']['href'],
+        );
+    }
+
+    public function test_jefe_ventas_ve_aprobaciones_pero_no_produccion_ni_taller(): void
+    {
+        $res = $this->actingAs($this->userWithRole('jefe_ventas'))->get('/dashboard');
+
+        $labels = collect($res->viewData('indicadores'))->pluck('label');
+        $this->assertEqualsCanonicalizing(
+            ['Aprobaciones pendientes', 'Clientes', 'Usuarios'],
+            $labels->all(),
+        );
+    }
+
+    public function test_tecnico_ve_taller_pero_no_aprobaciones_ni_produccion(): void
+    {
+        $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
+
+        $labels = collect($res->viewData('indicadores'))->pluck('label');
+        $this->assertContains('Equipos en taller', $labels);
+        $this->assertContains('Recepciones por confirmar', $labels);
+        $this->assertNotContains('Aprobaciones pendientes', $labels);
+        $this->assertNotContains('Producido hoy', $labels);
+        $this->assertNotContains('Notificaciones fallidas', $labels);
+    }
+
+    public function test_vendedor_solo_ve_la_card_de_clientes(): void
+    {
+        $res = $this->actingAs($this->userWithRole('vendedor'))->get('/dashboard');
+
+        $this->assertSame(
+            ['Clientes'],
+            collect($res->viewData('indicadores'))->pluck('label')->all(),
+        );
+    }
+
+    public function test_soplador_y_member_no_tienen_cards(): void
+    {
+        foreach (['soplador', 'member'] as $rol) {
+            $res = $this->actingAs($this->userWithRole($rol))->get('/dashboard');
+            $this->assertSame([], $res->viewData('indicadores'), "El rol {$rol} no debe ver cards.");
+            $this->assertSame([], $res->viewData('secciones'), "El rol {$rol} no debe ver secciones.");
+        }
+    }
+
+    public function test_las_secciones_agrupan_por_modulo_en_orden(): void
+    {
+        $res = $this->actingAs($this->userWithRole('jefe_bodega'))->get('/dashboard');
+
+        $this->assertSame(
+            ['Producción · hoy', 'Servicio Técnico', 'Aprobaciones', 'Administración'],
+            collect($res->viewData('secciones'))->pluck('label')->all(),
+        );
     }
 }

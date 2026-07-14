@@ -104,7 +104,6 @@ class IngresoTallerPublicoController extends Controller
             'garantia_doc_numero' => [Rule::requiredIf($esGarantia), 'nullable', 'string', 'max:191'],
             'garantia_doc_fecha' => [Rule::requiredIf($esGarantia), 'nullable', 'date', 'before_or_equal:today'],
             'tipo_default' => ['required', Rule::in(OrdenServicio::TIPOS)],
-            'falla_default' => ['required', 'string', 'min:3'],
             'maquinas' => ['required', 'array', 'min:1', 'max:30'],
             // 2 fotos de respaldo POR MÁQUINA (mismo estándar del ingreso por
             // unidad). Sin regla `image` (HEIC); GD re-encoda después.
@@ -113,13 +112,15 @@ class IngresoTallerPublicoController extends Controller
         ]);
 
         // Validación por fila (patrón del lote del conductor): tipo hereda el
-        // default, serie obligatoria según el tipo efectivo, código opcional.
+        // default, serie obligatoria según el tipo efectivo, código OBLIGATORIO
+        // y falla/estado POR MÁQUINA (golpes, rayas, caja, piezas faltantes —
+        // el detalle de cada equipo importa; pedido del dueño).
         $filas = [];
         $errores = [];
         foreach ((array) $request->input('maquinas', []) as $i => $m) {
             $tipo = trim((string) ($m['tipo'] ?? '')) ?: (string) $data['tipo_default'];
             $serie = trim((string) ($m['numero_serie'] ?? ''));
-            $falla = trim((string) ($m['falla_reportada'] ?? '')) ?: (string) $data['falla_default'];
+            $falla = trim((string) ($m['falla_reportada'] ?? ''));
             $productoId = $m['producto_id'] ?? null;
 
             if (! in_array($tipo, OrdenServicio::TIPOS, true)) {
@@ -128,15 +129,18 @@ class IngresoTallerPublicoController extends Controller
             if (in_array($tipo, OrdenServicio::SERIE_OBLIGATORIA_TIPOS, true) && mb_strlen($serie) < 3) {
                 $errores["maquinas.{$i}.numero_serie"] = 'El N° de serie es obligatorio (mín. 3) para este tipo.';
             }
-            if ($productoId && ! Producto::whereKey($productoId)->exists()) {
-                $errores["maquinas.{$i}.producto_id"] = 'El código elegido no existe en el catálogo.';
+            if (! $productoId || ! Producto::whereKey($productoId)->exists()) {
+                $errores["maquinas.{$i}.producto_id"] = 'Elige el código del catálogo para esta máquina.';
+            }
+            if (mb_strlen($falla) < 3) {
+                $errores["maquinas.{$i}.falla_reportada"] = 'Describe la falla y el estado de esta máquina (mín. 3).';
             }
 
             $filas[$i] = [
                 'tipo_equipo' => $tipo,
                 'numero_serie' => $serie !== '' ? $serie : null,
                 'falla_reportada' => $falla,
-                'producto_id' => $productoId ?: null,
+                'producto_id' => $productoId,
             ];
         }
         if ($errores) {
@@ -159,7 +163,6 @@ class IngresoTallerPublicoController extends Controller
                 'fecha_ingreso' => $hoy,
                 'tipo_default' => $data['tipo_default'],
                 'facturacion_default' => $data['facturacion'],
-                'falla_default' => $data['falla_default'],
                 'total_ordenes' => count($filas),
             ]);
 

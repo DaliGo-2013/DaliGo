@@ -87,15 +87,33 @@
                         </x-nav-link>
                     @endcan
 
-                    @canany(['view servicio tecnico', 'manage servicio tecnico'])
-                        <x-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')" class="whitespace-nowrap">
-                            Servicio Técnico
-                            {{-- Contador: equipos activos en el taller (todo salvo entregado / sin solución). --}}
+                    @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio'])
+                        <x-nav-dropdown label="Servicio Técnico"
+                            :active="request()->routeIs('admin.servicio-tecnico.*')">
+                            {{-- Contador: equipos activos en el taller (todo salvo entregado / sin solución).
+                                 Va en el título del menú (slot badge) para seguir visible en la barra. --}}
                             @if (($pendientesServicioTecnico ?? 0) > 0)
-                                <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
-                                      title="{{ $pendientesServicioTecnico }} equipo(s) por atender">{{ $pendientesServicioTecnico }}</span>
+                                <x-slot:badge>
+                                    <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
+                                          title="{{ $pendientesServicioTecnico }} equipo(s) por atender">{{ $pendientesServicioTecnico }}</span>
+                                </x-slot:badge>
                             @endif
-                        </x-nav-link>
+                            @canany(['view servicio tecnico', 'manage servicio tecnico'])
+                                <x-dropdown-link :href="route('admin.servicio-tecnico.index')">Listado</x-dropdown-link>
+                            @endcanany
+                            @can('manage servicio tecnico')
+                                <x-dropdown-link :href="route('admin.servicio-tecnico.create')">Registrar ingreso</x-dropdown-link>
+                            @endcan
+                            @can('crear lote servicio')
+                                <x-dropdown-link :href="route('admin.servicio-tecnico.lote.create')">Ingreso por lote</x-dropdown-link>
+                            @endcan
+                            @can('manage servicio tecnico')
+                                <x-dropdown-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-dropdown-link>
+                            @endcan
+                            @canany(['view servicio tecnico', 'manage servicio tecnico'])
+                                <x-dropdown-link :href="route('admin.servicio-tecnico.informe')">Informe</x-dropdown-link>
+                            @endcanany
+                        </x-nav-dropdown>
                     @endcanany
                 </div>
             </div>
@@ -163,13 +181,39 @@
                 </x-responsive-nav-link>
             @endcan
 
-            @canany(['view servicio tecnico', 'manage servicio tecnico'])
-                <x-responsive-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.*')">
+            @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio'])
+                <x-responsive-nav-heading>
                     Servicio Técnico
                     @if (($pendientesServicioTecnico ?? 0) > 0)
                         <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">{{ $pendientesServicioTecnico }}</span>
                     @endif
-                </x-responsive-nav-link>
+                </x-responsive-nav-heading>
+
+                @canany(['view servicio tecnico', 'manage servicio tecnico'])
+                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.index')" :active="request()->routeIs('admin.servicio-tecnico.index')">
+                        Listado
+                    </x-responsive-nav-link>
+                @endcanany
+                @can('manage servicio tecnico')
+                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.create')" :active="request()->routeIs('admin.servicio-tecnico.create')">
+                        Registrar ingreso
+                    </x-responsive-nav-link>
+                @endcan
+                @can('crear lote servicio')
+                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.lote.create')" :active="request()->routeIs('admin.servicio-tecnico.lote.*')">
+                        Ingreso por lote
+                    </x-responsive-nav-link>
+                @endcan
+                @can('manage servicio tecnico')
+                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.qr')" :active="request()->routeIs('admin.servicio-tecnico.qr')">
+                        Códigos QR
+                    </x-responsive-nav-link>
+                @endcan
+                @canany(['view servicio tecnico', 'manage servicio tecnico'])
+                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.informe')" :active="request()->routeIs('admin.servicio-tecnico.informe')">
+                        Informe
+                    </x-responsive-nav-link>
+                @endcanany
             @endcanany
 
             @canany(['manage productos', 'manage clientes'])
