@@ -80,9 +80,9 @@
                     <div><dt class="text-xs text-neutral-400">Código (producto Dali)</dt><dd class="text-sm text-neutral-900">{{ $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">N° de serie</dt><dd class="text-sm text-neutral-900">{{ $orden->numero_serie ?: '—' }}</dd></div>
                     <div>
-                        <dt class="text-xs text-neutral-400">Sucursal de recepción</dt>
+                        <dt class="text-xs text-neutral-400">Sucursal/Ruta</dt>
                         <dd class="text-sm text-neutral-900">
-                            {{ $orden->sucursal?->nombre ?: '—' }}
+                            {{ $orden->sucursal?->nombre ?: ($orden->ruta ? 'Ruta · '.$orden->ruta : '—') }}
                             @if ($reparaEnMatriz)
                                 <span class="mt-0.5 block text-xs text-neutral-500">Se repara en {{ $sucursalCentral->nombre }} (casa matriz)</span>
                             @elseif ($orden->sucursal?->es_central)
@@ -145,6 +145,13 @@
                         <div class="mb-4">
                             <dt class="text-xs text-neutral-400">Causa de la falla</dt>
                             <dd class="text-sm text-neutral-900">{{ $orden->causa_falla_label }}</dd>
+                        </div>
+                    @endif
+
+                    @if ($orden->es_propia && $orden->categoria)
+                        <div class="mb-4">
+                            <dt class="text-xs text-neutral-400">Categoría (reventa)</dt>
+                            <dd class="text-sm text-neutral-900">{{ $orden->categoria_label }}</dd>
                         </div>
                     @endif
 

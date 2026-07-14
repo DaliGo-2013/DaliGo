@@ -74,33 +74,6 @@
                     <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. 000009, 12.345.678-9, SN-12345" />
                 </div>
                 <div class="sm:w-44">
-                    <x-input-label for="estado" value="Estado" />
-                    <x-select id="estado" name="estado" class="mt-1.5">
-                        <option value="">Todos</option>
-                        @foreach ($estados as $e)
-                            <option value="{{ $e }}" @selected(($filtros['estado'] ?? '') === $e)>{{ \Illuminate\Support\Str::headline($e) }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-40">
-                    <x-input-label for="tipo_equipo" value="Tipo" />
-                    <x-select id="tipo_equipo" name="tipo_equipo" class="mt-1.5">
-                        <option value="">Todos</option>
-                        @foreach ($tipos as $t)
-                            <option value="{{ $t }}" @selected(($filtros['tipo_equipo'] ?? '') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-44">
-                    <x-input-label for="facturacion" value="Condición" />
-                    <x-select id="facturacion" name="facturacion" class="mt-1.5">
-                        <option value="">Todas</option>
-                        @foreach ($facturaciones as $f)
-                            <option value="{{ $f }}" @selected(($filtros['facturacion'] ?? '') === $f)>{{ ucfirst($f) }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-44">
                     <x-input-label for="sucursal_id" value="Sucursal (recepción)" />
                     <x-select id="sucursal_id" name="sucursal_id" class="mt-1.5">
                         <option value="">Todas</option>
@@ -220,7 +193,7 @@
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
                                 {{-- Un solo badge de estado que incluye la sucursal de recepción:
                                      "Recibido en El Mirador" / "En Revisión en El Mirador"… --}}
-                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@endif</x-badge>
+                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@elseif ($orden->ruta) en Ruta {{ $orden->ruta }}@endif</x-badge>
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
                             {{-- Quién recibió/confirmó la orden (al registrar en mostrador o al

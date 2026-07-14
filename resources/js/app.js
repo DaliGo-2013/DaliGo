@@ -106,6 +106,13 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) =
     abierto: false,
     cargando: false,
 
+    // Máquina propia de la empresa (IMP. DALI / IMPORTADORA DALI): ignora puntos,
+    // espacios y mayús/minús. Cuando es propia, RUT/teléfono/correo son opcionales.
+    get esPropia() {
+        const n = (this.nombre || '').toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+        return n === 'IMP DALI' || n === 'IMPORTADORA DALI';
+    },
+
     async buscar() {
         this.clienteId = null; // tipear a mano rompe el enlace al catalogo
         const q = this.rut.trim();
@@ -151,12 +158,15 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) =
  *     fija la definitiva. Al EDITAR es editable: si el usuario la cambia a
  *     mano, deja de recalcularse.
  */
-Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura }) => ({
+Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura, sucursalSel }) => ({
     cond: cond || '',
     fechaEntrega: fechaEntrega || '',
     soloLectura: !!soloLectura,
     entregaManual: !soloLectura && !!fechaEntrega, // si ya traia fecha (editar), no la pisamos
     feriados: new Set(feriados || []),
+    // Recepción elegida: id de sucursal o el centinela 'ruta' (muestra el campo
+    // de ciudad y evita exigir una sucursal física).
+    sucursalSel: sucursalSel || '',
 
     init() {
         // Registrar: mostrar el estimado apenas haya sucursal (p. ej. al volver

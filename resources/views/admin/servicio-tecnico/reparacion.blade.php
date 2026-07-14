@@ -136,6 +136,23 @@
                         <x-input-error :messages="$errors->get('causa_falla')" class="mt-2" />
                     </div>
 
+                    {{-- Categoría de cierre: SOLO para máquinas propias (IMP. DALI)
+                         que se reacondicionan para revender. Para clientes comunes
+                         este campo no aparece (se decide por el nombre del cliente). --}}
+                    @if ($orden->es_propia)
+                        <div>
+                            <x-input-label for="categoria" value="Categoría (para reventa)" />
+                            <x-select id="categoria" name="categoria" class="mt-1.5">
+                                <option value="">— Sin determinar —</option>
+                                @foreach (\App\Models\OrdenServicio::CATEGORIAS as $cat)
+                                    <option value="{{ $cat }}" @selected(old('categoria', $orden->categoria) === $cat)>{{ \App\Models\OrdenServicio::CATEGORIA_ETIQUETAS[$cat] }}</option>
+                                @endforeach
+                            </x-select>
+                            <x-input-hint>Máquina propia (IMP. DALI): con qué calidad queda para revender — Primera, Segunda o Desarme (repuestos).</x-input-hint>
+                            <x-input-error :messages="$errors->get('categoria')" class="mt-2" />
+                        </div>
+                    @endif
+
                     {{-- Repuestos (lista variable) --}}
                     <div>
                         <div class="flex items-center justify-between">

@@ -113,13 +113,6 @@
                 </div>
             </div>
 
-            <div>
-                <x-input-label for="falla_default">Falla común <span class="text-red-500">*</span></x-input-label>
-                <x-textarea id="falla_default" name="falla_default" rows="2" class="mt-1.5" required
-                    placeholder="Ej. No enfría, no calienta">{{ old('falla_default') }}</x-textarea>
-                <x-input-hint>Se registra en todas; el técnico revisa cada equipo igual.</x-input-hint>
-                <x-input-error :messages="$errors->get('falla_default')" class="mt-2" />
-            </div>
         </div>
 
         {{-- Máquinas --}}
@@ -165,14 +158,15 @@
                             </div>
                         </div>
 
-                        {{-- Código del catálogo (opcional: si no lo conoces, lo completa el mostrador) --}}
+                        {{-- Código del catálogo (OBLIGATORIO): se elige del buscador. --}}
                         <div class="relative mt-2" x-on:click.outside="filaActiva === i && cerrar()">
-                            <label class="mb-0.5 block text-xs text-neutral-500">Código (producto Dali) — opcional</label>
+                            <label class="mb-0.5 block text-xs text-neutral-500">Código (producto Dali) <span class="text-red-500">*</span></label>
                             <input type="hidden" :name="`maquinas[${i}][producto_id]`" x-model="m.producto_id">
                             <input type="text" x-model="m.producto_label" autocomplete="off"
-                                placeholder="Código o nombre del equipo (si lo conoces)"
-                                x-on:input.debounce.250ms="buscar(i)" x-on:keydown.escape="cerrar()"
-                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                placeholder="Código o nombre del equipo"
+                                x-on:input.debounce.250ms="buscar(i)" x-on:focus="buscar(i)" x-on:keydown.escape="cerrar()"
+                                class="block w-full rounded-lg border bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                                :class="filaIncompleta(m) ? 'border-red-300' : 'border-neutral-300'">
                             <div x-show="filaActiva === i && (buscando || sugerencias.length)" x-cloak
                                 class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                                 <ul class="max-h-56 divide-y divide-neutral-100 overflow-auto">
@@ -187,6 +181,15 @@
                                     </template>
                                 </ul>
                             </div>
+                            <p x-show="filaIncompleta(m)" x-cloak class="mt-1 text-xs text-red-500">Busca y elige el código de esta máquina.</p>
+                        </div>
+
+                        {{-- Falla y estado de ESTA máquina (golpes, rayas, caja, piezas). --}}
+                        <div class="mt-2">
+                            <label class="mb-0.5 block text-xs text-neutral-500">Falla y estado del equipo <span class="text-red-500">*</span></label>
+                            <textarea :name="`maquinas[${i}][falla_reportada]`" x-model="m.falla_reportada" rows="2" required
+                                placeholder="Ej. No enfría. Golpeada en tapa lateral, sin caja, le falta la llave roja."
+                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"></textarea>
                         </div>
 
                         {{-- 2 fotos de respaldo (obligatorias, como el ingreso por unidad) --}}
