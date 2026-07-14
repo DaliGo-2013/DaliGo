@@ -138,11 +138,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-SPK-02** · Spike: cola IndexedDB para `registroStore` offline con idempotencia (UUID cliente) — migración `cliente_uuid` + unique `[reporte_id, cliente_uuid]`, endpoint idempotente dentro del lock + respuesta JSON, `resources/js/offline-queue.js` (encolar/drenar con token CSRF fresco, clasificación transitorio/permanente), integración en el form del soplador (encola offline + contador + reload al reconciliar); 4 tests de idempotencia, 372 verdes; verificado E2E en preview (2 tandas offline → sincronizan sin duplicar) (`793bfcc`, 2026-07-02)
 - [x] **P-SPK-03** · Spike: prueba de campo (modo avión, matar app a mitad de cola) + memo `docs/SPIKE-PWA.md` con la arquitectura elegida para M08 — memo sellado y verificado contra el código (7 secciones + guardarraíl golden-hash en `PwaTest`); **prueba de campo APROBADA por el dueño el 06-07** (capturas verificadas por el Director, tablero día 3 `50f8878`): A OK, B OK, 4/4 tandas sin duplicados, motivo por tanda sobrevivió la cola (este push, 2026-07-07)
 
-### E10-v0 · M16 BI corte 0 — Dashboard ejecutivo v0 (plan validado: `docs/planes/PLAN-M16-V0.md`, 2026-07-14)
+### E10-v0 · M16 BI corte 0 — Dashboard ejecutivo v0 — ✅ CERRADA 2026-07-14 (plan: `docs/planes/PLAN-M16-V0.md`)
 > Alcance re-baselinado por el plan sellado: el Inicio (`/dashboard`) se convierte en el tablero, cards por permiso (no "solo admin"); **stock crítico OMITIDO en v0 con evidencia** (sin señal de mínimo en el espejo Bsale — plan §4). Los IDs P-M16-0x de abajo son los pasos del PLAN-M16-V0 (el P-M16-02 de E10-v1 es otra cosa).
 - [x] **P-M16-01** · Controller: 6 cards nuevas de lectura agrupadas por módulo (Producido/Avance/Merma de hoy, Recepciones por confirmar, Aprobaciones pendientes espejo de bandeja, Notificaciones fallidas) — queries agregadas `whereDate`/COUNT/SUM sin N+1, semilla del Inicio intacta, `$indicadores` plano preservado como contrato de tests; +10 tests (conteos exactos + visibilidad por rol), 581 verdes (`900d74a`, 2026-07-14)
 - [x] **P-M16-02** · Vista `/dashboard` por secciones (encabezado de módulo + misma grilla `x-stat-card`) — responsive verificado 375/768/1280 sin scroll horizontal, build con grep 7/7 (`f268997`, 2026-07-14)
-- [ ] **P-M16-03** · Gate pre-merge (R-31) + merge coordinado con doble llave (Director + Mauricio) → deploy
+- [x] **P-M16-03** · Gate pre-merge R-31 adversarial 16/16 OK con 3 observaciones anotadas para v0.1 (`f9b0721`) + merge coordinado con doble llave Director+Mauricio a main (`4900d5b`, Deploy+Tests verdes, bundle verificado servido en staging) — **E10-v0 CERRADA**; la rama `feature/m16-v0-dashboard` cumplió su ciclo (2026-07-14)
 
 ---
 
