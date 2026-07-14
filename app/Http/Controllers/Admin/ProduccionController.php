@@ -127,15 +127,10 @@ class ProduccionController extends Controller
         return [$desde, $hasta, ! $request->filled('desde') && ! $request->filled('hasta')];
     }
 
-    /** Serie por dia desde los reportes (totales denormalizados), keyed por Y-m-d. */
+    /** Serie por dia desde los reportes — delega en el estatico compartido del modelo. */
     private function reportesPorDia(string $desde, string $hasta, ?int $sopladorId = null)
     {
-        return ProduccionReporte::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
-            ->when($sopladorId, fn ($q) => $q->where('soplador_id', $sopladorId))
-            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
-            ->groupBy('fecha')
-            ->get()
-            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
+        return ProduccionReporte::seriePorDia($desde, $hasta, $sopladorId);
     }
 
     /** Serie por dia desde las tandas (registros) filtradas por maquina/tipo, keyed por Y-m-d. */
@@ -151,14 +146,10 @@ class ProduccionController extends Controller
             ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
     }
 
-    /** Asignadas por dia (mapa Y-m-d => int) para el rango. */
+    /** Asignadas por dia — delega en el estatico compartido del modelo. */
     private function asignadasPorDia(string $desde, string $hasta)
     {
-        return ProduccionAsignacion::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
-            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
-            ->groupBy('fecha')
-            ->get()
-            ->mapWithKeys(fn ($r) => [Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
+        return ProduccionAsignacion::asignadasPorDia($desde, $hasta);
     }
 
     /**
