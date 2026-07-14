@@ -7,6 +7,7 @@ use App\Models\Aprobacion;
 use App\Models\Bodega;
 use App\Models\Cliente;
 use App\Models\Configuracion;
+use App\Models\DocumentoVenta;
 use App\Models\ListaPrecio;
 use App\Models\Maquina;
 use App\Models\PreferenciaCanal;
@@ -41,6 +42,7 @@ class AuditController extends Controller
         Aprobacion::class => 'Aprobación',
         ReglaAprobacion::class => 'Regla de aprobación',
         Zona::class => 'Zona',
+        DocumentoVenta::class => 'Documento de venta',
     ];
 
     /**

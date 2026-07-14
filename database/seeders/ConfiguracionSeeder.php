@@ -78,6 +78,21 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'aprobaciones',
                 'descripcion' => 'Minutos sin respuesta antes de escalar una solicitud pendiente al siguiente rol (granularidad efectiva 15 min por la grilla */15 del scheduler: escala en el siguiente slot tras vencer).',
             ],
+            // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
+            [
+                'clave' => 'documentos_sync_desde',
+                'valor' => null,
+                'tipo' => Configuracion::TIPO_STRING,
+                'grupo' => 'despachos',
+                'descripcion' => 'Fecha de arranque (Y-m-d) del espejo de documentos de venta: la sync nunca retrocede más atrás. Vacío = últimos 7 días en el primer run. La define el dueño; un piso antiguo se pone al día por tramos de 30 días (backfill de los ~676k históricos PROHIBIDO de un tirón).',
+            ],
+            [
+                'clave' => 'documentos_sync_watermark',
+                'valor' => null,
+                'tipo' => Configuracion::TIPO_STRING,
+                'grupo' => 'despachos',
+                'descripcion' => 'Interno (lo escribe bsale:sync-documents): hasta dónde el espejo de documentos quedó completo. No editar a mano.',
+            ],
         ];
 
         foreach ($ajustes as $a) {

@@ -1,0 +1,23 @@
+# Parte — Max-2 · P-DSP-01 HECHO: espejo de documentos de venta · 2026-07-14
+
+CUENTA: Max-2 · Forjador B (stream 2) · Fable 5 (decisión del dueño hasta 19-07)
+TAREA: dictado v5 — GO P-DSP-01 con el shape real (anexo del buzón) y los 4 ajustes obligatorios.
+ESTADO: HECHO en rama `feature/despachos-v1` (refrescada con main `1eecd88` antes de construir). Suite **601 verde**. P-DSP-00 [x] cerrado con evidencia archivada.
+
+QUÉ HICE:
+- **Migración** `documentos_venta` + `documento_venta_detalles` congelada contra el shape REAL: estados `state`/`commercial_state`/`cancellation_status` **INT** (ajuste #1) + `cancellation_at` (anulación, mitiga riesgo #2); `cliente_id` nullable con match tolerante a `client` ausente (ajuste #2); `descripcion` del detalle **nullable** con cadena de fallback producto-espejado → `variant.description` → `variant.code` → null (ajuste #3); unique `(documento_venta_id, bsale_detail_id)` para idempotencia del detalle.
+- **`DocumentSync`** (patrón de las 4 syncs: mapas pluck, withoutAuditing, stats+Log): upsert por `bsale_document_id`, SIN fase de delete de documentos. **Ventana `emissiondaterange`** (ajuste #4 — backfill de los 676k PROHIBIDO): piso configurable `documentos_sync_desde` (Configuracion + seeder, la define el dueño), default últimos 7 días al primer run, avance desde el último `emitido_at` con resolape de 1 día, nunca retrocede del piso.
+- **Detalles**: sobre anidado `{items}` del GET; si el sobre declara más líneas de las que trae (doc largo), pagina por `documents/{id}/details.json` (plan B del pre-stage). Espejo de líneas eliminadas con el **guard whereNotIn-vacío** de la bitácora (líneas sin id no borran nada).
+- **`bsale:sync-documents`** agendado **`hourlyAt(30)`** — tomé la observación del Director: :45 ya es el slot pesado (stock ~28k filas); :30 va junto a prices (liviana) y tras clients (:15) de la misma hora, maximizando el match de `cliente_id`. Documentado en `routes/console.php` y el plan.
+- **Tests**: `BsaleDocumentosSyncTest` (10 tests, fakes con el shape real redactado — epoch, INT, boleta sin client, variant pelado) + `ScheduleBsaleTest` extendido a 5 syncs con grilla `*/15` fijada. `AuditController::MODELOS` + DocumentoVenta.
+- **Cierres documentales**: anexo archivado en `docs/qa/INFRA/2026-07-14--INFRA--p-dsp-00-shape-documents.md` (P-DSP-00 [x]); plan §1.2 y §2 actualizados (estados INT, hourlyAt(30), ambos pasos [x]).
+- **Verificación adversarial** (workflow 4 dimensiones × 15 refutadores, 19 agentes): 15 hallazgos brutos → **12 confirmados, todos resueltos antes del commit**. Los grandes:
+  1. **[alto] La ventana anclada en `max(emitido_at)` perdía docs para siempre** (doc fallido por 500/timeout cuyo emissionDate quedaba fuera del resolape jamás se reintentaba; el verificador lo REPRODUJO end-to-end). Fix de raíz: **watermark persistente** (`documentos_sync_watermark`, interno) que solo avanza sobre tramo completo — con errores retrocede al fallido más antiguo; corrida abortada no lo mueve (cierra también el hueco-silencioso). + **transacción header+detalles** (nada de docs espejados a medias; el HTTP del plan B va antes de abrir la transacción).
+  2. **[alto] Piso configurado antiguo + espejo vacío disparaba el backfill prohibido** (676k docs de un tirón). Fix: **tramo máximo de 30 días por corrida** — un piso viejo se pone al día tramo a tramo, hora a hora.
+  3. **[medio] Anulaciones tardías**: `cancellation_status` solo es fresco ~1 día tras la emisión (límite estructural de la ventana; el fix fiel = webhooks D-005). Acción: docblocks corregidos (ya no sobrevenden) + **requisito NUEVO en P-DSP-03**: `crearDesdeDocumento` re-verifica el doc puntual contra Bsale antes de despachar (no despachar un DTE anulado creyéndolo vigente).
+  4. **[medio] Piso texto libre**: un `14/07/2026` tipeado mataba la sync cada hora → ahora `createFromFormat('Y-m-d')` con warning e ignora (aplica default).
+  5. **[hallazgo de test-infra] Los fakes NO honraban `emissiondaterange`** → la clase entera de bugs de ventana era invisible para la suite. Fix: el fake ahora filtra por la ventana como la API real, y 7 tests nuevos reproducen cada hallazgo (watermark-recuperación, tramos, clamp piso-con-filas, doc malo→omitidos, epoch inválido, piso malformado, sobre details ausente). 3 hallazgos refutados (falsos positivos), 0 pendientes.
+
+TESTS: 608 verde (17 del sync). /usage: ← Mauricio completa.
+
+SIGUIENTE: P-DSP-03 (entidad `Despacho` + escaneos + panel admin) — su FK `documento_venta_id` ya tiene tabla. Arranco salvo dictado en contra. Nota para el dueño (no bloquea): decidir la fecha de arranque del espejo (`documentos_sync_desde` en Configuración); mientras, el default de 7 días aplica al primer run post-deploy.
