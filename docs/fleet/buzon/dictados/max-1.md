@@ -1,30 +1,32 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-14 (v6 — PLAN-M16-V0 validado, GO a construir). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-14 (v7 — M16-v0 verificado, espera doble llave). Manda sobre lo anterior.
 
 MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño); si no, Opus 4.8 · high.
 
-✅ PLAN-M16-V0 VALIDADO por el Director (`dd20ee8`, sello contra c86e341): x-stat-card existe ✓,
-dashboard semilla intacta ✓, scopePorConfirmar (OrdenServicio:358) ✓, filtro notif fallida ✓,
-cards/rutas/matriz verificadas por tus 3 refutadores. Alcance limpio (5 cards nuevas + semilla
-de Marcos intacta, cero permisos/migraciones/componentes nuevos, stock omitido con evidencia).
-Buen método de sellado.
+✅ **P-M16-01/02/03 VERIFICADOS por el Director** (`f9b0721`). Spot-checks propios (no solo tu
+parte): diff contra main acotado a `DashboardController`+vista+tests+docs (cero conflicto
+esperado, confirmado) · grep bundle 7/7 confirmado independientemente sobre
+`public/build/assets/app-OhPY6b0u.css` (`lg\:flex`, `lg\:hidden`, `sm\:grid-cols-3`,
+`lg\:grid-cols-5`, `min-w-\[1.5rem\]`, `bg-white\/60` — las 6 que grepeaste + el selector
+`grid-cols-5` base) · manifest apunta al bundle nuevo. Gate R-31 16/16 con tus 3 observaciones
+quedan anotadas como deuda menor de v1 (helper compartido de fórmulas, `$indicadores` muerto,
+matriz de roles futura) — NO bloquean.
 
-✅ Tu verificación post-deploy de M14: aceptada — Actions 4/4, migración+seeders exit 0, rutas
-M14 vivas (302), bundle correcto sirviéndose. Buen catch del guion QA (el ajuste lo pide un
-NO-admin, si no se auto-aprueba y no se ve el flujo). Ese guion se lo paso a Mauricio.
+## LLAVE DEL DIRECTOR: DADA. Falta la de Mauricio.
+NO mergees ni pushees a main todavía — merge a main = deploy a producción, y esa es la
+SEGUNDA llave (la del dueño), que el Director aún no tiene confirmada en este dictado.
 
-## GO: construir M16-v0 (3 pasos del plan)
-1. **P-M16-01** — DashboardController con los conteos de las 5 cards nuevas (queries de LECTURA
-   sin N+1; `whereDate` para "hoy") + 9 tests: cada card cuenta bien Y un rol sin el `@can`
-   correspondiente NO la ve.
-2. **P-M16-02** — vista: `/dashboard` reagrupado por módulo, cards semilla de Marcos INTACTAS
-   (mismos queries/labels/permisos) + las 5 nuevas con `<x-stat-card>`, cada una clickeable a
-   su módulo. Responsive 375/768/1024. npm run build + grep bundle (npm install por qrcode).
-3. **P-M16-03** — cierre: gate /pre-merge + parte con el plan de merge (doble llave como M14).
-Suite verde por commit. Rama `feature/m16-v0-dashboard`. RUTA al día en el mismo push.
+**Cuando el Director te confirme "doble llave dada" en un próximo dictado o parte:**
+1. `git fetch` + plegar main si avanzó → suite verde → merge a main + push (= deploy) →
+   verificar Actions (Deploy Y Tests, son independientes — mira los dos).
+2. QA staging de 1 minuto: admin ve el Inicio agrupado con números reales, cards clickeables.
+3. P-M16-03 [x] en RUTA-MAESTRA mismo push → **E10-v0 CERRADA**.
 
-RECORDATORIO: E2·M14 cierra formalmente cuando Mauricio corra el QA de celular (su guion está
-en tu parte). Cuando Mauricio te confirme que salió OK, marca P-M14-07 [x] + sello 01→07 en
-RUTA-MAESTRA (docs, un push) → E2·M14 CERRADA. No bloquea M16.
+Hasta entonces: nada más que hacer en esta rama. Si tienes ventana libre, avisa al buzón y el
+Director te asigna algo (no inventes trabajo fuera de tu cola).
+
+RECORDATORIO: E2·M14 cierra formalmente cuando Mauricio corra el QA de celular (tu guion ya
+está en su poder). Cuando te confirme que salió OK, marca P-M14-07 [x] + sello 01→07 en
+RUTA-MAESTRA (docs, un push). No bloquea M16.
 
 CIERRE por paso: parte a docs/fleet/buzon/partes/ + push.
