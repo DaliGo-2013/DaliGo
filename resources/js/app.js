@@ -313,9 +313,18 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
  * (comprimida en el navegador con optimizarFotoInput). La empresa y los
  * defaults del lote se eligen una vez fuera de este componente.
  */
-Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente }) => ({
+Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente, tipoDefault, tiposSerie }) => ({
     endpointProducto: endpointProducto || '',
     endpointCliente: endpointCliente || '',
+
+    // Tipo por defecto del lote (reactivo: el select de arriba lo actualiza) y
+    // tipos cuyo N° de serie es obligatorio — para marcar la serie por fila.
+    tipoDefault: tipoDefault || '',
+    tiposSerie: Array.isArray(tiposSerie) ? tiposSerie : [],
+
+    serieObligatoria(m) {
+        return this.tiposSerie.includes((m.tipo || this.tipoDefault) || '');
+    },
 
     // Empresa del lote (se elige una vez). El RUT es el buscador; al elegir de
     // la lista autocompleta nombre/correo/teléfono y enlaza cliente_id.
