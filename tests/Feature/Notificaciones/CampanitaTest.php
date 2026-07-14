@@ -106,6 +106,31 @@ class CampanitaTest extends TestCase
             ->assertDontSee('>3<', false);
     }
 
+    public function test_campana_movil_siempre_visible_con_badge_y_destino(): void
+    {
+        // Hallazgo QA de celular 14-07: la campanita vivía solo al fondo del
+        // hamburguesa y nadie la descubría. La cabecera móvil lleva ahora una
+        // campana SIEMPRE visible (aria-label distintivo) con el conteo y link
+        // directo a la bandeja personal.
+        $user = User::factory()->create();
+        $this->inApp($user);
+        $this->inApp($user);
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('aria-label="Notificaciones (2 sin leer)"', false)
+            ->assertSee(route('notificaciones.index'), false);
+
+        // Sin no-leídas: la campana queda (aria-label sin conteo), el badge no.
+        // Ojo: el sr-only del partial desktop siempre dice "(0 sin leer)", así
+        // que se asserta el aria-label EXACTO de la campana móvil, no el texto suelto.
+        $this->actingAs($user)->post(route('notificaciones.leer-todas'));
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('aria-label="Notificaciones"', false)
+            ->assertDontSee('aria-label="Notificaciones (2 sin leer)"', false);
+    }
+
     public function test_pagina_personal_lista_solo_lo_propio(): void
     {
         $user = User::factory()->create();
