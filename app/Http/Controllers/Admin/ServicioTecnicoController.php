@@ -200,13 +200,17 @@ class ServicioTecnicoController extends Controller
 
         // Se le envia el folio al cliente (mismo correo que el flujo QR). Es
         // SECUNDARIO: si el mailer del servidor falla, NO tumba el registro; se
-        // loguea y se avisa en el mensaje.
-        try {
-            Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
-            $status = "Orden {$orden->folio} registrada. Folio enviado a {$orden->cliente_email}.";
-        } catch (\Throwable $e) {
-            report($e);
-            $status = "Orden {$orden->folio} registrada. No se pudo enviar el correo (revisa la configuración de correo del servidor).";
+        // loguea y se avisa en el mensaje. Máquina propia sin correo: no se envía.
+        if (blank($orden->cliente_email)) {
+            $status = "Orden {$orden->folio} registrada.";
+        } else {
+            try {
+                Mail::to($orden->cliente_email)->send(new IngresoTallerRecibido($orden));
+                $status = "Orden {$orden->folio} registrada. Folio enviado a {$orden->cliente_email}.";
+            } catch (\Throwable $e) {
+                report($e);
+                $status = "Orden {$orden->folio} registrada. No se pudo enviar el correo (revisa la configuración de correo del servidor).";
+            }
         }
 
         return redirect()->route('admin.servicio-tecnico.index')->with('status', $status);
@@ -395,6 +399,8 @@ class ServicioTecnicoController extends Controller
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
+            // Categoría de cierre: solo aplica a máquinas propias (IMP. DALI).
+            'categoria' => ['nullable', Rule::in(OrdenServicio::CATEGORIAS)],
             'mano_obra' => ['nullable', 'integer', 'min:0'],
             // Descuento sobre el total (solo reparacion cobrable). Si hay descuento,
             // el motivo que lo justifica es obligatorio.
@@ -442,6 +448,8 @@ class ServicioTecnicoController extends Controller
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
             'causa_falla' => $data['causa_falla'] ?? null,
+            // La categoría solo se guarda para máquinas propias (IMP. DALI).
+            'categoria' => $orden->es_propia ? ($data['categoria'] ?? null) : null,
             'mano_obra' => $data['mano_obra'] ?? null,
             'descuento_pct' => $descuentoPct,
             'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
@@ -751,6 +759,10 @@ class ServicioTecnicoController extends Controller
 
         $esGarantia = $request->input('facturacion') === 'garantia';
 
+        // Máquina propia de la empresa (IMP. DALI): entra al taller sin ser de un
+        // cliente externo, así que RUT/teléfono/correo dejan de ser obligatorios.
+        $esPropia = OrdenServicio::esMaquinaPropia($request->input('cliente_nombre'));
+
         // "Ruta": el equipo lo recibe el conductor en ruta (no en una sucursal
         // física). El select manda el centinela 'ruta' y se escribe la ciudad en
         // el campo `ruta`. sucursal_id y ruta son mutuamente excluyentes.
@@ -772,11 +784,11 @@ class ServicioTecnicoController extends Controller
         $data = $request->validate([
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
-            'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
+            'cliente_rut' => [Rule::requiredIf(! $esPropia), 'nullable', 'string', 'max:20', new RutChileno],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            // Correo OBLIGATORIO en el mostrador: se le envia el folio al registrar
-            // y sirve para avisos futuros del equipo.
-            'cliente_email' => ['required', 'email', 'max:191'],
+            // Correo OBLIGATORIO para clientes externos (se les envia el folio y los
+            // avisos); opcional para máquinas propias de la empresa (IMP. DALI).
+            'cliente_email' => [Rule::requiredIf(! $esPropia), 'nullable', 'email', 'max:191'],
             // Obligatorio en el mostrador: toda orden se vincula a un producto del
             // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
             // lo maneja aparte (alli sigue opcional).
