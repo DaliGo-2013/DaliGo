@@ -244,9 +244,11 @@ class OrdenServicio extends Model implements AuditableContract
      */
     public static function esMaquinaPropia(?string $nombre): bool
     {
-        $n = strtoupper(trim(preg_replace('/\s+/', ' ', str_replace('.', '', (string) $nombre))));
+        // Normaliza puntos y comas a espacios y colapsa: "IMP. DALI", "IMP DALI",
+        // "IMP.DALI", "IMP, DALI", "IMPORTADORA DALI" y "DALI" son la misma empresa.
+        $n = strtoupper(trim(preg_replace('/\s+/', ' ', str_replace(['.', ','], ' ', (string) $nombre))));
 
-        return in_array($n, ['IMP DALI', 'IMPORTADORA DALI'], true);
+        return in_array($n, ['IMP DALI', 'IMPORTADORA DALI', 'DALI'], true);
     }
 
     public function getEsPropiaAttribute(): bool
