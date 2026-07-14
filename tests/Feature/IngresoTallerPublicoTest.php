@@ -123,13 +123,15 @@ class IngresoTallerPublicoTest extends TestCase
     {
         $sucursal = $this->sucursal();
 
-        // Paso previo: elegir cómo ingresar (código de barras "Pronto" | manual).
+        // Paso previo: elegir cómo ingresar (código de barras "Pronto" |
+        // por unidad | por cantidad).
         $this->get($this->linkCreate($sucursal))
             ->assertOk()
             ->assertSee('¿Cómo desea ingresar su producto?')
             ->assertSee('Con código de barras')
             ->assertSee('Pronto')
-            ->assertSee('Ingresar manualmente');
+            ->assertSee('Ingreso por unidad')
+            ->assertSee('Ingreso por cantidad');
     }
 
     public function test_formulario_muestra_codigo_y_fecha_de_hoy(): void

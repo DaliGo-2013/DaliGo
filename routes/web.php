@@ -241,6 +241,16 @@ Route::middleware('throttle:6,1')->group(function () {
         ->name('ingreso-taller.store');
     Route::get('ingreso-taller/listo/{orden}', [IngresoTallerPublicoController::class, 'gracias'])
         ->middleware('signed')->name('ingreso-taller.gracias');
+
+    // Ingreso por CANTIDAD (varias máquinas de una vez, datos del cliente una
+    // sola vez; cada máquina queda con su propio folio). Mismo esquema: GET y
+    // "gracias" firmados, POST con honeypot.
+    Route::get('ingreso-taller/lote', [IngresoTallerPublicoController::class, 'createLote'])
+        ->middleware('signed')->name('ingreso-taller.lote.create');
+    Route::post('ingreso-taller/lote', [IngresoTallerPublicoController::class, 'storeLote'])
+        ->name('ingreso-taller.lote.store');
+    Route::get('ingreso-taller/lote/listo/{lote}', [IngresoTallerPublicoController::class, 'graciasLote'])
+        ->middleware('signed')->name('ingreso-taller.lote.gracias');
 });
 
 // Autocompletado publico del producto Dali para el formulario del QR. Throttle
