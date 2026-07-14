@@ -1,29 +1,37 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-07-14 (v3 — P-DSP-02 verificado, DESPACHOS bloqueado en el shape, micro-backlog aprobado). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-14 (v4 — el código de P-DSP-00 llegó a producción; delegación puede reintentarse). Manda sobre lo anterior.
 
 MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño usarlo); si no, Opus 4.8 · high.
 
-✅ **P-DSP-00 (código) y P-DSP-02 (zonas) VERIFICADOS por el Director**, spot-check propio sobre
-`3a79b69` y `0a4d063`: comando `bsale:explore` extendido read-only con valores redactados ✓
-(correcto no ejecutarlo local sin token) · 3 migraciones aditivas + `Cliente::zonaEfectiva()`
-con precedencia cliente-explícito > vendedor > null (el ajuste del dueño "siempre hay
-excepciones" aplicado tal como se dictó) · 6 tests, suite 536 verde en ese punto, 576 verde
-tras refrescar con M14 (`efcde04`, conflicto único en `AuditController::MODELOS` resuelto por
-unión — correcto). Buen criterio adelantar P-DSP-02 sin esperar el shape.
+## Causa raíz de por qué tu delegación a IA-cPanel no respondió (ahora resuelta)
+No era que Mauricio no la despachara: **el server corre `main`, no tu rama** — el
+`bsale:explore` desplegado no tenía la sección §7 que agregaste en `feature/despachos-v1`. Un
+comando delegado al operador de cPanel solo puede correr lo que YA está en producción.
+Mauricio (con Fable 5, fuera de tu cola) trajo SOLO ese archivo a main
+(`feature/bsale-explore-documentos`) y el Director lo mergeó con doble llave (`a6cd35a`,
+Deploy+Tests success 14-07 15:22) — **ya está desplegado y servido**.
 
-## Sigues BLOQUEADO en P-DSP-01/03 — la pelota está en la cancha de Mauricio
-Tu delegación a IA-cPanel (parte `2026-07-13--max-2--p-dsp-00-delegacion.md`) sigue sin
-respuesta. El Director se la señala a Mauricio en este informe; no hay nada más que puedas
-hacer tú para destrabarla — no reintentes ni inventes el shape.
+**Gotcha para la bitácora** (territorio de CLAUDE.md, no tuyo hoy — pero anótalo cuando toques
+esa unidad): todo comando de diagnóstico que se delega a un operador remoto (IA-cPanel,
+soporte) debe estar en `main` desplegado ANTES de despachar la delegación; nunca en una rama
+sin mergear.
 
-## ✅ APROBADO: micro-backlog M15 mientras esperas
-Tu propuesta es correcta: rama nueva `feature/m15-microbacklog` desde main FRESCO (NO mezclar
-con `feature/despachos-v1` — provenance limpia, ya lo planteaste bien). Alcance (§3 de tu
-dictado anterior, talla S/M):
+## SIGUIENTE: la delegación se re-despacha — sigues bloqueado hasta que vuelva la salida
+Mauricio va a correr `bsale:explore` en el server ahora que está desplegado y traerte la
+salida de "Documentos de venta". Tú NO tienes nada que hacer para acelerar esto — sigue en el
+micro-backlog M15 (aprobado, ver abajo) hasta que la salida llegue al buzón.
+
+## ✅ P-DSP-00 (código) y P-DSP-02 (zonas) — siguen VERIFICADOS (sin cambios respecto a v3)
+`3a79b69`/`0a4d063`: comando read-only con valores redactados ✓ · 3 migraciones aditivas +
+`Cliente::zonaEfectiva()` con precedencia cliente-explícito > vendedor > null ✓ · 6 tests,
+suite 576 verde tras refresco con M14. Buen criterio adelantar P-DSP-02 sin esperar el shape.
+
+## ✅ Micro-backlog M15 — sigue aprobado, continúa ahí
+Rama `feature/m15-microbacklog` desde main FRESCO. Alcance (talla S/M):
 - Correo destino configurable en el panel de notificaciones (hoy hardcodeado — confirma dónde).
 - Error SMTP sin truncar en el log/vista de notificación fallida.
 - Endurecer `test_campanita_visible_en_el_nav` (o el que corresponda) contra flaky.
-Suite verde por commit. Parte al buzón por ítem. Si mientras tanto llega la respuesta del
-shape, PAUSA el micro-backlog y vuelve a P-DSP-01 (prioridad: destrabar la unidad grande).
+Suite verde por commit. Parte al buzón por ítem. Cuando llegue la salida del shape al buzón,
+PAUSA el micro-backlog y vuelve a P-DSP-01 (prioridad: destrabar la unidad grande).
 
 CIERRE por ítem: parte a docs/fleet/buzon/partes/ + push.
