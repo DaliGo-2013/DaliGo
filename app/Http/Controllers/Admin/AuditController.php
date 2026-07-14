@@ -14,6 +14,7 @@ use App\Models\ProduccionReporte;
 use App\Models\Sucursal;
 use App\Models\TipoBotellon;
 use App\Models\User;
+use App\Models\Zona;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use OwenIt\Auditing\Models\Audit;
@@ -35,6 +36,7 @@ class AuditController extends Controller
         Maquina::class => 'Máquina',
         TipoBotellon::class => 'Tipo de botellón',
         PreferenciaCanal::class => 'Preferencia de canal',
+        Zona::class => 'Zona',
     ];
 
     /**

@@ -60,17 +60,19 @@ DespachoService::confirmarEntrega(Despacho $d, array $prueba): void             
 
 ### 1.2 Esquema (MySQL 5.7: VARCHAR(191) en índices vía `defaultStringLength(191)`, `decimal(14,4)` montos/cantidades, estados `string(32)`, fechas Bsale epoch→datetime)
 
-**`zonas`** (catálogo D-006; vendedor↔zona, la zona del cliente se deriva de `Cliente.vendedor_id → User.zona_id`)
+**`zonas`** (catálogo D-006; vendedor↔zona) — **IMPLEMENTADO en P-DSP-02**
 
 | Columna | Tipo | Nota |
 |---|---|---|
 | id | bigIncrements | |
-| nombre | string(191) | "Norte", "Sur", "6ª región", … |
+| nombre | string(191) | "Santiago Norte", "Santiago Sur", "6ª Región", "7ª Región" |
 | descripcion | string(191) null | comunas/regiones (texto libre inicial) |
 | activa | boolean default true | |
 | timestamps | | |
 
-- `users.zona_id` → `unsignedBigInteger` nullable + FK `zonas` `nullOnDelete` (patrón exacto de `add_sucursal_id_to_users`). Migración aditiva aparte.
+- `users.zona_id` → nullable + FK `zonas` `nullOnDelete` (patrón `add_sucursal_id_to_users`).
+- **`clientes.zona_id` → nullable + FK `zonas` `nullOnDelete` (AJUSTE OBLIGATORIO del dueño 2026-07-13):** el cliente puede tener una zona EXPLÍCITA que **sobreescribe** la heredada del vendedor. Campo LOCAL (la sync Bsale nunca lo pisa).
+- **Regla de precedencia (`Cliente::zonaEfectiva()`):** (1) si `clientes.zona_id` está seteado → gana; (2) si no → hereda `vendedor->zona`; (3) si no hay vendedor/zona → null. Cubierta por `tests/Feature/Despachos/ZonaTest.php`.
 
 **`documentos_venta`** (espejo read-only del DTE de Bsale)
 
@@ -173,7 +175,7 @@ DespachoService::confirmarEntrega(Despacho $d, array $prueba): void             
 
 - **Riesgo #1 (alto) — shape de `details` no verificado:** todo §F de `BSALE_API.md` es doc-only; el Anexo A exploró products/variants/prices/stock/offices contra la cuenta DEMO **pero NO documentos**. Mitigación: **P-DSP-00 obligatorio** (GET real `documents.json?limit=3&expand=[details,client,office]`) ANTES de congelar la migración P-DSP-01.
 - **Riesgo #2 — sin modified-since:** un documento que cambia tras emitirse (pago, rechazo→aceptación SII, anulación por nota de crédito en `references`) no se recaptura por polling de emisión. v1 acepta re-barrer una ventana móvil (ej. últimos N días) cada corrida; el fiel es webhook (fuera de v1, D-005).
-- **`[B:D-006]` (zonas):** recomendación del Director ya registrada (catálogo simple vendedor↔zona, suplencia = reasignación); P-DSP-02 la implementa. Falta de Luis: límites exactos/comisiones/si la zona define la ruta — no bloquea el catálogo base.
+- **`[B:D-006]` (zonas):** IMPLEMENTADO en P-DSP-02 (catálogo simple vendedor↔zona + override explícito `clientes.zona_id` por ajuste del dueño 2026-07-13 — "siempre hay excepciones"). Falta de Luis: límites exactos/comisiones/si la zona define la ruta — no bloquea el catálogo base.
 - **`[B:D-003]` (bodega↔zona):** Ricardo respondió (16 bodegas); el mapeo bodega↔zona/sucursal afina de qué bodega sale cada despacho — no bloquea el MVP (el documento ya trae `office`).
 - **Dependencia M14 (P-DSP-06/07):** el motor de aprobaciones vive en `feature/m14-aprobaciones` (Max-1, 6/7). La aprobación sobre umbral se cablea SOLO tras el merge de M14 a main — coordinar con stream 1; hasta entonces P-DSP-01..05 no dependen de M14.
 - **PWA target Android** (SPIKE §5): en iOS se acepta el degradado (sin Background Sync → drenar en `online`/`load`). Los conductores operan con Android.

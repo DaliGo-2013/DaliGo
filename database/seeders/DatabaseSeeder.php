@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
             MaquinaSeeder::class,
             // Despues de TipoBotellonSeeder: enlaza los tipos a sus productos.
             ProduccionTesteoSeeder::class,
+            // DESPACHOS-v1: catalogo de zonas comerciales (D-006).
+            ZonaSeeder::class,
         ]);
     }
 }

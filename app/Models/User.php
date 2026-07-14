@@ -37,6 +37,7 @@ class User extends Authenticatable implements AuditableContract, MustVerifyEmail
         'email',
         'password',
         'sucursal_id',
+        'zona_id',
     ];
 
     /**
@@ -70,5 +71,15 @@ class User extends Authenticatable implements AuditableContract, MustVerifyEmail
     public function sucursal(): BelongsTo
     {
         return $this->belongsTo(Sucursal::class);
+    }
+
+    /**
+     * Zona comercial que atiende el usuario (vendedor), opcional (D-006).
+     *
+     * @return BelongsTo<Zona, User>
+     */
+    public function zona(): BelongsTo
+    {
+        return $this->belongsTo(Zona::class);
     }
 }
