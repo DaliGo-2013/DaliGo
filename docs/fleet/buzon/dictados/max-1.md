@@ -60,10 +60,20 @@ FASE A (hazla YA con «revisa tu buzón») — merge en TU rama, sin tocar main:
 - PARTE AL BUZÓN con: hash del merge EN TU RAMA + salida del grep + conteo de suite.
   **NO PUSHEES A MAIN en la fase A.**
 
-FASE B (solo tras OK doble llave) — el Director verifica tu parte y, con el visto bueno de
-Mauricio, se libera el push a main = DEPLOY. Luego QA staging desde el celular de Mauricio
-(ajuste grande de producción → campanita+correo → aprobar desde el teléfono → aplicado) →
-P-M14-07 [x] en RUTA → E2·M14 CERRADA.
+FASE A: ✅ VERIFICADA por el Director 13-07 (rama `feature/m14-aprobaciones` @ f4f4484):
+bundle con lg\:flex/lg\:hidden/min-w-[1.5rem] presentes, superficie 100% M14 (cero fuga a
+territorio M12; compartidos aditivos), 3 conflictos resueltos por unión correcta, 570 verdes
+declarados. **LLAVE DEL DIRECTOR: DADA.**
+
+FASE B — GO CONDICIONADO a la 2ª llave (Mauricio). Cuando Mauricio autorice el deploy:
+1. `git fetch origin` (la rama está ~1 commit detrás — addendum docs, merge trivial).
+2. Merge de `feature/m14-aprobaciones` a `main` + push = DEPLOY (Mauricio aprueba el prompt
+   del guardrail en tu sesión). Mira Actions hasta verde.
+3. QA staging desde el celular de Mauricio: ajuste de producción con Σ|Δ| ≥ 50 → campanita+
+   correo al admin → aprobar desde el teléfono → ajuste aplicado al reporte. Parte al buzón.
+4. P-M14-07 [x] en RUTA → **E2·M14 CERRADA**.
+Deuda M12 que hallaste (permiso `crear lote servicio` sin etiqueta en config/permissions.php):
+anotada por el Director para Marcos — NO la toques.
 
 --- referencia del prep (ya hecho) ---
 TAREA SIGUIENTE — P-M14-07 (con main verde): re-sellado de PLAN-M14 (guard omitido +
