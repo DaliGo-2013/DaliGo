@@ -193,7 +193,7 @@
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
                                 {{-- Un solo badge de estado que incluye la sucursal de recepción:
                                      "Recibido en El Mirador" / "En Revisión en El Mirador"… --}}
-                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@endif</x-badge>
+                                <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}@if ($orden->sucursal) en {{ $orden->sucursal->nombre }}@elseif ($orden->ruta) en Ruta {{ $orden->ruta }}@endif</x-badge>
                             </div>
                             <p class="truncate text-sm text-neutral-500">{{ $detalle }}</p>
                             {{-- Quién recibió/confirmó la orden (al registrar en mostrador o al

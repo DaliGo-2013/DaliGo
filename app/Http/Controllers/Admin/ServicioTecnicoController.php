@@ -188,8 +188,11 @@ class ServicioTecnicoController extends Controller
         // El cliente no toca este campo (el ingreso por QR no lo tiene). La fecha
         // estimada la sigue fijando el servidor segun la sucursal (no editable).
         $data['estado'] = $data['estado'] ?? 'recibido';
-        $data['fecha_entrega'] = Sucursal::findOrFail($data['sucursal_id'])
-            ->fechaEntregaEstimada($data['fecha_ingreso'])->toDateString();
+        // La fecha estimada la fija la sucursal; en "ruta" no hay sucursal, así que
+        // se respeta la que venga del formulario (o queda vacía).
+        $data['fecha_entrega'] = ! empty($data['sucursal_id'])
+            ? Sucursal::findOrFail($data['sucursal_id'])->fechaEntregaEstimada($data['fecha_ingreso'])->toDateString()
+            : ($data['fecha_entrega'] ?? null);
         // Quien registra en el mostrador es quien recibe el equipo.
         $data['recibida_por'] = $request->user()->name;
 
@@ -748,6 +751,16 @@ class ServicioTecnicoController extends Controller
 
         $esGarantia = $request->input('facturacion') === 'garantia';
 
+        // "Ruta": el equipo lo recibe el conductor en ruta (no en una sucursal
+        // física). El select manda el centinela 'ruta' y se escribe la ciudad en
+        // el campo `ruta`. sucursal_id y ruta son mutuamente excluyentes.
+        $esRuta = $request->input('sucursal_id') === 'ruta';
+        if ($esRuta) {
+            $request->merge(['sucursal_id' => null]);
+        } else {
+            $request->merge(['ruta' => null]);
+        }
+
         // El N° de serie es obligatorio solo para tipos con serie unica
         // (dispensador/lavadora); para el resto (bombas/herramientas) es opcional.
         $serieObligatoria = in_array(
@@ -768,7 +781,9 @@ class ServicioTecnicoController extends Controller
             // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
             // lo maneja aparte (alli sigue opcional).
             'producto_id' => ['required', 'integer', Rule::exists('productos', 'id')],
-            'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
+            'sucursal_id' => [Rule::requiredIf(! $esRuta), 'nullable', 'integer', Rule::exists('sucursales', 'id')],
+            // Ciudad/localidad cuando se recibe en ruta (obligatoria en ese caso).
+            'ruta' => [Rule::requiredIf($esRuta), 'nullable', 'string', 'max:120'],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],

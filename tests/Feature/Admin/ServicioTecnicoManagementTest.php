@@ -2,15 +2,16 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Mail\IngresoTallerRecibido;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
 use App\Models\Precio;
 use App\Models\Producto;
 use App\Models\Sucursal;
-use App\Mail\IngresoTallerRecibido;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -70,6 +71,51 @@ class ServicioTecnicoManagementTest extends TestCase
             'garantia_doc_numero' => 'B-12345',
             'garantia_doc_fecha' => now()->subMonths(2)->toDateString(),
         ], $overrides));
+    }
+
+    public function test_registra_recepcion_en_ruta_guarda_la_ciudad(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload([
+                'sucursal_id' => 'ruta',
+                'ruta' => 'Rancagua',
+            ]))
+            ->assertRedirect('/admin/servicio-tecnico');
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'cliente_nombre' => 'Juan Pérez',
+            'sucursal_id' => null,
+            'ruta' => 'Rancagua',
+        ]);
+    }
+
+    public function test_ruta_exige_la_ciudad(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/servicio-tecnico', $this->payload([
+                'sucursal_id' => 'ruta',
+                // sin 'ruta' (ciudad)
+            ]))
+            ->assertSessionHasErrors('ruta');
+    }
+
+    public function test_editar_a_ruta_limpia_la_sucursal(): void
+    {
+        $orden = OrdenServicio::factory()->create(['ruta' => null]);
+
+        $this->actingAs($this->admin())
+            ->put('/admin/servicio-tecnico/'.$orden->id, $this->payload([
+                'sucursal_id' => 'ruta',
+                'ruta' => 'Los Andes',
+                'estado' => 'recibido',
+            ]))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('ordenes_servicio', [
+            'id' => $orden->id,
+            'sucursal_id' => null,
+            'ruta' => 'Los Andes',
+        ]);
     }
 
     // --- Acceso ---
@@ -855,7 +901,7 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSee('1 orden');    // card 2026
 
         // Dentro de un año: cards de los 12 meses (con y sin órdenes) + volver.
-        $marzo = ucfirst(\Illuminate\Support\Carbon::create(2025, 3, 1)->translatedFormat('F'));
+        $marzo = ucfirst(Carbon::create(2025, 3, 1)->translatedFormat('F'));
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?anio=2025')
             ->assertOk()
             ->assertSee('Todos los años')
@@ -868,7 +914,7 @@ class ServicioTecnicoManagementTest extends TestCase
         OrdenServicio::factory()->create(['fecha_ingreso' => '2026-03-10']);
         OrdenServicio::factory()->create(['fecha_ingreso' => '2026-01-05']);
 
-        $sep = fn (int $m) => ucfirst(\Illuminate\Support\Carbon::create(2026, $m, 1)->translatedFormat('F Y'));
+        $sep = fn (int $m) => ucfirst(Carbon::create(2026, $m, 1)->translatedFormat('F Y'));
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico')
             ->assertOk()->assertSee($sep(3))->assertSee($sep(1));
