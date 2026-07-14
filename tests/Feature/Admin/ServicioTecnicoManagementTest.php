@@ -137,7 +137,7 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_maquina_propia_detecta_variantes_del_nombre(): void
     {
-        foreach (['importadora dali', 'IMP DALI', 'Imp. Dali'] as $nombre) {
+        foreach (['importadora dali', 'IMP DALI', 'Imp. Dali', 'IMP.DALI', 'IMP, DALI', 'DALI'] as $nombre) {
             $payload = $this->payload(['cliente_nombre' => $nombre]);
             unset($payload['cliente_rut'], $payload['cliente_email']);
 

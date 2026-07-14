@@ -109,8 +109,8 @@ Alpine.data('clienteIngreso', ({ endpoint, rut, nombre, telefono, clienteId }) =
     // Máquina propia de la empresa (IMP. DALI / IMPORTADORA DALI): ignora puntos,
     // espacios y mayús/minús. Cuando es propia, RUT/teléfono/correo son opcionales.
     get esPropia() {
-        const n = (this.nombre || '').toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
-        return n === 'IMP DALI' || n === 'IMPORTADORA DALI';
+        const n = (this.nombre || '').toUpperCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+        return ['IMP DALI', 'IMPORTADORA DALI', 'DALI'].includes(n);
     },
 
     async buscar() {
