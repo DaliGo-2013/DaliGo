@@ -84,6 +84,7 @@
                     @include('admin.servicio-tecnico.partials._ranking', [
                         'items' => $topEquipos,
                         'sinNombre' => 'Sin código',
+                        'totalPeriodo' => $kpis['total'],
                         'vacio' => 'Sin ingresos en el período.',
                     ])
                 </div>
@@ -107,6 +108,7 @@
                     </div>
                     @include('admin.servicio-tecnico.partials._ranking', [
                         'items' => $porTipo->map(fn ($t) => (object) ['nombre' => \App\Models\OrdenServicio::etiquetaTipo($t->nombre), 'cantidad' => $t->cantidad]),
+                        'totalPeriodo' => $kpis['total'],
                         'vacio' => 'Sin ingresos en el período.',
                     ])
                 </div>
@@ -117,6 +119,7 @@
                     </div>
                     @include('admin.servicio-tecnico.partials._ranking', [
                         'items' => $porEstado->map(fn ($e) => (object) ['nombre' => \Illuminate\Support\Str::headline($e->nombre), 'cantidad' => $e->cantidad]),
+                        'totalPeriodo' => $kpis['total'],
                         'vacio' => 'Sin ingresos en el período.',
                     ])
                 </div>
@@ -130,6 +133,7 @@
                             'nombre' => \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$c->causa] ?? 'Sin determinar',
                             'cantidad' => $c->cantidad,
                         ]),
+                        'totalPeriodo' => $kpis['total'],
                         'vacio' => 'Sin ingresos en el período.',
                     ])
                 </div>
