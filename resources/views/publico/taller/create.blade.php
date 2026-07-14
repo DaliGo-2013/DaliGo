@@ -41,14 +41,24 @@
                 </span>
             </div>
 
-            {{-- Opción B: manual --}}
+            {{-- Opción B: manual, UNA máquina --}}
             <button type="button" @click="modo = 'manual'"
                 class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
-                <span class="font-semibold text-neutral-900">Ingresar manualmente</span>
+                <span class="font-semibold text-neutral-900">Ingreso por unidad</span>
                 <span class="mt-1 block text-sm text-neutral-500">
-                    Para equipos sin código de barras (los más antiguos). Tú escribes los datos del equipo.
+                    Una máquina. Tú escribes los datos del equipo.
                 </span>
             </button>
+
+            {{-- Opción C: VARIAS máquinas de una vez (lote). Tus datos se escriben
+                 una sola vez y cada máquina queda con su propio folio. --}}
+            <a href="{{ $urlLote }}"
+                class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
+                <span class="font-semibold text-neutral-900">Ingreso por cantidad</span>
+                <span class="mt-1 block text-sm text-neutral-500">
+                    Varias máquinas de una vez: escribes tus datos una sola vez y agregas cada equipo.
+                </span>
+            </a>
         </div>
 
         {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}

@@ -45,6 +45,20 @@ es cajón viejo). Arranca en RAMA NUEVA desde main FRESCO:
 `git fetch origin && git checkout -b feature/despachos-v1 origin/main`
 (main ya está VERDE — el flaky de M12 lo cerró Max-1).
 
+🟢 13-07: PLAN-DESPACHOS-V1 VALIDADO por el Director + **VISTO BUENO DE MAURICIO DADO**
+(confirmado al Director en el momento). GO a construir. Ajustes del dueño al plan:
+- ALCANCE aprobado tal cual: QR anti-fraude (M07) + PWA conductor con prueba de entrega;
+  cotizador de transportistas y venta-en-ruta quedan FUERA de v1 (v2). ✓
+- P-DSP-00 (exploración del shape real de documents.json) CONFIRMADO como primer paso —
+  el dueño lo aprobó explícitamente. Congela la migración de P-DSP-01 recién con esa evidencia.
+- ZONAS (P-DSP-02): el modelo zona→vendedor→cliente-heredado es correcto PERO el dueño
+  advierte que "siempre hay excepciones". AJUSTE OBLIGATORIO al diseño: el cliente debe poder
+  tener una zona/atención EXPLÍCITA que sobreescriba la heredada de su vendedor (campo
+  `zona_id` nullable en `clientes` que, si está seteado, GANA sobre la derivada; sin setear =
+  hereda del vendedor). Documenta la regla de precedencia en el modelo y cúbrela con test.
+ARRANCA: P-DSP-00 (explorar) → P-DSP-01 (espejo) → ... según el orden del plan. Rama
+`feature/despachos-v1`. Suite verde por commit. Parte al buzón por paso.
+
 ## 2. PLAN-DESPACHOS-V1 sellado (reemplaza a PLAN-M04 — M04 pospuesto por el dueño)
 Unidad carve-out "DESPACHOS-v1" sobre 3 módulos de la biblia (M05 parcial + M07 + M08 MVP).
 Alcance dictado por el Director (el plan lo refina y lo sella contra el código):
