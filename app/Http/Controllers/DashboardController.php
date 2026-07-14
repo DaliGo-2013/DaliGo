@@ -3,39 +3,133 @@
 namespace App\Http\Controllers;
 
 use App\Models\Aprobacion;
-use App\Models\Cliente;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
-use App\Models\Producto;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 /**
- * Página de Inicio: punto de partida según los permisos del usuario y
- * tablero ejecutivo (M16-v0) — cards de LECTURA agrupadas por módulo.
- * Cada bloque (CTA del operario, indicadores, accesos rápidos) se arma solo
- * con lo que el usuario puede ver; un member sin permisos ve solo el saludo.
- * Se gatea por PERMISO (no por nombre de rol), igual que rutas y navegación.
+ * Página de Inicio (M16-v1 «Pulso del día», PLAN-M16-V1 opción A):
+ *  ① Excepciones — SOLO lo que se desvía, con su edad y su destino (andon:
+ *    lo normal se ve quieto). Si no hay nada: «Operación al día».
+ *  ② Pulso — cómo viene el día/la semana: producción como medida directa
+ *    (producido vs asignado + merma con su referencia + serie 7 días) y
+ *    taller con antigüedad y flujo semanal.
+ *  ③ Zócalo — los accesos directos, compactos, al final.
+ * Se gatea por PERMISO (no por rol); un member sin permisos ve solo el saludo.
+ * Solo lectura: queries agregadas, sin N+1; fechas SIEMPRE con whereDate y
+ * límites calculados en PHP (portable SQLite/MySQL 5.7 — sin DATEDIFF).
  */
 class DashboardController extends Controller
 {
     public function index(Request $request): View
     {
         $user = $request->user();
+        $hoy = now()->toDateString();
 
-        // Indicadores accionables agrupados por módulo: cada tarjeta enlaza a
-        // la pantalla donde se resuelve. 'alerta' destaca el número cuando
-        // > 0 amerita acción. Solo lectura: queries agregadas, sin N+1.
-        $secciones = [];
+        // ── ① Excepciones: cada ítem = señal + edad del más viejo + destino ──
+        $excepciones = [];
+        $puedeVerExcepciones = false;
 
         if ($user->can('manage production')) {
-            $hoy = now()->toDateString();
-            // Una sola pasada SUM sobre los reportes de hoy (scope delDia =
-            // whereDate) + el asignado del día; las fórmulas viven en
-            // ProduccionReporte::armarResumen (compartidas con el panel del jefe).
+            $puedeVerExcepciones = true;
+
+            $porAprobar = ProduccionReporte::pendientes()->count();
+            if ($porAprobar > 0) {
+                // El más viejo por enviado_at (fallback fecha para históricos).
+                $masViejo = ProduccionReporte::pendientes()->min('enviado_at')
+                    ?? ProduccionReporte::pendientes()->min('fecha');
+                $excepciones[] = [
+                    'label' => 'Reportes por aprobar',
+                    'cantidad' => $porAprobar,
+                    'edad' => $this->edad($masViejo),
+                    'href' => route('admin.produccion.index'),
+                ];
+            }
+
+            $devueltos = ProduccionReporte::where('estado', ProduccionReporte::DEVUELTO)->count();
+            if ($devueltos > 0) {
+                $excepciones[] = [
+                    'label' => 'Reportes devueltos sin corregir',
+                    'cantidad' => $devueltos,
+                    'edad' => null,
+                    'href' => route('admin.produccion.index'),
+                ];
+            }
+
+            $atrasados = ProduccionAsignacion::whereDate('fecha', $hoy)
+                ->where(function ($q) {
+                    $q->doesntHave('reporte')
+                        ->orWhereHas('reporte', fn ($r) => $r->where('estado', ProduccionReporte::BORRADOR));
+                })
+                ->count();
+            if ($atrasados > 0) {
+                $excepciones[] = [
+                    'label' => 'Asignaciones de hoy sin reporte',
+                    'cantidad' => $atrasados,
+                    'edad' => null,
+                    'href' => route('admin.produccion.index'),
+                ];
+            }
+        }
+
+        if ($user->can('confirmar servicio tecnico')
+            && $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])) {
+            $puedeVerExcepciones = true;
+
+            $porConfirmar = OrdenServicio::porConfirmar()->count();
+            if ($porConfirmar > 0) {
+                $excepciones[] = [
+                    'label' => 'Recepciones por confirmar',
+                    'cantidad' => $porConfirmar,
+                    'edad' => $this->edad(OrdenServicio::porConfirmar()->min('created_at')),
+                    'href' => route('admin.servicio-tecnico.index'),
+                ];
+            }
+        }
+
+        if ($user->can('aprobar solicitudes')) {
+            $puedeVerExcepciones = true;
+
+            // Espejo de la bandeja: el número = lo que verá al hacer click.
+            $bandeja = fn () => Aprobacion::where('estado', Aprobacion::ESTADO_PENDIENTE)
+                ->when(! $user->hasRole('admin'), fn ($q) => $q->whereIn('rol_aprobador', $user->getRoleNames()));
+            $pendientes = $bandeja()->count();
+            if ($pendientes > 0) {
+                $excepciones[] = [
+                    'label' => 'Aprobaciones pendientes',
+                    'cantidad' => $pendientes,
+                    'edad' => $this->edad($bandeja()->min('created_at')),
+                    'href' => route('aprobaciones.index'),
+                ];
+            }
+        }
+
+        if ($user->can('view notificaciones')) {
+            $puedeVerExcepciones = true;
+
+            // Solo las TERMINALES (agotaron reintentos): las que aún reintentan
+            // se resuelven solas y no ameritan interrumpir a nadie.
+            $fallidas = Notificacion::where('estado', Notificacion::FALLIDA)
+                ->whereNull('programada_para')
+                ->count();
+            if ($fallidas > 0) {
+                $excepciones[] = [
+                    'label' => 'Notificaciones caídas (sin reintento)',
+                    'cantidad' => $fallidas,
+                    'edad' => null,
+                    'href' => route('admin.notificaciones.index', ['estado' => Notificacion::FALLIDA]),
+                ];
+            }
+        }
+
+        // ── ② Pulso: producción (medida directa + referencia + serie 7d) ──
+        $pulsoProduccion = null;
+
+        if ($user->can('manage production')) {
             $sumas = ProduccionReporte::delDia($hoy)
                 ->selectRaw('COALESCE(SUM(primera),0) as p1, COALESCE(SUM(segunda),0) as p2, COALESCE(SUM(malo),0) as mal, COALESCE(SUM(danada),0) as dan')
                 ->first();
@@ -44,111 +138,68 @@ class DashboardController extends Controller
                 (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
             );
 
-            $secciones[] = ['label' => 'Producción · hoy', 'cards' => [
-                ['label' => 'Producido hoy', 'valor' => $resumen['producido'], 'href' => route('admin.produccion.dia', ['fecha' => $hoy]), 'alerta' => false],
-                ['label' => 'Avance de hoy (%)', 'valor' => $resumen['avance'], 'href' => route('admin.produccion.index'), 'alerta' => false],
-                ['label' => 'Merma de hoy (%)', 'valor' => $resumen['merma_pct'], 'href' => route('admin.produccion.index'), 'alerta' => false],
-                ['label' => 'Reportes por revisar', 'valor' => ProduccionReporte::pendientes()->count(), 'href' => route('admin.produccion.index'), 'alerta' => true],
-            ]];
+            // Serie de 7 días (incluye hoy) para las mini-barras, con ceros.
+            $desde7 = now()->subDays(6)->toDateString();
+            $porDia = ProduccionReporte::seriePorDia($desde7, $hoy);
+            $serie = [];
+            for ($cursor = Carbon::parse($desde7); $cursor->toDateString() <= $hoy; $cursor->addDay()) {
+                $fila = $porDia->get($cursor->toDateString());
+                $serie[] = [
+                    'fecha' => $cursor->toDateString(),
+                    'producido' => $fila ? (int) $fila->p1 + (int) $fila->p2 : 0,
+                ];
+            }
+            $max = max(1, max(array_column($serie, 'producido')));
+            foreach ($serie as &$dia) {
+                $dia['pct'] = (int) round($dia['producido'] / $max * 100);
+            }
+            unset($dia);
+
+            // Referencia de merma: los 7 días ANTERIORES a hoy (hoy no puede
+            // ser su propia vara). Sin datos previos queda null (sin referencia).
+            $prev = ProduccionReporte::seriePorDia(now()->subDays(7)->toDateString(), now()->subDay()->toDateString());
+            $prevP1 = (int) $prev->sum('p1');
+            $prevTotal = $prevP1 + (int) $prev->sum('p2') + (int) $prev->sum('mal') + (int) $prev->sum('dan');
+            $mermaProm7 = $prevTotal > 0
+                ? (int) round(((int) $prev->sum('mal') + (int) $prev->sum('dan')) / $prevTotal * 100)
+                : null;
+
+            $pulsoProduccion = $resumen + [
+                'mermaProm7' => $mermaProm7,
+                'serie' => $serie,
+                'href' => route('admin.produccion.index'),
+            ];
         }
 
-        $servicioTecnico = [];
+        // ── ② Pulso: taller (antigüedad de lo activo + flujo semanal) ──
+        $pulsoTaller = null;
 
         if ($user->can('manage servicio tecnico')) {
-            // Un solo COUNT agrupado por estado (sin N+1). Cada card enlaza al
-            // listado ya filtrado por ese estado (donde se ve tipo/equipo).
-            $porEstado = OrdenServicio::selectRaw('estado, COUNT(*) as c')
-                ->groupBy('estado')->pluck('c', 'estado');
-            $enTaller = (int) $porEstado->except(['entregado'])->sum();
-            $link = fn (?string $estado = null) => route('admin.servicio-tecnico.index', $estado ? ['estado' => $estado] : []);
+            // Buckets de antigüedad con límites en PHP + whereDate (portable):
+            // 0-7 / 8-30 / 30+ días desde el ingreso, solo órdenes activas.
+            $d7 = now()->subDays(7)->toDateString();
+            $d30 = now()->subDays(30)->toDateString();
+            $activas = fn () => OrdenServicio::pendientesTecnico();
 
-            $servicioTecnico[] = ['label' => 'Equipos en taller', 'valor' => $enTaller, 'href' => $link(), 'alerta' => true];
-            // Los 4 estados clave del paso a paso. "Cotización" = esperando la
-            // respuesta del cliente (lo más urgente) → se destaca.
-            $servicioTecnico[] = ['label' => 'Cotización (espera cliente)', 'valor' => (int) ($porEstado['cotizacion'] ?? 0), 'href' => $link('cotizacion'), 'alerta' => true];
-            $servicioTecnico[] = ['label' => 'Reparado', 'valor' => (int) ($porEstado['reparado'] ?? 0), 'href' => $link('reparado'), 'alerta' => false];
-            $servicioTecnico[] = ['label' => 'Entregado', 'valor' => (int) ($porEstado['entregado'] ?? 0), 'href' => $link('entregado'), 'alerta' => false];
-            $servicioTecnico[] = ['label' => 'Sin solución', 'valor' => (int) ($porEstado['sin_solucion'] ?? 0), 'href' => $link('sin_solucion'), 'alerta' => false];
-        }
+            $aging = [
+                'd0_7' => $activas()->whereDate('fecha_ingreso', '>=', $d7)->count(),
+                'd8_30' => $activas()->whereDate('fecha_ingreso', '<', $d7)->whereDate('fecha_ingreso', '>=', $d30)->count(),
+                'd30' => $activas()->whereDate('fecha_ingreso', '<', $d30)->count(),
+            ];
 
-        // El gate exige ADEMÁS poder abrir el destino: el href apunta al
-        // listado ST, cuya ruta pide view|manage servicio tecnico — sin esto,
-        // un rol con SOLO 'confirmar' vería la card y recibiría 403 al click.
-        if ($user->can('confirmar servicio tecnico')
-            && $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])) {
-            $servicioTecnico[] = [
-                'label' => 'Recepciones por confirmar',
-                'valor' => OrdenServicio::porConfirmar()->count(),
+            // Flujo de los últimos 7 días: entradas por fecha_ingreso; salidas
+            // por fecha_entrega (histórico puede venir NULL — se subestima, no
+            // se inventa).
+            $pulsoTaller = [
+                'activos' => array_sum($aging),
+                'aging' => $aging,
+                'entradasSemana' => OrdenServicio::whereDate('fecha_ingreso', '>=', $d7)->count(),
+                'salidasSemana' => OrdenServicio::whereDate('fecha_entrega', '>=', $d7)->count(),
                 'href' => route('admin.servicio-tecnico.index'),
-                'alerta' => true,
             ];
         }
 
-        if ($servicioTecnico !== []) {
-            $secciones[] = ['label' => 'Servicio Técnico', 'cards' => $servicioTecnico];
-        }
-
-        if ($user->can('aprobar solicitudes')) {
-            // Espejo exacto de la bandeja (AprobacionController::index): el
-            // número de la card = lo que el aprobador verá al hacer click.
-            $pendientes = Aprobacion::where('estado', Aprobacion::ESTADO_PENDIENTE)
-                ->when(! $user->hasRole('admin'), fn ($q) => $q->whereIn('rol_aprobador', $user->getRoleNames()))
-                ->count();
-
-            $secciones[] = ['label' => 'Aprobaciones', 'cards' => [
-                ['label' => 'Aprobaciones pendientes', 'valor' => $pendientes, 'href' => route('aprobaciones.index'), 'alerta' => true],
-            ]];
-        }
-
-        $administracion = [];
-
-        if ($user->can('manage productos')) {
-            $activos = Producto::where('activo', true)->count();
-            $completos = Producto::where('activo', true)
-                ->whereNotNull('peso_kg')->whereNotNull('alto_cm')
-                ->whereNotNull('ancho_cm')->whereNotNull('largo_cm')
-                ->count();
-
-            $administracion[] = [
-                'label' => 'Productos sin medidas',
-                'valor' => $activos - $completos,
-                'href' => route('admin.productos.index', ['medidas' => 'incompletas']),
-                'alerta' => true,
-            ];
-        }
-
-        if ($user->can('manage clientes')) {
-            $administracion[] = [
-                'label' => 'Clientes',
-                'valor' => Cliente::count(),
-                'href' => route('admin.clientes.index'),
-                'alerta' => false,
-            ];
-        }
-
-        if ($user->can('view users')) {
-            $administracion[] = [
-                'label' => 'Usuarios',
-                'valor' => User::count(),
-                'href' => route('admin.users.index'),
-                'alerta' => false,
-            ];
-        }
-
-        if ($user->can('view notificaciones')) {
-            $administracion[] = [
-                'label' => 'Notificaciones fallidas',
-                'valor' => Notificacion::where('estado', Notificacion::FALLIDA)->count(),
-                'href' => route('admin.notificaciones.index', ['estado' => Notificacion::FALLIDA]),
-                'alerta' => true,
-            ];
-        }
-
-        if ($administracion !== []) {
-            $secciones[] = ['label' => 'Administración', 'cards' => $administracion];
-        }
-
-        // Accesos rápidos: mismos grupos y permisos que la navegación.
+        // ── ③ Zócalo: accesos directos compactos (mismos grupos que el nav) ──
         $accesos = collect([
             'Comercial' => [
                 ['label' => 'Catálogo', 'desc' => 'Productos: peso y dimensiones para despacho', 'href' => route('admin.productos.index'), 'permiso' => 'manage productos'],
@@ -168,14 +219,44 @@ class DashboardController extends Controller
                 ['label' => 'Sucursales', 'desc' => 'Mirador, Coquimbo, Abate Molina, Buzeta', 'href' => route('admin.sucursales.index'), 'permiso' => 'manage sucursales'],
                 ['label' => 'Configuración', 'desc' => 'Parámetros globales de la app', 'href' => route('admin.configuracion.index'), 'permiso' => 'manage settings'],
                 ['label' => 'Auditoría', 'desc' => 'Quién cambió qué y cuándo', 'href' => route('admin.audits.index'), 'permiso' => 'view audit'],
+                ['label' => 'Notificaciones', 'desc' => 'Envíos, reintentos y fallas', 'href' => route('admin.notificaciones.index'), 'permiso' => 'view notificaciones'],
+                ['label' => 'Aprobaciones', 'desc' => 'Historial del motor de aprobaciones', 'href' => route('admin.aprobaciones.index'), 'permiso' => 'view aprobaciones'],
             ],
         ])
             ->map(fn (array $items) => array_values(array_filter($items, fn ($i) => $user->can($i['permiso']))))
             ->filter(fn (array $items) => $items !== []);
 
         return view('dashboard', [
-            'secciones' => $secciones,
+            'excepciones' => $excepciones,
+            'puedeVerExcepciones' => $puedeVerExcepciones,
+            'pulsoProduccion' => $pulsoProduccion,
+            'pulsoTaller' => $pulsoTaller,
             'accesos' => $accesos,
         ]);
+    }
+
+    /**
+     * Edad legible del ítem más viejo de una cola ("hace 2 días" / "hace 5 h"),
+     * calculada en PHP (portable). Null si la cola no tiene timestamp.
+     */
+    private function edad(mixed $timestamp): ?string
+    {
+        if ($timestamp === null) {
+            return null;
+        }
+
+        $horas = (int) Carbon::parse($timestamp)->diffInHours(now());
+
+        if ($horas >= 48) {
+            return 'hace '.intdiv($horas, 24).' días';
+        }
+        if ($horas >= 24) {
+            return 'hace 1 día';
+        }
+        if ($horas >= 1) {
+            return "hace {$horas} h";
+        }
+
+        return 'hace minutos';
     }
 }

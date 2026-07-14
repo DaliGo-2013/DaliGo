@@ -235,6 +235,21 @@ class ProduccionReporte extends Model implements AuditableContract
         ];
     }
 
+    /**
+     * Serie por dia desde los reportes (totales denormalizados), keyed por
+     * Y-m-d. Una sola query agregada (whereDate + groupBy, 5.7-safe); la
+     * comparten el panel del jefe y el pulso del Inicio (M16-v1).
+     */
+    public static function seriePorDia(string $desde, string $hasta, ?int $sopladorId = null)
+    {
+        return static::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->when($sopladorId, fn ($q) => $q->where('soplador_id', $sopladorId))
+            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
+            ->groupBy('fecha')
+            ->get()
+            ->keyBy(fn ($r) => \Illuminate\Support\Carbon::parse($r->fecha)->toDateString());
+    }
+
     // --- Scopes ---
 
     public function scopePendientes(Builder $query): Builder

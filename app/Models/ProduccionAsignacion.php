@@ -50,4 +50,17 @@ class ProduccionAsignacion extends Model
     {
         return $this->hasOne(ProduccionReporte::class, 'asignacion_id');
     }
+
+    /**
+     * Asignadas por dia (mapa Y-m-d => int) para el rango. Una query agregada;
+     * la comparten el panel del jefe y el pulso del Inicio (M16-v1).
+     */
+    public static function asignadasPorDia(string $desde, string $hasta)
+    {
+        return static::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
+            ->groupBy('fecha')
+            ->get()
+            ->mapWithKeys(fn ($r) => [\Illuminate\Support\Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
+    }
 }
