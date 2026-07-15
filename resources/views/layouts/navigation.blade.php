@@ -150,7 +150,20 @@
                 </x-dropdown>
             </div>
 
-            <div class="-me-2 flex items-center lg:hidden">
+            <div class="-me-2 flex items-center gap-1 lg:hidden">
+                {{-- Campana SIEMPRE visible en móvil (hallazgo QA 14-07: al fondo
+                     del hamburguesa nadie la descubre). Va directo a la bandeja
+                     personal — un dropdown en 375px tapa la pantalla y la página
+                     ya existe; el detalle vive en notificaciones.index. --}}
+                <a href="{{ route('notificaciones.index') }}"
+                    aria-label="Notificaciones{{ $dgConteo > 0 ? ' ('.$dgConteo.' sin leer)' : '' }}"
+                    class="relative inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
+                    <x-icon.bell class="h-6 w-6" />
+                    @if ($dgConteo > 0)
+                        <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">{{ $dgConteo > 9 ? '9+' : $dgConteo }}</span>
+                    @endif
+                    <span class="sr-only">Notificaciones</span>
+                </a>
                 <button @click="open = ! open" class="inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
