@@ -28,17 +28,24 @@ class ClientSync
     public function __construct(private BsaleClient $client) {}
 
     /**
-     * @return array{creados:int,actualizados:int,adoptados:int,omitidos:int,errores:array<int,array>}
+     * @return array{creados:int,actualizados:int,adoptados:int,duplicados:int,omitidos:int,errores:array<int,array>}
      */
     public function run(): array
     {
-        $stats = ['creados' => 0, 'actualizados' => 0, 'adoptados' => 0, 'omitidos' => 0, 'errores' => []];
+        // `duplicados`: RUT ya tomado por otra ficha (esperado, benigno — Bsale
+        // trae varios registros por RUT). `errores`: fallos reales e inesperados
+        // (deberían ser 0). Se separan para que el sync no parezca roto cada corrida.
+        $stats = ['creados' => 0, 'actualizados' => 0, 'adoptados' => 0, 'duplicados' => 0, 'omitidos' => 0, 'errores' => []];
 
         // Carga masiva: sin audit por fila (igual que el catalogo); resumen al log.
         Cliente::withoutAuditing(function () use (&$stats) {
             foreach ($this->client->each('clients.json', ['state' => 0]) as $bsaleClient) {
                 try {
                     $this->upsertOne($bsaleClient, $stats);
+                } catch (ClienteDuplicadoException $e) {
+                    // Duplicado de RUT en el origen: se omite a propósito, no es error.
+                    $stats['duplicados']++;
+                    $stats['omitidos']++;
                 } catch (Throwable $e) {
                     $stats['omitidos']++;
                     $stats['errores'][] = [
@@ -51,8 +58,8 @@ class ClientSync
         });
 
         Log::info(sprintf(
-            'bsale:sync-clients → %d creados, %d actualizados, %d adoptados, %d omitidos, %d errores.',
-            $stats['creados'], $stats['actualizados'], $stats['adoptados'], $stats['omitidos'], count($stats['errores']),
+            'bsale:sync-clients → %d creados, %d actualizados, %d adoptados, %d duplicados por RUT (esperado), %d errores.',
+            $stats['creados'], $stats['actualizados'], $stats['adoptados'], $stats['duplicados'], count($stats['errores']),
         ));
 
         return $stats;
@@ -104,7 +111,7 @@ class ClientSync
                 $stats['actualizados']++;
             } catch (QueryException $e) {
                 if ($this->isUniqueViolation($e)) {
-                    throw new \RuntimeException("Cliente {$clientId}: el RUT '{$rut}' ya existe en otra fila; omitido.");
+                    throw new ClienteDuplicadoException("Cliente {$clientId}: el RUT '{$rut}' ya existe en otra fila; omitido.");
                 }
                 throw $e;
             }
@@ -130,7 +137,7 @@ class ClientSync
             $stats['creados']++;
         } catch (QueryException $e) {
             if ($this->isUniqueViolation($e)) {
-                throw new \RuntimeException("RUT '{$rut}' ya existe en otra fila; cliente {$clientId} omitido.");
+                throw new ClienteDuplicadoException("RUT '{$rut}' ya existe en otra fila; cliente {$clientId} omitido.");
             }
             throw $e;
         }
