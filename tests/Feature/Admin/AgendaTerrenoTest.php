@@ -42,6 +42,8 @@ class AgendaTerrenoTest extends TestCase
             'fecha' => '2026-07-20',
             'cliente_nombre' => 'Aguas Claras SpA',
             'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
             'direccion' => 'Av. Los Andes 123',
             'ciudad' => 'Curicó',
             'descripcion' => 'Mantención full planta 1T',
@@ -159,6 +161,22 @@ class AgendaTerrenoTest extends TestCase
         $this->actingAs($this->vendedor())
             ->post('/admin/agenda-terreno', $this->payload(['tipo' => 'paseo']))
             ->assertSessionHasErrors('tipo');
+    }
+
+    public function test_agendar_exige_los_datos_de_contacto(): void
+    {
+        // RUT, teléfono, correo, dirección y ciudad son OBLIGATORIOS al agendar
+        // (paridad con el formulario público del QR).
+        $this->actingAs($this->vendedor())
+            ->post('/admin/agenda-terreno', $this->payload([
+                'cliente_rut' => '',
+                'cliente_telefono' => '',
+                'cliente_email' => '',
+                'direccion' => '',
+                'ciudad' => '',
+                'descripcion' => '',
+            ]))
+            ->assertSessionHasErrors(['cliente_rut', 'cliente_telefono', 'cliente_email', 'direccion', 'ciudad', 'descripcion']);
     }
 
     // --- Agenda del mes ---

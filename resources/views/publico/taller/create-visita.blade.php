@@ -49,9 +49,11 @@
                 <x-input-label for="servicio_terreno_id" value="Servicio (si ya sabes cuál)" />
                 <x-select id="servicio_terreno_id" name="servicio_terreno_id" class="mt-1.5" x-model="servicioId">
                     <option value="">— No estoy seguro / que me orienten —</option>
+                    {{-- Solo el NOMBRE del servicio: el valor en UF es interno y no
+                         se le muestra al cliente (lo cotiza el técnico en la visita). --}}
                     @foreach ($servicios as $s)
                         <option value="{{ $s->id }}" @selected((string) old('servicio_terreno_id') === (string) $s->id)>
-                            {{ $s->nombre }}@if ($s->valor_uf_fmt) · {{ $s->valor_uf_fmt }} UF @endif
+                            {{ $s->nombre }}
                         </option>
                     @endforeach
                 </x-select>

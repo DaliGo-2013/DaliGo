@@ -180,14 +180,16 @@ class AgendaTrabajoController extends Controller
                 : ['nullable', Rule::in(AgendaTrabajo::ESTADOS)],
             'servicio_terreno_id' => ['nullable', 'integer', Rule::exists('servicios_terreno', 'id')],
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
+            // Datos del cliente OBLIGATORIOS (parean con el formulario público
+            // del QR): sin ellos el técnico no puede llegar ni coordinar.
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
-            'cliente_rut' => ['nullable', 'string', 'max:20', new RutChileno],
-            'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            'cliente_email' => ['nullable', 'email', 'max:191'],
-            'direccion' => ['nullable', 'string', 'max:191'],
-            'ciudad' => ['nullable', 'string', 'max:191'],
+            'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
+            'cliente_telefono' => ['required', 'string', 'max:30'],
+            'cliente_email' => ['required', 'email', 'max:191'],
+            'direccion' => ['required', 'string', 'max:191'],
+            'ciudad' => ['required', 'string', 'max:191'],
             'tecnico_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
-            'descripcion' => ['nullable', 'string'],
+            'descripcion' => ['required', 'string'],
             'notas_tecnico' => ['nullable', 'string'],
         ]);
     }
