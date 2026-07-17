@@ -87,9 +87,9 @@
                         </x-nav-link>
                     @endcan
 
-                    @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio', 'ver agenda terreno', 'agendar servicio terreno'])
+                    @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio', 'ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones'])
                         <x-nav-dropdown label="Servicio Técnico"
-                            :active="request()->routeIs('admin.servicio-tecnico.*', 'admin.agenda-terreno.*', 'admin.servicios-terreno.*')">
+                            :active="request()->routeIs('admin.servicio-tecnico.*', 'admin.agenda-terreno.*', 'admin.servicios-terreno.*', 'admin.instalaciones.*')">
                             {{-- Contador: equipos activos en el taller (todo salvo entregado / sin solución).
                                  Va en el título del menú (slot badge) para seguir visible en la barra. --}}
                             @if (($pendientesServicioTecnico ?? 0) > 0)
@@ -118,6 +118,9 @@
                             @endcanany
                             @can('agendar servicio terreno')
                                 <x-dropdown-link :href="route('admin.servicios-terreno.index')">Servicios de terreno</x-dropdown-link>
+                            @endcan
+                            @can('gestionar instalaciones')
+                                <x-dropdown-link :href="route('admin.instalaciones.index')">Instalaciones</x-dropdown-link>
                             @endcan
                         </x-nav-dropdown>
                     @endcanany
@@ -200,7 +203,7 @@
                 </x-responsive-nav-link>
             @endcan
 
-            @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio', 'ver agenda terreno', 'agendar servicio terreno'])
+            @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio', 'ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones'])
                 <x-responsive-nav-heading>
                     Servicio Técnico
                     @if (($pendientesServicioTecnico ?? 0) > 0)
@@ -241,6 +244,11 @@
                 @can('agendar servicio terreno')
                     <x-responsive-nav-link :href="route('admin.servicios-terreno.index')" :active="request()->routeIs('admin.servicios-terreno.*')">
                         Servicios de terreno
+                    </x-responsive-nav-link>
+                @endcan
+                @can('gestionar instalaciones')
+                    <x-responsive-nav-link :href="route('admin.instalaciones.index')" :active="request()->routeIs('admin.instalaciones.*')">
+                        Instalaciones
                     </x-responsive-nav-link>
                 @endcan
             @endcanany

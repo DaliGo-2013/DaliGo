@@ -5,24 +5,25 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
+use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
-use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\ServicioTerrenoController;
 use App\Http\Controllers\Admin\SucursalController;
+use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
@@ -202,6 +203,18 @@ Route::middleware('auth')
             Route::resource('servicios-terreno', ServicioTerrenoController::class)
                 ->parameters(['servicios-terreno' => 'servicio'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
+        // Registro de INSTALACIONES del tecnico industrial (Excel de Carlos
+        // Tablante): ledger editable. Lo gestionan el tecnico industrial, jefes
+        // de venta y admin (buscar-cliente ANTES del resource para no chocar con
+        // instalaciones/{instalacion}).
+        Route::middleware('permission:gestionar instalaciones')->group(function () {
+            Route::get('instalaciones/buscar-cliente', [InstalacionController::class, 'buscarCliente'])
+                ->name('instalaciones.buscar-cliente');
+            Route::resource('instalaciones', InstalacionController::class)
+                ->parameters(['instalaciones' => 'instalacion'])
+                ->except(['show']);
         });
 
         // Ingreso por LOTE (conductor en ruta): permiso acotado, NO gestiona el

@@ -31,5 +31,6 @@ return [
         'view notificaciones' => 'Ver notificaciones',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
+        'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
     ],
 ];
