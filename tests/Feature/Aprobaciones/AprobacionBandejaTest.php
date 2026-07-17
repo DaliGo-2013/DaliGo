@@ -142,17 +142,46 @@ class AprobacionBandejaTest extends TestCase
 
         [$jefe, , $aprobacion] = $this->pendienteReal();
 
-        // El jefe (solicitante) la ve en su historial, con su estado.
+        // El jefe (solicitante) la ve en su historial, con su estado Y con lo
+        // que pidió (motivo + magnitud — hallazgo #3 del QA 15-07: sin esto no
+        // distinguía sus solicitudes entre sí).
         $this->actingAs($jefe)->get(route('aprobaciones.mias'))
             ->assertOk()
             ->assertSee($aprobacion->descripcion)
-            ->assertSee('Pendiente');
+            ->assertSee('Pendiente')
+            ->assertSee('Conteo corregido')
+            ->assertSee('magnitud');
 
         // Otro usuario cualquiera (sin permiso de bandeja) entra pero no la ve.
         $otro = tap(User::factory()->create())->assignRole('soplador');
         $this->actingAs($otro)->get(route('aprobaciones.mias'))
             ->assertOk()
             ->assertDontSee($aprobacion->descripcion);
+    }
+
+    public function test_la_tarjeta_muestra_el_detalle_del_cambio(): void
+    {
+        // Hallazgo #7 del QA 15-07: el aprobador decidía sin ver QUÉ cambia.
+        // El payload ya trae anterior/nuevo → la tarjeta pinta solo lo que difiere.
+        $this->pendienteReal(); // anterior asignadas 450 → nuevo 500
+        $admin = tap(User::factory()->create())->assignRole('admin');
+
+        $this->actingAs($admin)->get(route('aprobaciones.index'))
+            ->assertOk()
+            ->assertSee('Asignadas: 450 → 500');
+    }
+
+    public function test_el_nav_distingue_bandeja_de_historial(): void
+    {
+        // Hallazgo #1 del QA 15-07: dos entradas llamadas "Aprobaciones"
+        // confundieron al primer usuario real. El dropdown ahora se llama
+        // "Historial de aprobaciones"; la bandeja conserva su nombre.
+        $admin = tap(User::factory()->create())->assignRole('admin');
+
+        $this->actingAs($admin)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Historial de aprobaciones')
+            ->assertSee('>Aprobaciones<', false); // el nav-link de la bandeja
     }
 
     public function test_el_nav_muestra_aprobaciones_solo_con_permiso(): void
