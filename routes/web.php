@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AgendaTrabajoController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServicioTecnicoController;
+use App\Http\Controllers\Admin\ServicioTerrenoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AprobacionController;
@@ -170,6 +172,35 @@ Route::middleware('auth')
             // (poll sin recargar la pagina).
             Route::get('servicio-tecnico/por-confirmar/conteo', [ServicioTecnicoController::class, 'porConfirmarConteo'])
                 ->name('servicio-tecnico.por-confirmar.conteo');
+        });
+
+        // Agenda de terreno (tecnico industrial): quien VE la agenda (tecnico
+        // industrial) puede ademas marcar el estado de un trabajo; AGENDAR y
+        // editar el catalogo de servicios queda para jefe/vendedores.
+        Route::middleware('permission:ver agenda terreno|agendar servicio terreno')->group(function () {
+            Route::get('agenda-terreno', [AgendaTrabajoController::class, 'index'])
+                ->name('agenda-terreno.index');
+            Route::patch('agenda-terreno/{trabajo}/estado', [AgendaTrabajoController::class, 'estado'])
+                ->whereNumber('trabajo')->name('agenda-terreno.estado');
+        });
+        Route::middleware('permission:agendar servicio terreno')->group(function () {
+            Route::get('agenda-terreno/crear', [AgendaTrabajoController::class, 'create'])
+                ->name('agenda-terreno.create');
+            Route::post('agenda-terreno', [AgendaTrabajoController::class, 'store'])
+                ->name('agenda-terreno.store');
+            Route::get('agenda-terreno/buscar-cliente', [AgendaTrabajoController::class, 'buscarCliente'])
+                ->name('agenda-terreno.buscar-cliente');
+            Route::get('agenda-terreno/{trabajo}/editar', [AgendaTrabajoController::class, 'edit'])
+                ->whereNumber('trabajo')->name('agenda-terreno.edit');
+            Route::put('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'update'])
+                ->whereNumber('trabajo')->name('agenda-terreno.update');
+            Route::delete('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'destroy'])
+                ->whereNumber('trabajo')->name('agenda-terreno.destroy');
+
+            // Catalogo de servicios de terreno (tarifario UF, editable).
+            Route::resource('servicios-terreno', ServicioTerrenoController::class)
+                ->parameters(['servicios-terreno' => 'servicio'])
+                ->only(['index', 'create', 'store', 'edit', 'update']);
         });
 
         // Ingreso por LOTE (conductor en ruta): permiso acotado, NO gestiona el

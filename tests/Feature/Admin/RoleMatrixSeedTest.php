@@ -29,14 +29,16 @@ class RoleMatrixSeedTest extends TestCase
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio',
+                'agendar servicio terreno', 'ver agenda terreno',
                 'view notificaciones', 'aprobar solicitudes', 'view aprobaciones',
             ],
             'member' => [],
-            'vendedor' => ['manage clientes', 'view servicio tecnico'],
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes'],
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno'],
             'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes'],
             'conductor' => ['crear lote servicio'],
             'tecnico' => ['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio'],
+            'tecnico_industrial' => ['ver agenda terreno'],
             'soplador' => ['report production'],
         ];
     }
@@ -54,9 +56,10 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_ocho_roles(): void
+    public function test_seeder_deja_exactamente_nueve_roles(): void
     {
-        $this->assertSame(8, Role::count());
+        // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14).
+        $this->assertSame(9, Role::count());
     }
 
     public function test_reseed_es_idempotente_y_no_borra_permisos_de_la_ui(): void
@@ -75,7 +78,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(8, Role::count());
+        $this->assertSame(9, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

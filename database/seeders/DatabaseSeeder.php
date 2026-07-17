@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
             ReglasAprobacionSeeder::class,
             TipoBotellonSeeder::class,
             MaquinaSeeder::class,
+            // Catálogo de servicios de terreno (solo crea lo que falte: es
+            // editable desde la app y el deploy no debe pisar las ediciones).
+            ServiciosTerrenoSeeder::class,
             // Despues de TipoBotellonSeeder: enlaza los tipos a sus productos.
             ProduccionTesteoSeeder::class,
         ]);
