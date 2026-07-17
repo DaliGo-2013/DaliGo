@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Instalacion;
+use App\Models\Producto;
 use App\Rules\RutChileno;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -163,6 +164,29 @@ class InstalacionController extends Controller
             'categorias' => Instalacion::CATEGORIAS,
             'formasPago' => Instalacion::FORMAS_PAGO,
             'vendedores' => Instalacion::VENDEDORES_SUGERIDOS,
+            'productos' => $this->sugerenciasProducto(),
         ];
+    }
+
+    /**
+     * Nombres del catálogo maestro (Producto) para sugerir en el campo "Producto
+     * instalado". El campo sigue siendo texto libre (datalist): estas son solo
+     * sugerencias, no una lista cerrada. Se listan los productos activos, sin
+     * repetir nombre y ordenados; con tope de seguridad porque el catálogo real
+     * (espejado de Bsale) tiene miles de SKU y un datalist gigante infla el HTML.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function sugerenciasProducto(): \Illuminate\Support\Collection
+    {
+        return Producto::query()
+            ->where('activo', true)
+            ->whereNotNull('nombre')
+            ->orderBy('nombre')
+            ->distinct()
+            ->limit(1000)
+            ->pluck('nombre')
+            ->filter(fn ($n) => filled($n))
+            ->values();
     }
 }
