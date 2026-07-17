@@ -10,6 +10,8 @@
                     {{-- Informe de estadísticas (visible también para roles de solo
                          lectura); se lleva el período que esté seleccionado. --}}
                     <x-secondary-link :href="route('admin.servicio-tecnico.informe', array_filter(['anio' => $filtros['anio'] ?? null, 'mes' => $filtros['mes'] ?? null, 'tipo' => $filtros['tipo_equipo'] ?? null], fn ($v) => $v !== null && $v !== ''))">Informe</x-secondary-link>
+                    {{-- Boceto interno de la futura vista de seguimiento del cliente. --}}
+                    <x-secondary-link :href="route('admin.servicio-tecnico.seguimiento-demo')">Seguimiento (boceto)</x-secondary-link>
                     @can('crear lote servicio')
                         <x-secondary-link :href="route('admin.servicio-tecnico.lote.create')">Ingreso por lote</x-secondary-link>
                     @endcan
