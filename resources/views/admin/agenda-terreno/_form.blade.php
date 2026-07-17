@@ -86,32 +86,32 @@
         <x-input-error :messages="$errors->get('cliente_nombre')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="cliente_rut" value="RUT" />
-        <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full"
+        <x-input-label for="cliente_rut">RUT <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full" required
             maxlength="20" :value="old('cliente_rut', $t?->cliente_rut)" />
         <x-input-error :messages="$errors->get('cliente_rut')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="cliente_telefono" value="Teléfono" />
-        <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 w-full"
+        <x-input-label for="cliente_telefono">Teléfono <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 w-full" required
             maxlength="30" :value="old('cliente_telefono', $t?->cliente_telefono)" />
         <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="cliente_email" value="Correo" />
-        <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full"
+        <x-input-label for="cliente_email">Correo <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full" required
             maxlength="191" :value="old('cliente_email', $t?->cliente_email)" />
         <x-input-error :messages="$errors->get('cliente_email')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="direccion" value="Dirección (donde se hace el trabajo)" />
-        <x-text-input id="direccion" name="direccion" type="text" class="mt-1.5 w-full"
+        <x-input-label for="direccion">Dirección (donde se hace el trabajo) <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="direccion" name="direccion" type="text" class="mt-1.5 w-full" required
             maxlength="191" :value="old('direccion', $t?->direccion)" />
         <x-input-error :messages="$errors->get('direccion')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="ciudad" value="Ciudad" />
-        <x-text-input id="ciudad" name="ciudad" type="text" class="mt-1.5 w-full"
+        <x-input-label for="ciudad">Ciudad <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="ciudad" name="ciudad" type="text" class="mt-1.5 w-full" required
             maxlength="191" :value="old('ciudad', $t?->ciudad)" />
         <x-input-error :messages="$errors->get('ciudad')" class="mt-2" />
     </div>
@@ -146,8 +146,8 @@
 
     {{-- Qué hay que hacer --}}
     <div class="sm:col-span-2">
-        <x-input-label for="descripcion" value="Trabajo a realizar (detalle)" />
-        <x-textarea id="descripcion" name="descripcion" rows="3" class="mt-1.5"
+        <x-input-label for="descripcion">Trabajo a realizar (detalle) <span class="text-red-500">*</span></x-input-label>
+        <x-textarea id="descripcion" name="descripcion" rows="3" class="mt-1.5" required
             placeholder="Ej. Mantención full planta 1T; revisar bomba que pierde presión; llevar membranas.">{{ old('descripcion', $t?->descripcion) }}</x-textarea>
         <x-input-error :messages="$errors->get('descripcion')" class="mt-2" />
     </div>

@@ -74,6 +74,17 @@ class VisitaIndustrialTest extends TestCase
         $this->assertSame('visita_tecnica', AgendaTrabajo::TIPOS[0]);
     }
 
+    public function test_el_cliente_no_ve_los_valores_uf_de_los_servicios(): void
+    {
+        $sucursal = $this->sucursal();
+        ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T', 'valor_uf' => 3]);
+
+        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
+            ->assertOk()
+            ->assertSee('Full planta 1T')   // el servicio se ofrece…
+            ->assertDontSee('UF');          // …pero SIN su costo (es interno)
+    }
+
     // --- Solicitud del cliente ---
 
     public function test_crea_la_solicitud_sin_fecha_y_con_preferida(): void
@@ -151,6 +162,8 @@ class VisitaIndustrialTest extends TestCase
                 'estado' => 'agendado',
                 'cliente_nombre' => $t->cliente_nombre,
                 'cliente_rut' => $t->cliente_rut,
+                'cliente_telefono' => $t->cliente_telefono,
+                'cliente_email' => $t->cliente_email,
                 'direccion' => $t->direccion,
                 'ciudad' => $t->ciudad,
                 'descripcion' => $t->descripcion,
@@ -170,11 +183,17 @@ class VisitaIndustrialTest extends TestCase
         $t = AgendaTrabajo::first();
 
         // Corregir un dato manteniendo el estado 'solicitado' (sin fecha aún).
+        // Los datos de contacto ya vienen de la solicitud pública (obligatorios).
         $this->actingAs($this->vendedor())
             ->put(route('admin.agenda-terreno.update', $t), [
                 'tipo' => $t->tipo,
                 'estado' => 'solicitado',
                 'cliente_nombre' => 'Aguas Claras SpA (corregido)',
+                'cliente_rut' => $t->cliente_rut,
+                'cliente_telefono' => $t->cliente_telefono,
+                'cliente_email' => $t->cliente_email,
+                'direccion' => $t->direccion,
+                'ciudad' => $t->ciudad,
                 'descripcion' => $t->descripcion,
             ])
             ->assertSessionHasNoErrors();
