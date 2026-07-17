@@ -16,11 +16,15 @@
         <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
     </div>
 
-    {{-- Fecha --}}
+    {{-- Fecha (una SOLICITUD del cliente aún no la tiene: se pone al coordinar) --}}
     <div>
         <x-input-label for="fecha">Fecha <span class="text-red-500">*</span></x-input-label>
-        <x-text-input id="fecha" name="fecha" type="date" class="mt-1.5 w-full" required
+        <x-text-input id="fecha" name="fecha" type="date" class="mt-1.5 w-full"
             :value="old('fecha', $t?->fecha?->format('Y-m-d'))" />
+        @if ($t?->fecha_preferida)
+            <x-input-hint>El cliente prefiere: <span class="font-medium">{{ $t->fecha_preferida->format('d-m-Y') }}</span>.</x-input-hint>
+        @endif
+        <input type="hidden" name="fecha_preferida" value="{{ old('fecha_preferida', $t?->fecha_preferida?->format('Y-m-d')) }}">
         <x-input-error :messages="$errors->get('fecha')" class="mt-2" />
     </div>
 

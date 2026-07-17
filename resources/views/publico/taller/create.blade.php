@@ -59,6 +59,16 @@
                     Varias máquinas de una vez: escribes tus datos una sola vez y agregas cada equipo.
                 </span>
             </a>
+
+            {{-- Opción D: visita/revisión INDUSTRIAL en terreno (lavadoras,
+                 llenadoras, plantas de osmosis): el técnico va donde el cliente. --}}
+            <a href="{{ $urlVisita }}"
+                class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
+                <span class="font-semibold text-neutral-900">Visita / revisión industrial</span>
+                <span class="mt-1 block text-sm text-neutral-500">
+                    Para lavadoras, llenadoras y plantas de osmosis: el técnico va a tu planta. Dejas tus datos y te llamamos para coordinar.
+                </span>
+            </a>
         </div>
 
         {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}

@@ -22,20 +22,26 @@ class AgendaTrabajo extends Model implements AuditableContract
 
     protected $table = 'agenda_trabajos';
 
-    public const TIPOS = ['mantencion', 'reparacion', 'instalacion'];
+    // 'visita_tecnica' PRIMERO a propósito (pedido del dueño): el técnico va
+    // donde el cliente, diagnostica y cotiza; después vienen los trabajos.
+    public const TIPOS = ['visita_tecnica', 'mantencion', 'reparacion', 'instalacion'];
 
     public const TIPO_ETIQUETAS = [
+        'visita_tecnica' => 'Visita técnica',
         'mantencion' => 'Mantención',
         'reparacion' => 'Reparación',
         'instalacion' => 'Instalación',
     ];
 
-    public const ESTADOS = ['agendado', 'realizado', 'cancelado'];
+    // 'solicitado' = lo pidió el CLIENTE por el QR y espera coordinación
+    // (sin fecha); al coordinar pasa a 'agendado' con fecha y técnico.
+    public const ESTADOS = ['solicitado', 'agendado', 'realizado', 'cancelado'];
 
     // Variante de x-badge por estado. OJO: x-badge solo define brand|neutral|
     // danger (paleta del design system); espeja al taller: cerrado-bien =
     // neutral (como 'entregado'), cerrado-mal = danger (como 'sin_solucion').
     public const ESTADO_VARIANTES = [
+        'solicitado' => 'brand',
         'agendado' => 'brand',
         'realizado' => 'neutral',
         'cancelado' => 'danger',
@@ -44,6 +50,7 @@ class AgendaTrabajo extends Model implements AuditableContract
     protected $fillable = [
         'tipo',
         'fecha',
+        'fecha_preferida',
         'estado',
         'servicio_terreno_id',
         'cliente_id',
@@ -63,7 +70,19 @@ class AgendaTrabajo extends Model implements AuditableContract
     {
         return [
             'fecha' => 'date',
+            'fecha_preferida' => 'date',
         ];
+    }
+
+    /**
+     * Solicitudes del cliente (QR) que esperan coordinación: sin fecha real
+     * todavía. Aparecen en el bloque "Por coordinar" de la agenda.
+     *
+     * @param  Builder<AgendaTrabajo>  $query
+     */
+    public function scopePorCoordinar($query)
+    {
+        return $query->where('estado', 'solicitado')->orderBy('id');
     }
 
     public function getTipoLabelAttribute(): string
