@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Instalacion;
+use App\Models\Producto;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,6 +65,19 @@ class InstalacionManagementTest extends TestCase
         $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
 
         $this->actingAs($jefe)->get('/admin/instalaciones')->assertOk();
+    }
+
+    public function test_formulario_sugiere_productos_activos_del_catalogo(): void
+    {
+        Producto::factory()->create(['nombre' => 'PLANTA DE OSMOSIS DEMO 1T', 'activo' => true]);
+        Producto::factory()->create(['nombre' => 'PRODUCTO INACTIVO DEMO', 'activo' => false]);
+
+        $res = $this->actingAs($this->tecnicoIndustrial())->get('/admin/instalaciones/create');
+
+        $res->assertOk()
+            ->assertSee('productos-catalogo')            // el datalist
+            ->assertSee('PLANTA DE OSMOSIS DEMO 1T')     // activo → sugerido
+            ->assertDontSee('PRODUCTO INACTIVO DEMO');   // inactivo → no
     }
 
     // --- CRUD ---

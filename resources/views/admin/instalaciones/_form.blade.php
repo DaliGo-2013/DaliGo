@@ -70,12 +70,19 @@
         <x-input-error :messages="$errors->get('comuna_region')" class="mt-2" />
     </div>
 
-    {{-- Producto instalado (texto libre) --}}
+    {{-- Producto instalado: texto libre con sugerencias del catálogo (datalist).
+         No es lista cerrada — se puede escribir cualquier cosa. --}}
     <div class="sm:col-span-2">
         <x-input-label for="producto" value="Producto instalado" />
-        <x-text-input id="producto" name="producto" type="text" class="mt-1.5 w-full"
+        <x-text-input id="producto" name="producto" type="text" class="mt-1.5 w-full" list="productos-catalogo"
             maxlength="191" :value="old('producto', $i?->producto)"
             placeholder="Ej. LAVADORA BOTELLON 20L-220V, PLANTA DE OSMOSIS 1T…" />
+        <datalist id="productos-catalogo">
+            @foreach ($productos as $p)
+                <option value="{{ $p }}"></option>
+            @endforeach
+        </datalist>
+        <x-input-hint>Empieza a escribir y aparecen productos del catálogo; también puedes escribir uno nuevo.</x-input-hint>
         <x-input-error :messages="$errors->get('producto')" class="mt-2" />
     </div>
 
