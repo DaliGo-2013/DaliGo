@@ -337,6 +337,64 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
 }));
 
 /**
+ * Formulario de la Agenda de terreno (tecnico industrial). Dos piezas:
+ * (1) buscador del cliente por RUT/razon social que al elegir rellena
+ * nombre/telefono/correo/direccion/ciudad y enlaza cliente_id (editables);
+ * (2) detalle del servicio elegido del catalogo (UF, duracion, que incluye)
+ * mostrado bajo el select para que quien agenda vea que esta vendiendo.
+ */
+Alpine.data('agendaTerrenoForm', ({ endpointCliente, servicios, clienteId, servicioId }) => ({
+    endpointCliente: endpointCliente || '',
+    servicios: servicios || {},          // {id: {valor_uf, duracion, incluye, observaciones}}
+    // null (no 0): el hidden postea vacio -> nullable, y exists no rechaza a
+    // un cliente NUEVO que no esta en el catalogo (patron de clienteIngreso).
+    clienteId: clienteId || null,
+    servicioId: servicioId || '',
+
+    rutBusqueda: '',
+    resultados: [],
+    abierto: false,
+    buscando: false,
+
+    async buscarCliente() {
+        const q = (this.rutBusqueda || '').trim();
+        if (q.length < 2 || !this.endpointCliente) {
+            this.resultados = [];
+            return;
+        }
+        this.buscando = true;
+        try {
+            const { data } = await window.axios.get(this.endpointCliente, { params: { q } });
+            this.resultados = data;
+            this.abierto = true;
+        } catch (e) {
+            this.resultados = [];
+        } finally {
+            this.buscando = false;
+        }
+    },
+
+    // Rellena los inputs por id (siguen editables); el que no exista se salta.
+    elegirCliente(r) {
+        this.clienteId = r.id || null;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+        set('cliente_rut', r.rut);
+        set('cliente_nombre', r.razon_social);
+        set('cliente_telefono', r.telefono);
+        set('cliente_email', r.email);
+        set('direccion', r.direccion);
+        set('ciudad', r.ciudad);
+        this.rutBusqueda = r.rut || '';
+        this.abierto = false;
+        this.resultados = [];
+    },
+
+    get servicioDetalle() {
+        return this.servicios[this.servicioId] || null;
+    },
+}));
+
+/**
  * Ingreso por LOTE de Servicio Tecnico (conductor en ruta). Tabla de maquinas
  * como filas livianas: cada fila lleva el codigo Dali (autocompletado por
  * fila, mismo patron que reparacionForm), serie/modelo y una foto de respaldo
