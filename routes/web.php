@@ -24,6 +24,7 @@ use App\Http\Controllers\NotificacionUsuarioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
+use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -304,6 +305,15 @@ Route::middleware('throttle:6,1')->group(function () {
         ->name('ingreso-taller.lote.store');
     Route::get('ingreso-taller/lote/listo/{lote}', [IngresoTallerPublicoController::class, 'graciasLote'])
         ->middleware('signed')->name('ingreso-taller.lote.gracias');
+
+    // Solicitud de visita/revision INDUSTRIAL (el tecnico va donde el cliente):
+    // entra a la Agenda de terreno como 'solicitado' y el staff la coordina.
+    Route::get('visita-industrial', [VisitaIndustrialPublicoController::class, 'create'])
+        ->middleware('signed')->name('visita-industrial.create');
+    Route::post('visita-industrial', [VisitaIndustrialPublicoController::class, 'store'])
+        ->name('visita-industrial.store');
+    Route::get('visita-industrial/listo/{trabajo}', [VisitaIndustrialPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('visita-industrial.gracias');
 });
 
 // Autocompletado publico del producto Dali para el formulario del QR. Throttle

@@ -43,6 +43,8 @@ class AgendaTrabajoController extends Controller
 
         return view('admin.agenda-terreno.index', [
             'trabajos' => $trabajos,
+            // Solicitudes del cliente (QR) esperando coordinación (sin fecha).
+            'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
             'anio' => $anio,
             'mes' => $mes,
             'mesLabel' => ucfirst($cursor->translatedFormat('F Y')),
@@ -84,7 +86,10 @@ class AgendaTrabajoController extends Controller
 
         $trabajo->update($data);
 
-        return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month])
+        // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
+        $destino = $trabajo->fecha ?? now();
+
+        return redirect()->route('admin.agenda-terreno.index', ['anio' => $destino->year, 'mes' => $destino->month])
             ->with('status', 'Trabajo actualizado.');
     }
 
@@ -166,7 +171,10 @@ class AgendaTrabajoController extends Controller
 
         return $request->validate([
             'tipo' => ['required', Rule::in(AgendaTrabajo::TIPOS)],
-            'fecha' => ['required', 'date'],
+            // Una SOLICITUD del cliente aún no tiene fecha real (se pone al
+            // coordinar); en cualquier otro estado la fecha es obligatoria.
+            'fecha' => [Rule::requiredIf(fn () => $request->input('estado') !== 'solicitado'), 'nullable', 'date'],
+            'fecha_preferida' => ['nullable', 'date'],
             'estado' => $editando
                 ? ['required', Rule::in(AgendaTrabajo::ESTADOS)]
                 : ['nullable', Rule::in(AgendaTrabajo::ESTADOS)],

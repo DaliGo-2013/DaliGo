@@ -49,6 +49,8 @@ class IngresoTallerPublicoController extends Controller
             'tipos' => OrdenServicio::TIPOS,
             // Link firmado al ingreso por cantidad (varias máquinas de una vez).
             'urlLote' => URL::signedRoute('ingreso-taller.lote.create', ['sucursal' => $sucursal->id]),
+            // Link firmado a la solicitud de visita industrial (en terreno).
+            'urlVisita' => URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]),
         ]);
     }
 

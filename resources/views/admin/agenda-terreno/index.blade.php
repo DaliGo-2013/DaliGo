@@ -22,6 +22,47 @@
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <x-status-alert :status="session('status')" />
 
+            {{-- Por coordinar: solicitudes que dejó el CLIENTE por el QR (sin
+                 fecha). Quien agenda las revisa, llama al cliente y les pone
+                 fecha + técnico desde "Coordinar" (el form de edición). --}}
+            @can('agendar servicio terreno')
+                @if ($porCoordinar->isNotEmpty())
+                    <div class="rounded-2xl border border-brand-200 bg-brand-50 p-4 shadow-sm sm:p-5">
+                        <div class="mb-3 flex items-center gap-2">
+                            <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">{{ $porCoordinar->count() }}</span>
+                            <h3 class="text-sm font-semibold text-brand-700">Por coordinar (solicitudes del cliente)</h3>
+                        </div>
+                        <ul class="space-y-2">
+                            @foreach ($porCoordinar as $s)
+                                <li class="flex flex-col gap-3 rounded-xl border border-brand-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div class="min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $s->tipo_label }}</span>
+                                            <span class="truncate font-medium text-neutral-900">{{ $s->cliente_nombre }}</span>
+                                        </div>
+                                        <p class="truncate text-sm text-neutral-600">
+                                            {{ collect([$s->servicio?->nombre, $s->direccion, $s->ciudad])->filter()->implode(' · ') }}
+                                        </p>
+                                        @if ($s->descripcion)
+                                            <p class="truncate text-sm text-neutral-500">{{ $s->descripcion }}</p>
+                                        @endif
+                                        <p class="text-xs text-neutral-400">
+                                            {{ collect([
+                                                $s->cliente_telefono,
+                                                $s->fecha_preferida ? 'Prefiere: '.$s->fecha_preferida->format('d-m-Y') : null,
+                                            ])->filter()->implode(' · ') }}
+                                        </p>
+                                    </div>
+                                    <div class="shrink-0">
+                                        <x-button-link :href="route('admin.agenda-terreno.edit', $s)">Coordinar</x-button-link>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            @endcan
+
             {{-- Navegación por mes --}}
             <div class="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
                 <a href="{{ route('admin.agenda-terreno.index', $anterior) }}"
