@@ -104,6 +104,56 @@ class AgendaTerrenoTest extends TestCase
         ]);
     }
 
+    public function test_agenda_cliente_nuevo_que_no_esta_en_el_catalogo(): void
+    {
+        // El hidden cliente_id llega "0" cuando NO se eligió de la lista (el
+        // caso común: cliente nuevo). No debe rebotar por exists.
+        $this->actingAs($this->vendedor())
+            ->post('/admin/agenda-terreno', $this->payload(['cliente_id' => '0']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('agenda_trabajos', [
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_id' => null,
+        ]);
+    }
+
+    public function test_tecnico_no_puede_cancelar_ni_reabrir(): void
+    {
+        $tecnico = $this->tecnicoIndustrial();
+
+        // Cancelar exige el permiso de agendar.
+        $agendado = AgendaTrabajo::factory()->create(['estado' => 'agendado']);
+        $this->actingAs($tecnico)
+            ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
+            ->assertForbidden();
+
+        // Reabrir un realizado también.
+        $realizado = AgendaTrabajo::factory()->create(['estado' => 'realizado']);
+        $this->actingAs($tecnico)
+            ->patch(route('admin.agenda-terreno.estado', $realizado), ['estado' => 'agendado'])
+            ->assertForbidden();
+
+        // El vendedor (agendar) sí puede cancelar.
+        $this->actingAs($this->vendedor())
+            ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
+            ->assertRedirect();
+        $this->assertSame('cancelado', $agendado->fresh()->estado);
+    }
+
+    public function test_editar_conserva_un_servicio_que_quedo_inactivo(): void
+    {
+        $servicio = ServicioTerreno::factory()->create(['nombre' => 'Servicio Retirado', 'activo' => false]);
+        $trabajo = AgendaTrabajo::factory()->create(['servicio_terreno_id' => $servicio->id]);
+
+        // El form de edición DEBE ofrecer el servicio actual aunque esté inactivo
+        // (si no, guardar cualquier edición lo desvincularía en silencio).
+        $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.edit', $trabajo))
+            ->assertOk()
+            ->assertSee('Servicio Retirado');
+    }
+
     public function test_tipo_invalido_es_rechazado(): void
     {
         $this->actingAs($this->vendedor())

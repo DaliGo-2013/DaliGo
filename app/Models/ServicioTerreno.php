@@ -40,6 +40,20 @@ class ServicioTerreno extends Model implements AuditableContract
     }
 
     /**
+     * Valor UF para mostrar: sin ceros de relleno (3 → "3", 2.50 → "2,5"),
+     * con coma decimal chilena. Null si el servicio no tiene tarifa fija.
+     * Único lugar que formatea la UF (lo usan todas las vistas).
+     */
+    public function getValorUfFmtAttribute(): ?string
+    {
+        if ($this->valor_uf === null) {
+            return null;
+        }
+
+        return rtrim(rtrim(number_format((float) $this->valor_uf, 2, ',', '.'), '0'), ',');
+    }
+
+    /**
      * Solo los servicios ofrecibles (para el selector de la agenda).
      *
      * @param  Builder<ServicioTerreno>  $query

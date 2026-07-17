@@ -32,11 +32,13 @@ class AgendaTrabajo extends Model implements AuditableContract
 
     public const ESTADOS = ['agendado', 'realizado', 'cancelado'];
 
-    // Variante de x-badge por estado (mismo criterio de color del taller).
+    // Variante de x-badge por estado. OJO: x-badge solo define brand|neutral|
+    // danger (paleta del design system); espeja al taller: cerrado-bien =
+    // neutral (como 'entregado'), cerrado-mal = danger (como 'sin_solucion').
     public const ESTADO_VARIANTES = [
         'agendado' => 'brand',
-        'realizado' => 'success',
-        'cancelado' => 'neutral',
+        'realizado' => 'neutral',
+        'cancelado' => 'danger',
     ];
 
     protected $fillable = [

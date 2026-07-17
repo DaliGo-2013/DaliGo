@@ -19,7 +19,7 @@
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
                  x-data="agendaTerrenoForm({
                     endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
-                    servicios: @js($servicios->keyBy('id')->map(fn ($s) => ['valor_uf' => $s->valor_uf !== null ? rtrim(rtrim(number_format($s->valor_uf, 2, ',', '.'), '0'), ',') : null, 'duracion' => $s->duracion, 'incluye' => $s->incluye, 'observaciones' => $s->observaciones])),
+                    servicios: @js($serviciosJs),
                     clienteId: {{ (int) old('cliente_id', 0) }},
                     servicioId: @js(old('servicio_terreno_id', '')),
                  })">

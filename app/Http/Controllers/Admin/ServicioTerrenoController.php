@@ -55,14 +55,18 @@ class ServicioTerrenoController extends Controller
         $valor = str_replace(',', '.', trim((string) $request->input('valor_uf')));
         $request->merge(['valor_uf' => $valor === '' ? null : $valor]);
 
-        return $request->validate([
+        $data = $request->validate([
             'nombre' => ['required', 'string', 'max:191',
                 \Illuminate\Validation\Rule::unique('servicios_terreno', 'nombre')->ignore($servicio?->id)],
             'valor_uf' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'duracion' => ['nullable', 'string', 'max:191'],
             'incluye' => ['nullable', 'string'],
             'observaciones' => ['nullable', 'string'],
-            'activo' => ['nullable', 'boolean'],
-        ]) + ['activo' => $request->boolean('activo')];
+        ]);
+
+        // El checkbox llega '1'/'0' (hidden de respaldo) o ausente → boolean.
+        $data['activo'] = $request->boolean('activo');
+
+        return $data;
     }
 }

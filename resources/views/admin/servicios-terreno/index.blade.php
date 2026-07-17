@@ -26,8 +26,8 @@
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-medium text-neutral-900">{{ $s->nombre }}</p>
-                                    @if ($s->valor_uf !== null)
-                                        <span class="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-semibold text-brand-700">{{ rtrim(rtrim(number_format($s->valor_uf, 2, ',', '.'), '0'), ',') }} UF</span>
+                                    @if ($s->valor_uf_fmt)
+                                        <span class="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-semibold text-brand-700">{{ $s->valor_uf_fmt }} UF</span>
                                     @endif
                                     @if ($s->duracion)
                                         <span class="text-xs text-neutral-500">{{ $s->duracion }}</span>

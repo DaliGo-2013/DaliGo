@@ -31,7 +31,7 @@
             <option value="">— Trabajo fuera de tarifa / solo descripción —</option>
             @foreach ($servicios as $s)
                 <option value="{{ $s->id }}" @selected((string) old('servicio_terreno_id', $t?->servicio_terreno_id) === (string) $s->id)>
-                    {{ $s->nombre }}@if ($s->valor_uf) · {{ rtrim(rtrim(number_format($s->valor_uf, 2, ',', '.'), '0'), ',') }} UF @endif
+                    {{ $s->nombre }}@if ($s->valor_uf_fmt) · {{ $s->valor_uf_fmt }} UF @endif @unless ($s->activo) (inactivo) @endunless
                 </option>
             @endforeach
         </x-select>

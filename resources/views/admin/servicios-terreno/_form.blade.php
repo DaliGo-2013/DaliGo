@@ -13,7 +13,7 @@
     <div>
         <x-input-label for="valor_uf" value="Valor (UF neto)" />
         <x-text-input id="valor_uf" name="valor_uf" type="text" class="mt-1.5 w-full" inputmode="decimal"
-            placeholder="Ej. 2,5" :value="old('valor_uf', $s?->valor_uf !== null ? rtrim(rtrim(number_format($s->valor_uf, 2, ',', '.'), '0'), ',') : null)" />
+            placeholder="Ej. 2,5" :value="old('valor_uf', $s?->valor_uf_fmt)" />
         <x-input-hint>Acepta coma decimal (2,5). Vacío = sin tarifa fija.</x-input-hint>
         <x-input-error :messages="$errors->get('valor_uf')" class="mt-2" />
     </div>

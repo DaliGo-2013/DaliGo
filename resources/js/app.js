@@ -346,7 +346,9 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
 Alpine.data('agendaTerrenoForm', ({ endpointCliente, servicios, clienteId, servicioId }) => ({
     endpointCliente: endpointCliente || '',
     servicios: servicios || {},          // {id: {valor_uf, duracion, incluye, observaciones}}
-    clienteId: clienteId || 0,
+    // null (no 0): el hidden postea vacio -> nullable, y exists no rechaza a
+    // un cliente NUEVO que no esta en el catalogo (patron de clienteIngreso).
+    clienteId: clienteId || null,
     servicioId: servicioId || '',
 
     rutBusqueda: '',
@@ -374,7 +376,7 @@ Alpine.data('agendaTerrenoForm', ({ endpointCliente, servicios, clienteId, servi
 
     // Rellena los inputs por id (siguen editables); el que no exista se salta.
     elegirCliente(r) {
-        this.clienteId = r.id || 0;
+        this.clienteId = r.id || null;
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
         set('cliente_rut', r.rut);
         set('cliente_nombre', r.razon_social);

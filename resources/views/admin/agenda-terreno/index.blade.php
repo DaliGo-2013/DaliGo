@@ -80,8 +80,10 @@
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
                                         @if ($t->estado === 'agendado')
+                                            {{-- Confirm ESTÁTICO a propósito: interpolar cliente_nombre
+                                                 dentro del JS rompe el confirm con apóstrofes y abre XSS. --}}
                                             <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}"
-                                                  onsubmit="return confirm('¿Marcar como realizado el trabajo de {{ $t->cliente_nombre }}?');">
+                                                  onsubmit="return confirm('¿Marcar este trabajo como realizado?');">
                                                 @csrf
                                                 @method('PATCH')
                                                 <input type="hidden" name="estado" value="realizado">

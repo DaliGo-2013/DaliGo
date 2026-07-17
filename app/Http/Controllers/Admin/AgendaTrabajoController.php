@@ -34,6 +34,8 @@ class AgendaTrabajoController extends Controller
         $anio = isset($v['anio']) ? (int) $v['anio'] : now()->year;
         $mes = isset($v['mes']) ? (int) $v['mes'] : now()->month;
         $cursor = Carbon::create($anio, $mes, 1);
+        $prev = $cursor->copy()->subMonth();
+        $next = $cursor->copy()->addMonth();
 
         $trabajos = AgendaTrabajo::delMes($anio, $mes)
             ->with(['servicio', 'tecnico'])
@@ -44,8 +46,8 @@ class AgendaTrabajoController extends Controller
             'anio' => $anio,
             'mes' => $mes,
             'mesLabel' => ucfirst($cursor->translatedFormat('F Y')),
-            'anterior' => ['anio' => $cursor->copy()->subMonth()->year, 'mes' => $cursor->copy()->subMonth()->month],
-            'siguiente' => ['anio' => $cursor->copy()->addMonth()->year, 'mes' => $cursor->copy()->addMonth()->month],
+            'anterior' => ['anio' => $prev->year, 'mes' => $prev->month],
+            'siguiente' => ['anio' => $next->year, 'mes' => $next->month],
         ]);
     }
 
@@ -69,7 +71,10 @@ class AgendaTrabajoController extends Controller
     {
         return view('admin.agenda-terreno.edit', array_merge(
             ['trabajo' => $trabajo->load(['servicio', 'tecnico'])],
-            $this->formData()
+            // Incluye el servicio ACTUAL del trabajo aunque esté inactivo: si no
+            // estuviera en el select, guardar cualquier edición lo desvincularía
+            // en silencio (x-model resetea a la opción vacía).
+            $this->formData($trabajo)
         ));
     }
 
@@ -92,7 +97,9 @@ class AgendaTrabajoController extends Controller
 
     /**
      * Cambia SOLO el estado (el técnico marca realizado desde la lista, sin
-     * entrar al formulario). Permiso: quien ve la agenda.
+     * entrar al formulario). Quien solo VE la agenda (técnico industrial) puede
+     * únicamente cerrar: agendado → realizado; cancelar o reabrir exige el
+     * permiso de agendar (jefe/vendedores).
      */
     public function estado(Request $request, AgendaTrabajo $trabajo): RedirectResponse
     {
@@ -100,6 +107,11 @@ class AgendaTrabajoController extends Controller
             'estado' => ['required', Rule::in(AgendaTrabajo::ESTADOS)],
             'notas_tecnico' => ['nullable', 'string'],
         ]);
+
+        if (! $request->user()->can('agendar servicio terreno')
+            && ! ($trabajo->estado === 'agendado' && $data['estado'] === 'realizado')) {
+            abort(403, 'Solo puedes marcar como realizado un trabajo agendado.');
+        }
 
         $trabajo->update($data);
 
@@ -147,6 +159,9 @@ class AgendaTrabajoController extends Controller
         $rutInput = trim((string) $request->input('cliente_rut'));
         $request->merge([
             'cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput),
+            // Cliente NUEVO (no elegido de la lista): el hidden puede traer 0 →
+            // se trata como null para que `exists` no rechace el agendamiento.
+            'cliente_id' => $request->input('cliente_id') ?: null,
         ]);
 
         return $request->validate([
@@ -170,15 +185,28 @@ class AgendaTrabajoController extends Controller
     }
 
     /**
-     * Combos del formulario: servicios activos del catálogo y técnicos
-     * industriales (rol) para asignar.
+     * Combos del formulario: servicios del catálogo (activos + el actual del
+     * trabajo aunque esté inactivo, para no desvincularlo al editar) y técnicos
+     * industriales (rol) para asignar. `serviciosJs` es el mapa que consume el
+     * Alpine del detalle en vivo (construido UNA vez para create y edit).
      */
-    private function formData(): array
+    private function formData(?AgendaTrabajo $trabajo = null): array
     {
+        $servicios = ServicioTerreno::activos()->get();
+        if ($trabajo?->servicio && ! $servicios->contains('id', $trabajo->servicio_terreno_id)) {
+            $servicios->push($trabajo->servicio);
+        }
+
         return [
             'tipos' => AgendaTrabajo::TIPOS,
             'estados' => AgendaTrabajo::ESTADOS,
-            'servicios' => ServicioTerreno::activos()->get(),
+            'servicios' => $servicios,
+            'serviciosJs' => $servicios->keyBy('id')->map(fn (ServicioTerreno $s) => [
+                'valor_uf' => $s->valor_uf_fmt,
+                'duracion' => $s->duracion,
+                'incluye' => $s->incluye,
+                'observaciones' => $s->observaciones,
+            ]),
             'tecnicos' => User::role('tecnico_industrial')->orderBy('name')->get(),
         ];
     }
