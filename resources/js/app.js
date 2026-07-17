@@ -395,6 +395,49 @@ Alpine.data('agendaTerrenoForm', ({ endpointCliente, servicios, clienteId, servi
 }));
 
 /**
+ * Registro de instalaciones del tecnico industrial. Buscador de cliente por
+ * RUT/razon social que, al elegir, rellena nombre/RUT/comuna (siguen editables).
+ * cliente_id null (no 0) para que el hidden postee vacio en clientes nuevos.
+ */
+Alpine.data('instalacionForm', ({ endpointCliente, clienteId }) => ({
+    endpointCliente: endpointCliente || '',
+    clienteId: clienteId || null,
+    rutBusqueda: '',
+    resultados: [],
+    abierto: false,
+    buscando: false,
+
+    async buscarCliente() {
+        const q = (this.rutBusqueda || '').trim();
+        if (q.length < 2 || !this.endpointCliente) {
+            this.resultados = [];
+            return;
+        }
+        this.buscando = true;
+        try {
+            const { data } = await window.axios.get(this.endpointCliente, { params: { q } });
+            this.resultados = data;
+            this.abierto = true;
+        } catch (e) {
+            this.resultados = [];
+        } finally {
+            this.buscando = false;
+        }
+    },
+
+    elegirCliente(r) {
+        this.clienteId = r.id || null;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+        set('cliente_rut', r.rut);
+        set('cliente_nombre', r.razon_social);
+        set('comuna_region', r.ciudad);
+        this.rutBusqueda = r.rut || '';
+        this.abierto = false;
+        this.resultados = [];
+    },
+}));
+
+/**
  * Ingreso por LOTE de Servicio Tecnico (conductor en ruta). Tabla de maquinas
  * como filas livianas: cada fila lleva el codigo Dali (autocompletado por
  * fila, mismo patron que reparacionForm), serie/modelo y una foto de respaldo
