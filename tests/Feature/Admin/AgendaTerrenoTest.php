@@ -50,13 +50,33 @@ class AgendaTerrenoTest extends TestCase
         ], $overrides);
     }
 
-    // --- Calendario / hora ---
+    // --- Vista unificada (calendario + lista) / hora ---
 
-    public function test_calendario_carga_para_quien_ve_la_agenda(): void
+    public function test_calendario_redirige_a_la_vista_unica(): void
     {
+        // La antigua ruta "calendario" ahora redirige a index (vista fusionada).
         $this->actingAs($this->tecnicoIndustrial())
             ->get('/admin/agenda-terreno/calendario')
-            ->assertOk();
+            ->assertRedirect(route('admin.agenda-terreno.index'));
+    }
+
+    public function test_la_agenda_muestra_calendario_y_lista_con_hora(): void
+    {
+        $t = AgendaTrabajo::factory()->create([
+            'tipo' => 'mantencion',
+            'estado' => 'agendado',
+            'fecha' => '2026-07-20',
+            'hora' => '09:00',
+            'cliente_nombre' => 'Aguas del Maule SpA',
+        ]);
+
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7')
+            ->assertOk()
+            ->assertSee('Lun')                    // grilla del calendario
+            ->assertSee('Aguas del Maule SpA')    // la lista del día
+            ->assertSee('09:00')                  // el horario integrado
+            ->assertSee('dia-2026-07-20', false); // ancla del día (clic en el calendario)
     }
 
     public function test_agenda_guarda_la_hora(): void
