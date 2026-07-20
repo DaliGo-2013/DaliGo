@@ -56,7 +56,7 @@ class ProductoController extends Controller
 
         return view('admin.productos.index', array_merge([
             'productos' => $productos,
-            'filtros' => $request->only(['q', 'categoria', 'categoria_interna', 'marca', 'activo', 'medidas']),
+            'filtros' => $request->only(['q', 'categoria', 'corregidos', 'marca', 'activo', 'medidas']),
             'activos' => $activos,
             'activosCompletos' => $activosCompletos,
         ], $this->formData()));
@@ -374,7 +374,7 @@ class ProductoController extends Controller
         $f = $request->validate([
             'q' => ['nullable', 'string', 'max:191'],
             'categoria' => ['nullable', 'string', 'max:191'],
-            'categoria_interna' => ['nullable', 'string', 'max:191'],
+            'corregidos' => ['nullable', 'in:1,0'],
             'marca' => ['nullable', 'string', 'max:191'],
             'activo' => ['nullable', 'in:0,1'],
             'medidas' => ['nullable', 'in:incompletas,completas'],
@@ -384,10 +384,12 @@ class ProductoController extends Controller
             ->when($f['q'] ?? null, fn (Builder $qb, $q) => $qb->where(
                 fn (Builder $w) => $w->where('sku', 'like', "%{$q}%")->orWhere('nombre', 'like', "%{$q}%"),
             ))
-            ->when($f['categoria'] ?? null, fn (Builder $qb, $v) => $qb->where('categoria', $v))
-            // Categoría interna: '__none__' = los que aún no tienen ninguna.
-            ->when(($f['categoria_interna'] ?? null) === '__none__', fn (Builder $qb) => $qb->whereNull('categoria_interna'))
-            ->when(($f['categoria_interna'] ?? null) && ($f['categoria_interna'] !== '__none__'), fn (Builder $qb) => $qb->where('categoria_interna', $f['categoria_interna']))
+            // "Categoría" filtra por la EFECTIVA: la corregida en DaliGo manda;
+            // si no hay corrección, la de Bsale. COALESCE es portable 5.7/SQLite.
+            ->when($f['categoria'] ?? null, fn (Builder $qb, $v) => $qb->whereRaw('COALESCE(categoria_interna, categoria) = ?', [$v]))
+            // Solo corregidos (1) / solo sin corregir (0).
+            ->when(($f['corregidos'] ?? null) === '1', fn (Builder $qb) => $qb->whereNotNull('categoria_interna'))
+            ->when(($f['corregidos'] ?? null) === '0', fn (Builder $qb) => $qb->whereNull('categoria_interna'))
             ->when($f['marca'] ?? null, fn (Builder $qb, $v) => $qb->where('marca', $v))
             // OJO: el OR va agrupado en closure para no romper el AND con los demas filtros.
             ->when(($f['medidas'] ?? null) === 'incompletas', fn (Builder $qb) => $qb->where(
@@ -436,17 +438,23 @@ class ProductoController extends Controller
     private function formData(): array
     {
         return [
-            'categorias' => Producto::whereNotNull('categoria')->distinct()->orderBy('categoria')->pluck('categoria'),
-            'categoriasInternas' => Producto::whereNotNull('categoria_interna')->distinct()->orderBy('categoria_interna')->pluck('categoria_interna'),
+            // Categorías EFECTIVAS distintas (corregida en DaliGo si existe, si no
+            // la de Bsale): alimentan el filtro y el datalist de corrección.
+            'categorias' => Producto::query()
+                ->selectRaw('COALESCE(categoria_interna, categoria) as cat')
+                ->whereRaw('COALESCE(categoria_interna, categoria) IS NOT NULL')
+                ->distinct()->orderBy('cat')->pluck('cat'),
             'marcas' => Producto::whereNotNull('marca')->distinct()->orderBy('marca')->pluck('marca'),
         ];
     }
 
     /**
-     * Asignación MASIVA de categoría interna: el dueño selecciona productos
-     * (checkboxes) y los agrupa en una categoría propia de DaliGo, o los quita.
-     * NO toca `categoria` (esa la manda Bsale); escribe solo `categoria_interna`,
-     * que el sync nunca pisa. Update masivo (sin auditoría por fila, como el CSV).
+     * CORRECCIÓN MASIVA de categoría: el dueño selecciona productos (checkboxes)
+     * y les fija la categoría que DEBERÍAN tener (ej. separar lo industrial). Esa
+     * corrección se guarda en `categoria_interna` y MANDA sobre la de Bsale (ver
+     * `categoria_efectiva`); NO toca `categoria` (esa la manda Bsale) y el sync
+     * nunca la pisa, así que es duradera. "Quitar" devuelve el producto a su
+     * categoría de Bsale. Update masivo (sin auditoría por fila, como el CSV).
      */
     public function clasificacionInterna(Request $request): RedirectResponse
     {
@@ -464,8 +472,8 @@ class ProductoController extends Controller
         $n = Producto::whereIn('id', $request->input('ids'))->update(['categoria_interna' => $valor]);
 
         $msg = $valor !== null && $valor !== ''
-            ? "{$n} producto(s) asignados a la categoría interna «{$valor}»."
-            : "{$n} producto(s) quitados de su categoría interna.";
+            ? "{$n} producto(s) corregidos a la categoría «{$valor}»."
+            : "{$n} producto(s): se quitó la corrección (vuelven a su categoría de Bsale).";
 
         return back()->with('status', $msg);
     }

@@ -89,17 +89,37 @@ class ProductoCategoriaInternaTest extends TestCase
             ->assertSessionHasErrors('ids');
     }
 
-    public function test_filtro_por_categoria_interna_y_sin_asignar(): void
+    public function test_categoria_efectiva_usa_la_correccion_sobre_bsale(): void
     {
-        Producto::factory()->create(['nombre' => 'Con Interna', 'categoria_interna' => 'Industrial (Carlos)']);
-        Producto::factory()->create(['nombre' => 'Sin Interna', 'categoria_interna' => null]);
+        $corregido = Producto::factory()->create(['categoria' => 'AGUA REPUESTOS', 'categoria_interna' => 'Industrial (Carlos)']);
+        $sinCorregir = Producto::factory()->create(['categoria' => 'AGUA BOTELLON', 'categoria_interna' => null]);
 
-        // Filtra por la categoría interna: solo el asignado.
-        $this->actingAs($this->admin())->get('/admin/productos?categoria_interna='.urlencode('Industrial (Carlos)'))
-            ->assertOk()->assertSee('Con Interna')->assertDontSee('Sin Interna');
+        $this->assertSame('Industrial (Carlos)', $corregido->categoria_efectiva);  // la corrección manda
+        $this->assertSame('AGUA BOTELLON', $sinCorregir->categoria_efectiva);      // sin corrección → Bsale
+    }
 
-        // Filtra "(sin asignar)": solo el que no tiene.
-        $this->actingAs($this->admin())->get('/admin/productos?categoria_interna=__none__')
-            ->assertOk()->assertSee('Sin Interna')->assertDontSee('Con Interna');
+    public function test_filtro_categoria_usa_la_efectiva(): void
+    {
+        Producto::factory()->create(['nombre' => 'Con Correccion', 'categoria' => 'AGUA REPUESTOS', 'categoria_interna' => 'Industrial (Carlos)']);
+        Producto::factory()->create(['nombre' => 'Sin Correccion', 'categoria' => 'AGUA REPUESTOS', 'categoria_interna' => null]);
+
+        // Filtra por la categoría CORREGIDA: solo el corregido.
+        $this->actingAs($this->admin())->get('/admin/productos?categoria='.urlencode('Industrial (Carlos)'))
+            ->assertOk()->assertSee('Con Correccion')->assertDontSee('Sin Correccion');
+
+        // Filtra por AGUA REPUESTOS: el corregido ya NO aparece (se fue a Industrial).
+        $this->actingAs($this->admin())->get('/admin/productos?categoria='.urlencode('AGUA REPUESTOS'))
+            ->assertOk()->assertSee('Sin Correccion')->assertDontSee('Con Correccion');
+    }
+
+    public function test_filtro_corregidos(): void
+    {
+        Producto::factory()->create(['nombre' => 'Corregido X', 'categoria_interna' => 'Industrial (Carlos)']);
+        Producto::factory()->create(['nombre' => 'Original Y', 'categoria_interna' => null]);
+
+        $this->actingAs($this->admin())->get('/admin/productos?corregidos=1')
+            ->assertOk()->assertSee('Corregido X')->assertDontSee('Original Y');
+        $this->actingAs($this->admin())->get('/admin/productos?corregidos=0')
+            ->assertOk()->assertSee('Original Y')->assertDontSee('Corregido X');
     }
 }

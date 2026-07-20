@@ -35,14 +35,12 @@
                         @endforeach
                     </x-select>
                 </div>
-                <div class="sm:w-48">
-                    <x-input-label for="categoria_interna" value="Categoría interna" />
-                    <x-select id="categoria_interna" name="categoria_interna" class="mt-1.5">
-                        <option value="">Todas</option>
-                        <option value="__none__" @selected(($filtros['categoria_interna'] ?? '') === '__none__')>(Sin asignar)</option>
-                        @foreach ($categoriasInternas as $ci)
-                            <option value="{{ $ci }}" @selected(($filtros['categoria_interna'] ?? '') === $ci)>{{ $ci }}</option>
-                        @endforeach
+                <div class="sm:w-44">
+                    <x-input-label for="corregidos" value="Corregidos" />
+                    <x-select id="corregidos" name="corregidos" class="mt-1.5">
+                        <option value="">Todos</option>
+                        <option value="1" @selected(($filtros['corregidos'] ?? '') === '1')>Corregidos en DaliGo</option>
+                        <option value="0" @selected(($filtros['corregidos'] ?? '') === '0')>Sin corregir</option>
                     </x-select>
                 </div>
                 <div class="sm:w-44">
@@ -90,8 +88,8 @@
                 @endif
             </div>
 
-            {{-- Selección múltiple para agrupar productos en una categoría interna
-                 (propia de DaliGo; NO toca lo que viene de Bsale). La barra de
+            {{-- Selección múltiple para CORREGIR la categoría (propia de DaliGo; NO
+                 toca lo que viene de Bsale, que queda como referencia). La barra de
                  acción va como form APARTE de las filas (los forms de eliminar no
                  se pueden anidar). La selección es por página. --}}
             <div x-data="{ sel: [], pageIds: @js($productos->pluck('id')->map(fn ($i) => (string) $i)->values()) }">
@@ -107,17 +105,17 @@
                     </div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
                         <div>
-                            <label for="cat_interna_bulk" class="block text-xs font-medium text-neutral-500">Categoría interna</label>
-                            <input id="cat_interna_bulk" name="categoria_interna" list="cats-internas" type="text" autocomplete="off"
+                            <label for="cat_interna_bulk" class="block text-xs font-medium text-neutral-500">Corregir categoría a</label>
+                            <input id="cat_interna_bulk" name="categoria_interna" list="cats-efectivas" type="text" autocomplete="off"
                                    placeholder="Ej. Industrial (Carlos)" maxlength="191"
                                    class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 sm:w-56">
-                            <datalist id="cats-internas">
-                                @foreach ($categoriasInternas as $ci)<option value="{{ $ci }}"></option>@endforeach
+                            <datalist id="cats-efectivas">
+                                @foreach ($categorias as $c)<option value="{{ $c }}"></option>@endforeach
                             </datalist>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button type="submit" name="accion" value="asignar" class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700">Asignar</button>
-                            <button type="submit" name="accion" value="quitar" class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50">Quitar</button>
+                            <button type="submit" name="accion" value="asignar" class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700">Aplicar corrección</button>
+                            <button type="submit" name="accion" value="quitar" class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50">Quitar corrección</button>
                         </div>
                     </div>
                 </form>
@@ -144,7 +142,7 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <p class="truncate font-medium text-neutral-900">{{ $producto->nombre }}</p>
                                 @if ($producto->categoria_interna)
-                                    <x-badge>{{ $producto->categoria_interna }}</x-badge>
+                                    <x-badge>corregida</x-badge>
                                 @endif
                                 @if ($producto->marca)
                                     <x-badge variant="neutral">{{ $producto->marca }}</x-badge>
@@ -154,7 +152,10 @@
                                 @endunless
                             </div>
                             <p class="truncate text-sm text-neutral-500">
-                                {{ $producto->sku }}@if ($producto->categoria) · {{ $producto->categoria }}@endif
+                                {{ $producto->sku }}@if ($producto->categoria_efectiva) · {{ $producto->categoria_efectiva }}@endif
+                                @if ($producto->categoria_interna && $producto->categoria)
+                                    <span class="text-neutral-400">· Bsale: {{ $producto->categoria }}</span>
+                                @endif
                             </p>
 
                             <x-slot name="meta">

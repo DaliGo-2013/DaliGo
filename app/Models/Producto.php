@@ -56,6 +56,17 @@ class Producto extends Model implements AuditableContract
     }
 
     /**
+     * Categoría EFECTIVA: la corregida en DaliGo (`categoria_interna`) MANDA; si
+     * no hay corrección, se usa la de Bsale (`categoria`). Bsale nunca pisa
+     * `categoria_interna`, así que la corrección es duradera. Es lo que el
+     * catálogo muestra y por lo que filtra.
+     */
+    public function getCategoriaEfectivaAttribute(): ?string
+    {
+        return $this->categoria_interna ?? $this->categoria;
+    }
+
+    /**
      * Normaliza un nombre de categoría para comparar de forma tolerante:
      * minúsculas, sin acentos, sin puntuación (el punto de "disp." u otros) y
      * espacios colapsados. Así "AGUA DISP. PEDESTAL…" (Bsale) calza con
