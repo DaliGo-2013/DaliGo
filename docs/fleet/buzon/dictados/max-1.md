@@ -1,40 +1,46 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-20 (v16 — lote UX EN PRODUCCIÓN; GO lote S2). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-20 (v17 — lote S2 EN PRODUCCIÓN; GO fichas M). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (fixes S).
+MODELO: Opus 4.8 · high.
 
-## ✅ LOTE UX DEL QA EN PRODUCCIÓN (merge `6befc87`, doble llave, Deploy+Tests success 13:50)
-Los 3 fixes (#1 nav «Historial de aprobaciones», #3 motivo+magnitud en «Mis solicitudes»,
-#7 diff anterior→nuevo) VIVOS. Buen trabajo resolviendo los 2 bloqueadores + tu precisión al
-diagnóstico (el test era verde-engañoso por el chip del zócalo M16, no rojo — me corregiste
-bien; mi agente dio falso positivo). Nota de resolución del Director: al mergear, main había
-avanzado otra vez (M12 `informes ST`), así que el conflicto de manifest lo resolví al lado de
-main con EVIDENCIA (grep de las 6 clases que agrega el lote — todas en el bundle de main → main
-superset del árbol mergeado; el lote no agrega clases nuevas). Tu rama cumplió su ciclo.
+## ✅ LOTE S2 EN PRODUCCIÓN (merge `d05e410`, doble llave, Deploy+Tests success 20-07 15:17)
+Los 3 fixes (#5 filas de la bandeja clickeables al destino, #8 correos ricos con título por
+resultado, #9b traza del reporte en auditoría) VIVOS. QA staging del Director: manifest vivo →
+`app-CJEXLMRv.css` (200, bytes exactos), `/notificaciones` `/aprobaciones` `/aprobaciones/mias`
+`/admin/audits` → 302.
 
-## DOCTRINA para la bitácora (territorio tuyo, agrégala cuando toques CLAUDE.md)
-Un `assertSee('>X<', false)` (markup pegado) puede pasar **por la razón equivocada**: la cadena
-`>X<` puede existir pegada en OTRA superficie de la misma página (aquí el chip del zócalo del
-dashboard con `>{{ $item['label'] }}<`), no en el elemento que el test cree verificar. Verde
-engañoso = peor que rojo. Regla: asertar por RUTA/marcador estable, nunca por forma pegada del HTML.
+Nota de verificación (para tu calibración): tu "652 verdes" fue **EJECUTADA por el Director en
+local** (composer install + suite entera, dos veces: en tu rama y sobre el árbol mergeado) —
+exacta. Y tu "superset 14/14" quedó corto SIN culpa tuya: `st-header-prolijo` (Marcos) entró a
+main DESPUÉS de tu base, pero sus 15 clases ya estaban en tu bundle; además tu bundle purgó 176
+clases que main arrastraba MUERTAS (0/176 usadas en el árbol, verificado token-exacto — basura
+de builds anteriores). Purga legítima, cero regresión. Buen lote: la doctrina aplicada desde el
+diseño (asserts por ruta, conteo derivado, caída del `required_with` cazada por suite entera) se
+notó en la verificación.
 
-## 🟢 GO lote S2 — rama NUEVA `fix/qa-aprobaciones-ux2` desde main FRESCO
-Del backlog (`buzon/backlog-hallazgos-qa-15-07.md`), en orden de valor:
-1. **#5 (alta)** — filas de la bandeja de notificaciones CLICKEABLES al destino por evento:
-   `aprobacion.*` → bandeja del aprobador / mis-solicitudes del solicitante. El modelo ya carga
-   `notificable`+`payload`. Cierra la regla de bitácora "toda alerta necesita superficie donde
-   actuar". Es el de mayor impacto de uso real — cabeza del lote.
-2. **#9b (media)** — enlace "ver historial de cambios" desde la ficha del reporte →
-   `/admin/auditoria` filtrada por ese reporte. NO duplicar registro: la traza ya existe.
-3. **#8 (media)** — plantillas ricas de correo para `aprobacion.*` (motivo/magnitud/reporte +
-   link de acceso) vía `notif_plantilla_<evento>` del motor M15; distinguir el TÍTULO por
-   resultado (hoy los 3 dicen "Solicitud resuelta").
-Recordatorios duros: suite COMPLETA verde por commit (corre `composer test` entero, no un
-subset — la lección del verde-engañoso); si tocas Blade → merge de main fresco ANTES + `npm run
-build` + grep del bundle superset (flota + M12 seguimiento/informes + lo nuevo); asertar por
-ruta/marcador. Parte al buzón → merge doble llave.
+## Deuda chica de doctrina (tuya, para tu PRÓXIMO paso por territorio M15 — no abras rama por esto)
+`CampanitaTest:97` usa `assertSee('>3<', false)` — markup pegado, el mismo patrón del
+verde-engañoso. Cuando vuelvas a tocar campanita/notificaciones: migrar a marcador estable
+(aria-label o data-attr del badge). Anótalo, no bloquea nada.
 
-Pendiente del dueño (no bloquea): #9c (rojo en Rechazada, decisión de paleta) y la fecha de
-arranque del espejo de documentos (despachos).
+## 🟢 GO fichas M del backlog (`buzon/backlog-hallazgos-qa-15-07.md`), en este orden
+1. **#9 (S) — campanita síncrona:** el canal `database` no tiene transporte externo → marcar
+   `enviada` SÍNCRONO al despachar (hoy viaja por la cola de la grilla, latencia ≤15 min).
+   Rama nueva `fix/campanita-sincrona` desde main fresco. Validar que NO rompa: el badge
+   server-rendered, el resto de la cola (mail sigue por cola), y el claim atómico del
+   dispatcher. Suite completa + parte.
+2. **#2 (M) — timezone UTC: SOLO PLAN, CERO CÓDIGO.** `app.timezone` UTC→America/Santiago es
+   delicada: toca el "hoy" de prod (`whereDate`), la grilla `*/15` (¿los slots se corren?),
+   los timestamps ya guardados (¿+4h retroactivo o solo render?) y los tests. Entregar
+   PLAN-TIMEZONE sellado con: inventario de superficies `whereDate`/`now()`/`diffForHumans`,
+   decisión render-vs-storage (recomendación del Director: timezone de RENDER, storage sigue
+   UTC — pero pruébame lo contrario si el análisis lo da), matriz de riesgo y batería de
+   tests. GATE: visto bueno del Director + dueño ANTES de una línea de código.
+3. **#6 chips paramétricos — NO ARRANCAR:** el Director lo dimensiona con el dueño primero.
+
+Recordatorios duros (sin cambios): suite COMPLETA por commit; Blade → main fresco + build +
+grep superset (ahora incluye las clases de `st-header-prolijo` que YA está en main, y ojo con
+la rama nueva de Marcos `st-industrial-kpis` sin mergear); asertar por ruta/marcador. Parte al
+buzón → doble llave.
 
 CIERRE por lote: parte a docs/fleet/buzon/partes/ + push.
