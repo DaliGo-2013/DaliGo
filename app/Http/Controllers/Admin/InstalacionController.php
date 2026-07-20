@@ -128,7 +128,7 @@ class InstalacionController extends Controller
 
     private function validateData(Request $request): array
     {
-        // RUT opcional: se normaliza a la forma canónica si viene.
+        // RUT obligatorio: se normaliza a la forma canónica.
         $rutInput = trim((string) $request->input('cliente_rut'));
         $request->merge([
             'cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput),
@@ -139,12 +139,12 @@ class InstalacionController extends Controller
             'fecha' => ['required', 'date'],
             'cliente_id' => ['nullable', 'integer', Rule::exists('clientes', 'id')],
             'cliente_nombre' => ['required', 'string', 'min:2', 'max:191'],
-            'cliente_rut' => ['nullable', 'string', 'max:20', new RutChileno],
-            'comuna_region' => ['nullable', 'string', 'max:191'],
+            'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
+            'comuna_region' => ['required', 'string', 'max:191'],
             'categoria' => ['required', Rule::in(Instalacion::CATEGORIAS)],
-            'producto' => ['nullable', 'string', 'max:191'],
-            'dias' => ['nullable', 'integer', 'min:0', 'max:365'],
-            'vendedor' => ['nullable', 'string', 'max:191'],
+            'producto' => ['required', 'string', 'max:191'],
+            'dias' => ['required', 'integer', 'min:0', 'max:365'],
+            'vendedor' => ['required', 'string', 'max:191'],
             'n_factura' => ['nullable', 'string', 'max:50'],
             'fecha_factura' => ['nullable', 'date'],
             'forma_pago' => ['nullable', Rule::in(Instalacion::FORMAS_PAGO)],

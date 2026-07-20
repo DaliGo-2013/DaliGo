@@ -58,10 +58,10 @@ class ServicioTerrenoController extends Controller
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:191',
                 \Illuminate\Validation\Rule::unique('servicios_terreno', 'nombre')->ignore($servicio?->id)],
-            'valor_uf' => ['nullable', 'numeric', 'min:0', 'max:9999'],
-            'duracion' => ['nullable', 'string', 'max:191'],
-            'incluye' => ['nullable', 'string'],
-            'observaciones' => ['nullable', 'string'],
+            'valor_uf' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'duracion' => ['required', 'string', 'max:191'],
+            'incluye' => ['required', 'string'],
+            'observaciones' => ['required', 'string'],
         ]);
 
         // El checkbox llega '1'/'0' (hidden de respaldo) o ausente → boolean.

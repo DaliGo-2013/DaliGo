@@ -11,30 +11,30 @@
     </div>
 
     <div>
-        <x-input-label for="valor_uf" value="Valor (UF neto)" />
-        <x-text-input id="valor_uf" name="valor_uf" type="text" class="mt-1.5 w-full" inputmode="decimal"
+        <x-input-label for="valor_uf">Valor (UF neto) <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="valor_uf" name="valor_uf" type="text" class="mt-1.5 w-full" inputmode="decimal" required
             placeholder="Ej. 2,5" :value="old('valor_uf', $s?->valor_uf_fmt)" />
-        <x-input-hint>Acepta coma decimal (2,5). Vacío = sin tarifa fija.</x-input-hint>
+        <x-input-hint>Acepta coma decimal (2,5).</x-input-hint>
         <x-input-error :messages="$errors->get('valor_uf')" class="mt-2" />
     </div>
 
     <div>
-        <x-input-label for="duracion" value="Duración" />
-        <x-text-input id="duracion" name="duracion" type="text" class="mt-1.5 w-full"
+        <x-input-label for="duracion">Duración <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="duracion" name="duracion" type="text" class="mt-1.5 w-full" required
             maxlength="191" placeholder="Ej. 1 día, 1/2 día, 1/2 mañana" :value="old('duracion', $s?->duracion)" />
         <x-input-error :messages="$errors->get('duracion')" class="mt-2" />
     </div>
 
     <div class="sm:col-span-2">
-        <x-input-label for="incluye" value="Qué incluye" />
-        <x-textarea id="incluye" name="incluye" rows="2" class="mt-1.5"
+        <x-input-label for="incluye">Qué incluye <span class="text-red-500">*</span></x-input-label>
+        <x-textarea id="incluye" name="incluye" rows="2" class="mt-1.5" required
             placeholder="Ej. Pack: cambio de filtro carbón, resina y gravilla. Cambio de membranas y filtro papel.">{{ old('incluye', $s?->incluye) }}</x-textarea>
         <x-input-error :messages="$errors->get('incluye')" class="mt-2" />
     </div>
 
     <div class="sm:col-span-2">
-        <x-input-label for="observaciones" value="Observaciones" />
-        <x-textarea id="observaciones" name="observaciones" rows="2" class="mt-1.5"
+        <x-input-label for="observaciones">Observaciones <span class="text-red-500">*</span></x-input-label>
+        <x-textarea id="observaciones" name="observaciones" rows="2" class="mt-1.5" required
             placeholder="Ej. No incluye cambio de cabezal, estanque y/o reparaciones.">{{ old('observaciones', $s?->observaciones) }}</x-textarea>
         <x-input-error :messages="$errors->get('observaciones')" class="mt-2" />
     </div>

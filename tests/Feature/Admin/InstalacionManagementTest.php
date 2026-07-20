@@ -29,6 +29,7 @@ class InstalacionManagementTest extends TestCase
         return array_merge([
             'fecha' => now()->toDateString(),
             'cliente_nombre' => 'Agua Purificada Canto del Agua',
+            'cliente_rut' => '12.345.678-5',
             'comuna_region' => 'Copiapó',
             'categoria' => 'lavadora',
             'producto' => 'LAVADORA BOTELLON 20L-220V',
@@ -115,11 +116,17 @@ class InstalacionManagementTest extends TestCase
         ]);
     }
 
-    public function test_crear_exige_fecha_cliente_y_categoria(): void
+    public function test_crear_exige_todos_los_datos_menos_factura_y_pago(): void
     {
+        // Todo obligatorio salvo los datos de factura/pago (n_factura,
+        // fecha_factura, forma_pago, fecha_pago) y los checkboxes SI/NO.
         $this->actingAs($this->tecnicoIndustrial())
             ->post('/admin/instalaciones', [])
-            ->assertSessionHasErrors(['fecha', 'cliente_nombre', 'categoria']);
+            ->assertSessionHasErrors([
+                'fecha', 'cliente_nombre', 'cliente_rut', 'comuna_region',
+                'categoria', 'producto', 'dias', 'vendedor',
+            ])
+            ->assertSessionDoesntHaveErrors(['n_factura', 'fecha_factura', 'forma_pago', 'fecha_pago']);
     }
 
     public function test_categoria_y_forma_pago_invalidas_se_rechazan(): void
