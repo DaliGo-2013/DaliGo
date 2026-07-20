@@ -29,6 +29,8 @@ class Producto extends Model implements AuditableContract
         'nombre',
         'descripcion',
         'categoria',
+        // Clasificación propia de DaliGo (curada a mano); Bsale nunca la toca.
+        'categoria_interna',
         'marca',
         'peso_kg',
         'alto_cm',

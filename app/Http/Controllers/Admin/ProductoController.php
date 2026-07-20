@@ -56,7 +56,7 @@ class ProductoController extends Controller
 
         return view('admin.productos.index', array_merge([
             'productos' => $productos,
-            'filtros' => $request->only(['q', 'categoria', 'marca', 'activo', 'medidas']),
+            'filtros' => $request->only(['q', 'categoria', 'categoria_interna', 'marca', 'activo', 'medidas']),
             'activos' => $activos,
             'activosCompletos' => $activosCompletos,
         ], $this->formData()));
@@ -374,6 +374,7 @@ class ProductoController extends Controller
         $f = $request->validate([
             'q' => ['nullable', 'string', 'max:191'],
             'categoria' => ['nullable', 'string', 'max:191'],
+            'categoria_interna' => ['nullable', 'string', 'max:191'],
             'marca' => ['nullable', 'string', 'max:191'],
             'activo' => ['nullable', 'in:0,1'],
             'medidas' => ['nullable', 'in:incompletas,completas'],
@@ -384,6 +385,9 @@ class ProductoController extends Controller
                 fn (Builder $w) => $w->where('sku', 'like', "%{$q}%")->orWhere('nombre', 'like', "%{$q}%"),
             ))
             ->when($f['categoria'] ?? null, fn (Builder $qb, $v) => $qb->where('categoria', $v))
+            // Categoría interna: '__none__' = los que aún no tienen ninguna.
+            ->when(($f['categoria_interna'] ?? null) === '__none__', fn (Builder $qb) => $qb->whereNull('categoria_interna'))
+            ->when(($f['categoria_interna'] ?? null) && ($f['categoria_interna'] !== '__none__'), fn (Builder $qb) => $qb->where('categoria_interna', $f['categoria_interna']))
             ->when($f['marca'] ?? null, fn (Builder $qb, $v) => $qb->where('marca', $v))
             // OJO: el OR va agrupado en closure para no romper el AND con los demas filtros.
             ->when(($f['medidas'] ?? null) === 'incompletas', fn (Builder $qb) => $qb->where(
@@ -433,8 +437,37 @@ class ProductoController extends Controller
     {
         return [
             'categorias' => Producto::whereNotNull('categoria')->distinct()->orderBy('categoria')->pluck('categoria'),
+            'categoriasInternas' => Producto::whereNotNull('categoria_interna')->distinct()->orderBy('categoria_interna')->pluck('categoria_interna'),
             'marcas' => Producto::whereNotNull('marca')->distinct()->orderBy('marca')->pluck('marca'),
         ];
+    }
+
+    /**
+     * Asignación MASIVA de categoría interna: el dueño selecciona productos
+     * (checkboxes) y los agrupa en una categoría propia de DaliGo, o los quita.
+     * NO toca `categoria` (esa la manda Bsale); escribe solo `categoria_interna`,
+     * que el sync nunca pisa. Update masivo (sin auditoría por fila, como el CSV).
+     */
+    public function clasificacionInterna(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            'accion' => ['required', 'in:asignar,quitar'],
+            'categoria_interna' => [Rule::requiredIf(fn () => $request->input('accion') === 'asignar'), 'nullable', 'string', 'max:191'],
+        ]);
+
+        $valor = $request->input('accion') === 'asignar'
+            ? trim((string) $request->input('categoria_interna'))
+            : null;
+
+        $n = Producto::whereIn('id', $request->input('ids'))->update(['categoria_interna' => $valor]);
+
+        $msg = $valor !== null && $valor !== ''
+            ? "{$n} producto(s) asignados a la categoría interna «{$valor}»."
+            : "{$n} producto(s) quitados de su categoría interna.";
+
+        return back()->with('status', $msg);
     }
 
     private function parseAtributos(?string $raw): ?array

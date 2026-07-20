@@ -123,6 +123,8 @@ Route::middleware('auth')
             Route::get('productos/exportar', [ProductoController::class, 'export'])->name('productos.export');
             Route::get('productos/plantilla', [ProductoController::class, 'template'])->name('productos.template');
             Route::get('productos/plantilla-medidas', [ProductoController::class, 'plantillaMedidas'])->name('productos.plantilla.medidas');
+            // Asignacion masiva de categoria INTERNA (propia de DaliGo; no toca Bsale).
+            Route::post('productos/clasificacion-interna', [ProductoController::class, 'clasificacionInterna'])->name('productos.clasificacion-interna');
         });
         Route::resource('productos', ProductoController::class)
             ->middleware('permission:manage productos')
