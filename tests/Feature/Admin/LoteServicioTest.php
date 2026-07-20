@@ -66,12 +66,21 @@ class LoteServicioTest extends TestCase
             ];
         }
 
+        // N° serie, modelo y foto son OBLIGATORIOS por máquina. La foto se valida
+        // antes del loop por fila, así que cada máquina necesita una salvo que el
+        // test la omita a propósito. Se completan defaults sin pisar lo dado.
+        $maquinas = array_map(fn ($m) => array_merge([
+            'modelo' => 'Modelo X',
+            'foto' => UploadedFile::fake()->image('equipo.jpg', 400, 300),
+        ], $m), $maquinas);
+
         return array_merge([
             'cliente_nombre' => 'Aguas JB SpA',
             'cliente_rut' => '12.345.678-5',
             'cliente_email' => 'jb@empresa.cl',
             'cliente_telefono' => '+56 9 1234 5678',
             'origen_ciudad' => 'Los Andes',
+            'conductor' => 'Ariel Hernández',
             'sucursal_id' => $sucursal,
             'fecha_ingreso' => '2026-07-13',
             'tipo_default' => 'dispensador',
@@ -122,12 +131,14 @@ class LoteServicioTest extends TestCase
         $lote = LoteServicio::first();
         $this->assertNotNull($lote);
         $this->assertSame(3, $lote->total_ordenes);
-        $this->assertSame($conductor->id, $lote->conductor_id);
+        $this->assertSame($conductor->id, $lote->conductor_id);          // usuario que registró
+        $this->assertSame('Ariel Hernández', $lote->conductor_nombre);   // chofer que retiró
         $this->assertSame('Los Andes', $lote->origen_ciudad);
         $this->assertCount(3, $lote->ordenes);
 
         $orden = $lote->ordenes->first();
         $this->assertSame('ruta', $orden->fuente);
+        $this->assertSame('Ariel Hernández', $orden->recibida_por);      // el chofer, no el staff
         $this->assertNull($orden->confirmada_at);
         $this->assertSame('dispensador', $orden->tipo_equipo);        // default heredado
         $this->assertSame('reparacion', $orden->facturacion);          // default heredado
@@ -173,8 +184,10 @@ class LoteServicioTest extends TestCase
             ->assertSessionHasErrors('maquinas.0.numero_serie');
     }
 
-    public function test_serie_opcional_para_herramienta(): void
+    public function test_serie_obligatoria_para_todos_los_tipos(): void
     {
+        // Ahora el N° de serie es obligatorio en el lote para CUALQUIER tipo
+        // (incluida herramienta).
         $prod = $this->producto('HERR-1');
         $payload = $this->payload(['tipo_default' => 'herramienta'], [
             ['producto_id' => $prod->id, 'numero_serie' => ''],
@@ -182,9 +195,45 @@ class LoteServicioTest extends TestCase
 
         $this->actingAs($this->conductor())
             ->post(route('admin.servicio-tecnico.lote.store'), $payload)
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertSessionHasErrors('maquinas.0.numero_serie');
+    }
 
-        $this->assertSame(1, OrdenServicio::where('tipo_equipo', 'herramienta')->count());
+    public function test_conductor_es_obligatorio_y_de_la_lista(): void
+    {
+        $this->actingAs($this->conductor())
+            ->post(route('admin.servicio-tecnico.lote.store'), $this->payload(['conductor' => '']))
+            ->assertSessionHasErrors('conductor');
+
+        $this->actingAs($this->conductor())
+            ->post(route('admin.servicio-tecnico.lote.store'), $this->payload(['conductor' => 'Pedro Inexistente']))
+            ->assertSessionHasErrors('conductor');
+    }
+
+    public function test_modelo_es_obligatorio_por_maquina(): void
+    {
+        $prod = $this->producto();
+        $payload = $this->payload([], [
+            ['producto_id' => $prod->id, 'numero_serie' => 'SN-1', 'modelo' => ''],
+        ]);
+
+        $this->actingAs($this->conductor())
+            ->post(route('admin.servicio-tecnico.lote.store'), $payload)
+            ->assertSessionHasErrors('maquinas.0.modelo');
+    }
+
+    public function test_foto_es_obligatoria_por_maquina(): void
+    {
+        $prod = $this->producto();
+        // Máquina SIN foto (se pasa la lista de máquinas a mano, sin el default).
+        $payload = $this->payload([], [
+            ['producto_id' => $prod->id, 'numero_serie' => 'SN-1', 'modelo' => 'M1', 'foto' => null],
+        ]);
+
+        $this->actingAs($this->conductor())
+            ->post(route('admin.servicio-tecnico.lote.store'), $payload)
+            ->assertSessionHasErrors('maquinas.0.foto');
+
+        $this->assertSame(0, LoteServicio::count());
     }
 
     public function test_origen_invalido_es_rechazado(): void
@@ -227,8 +276,10 @@ class LoteServicioTest extends TestCase
     {
         $conductor = $this->conductor();
 
+        // Multipart (la foto es obligatoria y JSON no puede llevar archivos) pero
+        // con Accept: application/json → el endpoint responde JSON (para AJAX/cola).
         $this->actingAs($conductor)
-            ->postJson(route('admin.servicio-tecnico.lote.store'), $this->payload())
+            ->post(route('admin.servicio-tecnico.lote.store'), $this->payload(), ['Accept' => 'application/json'])
             ->assertOk()
             ->assertJson(['ok' => true, 'ordenes' => 3, 'duplicado' => false]);
     }

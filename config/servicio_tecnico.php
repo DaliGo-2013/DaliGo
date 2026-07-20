@@ -88,6 +88,26 @@ return [
 
     'ciudades_ruta' => ['Los Andes', 'Curicó', 'Talca', 'Rancagua', 'San Fernando'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Conductores (choferes que retiran en ruta)
+    |--------------------------------------------------------------------------
+    |
+    | Nombres de los conductores que hacen el retiro en ruta. Alimentan el
+    | selector "Conductor" del formulario de ingreso por lote y su validación.
+    | Agregá o quita nombres acá.
+    |
+    */
+
+    'conductores' => [
+        'Ariel Hernández',
+        'Rodrigo Escobar',
+        'Axel Cárdenas',
+        'Jimmy Cespedes',
+        'Rodrigo Hernández',
+        'Jonatan Vallejos',
+    ],
+
     'categorias_equipo' => [
         'agua bomba usb',
         // Dispensadores: en Bsale son 4 categorías separadas (pedestal/sobremesa

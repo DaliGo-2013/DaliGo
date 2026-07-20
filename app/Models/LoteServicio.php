@@ -54,6 +54,7 @@ class LoteServicio extends Model implements AuditableContract
         'origen_ciudad',
         'sucursal_id',
         'conductor_id',
+        'conductor_nombre',
         'fecha_ingreso',
         'tipo_default',
         'facturacion_default',
