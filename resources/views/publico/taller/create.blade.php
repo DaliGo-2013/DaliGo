@@ -167,7 +167,7 @@
                     <x-input-label for="fecha_ingreso" value="Fecha de ingreso" />
                     <x-text-input id="fecha_ingreso" type="date"
                                   class="mt-1.5 block w-full pointer-events-none bg-neutral-50 text-neutral-500"
-                                  :value="now()->format('Y-m-d')" readonly tabindex="-1" />
+                                  :value="\App\Support\FechaNegocio::hoy()" readonly tabindex="-1" />
                     <x-input-hint>Es la fecha de hoy.</x-input-hint>
                 </div>
 

@@ -57,7 +57,7 @@
             <div class="dg-enter mb-6">
                 <div class="mb-2 flex items-baseline justify-between gap-3">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Hoy</h3>
-                    <span class="text-xs text-neutral-400">{{ now()->translatedFormat('l d \\d\\e F') }}</span>
+                    <span class="text-xs text-neutral-400">{{ \App\Support\FechaNegocio::ahora()->translatedFormat('l d \\d\\e F') }}</span>
                 </div>
                 @php
                     $chipsHoy = [

@@ -68,7 +68,7 @@
             <div>
                 <x-input-label for="fecha_preferida" value="¿Cuándo te acomoda? (opcional)" />
                 <x-text-input id="fecha_preferida" name="fecha_preferida" type="date" class="mt-1.5 w-full"
-                    min="{{ now()->toDateString() }}" :value="old('fecha_preferida')" />
+                    min="{{ \App\Support\FechaNegocio::hoy() }}" :value="old('fecha_preferida')" />
                 <x-input-hint>Es una referencia: el día definitivo se coordina contigo.</x-input-hint>
                 <x-input-error :messages="$errors->get('fecha_preferida')" class="mt-2" />
             </div>

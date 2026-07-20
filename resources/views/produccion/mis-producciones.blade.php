@@ -5,7 +5,7 @@
         <div class="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
             <div class="mb-3 flex items-baseline justify-between gap-3">
                 <h2 class="text-lg font-semibold leading-tight text-neutral-900">Mi producción</h2>
-                <p class="text-xs text-neutral-500">{{ now()->translatedFormat('l d \\d\\e F') }}</p>
+                <p class="text-xs text-neutral-500">{{ \App\Support\FechaNegocio::ahora()->translatedFormat('l d \\d\\e F') }}</p>
             </div>
 
             <x-status-alert :status="session('status')" class="mb-4" />

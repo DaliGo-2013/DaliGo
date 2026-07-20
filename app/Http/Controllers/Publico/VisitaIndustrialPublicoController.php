@@ -62,7 +62,9 @@ class VisitaIndustrialPublicoController extends Controller
             'cliente_email' => ['required', 'email', 'max:191'],
             'direccion' => ['required', 'string', 'min:3', 'max:191'],
             'ciudad' => ['required', 'string', 'min:2', 'max:191'],
-            'fecha_preferida' => ['nullable', 'date', 'after_or_equal:today'],
+            // 'today' resolvía en UTC y de noche RECHAZABA el "hoy" del cliente
+            // chileno (P-TZ-01): el borde es el día de negocio, no el del server.
+            'fecha_preferida' => ['nullable', 'date', 'after_or_equal:'.\App\Support\FechaNegocio::hoy()],
             'descripcion' => ['required', 'string', 'min:3'],
         ]);
 

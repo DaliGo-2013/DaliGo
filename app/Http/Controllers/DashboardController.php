@@ -28,7 +28,9 @@ class DashboardController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (hora chilena), no día UTC: P-TZ-01 — de noche el
+        // "hoy" UTC ya es mañana y el tablero se quedaba en ceros.
+        $hoy = \App\Support\FechaNegocio::hoy();
 
         // ── ① Excepciones: cada ítem = señal + edad del más viejo + destino ──
         $excepciones = [];
@@ -139,7 +141,7 @@ class DashboardController extends Controller
             );
 
             // Serie de 7 días (incluye hoy) para las mini-barras, con ceros.
-            $desde7 = now()->subDays(6)->toDateString();
+            $desde7 = \App\Support\FechaNegocio::ahora()->subDays(6)->toDateString();
             $porDia = ProduccionReporte::seriePorDia($desde7, $hoy);
             $serie = [];
             for ($cursor = Carbon::parse($desde7); $cursor->toDateString() <= $hoy; $cursor->addDay()) {
@@ -157,7 +159,10 @@ class DashboardController extends Controller
 
             // Referencia de merma: los 7 días ANTERIORES a hoy (hoy no puede
             // ser su propia vara). Sin datos previos queda null (sin referencia).
-            $prev = ProduccionReporte::seriePorDia(now()->subDays(7)->toDateString(), now()->subDay()->toDateString());
+            $prev = ProduccionReporte::seriePorDia(
+                \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString(),
+                \App\Support\FechaNegocio::ahora()->subDay()->toDateString(),
+            );
             $prevP1 = (int) $prev->sum('p1');
             $prevTotal = $prevP1 + (int) $prev->sum('p2') + (int) $prev->sum('mal') + (int) $prev->sum('dan');
             $mermaProm7 = $prevTotal > 0
@@ -177,8 +182,8 @@ class DashboardController extends Controller
         if ($user->can('manage servicio tecnico')) {
             // Buckets de antigüedad con límites en PHP + whereDate (portable):
             // 0-7 / 8-30 / 30+ días desde el ingreso, solo órdenes activas.
-            $d7 = now()->subDays(7)->toDateString();
-            $d30 = now()->subDays(30)->toDateString();
+            $d7 = \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString();
+            $d30 = \App\Support\FechaNegocio::ahora()->subDays(30)->toDateString();
             $activas = fn () => OrdenServicio::pendientesTecnico();
 
             $aging = [

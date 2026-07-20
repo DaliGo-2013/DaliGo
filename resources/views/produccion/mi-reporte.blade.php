@@ -8,7 +8,7 @@
             </x-secondary-link>
             <div class="mb-3 flex items-baseline justify-between gap-3">
                 <h2 class="text-lg font-semibold leading-tight text-neutral-900">Mi producción</h2>
-                <p class="text-xs text-neutral-500">{{ ($reporte?->fecha ?? now())->translatedFormat('l d \\d\\e F') }}</p>
+                <p class="text-xs text-neutral-500">{{ ($reporte?->fecha ?? \App\Support\FechaNegocio::ahora())->translatedFormat('l d \\d\\e F') }}</p>
             </div>
 
             <x-status-alert :status="session('status')" class="mb-4" />
@@ -178,7 +178,7 @@
                     {{-- La asignación, siempre a la vista --}}
                     <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
                         <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                            Preformas asignadas{{ $reporte->fecha->isToday() ? ' hoy' : '' }}
+                            Preformas asignadas{{ \App\Support\FechaNegocio::esHoy($reporte->fecha) ? ' hoy' : '' }}
                         </span>
                         <span class="text-xl font-bold text-neutral-900">{{ $reporte->asignadas }}</span>
                     </div>
@@ -256,7 +256,7 @@
                         <div class="border-t border-neutral-100">
                             <div class="flex items-center justify-between px-4 pt-3 sm:px-6">
                                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                                    {{ $reporte->fecha->isToday() ? 'Hoy llevas' : 'Registrado' }}
+                                    {{ \App\Support\FechaNegocio::esHoy($reporte->fecha) ? 'Hoy llevas' : 'Registrado' }}
                                 </h3>
                                 <span class="text-xs font-medium text-neutral-400">
                                     {{ $reporte->registros->count() }} {{ \Illuminate\Support\Str::plural('registro', $reporte->registros->count()) }}

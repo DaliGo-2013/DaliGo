@@ -85,10 +85,10 @@
             {{-- Lista agrupada por día --}}
             @foreach ($trabajos->groupBy(fn ($t) => $t->fecha->toDateString()) as $dia => $delDia)
                 @php $fechaDia = \Illuminate\Support\Carbon::parse($dia); @endphp
-                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm {{ $fechaDia->isToday() ? 'ring-2 ring-brand-300' : '' }}">
+                <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm {{ \App\Support\FechaNegocio::esHoy($fechaDia) ? 'ring-2 ring-brand-300' : '' }}">
                     <div class="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-4 py-2.5 sm:px-6">
-                        <h3 class="text-xs font-semibold uppercase tracking-wide {{ $fechaDia->isToday() ? 'text-brand-700' : 'text-neutral-500' }}">
-                            {{ ucfirst($fechaDia->translatedFormat('l d \d\e F')) }}@if ($fechaDia->isToday()) · HOY @endif
+                        <h3 class="text-xs font-semibold uppercase tracking-wide {{ \App\Support\FechaNegocio::esHoy($fechaDia) ? 'text-brand-700' : 'text-neutral-500' }}">
+                            {{ ucfirst($fechaDia->translatedFormat('l d \d\e F')) }}@if (\App\Support\FechaNegocio::esHoy($fechaDia)) · HOY @endif
                         </h3>
                         <span class="text-xs text-neutral-400">{{ $delDia->count() }} {{ $delDia->count() === 1 ? 'trabajo' : 'trabajos' }}</span>
                     </div>
