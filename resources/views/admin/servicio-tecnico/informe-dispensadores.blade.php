@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Informe · Servicio Técnico" subtitle="Estadísticas del taller por período.">
+        <x-page-header title="Informe · Dispensadores" subtitle="Estadísticas del taller por período.">
             <x-slot name="action">
-                <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver al listado" title="Volver al listado">
+                <x-icon-button :href="route('admin.servicio-tecnico.informe')" size="lg" variant="secondary" label="Volver a informes" title="Volver a informes">
                     <x-icon.arrow-left class="h-5 w-5" />
                 </x-icon-button>
             </x-slot>
@@ -20,7 +20,7 @@
                         <p class="mt-0.5 text-lg font-semibold text-neutral-900">{{ $periodoLabel }}</p>
                         <p class="text-sm text-neutral-500">{{ $tipoLabel }}</p>
                     </div>
-                    <form method="GET" action="{{ route('admin.servicio-tecnico.informe') }}" class="flex flex-wrap items-end gap-2">
+                    <form method="GET" action="{{ route('admin.servicio-tecnico.informe.dispensadores') }}" class="flex flex-wrap items-end gap-2">
                         <div class="w-28">
                             <x-input-label for="anio" value="Año" />
                             <x-select id="anio" name="anio" class="mt-1">

@@ -93,7 +93,7 @@
                     </div>
                     <ul class="divide-y divide-neutral-100">
                         @foreach ($delDia as $t)
-                            <li class="px-4 py-3 sm:px-6">
+                            <li class="px-4 py-3 sm:px-6" x-data="cierreTerrenoForm()">
                                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
@@ -118,24 +118,70 @@
                                                 $t->creado_por ? 'Agendó: '.$t->creado_por : null,
                                             ])->filter()->implode(' · ') }}
                                         </p>
+                                        @if ($t->repuestos->isNotEmpty())
+                                            <p class="mt-0.5 text-xs text-neutral-400">Repuestos: {{ $t->repuestos->map(fn ($r) => $r->cantidad.'× '.$r->nombre)->implode(', ') }}</p>
+                                        @endif
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
                                         @if ($t->estado === 'agendado')
-                                            {{-- Confirm ESTÁTICO a propósito: interpolar cliente_nombre
-                                                 dentro del JS rompe el confirm con apóstrofes y abre XSS. --}}
-                                            <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}"
-                                                  onsubmit="return confirm('¿Marcar este trabajo como realizado?');">
-                                                @csrf
-                                                @method('PATCH')
-                                                <input type="hidden" name="estado" value="realizado">
-                                                <x-primary-button>Realizado</x-primary-button>
-                                            </form>
+                                            <x-primary-button type="button" x-show="!abierto" x-on:click="abierto = true">Realizado</x-primary-button>
                                         @endif
                                         @can('agendar servicio terreno')
                                             <x-secondary-link :href="route('admin.agenda-terreno.edit', $t)">Editar</x-secondary-link>
                                         @endcan
                                     </div>
                                 </div>
+
+                                @if ($t->estado === 'agendado')
+                                    {{-- Panel de cierre: el técnico registra los repuestos usados
+                                         (nombre + cantidad) y notas al marcar el trabajo Realizado. --}}
+                                    <div x-show="abierto" x-cloak class="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                                        <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="estado" value="realizado">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cerrar trabajo</p>
+
+                                            <div class="mt-2">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-sm font-medium text-neutral-700">Repuestos usados</span>
+                                                    <button type="button" x-on:click="agregar()"
+                                                        class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
+                                                        <x-icon.plus class="h-4 w-4" /> Agregar
+                                                    </button>
+                                                </div>
+                                                <div class="mt-2 space-y-2">
+                                                    <template x-for="(r, i) in repuestos" :key="i">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
+                                                                placeholder="Ej. Membrana, filtro de papel" maxlength="191"
+                                                                class="block flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                            <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                                                class="block w-20 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                            <button type="button" x-on:click="quitar(i)"
+                                                                class="shrink-0 rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
+                                                                <x-icon.trash class="h-5 w-5" />
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                    <p x-show="repuestos.length === 0" class="text-sm text-neutral-400">Sin repuestos. Usa «Agregar» si usaste alguno.</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-3">
+                                                <label for="notas-{{ $t->id }}" class="text-sm font-medium text-neutral-700">Notas (opcional)</label>
+                                                <textarea id="notas-{{ $t->id }}" name="notas_tecnico" rows="2"
+                                                    class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">{{ $t->notas_tecnico }}</textarea>
+                                            </div>
+
+                                            <div class="mt-3 flex items-center gap-2">
+                                                <x-primary-button>Confirmar realizado</x-primary-button>
+                                                <button type="button" x-on:click="abierto = false"
+                                                    class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                @endif
                             </li>
                         @endforeach
                     </ul>

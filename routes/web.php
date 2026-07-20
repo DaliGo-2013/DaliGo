@@ -152,9 +152,14 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
-            // Informe de estadisticas por periodo (año o mes) para los jefes.
-            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informe'])
+            // Informes: landing con dos "carpetas" (Dispensadores / Industrial),
+            // y el informe de cada uno por periodo (año o mes) para los jefes.
+            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informes'])
                 ->name('servicio-tecnico.informe');
+            Route::get('servicio-tecnico/informe/dispensadores', [ServicioTecnicoController::class, 'informeDispensadores'])
+                ->name('servicio-tecnico.informe.dispensadores');
+            Route::get('servicio-tecnico/informe/industrial', [ServicioTecnicoController::class, 'informeIndustrial'])
+                ->name('servicio-tecnico.informe.industrial');
             // BOCETO interno: vista de seguimiento (estilo Blue Express) del estado
             // de un equipo. Sin conexion a datos; solo un adelanto del diseño.
             Route::get('servicio-tecnico/seguimiento-demo', [ServicioTecnicoController::class, 'seguimientoDemo'])

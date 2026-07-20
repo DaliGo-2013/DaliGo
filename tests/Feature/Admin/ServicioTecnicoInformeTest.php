@@ -43,20 +43,20 @@ class ServicioTecnicoInformeTest extends TestCase
 
     public function test_guest_is_redirected(): void
     {
-        $this->get('/admin/servicio-tecnico/informe')->assertRedirect('/login');
+        $this->get('/admin/servicio-tecnico/informe/dispensadores')->assertRedirect('/login');
     }
 
     public function test_member_without_permission_is_forbidden(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/servicio-tecnico/informe')->assertForbidden();
+            ->get('/admin/servicio-tecnico/informe/dispensadores')->assertForbidden();
     }
 
     public function test_view_permission_puede_ver_el_informe(): void
     {
         // Los jefes (solo lectura) ven el informe sin permisos de gestion.
         $this->actingAs($this->userWith(['view servicio tecnico']))
-            ->get('/admin/servicio-tecnico/informe')->assertOk();
+            ->get('/admin/servicio-tecnico/informe/dispensadores')->assertOk();
     }
 
     // --- KPIs y período ---
@@ -68,7 +68,7 @@ class ServicioTecnicoInformeTest extends TestCase
         // Fuera del período (mayo): no debe contarse.
         OrdenServicio::factory()->create(['fecha_ingreso' => '2026-05-15', 'facturacion' => 'reparacion']);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('kpis.total', 3)
             ->assertViewHas('kpis.garantias', 2)
@@ -83,7 +83,7 @@ class ServicioTecnicoInformeTest extends TestCase
         OrdenServicio::factory()->create(['fecha_ingreso' => '2025-12-31']);
 
         // Solo anio (sin mes) = el año completo; el 2025 queda fuera.
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026')
             ->assertOk()
             ->assertViewHas('kpis.total', 2)
             ->assertViewHas('periodoLabel', 'Año 2026');
@@ -94,7 +94,7 @@ class ServicioTecnicoInformeTest extends TestCase
         OrdenServicio::factory()->create(['fecha_ingreso' => now()->toDateString()]);
         OrdenServicio::factory()->create(['fecha_ingreso' => now()->subYear()->toDateString()]);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores')
             ->assertOk()
             ->assertViewHas('kpis.total', 1)
             ->assertViewHas('anio', now()->year)
@@ -116,7 +116,7 @@ class ServicioTecnicoInformeTest extends TestCase
             'cliente_nombre' => 'Cliente Ocasional',
         ]);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('topClientes', function (Collection $clientes) {
                 $top = $clientes->first();
@@ -138,7 +138,7 @@ class ServicioTecnicoInformeTest extends TestCase
             'fecha_ingreso' => '2026-06-11', 'cliente_rut' => null, 'cliente_nombre' => 'Aaa Cliente',
         ]);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('topClientes', function (Collection $clientes) {
                 $zzz = $clientes->firstWhere('nombre', 'Zzz Cliente');
@@ -157,7 +157,7 @@ class ServicioTecnicoInformeTest extends TestCase
             'fecha_ingreso' => '2026-06-12', 'tipo_equipo' => 'herramienta', 'producto_id' => null,
         ]);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('porTipo', function (Collection $tipos) {
                 return $tipos->firstWhere('nombre', 'dispensador')?->cantidad == 2
@@ -181,14 +181,14 @@ class ServicioTecnicoInformeTest extends TestCase
         OrdenServicio::factory()->create(['fecha_ingreso' => '2026-06-12', 'tipo_equipo' => 'dispensador']);
 
         // Filtrado a bomba: solo cuenta las 2 bombas.
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6&tipo=bomba')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6&tipo=bomba')
             ->assertOk()
             ->assertViewHas('kpis.total', 2)
             ->assertViewHas('tipo', 'bomba')
             ->assertViewHas('tipoLabel', 'Bomba de agua');
 
         // Sin tipo = todos (las 3).
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('kpis.total', 3)
             ->assertViewHas('tipo', null)
@@ -197,7 +197,7 @@ class ServicioTecnicoInformeTest extends TestCase
 
     public function test_rechaza_tipo_invalido(): void
     {
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?tipo=camion')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?tipo=camion')
             ->assertSessionHasErrors('tipo');
     }
 
@@ -208,7 +208,7 @@ class ServicioTecnicoInformeTest extends TestCase
         // Sin diagnosticar => se agrupa como "sin_determinar".
         OrdenServicio::factory()->create(['fecha_ingreso' => '2026-06-15', 'causa_falla' => null]);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('porCausa', function ($causas) {
                 $porClave = $causas->keyBy('causa');
@@ -232,7 +232,7 @@ class ServicioTecnicoInformeTest extends TestCase
         $enPeriodo2->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 25000]);
         $fuera->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 5, 'precio_unitario' => 8000]);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=2026&mes=6')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=2026&mes=6')
             ->assertOk()
             ->assertViewHas('repuestos', function (Collection $repuestos) {
                 $placa = $repuestos->firstWhere('nombre', 'Placa electrica');
@@ -251,10 +251,10 @@ class ServicioTecnicoInformeTest extends TestCase
 
     public function test_rechaza_periodo_invalido(): void
     {
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?mes=13')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?mes=13')
             ->assertSessionHasErrors('mes');
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe?anio=1999')
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/dispensadores?anio=1999')
             ->assertSessionHasErrors('anio');
     }
 }

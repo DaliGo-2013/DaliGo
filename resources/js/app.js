@@ -438,6 +438,23 @@ Alpine.data('instalacionForm', ({ endpointCliente, clienteId }) => ({
 }));
 
 /**
+ * Cierre de un trabajo de la agenda de terreno: el tecnico industrial marca
+ * "Realizado" y registra los repuestos usados (nombre + cantidad, filas
+ * variables) y notas. El panel se despliega al pulsar "Realizado".
+ */
+Alpine.data('cierreTerrenoForm', () => ({
+    abierto: false,
+    repuestos: [],
+
+    agregar() {
+        this.repuestos.push({ nombre: '', cantidad: 1 });
+    },
+    quitar(i) {
+        this.repuestos.splice(i, 1);
+    },
+}));
+
+/**
  * Ingreso por LOTE de Servicio Tecnico (conductor en ruta). Tabla de maquinas
  * como filas livianas: cada fila lleva el codigo Dali (autocompletado por
  * fila, mismo patron que reparacionForm), serie/modelo y una foto de respaldo
