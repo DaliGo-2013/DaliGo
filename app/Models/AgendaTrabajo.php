@@ -87,6 +87,22 @@ class AgendaTrabajo extends Model implements AuditableContract
     }
 
     /**
+     * Franja horaria de 2 horas a la que cae el trabajo en la agenda del técnico
+     * (08:00, 10:00, 12:00, 14:00, 16:00, 18:00 …): la hora redondeada hacia abajo
+     * al bloque par. Deja holgura para viajar entre trabajos. Null si no tiene hora.
+     */
+    public function getFranjaAttribute(): ?string
+    {
+        if (! $this->hora_corta) {
+            return null;
+        }
+
+        $h = (int) substr($this->hora_corta, 0, 2);
+
+        return sprintf('%02d:00', $h - ($h % 2));
+    }
+
+    /**
      * Solicitudes del cliente (QR) que esperan coordinación: sin fecha real
      * todavía. Aparecen en el bloque "Por coordinar" de la agenda.
      *

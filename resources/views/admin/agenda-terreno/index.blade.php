@@ -64,7 +64,7 @@
             @endcan
 
             {{-- ===== Vista única: calendario (izq) + lista del mes (der) ===== --}}
-            <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div class="grid grid-cols-1 gap-5 lg:grid-cols-12" x-data="{ diaMsg: '' }">
                 {{-- ---- Calendario del mes (izquierda, pegajoso al hacer scroll) ---- --}}
                 <div class="lg:col-span-5">
                     <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-6">
@@ -90,27 +90,23 @@
                                     $count = ($jobsPorDia->get($iso) ?? collect())->count();
                                     $numClase = $d->isToday() ? 'font-bold text-brand-600' : ($delMes ? 'text-neutral-800' : 'text-neutral-300');
                                 @endphp
+                                @php $diaLabel = ucfirst($d->translatedFormat('l d \d\e F')); @endphp
                                 @if ($count > 0)
                                     {{-- Día con trabajos: salta a ese día en la lista de la derecha. --}}
-                                    <a href="#dia-{{ $iso }}"
+                                    <a href="#dia-{{ $iso }}" x-on:click="diaMsg = ''"
                                        class="flex min-h-14 flex-col items-center gap-1 rounded-lg border border-transparent p-1.5 transition hover:bg-neutral-50"
                                        title="Ver los {{ $count }} {{ $count === 1 ? 'trabajo' : 'trabajos' }} del {{ $d->translatedFormat('d \d\e F') }}">
                                         <span class="text-sm {{ $numClase }}">{{ $d->day }}</span>
                                         <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1 text-[11px] font-semibold text-white">{{ $count }}</span>
                                     </a>
                                 @elseif ($delMes)
-                                    @can('agendar servicio terreno')
-                                        {{-- Día libre del mes: agendar con esa fecha prellenada. --}}
-                                        <a href="{{ route('admin.agenda-terreno.create', ['fecha' => $iso]) }}"
-                                           class="flex min-h-14 flex-col items-center gap-1 rounded-lg border border-transparent p-1.5 transition hover:bg-neutral-50"
-                                           title="Agendar el {{ $d->translatedFormat('d \d\e F') }}">
-                                            <span class="text-sm {{ $numClase }}">{{ $d->day }}</span>
-                                        </a>
-                                    @else
-                                        <div class="flex min-h-14 flex-col items-center gap-1 rounded-lg p-1.5">
-                                            <span class="text-sm {{ $numClase }}">{{ $d->day }}</span>
-                                        </div>
-                                    @endcan
+                                    {{-- Día sin trabajos: al tocarlo avisa "sin trabajo por realizar" a la derecha. --}}
+                                    <button type="button"
+                                            x-on:click="diaMsg = '{{ $diaLabel }}: sin trabajo por realizar.'"
+                                            class="flex min-h-14 w-full flex-col items-center gap-1 rounded-lg border border-transparent p-1.5 transition hover:bg-neutral-50"
+                                            title="{{ $diaLabel }}">
+                                        <span class="text-sm {{ $numClase }}">{{ $d->day }}</span>
+                                    </button>
                                 @else
                                     <div class="flex min-h-14 flex-col items-center gap-1 rounded-lg p-1.5">
                                         <span class="text-sm text-neutral-300">{{ $d->day }}</span>
@@ -118,12 +114,20 @@
                                 @endif
                             @endforeach
                         </div>
-                        <p class="mt-3 text-xs text-neutral-400">El número indica cuántos trabajos hay ese día. Toca un día para verlo en la lista.</p>
+                        <p class="mt-3 text-xs text-neutral-400">El número indica cuántos trabajos hay ese día. Toca un día con trabajos para saltar a él; un día sin número te avisa que está libre.</p>
                     </div>
                 </div>
 
                 {{-- ---- Lista del mes agrupada por día (derecha) ---- --}}
                 <div class="space-y-5 lg:col-span-7">
+                    {{-- Aviso al tocar un día sin trabajos en el calendario. --}}
+                    <div x-show="diaMsg" x-cloak
+                         class="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600 shadow-sm">
+                        <span x-text="diaMsg"></span>
+                        <button type="button" x-on:click="diaMsg = ''"
+                                class="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-neutral-400 transition hover:text-neutral-600">Cerrar</button>
+                    </div>
+
                     @if ($trabajos->isEmpty())
                         <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">
                             Sin trabajos agendados en {{ $mesLabel }}.
@@ -143,9 +147,18 @@
                                 </h3>
                                 <span class="text-xs text-neutral-400">{{ $delDia->count() }} {{ $delDia->count() === 1 ? 'trabajo' : 'trabajos' }}</span>
                             </div>
-                            <ul class="divide-y divide-neutral-100">
-                                @foreach ($delDia as $t)
-                                    <li class="px-4 py-3 sm:px-6" x-data="cierreTerrenoForm()">
+                            {{-- Trabajos del día separados en franjas de 2 horas (08/10/12/14/16/18),
+                                 con los "Sin hora" al final. La franja sale del accessor del modelo. --}}
+                            @php $porFranja = $delDia->groupBy(fn ($j) => $j->franja ?? 'Sin hora')->sortKeys(); @endphp
+                            <div class="divide-y divide-neutral-100">
+                                @foreach ($porFranja as $franja => $enFranja)
+                                    <div class="px-4 py-2.5 sm:px-6">
+                                        <p class="text-xs font-semibold uppercase tracking-wide {{ $franja === 'Sin hora' ? 'text-neutral-400' : 'text-brand-600' }}">
+                                            {{ $franja === 'Sin hora' ? 'Sin hora' : $franja.' hs' }}
+                                        </p>
+                                        <ul class="mt-1.5 space-y-3">
+                                            @foreach ($enFranja as $t)
+                                    <li class="rounded-lg" x-data="cierreTerrenoForm()">
                                         <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                             <div class="min-w-0">
                                                 <div class="flex flex-wrap items-center gap-2">
@@ -153,15 +166,9 @@
                                                     <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $t->tipo_label }}</span>
                                                     <p class="truncate font-medium text-neutral-900">{{ $t->cliente_nombre }}</p>
                                                 </div>
-                                                {{-- "Qué hay que hacer" con el HORARIO integrado al inicio. --}}
+                                                {{-- Qué hay que hacer (la hora la da el encabezado de la franja). --}}
                                                 <p class="mt-0.5 truncate text-sm text-neutral-600">
-                                                    @if ($t->hora_corta)
-                                                        <span class="font-semibold text-brand-600">{{ $t->hora_corta }}</span>
-                                                    @else
-                                                        <span class="text-neutral-400">Sin hora</span>
-                                                    @endif
-                                                    @php $spec = collect([$t->servicio?->nombre, $t->direccion, $t->ciudad])->filter()->implode(' · '); @endphp
-                                                    @if ($spec !== '') · {{ $spec }} @endif
+                                                    {{ collect([$t->servicio?->nombre, $t->direccion, $t->ciudad])->filter()->implode(' · ') ?: '—' }}
                                                 </p>
                                                 @if ($t->descripcion)
                                                     <p class="mt-0.5 text-sm text-neutral-500">{{ $t->descripcion }}</p>
@@ -238,8 +245,11 @@
                                             </div>
                                         @endif
                                     </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
                                 @endforeach
-                            </ul>
+                            </div>
                         </div>
                     @endforeach
                 </div>

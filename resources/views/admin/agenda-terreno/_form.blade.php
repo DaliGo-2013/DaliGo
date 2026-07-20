@@ -29,12 +29,25 @@
         <x-input-error :messages="$errors->get('fecha')" class="mt-2" />
     </div>
 
-    {{-- Hora (opcional): la usa la vista calendario para ubicar el trabajo en su franja. --}}
+    {{-- Hora en FRANJAS de 2 horas (deja holgura para viajar entre trabajos). La
+         usa el calendario para ubicar el trabajo en su franja del día. --}}
+    @php
+        $franjas = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
+        $horaActual = old('hora', $t?->hora_corta ?? request('hora'));
+    @endphp
     <div>
-        <x-input-label for="hora" value="Hora" />
-        <x-text-input id="hora" name="hora" type="time" class="mt-1.5 w-full"
-            :value="old('hora', $t?->hora_corta ?? request('hora'))" />
-        <x-input-hint>Opcional. Si la dejas vacía, el trabajo aparece en «Sin hora» del día.</x-input-hint>
+        <x-input-label for="hora" value="Hora (franja)" />
+        <x-select id="hora" name="hora" class="mt-1.5 w-full">
+            <option value="">— Sin hora —</option>
+            {{-- Conserva una hora previa que no calce con las franjas (datos antiguos). --}}
+            @if ($horaActual && ! in_array($horaActual, $franjas, true))
+                <option value="{{ $horaActual }}" selected>{{ $horaActual }} (actual)</option>
+            @endif
+            @foreach ($franjas as $f)
+                <option value="{{ $f }}" @selected((string) $horaActual === $f)>{{ $f }} hs</option>
+            @endforeach
+        </x-select>
+        <x-input-hint>Franjas de 2 h por los viajes. Opcional: «Sin hora» si aún no se define.</x-input-hint>
         <x-input-error :messages="$errors->get('hora')" class="mt-2" />
     </div>
 
