@@ -192,11 +192,11 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Informe del servicio INDUSTRIAL (agenda de terreno) por periodo. Indicadores
-     * pedidos por el dueño: uso de repuestos en números, % por tipo de trabajo
-     * (reparación / instalación / mantención / visita técnica) y los servicios del
-     * catálogo que más se usan. Base: trabajos con fecha en el período y estado
-     * agendado o realizado (se excluyen cancelados y solicitudes sin coordinar).
+     * Informe del servicio INDUSTRIAL (agenda de terreno) por periodo. Indicadores:
+     * uso de repuestos en números, % por tipo de trabajo, servicios más usados,
+     * cumplimiento (realizados vs pendientes), clientes que más solicitan y visitas
+     * técnicas. Base: trabajos con fecha en el período y estado agendado o realizado
+     * (se excluyen cancelados y solicitudes sin coordinar).
      */
     public function informeIndustrial(Request $request): View
     {
@@ -212,9 +212,28 @@ class ServicioTecnicoController extends Controller
 
         $total = $base()->count();
 
+        // Cumplimiento: realizados vs pendientes (la base solo trae agendado +
+        // realizado, así que pendientes = total - realizados).
+        $realizados = $base()->where('estado', 'realizado')->count();
+        $pendientes = $total - $realizados;
+        $pctCumplimiento = $total > 0 ? (int) round($realizados / $total * 100) : 0;
+
+        // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.
+        $visitas = $base()->where('tipo', 'visita_tecnica')->count();
+        $visitasRealizadas = $base()->where('tipo', 'visita_tecnica')->where('estado', 'realizado')->count();
+        $pctVisitas = $total > 0 ? (int) round($visitas / $total * 100) : 0;
+
         $porTipo = $base()
             ->selectRaw('tipo AS nombre, COUNT(*) AS cantidad')
             ->groupBy('tipo')->orderByDesc('cantidad')->get();
+
+        // Clientes que más solicitan servicio industrial. Agrupa por RUT cuando
+        // existe; si no, por nombre (mismo criterio que el top de dispensadores).
+        $claveCliente = "COALESCE(NULLIF(cliente_rut, ''), cliente_nombre)";
+        $topClientes = $base()
+            ->selectRaw('MAX(cliente_nombre) AS nombre, MAX(cliente_rut) AS cliente_rut, COUNT(*) AS cantidad')
+            ->groupBy(DB::raw($claveCliente))
+            ->orderByDesc('cantidad')->limit(10)->get();
 
         // Servicios del catálogo más usados. MAX() por ONLY_FULL_GROUP_BY (5.7).
         // Los trabajos "fuera de tarifa" (servicio_terreno_id null) caen en su fila.
@@ -244,8 +263,15 @@ class ServicioTecnicoController extends Controller
             'mes' => $mes,
             'anios' => $this->aniosDisponiblesAgenda(),
             'total' => $total,
+            'realizados' => $realizados,
+            'pendientes' => $pendientes,
+            'pctCumplimiento' => $pctCumplimiento,
+            'visitas' => $visitas,
+            'visitasRealizadas' => $visitasRealizadas,
+            'pctVisitas' => $pctVisitas,
             'porTipo' => $porTipo,
             'topServicios' => $topServicios,
+            'topClientes' => $topClientes,
             'repuestos' => $repuestos->take(15)->values(),
             'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
             'totalNombresRepuestos' => $repuestos->count(),

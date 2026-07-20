@@ -45,7 +45,7 @@
                 </div>
             </div>
 
-            {{-- KPIs: trabajos y uso de repuestos (en números) --}}
+            {{-- KPIs del período: trabajos (total/realizados/pendientes/visitas) + repuestos --}}
             <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Trabajos en el período</p>
@@ -53,11 +53,30 @@
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos con fecha en el período (agendados o realizados; no cuenta cancelados ni solicitudes por coordinar).</x-info-tip></span>
                 </div>
                 <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                    <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Realizados</p>
+                    <p class="mt-1 text-2xl font-semibold text-green-600">{{ number_format($realizados, 0, ',', '.') }}</p>
+                    <p class="text-xs text-neutral-400">{{ $pctCumplimiento }}% del período</p>
+                    <span class="absolute right-2 top-2"><x-info-tip>Trabajos ya realizados y su porcentaje sobre el total del período (cumplimiento).</x-info-tip></span>
+                </div>
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                    <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Pendientes</p>
+                    <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($pendientes, 0, ',', '.') }}</p>
+                    <p class="text-xs text-neutral-400">agendados sin realizar</p>
+                    <span class="absolute right-2 top-2"><x-info-tip>Trabajos agendados en el período que aún no se marcan como realizados.</x-info-tip></span>
+                </div>
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                    <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Visitas técnicas</p>
+                    <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($visitas, 0, ',', '.') }}</p>
+                    <p class="text-xs text-neutral-400">{{ $pctVisitas }}% del período · {{ $visitasRealizadas }} realizadas</p>
+                    <span class="absolute right-2 top-2"><x-info-tip>Visitas técnicas (diagnóstico + cotización) del período y su % del total. La conversión visita → trabajo derivado se medirá cuando enlacemos ambos.</x-info-tip></span>
+                </div>
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos usados</p>
                     <p class="mt-1 text-2xl font-semibold text-brand-600">{{ number_format($totalUnidadesRepuestos, 0, ',', '.') }}</p>
+                    <p class="text-xs text-neutral-400">unidades</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Unidades totales de repuestos que el técnico registró al cerrar los trabajos del período.</x-info-tip></span>
                 </div>
-                <div class="relative col-span-2 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:col-span-1">
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos distintos</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($totalNombresRepuestos, 0, ',', '.') }}</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Cantidad de repuestos distintos usados en el período.</x-info-tip></span>
@@ -86,6 +105,19 @@
                         'items' => $topServicios,
                         'sinNombre' => 'Fuera de tarifa / detalle libre',
                         'totalPeriodo' => $total,
+                        'vacio' => 'Sin trabajos en el período.',
+                    ])
+                </div>
+                <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
+                    <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Clientes que más solicitan</h3>
+                        <x-info-tip align="left">Clientes con más trabajos de terreno en el período (agrupados por RUT).</x-info-tip>
+                    </div>
+                    @include('admin.servicio-tecnico.partials._ranking', [
+                        'items' => $topClientes->map(fn ($c) => (object) [
+                            'nombre' => trim(($c->nombre ?: 'Sin nombre').($c->cliente_rut ? ' · '.$c->cliente_rut : '')),
+                            'cantidad' => $c->cantidad,
+                        ]),
                         'vacio' => 'Sin trabajos en el período.',
                     ])
                 </div>
