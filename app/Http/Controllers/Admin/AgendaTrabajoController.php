@@ -24,6 +24,13 @@ use Illuminate\View\View;
  */
 class AgendaTrabajoController extends Controller
 {
+    /**
+     * Vista ÚNIFICADA de la agenda: calendario del mes a la IZQUIERDA (grilla con
+     * el conteo de trabajos por día) y la LISTA del mes agrupada por día a la
+     * DERECHA (con el horario integrado en cada trabajo). Un clic en un día del
+     * calendario salta a ese día en la lista (ancla). Antes eran dos vistas
+     * separadas (lista y calendario); se fusionaron.
+     */
     public function index(Request $request): View
     {
         $v = $request->validate([
@@ -37,12 +44,26 @@ class AgendaTrabajoController extends Controller
         $prev = $cursor->copy()->subMonth();
         $next = $cursor->copy()->addMonth();
 
+        // Trabajos del mes, ordenados por día y luego por hora (los sin hora al
+        // final del día) para que la lista y los grupos salgan cronológicos.
         $trabajos = AgendaTrabajo::delMes($anio, $mes)
             ->with(['servicio', 'tecnico', 'repuestos'])
-            ->get();
+            ->get()
+            ->sortBy(fn (AgendaTrabajo $t) => $t->fecha->toDateString().' '.($t->hora_corta ?? '99:99'))
+            ->values();
+
+        // Grilla de semanas completas (lunes a domingo) que cubren el mes.
+        $grid = [];
+        $d = $cursor->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+        $fin = $cursor->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        for (; $d->lte($fin); $d->addDay()) {
+            $grid[] = $d->copy();
+        }
 
         return view('admin.agenda-terreno.index', [
             'trabajos' => $trabajos,
+            'jobsPorDia' => $trabajos->groupBy(fn (AgendaTrabajo $t) => $t->fecha->toDateString()),
+            'grid' => $grid,
             // Solicitudes del cliente (QR) esperando coordinación (sin fecha).
             'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
             'anio' => $anio,
@@ -54,57 +75,13 @@ class AgendaTrabajoController extends Controller
     }
 
     /**
-     * Vista CALENDARIO: grilla mensual a la izquierda; al elegir un día se ve a
-     * la derecha con franjas horarias (08:00–20:00). Clic en una hora libre lleva
-     * a agendar un trabajo con esa fecha+hora prellenadas.
+     * La antigua vista "calendario" se fusionó dentro de index (calendario a la
+     * izquierda + lista a la derecha). Se conserva la ruta por compatibilidad y
+     * redirige a la vista única preservando el mes consultado.
      */
-    public function calendario(Request $request): View
+    public function calendario(Request $request): RedirectResponse
     {
-        $v = $request->validate([
-            'anio' => ['nullable', 'integer', 'between:2020,2100'],
-            'mes' => ['nullable', 'integer', 'between:1,12'],
-            'dia' => ['nullable', 'date'],
-        ]);
-
-        $anio = isset($v['anio']) ? (int) $v['anio'] : now()->year;
-        $mes = isset($v['mes']) ? (int) $v['mes'] : now()->month;
-        $cursor = Carbon::create($anio, $mes, 1);
-        $prev = $cursor->copy()->subMonth();
-        $next = $cursor->copy()->addMonth();
-
-        // Grilla de semanas completas (lunes a domingo) que cubren el mes.
-        $grid = [];
-        $d = $cursor->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
-        $fin = $cursor->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
-        for (; $d->lte($fin); $d->addDay()) {
-            $grid[] = $d->copy();
-        }
-
-        $trabajos = AgendaTrabajo::delMes($anio, $mes)->with(['servicio', 'tecnico'])->get();
-        $jobsPorDia = $trabajos->groupBy(fn (AgendaTrabajo $t) => $t->fecha->toDateString());
-
-        // Día seleccionado: ?dia= válido y del mes; si no, hoy (si cae en el mes)
-        // o el día 1.
-        $diaSel = isset($v['dia']) ? Carbon::parse($v['dia']) : null;
-        if (! $diaSel || $diaSel->year !== $anio || $diaSel->month !== $mes) {
-            $diaSel = (now()->year === $anio && now()->month === $mes) ? now()->startOfDay() : $cursor->copy();
-        }
-        $trabajosDia = ($jobsPorDia->get($diaSel->toDateString()) ?? collect())
-            ->sortBy(fn (AgendaTrabajo $t) => $t->hora_corta ?? '99:99')->values();
-
-        return view('admin.agenda-terreno.calendario', [
-            'anio' => $anio,
-            'mes' => $mes,
-            'mesLabel' => ucfirst($cursor->translatedFormat('F Y')),
-            'anterior' => ['anio' => $prev->year, 'mes' => $prev->month],
-            'siguiente' => ['anio' => $next->year, 'mes' => $next->month],
-            'grid' => $grid,
-            'jobsPorDia' => $jobsPorDia,
-            'diaSel' => $diaSel,
-            'trabajosDia' => $trabajosDia,
-            'horas' => collect(range(8, 20))->map(fn ($h) => sprintf('%02d:00', $h)),
-            'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
-        ]);
+        return redirect()->route('admin.agenda-terreno.index', $request->only(['anio', 'mes']));
     }
 
     public function create(): View
