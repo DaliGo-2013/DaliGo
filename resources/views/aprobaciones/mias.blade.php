@@ -24,7 +24,7 @@
                                 <x-aprobaciones.estado-badge :estado="$solicitud->estado" class="shrink-0" />
                             </div>
                             <p class="text-xs text-neutral-500">
-                                {{ $solicitud->etiquetaTipo() }} · {{ $solicitud->created_at->format('d-m-Y H:i') }}
+                                {{ $solicitud->etiquetaTipo() }} · {{ $solicitud->created_at->enChile()->format('d-m-Y H:i') }}
                                 @if ($solicitud->resuelta_at)
                                     · resuelta {{ $solicitud->resuelta_at->diffForHumans() }}
                                 @endif

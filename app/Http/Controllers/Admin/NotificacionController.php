@@ -50,7 +50,7 @@ class NotificacionController extends Controller
     {
         $dispatcher->despachar('sistema.prueba', null, $request->user(), [
             'nombre' => $request->user()->name,
-            'fecha' => now()->format('d-m-Y H:i'),
+            'fecha' => now()->enChile()->format('d-m-Y H:i'),
         ]);
 
         return redirect()->route('admin.notificaciones.index')

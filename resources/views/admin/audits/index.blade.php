@@ -65,7 +65,7 @@
 
                         <x-slot name="meta">
                             <div class="text-sm text-neutral-500 sm:w-48 sm:shrink-0 sm:text-right">
-                                {{ $audit->created_at?->format('d-m-Y H:i') }} · {{ $audit->ip_address ?? '—' }}
+                                {{ $audit->created_at?->enChile()->format('d-m-Y H:i') }} · {{ $audit->ip_address ?? '—' }}
                             </div>
                         </x-slot>
                     </x-list-row>

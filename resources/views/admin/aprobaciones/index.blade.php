@@ -143,9 +143,9 @@
 
                         <x-slot name="meta">
                             <div class="text-sm text-neutral-500 sm:w-44 sm:shrink-0 sm:text-right">
-                                {{ $aprobacion->created_at?->format('d-m-Y H:i') }}
+                                {{ $aprobacion->created_at?->enChile()->format('d-m-Y H:i') }}
                                 @if ($aprobacion->resuelta_at)
-                                    <span class="block text-xs text-neutral-400">resuelta {{ $aprobacion->resuelta_at->format('d-m-Y H:i') }}</span>
+                                    <span class="block text-xs text-neutral-400">resuelta {{ $aprobacion->resuelta_at->enChile()->format('d-m-Y H:i') }}</span>
                                 @endif
                             </div>
                         </x-slot>

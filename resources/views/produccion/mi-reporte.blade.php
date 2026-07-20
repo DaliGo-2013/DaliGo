@@ -67,7 +67,7 @@
                                     @endphp
                                     <li class="px-4 py-3 sm:px-6">
                                         <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
-                                        <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->format('H:i') }}</p>
+                                        <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->enChile()->format('H:i') }}</p>
                                         @php
                                             $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
                                                 ->filter()->map(fn ($m, $k) => "$k: $m")->implode(' · ');
@@ -270,7 +270,7 @@
                                     <li class="flex items-center gap-3 px-4 py-3 sm:px-6">
                                         <div class="min-w-0 flex-1">
                                             <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
-                                            <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->format('H:i') }}</p>
+                                            <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->enChile()->format('H:i') }}</p>
                                         @php
                                             $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
                                                 ->filter()->map(fn ($m, $k) => "$k: $m")->implode(' · ');
