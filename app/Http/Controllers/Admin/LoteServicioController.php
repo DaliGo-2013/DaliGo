@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\Conductor;
 use App\Models\LoteServicio;
 use App\Models\OrdenServicio;
 use App\Models\Producto;
@@ -35,7 +36,7 @@ class LoteServicioController extends Controller
         return view('admin.servicio-tecnico.lote.create', [
             'sucursales' => Sucursal::recepcionServicioTecnico()->get(),
             'ciudades' => config('servicio_tecnico.ciudades_ruta', []),
-            'conductores' => config('servicio_tecnico.conductores', []),
+            'conductores' => Conductor::activos()->orderBy('nombre')->pluck('nombre'),
             'tipos' => OrdenServicio::TIPOS,
             'facturaciones' => OrdenServicio::FACTURACION,
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
@@ -56,7 +57,7 @@ class LoteServicioController extends Controller
             'cliente_email' => ['required', 'email', 'max:191'],
             'cliente_telefono' => ['required', 'string', 'max:30'],
             'origen_ciudad' => ['required', Rule::in(config('servicio_tecnico.ciudades_ruta', []))],
-            'conductor' => ['required', Rule::in(config('servicio_tecnico.conductores', []))],
+            'conductor' => ['required', Rule::in(Conductor::activos()->pluck('nombre')->all())],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_default' => ['nullable', Rule::in(OrdenServicio::TIPOS)],

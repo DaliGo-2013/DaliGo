@@ -28,6 +28,7 @@ class LoteServicioTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
+        $this->seed(\Database\Seeders\ConductoresSeeder::class);   // conductores del selector
         Storage::fake('local');
     }
 

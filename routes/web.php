@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AgendaTrabajoController;
+use App\Http\Controllers\Admin\ConductorController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
@@ -265,6 +266,11 @@ Route::middleware('auth')
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])
                 ->only(['create', 'store', 'edit', 'update', 'destroy']);
+
+            // Conductores (choferes de ruta) — administrables desde la app.
+            Route::resource('conductores', ConductorController::class)
+                ->parameters(['conductores' => 'conductor'])
+                ->only(['index', 'create', 'store', 'edit', 'update']);
         });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
