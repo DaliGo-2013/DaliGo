@@ -29,6 +29,8 @@ class Producto extends Model implements AuditableContract
         'nombre',
         'descripcion',
         'categoria',
+        // Clasificación propia de DaliGo (curada a mano); Bsale nunca la toca.
+        'categoria_interna',
         'marca',
         'peso_kg',
         'alto_cm',
@@ -51,6 +53,17 @@ class Producto extends Model implements AuditableContract
             'ancho_cm' => 'decimal:2',
             'largo_cm' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Categoría EFECTIVA: la corregida en DaliGo (`categoria_interna`) MANDA; si
+     * no hay corrección, se usa la de Bsale (`categoria`). Bsale nunca pisa
+     * `categoria_interna`, así que la corrección es duradera. Es lo que el
+     * catálogo muestra y por lo que filtra.
+     */
+    public function getCategoriaEfectivaAttribute(): ?string
+    {
+        return $this->categoria_interna ?? $this->categoria;
     }
 
     /**
