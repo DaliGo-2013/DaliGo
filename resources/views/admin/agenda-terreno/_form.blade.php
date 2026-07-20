@@ -10,22 +10,32 @@
         <x-select id="tipo" name="tipo" class="mt-1.5" required>
             <option value="">— Selecciona —</option>
             @foreach ($tipos as $tp)
-                <option value="{{ $tp }}" @selected(old('tipo', $t?->tipo) === $tp)>{{ \App\Models\AgendaTrabajo::TIPO_ETIQUETAS[$tp] }}</option>
+                <option value="{{ $tp }}" @selected(old('tipo', $t?->tipo ?? request('tipo')) === $tp)>{{ \App\Models\AgendaTrabajo::TIPO_ETIQUETAS[$tp] }}</option>
             @endforeach
         </x-select>
         <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
     </div>
 
-    {{-- Fecha (una SOLICITUD del cliente aún no la tiene: se pone al coordinar) --}}
+    {{-- Fecha (una SOLICITUD del cliente aún no la tiene: se pone al coordinar).
+         Se puede prellenar desde el calendario (?fecha=&hora=). --}}
     <div>
         <x-input-label for="fecha">Fecha <span class="text-red-500">*</span></x-input-label>
         <x-text-input id="fecha" name="fecha" type="date" class="mt-1.5 w-full"
-            :value="old('fecha', $t?->fecha?->format('Y-m-d'))" />
+            :value="old('fecha', $t?->fecha?->format('Y-m-d') ?? request('fecha'))" />
         @if ($t?->fecha_preferida)
             <x-input-hint>El cliente prefiere: <span class="font-medium">{{ $t->fecha_preferida->format('d-m-Y') }}</span>.</x-input-hint>
         @endif
         <input type="hidden" name="fecha_preferida" value="{{ old('fecha_preferida', $t?->fecha_preferida?->format('Y-m-d')) }}">
         <x-input-error :messages="$errors->get('fecha')" class="mt-2" />
+    </div>
+
+    {{-- Hora (opcional): la usa la vista calendario para ubicar el trabajo en su franja. --}}
+    <div>
+        <x-input-label for="hora" value="Hora" />
+        <x-text-input id="hora" name="hora" type="time" class="mt-1.5 w-full"
+            :value="old('hora', $t?->hora_corta ?? request('hora'))" />
+        <x-input-hint>Opcional. Si la dejas vacía, el trabajo aparece en «Sin hora» del día.</x-input-hint>
+        <x-input-error :messages="$errors->get('hora')" class="mt-2" />
     </div>
 
     {{-- Servicio del catálogo (opcional) + detalle en vivo --}}

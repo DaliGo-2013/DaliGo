@@ -6,6 +6,7 @@
                     <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
+                    <x-secondary-link :href="route('admin.agenda-terreno.calendario')">Vista calendario</x-secondary-link>
                     @can('agendar servicio terreno')
                         <x-secondary-link :href="route('admin.servicios-terreno.index')">Catálogo de servicios</x-secondary-link>
                         <x-button-link :href="route('admin.agenda-terreno.create')">
