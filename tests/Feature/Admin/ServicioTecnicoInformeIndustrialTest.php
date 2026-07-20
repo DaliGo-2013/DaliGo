@@ -120,4 +120,50 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
         $this->assertSame('realizado', $trabajo->fresh()->estado);
         $this->assertSame(0, $trabajo->repuestos()->count());
     }
+
+    // --- Indicadores nuevos ---
+
+    public function test_cumplimiento_realizados_vs_pendientes(): void
+    {
+        AgendaTrabajo::factory()->count(3)->create(['fecha' => '2026-07-10', 'estado' => 'realizado']);
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-11', 'estado' => 'agendado']);
+        // Cancelado y solicitud sin fecha NO cuentan.
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-12', 'estado' => 'cancelado']);
+        AgendaTrabajo::factory()->create(['fecha' => null, 'estado' => 'solicitado']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->assertViewHas('total', 4)
+            ->assertViewHas('realizados', 3)
+            ->assertViewHas('pendientes', 1)
+            ->assertViewHas('pctCumplimiento', 75);
+    }
+
+    public function test_clientes_que_mas_solicitan_agrupa_por_rut(): void
+    {
+        AgendaTrabajo::factory()->count(2)->create(['fecha' => '2026-07-10', 'estado' => 'realizado', 'cliente_rut' => '11111111-1', 'cliente_nombre' => 'Aguas Frecuentes']);
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-12', 'estado' => 'agendado', 'cliente_rut' => '22222222-2', 'cliente_nombre' => 'Cliente Ocasional']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->assertViewHas('topClientes', function (Collection $clientes) {
+                $top = $clientes->first();
+
+                return $clientes->count() === 2
+                    && $top->cliente_rut === '11111111-1'
+                    && (int) $top->cantidad === 2;
+            });
+    }
+
+    public function test_visitas_tecnicas_cuenta_y_porcentaje(): void
+    {
+        AgendaTrabajo::factory()->count(2)->create(['fecha' => '2026-07-10', 'tipo' => 'visita_tecnica', 'estado' => 'realizado']);
+        AgendaTrabajo::factory()->count(2)->create(['fecha' => '2026-07-11', 'tipo' => 'mantencion', 'estado' => 'agendado']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->assertViewHas('visitas', 2)
+            ->assertViewHas('visitasRealizadas', 2)
+            ->assertViewHas('pctVisitas', 50);
+    }
 }
