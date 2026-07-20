@@ -2,10 +2,22 @@
     <x-slot name="header">
         <x-page-header title="Catálogo" subtitle="Productos (SKU), con peso y dimensiones para despacho.">
             <x-slot name="action">
-                <div class="flex flex-wrap items-center gap-2">
-                    <x-secondary-link :href="route('admin.productos.plantilla.medidas', request()->query())">Plantilla de medidas</x-secondary-link>
-                    <x-secondary-link :href="route('admin.productos.import.form')">Importar CSV</x-secondary-link>
-                    <x-secondary-link :href="route('admin.productos.export', request()->query())">Exportar CSV</x-secondary-link>
+                <div class="flex items-center gap-2">
+                    {{-- Acciones secundarias (CSV/plantilla) agrupadas en un menú
+                         para no amontonar el header; queda solo el CTA primario. --}}
+                    <x-dropdown align="right" width="w-56">
+                        <x-slot name="trigger">
+                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                                Más
+                                <x-icon.chevron-down class="h-4 w-4" />
+                            </button>
+                        </x-slot>
+                        <x-slot name="content">
+                            <x-dropdown-link :href="route('admin.productos.plantilla.medidas', request()->query())">Plantilla de medidas</x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.productos.import.form')">Importar CSV</x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.productos.export', request()->query())">Exportar CSV</x-dropdown-link>
+                        </x-slot>
+                    </x-dropdown>
                     <x-button-link :href="route('admin.productos.create')">
                         <x-icon.plus class="h-4 w-4" />
                         Crear producto
@@ -107,7 +119,7 @@
                         <div>
                             <label for="cat_interna_bulk" class="block text-xs font-medium text-neutral-500">Corregir categoría a</label>
                             <input id="cat_interna_bulk" name="categoria_interna" list="cats-efectivas" type="text" autocomplete="off"
-                                   placeholder="Ej. Industrial (Carlos)" maxlength="191"
+                                   placeholder="Ej. Repuestos industriales" maxlength="191"
                                    class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 sm:w-56">
                             <datalist id="cats-efectivas">
                                 @foreach ($categorias as $c)<option value="{{ $c }}"></option>@endforeach

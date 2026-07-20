@@ -41,6 +41,12 @@ class ProductoController extends Controller
 
     private const NUMERICAS = ['peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'];
 
+    /**
+     * Categorías internas SUGERIDAS: siempre disponibles para corregir (aparecen
+     * en el filtro y el datalist) aunque todavía no las use ningún producto.
+     */
+    private const PRESETS_CATEGORIA_INTERNA = ['Repuestos industriales'];
+
     public function index(Request $request): View
     {
         $productos = $this->filteredQuery($request)
@@ -439,11 +445,14 @@ class ProductoController extends Controller
     {
         return [
             // Categorías EFECTIVAS distintas (corregida en DaliGo si existe, si no
-            // la de Bsale): alimentan el filtro y el datalist de corrección.
-            'categorias' => Producto::query()
-                ->selectRaw('COALESCE(categoria_interna, categoria) as cat')
-                ->whereRaw('COALESCE(categoria_interna, categoria) IS NOT NULL')
-                ->distinct()->orderBy('cat')->pluck('cat'),
+            // la de Bsale) + las sugeridas (siempre disponibles): alimentan el
+            // filtro y el datalist de corrección.
+            'categorias' => collect(self::PRESETS_CATEGORIA_INTERNA)
+                ->merge(Producto::query()
+                    ->selectRaw('COALESCE(categoria_interna, categoria) as cat')
+                    ->whereRaw('COALESCE(categoria_interna, categoria) IS NOT NULL')
+                    ->distinct()->pluck('cat'))
+                ->unique()->sort()->values(),
             'marcas' => Producto::whereNotNull('marca')->distinct()->orderBy('marca')->pluck('marca'),
         ];
     }

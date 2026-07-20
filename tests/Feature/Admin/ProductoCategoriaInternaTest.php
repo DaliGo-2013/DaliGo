@@ -112,6 +112,17 @@ class ProductoCategoriaInternaTest extends TestCase
             ->assertOk()->assertSee('Sin Correccion')->assertDontSee('Con Correccion');
     }
 
+    public function test_categoria_sugerida_repuestos_industriales_siempre_disponible(): void
+    {
+        // Aunque ningún producto la use todavía, "Repuestos industriales" debe
+        // aparecer como opción para corregir.
+        Producto::factory()->create(['categoria' => 'AGUA BOTELLON', 'categoria_interna' => null]);
+
+        $this->actingAs($this->admin())->get('/admin/productos')
+            ->assertOk()
+            ->assertSee('Repuestos industriales');
+    }
+
     public function test_filtro_corregidos(): void
     {
         Producto::factory()->create(['nombre' => 'Corregido X', 'categoria_interna' => 'Industrial (Carlos)']);
