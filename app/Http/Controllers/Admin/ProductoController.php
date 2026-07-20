@@ -101,7 +101,16 @@ class ProductoController extends Controller
 
     public function update(Request $request, Producto $producto): RedirectResponse
     {
-        $producto->update($this->validateData($request, $producto));
+        $data = $this->validateData($request, $producto);
+
+        // El campo "Categoría" del formulario edita la CORRECCIÓN duradera de
+        // DaliGo (categoria_interna), NO la de Bsale (esa la reescribe el sync).
+        // Si queda igual a la de Bsale o vacía, no hay corrección (override null).
+        $efectiva = trim((string) ($data['categoria'] ?? ''));
+        unset($data['categoria']);
+        $data['categoria_interna'] = ($efectiva === '' || $efectiva === (string) $producto->categoria) ? null : $efectiva;
+
+        $producto->update($data);
 
         return redirect()->route('admin.productos.index')
             ->with('status', "Producto {$producto->sku} actualizado.");

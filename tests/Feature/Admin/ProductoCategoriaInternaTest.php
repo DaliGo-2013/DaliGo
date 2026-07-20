@@ -123,6 +123,45 @@ class ProductoCategoriaInternaTest extends TestCase
             ->assertSee('Repuestos industriales');
     }
 
+    public function test_editar_producto_corrige_via_override_sin_tocar_bsale(): void
+    {
+        $p = Producto::factory()->create(['sku' => 'EDIT-1', 'nombre' => 'Planta', 'categoria' => 'AGUA PLANTA', 'categoria_interna' => null]);
+
+        // Desde el form individual: cambiar "Categoría" a "Repuestos industriales".
+        $this->actingAs($this->admin())
+            ->put("/admin/productos/{$p->id}", ['sku' => 'EDIT-1', 'nombre' => 'Planta', 'categoria' => 'Repuestos industriales'])
+            ->assertRedirect();
+
+        $p->refresh();
+        $this->assertSame('Repuestos industriales', $p->categoria_interna);   // corrección durable
+        $this->assertSame('AGUA PLANTA', $p->categoria);                      // Bsale intacta
+        $this->assertSame('Repuestos industriales', $p->categoria_efectiva);
+    }
+
+    public function test_editar_con_categoria_igual_a_bsale_no_crea_correccion(): void
+    {
+        $p = Producto::factory()->create(['sku' => 'EDIT-2', 'nombre' => 'Planta', 'categoria' => 'AGUA PLANTA', 'categoria_interna' => null]);
+
+        $this->actingAs($this->admin())
+            ->put("/admin/productos/{$p->id}", ['sku' => 'EDIT-2', 'nombre' => 'Planta', 'categoria' => 'AGUA PLANTA'])
+            ->assertRedirect();
+
+        // Igual a la de Bsale → no se crea corrección (override queda null).
+        $this->assertNull($p->fresh()->categoria_interna);
+    }
+
+    public function test_editar_vaciando_categoria_quita_la_correccion(): void
+    {
+        $p = Producto::factory()->create(['sku' => 'EDIT-3', 'nombre' => 'Planta', 'categoria' => 'AGUA PLANTA', 'categoria_interna' => 'Repuestos industriales']);
+
+        $this->actingAs($this->admin())
+            ->put("/admin/productos/{$p->id}", ['sku' => 'EDIT-3', 'nombre' => 'Planta', 'categoria' => ''])
+            ->assertRedirect();
+
+        $this->assertNull($p->fresh()->categoria_interna);            // vuelve a la de Bsale
+        $this->assertSame('AGUA PLANTA', $p->fresh()->categoria_efectiva);
+    }
+
     public function test_filtro_corregidos(): void
     {
         Producto::factory()->create(['nombre' => 'Corregido X', 'categoria_interna' => 'Industrial (Carlos)']);
