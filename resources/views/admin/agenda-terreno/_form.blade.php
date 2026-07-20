@@ -126,17 +126,28 @@
         <x-input-error :messages="$errors->get('ciudad')" class="mt-2" />
     </div>
 
-    {{-- Técnico industrial asignado --}}
+    {{-- Técnico industrial asignado. Si hay UN solo técnico (el caso normal:
+         Carlos Tablante), queda pre-seleccionado por defecto al agendar; con
+         varios, o al editar, respeta lo ya elegido. Igual se puede dejar
+         «Sin asignar». --}}
+    @php
+        $tecnicoDefault = old(
+            'tecnico_id',
+            $t?->tecnico_id ?? ($tecnicos->count() === 1 ? $tecnicos->first()->id : '')
+        );
+    @endphp
     <div>
         <x-input-label for="tecnico_id" value="Técnico asignado" />
         <x-select id="tecnico_id" name="tecnico_id" class="mt-1.5">
             <option value="">— Sin asignar —</option>
             @foreach ($tecnicos as $tec)
-                <option value="{{ $tec->id }}" @selected((string) old('tecnico_id', $t?->tecnico_id) === (string) $tec->id)>{{ $tec->name }}</option>
+                <option value="{{ $tec->id }}" @selected((string) $tecnicoDefault === (string) $tec->id)>{{ $tec->name }}</option>
             @endforeach
         </x-select>
         @if ($tecnicos->isEmpty())
             <x-input-hint>No hay usuarios con rol «técnico industrial» todavía (se crean en Usuarios).</x-input-hint>
+        @elseif ($tecnicos->count() === 1)
+            <x-input-hint>Pre-seleccionado {{ $tecnicos->first()->name }} (único técnico industrial). Puedes cambiarlo si hace falta.</x-input-hint>
         @endif
         <x-input-error :messages="$errors->get('tecnico_id')" class="mt-2" />
     </div>
