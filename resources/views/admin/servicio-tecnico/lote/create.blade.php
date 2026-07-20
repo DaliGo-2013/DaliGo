@@ -109,6 +109,17 @@
                                 :value="old('fecha_ingreso', \App\Support\FechaNegocio::hoy())" required />
                             <x-input-error :messages="$errors->get('fecha_ingreso')" class="mt-2" />
                         </div>
+                        <div>
+                            <x-input-label for="conductor">Conductor <span class="text-red-500">*</span></x-input-label>
+                            <x-select id="conductor" name="conductor" class="mt-1.5" required>
+                                <option value="">— Elige —</option>
+                                @foreach ($conductores as $c)
+                                    <option value="{{ $c }}" @selected(old('conductor') === $c)>{{ $c }}</option>
+                                @endforeach
+                            </x-select>
+                            <x-input-hint>Quién retira las máquinas en ruta.</x-input-hint>
+                            <x-input-error :messages="$errors->get('conductor')" class="mt-2" />
+                        </div>
                     </div>
 
                     <div class="rounded-xl bg-neutral-50 p-3">
@@ -194,21 +205,21 @@
 
                                 <div class="mt-2 grid grid-cols-2 gap-2">
                                     <div>
-                                        <label class="mb-0.5 block text-xs text-neutral-500">N° de serie</label>
-                                        <input type="text" x-model="m.numero_serie" :name="`maquinas[${i}][numero_serie]`" maxlength="191"
+                                        <label class="mb-0.5 block text-xs text-neutral-500">N° de serie <span class="text-red-500">*</span></label>
+                                        <input type="text" x-model="m.numero_serie" :name="`maquinas[${i}][numero_serie]`" maxlength="191" required
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     </div>
                                     <div>
-                                        <label class="mb-0.5 block text-xs text-neutral-500">Modelo (opcional)</label>
-                                        <input type="text" x-model="m.modelo" :name="`maquinas[${i}][modelo]`" maxlength="191"
+                                        <label class="mb-0.5 block text-xs text-neutral-500">Modelo <span class="text-red-500">*</span></label>
+                                        <input type="text" x-model="m.modelo" :name="`maquinas[${i}][modelo]`" maxlength="191" required
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     </div>
                                 </div>
 
-                                {{-- Foto de respaldo (opcional, se comprime en el navegador) --}}
+                                {{-- Foto de respaldo OBLIGATORIA (se comprime en el navegador) --}}
                                 <div class="mt-2">
-                                    <label class="mb-0.5 block text-xs text-neutral-500">Foto de respaldo</label>
-                                    <input type="file" :name="`maquinas[${i}][foto]`" accept="image/*" capture="environment"
+                                    <label class="mb-0.5 block text-xs text-neutral-500">Foto de respaldo <span class="text-red-500">*</span></label>
+                                    <input type="file" :name="`maquinas[${i}][foto]`" accept="image/*" capture="environment" required
                                         x-on:change="fotoInput(i, $event.target)"
                                         class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
                                     <p x-show="m.foto_nombre" x-cloak class="mt-1 text-xs text-green-600" x-text="'✓ ' + m.foto_nombre"></p>

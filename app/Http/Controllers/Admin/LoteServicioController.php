@@ -35,6 +35,7 @@ class LoteServicioController extends Controller
         return view('admin.servicio-tecnico.lote.create', [
             'sucursales' => Sucursal::recepcionServicioTecnico()->get(),
             'ciudades' => config('servicio_tecnico.ciudades_ruta', []),
+            'conductores' => config('servicio_tecnico.conductores', []),
             'tipos' => OrdenServicio::TIPOS,
             'facturaciones' => OrdenServicio::FACTURACION,
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
@@ -55,6 +56,7 @@ class LoteServicioController extends Controller
             'cliente_email' => ['required', 'email', 'max:191'],
             'cliente_telefono' => ['required', 'string', 'max:30'],
             'origen_ciudad' => ['required', Rule::in(config('servicio_tecnico.ciudades_ruta', []))],
+            'conductor' => ['required', Rule::in(config('servicio_tecnico.conductores', []))],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
             'fecha_ingreso' => ['required', 'date'],
             'tipo_default' => ['nullable', Rule::in(OrdenServicio::TIPOS)],
@@ -62,8 +64,9 @@ class LoteServicioController extends Controller
             'falla_default' => ['nullable', 'string'],
             'capturado_at' => ['nullable', 'date'],
             'maquinas' => ['required', 'array', 'min:1'],
-            // La foto de respaldo es opcional; mismas reglas que el QR (NO 'image': falla con HEIC).
-            'maquinas.*.foto' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif', 'max:8192'],
+            // Foto de respaldo OBLIGATORIA por máquina (mismas reglas que el QR;
+            // NO 'image': falla con HEIC del iPhone).
+            'maquinas.*.foto' => ['required', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif', 'max:8192'],
         ]);
 
         // Idempotencia: si el lote ya existe (reenvío de la cola offline), se
@@ -93,8 +96,11 @@ class LoteServicioController extends Controller
             if (! in_array($tipo, OrdenServicio::TIPOS, true)) {
                 $errores["maquinas.{$i}.tipo"] = 'Tipo de equipo inválido.';
             }
-            if (in_array($tipo, OrdenServicio::SERIE_OBLIGATORIA_TIPOS, true) && mb_strlen($serie) < 3) {
-                $errores["maquinas.{$i}.numero_serie"] = 'El N° de serie es obligatorio (mín. 3) para este tipo.';
+            if (mb_strlen($serie) < 3) {
+                $errores["maquinas.{$i}.numero_serie"] = 'El N° de serie es obligatorio (mín. 3).';
+            }
+            if ($modelo === null || mb_strlen($modelo) < 1) {
+                $errores["maquinas.{$i}.modelo"] = 'El modelo es obligatorio.';
             }
             if (mb_strlen($falla) < 3) {
                 $errores["maquinas.{$i}.falla_reportada"] = 'Indica la falla (mín. 3) o define una "falla común" en los valores por defecto.';
@@ -134,6 +140,7 @@ class LoteServicioController extends Controller
                     'origen_ciudad' => $data['origen_ciudad'],
                     'sucursal_id' => $sucursal->id,
                     'conductor_id' => $request->user()->id,
+                    'conductor_nombre' => $data['conductor'],
                     'fecha_ingreso' => $fecha,
                     'tipo_default' => $data['tipo_default'] ?? null,
                     'facturacion_default' => $data['facturacion_default'] ?? null,
@@ -162,7 +169,9 @@ class LoteServicioController extends Controller
                         'estado' => 'recibido',
                         'facturacion' => $fila['facturacion'],
                         'fuente' => OrdenServicio::FUENTE_RUTA,
-                        'recibida_por' => $request->user()->name,
+                        // Quien RETIRÓ en ruta es el conductor (chofer), no el
+                        // usuario que registró el lote (ese queda en conductor_id).
+                        'recibida_por' => $data['conductor'],
                         'confirmada_at' => null,
                     ]);
                     $ordenesPorFila[$i] = $orden->id;
