@@ -31,8 +31,8 @@ class AgendaTrabajoController extends Controller
             'mes' => ['nullable', 'integer', 'between:1,12'],
         ]);
 
-        $anio = isset($v['anio']) ? (int) $v['anio'] : now()->year;
-        $mes = isset($v['mes']) ? (int) $v['mes'] : now()->month;
+        $anio = isset($v['anio']) ? (int) $v['anio'] : \App\Support\FechaNegocio::ahora()->year;
+        $mes = isset($v['mes']) ? (int) $v['mes'] : \App\Support\FechaNegocio::ahora()->month;
         $cursor = Carbon::create($anio, $mes, 1);
         $prev = $cursor->copy()->subMonth();
         $next = $cursor->copy()->addMonth();

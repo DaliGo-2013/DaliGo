@@ -35,7 +35,7 @@
 
                     <div>
                         <x-input-label for="fecha" value="Fecha" />
-                        <x-text-input id="fecha" class="mt-1.5" type="date" name="fecha" :value="old('fecha', now()->toDateString())" required />
+                        <x-text-input id="fecha" class="mt-1.5" type="date" name="fecha" :value="old('fecha', \App\Support\FechaNegocio::hoy())" required />
                         <x-input-error :messages="$errors->get('fecha')" class="mt-2" />
                     </div>
 

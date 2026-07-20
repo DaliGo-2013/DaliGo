@@ -8,7 +8,7 @@
     <div>
         <x-input-label for="fecha">Fecha <span class="text-red-500">*</span></x-input-label>
         <x-text-input id="fecha" name="fecha" type="date" class="mt-1.5 w-full" required
-            :value="old('fecha', $i?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d'))" />
+            :value="old('fecha', $i?->fecha?->format('Y-m-d') ?? \App\Support\FechaNegocio::hoy())" />
         <x-input-error :messages="$errors->get('fecha')" class="mt-2" />
     </div>
 

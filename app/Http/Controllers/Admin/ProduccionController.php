@@ -30,7 +30,9 @@ class ProduccionController extends Controller
      */
     public function index(Request $request): View
     {
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): la cola/alertas/resumen del jefe viven en
+        // el día chileno, no en el UTC (que avanza a las 20/21h de Chile).
+        $hoy = \App\Support\FechaNegocio::hoy();
 
         // --- Cola de reportes de HOY (la superficie de trabajo del jefe) ---
         $reportes = ProduccionReporte::with('soplador')
@@ -114,7 +116,7 @@ class ProduccionController extends Controller
             'hasta' => ['nullable', 'date'],
         ]);
 
-        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : now()->toDateString();
+        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : \App\Support\FechaNegocio::hoy();
         $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->toDateString() : Carbon::parse($hasta)->subDays($ventana)->toDateString();
         if ($desde > $hasta) {
             $desde = $hasta;
@@ -254,7 +256,7 @@ class ProduccionController extends Controller
     public function diaDetalle(Request $request): View
     {
         $request->validate(['fecha' => ['nullable', 'date']]);
-        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : now()->toDateString();
+        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : \App\Support\FechaNegocio::hoy();
 
         $reportes = ProduccionReporte::with('soplador')->withCount('registros')
             ->whereDate('fecha', $fecha)
@@ -351,8 +353,8 @@ class ProduccionController extends Controller
      */
     public function sopladorHistorial(Request $request, User $soplador): View
     {
-        $desde = $request->date('desde') ?? now()->startOfMonth();
-        $hasta = $request->date('hasta') ?? now()->endOfMonth();
+        $desde = $request->date('desde') ?? \App\Support\FechaNegocio::ahora()->startOfMonth();
+        $hasta = $request->date('hasta') ?? \App\Support\FechaNegocio::ahora()->endOfMonth();
 
         // whereDate (no whereBetween): la columna casteada guarda "Y-m-d 00:00:00"
         // y el borde superior del between la deja fuera (bitacora 2026-07-01).

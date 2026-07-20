@@ -259,6 +259,8 @@ class ProduccionReporte extends Model implements AuditableContract
 
     public function scopeDelDia(Builder $query, $fecha = null): Builder
     {
-        return $query->whereDate('fecha', $fecha ?? now()->toDateString());
+        // Fallback en día de NEGOCIO (P-TZ-01): aunque hoy todos los callers
+        // pasan $fecha, un caller futuro sin argumento no debe caer al día UTC.
+        return $query->whereDate('fecha', $fecha ?? \App\Support\FechaNegocio::hoy());
     }
 }

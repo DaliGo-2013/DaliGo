@@ -791,7 +791,7 @@ class ServicioTecnicoController extends Controller
             // (portable MySQL 5.7 / SQLite y usa el indice; nada de YEAR() en
             // SQL). Mes sin año asume el año actual.
             ->when($f['anio'] ?? $f['mes'] ?? null, function (Builder $qb) use ($f) {
-                $anio = (int) ($f['anio'] ?? now()->year);
+                $anio = (int) ($f['anio'] ?? \App\Support\FechaNegocio::ahora()->year);
                 $mes = isset($f['mes']) ? (int) $f['mes'] : null;
                 $desde = Carbon::create($anio, $mes ?? 1, 1);
                 $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
@@ -857,8 +857,8 @@ class ServicioTecnicoController extends Controller
         $tipo = $v['tipo'] ?? null;
 
         if ($anio === null) {
-            $anio = now()->year;
-            $mes ??= now()->month;
+            $anio = \App\Support\FechaNegocio::ahora()->year;
+            $mes ??= \App\Support\FechaNegocio::ahora()->month;
         }
 
         $desde = Carbon::create($anio, $mes ?? 1, 1);
@@ -889,8 +889,8 @@ class ServicioTecnicoController extends Controller
         $min = OrdenServicio::min('fecha_ingreso');
         $max = OrdenServicio::max('fecha_ingreso');
 
-        $primero = $min ? Carbon::parse($min)->year : now()->year;
-        $ultimo = max($max ? Carbon::parse($max)->year : now()->year, now()->year);
+        $primero = $min ? Carbon::parse($min)->year : \App\Support\FechaNegocio::ahora()->year;
+        $ultimo = max($max ? Carbon::parse($max)->year : \App\Support\FechaNegocio::ahora()->year, \App\Support\FechaNegocio::ahora()->year);
 
         return array_reverse(range(min($primero, $ultimo), $ultimo));
     }
@@ -905,8 +905,8 @@ class ServicioTecnicoController extends Controller
         $min = AgendaTrabajo::whereNotNull('fecha')->min('fecha');
         $max = AgendaTrabajo::whereNotNull('fecha')->max('fecha');
 
-        $primero = $min ? Carbon::parse($min)->year : now()->year;
-        $ultimo = max($max ? Carbon::parse($max)->year : now()->year, now()->year);
+        $primero = $min ? Carbon::parse($min)->year : \App\Support\FechaNegocio::ahora()->year;
+        $ultimo = max($max ? Carbon::parse($max)->year : \App\Support\FechaNegocio::ahora()->year, \App\Support\FechaNegocio::ahora()->year);
 
         return array_reverse(range(min($primero, $ultimo), $ultimo));
     }

@@ -25,7 +25,9 @@ class MiProduccionController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): el turno noche seguía viendo su producción
+        // a las 22:00 Chile — el "hoy" UTC ya era mañana y la lista se vaciaba.
+        $hoy = \App\Support\FechaNegocio::hoy();
 
         $reportes = ProduccionReporte::where('soplador_id', $user->id)
             ->whereDate('fecha', $hoy)

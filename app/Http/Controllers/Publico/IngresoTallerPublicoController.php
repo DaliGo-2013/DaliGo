@@ -150,7 +150,9 @@ class IngresoTallerPublicoController extends Controller
         }
 
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): un ingreso nocturno quedaba FECHADO mañana
+        // (fecha_ingreso y entrega estimada se persisten desde este valor).
+        $hoy = \App\Support\FechaNegocio::hoy();
         $fechaEntrega = $sucursal->fechaEntregaEstimada($hoy)->toDateString();
 
         $ordenesPorFila = [];
@@ -287,7 +289,9 @@ class IngresoTallerPublicoController extends Controller
         ]);
 
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): un ingreso nocturno quedaba FECHADO mañana
+        // (fecha_ingreso y entrega estimada se persisten desde este valor).
+        $hoy = \App\Support\FechaNegocio::hoy();
 
         $orden = OrdenServicio::create([
             'cliente_nombre' => $data['cliente_nombre'],

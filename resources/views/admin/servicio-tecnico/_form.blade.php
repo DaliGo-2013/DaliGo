@@ -66,7 +66,7 @@
         <x-input-label for="fecha_ingreso" value="Fecha de ingreso" />
         <x-text-input id="fecha_ingreso" class="mt-1.5" type="date" name="fecha_ingreso" x-ref="fechaIngreso"
             x-on:change="recalcularEntrega()"
-            :value="old('fecha_ingreso', $o?->fecha_ingreso?->format('Y-m-d') ?? now()->format('Y-m-d'))" required />
+            :value="old('fecha_ingreso', $o?->fecha_ingreso?->format('Y-m-d') ?? \App\Support\FechaNegocio::hoy())" required />
         <x-input-error :messages="$errors->get('fecha_ingreso')" class="mt-2" />
     </div>
 

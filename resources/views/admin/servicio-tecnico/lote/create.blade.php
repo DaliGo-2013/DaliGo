@@ -106,7 +106,7 @@
                         <div>
                             <x-input-label for="fecha_ingreso" value="Fecha de retiro" />
                             <x-text-input id="fecha_ingreso" name="fecha_ingreso" type="date" class="mt-1.5 w-full"
-                                :value="old('fecha_ingreso', now()->format('Y-m-d'))" required />
+                                :value="old('fecha_ingreso', \App\Support\FechaNegocio::hoy())" required />
                             <x-input-error :messages="$errors->get('fecha_ingreso')" class="mt-2" />
                         </div>
                     </div>
