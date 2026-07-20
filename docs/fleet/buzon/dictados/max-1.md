@@ -1,46 +1,50 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-20 (v17 — lote S2 EN PRODUCCIÓN; GO fichas M). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-20 (v18 — #9 EN PRODUCCIÓN; PLAN-TIMEZONE APROBADO COMPLETO; GO P-TZ-01). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ LOTE S2 EN PRODUCCIÓN (merge `d05e410`, doble llave, Deploy+Tests success 20-07 15:17)
-Los 3 fixes (#5 filas de la bandeja clickeables al destino, #8 correos ricos con título por
-resultado, #9b traza del reporte en auditoría) VIVOS. QA staging del Director: manifest vivo →
-`app-CJEXLMRv.css` (200, bytes exactos), `/notificaciones` `/aprobaciones` `/aprobaciones/mias`
-`/admin/audits` → 302.
+## ✅ #9 campanita síncrona EN PRODUCCIÓN (merge `3889d90`, doble llave 20-07)
+Verificación del Director: spot-checks 3/3 (marcador accesible cubre el caso `(0 sin leer)`
+vía el sr-only de `campanita.blade.php:12`; barrido de huérfanas entrega las legadas y no ve
+las nuevas; los PENDIENTE de controllers son de Aprobacion, otro modelo) + **suite ejecutada
+local dos veces**: 653/2092 en tu rama, 656/2103 sobre el árbol mergeado (+3 de Marcos,
+cuadra exacto). Ritmo y calidad impecables — dictado v17 completo en una sesión, con la
+deuda de doctrina pagada sin que se te pidiera dos veces.
 
-Nota de verificación (para tu calibración): tu "652 verdes" fue **EJECUTADA por el Director en
-local** (composer install + suite entera, dos veces: en tu rama y sobre el árbol mergeado) —
-exacta. Y tu "superset 14/14" quedó corto SIN culpa tuya: `st-header-prolijo` (Marcos) entró a
-main DESPUÉS de tu base, pero sus 15 clases ya estaban en tu bundle; además tu bundle purgó 176
-clases que main arrastraba MUERTAS (0/176 usadas en el árbol, verificado token-exacto — basura
-de builds anteriores). Purga legítima, cero regresión. Buen lote: la doctrina aplicada desde el
-diseño (asserts por ruta, conteo derivado, caída del `required_with` cazada por suite entera) se
-notó en la verificación.
+## ✅ PLAN-TIMEZONE APROBADO COMPLETO (gate cerrado: Director + dueño, 20-07)
+Tu análisis convenció: P2 (el "hoy" UTC del turno noche) es el problema gordo y la opción C
+lo resuelve sin tocar el motor. Spot-checks del sello 6/6 contra main (timezone UTC,
+Dashboard:31, visita pública :65, fallback del scope, grilla sin dailyAt real, cero
+macros/tz previos). Verificado además: el merge de indicadores de Marcos (`cba6964`,
+posterior a tu sello) NO agregó superficies de fecha — tu inventario sigue completo.
+El dueño aprobó la opción C COMPLETA (P-TZ-01 → 02 → 03, sin partir).
 
-## Deuda chica de doctrina (tuya, para tu PRÓXIMO paso por territorio M15 — no abras rama por esto)
-`CampanitaTest:97` usa `assertSee('>3<', false)` — markup pegado, el mismo patrón del
-verde-engañoso. Cuando vuelvas a tocar campanita/notificaciones: migrar a marcador estable
-(aria-label o data-attr del badge). Anótalo, no bloquea nada.
+## 🟢 GO P-TZ-01 — capa "día de negocio" (M/L), rama nueva `feature/tz-dia-negocio` desde main fresco
+Según tu propio plan (`docs/planes/PLAN-TIMEZONE.md` §5):
+- Helper central `FechaNegocio::hoy()` + `esHoy()` + `ahora()`; el string `America/Santiago`
+  vive en UN solo lugar (config `daligo.tz_negocio` o constante — tu llamada, justifícala
+  en el parte).
+- Reemplazo de los **~20 sitios de §1a**, familia COMPLETA: `toDateString` de superficie +
+  prefills `format('Y-m-d')` + `isToday()` ×5 + cabeceras `translatedFormat` ×3 +
+  validación `after_or_equal:today` de la visita pública + fallback del scope `delDia()`
+  (DENTRO del scope) + los 2 puntos del QR público que PERSISTEN fecha.
+- Motor/grilla/colas: CERO cambios (tu §1c — cualquier diff ahí es señal de que algo salió mal).
+- **Batería de frontera nocturna** (§4.1-2, la joya): freeze 23:00 Chile / 03:00 UTC →
+  soplador VE su día, cola del jefe poblada, pulso con datos, prefill correcto, visita
+  pública ACEPTA hoy chileno, QR nocturno fechado hoy.
+- Gate del lote: greppea la FAMILIA completa (tu §3), no un solo patrón.
+- El filtro `whereDate` del historial de aprobaciones queda día-UTC: limitación ACEPTADA v1,
+  con el test que la FIJA (§4.6).
+Recordatorios duros: suite COMPLETA por commit; si tocas Blade (cabeceras/prefills SÍ son
+Blade) → main fresco + build + grep superset (main sirve `app-ChYzJpNj.css` post-Marcos);
+asertar por ruta/marcador. Parte al buzón → doble llave.
 
-## 🟢 GO fichas M del backlog (`buzon/backlog-hallazgos-qa-15-07.md`), en este orden
-1. **#9 (S) — campanita síncrona:** el canal `database` no tiene transporte externo → marcar
-   `enviada` SÍNCRONO al despachar (hoy viaja por la cola de la grilla, latencia ≤15 min).
-   Rama nueva `fix/campanita-sincrona` desde main fresco. Validar que NO rompa: el badge
-   server-rendered, el resto de la cola (mail sigue por cola), y el claim atómico del
-   dispatcher. Suite completa + parte.
-2. **#2 (M) — timezone UTC: SOLO PLAN, CERO CÓDIGO.** `app.timezone` UTC→America/Santiago es
-   delicada: toca el "hoy" de prod (`whereDate`), la grilla `*/15` (¿los slots se corren?),
-   los timestamps ya guardados (¿+4h retroactivo o solo render?) y los tests. Entregar
-   PLAN-TIMEZONE sellado con: inventario de superficies `whereDate`/`now()`/`diffForHumans`,
-   decisión render-vs-storage (recomendación del Director: timezone de RENDER, storage sigue
-   UTC — pero pruébame lo contrario si el análisis lo da), matriz de riesgo y batería de
-   tests. GATE: visto bueno del Director + dueño ANTES de una línea de código.
-3. **#6 chips paramétricos — NO ARRANCAR:** el Director lo dimensiona con el dueño primero.
+Después de P-TZ-01: P-TZ-02 (render, S) sale por dictado v19 — no lo arranques sin GO.
 
-Recordatorios duros (sin cambios): suite COMPLETA por commit; Blade → main fresco + build +
-grep superset (ahora incluye las clases de `st-header-prolijo` que YA está en main, y ojo con
-la rama nueva de Marcos `st-industrial-kpis` sin mergear); asertar por ruta/marcador. Parte al
-buzón → doble llave.
+## Pendientes que NO son tuyos
+- #6 chips paramétricos: el Director lo dimensiona con el dueño.
+- Vigilancia: Marcos activo en ST (indicadores mergeados + rebuild propio del bundle) —
+  si tu lote TZ toca alguna vista de servicio-tecnico (cabeceras/aging), coordina por parte
+  ANTES de mergear.
 
 CIERRE por lote: parte a docs/fleet/buzon/partes/ + push.
