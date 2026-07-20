@@ -117,7 +117,12 @@
                                     <option value="{{ $c }}" @selected(old('conductor') === $c)>{{ $c }}</option>
                                 @endforeach
                             </x-select>
-                            <x-input-hint>Quién retira las máquinas en ruta.</x-input-hint>
+                            <x-input-hint>
+                                Quién retira las máquinas en ruta.
+                                @can('manage servicio tecnico')
+                                    · <a href="{{ route('admin.conductores.index') }}" class="text-brand-600 hover:underline">Administrar</a>
+                                @endcan
+                            </x-input-hint>
                             <x-input-error :messages="$errors->get('conductor')" class="mt-2" />
                         </div>
                     </div>
