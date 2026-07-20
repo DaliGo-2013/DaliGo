@@ -8,28 +8,9 @@
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
 
-                    {{-- Acciones secundarias agrupadas en un menú «Más» para no
-                         amontonar el header (todas están también en el nav de ST).
-                         Queda solo el CTA primario «Registrar ingreso» a la vista. --}}
-                    <x-dropdown align="right" width="w-56">
-                        <x-slot name="trigger">
-                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
-                                Más
-                                <x-icon.chevron-down class="h-4 w-4" />
-                            </button>
-                        </x-slot>
-                        <x-slot name="content">
-                            <x-dropdown-link :href="route('admin.servicio-tecnico.informe')">Informes</x-dropdown-link>
-                            @can('crear lote servicio')
-                                <x-dropdown-link :href="route('admin.servicio-tecnico.lote.create')">Ingreso por lote</x-dropdown-link>
-                            @endcan
-                            @can('manage servicio tecnico')
-                                <x-dropdown-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-dropdown-link>
-                            @endcan
-                            <x-dropdown-link :href="route('admin.servicio-tecnico.seguimiento-demo')">Seguimiento (boceto)</x-dropdown-link>
-                        </x-slot>
-                    </x-dropdown>
-
+                    {{-- Las acciones secundarias (Informe, Lote, QR, Seguimiento…)
+                         viven en el dropdown «Servicio Técnico» del nav superior,
+                         para no duplicarlas. Aquí queda solo el CTA primario. --}}
                     @can('manage servicio tecnico')
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
                             <x-icon.plus class="h-4 w-4" />
