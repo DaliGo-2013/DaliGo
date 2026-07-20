@@ -79,6 +79,17 @@ class AgendaTerrenoTest extends TestCase
             ->assertSee('dia-2026-07-20', false); // ancla del día (clic en el calendario)
     }
 
+    public function test_agendar_preselecciona_al_unico_tecnico(): void
+    {
+        $carlos = tap(User::factory()->create(['name' => 'Carlos Tablante']))->assignRole('tecnico_industrial');
+
+        $this->actingAs($this->vendedor())
+            ->get('/admin/agenda-terreno/crear')
+            ->assertOk()
+            ->assertSee(sprintf('value="%d" selected', $carlos->id), false)
+            ->assertSee('único técnico industrial');
+    }
+
     public function test_agenda_guarda_la_hora(): void
     {
         $this->actingAs($this->vendedor())
