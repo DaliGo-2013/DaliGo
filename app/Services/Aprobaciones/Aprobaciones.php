@@ -279,9 +279,11 @@ class Aprobaciones
     private function notificarRol(string $evento, Aprobacion $aprobacion, string $rol): void
     {
         $dispatcher = app(NotificacionDispatcher::class);
+        // El destinatario es un APROBADOR: su accion vive en la bandeja.
+        $datos = $this->datosNotificacion($aprobacion) + ['url' => route('aprobaciones.index')];
 
-        User::role($rol)->get()->each(function (User $user) use ($dispatcher, $evento, $aprobacion) {
-            $dispatcher->despachar($evento, $aprobacion, $user, $this->datosNotificacion($aprobacion));
+        User::role($rol)->get()->each(function (User $user) use ($dispatcher, $evento, $aprobacion, $datos) {
+            $dispatcher->despachar($evento, $aprobacion, $user, $datos);
         });
     }
 
@@ -293,8 +295,13 @@ class Aprobaciones
             return;
         }
 
-        app(NotificacionDispatcher::class)
-            ->despachar($evento, $aprobacion, $solicitante, $this->datosNotificacion($aprobacion));
+        app(NotificacionDispatcher::class)->despachar(
+            $evento,
+            $aprobacion,
+            $solicitante,
+            // El destinatario es el SOLICITANTE: su superficie es "Mis solicitudes".
+            $this->datosNotificacion($aprobacion) + ['url' => route('aprobaciones.mias')],
+        );
     }
 
     /** @return array<string, mixed> placeholders para las plantillas M15 */
@@ -305,8 +312,12 @@ class Aprobaciones
             'descripcion' => $aprobacion->descripcion,
             'solicitante' => $aprobacion->solicitante?->name ?? '—',
             'motivo' => $aprobacion->motivo,
-            'resultado' => $aprobacion->estado,
+            // Legible para asuntos ("Aprobada: …"); el estado crudo va en la fila.
+            'resultado' => ucfirst($aprobacion->estado),
             'resultado_motivo' => $aprobacion->resultado_motivo ?? '',
+            // Siempre string: el render de plantillas filtra los no-escalares y
+            // un null dejaria el placeholder {magnitud} sin reemplazar.
+            'magnitud' => $aprobacion->monto !== null ? number_format($aprobacion->monto, 0, ',', '.') : '—',
         ];
     }
 }
