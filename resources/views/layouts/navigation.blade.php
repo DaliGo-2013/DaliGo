@@ -114,6 +114,7 @@
                             @endcan
                             @canany(['view servicio tecnico', 'manage servicio tecnico'])
                                 <x-dropdown-link :href="route('admin.servicio-tecnico.informe')">Informe</x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.servicio-tecnico.seguimiento-demo')">Seguimiento (boceto)</x-dropdown-link>
                             @endcanany
                             @canany(['ver agenda terreno', 'agendar servicio terreno'])
                                 <x-dropdown-link :href="route('admin.agenda-terreno.index')">Agenda de terreno</x-dropdown-link>
@@ -236,6 +237,9 @@
                 @canany(['view servicio tecnico', 'manage servicio tecnico'])
                     <x-responsive-nav-link :href="route('admin.servicio-tecnico.informe')" :active="request()->routeIs('admin.servicio-tecnico.informe')">
                         Informe
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.seguimiento-demo')" :active="request()->routeIs('admin.servicio-tecnico.seguimiento-demo')">
+                        Seguimiento (boceto)
                     </x-responsive-nav-link>
                 @endcanany
                 @canany(['ver agenda terreno', 'agendar servicio terreno'])
