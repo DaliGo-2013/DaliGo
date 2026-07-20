@@ -63,6 +63,39 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Nombre del remitente en los correos del sistema (placeholder hasta decidir D-001).',
             ],
+            // Plantillas ricas de aprobaciones (hallazgo #8 del QA 15-07: los
+            // correos eran esqueleticos y los 3 titulos de resolucion identicos).
+            // Placeholders: los entrega Aprobaciones::datosNotificacion (+ url).
+            [
+                'clave' => 'notif_plantilla_aprobacion_solicitada',
+                'valor' => json_encode([
+                    'asunto' => 'Aprobación pendiente: {descripcion}',
+                    'cuerpo' => "{solicitante} pide: {tipo}.\nMotivo: {motivo}\nMagnitud: {magnitud}\n\nResuélvela aquí: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Plantilla al crearse una solicitud de aprobación (va al rol aprobador).',
+            ],
+            [
+                'clave' => 'notif_plantilla_aprobacion_escalada',
+                'valor' => json_encode([
+                    'asunto' => 'Solicitud escalada sin respuesta: {descripcion}',
+                    'cuerpo' => "Escaló a tu rol por falta de respuesta.\nSolicitante: {solicitante}\nMotivo: {motivo}\nMagnitud: {magnitud}\n\nResuélvela aquí: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Plantilla cuando una solicitud escala al siguiente rol.',
+            ],
+            [
+                'clave' => 'notif_plantilla_aprobacion_resuelta',
+                'valor' => json_encode([
+                    'asunto' => '{resultado}: {descripcion}',
+                    'cuerpo' => "Tu solicitud quedó: {resultado}.\n{resultado_motivo}\n\nVer tus solicitudes: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Plantilla al resolverse una solicitud (va al solicitante); el asunto distingue Aprobada/Rechazada.',
+            ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [
                 'clave' => 'umbral_ajuste_produccion_unidades',

@@ -18,18 +18,29 @@
             <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <ul class="divide-y divide-neutral-100">
                     @forelse ($notificaciones as $n)
-                        @php $noLeida = $n->estado === \App\Models\Notificacion::ENVIADA; @endphp
+                        @php
+                            $noLeida = $n->estado === \App\Models\Notificacion::ENVIADA;
+                            // Fila accionable (hallazgo #5 del QA 15-07): el contenido ES el
+                            // link al destino del evento. Un <a> sin href no es clickeable.
+                            $destino = $n->urlDestino();
+                        @endphp
                         <li class="flex items-start gap-3 px-4 py-3 sm:px-6 {{ $noLeida ? 'bg-brand-50/40' : '' }}">
-                            <div class="min-w-0 flex-1">
-                                <p class="flex items-center gap-2 truncate text-sm font-medium text-neutral-900">
-                                    @if ($noLeida)
-                                        <span class="inline-block h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-hidden="true"></span>
-                                    @endif
-                                    {{ $n->titulo }}
-                                </p>
-                                <p class="mt-0.5 text-sm text-neutral-500">{{ $n->cuerpo }}</p>
-                                <p class="mt-1 text-xs text-neutral-400">{{ $n->created_at?->diffForHumans() }}</p>
-                            </div>
+                            <a @if ($destino) href="{{ $destino }}" @endif
+                                class="flex min-w-0 flex-1 items-start gap-3 {{ $destino ? '-mx-2 rounded-lg px-2 py-1 -my-1 transition duration-150 hover:bg-neutral-50 active:scale-[0.98]' : '' }}">
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex items-center gap-2 truncate text-sm font-medium text-neutral-900">
+                                        @if ($noLeida)
+                                            <span class="inline-block h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-hidden="true"></span>
+                                        @endif
+                                        {{ $n->titulo }}
+                                    </span>
+                                    <span class="mt-0.5 block text-sm text-neutral-500">{{ $n->cuerpo }}</span>
+                                    <span class="mt-1 block text-xs text-neutral-400">{{ $n->created_at?->diffForHumans() }}</span>
+                                </span>
+                                @if ($destino)
+                                    <x-icon.chevron-down class="mt-1 h-4 w-4 shrink-0 -rotate-90 text-neutral-400" />
+                                @endif
+                            </a>
                             @if ($noLeida)
                                 <form method="POST" action="{{ route('notificaciones.leer', $n) }}" class="shrink-0">
                                     @csrf

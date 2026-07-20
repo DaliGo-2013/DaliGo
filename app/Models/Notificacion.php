@@ -103,4 +103,19 @@ class Notificacion extends Model
             $this->update(['estado' => self::LEIDA, 'leida_at' => now()]);
         }
     }
+
+    /**
+     * Destino accionable de la notificacion segun su evento (hallazgo #5 del
+     * QA 15-07: "toda alerta necesita superficie donde actuar"). Los eventos
+     * de aprobacion llegan al APROBADOR (solicitada/escalada → su bandeja) o
+     * al SOLICITANTE (resuelta → sus solicitudes). Null = fila no accionable.
+     */
+    public function urlDestino(): ?string
+    {
+        return match ($this->evento) {
+            'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index'),
+            'aprobacion.resuelta' => route('aprobaciones.mias'),
+            default => null,
+        };
+    }
 }

@@ -16,6 +16,11 @@
             <div class="flex flex-wrap gap-x-4 gap-y-2">
                 <x-secondary-link :href="route('admin.produccion.index')">← Volver a la cola</x-secondary-link>
                 <x-secondary-link :href="route('admin.produccion.soplador', $reporte->soplador)">Ver historial del soplador</x-secondary-link>
+                {{-- Traza completa del registro (hallazgo #9b del QA 15-07: la ficha
+                     muestra solo el último ajuste; la historia vive en auditoría). --}}
+                @can('view audit')
+                    <x-secondary-link :href="route('admin.audits.index', ['auditable_type' => \App\Models\ProduccionReporte::class, 'auditable_id' => $reporte->id])">Ver historial de cambios</x-secondary-link>
+                @endcan
             </div>
 
             {{-- Datos del reporte --}}

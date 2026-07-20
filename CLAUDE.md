@@ -148,6 +148,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-07-20] `assertSee` de markup pegado (`'>X<'`) puede pasar por la razón EQUIVOCADA (verde-engañoso)
+- **Síntoma:** un test del lote QA verificaba el nav-link de la bandeja con `assertSee('>Aprobaciones<', false)` y la suite estaba VERDE — pero el nav-link jamás produce esa cadena (`<x-nav-link>` renderiza el slot con saltos de línea e indentación). El Director lo diagnosticó como "falla determinista"; en realidad era peor: **verde-engañoso**.
+- **Causa:** la cadena pegada `>Aprobaciones<` SÍ existía en el HTML… aportada por OTRA superficie de la misma página (el chip del zócalo del dashboard M16, `…">{{ $item['label'] }}</a>`). El assert pasaba sin verificar el elemento que su comentario decía verificar. Un verde que pasa por la razón equivocada no protege nada y esconde la regresión el día que esa otra superficie cambie.
+- **Solución:** asertar por **RUTA o marcador estable**, nunca por la forma pegada del HTML: `assertSee(route('aprobaciones.index'), false)` para la bandeja + `assertSee('Historial de aprobaciones')` para el label (commit `ad750a1`; doctrina adoptada por el Director en `bab5da2`).
+- **Evitar a futuro:** (1) ante todo `assertSee` de fragmento HTML preguntarse: *¿puede OTRA superficie de la página satisfacer esta cadena?* (nav, zócalo, dropdown, sr-only — el gotcha del sr-only «(0 sin leer)» del 2026-07-14 es el mismo patrón); (2) preferir rutas, `aria-label` o el texto exacto de un label único; (3) para detectar un verde-engañoso: **mutar** — quitar el elemento objetivo y confirmar que el test se pone rojo; (4) los tests de asserts NEGATIVOS (`assertDontSee` de una cadena que nunca existió) pasan trivial: son los primeros sospechosos.
+
 ### [2026-07-13] Repo PÚBLICO: un incidente de seguridad se documenta REDACTADO desde el primer commit
 - **Síntoma:** al archivar el expediente I-05 (servidor HostGator comprometido con webshells) en `docs/qa/INFRA/`, el detalle sensible (rutas de los webshells + crontab + detalle de llaves) alcanzó la rama pública antes de notarlo — en repo público (D-012) eso es un mapa útil para un atacante.
 - **Causa:** se documentó el incidente con TODO el detalle operativo directo en un doc del repo, sin recordar que el repo es **público** (D-012).

@@ -59,11 +59,20 @@ class AuditController extends Controller
         $filtros = $request->validate([
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'auditable_type' => ['nullable', 'string', 'in:'.implode(',', array_keys(self::MODELOS))],
+            // Traza de UN registro (hallazgo #9b del QA 15-07): las fichas
+            // enlazan aqui filtrado. Solo se APLICA junto al type (ver when de
+            // abajo); un id suelto se ignora — y el filtro por solo-tipo del
+            // select existente sigue valido tal cual.
+            'auditable_id' => ['nullable', 'integer'],
         ]);
 
         $audits = Audit::with('user')
             ->when($filtros['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id))
             ->when($filtros['auditable_type'] ?? null, fn ($q, $type) => $q->where('auditable_type', $type))
+            ->when(
+                ($filtros['auditable_type'] ?? null) && ($filtros['auditable_id'] ?? null),
+                fn ($q) => $q->where('auditable_id', $filtros['auditable_id']),
+            )
             ->latest()
             ->paginate(25)
             ->withQueryString();

@@ -24,10 +24,17 @@ class NotificacionConfigSeedTest extends TestCase
     public function test_seeder_es_idempotente_no_duplica_claves(): void
     {
         $this->seed(ConfiguracionSeeder::class);
+        // Conteo DERIVADO de la 1ª corrida, no hardcodeado: el catalogo crece
+        // cuando un modulo suma plantillas (M14 agrego las suyas el 2026-07-20)
+        // y fijar el numero rompia con cada alta — mismo patron ya aplicado en
+        // PreferenciasCanalTest (bitacora 2026-07-13). La intencion del test es
+        // la IDEMPOTENCIA, no el tamaño del catalogo.
+        $antes = Configuracion::where('grupo', 'notificaciones')->count();
+
         $this->seed(ConfiguracionSeeder::class); // 2ª corrida: no duplica
 
         $this->assertSame(
-            4,
+            $antes,
             Configuracion::where('grupo', 'notificaciones')->count(),
             'La 2ª corrida del seeder no debe duplicar las claves notif_*.'
         );
