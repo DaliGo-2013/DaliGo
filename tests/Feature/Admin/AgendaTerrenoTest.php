@@ -60,23 +60,49 @@ class AgendaTerrenoTest extends TestCase
             ->assertRedirect(route('admin.agenda-terreno.index'));
     }
 
-    public function test_la_agenda_muestra_calendario_y_lista_con_hora(): void
+    public function test_la_agenda_muestra_calendario_lista_y_franjas(): void
     {
-        $t = AgendaTrabajo::factory()->create([
+        AgendaTrabajo::factory()->create([
             'tipo' => 'mantencion',
             'estado' => 'agendado',
             'fecha' => '2026-07-20',
-            'hora' => '09:00',
+            'hora' => '10:00',
             'cliente_nombre' => 'Aguas del Maule SpA',
         ]);
 
         $this->actingAs($this->tecnicoIndustrial())
             ->get('/admin/agenda-terreno?anio=2026&mes=7')
             ->assertOk()
-            ->assertSee('Lun')                    // grilla del calendario
-            ->assertSee('Aguas del Maule SpA')    // la lista del día
-            ->assertSee('09:00')                  // el horario integrado
-            ->assertSee('dia-2026-07-20', false); // ancla del día (clic en el calendario)
+            ->assertSee('Lun')                          // grilla del calendario
+            ->assertSee('Aguas del Maule SpA')          // la lista del día
+            ->assertSee('10:00 hs')                     // franja de 2 horas
+            ->assertSee('dia-2026-07-20', false)        // ancla del día (clic en el calendario)
+            ->assertSee('sin trabajo por realizar');    // aviso de los días libres (al tocarlos)
+    }
+
+    public function test_hora_cae_en_su_franja_de_dos_horas(): void
+    {
+        // Una hora impar (09:00) se agrupa bajo la franja 08:00 hs.
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado', 'fecha' => '2026-07-20', 'hora' => '09:00',
+            'cliente_nombre' => 'Planta Nueve',
+        ]);
+
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7')
+            ->assertOk()
+            ->assertSee('08:00 hs')       // franja (redondea hacia abajo al bloque par)
+            ->assertDontSee('09:00 hs');
+    }
+
+    public function test_agendar_ofrece_las_franjas_de_hora(): void
+    {
+        $this->actingAs($this->vendedor())
+            ->get('/admin/agenda-terreno/crear')
+            ->assertOk()
+            ->assertSee('— Sin hora —')
+            ->assertSee('08:00 hs')
+            ->assertSee('18:00 hs');
     }
 
     public function test_agendar_preselecciona_al_unico_tecnico(): void
