@@ -52,8 +52,11 @@
                         @php
                             // Qué cambia exactamente (hallazgo #7 del QA 15-07): el payload ya
                             // trae anterior/nuevo — se pintan SOLO los campos que difieren.
+                            // is_array: un payload con forma inesperada degrada a "sin diff".
                             $anterior = $aprobacion->datos['anterior'] ?? [];
                             $nuevo = $aprobacion->datos['nuevo'] ?? [];
+                            $anterior = is_array($anterior) ? $anterior : [];
+                            $nuevo = is_array($nuevo) ? $nuevo : [];
                             $cambios = collect([
                                 'asignadas' => 'Asignadas', 'primera' => '1ª', 'segunda' => '2ª',
                                 'malo' => 'Malos', 'danada' => 'Dañadas',

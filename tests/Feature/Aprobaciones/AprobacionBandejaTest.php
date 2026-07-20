@@ -175,13 +175,17 @@ class AprobacionBandejaTest extends TestCase
     {
         // Hallazgo #1 del QA 15-07: dos entradas llamadas "Aprobaciones"
         // confundieron al primer usuario real. El dropdown ahora se llama
-        // "Historial de aprobaciones"; la bandeja conserva su nombre.
+        // "Historial de aprobaciones"; la bandeja conserva su nombre y se
+        // verifica por su RUTA — asertar '>Aprobaciones<' es frágil: x-nav-link
+        // renderiza el slot con saltos de línea, y la cadena pegada solo existía
+        // por el chip del zócalo del dashboard (pasaba por la razón equivocada).
         $admin = tap(User::factory()->create())->assignRole('admin');
 
         $this->actingAs($admin)->get('/dashboard')
             ->assertOk()
             ->assertSee('Historial de aprobaciones')
-            ->assertSee('>Aprobaciones<', false); // el nav-link de la bandeja
+            ->assertSee(route('aprobaciones.index'), false)         // la bandeja, por su href
+            ->assertSee(route('admin.aprobaciones.index'), false);  // el historial, por el suyo
     }
 
     public function test_el_nav_muestra_aprobaciones_solo_con_permiso(): void
