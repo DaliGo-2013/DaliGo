@@ -29,6 +29,11 @@
                                     · resuelta {{ $solicitud->resuelta_at->diffForHumans() }}
                                 @endif
                             </p>
+                            {{-- Qué pedí (hallazgo #3 del QA 15-07): sin esto el solicitante
+                                 no distingue sus solicitudes entre sí. --}}
+                            <p class="text-xs text-neutral-600">
+                                {{ $solicitud->motivo }}@if ($solicitud->monto !== null) <span class="text-neutral-400">· magnitud <span class="tabular-nums">{{ number_format($solicitud->monto, 0, ',', '.') }}</span></span>@endif
+                            </p>
                             @if ($solicitud->estado === \App\Models\Aprobacion::ESTADO_RECHAZADA && $solicitud->resultado_motivo)
                                 <p class="text-xs text-red-700">{{ $solicitud->resultado_motivo }}</p>
                             @endif

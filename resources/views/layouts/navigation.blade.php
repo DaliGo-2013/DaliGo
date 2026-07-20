@@ -70,7 +70,9 @@
                                 <x-dropdown-link :href="route('admin.notificaciones.index')">Notificaciones</x-dropdown-link>
                             @endcan
                             @can('view aprobaciones')
-                                <x-dropdown-link :href="route('admin.aprobaciones.index')">Aprobaciones</x-dropdown-link>
+                                {{-- "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
+                                     igual que la bandeja confunde (hallazgo #1 del acta). --}}
+                                <x-dropdown-link :href="route('admin.aprobaciones.index')">Historial de aprobaciones</x-dropdown-link>
                             @endcan
                         </x-nav-dropdown>
                     @endcanany
@@ -323,7 +325,7 @@
 
                 @can('view aprobaciones')
                     <x-responsive-nav-link :href="route('admin.aprobaciones.index')" :active="request()->routeIs('admin.aprobaciones.*')">
-                        Aprobaciones
+                        Historial de aprobaciones
                     </x-responsive-nav-link>
                 @endcan
             @endcanany

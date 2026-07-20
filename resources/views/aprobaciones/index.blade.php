@@ -49,6 +49,25 @@
                         @if ($aprobacion->monto !== null)
                             <p class="mt-1 text-xs text-neutral-500">Magnitud: <span class="font-medium tabular-nums text-neutral-700">{{ number_format($aprobacion->monto, 0, ',', '.') }}</span></p>
                         @endif
+                        @php
+                            // Qué cambia exactamente (hallazgo #7 del QA 15-07): el payload ya
+                            // trae anterior/nuevo — se pintan SOLO los campos que difieren.
+                            // is_array: un payload con forma inesperada degrada a "sin diff".
+                            $anterior = $aprobacion->datos['anterior'] ?? [];
+                            $nuevo = $aprobacion->datos['nuevo'] ?? [];
+                            $anterior = is_array($anterior) ? $anterior : [];
+                            $nuevo = is_array($nuevo) ? $nuevo : [];
+                            $cambios = collect([
+                                'asignadas' => 'Asignadas', 'primera' => '1ª', 'segunda' => '2ª',
+                                'malo' => 'Malos', 'danada' => 'Dañadas',
+                            ])
+                                ->filter(fn ($label, $campo) => array_key_exists($campo, $nuevo)
+                                    && (int) ($anterior[$campo] ?? 0) !== (int) $nuevo[$campo])
+                                ->map(fn ($label, $campo) => $label.': '.number_format((int) ($anterior[$campo] ?? 0), 0, ',', '.').' → '.number_format((int) $nuevo[$campo], 0, ',', '.'));
+                        @endphp
+                        @if ($cambios->isNotEmpty())
+                            <p class="mt-1 text-xs tabular-nums text-neutral-700">{{ $cambios->implode(' · ') }}</p>
+                        @endif
                     </div>
 
                     {{-- Acciones: aprobar = 1 tap (POST directo); rechazar abre
