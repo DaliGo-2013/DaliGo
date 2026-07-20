@@ -70,6 +70,7 @@ class LoteServicioTest extends TestCase
             'cliente_nombre' => 'Aguas JB SpA',
             'cliente_rut' => '12.345.678-5',
             'cliente_email' => 'jb@empresa.cl',
+            'cliente_telefono' => '+56 9 1234 5678',
             'origen_ciudad' => 'Los Andes',
             'sucursal_id' => $sucursal,
             'fecha_ingreso' => '2026-07-13',

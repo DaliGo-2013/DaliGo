@@ -58,14 +58,14 @@
         <x-input-error :messages="$errors->get('cliente_nombre')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="cliente_rut" value="RUT (opcional)" />
-        <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full"
+        <x-input-label for="cliente_rut">RUT <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full" required
             maxlength="20" :value="old('cliente_rut', $i?->cliente_rut)" />
         <x-input-error :messages="$errors->get('cliente_rut')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="comuna_region" value="Comuna / región" />
-        <x-text-input id="comuna_region" name="comuna_region" type="text" class="mt-1.5 w-full"
+        <x-input-label for="comuna_region">Comuna / región <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="comuna_region" name="comuna_region" type="text" class="mt-1.5 w-full" required
             maxlength="191" :value="old('comuna_region', $i?->comuna_region)" placeholder="Ej. Copiapó, Serena…" />
         <x-input-error :messages="$errors->get('comuna_region')" class="mt-2" />
     </div>
@@ -73,8 +73,8 @@
     {{-- Producto instalado: texto libre con sugerencias del catálogo (datalist).
          No es lista cerrada — se puede escribir cualquier cosa. --}}
     <div class="sm:col-span-2">
-        <x-input-label for="producto" value="Producto instalado" />
-        <x-text-input id="producto" name="producto" type="text" class="mt-1.5 w-full" list="productos-catalogo"
+        <x-input-label for="producto">Producto instalado <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="producto" name="producto" type="text" class="mt-1.5 w-full" list="productos-catalogo" required
             maxlength="191" :value="old('producto', $i?->producto)"
             placeholder="Ej. LAVADORA BOTELLON 20L-220V, PLANTA DE OSMOSIS 1T…" />
         <datalist id="productos-catalogo">
@@ -98,16 +98,16 @@
 
     {{-- Días trabajados --}}
     <div>
-        <x-input-label for="dias" value="Días trabajados" />
-        <x-text-input id="dias" name="dias" type="number" min="0" max="365" class="mt-1.5 w-full"
+        <x-input-label for="dias">Días trabajados <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="dias" name="dias" type="number" min="0" max="365" class="mt-1.5 w-full" required
             :value="old('dias', $i?->dias)" placeholder="Ej. 2" />
         <x-input-error :messages="$errors->get('dias')" class="mt-2" />
     </div>
 
     {{-- Vendedor (texto con sugerencias) --}}
     <div>
-        <x-input-label for="vendedor" value="Vendedor" />
-        <x-text-input id="vendedor" name="vendedor" type="text" class="mt-1.5 w-full" list="vendedores-sugeridos"
+        <x-input-label for="vendedor">Vendedor <span class="text-red-500">*</span></x-input-label>
+        <x-text-input id="vendedor" name="vendedor" type="text" class="mt-1.5 w-full" list="vendedores-sugeridos" required
             maxlength="191" :value="old('vendedor', $i?->vendedor)" placeholder="Nombre del vendedor" />
         <datalist id="vendedores-sugeridos">
             @foreach ($vendedores as $v)

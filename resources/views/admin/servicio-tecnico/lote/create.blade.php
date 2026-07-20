@@ -64,15 +64,15 @@
                         </div>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <x-input-label for="cliente_email" value="Correo (opcional)" />
-                                <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full"
+                                <x-input-label for="cliente_email">Correo <span class="text-red-500">*</span></x-input-label>
+                                <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 w-full" required
                                     maxlength="191" placeholder="empresa@correo.cl" x-model="email" />
                                 <x-input-hint>Para el aviso de recepción del lote.</x-input-hint>
                                 <x-input-error :messages="$errors->get('cliente_email')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="cliente_telefono" value="Teléfono (opcional)" />
-                                <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 w-full"
+                                <x-input-label for="cliente_telefono">Teléfono <span class="text-red-500">*</span></x-input-label>
+                                <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 w-full" required
                                     maxlength="30" placeholder="+56 9 1234 5678" x-model="telefono" />
                                 <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-2" />
                             </div>
@@ -104,7 +104,7 @@
                             <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
                         </div>
                         <div>
-                            <x-input-label for="fecha_ingreso" value="Fecha de retiro" />
+                            <x-input-label for="fecha_ingreso">Fecha de retiro <span class="text-red-500">*</span></x-input-label>
                             <x-text-input id="fecha_ingreso" name="fecha_ingreso" type="date" class="mt-1.5 w-full"
                                 :value="old('fecha_ingreso', now()->format('Y-m-d'))" required />
                             <x-input-error :messages="$errors->get('fecha_ingreso')" class="mt-2" />

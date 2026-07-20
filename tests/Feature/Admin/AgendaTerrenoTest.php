@@ -279,6 +279,7 @@ class AgendaTerrenoTest extends TestCase
                 'valor_uf' => '1,5',          // coma decimal chilena
                 'duracion' => '1/2 día',
                 'incluye' => 'Cambio de membranas, limpieza portamembrana.',
+                'observaciones' => 'No incluye cambio de cabezal.',
                 'activo' => '1',
             ])
             ->assertRedirect(route('admin.servicios-terreno.index'));
