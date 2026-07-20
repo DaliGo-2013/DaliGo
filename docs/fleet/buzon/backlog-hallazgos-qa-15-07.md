@@ -27,7 +27,7 @@
 ## Decisión del dueño (no es bug)
 | Id | Título | Nota |
 |---|---|---|
-| **#9c** | Texto/badge ROJOS en la solicitud "Rechazada" | HOY cumple la paleta de 4 colores (rojo reservado a lo destructivo/negativo; "rechazada" sigue ese patrón, como "devuelto"). Cambiarlo a neutral es modificar la REGLA de paleta y arrastra decidir "devuelto" por coherencia. **Espera decisión del dueño.** |
+| **#9c** | Texto/badge ROJOS en la solicitud "Rechazada" | **CERRADO 20-07 — el dueño ACEPTA el rojo.** La paleta de 4 colores queda como está (rojo = destructivo/negativo: eliminar, errores, devuelto, rechazada). Sin cambio de código. |
 
 ## VERIFICACIÓN del lote `fix/qa-aprobaciones-ux` @ `f040791` (adversarial, 3 lentes)
 - **Comportamiento (#1/#3/#7): CORRECTO** — rename toca solo las 2 entradas del historial (la bandeja conserva "Aprobaciones"); motivo+magnitud y diff anterior→nuevo con escape `{{ }}` y guards `?? []` correctos; campos del payload existen (los arma `ProduccionController::ajustar`).
