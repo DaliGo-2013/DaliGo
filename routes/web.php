@@ -155,6 +155,10 @@ Route::middleware('auth')
             // Informe de estadisticas por periodo (año o mes) para los jefes.
             Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informe'])
                 ->name('servicio-tecnico.informe');
+            // BOCETO interno: vista de seguimiento (estilo Blue Express) del estado
+            // de un equipo. Sin conexion a datos; solo un adelanto del diseño.
+            Route::get('servicio-tecnico/seguimiento-demo', [ServicioTecnicoController::class, 'seguimientoDemo'])
+                ->name('servicio-tecnico.seguimiento-demo');
             // Foto de recepcion (disco privado, servida con sesion). ANTES del show
             // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
             Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])

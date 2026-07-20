@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -299,6 +300,47 @@ class ServicioTecnicoController extends Controller
             ]);
 
         return view('admin.servicio-tecnico.qr', ['sucursales' => $sucursales]);
+    }
+
+    /**
+     * BOCETO interno: vista de seguimiento (estilo Blue Express) de las etapas
+     * por las que pasa un equipo en el taller. Datos de ejemplo, sin conexión a
+     * datos ni a la búsqueda del cliente todavía — es un adelanto del diseño.
+     */
+    public function seguimientoDemo(): View
+    {
+        return view('admin.servicio-tecnico.seguimiento-demo', [
+            'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'esperando_repuesto', 'reparado', 'entregado']),
+            'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
+        ]);
+    }
+
+    /**
+     * Arma los pasos de la línea de tiempo (key/label/desc/tono) a partir de los
+     * estados de OrdenServicio. El label usa Str::headline (mismo criterio que el
+     * <select> de la reparación); sin_solucion se pinta en rojo (danger).
+     *
+     * @param  list<string>  $keys
+     * @return list<array{key:string,label:string,desc:string,tono:string}>
+     */
+    private function pasosSeguimiento(array $keys): array
+    {
+        $desc = [
+            'recibido' => 'Recibimos tu equipo en el taller.',
+            'en_revision' => 'El técnico está revisando la falla.',
+            'cotizacion' => 'Te enviamos el presupuesto y esperamos tu aprobación.',
+            'esperando_repuesto' => 'Pedimos el repuesto necesario para la reparación.',
+            'reparado' => 'Tu equipo quedó reparado y probado.',
+            'entregado' => 'Retiraste tu equipo. ¡Gracias!',
+            'sin_solucion' => 'Lamentablemente el equipo no tiene reparación.',
+        ];
+
+        return array_map(fn (string $k) => [
+            'key' => $k,
+            'label' => Str::headline($k),
+            'desc' => $desc[$k] ?? '',
+            'tono' => $k === 'sin_solucion' ? 'danger' : 'brand',
+        ], $keys);
     }
 
     public function show(OrdenServicio $orden): View

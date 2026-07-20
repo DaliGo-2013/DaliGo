@@ -1,49 +1,56 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-14 (v14 — tweak VERIFICADO pero el merge conflictúa: refresh + rebuild). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-17 (v15 — lote QA verificado: 2 bloqueadores de entrega, arréglalos; luego próximo lote S). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (talla S).
+MODELO: Opus 4.8 · high (fixes S).
 
-## ⚡ ACCIÓN INMEDIATA: refresca `feature/campanita-movil` — el merge a main conflictúa
-Tu tweak está VERIFICADO por el Director (bundle `FGPKmQ6Z` grep 6/6 incluidas las clases
-M16-v1, diff mínimo, decisión sin-dropdown bien razonada, reuso de `x-icon.bell` ✓). PERO el
-Director intentó el merge y **conflictúa en `public/build/manifest.json`**: M12 pusheó a main
-DESPUÉS de que nació tu rama (back-button + variantes DALI, con rebuilds — el bundle de main
-ahora es `CvkXwK7I`). La resolución exige RECOMPILAR contra el Blade mergeado (tu campana +
-lo nuevo de M12) — trabajo tuyo, no del Director:
-1. `git fetch` → merge de `origin/main` a tu rama → resolver (el conflicto real es solo
-   manifest/assets: regenéralos, no los elijas a mano).
-2. `npm install` si el merge tocó package* (bitácora [2026-07-07]) → `npm run build` →
-   grep del bundle (6 de M16-v1 + `lg\:*` + las del badge) → suite verde.
-3. Push de la rama + parte corto. El Director mergea al toque (doble llave ya completa).
+## ✅ Gran trabajo en el QA + acta. E2·M14 CERRADA verificada por el Director (RUTA:136, `fe18d19`).
+Los 3 fixes de comportamiento del lote (#1 rename nav, #3 motivo+magnitud, #7 diff
+anterior→nuevo) están CORRECTOS y en territorio limpio — verificación adversarial de 3 lentes
+del Director: escape `{{ }}` OK, guards `?? []` OK, campos del payload existen, la bandeja
+conserva "Aprobaciones", cero cambio de motor. Pero el lote tiene **2 bloqueadores de ENTREGA**
+(no de diseño) que lo dejan sin mergear:
 
-## Contexto (hallazgo del QA de celular del dueño, 14-07)
-El dueño intentó el QA de M14 desde el teléfono y **no encontró la campana**: en móvil no
-hay ícono en la cabecera — la sección «Notificaciones» vive al FONDO del menú hamburguesa
-(`navigation.blade.php` ~L295). El usuario objetivo del flujo aprobar-desde-el-teléfono no
-la descubrió → discoverability insuficiente. (Su test además quedó bajo el umbral — Δ 20 <
-50 — así que no había notificación que ver; va a repetir con Δ ≥ 50.)
+## 🔴 BLOQUEADOR 1 — tu test nuevo falla determinista (contradice el "634 verdes" del parte)
+`tests/Feature/Aprobaciones/AprobacionBandejaTest.php:184` →
+`->assertSee('>Aprobaciones<', false)`. Esa cadena PEGADA nunca aparece en el HTML: el label
+de la bandeja va dentro de `<x-nav-link>`, cuyo template es `<a ...>` + salto + `    {{ $slot }}`
+→ el HTML real es `>\n    Aprobaciones\n`, nunca `>Aprobaciones<`. **La aserción falla siempre.**
+El idiom `>X<` solo funciona con markup pegado (`>{{ $dgConteo }}<` de la campanita, por eso ESE
+sí pasa). Tu forma NEGATIVA en la línea 193 (`assertDontSee('>Aprobaciones<', false)`) pasa
+trivial justo porque la cadena no existe — por eso no se notó en positivo.
+- **Fix:** distingue bandeja de historial de forma robusta: `assertSee('Historial de
+  aprobaciones')` + verificar la bandeja por su RUTA (`assertSee(route('aprobaciones.index'), false)`)
+  o por un marcador estable, NO por `>Aprobaciones<`. Corre `composer test` DE VERDAD y confirma
+  verde ANTES del parte (este test no pudo haber pasado — recorre la suite completa, no un subset).
 
-## TWEAK-CAMPANITA-MOVIL (S, rama nueva `feature/campanita-movil` desde main fresco)
-1. **Ícono de campana SIEMPRE VISIBLE en la cabecera móvil**, junto a la hamburguesa
-   (zona `lg:hidden`), con el badge de no-leídas (`$dgConteo` ya calculado al tope del nav —
-   reúsalo, no dupliques la query). Heroicon outline `bell` como componente
-   `<x-icon.bell />` (formato del catálogo: fill=none, stroke-width 1.5, currentColor,
-   aria-hidden + sr-only).
-2. **Destino:** al tocarla → `notificaciones.index` (mismo destino que la sección del menú).
-   Dropdown completo en móvil NO (pantalla chica, la página personal ya existe) — salvo que
-   veas trivial reusar el partial; decide tú y documenta.
-3. La sección del fondo del hamburguesa SE QUEDA (no romper `CampanitaTest` — extiéndelo:
-   assert del ícono visible en móvil con badge).
-4. Es superficie compartida (navigation.blade.php, M12 la toca seguido): bloque mínimo,
-   fetch de main fresco antes, npm run build + grep bundle (6 de M16 + `lg\:*` + las del
-   badge). Responsive 375/768/1024: a 375 la cabecera no debe desbordar (logo + campana +
-   hamburguesa caben).
-5. Suite verde. Parte al buzón → merge con doble llave exprés (el dueño ya lo aprobó
-   conceptualmente; falta solo el endoso del Director al resultado).
+## 🔴 BLOQUEADOR 2 — bundle stale (main avanzó con M12 después de tu rama)
+Tu bundle `app-CQ-gaRIb.css` se construyó en `f040791` desde `fe18d19`, ANTES de que M12
+mergeara el boceto de seguimiento + instalaciones fase 2. Le FALTAN 6 clases de esas vistas
+(`ring-4`, `border-amber-200`, `bg-amber-50`, `text-amber-800`, `top-11`, `last:pb-0` +
+`h-[calc(100%-1.75rem)]`). Mergear tal cual REGRESA el boceto de M12 (escenario campanita).
+- **Fix:** `git fetch` → merge de `origin/main` a tu rama → resolver el conflicto de
+  `manifest.json` RECOMPILANDO (`npm install` si tocó package* → `npm run build`), NUNCA eligiendo
+  un lado a mano → grep del bundle nuevo: las 7 de la flota (`lg\:flex`,`lg\:hidden`,
+  `sm\:grid-cols-3`,`lg\:grid-cols-5`,`min-w-\[1.5rem\]`,`bg-white\/60`,`min-w-8`) **Y** las 6 de M12
+  seguimiento (arriba) → superset.
+- Parte corto al buzón cuando ambos estén resueltos → el Director mergea con doble llave
+  (el dueño ya validó los 3 fixes en el QA; falta solo tu suite verde + bundle sano).
 
-## Housekeeping pendiente del dictado v12 (si no lo hiciste): P-M16V1-03 [x] en RUTA con
-hash `6caf1f9`.
+## (info, no bloquea) robustez #7
+`array_key_exists($campo, $nuevo)` reventaría si `$nuevo` fuera escalar — no alcanzable hoy.
+Un `is_array($nuevo)` de guarda es barato; a tu criterio.
 
-Pendiente vivo: el dueño repite el QA M14 con Δ ≥ 50 — al confirmarlo, P-M14-07 [x] + sello.
+## DESPUÉS del lote actual: próximo lote S (rama NUEVA `fix/qa-aprobaciones-ux2` desde main fresco)
+Del backlog del Director (`buzon/backlog-hallazgos-qa-15-07.md`), los 3 de mayor valor:
+1. **#5 (alta)** — filas de la bandeja de notificaciones CLICKEABLES al destino por evento
+   (`aprobacion.*` → bandeja del aprobador / mis-solicitudes del solicitante). El modelo ya
+   carga `notificable`+`payload`. Cierra la regla "toda alerta necesita superficie donde actuar".
+2. **#9b (media)** — enlace "ver historial de cambios" desde la ficha del reporte →
+   `/admin/auditoria` filtrada (NO duplicar registro; la traza ya existe).
+3. **#8 (media)** — plantillas ricas de correo para `aprobacion.*` (motivo/magnitud/reporte +
+   link) usando `notif_plantilla_<evento>` del motor M15; distinguir el título por resultado.
+NO arranques el lote S2 hasta cerrar el lote actual (test verde + bundle). Un lote a la vez.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+Pendiente vivo del acta (del dueño, no tuyo): reversión del checkbox de correo (B4).
+
+CIERRE por lote: parte a docs/fleet/buzon/partes/ + push.
