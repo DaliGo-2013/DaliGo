@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\IngresoTallerRecibido;
+use App\Models\AgendaTrabajo;
+use App\Models\AgendaTrabajoRepuesto;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
 use App\Models\OrdenServicioFoto;
@@ -84,12 +86,21 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Informe de estadisticas del taller por periodo (un mes o el año completo).
-     * Lectura para los jefes (permiso 'view servicio tecnico'): cuantas ordenes
-     * ingresaron, garantia vs reparacion, que equipos y clientes se repiten y
-     * que repuestos se usaron (apoyo al control de inventario del taller).
+     * Landing de informes: dos "carpetas" para elegir — Dispensadores (taller) e
+     * Industrial (servicio en terreno). Cada una entra a su propio informe.
      */
-    public function informe(Request $request): View
+    public function informes(): View
+    {
+        return view('admin.servicio-tecnico.informes');
+    }
+
+    /**
+     * Informe de estadisticas del taller (DISPENSADORES) por periodo (un mes o el
+     * año completo). Lectura para los jefes (permiso 'view servicio tecnico'):
+     * cuantas ordenes ingresaron, garantia vs reparacion, que equipos y clientes
+     * se repiten y que repuestos se usaron (apoyo al control de inventario).
+     */
+    public function informeDispensadores(Request $request): View
     {
         [$desde, $hasta, $anio, $mes, $tipo] = $this->periodoInforme($request);
 
@@ -155,7 +166,7 @@ class ServicioTecnicoController extends Controller
             ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
             : 'Año '.$anio;
 
-        return view('admin.servicio-tecnico.informe', [
+        return view('admin.servicio-tecnico.informe-dispensadores', [
             'anio' => $anio,
             'mes' => $mes,
             'tipo' => $tipo,
@@ -177,6 +188,68 @@ class ServicioTecnicoController extends Controller
             'totalNombresRepuestos' => $repuestos->count(),
             'periodoLabel' => $periodoLabel,
             'tipoLabel' => $tipo ? OrdenServicio::etiquetaTipo($tipo) : 'Todos los equipos',
+        ]);
+    }
+
+    /**
+     * Informe del servicio INDUSTRIAL (agenda de terreno) por periodo. Indicadores
+     * pedidos por el dueño: uso de repuestos en números, % por tipo de trabajo
+     * (reparación / instalación / mantención / visita técnica) y los servicios del
+     * catálogo que más se usan. Base: trabajos con fecha en el período y estado
+     * agendado o realizado (se excluyen cancelados y solicitudes sin coordinar).
+     */
+    public function informeIndustrial(Request $request): View
+    {
+        [$desde, $hasta, $anio, $mes] = $this->periodoInforme($request);
+
+        // Query base reutilizable (clon por indicador). whereDate en ambos bordes
+        // (portable MySQL 5.7 / SQLite) y descarta solicitudes sin fecha.
+        $base = fn () => AgendaTrabajo::query()
+            ->whereNotNull('fecha')
+            ->whereDate('fecha', '>=', $desde)
+            ->whereDate('fecha', '<=', $hasta)
+            ->whereIn('estado', ['agendado', 'realizado']);
+
+        $total = $base()->count();
+
+        $porTipo = $base()
+            ->selectRaw('tipo AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('tipo')->orderByDesc('cantidad')->get();
+
+        // Servicios del catálogo más usados. MAX() por ONLY_FULL_GROUP_BY (5.7).
+        // Los trabajos "fuera de tarifa" (servicio_terreno_id null) caen en su fila.
+        $topServicios = $base()
+            ->leftJoin('servicios_terreno', 'servicios_terreno.id', '=', 'agenda_trabajos.servicio_terreno_id')
+            ->selectRaw('agenda_trabajos.servicio_terreno_id AS id, MAX(servicios_terreno.nombre) AS nombre, COUNT(*) AS cantidad')
+            ->groupBy('agenda_trabajos.servicio_terreno_id')
+            ->orderByDesc('cantidad')->limit(10)->get();
+
+        // Uso de repuestos (en números): suma de unidades por repuesto de los
+        // trabajos del período. Mismo patrón que el informe de dispensadores.
+        $repuestos = AgendaTrabajoRepuesto::query()
+            ->join('agenda_trabajos', 'agenda_trabajos.id', '=', 'agenda_trabajo_repuestos.agenda_trabajo_id')
+            ->whereNotNull('agenda_trabajos.fecha')
+            ->whereDate('agenda_trabajos.fecha', '>=', $desde)
+            ->whereDate('agenda_trabajos.fecha', '<=', $hasta)
+            ->selectRaw('agenda_trabajo_repuestos.nombre AS nombre, SUM(agenda_trabajo_repuestos.cantidad) AS unidades, COUNT(DISTINCT agenda_trabajo_repuestos.agenda_trabajo_id) AS trabajos')
+            ->groupBy('agenda_trabajo_repuestos.nombre')
+            ->orderByDesc('unidades')->get();
+
+        $periodoLabel = $mes
+            ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
+            : 'Año '.$anio;
+
+        return view('admin.servicio-tecnico.informe-industrial', [
+            'anio' => $anio,
+            'mes' => $mes,
+            'anios' => $this->aniosDisponiblesAgenda(),
+            'total' => $total,
+            'porTipo' => $porTipo,
+            'topServicios' => $topServicios,
+            'repuestos' => $repuestos->take(15)->values(),
+            'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
+            'totalNombresRepuestos' => $repuestos->count(),
+            'periodoLabel' => $periodoLabel,
         ]);
     }
 
@@ -789,6 +862,22 @@ class ServicioTecnicoController extends Controller
     {
         $min = OrdenServicio::min('fecha_ingreso');
         $max = OrdenServicio::max('fecha_ingreso');
+
+        $primero = $min ? Carbon::parse($min)->year : now()->year;
+        $ultimo = max($max ? Carbon::parse($max)->year : now()->year, now()->year);
+
+        return array_reverse(range(min($primero, $ultimo), $ultimo));
+    }
+
+    /**
+     * Años con trabajos en la agenda de terreno (descendente) para el selector
+     * del informe industrial. Siempre incluye el año actual. Espeja
+     * aniosDisponibles() pero sobre agenda_trabajos.fecha.
+     */
+    private function aniosDisponiblesAgenda(): array
+    {
+        $min = AgendaTrabajo::whereNotNull('fecha')->min('fecha');
+        $max = AgendaTrabajo::whereNotNull('fecha')->max('fecha');
 
         $primero = $min ? Carbon::parse($min)->year : now()->year;
         $ultimo = max($max ? Carbon::parse($max)->year : now()->year, now()->year);

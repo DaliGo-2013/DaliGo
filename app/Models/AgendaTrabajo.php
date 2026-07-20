@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -127,5 +128,15 @@ class AgendaTrabajo extends Model implements AuditableContract
     public function tecnico(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tecnico_id');
+    }
+
+    /**
+     * Repuestos usados en el trabajo (los registra el técnico al cerrar).
+     *
+     * @return HasMany<AgendaTrabajoRepuesto, $this>
+     */
+    public function repuestos(): HasMany
+    {
+        return $this->hasMany(AgendaTrabajoRepuesto::class);
     }
 }

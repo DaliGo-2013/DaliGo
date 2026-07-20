@@ -38,7 +38,7 @@ class AgendaTrabajoController extends Controller
         $next = $cursor->copy()->addMonth();
 
         $trabajos = AgendaTrabajo::delMes($anio, $mes)
-            ->with(['servicio', 'tecnico'])
+            ->with(['servicio', 'tecnico', 'repuestos'])
             ->get();
 
         return view('admin.agenda-terreno.index', [
@@ -111,6 +111,10 @@ class AgendaTrabajoController extends Controller
         $data = $request->validate([
             'estado' => ['required', Rule::in(AgendaTrabajo::ESTADOS)],
             'notas_tecnico' => ['nullable', 'string'],
+            // Repuestos usados: el técnico los registra al cerrar (Realizado).
+            'repuestos' => ['nullable', 'array'],
+            'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         if (! $request->user()->can('agendar servicio terreno')
@@ -118,7 +122,25 @@ class AgendaTrabajoController extends Controller
             abort(403, 'Solo puedes marcar como realizado un trabajo agendado.');
         }
 
-        $trabajo->update($data);
+        $update = ['estado' => $data['estado']];
+        if (array_key_exists('notas_tecnico', $data)) {
+            $update['notas_tecnico'] = $data['notas_tecnico'];
+        }
+        $trabajo->update($update);
+
+        // Repuestos SOLO al marcar realizado y si vienen en la petición: se
+        // reemplazan los del trabajo (filas con nombre vacío se descartan).
+        if ($data['estado'] === 'realizado' && $request->has('repuestos')) {
+            $trabajo->repuestos()->delete();
+            foreach ($data['repuestos'] ?? [] as $r) {
+                if (! empty($r['nombre'])) {
+                    $trabajo->repuestos()->create([
+                        'nombre' => $r['nombre'],
+                        'cantidad' => $r['cantidad'] ?? 1,
+                    ]);
+                }
+            }
+        }
 
         return back()->with('status', "Trabajo de {$trabajo->cliente_nombre} marcado como {$data['estado']}.");
     }
