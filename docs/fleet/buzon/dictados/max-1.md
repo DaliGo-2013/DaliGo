@@ -1,48 +1,51 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-20 (v19 — P-TZ-01 EN PRODUCCIÓN; GO P-TZ-02 render). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-20 (v20 — fix calendario AUTORIZADO por el dueño como excepción de territorio + P-TZ-02 render). Manda sobre lo anterior (v19 queda absorbido acá).
 
 MODELO: Opus 4.8 · high.
 
-## ✅ P-TZ-01 EN PRODUCCIÓN (merge `293d0aa` + integración `470a341`, doble llave 20-07)
-El turno noche chileno YA VE su día. Verificación del Director: suite **ejecutada ×3**
-(663/2123 en tu rama · 666/2137 mergeado · 675/2165 tras re-integrar el catálogo de Marcos),
-frontera nocturna 7/7, motor con CERO diffs confirmado. Tu bandera de coordinación ST era
-CORRECTA y necesaria: Marcos mergeó 5 lotes HOY (header, informes, agenda-calendario, campos
-terreno, menú Más, catálogo) — tus 3 Blades compartidos automergearon limpio (líneas
-distintas) y su rama de catálogo no cruzaba código. El manifest conflictuó DOS veces durante
-mi merge (main avanzó mientras corría la suite) — resuelto con evidencia ambas: tu lote no
-agrega clases (6/6 líneas `class=` idénticas), bundle final `DZvq4P_y` superset verificado
-(calendario 7/7 + flota 4/4). Tu reloj determinista en TestCase = hallazgo de valor
-estructural: mató el flaky de medianoche que existía desde siempre.
+## Contexto vigente (sin cambios desde v19)
+P-TZ-01 EN PRODUCCIÓN (`293d0aa`+`470a341`, suite ×3 663/666/675, frontera nocturna 7/7).
+El turno noche ya ve su día. Detalle completo en el tablero y el dictado v19 (historia git).
 
-Justificación de config vs constante: ACEPTADA (decisión de despliegue, no parámetro de
-usuario; config:cache la congela — razonamiento correcto).
+## 🟢 TAREA 1 — fix calendario de agenda (S, ~15 min) · EXCEPCIÓN DE TERRITORIO AUTORIZADA
+**El dueño te autorizó a tocar territorio Marcos** (decisión 20-07, precedente I-06: excepción
+puntual, quirúrgica, solo los sitios listados). Motivo: el calendario que Marcos mergeó hoy
+(`995ee28`) nació DESPUÉS del inventario del plan y usa fechas UTC — con P-TZ-01 en prod quedó
+la ÚNICA superficie inconsistente: de noche chilena resalta MAÑANA mientras el resto de la app
+dice hoy.
 
-## 🟢 GO P-TZ-02 — capa RENDER (S), rama nueva `fix/tz-render` desde main fresco
-Según tu plan (`docs/planes/PLAN-TIMEZONE.md` §5, aprobado completo):
-- Macro central `Carbon::macro('enChile')` → `->tz(config('daligo.tz_negocio'))` (reusa la
-  config de P-TZ-01 — un solo lugar para el string, como ya dejaste).
-- Aplicarlo a los **8 formatos absolutos de §1b**: bandeja admin de notificaciones,
-  historial de aprobaciones (admin y «Mis solicitudes»), auditoría, tandas de producción
-  (mi-reporte y reporte del jefe) + el `now()->format` del payload de prueba de
-  `NotificacionController`.
-- Los **4 `diffForHumans` NO SE TOCAN** (ya correctos — deltas puros).
-- Tests de §4.3-4: macro convierte instante conocido (UTC 15:45 → 11:45 invierno) + respeta
-  DST (verano → -3) + relativos intactos.
-- Registro del macro: `AppServiceProvider::boot()` (único candidato natural — si eliges otro
-  lugar, justifícalo en el parte).
-Recordatorios duros: suite COMPLETA por commit; tocas Blades de render → main fresco +
-`npm run build` + grep superset (main sirve `app-DZvq4P_y.css`; Marcos sigue MUY activo —
-asume que main avanza mientras trabajas); asertar por ruta/marcador. Parte al buzón →
-doble llave.
+Rama nueva `fix/tz-calendario-agenda` desde main fresco. Sitios EXACTOS (y NADA más):
+- `AgendaTrabajoController::calendario`: `now()->year` / `now()->month` (defaults año/mes)
+  → `\App\Support\FechaNegocio::ahora()->year/->month`; el día seleccionado default
+  (`now()->startOfDay()` cuando el mes visible es el actual) → derivarlo de
+  `FechaNegocio::hoy()`.
+- `resources/views/admin/agenda-terreno/calendario.blade.php:165`: `$d->isToday()` →
+  `\App\Support\FechaNegocio::esHoy($d)` (mismo patrón FQCN greppable que usaste en P-TZ-01).
+- Test de frontera: caso nuevo en `FechaNegocioTest` — freeze 23:00 Chile → el calendario
+  abre el MES/DÍA chileno y resalta el día chileno, no mañana.
+- NO toques nada más del calendario (lógica de grupos, horas, rutas: intactas — es de Marcos).
+Blade tocado → main fresco + `npm run build` + grep superset. Marcos sigue activo: si al ir a
+mergear main avanzó, re-verifica el bundle como siempre.
 
-## Pendientes que NO son tuyos (no arranques nada de esto)
-- **Gap calendario de Marcos** (detectado por el Director post-inventario): su
-  `AgendaTrabajoController::calendario` + `calendario.blade.php` usan `now()->year/month`,
-  `startOfDay()` e `isToday()` → de noche chilena el calendario resalta MAÑANA. Misma
-  familia que tu helper resuelve en 6 líneas — pero es TERRITORIO MARCOS; el dueño decide
-  quién lo toma. Si te lo dictan, es un `fix/` de 15 minutos con tu `FechaNegocio`.
+## 🟢 TAREA 2 — P-TZ-02 capa RENDER (S), rama nueva `fix/tz-render` desde main fresco
+Igual que el v19:
+- Macro central `Carbon::macro('enChile')` → `->tz(config('daligo.tz_negocio'))`, registrado
+  en `AppServiceProvider::boot()` (otro lugar = justificar en el parte).
+- Los **8 formatos absolutos de §1b del plan**: bandeja admin de notificaciones, historial de
+  aprobaciones (admin y «Mis solicitudes»), auditoría, tandas (mi-reporte y reporte del jefe)
+  + `now()->format` del payload de prueba de `NotificacionController`.
+- Los **4 `diffForHumans` NO SE TOCAN**.
+- Tests §4.3-4: conversión conocida (UTC 15:45 → 11:45 invierno), DST (verano → -3),
+  relativos intactos.
+
+Orden: Tarea 1 PRIMERO (cierra la inconsistencia visible hoy), Tarea 2 después. Ramas
+SEPARADAS — la excepción de territorio no debe viajar mezclada con render. Un parte por lote
+(o uno con ambos si cierras los dos en la sesión) → doble llave por rama.
+
+Recordatorios duros: suite COMPLETA por commit; asertar por ruta/marcador; parte al buzón.
+
+## Pendientes que NO son tuyos
 - #6 chips paramétricos: el Director lo dimensiona con el dueño.
-- P-TZ-03 (QA de borde): lo corre el dueño ~21:30 Chile — no requiere código tuyo.
+- P-TZ-03 (QA de borde): lo corre el dueño ~21:30 Chile.
 
 CIERRE por lote: parte a docs/fleet/buzon/partes/ + push.
