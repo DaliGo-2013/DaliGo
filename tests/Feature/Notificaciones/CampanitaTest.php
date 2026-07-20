@@ -89,12 +89,15 @@ class CampanitaTest extends TestCase
         // El nav renderiza la campanita con el badge del conteo real (3), el
         // CONTENIDO del dropdown (título de la notificación) y sus acciones —
         // no solo el conteo (micro-backlog M15-c: endurecer el test de humo).
+        // El conteo se asserta por su marcador ACCESIBLE ("N sin leer" del
+        // sr-only/aria-label), no por markup pegado '>3<' — doctrina del
+        // verde-engañoso (bitácora 2026-07-20).
         $ultima = Notificacion::campanitaDe($user->id)->latest('id')->first();
 
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Notificaciones', false)
-            ->assertSee('>3<', false)
+            ->assertSee('Notificaciones (3 sin leer)', false)
             ->assertSee($ultima->titulo)
             ->assertSee('Marcar todas')
             ->assertSee('Ver todas');
@@ -103,7 +106,8 @@ class CampanitaTest extends TestCase
         $this->actingAs($user)->post(route('notificaciones.leer-todas'));
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSee('>3<', false);
+            ->assertDontSee('(3 sin leer)', false)
+            ->assertSee('Notificaciones (0 sin leer)', false);
     }
 
     public function test_campana_movil_siempre_visible_con_badge_y_destino(): void

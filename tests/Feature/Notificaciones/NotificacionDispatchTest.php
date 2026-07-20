@@ -37,9 +37,11 @@ class NotificacionDispatchTest extends TestCase
         $creadas = $this->dispatcher()->despachar('sistema.prueba', null, $user, ['nombre' => $user->name]);
 
         $this->assertSame(2, $creadas->count());
+        // Canal database: nace ENVIADA (síncrono, #9 del QA 15-07 — la
+        // campanita no espera la cola porque no tiene transporte externo).
         $this->assertDatabaseHas('notificaciones', [
             'evento' => 'sistema.prueba', 'user_id' => $user->id,
-            'canal' => Notificacion::CANAL_DATABASE, 'estado' => Notificacion::PENDIENTE,
+            'canal' => Notificacion::CANAL_DATABASE, 'estado' => Notificacion::ENVIADA,
         ]);
         $this->assertDatabaseHas('notificaciones', [
             'evento' => 'sistema.prueba', 'user_id' => $user->id,
@@ -49,7 +51,8 @@ class NotificacionDispatchTest extends TestCase
         $this->assertDatabaseMissing('notificaciones', [
             'user_id' => $user->id, 'canal' => Notificacion::CANAL_WHATSAPP,
         ]);
-        Queue::assertPushed(EnviarNotificacion::class, 2);
+        // A la cola va SOLO el mail: database ya quedó entregada.
+        Queue::assertPushed(EnviarNotificacion::class, 1);
     }
 
     public function test_opt_out_de_mail_respeta_preferencia(): void
@@ -235,17 +238,38 @@ class NotificacionDispatchTest extends TestCase
         Mail::assertNothingSent(); // doble encolado no re-envia
     }
 
-    public function test_canal_database_se_marca_enviada_sin_transporte(): void
+    public function test_canal_database_nace_enviada_y_sin_pasar_por_la_cola(): void
     {
+        // #9 del QA 15-07: sin transporte externo no hay nada que "enviar" —
+        // la fila nace ENVIADA, la campanita la cuenta AL TIRO (sin correr
+        // ningún job) y a la cola no entra nada por este canal.
         Queue::fake();
         $user = User::factory()->create();
+
         $database = $this->dispatcher()->despachar('sistema.prueba', null, $user)
             ->firstWhere('canal', Notificacion::CANAL_DATABASE);
 
-        (new EnviarNotificacion($database->id))->handle();
+        $this->assertSame(Notificacion::ENVIADA, $database->estado);
+        $this->assertNotNull($database->enviada_at);
+        $this->assertSame(1, Notificacion::campanitaDe($user->id)->count());
+        Queue::assertNotPushed(EnviarNotificacion::class, fn ($job) => $job->notificacionId === $database->id);
+    }
 
-        $this->assertSame(Notificacion::ENVIADA, $database->fresh()->estado);
-        // Y aparece en la campanita (no-leidas).
+    public function test_el_job_aun_procesa_una_database_pendiente_legada(): void
+    {
+        // Ventana de deploy: filas database que quedaron PENDIENTES en la cola
+        // ANTES del cambio síncrono — el job conserva su rama y las entrega.
+        Queue::fake();
+        $user = User::factory()->create();
+        $legada = Notificacion::create([
+            'evento' => 'sistema.prueba', 'user_id' => $user->id,
+            'canal' => Notificacion::CANAL_DATABASE, 'titulo' => 'T', 'cuerpo' => 'C',
+            'estado' => Notificacion::PENDIENTE,
+        ]);
+
+        (new EnviarNotificacion($legada->id))->handle();
+
+        $this->assertSame(Notificacion::ENVIADA, $legada->fresh()->estado);
         $this->assertSame(1, Notificacion::campanitaDe($user->id)->count());
     }
 
