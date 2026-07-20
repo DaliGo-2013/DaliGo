@@ -191,6 +191,8 @@ Route::middleware('auth')
         Route::middleware('permission:ver agenda terreno|agendar servicio terreno')->group(function () {
             Route::get('agenda-terreno', [AgendaTrabajoController::class, 'index'])
                 ->name('agenda-terreno.index');
+            Route::get('agenda-terreno/calendario', [AgendaTrabajoController::class, 'calendario'])
+                ->name('agenda-terreno.calendario');
             Route::patch('agenda-terreno/{trabajo}/estado', [AgendaTrabajoController::class, 'estado'])
                 ->whereNumber('trabajo')->name('agenda-terreno.estado');
         });

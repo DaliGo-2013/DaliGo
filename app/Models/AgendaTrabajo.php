@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -51,6 +52,7 @@ class AgendaTrabajo extends Model implements AuditableContract
     protected $fillable = [
         'tipo',
         'fecha',
+        'hora',
         'fecha_preferida',
         'estado',
         'servicio_terreno_id',
@@ -73,6 +75,15 @@ class AgendaTrabajo extends Model implements AuditableContract
             'fecha' => 'date',
             'fecha_preferida' => 'date',
         ];
+    }
+
+    /**
+     * Hora en formato corto "HH:MM" para la vista calendario (la columna `time`
+     * viene como "HH:MM:SS"). Null si el trabajo aún no tiene hora asignada.
+     */
+    public function getHoraCortaAttribute(): ?string
+    {
+        return $this->hora ? substr((string) $this->hora, 0, 5) : null;
     }
 
     /**
@@ -104,7 +115,7 @@ class AgendaTrabajo extends Model implements AuditableContract
      */
     public function scopeDelMes($query, int $anio, int $mes)
     {
-        $desde = \Illuminate\Support\Carbon::create($anio, $mes, 1);
+        $desde = Carbon::create($anio, $mes, 1);
 
         return $query
             ->whereDate('fecha', '>=', $desde->toDateString())

@@ -50,6 +50,31 @@ class AgendaTerrenoTest extends TestCase
         ], $overrides);
     }
 
+    // --- Calendario / hora ---
+
+    public function test_calendario_carga_para_quien_ve_la_agenda(): void
+    {
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno/calendario')
+            ->assertOk();
+    }
+
+    public function test_agenda_guarda_la_hora(): void
+    {
+        $this->actingAs($this->vendedor())
+            ->post('/admin/agenda-terreno', $this->payload(['hora' => '09:30']))
+            ->assertRedirect();
+
+        $this->assertSame('09:30', AgendaTrabajo::latest('id')->first()->hora_corta);
+    }
+
+    public function test_hora_invalida_se_rechaza(): void
+    {
+        $this->actingAs($this->vendedor())
+            ->post('/admin/agenda-terreno', $this->payload(['hora' => '99:99']))
+            ->assertSessionHasErrors('hora');
+    }
+
     // --- Acceso ---
 
     public function test_guest_es_redirigido(): void

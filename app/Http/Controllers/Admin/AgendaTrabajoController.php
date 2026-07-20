@@ -53,6 +53,60 @@ class AgendaTrabajoController extends Controller
         ]);
     }
 
+    /**
+     * Vista CALENDARIO: grilla mensual a la izquierda; al elegir un día se ve a
+     * la derecha con franjas horarias (08:00–20:00). Clic en una hora libre lleva
+     * a agendar un trabajo con esa fecha+hora prellenadas.
+     */
+    public function calendario(Request $request): View
+    {
+        $v = $request->validate([
+            'anio' => ['nullable', 'integer', 'between:2020,2100'],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
+            'dia' => ['nullable', 'date'],
+        ]);
+
+        $anio = isset($v['anio']) ? (int) $v['anio'] : now()->year;
+        $mes = isset($v['mes']) ? (int) $v['mes'] : now()->month;
+        $cursor = Carbon::create($anio, $mes, 1);
+        $prev = $cursor->copy()->subMonth();
+        $next = $cursor->copy()->addMonth();
+
+        // Grilla de semanas completas (lunes a domingo) que cubren el mes.
+        $grid = [];
+        $d = $cursor->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+        $fin = $cursor->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        for (; $d->lte($fin); $d->addDay()) {
+            $grid[] = $d->copy();
+        }
+
+        $trabajos = AgendaTrabajo::delMes($anio, $mes)->with(['servicio', 'tecnico'])->get();
+        $jobsPorDia = $trabajos->groupBy(fn (AgendaTrabajo $t) => $t->fecha->toDateString());
+
+        // Día seleccionado: ?dia= válido y del mes; si no, hoy (si cae en el mes)
+        // o el día 1.
+        $diaSel = isset($v['dia']) ? Carbon::parse($v['dia']) : null;
+        if (! $diaSel || $diaSel->year !== $anio || $diaSel->month !== $mes) {
+            $diaSel = (now()->year === $anio && now()->month === $mes) ? now()->startOfDay() : $cursor->copy();
+        }
+        $trabajosDia = ($jobsPorDia->get($diaSel->toDateString()) ?? collect())
+            ->sortBy(fn (AgendaTrabajo $t) => $t->hora_corta ?? '99:99')->values();
+
+        return view('admin.agenda-terreno.calendario', [
+            'anio' => $anio,
+            'mes' => $mes,
+            'mesLabel' => ucfirst($cursor->translatedFormat('F Y')),
+            'anterior' => ['anio' => $prev->year, 'mes' => $prev->month],
+            'siguiente' => ['anio' => $next->year, 'mes' => $next->month],
+            'grid' => $grid,
+            'jobsPorDia' => $jobsPorDia,
+            'diaSel' => $diaSel,
+            'trabajosDia' => $trabajosDia,
+            'horas' => collect(range(8, 20))->map(fn ($h) => sprintf('%02d:00', $h)),
+            'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
+        ]);
+    }
+
     public function create(): View
     {
         return view('admin.agenda-terreno.create', $this->formData());
@@ -196,6 +250,8 @@ class AgendaTrabajoController extends Controller
             // Una SOLICITUD del cliente aún no tiene fecha real (se pone al
             // coordinar); en cualquier otro estado la fecha es obligatoria.
             'fecha' => [Rule::requiredIf(fn () => $request->input('estado') !== 'solicitado'), 'nullable', 'date'],
+            // Hora opcional (la vista calendario la prellena con el slot elegido).
+            'hora' => ['nullable', 'date_format:H:i'],
             'fecha_preferida' => ['nullable', 'date'],
             'estado' => $editando
                 ? ['required', Rule::in(AgendaTrabajo::ESTADOS)]
