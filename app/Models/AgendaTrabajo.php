@@ -180,6 +180,35 @@ class AgendaTrabajo extends Model implements AuditableContract
         return $query->where('estado', 'solicitado')->orderBy('id');
     }
 
+    /**
+     * Roles que reciben aviso cuando entra una solicitud "por coordinar": son
+     * quienes conversan con el cliente y coordinan la visita antes de fijarla en
+     * la agenda de Carlos (jefe de ventas + vendedores; admin para monitoreo).
+     */
+    public const ROLES_AVISO_COORDINAR = ['jefe_ventas', 'vendedor', 'admin'];
+
+    /**
+     * Avisa por M15 (campanita + correo según preferencias) a ventas que hay una
+     * solicitud del cliente por coordinar. Se llama al crearla desde el QR. No
+     * debe tumbar el flujo público: el emisor la envuelve en try/catch.
+     */
+    public function notificarPorCoordinar(): void
+    {
+        $datos = [
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'ciudad' => $this->ciudad ?: 'sin ciudad',
+            'telefono' => $this->cliente_telefono ?: 's/i',
+            'preferida' => $this->fecha_preferida?->format('d-m-Y') ?: 'sin fecha preferida',
+            'url' => route('admin.agenda-terreno.index'),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('terreno.solicitada', $this, $u, $datos));
+    }
+
     public function getTipoLabelAttribute(): string
     {
         return self::TIPO_ETIQUETAS[$this->tipo] ?? ucfirst((string) $this->tipo);

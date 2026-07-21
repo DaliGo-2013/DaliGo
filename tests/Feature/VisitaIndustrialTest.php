@@ -87,6 +87,26 @@ class VisitaIndustrialTest extends TestCase
 
     // --- Solicitud del cliente ---
 
+    public function test_la_solicitud_avisa_a_ventas_por_coordinar(): void
+    {
+        // Ventas (jefe + vendedor) reciben campanita; el técnico industrial NO
+        // (a él le llega el trabajo recién cuando lo fijan en su agenda).
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico_industrial');
+
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+
+        foreach ([$jefe, $vendedor] as $u) {
+            $this->assertSame(1, \App\Models\Notificacion::where('user_id', $u->id)
+                ->where('evento', 'terreno.solicitada')
+                ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->count(),
+                "Falta la campanita de {$u->name}");
+        }
+        $this->assertSame(0, \App\Models\Notificacion::where('user_id', $tecnico->id)
+            ->where('evento', 'terreno.solicitada')->count());
+    }
+
     public function test_crea_la_solicitud_sin_fecha_y_con_preferida(): void
     {
         $sucursal = $this->sucursal();

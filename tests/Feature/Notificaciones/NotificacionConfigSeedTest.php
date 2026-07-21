@@ -22,6 +22,8 @@ class NotificacionConfigSeedTest extends TestCase
         // P-M12-02 · Cotización del taller (avisos internos)
         'notif_plantilla_cotizacion_enviada',
         'notif_plantilla_cotizacion_respondida',
+        // Agenda de terreno · solicitud por coordinar
+        'notif_plantilla_terreno_solicitada',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void
