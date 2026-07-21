@@ -57,6 +57,11 @@ class AgendaTrabajo extends Model implements AuditableContract
         'hora_fin',
         'fecha_preferida',
         'estado',
+        'confirmacion_token',
+        'confirmacion_enviada_at',
+        'cliente_confirmacion',
+        'cliente_confirmacion_at',
+        'cliente_confirmacion_nota',
         'servicio_terreno_id',
         'cliente_id',
         'cliente_nombre',
@@ -77,6 +82,8 @@ class AgendaTrabajo extends Model implements AuditableContract
             'fecha' => 'date',
             'fecha_fin' => 'date',
             'fecha_preferida' => 'date',
+            'confirmacion_enviada_at' => 'datetime',
+            'cliente_confirmacion_at' => 'datetime',
         ];
     }
 
@@ -207,6 +214,72 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.solicitada', $this, $u, $datos));
+    }
+
+    // --- Confirmación del cliente a la cita agendada -------------------------
+
+    public const CONFIRMACION_ETIQUETAS = [
+        'confirmada' => 'El cliente confirmó que asistirá',
+        'no_puede' => 'El cliente avisó que NO puede ese día',
+    ];
+
+    /**
+     * Prepara una confirmación para enviar al cliente: asegura el token, resetea
+     * cualquier respuesta previa (la cita cambió) y estampa el envío. El emisor
+     * (controller) manda el correo justo después. Guarda al vuelo.
+     */
+    public function prepararConfirmacionCliente(): void
+    {
+        $this->forceFill([
+            'confirmacion_token' => $this->confirmacion_token ?: \Illuminate\Support\Str::random(64),
+            'confirmacion_enviada_at' => now(),
+            'cliente_confirmacion' => null,
+            'cliente_confirmacion_at' => null,
+            'cliente_confirmacion_nota' => null,
+        ])->save();
+    }
+
+    /**
+     * ¿El cliente todavía puede confirmar? Cita agendada, con token, con fecha
+     * futura (no tiene sentido confirmar una visita ya pasada) y sin responder
+     * aún (la primera respuesta manda; reprogramar la reabre reseteándola).
+     */
+    public function esConfirmable(): bool
+    {
+        return $this->estado === 'agendado'
+            && filled($this->confirmacion_token)
+            && $this->fecha
+            && $this->fecha->gte(\App\Support\FechaNegocio::ahora()->startOfDay())
+            && blank($this->cliente_confirmacion);
+    }
+
+    public function getClienteConfirmacionLabelAttribute(): ?string
+    {
+        return $this->cliente_confirmacion
+            ? (self::CONFIRMACION_ETIQUETAS[$this->cliente_confirmacion] ?? $this->cliente_confirmacion)
+            : null;
+    }
+
+    /**
+     * Avisa a ventas (jefe + vendedores) la respuesta del cliente a la cita.
+     * Se despacha después de registrar la respuesta (si el aviso falla, la
+     * respuesta ya quedó).
+     */
+    public function avisarConfirmacionInterna(): void
+    {
+        $datos = [
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'fecha' => $this->fecha?->format('d-m-Y').($this->hora_corta ? ' '.$this->hora_corta : ''),
+            'respuesta' => $this->cliente_confirmacion === 'confirmada' ? 'CONFIRMÓ que asistirá' : 'NO puede ese día',
+            'nota' => $this->cliente_confirmacion_nota ?: 'sin comentario',
+            'url' => route('admin.agenda-terreno.index', $this->fecha ? ['anio' => $this->fecha->year, 'mes' => $this->fecha->month, 'dia' => $this->fecha->toDateString()] : []),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('terreno.confirmada', $this, $u, $datos));
     }
 
     public function getTipoLabelAttribute(): string

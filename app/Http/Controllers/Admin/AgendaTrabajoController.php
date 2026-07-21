@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AgendaTrabajoAviso;
 use App\Models\AgendaTrabajo;
 use App\Models\Cliente;
 use App\Models\ServicioTerreno;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -137,6 +139,11 @@ class AgendaTrabajoController extends Controller
 
         $trabajo = AgendaTrabajo::create($data);
 
+        // Nace agendado con fecha y correo → confírmaselo al cliente de una.
+        if ($trabajo->estado === 'agendado' && filled($trabajo->cliente_email) && $trabajo->fecha) {
+            $this->avisarClienteDeCita($trabajo, 'agendada');
+        }
+
         return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month, 'dia' => $trabajo->fecha->toDateString()])
             ->with('status', "Trabajo agendado para el {$trabajo->fecha->format('d-m-Y')} ({$trabajo->tipo_label}, {$trabajo->cliente_nombre}).");
     }
@@ -157,7 +164,17 @@ class AgendaTrabajoController extends Controller
         $data = $this->validateData($request, editando: true);
         $this->bloquearSiOcupado($request, $data, $trabajo->id);
 
+        // Estado ANTES de guardar, para decidir si hay que avisar al cliente.
+        $antes = [
+            'estado' => $trabajo->estado,
+            'fecha' => $trabajo->fecha?->toDateString(),
+            'hora' => $trabajo->hora_corta,
+            'tecnico_id' => $trabajo->tecnico_id,
+        ];
+
         $trabajo->update($data);
+
+        $this->avisarClienteSiCorresponde($trabajo->refresh(), $antes);
 
         // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
         $destino = $trabajo->fecha ?? \App\Support\FechaNegocio::ahora();
@@ -256,6 +273,52 @@ class AgendaTrabajoController extends Controller
     }
 
     // --- Helpers --------------------------------------------------------
+
+    /**
+     * Decide, comparando el estado ANTES/DESPUÉS de editar, si hay que avisar al
+     * cliente y con qué motivo: recién coordinada (agendada), fecha/hora/técnico
+     * cambiados (reprogramada) o cancelada (anulada). Sin correo del cliente no
+     * se hace nada.
+     */
+    private function avisarClienteSiCorresponde(AgendaTrabajo $trabajo, array $antes): void
+    {
+        if (blank($trabajo->cliente_email)) {
+            return;
+        }
+
+        if ($trabajo->estado === 'agendado' && $trabajo->fecha) {
+            if ($antes['estado'] !== 'agendado') {
+                $this->avisarClienteDeCita($trabajo, 'agendada');
+            } elseif ($antes['fecha'] !== $trabajo->fecha?->toDateString()
+                || $antes['hora'] !== $trabajo->hora_corta
+                || $antes['tecnico_id'] !== $trabajo->tecnico_id) {
+                $this->avisarClienteDeCita($trabajo, 'reprogramada');
+            }
+
+            return;
+        }
+
+        if ($trabajo->estado === 'cancelado' && $antes['estado'] === 'agendado') {
+            $this->avisarClienteDeCita($trabajo, 'anulada');
+        }
+    }
+
+    /**
+     * Manda el correo al cliente (agendada/reprogramada abren el link de
+     * confirmación reseteando la respuesta previa; anulada no). Secundario: un
+     * fallo de correo no debe tumbar el guardado del trabajo.
+     */
+    private function avisarClienteDeCita(AgendaTrabajo $trabajo, string $motivo): void
+    {
+        try {
+            if ($motivo !== 'anulada') {
+                $trabajo->prepararConfirmacionCliente();
+            }
+            Mail::to($trabajo->cliente_email)->send(new AgendaTrabajoAviso($trabajo, $motivo));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
 
     private function validateData(Request $request, bool $editando = false): array
     {

@@ -172,6 +172,24 @@
                                     <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">Editar trabajo · {{ $t->tipo_label }}</p>
                                     <x-badge :variant="$t->estado_variante">{{ ucfirst($t->estado) }}</x-badge>
                                 </div>
+
+                                {{-- Confirmación del cliente a la cita (aviso automático por correo). --}}
+                                @if ($t->estado === 'agendado' && filled($t->cliente_email))
+                                    <div class="mb-3 rounded-xl px-3 py-2 text-sm
+                                                {{ $t->cliente_confirmacion === 'confirmada' ? 'bg-brand-50 text-brand-700' : ($t->cliente_confirmacion === 'no_puede' ? 'bg-red-50 text-red-700' : 'bg-neutral-50 text-neutral-500') }}">
+                                        @if ($t->cliente_confirmacion)
+                                            <span class="font-medium">{{ $t->cliente_confirmacion_label }}</span>
+                                            @if ($t->cliente_confirmacion_at) · {{ $t->cliente_confirmacion_at->format('d-m-Y H:i') }}@endif
+                                            @if (filled($t->cliente_confirmacion_nota))
+                                                <p class="mt-0.5 text-neutral-600">“{{ $t->cliente_confirmacion_nota }}”</p>
+                                            @endif
+                                        @elseif ($t->confirmacion_enviada_at)
+                                            Confirmación enviada al cliente el {{ $t->confirmacion_enviada_at->format('d-m-Y H:i') }} · esperando su respuesta.
+                                        @else
+                                            Al guardar la fecha se le envía al cliente la confirmación por correo.
+                                        @endif
+                                    </div>
+                                @endif
                                 <form method="POST" action="{{ route('admin.agenda-terreno.update', $t) }}">
                                     @csrf
                                     @method('PUT')

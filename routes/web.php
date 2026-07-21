@@ -27,6 +27,7 @@ use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
+use App\Http\Controllers\Publico\VisitaConfirmacionController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
 
@@ -365,6 +366,16 @@ Route::middleware('throttle:6,1')->group(function () {
         ->middleware('signed')->name('cotizacion.responder');
     Route::get('cotizacion/{cotizacion}/gracias', [CotizacionPublicoController::class, 'gracias'])
         ->middleware('signed')->name('cotizacion.gracias');
+
+    // Confirmación del cliente a una visita de terreno agendada (link firmado).
+    // Token propio (no enumerable); el POST también va firmado. Confirma que
+    // puede ese día o avisa que no, con un comentario libre corto.
+    Route::get('confirmacion-visita/{token}', [VisitaConfirmacionController::class, 'mostrar'])
+        ->middleware('signed')->name('confirmacion-visita.mostrar');
+    Route::post('confirmacion-visita/{token}/respuesta', [VisitaConfirmacionController::class, 'responder'])
+        ->middleware('signed')->name('confirmacion-visita.responder');
+    Route::get('confirmacion-visita/{token}/gracias', [VisitaConfirmacionController::class, 'gracias'])
+        ->middleware('signed')->name('confirmacion-visita.gracias');
 });
 
 // Autocompletado publico del producto Dali para el formulario del QR. Throttle
