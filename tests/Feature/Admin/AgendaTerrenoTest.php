@@ -65,39 +65,35 @@ class AgendaTerrenoTest extends TestCase
             ->assertRedirect(route('admin.agenda-terreno.index'));
     }
 
-    public function test_la_agenda_muestra_calendario_lista_y_franjas(): void
+    public function test_la_agenda_abre_en_hoy_con_el_trabajo_del_dia_como_formulario(): void
     {
+        $hoy = now()->toDateString();
         AgendaTrabajo::factory()->create([
-            'tipo' => 'mantencion',
-            'estado' => 'agendado',
-            'fecha' => '2026-07-20',
-            'hora' => '10:00',
+            'tipo' => 'mantencion', 'estado' => 'agendado', 'fecha' => $hoy, 'hora' => '10:00',
             'cliente_nombre' => 'Aguas del Maule SpA',
         ]);
+        $t = AgendaTrabajo::first();
 
+        // Sin ?dia: la vista abre en HOY y muestra su trabajo como formulario editable.
         $this->actingAs($this->tecnicoIndustrial())
-            ->get('/admin/agenda-terreno?anio=2026&mes=7')
+            ->get('/admin/agenda-terreno')
             ->assertOk()
-            ->assertSee('Lun')                          // grilla del calendario
-            ->assertSee('Aguas del Maule SpA')          // la lista del día
-            ->assertSee('10:00 hs')                     // franja de 2 horas
-            ->assertSee('dia-2026-07-20', false)        // ancla del día (clic en el calendario)
-            ->assertSee('sin trabajo por realizar');    // aviso de los días libres (al tocarlos)
+            ->assertSee('Lun')                                                   // calendario
+            ->assertSee('Editar trabajo')                                        // formato de formulario
+            ->assertSee('Aguas del Maule SpA')                                   // trabajo de hoy
+            ->assertSee(route('admin.agenda-terreno.update', $t), false);        // form apunta a update
     }
 
-    public function test_hora_cae_en_su_franja_de_dos_horas(): void
+    public function test_dia_sin_trabajos_muestra_formulario_para_agregar(): void
     {
-        // Una hora impar (09:00) se agrupa bajo la franja 08:00 hs.
-        AgendaTrabajo::factory()->create([
-            'estado' => 'agendado', 'fecha' => '2026-07-20', 'hora' => '09:00',
-            'cliente_nombre' => 'Planta Nueve',
-        ]);
-
+        // Un día del mes sin trabajos: la derecha muestra el form de "Nuevo trabajo"
+        // con la fecha prellenada (como cuando se ingresa por primera vez).
         $this->actingAs($this->tecnicoIndustrial())
-            ->get('/admin/agenda-terreno?anio=2026&mes=7')
+            ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-15')
             ->assertOk()
-            ->assertSee('08:00 hs')       // franja (redondea hacia abajo al bloque par)
-            ->assertDontSee('09:00 hs');
+            ->assertSee('Nuevo trabajo')
+            ->assertSee('Agendar trabajo')
+            ->assertSee('value="2026-07-15"', false);   // fecha prellenada con el día elegido
     }
 
     public function test_agendar_ofrece_las_franjas_de_hora(): void
@@ -112,7 +108,7 @@ class AgendaTerrenoTest extends TestCase
 
     // --- Rango de días (viajes) y bloqueo por ocupación ---
 
-    public function test_trabajo_de_varios_dias_aparece_en_cada_dia(): void
+    public function test_trabajo_de_varios_dias_ocupa_cada_dia_del_viaje(): void
     {
         AgendaTrabajo::factory()->create([
             'estado' => 'agendado',
@@ -122,13 +118,13 @@ class AgendaTerrenoTest extends TestCase
             'cliente_nombre' => 'Planta del Sur',
         ]);
 
+        // Al seleccionar un día INTERMEDIO del viaje, el trabajo sigue apareciendo
+        // (se expande a cada día que abarca).
         $this->actingAs($this->tecnicoIndustrial())
-            ->get('/admin/agenda-terreno?anio=2026&mes=7')
+            ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-09')
             ->assertOk()
-            ->assertSee('En terreno:')                 // etiqueta de viaje
-            ->assertSee('al 10 de julio')              // rango de fechas
-            ->assertSee('dia-2026-07-07', false)       // día inicial
-            ->assertSee('dia-2026-07-09', false);      // día intermedio (se expande)
+            ->assertSee('Editar trabajo')
+            ->assertSee('Planta del Sur');
     }
 
     public function test_no_admin_no_puede_agendar_sobre_dias_ocupados(): void
@@ -213,15 +209,14 @@ class AgendaTerrenoTest extends TestCase
         $this->actingAs($this->vendedor())->get('/admin/agenda-terreno/crear')->assertOk();
     }
 
-    public function test_tecnico_industrial_ve_pero_no_agenda(): void
+    public function test_tecnico_industrial_ve_y_ahora_agenda(): void
     {
         $tecnico = $this->tecnicoIndustrial();
 
+        // Carlos (técnico industrial) ahora gestiona su agenda: ve, agenda y edita.
         $this->actingAs($tecnico)->get('/admin/agenda-terreno')->assertOk();
-        $this->actingAs($tecnico)->get('/admin/agenda-terreno/crear')->assertForbidden();
-        $this->actingAs($tecnico)->post('/admin/agenda-terreno', $this->payload())->assertForbidden();
-        // Tampoco toca el catálogo.
-        $this->actingAs($tecnico)->get('/admin/servicios-terreno')->assertForbidden();
+        $this->actingAs($tecnico)->get('/admin/agenda-terreno/crear')->assertOk();
+        $this->actingAs($tecnico)->post('/admin/agenda-terreno', $this->payload())->assertRedirect();
     }
 
     // --- Agendar ---
@@ -237,7 +232,7 @@ class AgendaTerrenoTest extends TestCase
                 'servicio_terreno_id' => $servicio->id,
                 'tecnico_id' => $tecnico->id,
             ]))
-            ->assertRedirect(route('admin.agenda-terreno.index', ['anio' => 2026, 'mes' => 7]));
+            ->assertRedirect(route('admin.agenda-terreno.index', ['anio' => 2026, 'mes' => 7, 'dia' => '2026-07-20']));
 
         $this->assertDatabaseHas('agenda_trabajos', [
             'tipo' => 'mantencion',
@@ -264,24 +259,28 @@ class AgendaTerrenoTest extends TestCase
         ]);
     }
 
-    public function test_tecnico_no_puede_cancelar_ni_reabrir(): void
+    public function test_solo_ver_agenda_puede_marcar_realizado_pero_no_cancelar(): void
     {
-        $tecnico = $this->tecnicoIndustrial();
+        // Un usuario que SOLO ve la agenda (sin 'agendar servicio terreno') puede
+        // cerrar un trabajo pero no cancelar/reabrir (el guard de estado sigue).
+        $soloVe = tap(User::factory()->create())->givePermissionTo('ver agenda terreno');
 
-        // Cancelar exige el permiso de agendar.
         $agendado = AgendaTrabajo::factory()->create(['estado' => 'agendado']);
-        $this->actingAs($tecnico)
+        $this->actingAs($soloVe)
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
             ->assertForbidden();
 
-        // Reabrir un realizado también.
-        $realizado = AgendaTrabajo::factory()->create(['estado' => 'realizado']);
-        $this->actingAs($tecnico)
-            ->patch(route('admin.agenda-terreno.estado', $realizado), ['estado' => 'agendado'])
-            ->assertForbidden();
+        $this->actingAs($soloVe)
+            ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'realizado'])
+            ->assertRedirect();
+        $this->assertSame('realizado', $agendado->fresh()->estado);
+    }
 
-        // El vendedor (agendar) sí puede cancelar.
-        $this->actingAs($this->vendedor())
+    public function test_tecnico_industrial_ahora_puede_cancelar(): void
+    {
+        // Con su nuevo permiso de agendar, el técnico también cambia estados.
+        $agendado = AgendaTrabajo::factory()->create(['estado' => 'agendado']);
+        $this->actingAs($this->tecnicoIndustrial())
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
             ->assertRedirect();
         $this->assertSame('cancelado', $agendado->fresh()->estado);
@@ -323,17 +322,17 @@ class AgendaTerrenoTest extends TestCase
             ->assertSessionHasErrors(['cliente_rut', 'cliente_telefono', 'cliente_email', 'direccion', 'ciudad', 'descripcion']);
     }
 
-    // --- Agenda del mes ---
+    // --- Día seleccionado ---
 
-    public function test_la_agenda_muestra_solo_el_mes_pedido(): void
+    public function test_la_agenda_muestra_solo_el_dia_seleccionado(): void
     {
-        AgendaTrabajo::factory()->create(['fecha' => '2026-07-20', 'cliente_nombre' => 'Cliente Julio']);
-        AgendaTrabajo::factory()->create(['fecha' => '2026-08-05', 'cliente_nombre' => 'Cliente Agosto']);
+        AgendaTrabajo::factory()->create(['estado' => 'agendado', 'fecha' => '2026-07-20', 'cliente_nombre' => 'Cliente Julio']);
+        AgendaTrabajo::factory()->create(['estado' => 'agendado', 'fecha' => '2026-08-05', 'cliente_nombre' => 'Cliente Agosto']);
 
-        $this->actingAs($this->vendedor())->get('/admin/agenda-terreno?anio=2026&mes=7')
+        $this->actingAs($this->vendedor())->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-20')
             ->assertOk()->assertSee('Cliente Julio')->assertDontSee('Cliente Agosto');
 
-        $this->actingAs($this->vendedor())->get('/admin/agenda-terreno?anio=2026&mes=8')
+        $this->actingAs($this->vendedor())->get('/admin/agenda-terreno?anio=2026&mes=8&dia=2026-08-05')
             ->assertOk()->assertSee('Cliente Agosto')->assertDontSee('Cliente Julio');
     }
 

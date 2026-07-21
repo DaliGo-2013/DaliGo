@@ -38,7 +38,7 @@ class RoleMatrixSeedTest extends TestCase
             'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes'],
             'conductor' => ['crear lote servicio'],
             'tecnico' => ['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio'],
-            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones'],
+            'tecnico_industrial' => ['ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones'],
             'soplador' => ['report production'],
         ];
     }

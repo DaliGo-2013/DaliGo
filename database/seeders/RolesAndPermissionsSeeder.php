@@ -90,10 +90,11 @@ class RolesAndPermissionsSeeder extends Seeder
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
             ->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio']);
         // El tecnico INDUSTRIAL trabaja en terreno (plantas de osmosis,
-        // llenadoras, lavadoras en el cliente): ve su agenda y marca lo
-        // realizado. Es un rol aparte del tecnico de taller.
+        // llenadoras, lavadoras en el cliente): gestiona su agenda (agenda,
+        // edita y marca lo realizado desde el calendario) e instalaciones. Es un
+        // rol aparte del tecnico de taller.
         Role::firstOrCreate(['name' => 'tecnico_industrial', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones']);
+            ->givePermissionTo(['ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
     }
