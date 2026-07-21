@@ -1,46 +1,28 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-21 (v22 — P-TZ-02 EN PRODUCCIÓN; v2 cerrada sin merge por decisión del dueño: las 2 líneas van con Marcos; tú subes SOLO los tests). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-21 (v23 — PLAN-TIMEZONE 100% en código; housekeeping de cierre). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (tarea S).
+MODELO: Opus 4.8 · medium (chore S).
 
-## ✅ P-TZ-02 render EN PRODUCCIÓN (merge `50f1f61` + integración `360a19e`, doble llave 21-07)
-Suite ejecutada por el Director ×2 (686 tu rama vieja · 700/2243 el árbol final con el
-carrusel de Marcos); manifest resuelto lado main con evidencia (`xuQc5R3b` superset: snap 4/4
-+ flota 4/4; tu `BORCJ-Y7` eliminado como huérfano); Deploy+Tests success; staging vivo.
-**P1 del QA muerto: los historiales muestran hora chilena.** Tu refresh proactivo de la rama
-(`22560e7`, manifest regenerado con build) fue el movimiento correcto y ahorró un ciclo.
+## ✅ Tests de frontera EN MAIN (merge `6e40051`, doble llave 21-07, Deploy+Tests success)
+Nacieron verdes sobre el `daf948d` de Marcos — la coreografía canal-directo + tests-flota
+funcionó: cero colisiones, comportamiento fijado. Suite verificada por el Director 704/2259.
 
-## 📕 v2 calendario: CERRADA SIN MERGE — decisión del dueño 21-07
-Marcos reescribió TU línea por segunda vez («abre en HOY», `bc51e82` — la grilla ahora es
-:113 con `$sel` delante). Perseguir su churn (4 features de agenda en 24h) con ramas de la
-flota = colisión perpetua. **El dueño le pasa directamente a Marcos las 2 líneas restantes**
-(grilla :113 `isToday`→`esHoy` + tu hallazgo `update():151` `?? now()`→`FechaNegocio::ahora()`
-— tu auditoría pagó: el fix que dejaste "listo para dictar" va tal cual). Borra
-`fix/tz-calendario-agenda-v2` del remoto como hiciste con la v1. Tu disciplina en las 3
-iteraciones fue impecable — el cierre por otra vía no le quita nada.
+**PLAN-TIMEZONE queda 100% APLICADO EN CÓDIGO**: P1 render (`50f1f61`) · P2 día de negocio
+(`293d0aa`) · calendario (Marcos `daf948d`) · hallazgo update():151 (ídem) · frontera
+nocturna+mes blindada (`6e40051`). Pendiente solo P-TZ-03 (QA de borde del dueño, no es código).
 
-## 🟢 TAREA — rama SOLO-TESTS `test/tz-frontera-agenda` desde main fresco (S)
-Rescata lo valioso de la v2: la batería de frontera, SIN tocar Blade ni controller (cero
-archivos de Marcos → inmune a su churn). En `FechaNegocioTest`:
-- Frontera nocturna del calendario fusionado (23:00 Chile): grilla resalta el día chileno
-  scoped a la celda `#dia-{iso}` (chileno CON `font-bold text-brand-600`, UTC-mañana SIN él),
-  cabecera «· HOY» correcta, default del index en el mes chileno.
-- Frontera de MES (31-07 22:00 Chile): abre julio, no agosto-UTC.
-- El caso del hallazgo: editar solicitud QR sin fecha a las 21:30 Chile del 31-07 →
-  redirect a `?anio=2026&mes=7` (julio chileno, no agosto UTC).
-**GATE de merge: estos tests DEBEN nacer VERDES — solo se mergean DESPUÉS de que Marcos
-aplique las 2 líneas.** Constrúyelos ya; si al correrlos la grilla/update siguen UTC, el test
-rojo es la CONFIRMACIÓN de que Marcos aún no pasa — parte al buzón declarando el estado
-(verde = Marcos ya aplicó, listo para llave; rojo = rama en espera, el Director vigila main).
-Mutación inversa no aplica acá (el fix no es tuyo): el par positivo/negativo por celda cumple
-el anti-verde-engañoso.
+## 🟢 TAREA — housekeeping de cierre TZ (S, main directo: docs = inocuo)
+1. `docs/planes/PLAN-TIMEZONE.md`: estado PROPUESTA → **APLICADO** (cabecera), con los 4
+   hashes de arriba y la nota de que el calendario y el hallazgo los aplicó Marcos por canal
+   directo (decisión del dueño 21-07 — deja el precedente documentado: en territorio con
+   churn activo, el fix viaja por el dueño y la flota fija el comportamiento con tests).
+2. `docs/RUTA-MAESTRA.md`: marcar la unidad timezone según convención (con evidencia).
+3. Si tocas CLAUDE.md por la doctrina nueva (coreografía anti-churn), una entrada CORTA.
+4. Parte al buzón con /usage.
 
-Sin Blade → sin build. Suite completa igual (regla de la casa). Parte al buzón.
-
-## Pendientes que NO son tuyos
-- Las 2 líneas de agenda: Marcos (canal directo del dueño).
-- P-TZ-03 (QA de borde ~21:30 Chile): el dueño. Con render vivo ya puede verificar además
-  la hora chilena en los historiales.
-- #6 chips paramétricos: el Director lo dimensiona con el dueño.
+## Después: STANDBY
+Sin cola nueva hasta que el dueño dimensione #6 (chips paramétricos) con el Director, o
+priorice otra cosa. Si el QA de borde de esta noche (P-TZ-03) arroja hallazgos, vuelven por
+dictado. Max-2 sigue en DESPACHOS (P-DSP-04) — no cruces su territorio.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
