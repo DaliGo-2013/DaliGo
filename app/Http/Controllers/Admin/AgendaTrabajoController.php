@@ -27,16 +27,17 @@ class AgendaTrabajoController extends Controller
 {
     /**
      * Vista ÚNIFICADA de la agenda: calendario del mes a la IZQUIERDA (grilla con
-     * el conteo de trabajos por día) y la LISTA del mes agrupada por día a la
-     * DERECHA (con el horario integrado en cada trabajo). Un clic en un día del
-     * calendario salta a ese día en la lista (ancla). Antes eran dos vistas
-     * separadas (lista y calendario); se fusionaron.
+     * el conteo de trabajos por día) y el DÍA SELECCIONADO a la DERECHA. Al entrar
+     * queda en HOY; al tocar un día se selecciona (?dia=). La derecha muestra los
+     * trabajos de ese día como FORMULARIOS editables (el técnico agenda/modifica
+     * ahí mismo) — solo un día por vez, para que la página cargue liviana.
      */
     public function index(Request $request): View
     {
         $v = $request->validate([
             'anio' => ['nullable', 'integer', 'between:2020,2100'],
             'mes' => ['nullable', 'integer', 'between:1,12'],
+            'dia' => ['nullable', 'date'],
         ]);
 
         $anio = isset($v['anio']) ? (int) $v['anio'] : \App\Support\FechaNegocio::ahora()->year;
@@ -44,6 +45,14 @@ class AgendaTrabajoController extends Controller
         $cursor = Carbon::create($anio, $mes, 1);
         $prev = $cursor->copy()->subMonth();
         $next = $cursor->copy()->addMonth();
+
+        // Día seleccionado: ?dia= válido y dentro del mes; si no, HOY (si cae en el
+        // mes mostrado) o el día 1. Es el día cuyos trabajos se editan a la derecha.
+        $hoy = \App\Support\FechaNegocio::ahora()->startOfDay();
+        $diaSel = isset($v['dia']) ? Carbon::parse($v['dia']) : null;
+        if (! $diaSel || $diaSel->year !== $anio || $diaSel->month !== $mes) {
+            $diaSel = ($hoy->year === $anio && $hoy->month === $mes) ? $hoy->copy() : $cursor->copy();
+        }
 
         // Trabajos que SE SOLAPAN con el mes (incluye viajes de varios días que
         // empiezan antes o terminan después). Se comparan fecha y fecha_fin sin
@@ -88,10 +97,13 @@ class AgendaTrabajoController extends Controller
             $grid[] = $d->copy();
         }
 
-        return view('admin.agenda-terreno.index', [
+        return view('admin.agenda-terreno.index', array_merge($this->formData(), [
             'trabajos' => $trabajos,
-            'jobsPorDia' => $jobsPorDia,
+            'jobsPorDia' => $jobsPorDia,          // conteos por día para el calendario
             'grid' => $grid,
+            'diaSel' => $diaSel,                  // día activo (se edita a la derecha)
+            'trabajosDia' => $jobsPorDia->get($diaSel->toDateString()) ?? collect(),
+            'puedeAgendar' => $request->user()->can('agendar servicio terreno'),
             // Solicitudes del cliente (QR) esperando coordinación (sin fecha).
             'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
             'anio' => $anio,
@@ -99,7 +111,7 @@ class AgendaTrabajoController extends Controller
             'mesLabel' => ucfirst($cursor->translatedFormat('F Y')),
             'anterior' => ['anio' => $prev->year, 'mes' => $prev->month],
             'siguiente' => ['anio' => $next->year, 'mes' => $next->month],
-        ]);
+        ]));
     }
 
     /**
@@ -125,7 +137,7 @@ class AgendaTrabajoController extends Controller
 
         $trabajo = AgendaTrabajo::create($data);
 
-        return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month])
+        return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month, 'dia' => $trabajo->fecha->toDateString()])
             ->with('status', "Trabajo agendado para el {$trabajo->fecha->format('d-m-Y')} ({$trabajo->tipo_label}, {$trabajo->cliente_nombre}).");
     }
 
@@ -149,8 +161,12 @@ class AgendaTrabajoController extends Controller
 
         // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
         $destino = $trabajo->fecha ?? now();
+        $params = ['anio' => $destino->year, 'mes' => $destino->month];
+        if ($trabajo->fecha) {
+            $params['dia'] = $trabajo->fecha->toDateString();
+        }
 
-        return redirect()->route('admin.agenda-terreno.index', ['anio' => $destino->year, 'mes' => $destino->month])
+        return redirect()->route('admin.agenda-terreno.index', $params)
             ->with('status', 'Trabajo actualizado.');
     }
 

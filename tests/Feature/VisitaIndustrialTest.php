@@ -156,14 +156,16 @@ class VisitaIndustrialTest extends TestCase
         $this->assertSame(0, AgendaTrabajo::delMes(now()->year, now()->month)->count());
     }
 
-    public function test_el_tecnico_industrial_no_ve_el_bloque_por_coordinar(): void
+    public function test_el_tecnico_industrial_ahora_ve_el_bloque_por_coordinar(): void
     {
+        // Con su nuevo permiso de agendar, el técnico también coordina solicitudes.
         $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
 
         $tecnico = tap(User::factory()->create())->assignRole('tecnico_industrial');
         $this->actingAs($tecnico)->get('/admin/agenda-terreno')
             ->assertOk()
-            ->assertDontSee('Por coordinar (solicitudes del cliente)');
+            ->assertSee('Por coordinar (solicitudes del cliente)')
+            ->assertSee('Coordinar');
     }
 
     public function test_coordinar_pone_fecha_y_la_agenda(): void

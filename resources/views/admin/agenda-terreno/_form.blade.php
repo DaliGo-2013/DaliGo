@@ -21,7 +21,7 @@
     <div>
         <x-input-label for="fecha">Fecha (desde) <span class="text-red-500">*</span></x-input-label>
         <x-text-input id="fecha" name="fecha" type="date" class="mt-1.5 w-full"
-            :value="old('fecha', $t?->fecha?->format('Y-m-d') ?? request('fecha'))" />
+            :value="old('fecha', $t?->fecha?->format('Y-m-d') ?? ($fechaDefault ?? request('fecha')))" />
         @if ($t?->fecha_preferida)
             <x-input-hint>El cliente prefiere: <span class="font-medium">{{ $t->fecha_preferida->format('d-m-Y') }}</span>.</x-input-hint>
         @endif
