@@ -90,7 +90,7 @@
 
                         <x-slot name="meta">
                             <div class="text-sm text-neutral-500 sm:w-48 sm:shrink-0 sm:text-right">
-                                {{ $notificacion->enviada_at?->format('d-m-Y H:i') ?? $notificacion->created_at?->format('d-m-Y H:i') }}
+                                {{ $notificacion->enviada_at?->enChile()->format('d-m-Y H:i') ?? $notificacion->created_at?->enChile()->format('d-m-Y H:i') }}
                             </div>
                         </x-slot>
                     </x-list-row>

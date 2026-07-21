@@ -105,7 +105,7 @@
                                     @endphp
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-medium text-neutral-900">{!! $piezas ? implode(' · ', $piezas) : 'Registro inicial (sin máquina/tipo)' !!}</p>
-                                        <p class="text-xs text-neutral-400">{{ $registro->created_at->format('d-m-Y H:i') }}@if ($motivosTanda) · {{ $motivosTanda }}@endif</p>
+                                        <p class="text-xs text-neutral-400">{{ $registro->created_at->enChile()->format('d-m-Y H:i') }}@if ($motivosTanda) · {{ $motivosTanda }}@endif</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
                                         <x-produccion.metrica label="1ª" w="w-16">{{ $registro->primera }}</x-produccion.metrica>

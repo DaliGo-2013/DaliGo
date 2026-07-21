@@ -148,6 +148,18 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-07-20] Render en hora chilena: macro `enChile()` SOLO para timestamps con hora — jamás sobre casts `date` (y los `diffForHumans` no se tocan)
+- **Síntoma:** (P-TZ-02) los timestamps absolutos de historiales/auditoría/tandas mostraban la hora UTC del storage (+4h): el QA del 15-07 leyó «15:45» cuando en Chile eran las 11:45.
+- **Causa:** el storage es UTC a propósito (opción C del PLAN-TIMEZONE) y ningún Blade convertía al mostrar — no existía helper central de render.
+- **Solución:** `Carbon::macro('enChile')` en `AppServiceProvider::boot()` → `->copy()->tz(config('daligo.tz_negocio'))` (el `copy()` importa: Carbon es mutable y un `->tz()` directo correría también todo lo que se calcule después sobre ese instante). Aplicado a los 8 formatos absolutos inventariados en `PLAN-TIMEZONE.md` §1b + el payload de prueba de `NotificacionController`. Tests en `RenderEnChileTest` (conversión conocida, DST de verano, E2E con `assertSee('11:45')`+`assertDontSee('15:45')`, relativos comparados contra el valor computado — independiente del locale).
+- **Evitar a futuro:** (1) todo formato absoluto **con hora** que vea el usuario lleva `->enChile()` antes del `format()`; (2) **JAMÁS** sobre casts `date` puros (`fecha`, `fecha_ingreso`…): su medianoche UTC retrocedería al día ANTERIOR al convertirla; (3) los `diffForHumans` no se tocan — un delta entre dos instantes no depende del tz de render; (4) los nombres de archivo (`Ymd_His` de los CSV) y el motor siguen en UTC.
+
+### [2026-07-20] Editar archivos del repo con PowerShell 5.1 (`Get-Content | Set-Content`) corrompe el UTF-8 (mojibake en los Blades)
+- **Síntoma:** tras una mutación de prueba hecha con `(Get-Content -Raw) -replace ... | Set-Content -Encoding utf8`, el Blade quedó con mojibake (`tÃ©cnico`, `Â· HOY`): todos los acentos doble-codificados.
+- **Causa:** en Windows PowerShell 5.1, `Get-Content` **sin `-Encoding utf8`** lee el archivo UTF-8 como ANSI (Windows-1252); al re-escribir con `-Encoding utf8`, los caracteres mal interpretados se codifican de nuevo → doble encoding. El archivo original estaba bien; lo rompió el round-trip de lectura.
+- **Solución:** `git checkout -- <archivo>` para restaurar el original y re-aplicar el cambio con la herramienta de edición (que preserva encoding). La mutación de prueba (doctrina verde-engañoso) igual cumplió su propósito: el test se puso rojo antes de restaurar.
+- **Evitar a futuro:** no editar archivos del repo vía `Set-Content`/`Out-File`/`-replace` en PS 5.1 (haría falta `-Encoding utf8` en AMBOS extremos y aún así reordena finales de línea); las mutaciones temporales de la doctrina se revierten SIEMPRE con `git checkout --`, nunca des-mutando a mano.
+
 ### [2026-07-20] El "hoy" operativo es el DÍA DE NEGOCIO chileno, no `now()->toDateString()` — y la suite necesita reloj determinista
 - **Síntoma:** (P-TZ-01, destapado por el inventario del PLAN-TIMEZONE) `app.timezone` es UTC → desde las 20:00/21:00 de Chile, `now()->toDateString()` ya es MAÑANA: el soplador nocturno no veía sus producciones, la cola del jefe se vaciaba, el pulso marcaba ceros y la visita pública RECHAZABA el "hoy" del cliente (`after_or_equal:today`).
 - **Causa:** todo "hoy" operativo se derivaba del reloj UTC del servidor. La familia es ancha: `toDateString()`, prefills `format('Y-m-d')`, `isToday()`, cabeceras `now()->translatedFormat`, la regla `after_or_equal:today` y fallbacks de scopes.
