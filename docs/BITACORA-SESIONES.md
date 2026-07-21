@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-21] Agenda de terreno: "Por coordinar" como carrusel deslizable (ver ~2 + "Ver más")
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `feature/coordinar-carrusel`) A pedido del dueño, el bloque "Por coordinar (solicitudes del cliente)" deja de ser una grilla que muestra todo y pasa a un **carrusel horizontal**: se ven ~2 solicitudes y con **"Ver más →"** / **"←"** se desliza para revisar el resto (los botones aparecen solo si hay más de 2). Solo `agenda-terreno/index.blade.php`: `x-data` inline de Alpine (inicio/fin/hayMas + `mover()` con `scrollBy` suave; `actualizar()` en scroll/resize), la `<ul>` pasa a `flex overflow-x-auto snap-x` con scrollbar oculto, cada tarjeta `shrink-0 basis-[86%] sm:basis-[calc(50%-0.375rem)]` (2 visibles en desktop, ~1 en móvil) y siempre en columna. Sin controller ni JS registrado (Alpine inline) → no rompe build de assets, pero sí se rebuildeó por las clases nuevas (`app-xuQc5R3b.css`; grep OK: snap, basis arbitrario, scrollbar oculto). **695 verdes** (los tests de "Por coordinar" siguen viendo las solicitudes).
+- **Pasos marcados:** ninguno (stream boceto). · **Decisiones (dueño):** "Por coordinar" como carrusel (ver 2 + Ver más). · **Delegaciones:** ninguna.
+
 ### [2026-07-21] Seguimiento del equipo (boceto): quitar la etapa "Esperando Repuesto"
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `feature/seguimiento-sin-repuesto`) A pedido del dueño, la línea de tiempo del seguimiento del cliente (boceto `seguimiento-demo`) deja de mostrar la etapa **"Esperando Repuesto"** — muchas veces el técnico define en el momento si hay o no repuesto, así que no es una etapa útil de cara al cliente. Un solo cambio: se quitó `'esperando_repuesto'` del arreglo `pasos` en `ServicioTecnicoController::seguimientoDemo()` (los chips «Simular etapa» y el timeline salen de esa misma lista → desaparece de ambos). El índice Alpine por defecto (`i: 2` = Cotización) no cambia. **NO se tocó** el estado interno `esperando_repuesto` de `OrdenServicio` (el técnico lo sigue usando en el flujo real). Test `SeguimientoDemoTest` actualizado (assertDontSee 'Esperando Repuesto' + assertSee 'Reparado') → **695 verdes**. Sin clases CSS nuevas → sin build.
