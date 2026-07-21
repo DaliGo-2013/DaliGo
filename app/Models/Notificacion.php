@@ -47,6 +47,9 @@ class Notificacion extends Model
         'aprobacion.solicitada' => 'Solicitud de aprobación pendiente',
         'aprobacion.escalada' => 'Solicitud de aprobación escalada',
         'aprobacion.resuelta' => 'Solicitud de aprobación resuelta',
+        // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
+        'cotizacion.enviada' => 'Cotización enviada al cliente',
+        'cotizacion.respondida' => 'El cliente respondió la cotización',
     ];
 
     protected $fillable = [
@@ -115,6 +118,10 @@ class Notificacion extends Model
         return match ($this->evento) {
             'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index'),
             'aprobacion.resuelta' => route('aprobaciones.mias'),
+            // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
+            'cotizacion.enviada', 'cotizacion.respondida' => $this->notificable_id
+                ? route('admin.servicio-tecnico.show', $this->notificable_id)
+                : null,
             default => null,
         };
     }

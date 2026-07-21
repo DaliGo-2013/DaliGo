@@ -96,6 +96,29 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Plantilla al resolverse una solicitud (va al solicitante); el asunto distingue Aprobada/Rechazada.',
             ],
+            // Cotización del taller al cliente (P-M12-02, fase correo). Aviso
+            // INTERNO a los roles del taller/ventas; la carta al cliente es un
+            // Mailable dedicado (CotizacionCliente), no pasa por plantilla.
+            [
+                'clave' => 'notif_plantilla_cotizacion_enviada',
+                'valor' => json_encode([
+                    'asunto' => 'Cotización enviada — Orden {folio} ({cliente})',
+                    'cuerpo' => "Se envió la cotización de la orden {folio} a {cliente} por {total}.\nEnviada por: {enviada_por}.\n\nVer la orden: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno al enviarse una cotización al cliente (taller/ventas).',
+            ],
+            [
+                'clave' => 'notif_plantilla_cotizacion_respondida',
+                'valor' => json_encode([
+                    'asunto' => 'Cotización {respuesta} — Orden {folio} ({cliente})',
+                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nMonto: {total}.\n\nVer la orden: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno cuando el cliente acepta o no acepta la cotización; el asunto distingue la respuesta.',
+            ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [
                 'clave' => 'umbral_ajuste_produccion_unidades',

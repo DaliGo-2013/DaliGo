@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\CotizacionCliente;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\AgendaTrabajo;
 use App\Models\AgendaTrabajoRepuesto;
 use App\Models\Cliente;
 use App\Models\OrdenServicio;
+use App\Models\OrdenServicioCotizacion;
 use App\Models\OrdenServicioFoto;
 use App\Models\OrdenServicioRepuesto;
 use App\Models\Producto;
@@ -505,6 +507,8 @@ class ServicioTecnicoController extends Controller
             // Valor hora de mano de obra (precio con IVA del SKU de servicio
             // tecnico). Null si no existe/no tiene precio -> mano de obra manual.
             'precioHoraServicio' => $this->precioHoraServicio(),
+            // Historial de cotizaciones enviadas al cliente (la última manda).
+            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
         ]);
     }
 
@@ -622,6 +626,77 @@ class ServicioTecnicoController extends Controller
 
         return redirect()->route('admin.servicio-tecnico.index')
             ->with('status', "Reparación de la orden {$orden->folio} actualizada.");
+    }
+
+    /**
+     * Envía la COTIZACIÓN al cliente (P-M12-02, fase correo): congela un
+     * snapshot de lo guardado en la orden, manda la carta formal con el link
+     * firmado de respuesta y avisa a los roles internos. El correo es acción
+     * secundaria (try/catch): si el SMTP falla, la cotización queda registrada
+     * con `correo_enviado_at` null y aparece el botón "Reintentar".
+     */
+    public function enviarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
+    {
+        // Mismas condiciones que habilitan el botón (defensa server-side).
+        if ($orden->condicion_efectiva !== 'reparacion') {
+            return back()->with('status', 'Equipo en garantía vigente: no se cotiza (no hay cobro).');
+        }
+        if ($orden->estado !== 'cotizacion') {
+            return back()->with('status', 'Pon la orden en etapa «Cotización» (y guarda) antes de enviar.');
+        }
+        if (blank($orden->cliente_email)) {
+            return back()->with('status', 'La orden no tiene correo del cliente: agrégalo en los datos de recepción.');
+        }
+        if ((int) $orden->costo_total <= 0) {
+            return back()->with('status', 'La cotización guardada está en $0: registra repuestos o mano de obra y guarda.');
+        }
+
+        $cotizacion = OrdenServicioCotizacion::crearDesde($orden->load('repuestos'), $request->user());
+
+        $correoOk = $this->mandarCartaCotizacion($cotizacion);
+
+        $cotizacion->avisarInternos('cotizacion.enviada', ['enviada_por' => $request->user()->name]);
+
+        return back()->with('status', $correoOk
+            ? "Cotización enviada a {$cotizacion->cliente_email} (orden {$orden->folio})."
+            : 'La cotización quedó registrada, pero el correo NO salió. Usa «Reintentar correo».');
+    }
+
+    /**
+     * Reintenta el correo de una cotización cuyo envío falló (mismo snapshot y
+     * mismo link; no crea fila nueva). Solo tiene sentido si sigue vigente.
+     */
+    public function reintentarCorreoCotizacion(OrdenServicio $orden, int $cotizacionId): RedirectResponse
+    {
+        // Id plano (sin binding implícito: el route key del modelo es el token,
+        // que solo viaja en el link público del cliente).
+        $cotizacion = OrdenServicioCotizacion::findOrFail($cotizacionId);
+        abort_unless($cotizacion->orden_servicio_id === $orden->id, 404);
+
+        if ($cotizacion->correo_enviado_at || ! $cotizacion->esRespondible()) {
+            return back()->with('status', 'Esa cotización ya no necesita reintento (correo enviado o ya no vigente).');
+        }
+
+        $correoOk = $this->mandarCartaCotizacion($cotizacion);
+
+        return back()->with('status', $correoOk
+            ? "Correo de la cotización reenviado a {$cotizacion->cliente_email}."
+            : 'El correo volvió a fallar. Revisa el correo del cliente o inténtalo más tarde.');
+    }
+
+    /** Manda la carta y estampa `correo_enviado_at`; false si el SMTP falló. */
+    private function mandarCartaCotizacion(OrdenServicioCotizacion $cotizacion): bool
+    {
+        try {
+            Mail::to($cotizacion->cliente_email)->send(new CotizacionCliente($cotizacion));
+            $cotizacion->update(['correo_enviado_at' => now()]);
+
+            return true;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return false;
+        }
     }
 
     /**

@@ -326,6 +326,78 @@
                     </div>
                 </form>
             </div>
+
+            {{-- ===== Cotización al cliente (P-M12-02, fase correo) =====
+                 Card FUERA del form de reparación: el envío es un POST propio y
+                 usa lo GUARDADO (snapshot), no lo que esté a medio editar. Solo
+                 aplica a reparaciones que se cobran (garantía no cotiza). --}}
+            @if ($esReparacion)
+                @php $ultima = $cotizaciones->first(); @endphp
+                <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-sm font-semibold text-neutral-900">Cotización al cliente</h3>
+                        @if ($ultima)
+                            <x-badge :variant="$ultima->estado_variante">{{ $ultima->estado_label }}</x-badge>
+                        @endif
+                    </div>
+
+                    @if ($ultima)
+                        <p class="mt-2 text-sm text-neutral-600">
+                            Última: enviada el {{ $ultima->created_at->format('d-m-Y H:i') }}
+                            a {{ $ultima->cliente_email }} por
+                            <span class="font-semibold">${{ number_format((int) $ultima->costo_total, 0, ',', '.') }}</span>@if ($ultima->respondida_at) · respondida el {{ $ultima->respondida_at->format('d-m-Y H:i') }}@endif.
+                        </p>
+                        @if (! $ultima->correo_enviado_at && $ultima->esRespondible())
+                            <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.reintentar', [$orden, $ultima->id]) }}" class="mt-3" data-una-vez>
+                                @csrf
+                                <x-secondary-button type="submit">Reintentar correo</x-secondary-button>
+                                <span class="ml-2 text-xs text-red-600">El correo no salió al enviarla.</span>
+                            </form>
+                        @endif
+                    @endif
+
+                    @php
+                        // Qué falta para poder enviar (espejo de la validación del server).
+                        $faltas = collect([
+                            $orden->estado !== 'cotizacion' ? 'pon la orden en etapa «Cotización» y guarda' : null,
+                            blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
+                            (int) $orden->costo_total <= 0 ? 'lo guardado suma $0 (registra repuestos o mano de obra y guarda)' : null,
+                        ])->filter();
+                    @endphp
+                    <div class="mt-4">
+                        @if ($faltas->isEmpty())
+                            <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.enviar', $orden) }}" data-una-vez
+                                  onsubmit="return confirm('Se enviará la cotización GUARDADA por ${{ number_format((int) $orden->costo_total, 0, ',', '.') }} a {{ $orden->cliente_email }}. ¿Continuar?');">
+                                @csrf
+                                <x-primary-button type="submit">
+                                    {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Enviar cotización nueva' : 'Enviar cotización' }}
+                                </x-primary-button>
+                            </form>
+                            <p class="mt-2 text-xs text-neutral-400">
+                                Se envía lo último <span class="font-medium">guardado</span> (guarda antes de enviar).
+                                El cliente responde ACEPTO / NO ACEPTO por un link y el aviso llega a taller y ventas.
+                                @if ($ultima && $ultima->estado === 'enviada') Enviar una nueva reemplaza la anterior. @endif
+                            </p>
+                        @else
+                            <p class="text-sm text-neutral-500">Para enviar la cotización: {{ $faltas->implode('; ') }}.</p>
+                        @endif
+                    </div>
+
+                    {{-- Historial (re-envíos y respuestas anteriores) --}}
+                    @if ($cotizaciones->count() > 1)
+                        <div class="mt-4 border-t border-neutral-100 pt-3">
+                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-400">Historial</p>
+                            <ul class="mt-1.5 space-y-1">
+                                @foreach ($cotizaciones->slice(1) as $c)
+                                    <li class="text-xs text-neutral-500">
+                                        {{ $c->created_at->format('d-m-Y H:i') }} · ${{ number_format((int) $c->costo_total, 0, ',', '.') }} · {{ $c->estado_label }}@if ($c->respondida_at) ({{ $c->respondida_at->format('d-m-Y H:i') }})@endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

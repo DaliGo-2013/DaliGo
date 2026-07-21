@@ -192,6 +192,26 @@
                 @endunless
             </div>
 
+            {{-- Cotizaciones enviadas al cliente: la ruta completa visible para
+                 todo el que ve la orden (transparencia pedida por el dueño). --}}
+            @php $dgCotizaciones = $orden->cotizaciones()->latest('id')->get(); @endphp
+            @if ($dgCotizaciones->isNotEmpty())
+                <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cotizaciones al cliente</h3>
+                    <ul class="mt-3 space-y-2">
+                        @foreach ($dgCotizaciones as $c)
+                            <li class="flex flex-wrap items-center gap-2 text-sm">
+                                <x-badge :variant="$c->estado_variante">{{ $c->estado_label }}</x-badge>
+                                <span class="text-neutral-600">
+                                    {{ $c->created_at->format('d-m-Y H:i') }} · ${{ number_format((int) $c->costo_total, 0, ',', '.') }}
+                                    · a {{ $c->cliente_email }}@if ($c->respondida_at) · respondida el {{ $c->respondida_at->format('d-m-Y H:i') }}@endif
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
         </div>
     </div>
 </x-app-layout>
