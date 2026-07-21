@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-21] ST reparación: guardar deja al técnico en la MISMA página (para enviar la cotización)
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `fix/reparacion-redirect-mismo`) `guardarReparacion` redirigía al listado, obligando a volver a la orden para enviar la cotización ("guarda antes de enviar"). Ahora redirige a `admin.servicio-tecnico.reparacion` de la misma orden (con el flash de guardado): el técnico guarda y envía la cotización sin perder la página. 6 tests de `guardar_reparacion` actualizados (assertRedirect → la página de reparación). **728 verdes.** Sin CSS → sin build.
+- **Pasos marcados:** ninguno. · **Decisiones (dueño):** al guardar la reparación quedarse en la pantalla (no volver al listado). · **Delegaciones:** ninguna.
+
 ### [2026-07-21] Fix: rol "Tecnico Industrial" duplicado en producción
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `fix/dedupe-tecnico-industrial`) El dueño detectó dos "Tecnico Industrial" en el desplegable de roles (Admin → Editar rol). En local solo existe `tecnico_industrial` (guión bajo) → el duplicado es dato SOLO de prod: un variante creado a mano que headline-a igual (ej. `tecnico industrial` con espacio). Migración idempotente `dedupe_tecnico_industrial_role` (mismo patrón que `reconcile_business_roles`): busca roles web cuyo nombre normalizado (minúsculas, espacios/guiones→`_`) sea `tecnico_industrial`; si hay ≥2, elige el canónico (`tecnico_industrial` exacto, o menor id renombrado), **reasigna los usuarios del duplicado al canónico** (`insertOrIgnore`, nadie queda sin rol) y borra el duplicado con sus permisos. Verificado por simulación local (crear `tecnico industrial`+usuario → tras `up()` queda 1 rol, usuario con `hasRole('tecnico_industrial')`, idempotente al re-correr). No-op en BD fresca/tests (roles vacíos al migrar; los crea el seeder después). **728 verdes.** Corre en prod en el deploy (`migrate --force`).

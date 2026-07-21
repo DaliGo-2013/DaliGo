@@ -653,7 +653,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'causa_falla' => 'uso_normal',
                 'trabajo_realizado' => $respuesta,
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertSame($respuesta, $orden->fresh()->trabajo_realizado);
     }
@@ -687,7 +687,7 @@ class ServicioTecnicoManagementTest extends TestCase
                     ['nombre' => '', 'cantidad' => 1, 'precio_unitario' => 0], // fila vacia => se ignora
                 ],
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $fresh = $orden->fresh()->load('repuestos');
         $this->assertSame('reparado', $fresh->estado);
@@ -711,7 +711,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'descuento_motivo' => 'cliente_grande',
                 'repuestos' => [],
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $fresh = $orden->fresh();
         $this->assertSame(20, $fresh->descuento_pct);
@@ -743,7 +743,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => 'reparado',
                 'causa_falla' => 'mal_uso',
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertSame('mal_uso', $orden->fresh()->causa_falla);
     }
@@ -771,7 +771,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => 'en_revision',
                 'causa_falla' => '',
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertNull($orden->fresh()->causa_falla);
     }
@@ -819,7 +819,7 @@ class ServicioTecnicoManagementTest extends TestCase
                     ['nombre' => 'Nuevo', 'cantidad' => 1, 'precio_unitario' => 2000],
                 ],
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertDatabaseMissing('orden_servicio_repuestos', ['nombre' => 'Viejo']);
         $this->assertDatabaseHas('orden_servicio_repuestos', ['nombre' => 'Nuevo']);
