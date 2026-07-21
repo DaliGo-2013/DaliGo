@@ -110,7 +110,7 @@
                                     $iso = $d->toDateString();
                                     $count = ($jobsPorDia->get($iso) ?? collect())->count();
                                     $sel = $iso === $isoSel;
-                                    $numClase = $sel ? 'font-bold text-brand-700' : ($d->isToday() ? 'font-bold text-brand-600' : ($delMes ? 'text-neutral-800' : 'text-neutral-300'));
+                                    $numClase = $sel ? 'font-bold text-brand-700' : (\App\Support\FechaNegocio::esHoy($d) ? 'font-bold text-brand-600' : ($delMes ? 'text-neutral-800' : 'text-neutral-300'));
                                 @endphp
                                 @if ($delMes)
                                     {{-- Al tocar un día se selecciona (?dia=) y se ve/edita a la derecha. --}}

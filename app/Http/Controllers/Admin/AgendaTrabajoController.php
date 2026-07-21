@@ -160,7 +160,7 @@ class AgendaTrabajoController extends Controller
         $trabajo->update($data);
 
         // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
-        $destino = $trabajo->fecha ?? now();
+        $destino = $trabajo->fecha ?? \App\Support\FechaNegocio::ahora();
         $params = ['anio' => $destino->year, 'mes' => $destino->month];
         if ($trabajo->fecha) {
             $params['dia'] = $trabajo->fecha->toDateString();
