@@ -334,6 +334,22 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Cotizaciones enviadas al cliente (snapshots; la mas reciente manda).
+     *
+     * @return HasMany<OrdenServicioCotizacion>
+     */
+    public function cotizaciones(): HasMany
+    {
+        return $this->hasMany(OrdenServicioCotizacion::class, 'orden_servicio_id');
+    }
+
+    /** La cotizacion mas reciente (o null si nunca se ha enviado una). */
+    public function getUltimaCotizacionAttribute(): ?OrdenServicioCotizacion
+    {
+        return $this->cotizaciones()->latest('id')->first();
+    }
+
+    /**
      * @return BelongsTo<Cliente, $this>
      */
     public function cliente(): BelongsTo

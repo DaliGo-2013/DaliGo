@@ -19,6 +19,9 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_reintentos_max',
         'notif_backoff_minutos',
         'notif_remitente_nombre',
+        // P-M12-02 · Cotización del taller (avisos internos)
+        'notif_plantilla_cotizacion_enviada',
+        'notif_plantilla_cotizacion_respondida',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

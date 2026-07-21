@@ -25,6 +25,7 @@ use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Publico\CotizacionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
@@ -263,6 +264,14 @@ Route::middleware('auth')
             Route::put('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'guardarReparacion'])
                 ->name('servicio-tecnico.reparacion.guardar');
 
+            // Cotización al cliente (P-M12-02): enviar la carta / reintentar el
+            // correo si el SMTP falló. {cotizacion:id} porque el binding por
+            // defecto del modelo es el token (para el link público).
+            Route::post('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'enviarCotizacion'])
+                ->name('servicio-tecnico.cotizacion.enviar');
+            Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/reintentar', [ServicioTecnicoController::class, 'reintentarCorreoCotizacion'])
+                ->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.reintentar');
+
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])
                 ->only(['create', 'store', 'edit', 'update', 'destroy']);
@@ -346,6 +355,16 @@ Route::middleware('throttle:6,1')->group(function () {
         ->name('visita-industrial.store');
     Route::get('visita-industrial/listo/{trabajo}', [VisitaIndustrialPublicoController::class, 'gracias'])
         ->middleware('signed')->name('visita-industrial.gracias');
+
+    // Respuesta del cliente a una COTIZACION del taller (P-M12-02): link firmado
+    // del correo. El POST tambien va firmado (autorizacion comercial: no espera
+    // al endurecimiento P-F3-01 del QR). Binding por token (no enumerable).
+    Route::get('cotizacion/{cotizacion}', [CotizacionPublicoController::class, 'mostrar'])
+        ->middleware('signed')->name('cotizacion.mostrar');
+    Route::post('cotizacion/{cotizacion}/respuesta', [CotizacionPublicoController::class, 'responder'])
+        ->middleware('signed')->name('cotizacion.responder');
+    Route::get('cotizacion/{cotizacion}/gracias', [CotizacionPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('cotizacion.gracias');
 });
 
 // Autocompletado publico del producto Dali para el formulario del QR. Throttle
