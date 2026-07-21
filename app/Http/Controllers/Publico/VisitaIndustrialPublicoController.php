@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -67,6 +68,15 @@ class VisitaIndustrialPublicoController extends Controller
             'fecha_preferida' => ['nullable', 'date', 'after_or_equal:'.\App\Support\FechaNegocio::hoy()],
             'descripcion' => ['required', 'string', 'min:3'],
         ]);
+
+        // Si la fecha preferida cae en días en que el técnico ya está ocupado o de
+        // viaje, no se puede pedir para entonces: se pide elegir otra fecha.
+        if (! empty($data['fecha_preferida'])
+            && AgendaTrabajo::conflictos($data['fecha_preferida'], $data['fecha_preferida'])->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'fecha_preferida' => 'En esa fecha el técnico no estará disponible (fuera o con la agenda ocupada). Por favor elige otra fecha preferida.',
+            ]);
+        }
 
         $trabajo = AgendaTrabajo::create([
             'tipo' => $data['tipo'],

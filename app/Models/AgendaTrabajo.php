@@ -52,7 +52,9 @@ class AgendaTrabajo extends Model implements AuditableContract
     protected $fillable = [
         'tipo',
         'fecha',
+        'fecha_fin',
         'hora',
+        'hora_fin',
         'fecha_preferida',
         'estado',
         'servicio_terreno_id',
@@ -73,6 +75,7 @@ class AgendaTrabajo extends Model implements AuditableContract
     {
         return [
             'fecha' => 'date',
+            'fecha_fin' => 'date',
             'fecha_preferida' => 'date',
         ];
     }
@@ -84,6 +87,86 @@ class AgendaTrabajo extends Model implements AuditableContract
     public function getHoraCortaAttribute(): ?string
     {
         return $this->hora ? substr((string) $this->hora, 0, 5) : null;
+    }
+
+    /**
+     * Franja horaria de 2 horas a la que cae el trabajo en la agenda del técnico
+     * (08:00, 10:00, 12:00, 14:00, 16:00, 18:00 …): la hora redondeada hacia abajo
+     * al bloque par. Deja holgura para viajar entre trabajos. Null si no tiene hora.
+     */
+    public function getFranjaAttribute(): ?string
+    {
+        if (! $this->hora_corta) {
+            return null;
+        }
+
+        $h = (int) substr($this->hora_corta, 0, 2);
+
+        return sprintf('%02d:00', $h - ($h % 2));
+    }
+
+    /** Hora de término "HH:MM" (columna `time` viene "HH:MM:SS"). Null si no hay. */
+    public function getHoraFinCortaAttribute(): ?string
+    {
+        return $this->hora_fin ? substr((string) $this->hora_fin, 0, 5) : null;
+    }
+
+    /** ¿El trabajo abarca más de un día (viaje)? */
+    public function getAbarcaVariosDiasAttribute(): bool
+    {
+        return $this->fecha && $this->fecha_fin && ! $this->fecha_fin->isSameDay($this->fecha);
+    }
+
+    /** Etiqueta del rango de fechas: "7 al 10 de septiembre" o el día suelto. */
+    public function getRangoFechasLabelAttribute(): ?string
+    {
+        if (! $this->fecha) {
+            return null;
+        }
+        if (! $this->abarca_varios_dias) {
+            return $this->fecha->translatedFormat('d \d\e F');
+        }
+
+        $mismoMes = $this->fecha->month === $this->fecha_fin->month;
+
+        return $mismoMes
+            ? $this->fecha->translatedFormat('d').' al '.$this->fecha_fin->translatedFormat('d \d\e F')
+            : $this->fecha->translatedFormat('d \d\e F').' al '.$this->fecha_fin->translatedFormat('d \d\e F');
+    }
+
+    /** Etiqueta del rango de horas: "08:00 a 18:00", "08:00", o null si sin hora. */
+    public function getRangoHorasLabelAttribute(): ?string
+    {
+        if (! $this->hora_corta) {
+            return null;
+        }
+
+        return $this->hora_fin_corta && $this->hora_fin_corta !== $this->hora_corta
+            ? $this->hora_corta.' a '.$this->hora_fin_corta
+            : $this->hora_corta;
+    }
+
+    /**
+     * Trabajos YA comprometidos (agendado/realizado, con fecha) que se solapan con
+     * el rango [$desde, $hasta] — para bloquear que se agende encima cuando el
+     * técnico está ocupado/de viaje. El solape considera fecha_fin (o la fecha si
+     * es de un día). Portable MySQL 5.7 / SQLite (sin funciones de fecha crudas).
+     *
+     * @return \Illuminate\Support\Collection<int, AgendaTrabajo>
+     */
+    public static function conflictos(string $desde, string $hasta, ?int $exceptId = null): \Illuminate\Support\Collection
+    {
+        return static::query()
+            ->whereIn('estado', ['agendado', 'realizado'])
+            ->whereNotNull('fecha')
+            ->when($exceptId, fn (Builder $q) => $q->where('id', '!=', $exceptId))
+            ->whereDate('fecha', '<=', $hasta)
+            ->where(function (Builder $q) use ($desde) {
+                $q->where(fn (Builder $w) => $w->whereNotNull('fecha_fin')->whereDate('fecha_fin', '>=', $desde))
+                    ->orWhere(fn (Builder $w) => $w->whereNull('fecha_fin')->whereDate('fecha', '>=', $desde));
+            })
+            ->orderBy('fecha')
+            ->get();
     }
 
     /**
