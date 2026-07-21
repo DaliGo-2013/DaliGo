@@ -131,6 +131,16 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando un cliente deja una solicitud por coordinar (QR) en la agenda de terreno.',
             ],
+            [
+                'clave' => 'notif_plantilla_terreno_confirmada',
+                'valor' => json_encode([
+                    'asunto' => 'Cliente {respuesta}: {cliente} ({tipo})',
+                    'cuerpo' => "{cliente} respondió a su visita del {fecha}: {respuesta}.\nComentario del cliente: {nota}\n\nVer en la agenda: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas cuando el cliente confirma (o avisa que no puede) su visita agendada.',
+            ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [
                 'clave' => 'umbral_ajuste_produccion_unidades',
