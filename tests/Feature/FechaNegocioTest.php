@@ -131,6 +131,80 @@ class FechaNegocioTest extends TestCase
             ->assertSee('Preformas asignadas hoy');
     }
 
+    // --- Agenda de terreno fusionada (dictado v22: tests de frontera, gated -----
+    //     al fix de Marcos `daf948d` — esta rama NO toca Blade ni controller) ----
+
+    /** La celda de la grilla del calendario para un día (scoped por su ?dia=). */
+    private function celdaDeLaGrilla(string $html, string $iso): string
+    {
+        $this->assertSame(1, preg_match('/<a[^>]*dia='.$iso.'"[^>]*>.*?<\/a>/s', $html, $m), "No encontré la celda del {$iso} en la grilla.");
+
+        return $m[0];
+    }
+
+    public function test_la_agenda_nocturna_abre_en_el_hoy_chileno_y_lo_resalta(): void
+    {
+        $admin = $this->userWithRole('admin');
+
+        // 23:00 de Chile, sin params: mes chileno, «abre en HOY» = HOY chileno,
+        // y la cabecera del día lo dice (con isToday-UTC no lo diría: el día
+        // UTC ya es mañana).
+        $res = $this->actingAs($admin)->get(route('admin.agenda-terreno.index'));
+        $res->assertOk();
+        $this->assertSame(7, $res->viewData('mes'));
+        $this->assertSame(self::DIA_NEGOCIO, $res->viewData('diaSel')->toDateString());
+        $res->assertSee('· HOY');
+
+        // En la grilla, el día chileno va como SELECCIONADO (brand-700 — la
+        // precedencia $sel de bc51e82); mañana-UTC sin resalte alguno.
+        $html = $res->getContent();
+        $this->assertStringContainsString('font-bold text-brand-700', $this->celdaDeLaGrilla($html, self::DIA_NEGOCIO));
+        $this->assertStringNotContainsString('font-bold', $this->celdaDeLaGrilla($html, self::DIA_UTC));
+
+        // Y con OTRO día seleccionado se ve la rama esHoy del fix de Marcos:
+        // el día chileno queda en brand-600 (el "hoy" de la grilla); mañana-UTC no.
+        $html = $this->actingAs($admin)
+            ->get(route('admin.agenda-terreno.index', ['anio' => 2026, 'mes' => 7, 'dia' => '2026-07-15']))
+            ->getContent();
+        $this->assertStringContainsString('font-bold text-brand-600', $this->celdaDeLaGrilla($html, self::DIA_NEGOCIO));
+        $this->assertStringNotContainsString('font-bold', $this->celdaDeLaGrilla($html, self::DIA_UTC));
+    }
+
+    public function test_la_agenda_en_frontera_de_mes_abre_julio_chileno_no_agosto_utc(): void
+    {
+        // 22:00 de Chile del 31-07 = 02:00 UTC del 01-08.
+        $this->travelTo(Carbon::parse('2026-08-01 02:00:00', 'UTC'));
+
+        $res = $this->actingAs($this->userWithRole('admin'))->get(route('admin.agenda-terreno.index'));
+        $res->assertOk();
+        $this->assertSame(7, $res->viewData('mes'));
+        $this->assertSame('2026-07-31', $res->viewData('diaSel')->toDateString());
+    }
+
+    public function test_editar_una_solicitud_sin_fecha_de_noche_vuelve_al_mes_chileno(): void
+    {
+        // El hallazgo update():151 de la auditoría del 21-07: el redirect de una
+        // solicitud QR aún sin fecha derivaba anio/mes de now() UTC y los query
+        // params puentean el default (ya chileno) del index.
+        $vendedor = $this->userWithRole('vendedor');
+        $solicitud = \App\Models\AgendaTrabajo::factory()->create(['estado' => 'solicitado', 'fecha' => null]);
+
+        // 21:30 de Chile del 31-07 = 01:30 UTC del 01-08.
+        $this->travelTo(Carbon::parse('2026-08-01 01:30:00', 'UTC'));
+
+        $this->actingAs($vendedor)->put(route('admin.agenda-terreno.update', $solicitud), [
+            'tipo' => 'visita_tecnica',
+            'estado' => 'solicitado',
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'Coordinación pendiente: corregimos el teléfono.',
+        ])->assertRedirect(route('admin.agenda-terreno.index', ['anio' => 2026, 'mes' => 7]));
+    }
+
     // --- Flujos públicos nocturnos (§4.1-2) ------------------------------------
 
     public function test_la_visita_industrial_acepta_el_hoy_chileno(): void
