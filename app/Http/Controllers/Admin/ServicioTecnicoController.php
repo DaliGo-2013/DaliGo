@@ -409,7 +409,10 @@ class ServicioTecnicoController extends Controller
     public function seguimientoDemo(): View
     {
         return view('admin.servicio-tecnico.seguimiento-demo', [
-            'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'esperando_repuesto', 'reparado', 'entregado']),
+            // "esperando_repuesto" NO va en el seguimiento del cliente: muchas
+            // veces el técnico define en el momento si hay o no repuesto, así que
+            // no es una etapa útil de cara al cliente (el estado interno sigue en ST).
+            'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
             'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
         ]);
     }
