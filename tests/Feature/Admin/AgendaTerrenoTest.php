@@ -35,6 +35,11 @@ class AgendaTerrenoTest extends TestCase
         return tap(User::factory()->create())->assignRole('tecnico_industrial');
     }
 
+    private function admin(): User
+    {
+        return tap(User::factory()->create())->assignRole('admin');
+    }
+
     private function payload(array $overrides = []): array
     {
         return array_merge([
@@ -103,6 +108,63 @@ class AgendaTerrenoTest extends TestCase
             ->assertSee('— Sin hora —')
             ->assertSee('08:00 hs')
             ->assertSee('18:00 hs');
+    }
+
+    // --- Rango de días (viajes) y bloqueo por ocupación ---
+
+    public function test_trabajo_de_varios_dias_aparece_en_cada_dia(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado',
+            'fecha' => '2026-07-07',
+            'fecha_fin' => '2026-07-10',
+            'ciudad' => 'Puerto Montt',
+            'cliente_nombre' => 'Planta del Sur',
+        ]);
+
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7')
+            ->assertOk()
+            ->assertSee('En terreno:')                 // etiqueta de viaje
+            ->assertSee('al 10 de julio')              // rango de fechas
+            ->assertSee('dia-2026-07-07', false)       // día inicial
+            ->assertSee('dia-2026-07-09', false);      // día intermedio (se expande)
+    }
+
+    public function test_no_admin_no_puede_agendar_sobre_dias_ocupados(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado', 'fecha' => '2026-07-07', 'fecha_fin' => '2026-07-10',
+            'ciudad' => 'Puerto Montt',
+        ]);
+
+        // El vendedor intenta agendar un día dentro del viaje → bloqueado.
+        $this->actingAs($this->vendedor())
+            ->post('/admin/agenda-terreno', $this->payload(['fecha' => '2026-07-08']))
+            ->assertSessionHasErrors('fecha');
+    }
+
+    public function test_admin_si_puede_agendar_sobre_dias_ocupados(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado', 'fecha' => '2026-07-07', 'fecha_fin' => '2026-07-10',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->post('/admin/agenda-terreno', $this->payload(['fecha' => '2026-07-08']))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_agenda_guarda_el_rango_de_horas(): void
+    {
+        $this->actingAs($this->vendedor())
+            ->post('/admin/agenda-terreno', $this->payload(['hora' => '08:00', 'hora_fin' => '18:00']))
+            ->assertRedirect();
+
+        $t = AgendaTrabajo::latest('id')->first();
+        $this->assertSame('08:00', $t->hora_corta);
+        $this->assertSame('18:00', $t->hora_fin_corta);
     }
 
     public function test_agendar_preselecciona_al_unico_tecnico(): void

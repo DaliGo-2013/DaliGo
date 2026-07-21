@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -44,13 +45,40 @@ class AgendaTrabajoController extends Controller
         $prev = $cursor->copy()->subMonth();
         $next = $cursor->copy()->addMonth();
 
-        // Trabajos del mes, ordenados por día y luego por hora (los sin hora al
-        // final del día) para que la lista y los grupos salgan cronológicos.
-        $trabajos = AgendaTrabajo::delMes($anio, $mes)
+        // Trabajos que SE SOLAPAN con el mes (incluye viajes de varios días que
+        // empiezan antes o terminan después). Se comparan fecha y fecha_fin sin
+        // funciones de fecha crudas (portable MySQL 5.7 / SQLite).
+        $inicioMes = $cursor->copy()->startOfMonth()->toDateString();
+        $finMes = $cursor->copy()->endOfMonth()->toDateString();
+        $trabajos = AgendaTrabajo::query()
             ->with(['servicio', 'tecnico', 'repuestos'])
-            ->get()
-            ->sortBy(fn (AgendaTrabajo $t) => $t->fecha->toDateString().' '.($t->hora_corta ?? '99:99'))
-            ->values();
+            ->whereNotNull('fecha')
+            ->whereDate('fecha', '<=', $finMes)
+            ->where(function (Builder $q) use ($inicioMes) {
+                $q->where(fn (Builder $w) => $w->whereNotNull('fecha_fin')->whereDate('fecha_fin', '>=', $inicioMes))
+                    ->orWhere(fn (Builder $w) => $w->whereNull('fecha_fin')->whereDate('fecha', '>=', $inicioMes));
+            })
+            ->orderBy('fecha')->orderBy('id')
+            ->get();
+
+        // Cada trabajo aparece en TODOS los días que abarca dentro del mes (un
+        // viaje del 7 al 10 sale en 7, 8, 9 y 10) para que quien mire la agenda
+        // vea que el técnico está ocupado esos días.
+        $jobsPorDia = collect();
+        foreach ($trabajos as $t) {
+            $desde = $t->fecha->copy();
+            $hasta = ($t->fecha_fin ?? $t->fecha)->copy();
+            for ($dia = $desde; $dia->lte($hasta); $dia->addDay()) {
+                if ($dia->month !== $mes || $dia->year !== $anio) {
+                    continue;
+                }
+                $iso = $dia->toDateString();
+                $jobsPorDia[$iso] = ($jobsPorDia->get($iso) ?? collect())->push($t);
+            }
+        }
+        $jobsPorDia = $jobsPorDia
+            ->map(fn ($c) => $c->sortBy(fn (AgendaTrabajo $t) => $t->hora_corta ?? '99:99')->values())
+            ->sortKeys();
 
         // Grilla de semanas completas (lunes a domingo) que cubren el mes.
         $grid = [];
@@ -62,7 +90,7 @@ class AgendaTrabajoController extends Controller
 
         return view('admin.agenda-terreno.index', [
             'trabajos' => $trabajos,
-            'jobsPorDia' => $trabajos->groupBy(fn (AgendaTrabajo $t) => $t->fecha->toDateString()),
+            'jobsPorDia' => $jobsPorDia,
             'grid' => $grid,
             // Solicitudes del cliente (QR) esperando coordinación (sin fecha).
             'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
@@ -92,6 +120,7 @@ class AgendaTrabajoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateData($request);
+        $this->bloquearSiOcupado($request, $data);
         $data['creado_por'] = $request->user()->name;
 
         $trabajo = AgendaTrabajo::create($data);
@@ -114,6 +143,7 @@ class AgendaTrabajoController extends Controller
     public function update(Request $request, AgendaTrabajo $trabajo): RedirectResponse
     {
         $data = $this->validateData($request, editando: true);
+        $this->bloquearSiOcupado($request, $data, $trabajo->id);
 
         $trabajo->update($data);
 
@@ -215,11 +245,16 @@ class AgendaTrabajoController extends Controller
     {
         // Normalizar el RUT (opcional aquí) a la forma canónica.
         $rutInput = trim((string) $request->input('cliente_rut'));
+        $fecha = $request->input('fecha') ?: null;
+        $hora = $request->input('hora') ?: null;
         $request->merge([
             'cliente_rut' => $rutInput === '' ? null : (Cliente::normalizarRut($rutInput) ?? $rutInput),
             // Cliente NUEVO (no elegido de la lista): el hidden puede traer 0 →
             // se trata como null para que `exists` no rechace el agendamiento.
             'cliente_id' => $request->input('cliente_id') ?: null,
+            // fecha_fin/hora_fin solo tienen sentido junto a su inicio.
+            'fecha_fin' => $fecha ? ($request->input('fecha_fin') ?: null) : null,
+            'hora_fin' => $hora ? ($request->input('hora_fin') ?: null) : null,
         ]);
 
         return $request->validate([
@@ -227,8 +262,12 @@ class AgendaTrabajoController extends Controller
             // Una SOLICITUD del cliente aún no tiene fecha real (se pone al
             // coordinar); en cualquier otro estado la fecha es obligatoria.
             'fecha' => [Rule::requiredIf(fn () => $request->input('estado') !== 'solicitado'), 'nullable', 'date'],
+            // Fin del rango (viaje de varios días): opcional, no antes del inicio.
+            'fecha_fin' => ['nullable', 'date', 'after_or_equal:fecha'],
             // Hora opcional (la vista calendario la prellena con el slot elegido).
             'hora' => ['nullable', 'date_format:H:i'],
+            // Hora de término (trabajo de día completo): opcional, no antes del inicio.
+            'hora_fin' => ['nullable', 'date_format:H:i', 'after_or_equal:hora'],
             'fecha_preferida' => ['nullable', 'date'],
             'estado' => $editando
                 ? ['required', Rule::in(AgendaTrabajo::ESTADOS)]
@@ -247,6 +286,35 @@ class AgendaTrabajoController extends Controller
             'descripcion' => ['required', 'string'],
             'notas_tecnico' => ['nullable', 'string'],
         ]);
+    }
+
+    /**
+     * Bloquea agendar/editar cuando el técnico ya está ocupado (o de viaje) en
+     * esos días: si el rango [fecha, fecha_fin] se solapa con otro trabajo
+     * comprometido, se rechaza — SALVO que quien agenda sea admin (solo el admin
+     * puede pisar días ocupados). Las solicitudes sin fecha (QR «por coordinar»)
+     * no bloquean.
+     */
+    private function bloquearSiOcupado(Request $request, array $data, ?int $exceptId = null): void
+    {
+        $fecha = $data['fecha'] ?? null;
+        if (! $fecha || ($data['estado'] ?? null) === 'solicitado') {
+            return;
+        }
+        if ($request->user()->hasRole('admin')) {
+            return; // el admin puede agendar sobre días ocupados
+        }
+
+        $hasta = $data['fecha_fin'] ?? $fecha;
+        $conflictos = AgendaTrabajo::conflictos((string) $fecha, (string) $hasta, $exceptId);
+
+        if ($conflictos->isNotEmpty()) {
+            $c = $conflictos->first();
+            $donde = $c->ciudad ? " en {$c->ciudad}" : '';
+            throw ValidationException::withMessages([
+                'fecha' => "El técnico ya está ocupado esos días ({$c->rango_fechas_label}{$donde}). Pídele a un administrador que lo agende si es imprescindible.",
+            ]);
+        }
     }
 
     /**

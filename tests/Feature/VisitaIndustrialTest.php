@@ -115,6 +115,22 @@ class VisitaIndustrialTest extends TestCase
         ]))->assertSessionHasErrors('fecha_preferida');
     }
 
+    public function test_no_se_puede_pedir_visita_en_dias_ocupados(): void
+    {
+        // El técnico está de viaje (agendado) del 10 al 14 de un mes futuro.
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado', 'fecha' => '2026-09-10', 'fecha_fin' => '2026-09-14',
+            'ciudad' => 'Copiapó',
+        ]);
+
+        // El cliente no puede pedir una visita preferida dentro de ese rango.
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [
+            'fecha_preferida' => '2026-09-12',
+        ]))->assertSessionHasErrors('fecha_preferida');
+
+        $this->assertSame(1, AgendaTrabajo::count()); // no se creó la solicitud
+    }
+
     public function test_honeypot_lleno_no_crea_nada(): void
     {
         $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [

@@ -16,10 +16,10 @@
         <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
     </div>
 
-    {{-- Fecha (una SOLICITUD del cliente aún no la tiene: se pone al coordinar).
-         Se puede prellenar desde el calendario (?fecha=&hora=). --}}
+    {{-- Fecha desde (una SOLICITUD del cliente aún no la tiene: se pone al
+         coordinar). Se puede prellenar desde el calendario (?fecha=&hora=). --}}
     <div>
-        <x-input-label for="fecha">Fecha <span class="text-red-500">*</span></x-input-label>
+        <x-input-label for="fecha">Fecha (desde) <span class="text-red-500">*</span></x-input-label>
         <x-text-input id="fecha" name="fecha" type="date" class="mt-1.5 w-full"
             :value="old('fecha', $t?->fecha?->format('Y-m-d') ?? request('fecha'))" />
         @if ($t?->fecha_preferida)
@@ -29,14 +29,25 @@
         <x-input-error :messages="$errors->get('fecha')" class="mt-2" />
     </div>
 
+    {{-- Fecha hasta (opcional): para viajes de varios días (ej. Puerto Montt del
+         7 al 10). Vacío = trabajo de un solo día. --}}
+    <div>
+        <x-input-label for="fecha_fin" value="Hasta (opcional)" />
+        <x-text-input id="fecha_fin" name="fecha_fin" type="date" class="mt-1.5 w-full"
+            :value="old('fecha_fin', $t?->fecha_fin?->format('Y-m-d'))" />
+        <x-input-hint>Solo si el trabajo/viaje abarca varios días. Esos días quedan ocupados.</x-input-hint>
+        <x-input-error :messages="$errors->get('fecha_fin')" class="mt-2" />
+    </div>
+
     {{-- Hora en FRANJAS de 2 horas (deja holgura para viajar entre trabajos). La
          usa el calendario para ubicar el trabajo en su franja del día. --}}
     @php
         $franjas = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
         $horaActual = old('hora', $t?->hora_corta ?? request('hora'));
+        $horaFinActual = old('hora_fin', $t?->hora_fin_corta);
     @endphp
     <div>
-        <x-input-label for="hora" value="Hora (franja)" />
+        <x-input-label for="hora" value="Hora (desde)" />
         <x-select id="hora" name="hora" class="mt-1.5 w-full">
             <option value="">— Sin hora —</option>
             {{-- Conserva una hora previa que no calce con las franjas (datos antiguos). --}}
@@ -49,6 +60,23 @@
         </x-select>
         <x-input-hint>Franjas de 2 h por los viajes. Opcional: «Sin hora» si aún no se define.</x-input-hint>
         <x-input-error :messages="$errors->get('hora')" class="mt-2" />
+    </div>
+
+    {{-- Hora hasta (opcional): para trabajos de día completo (ej. instalación de
+         08:00 a 18:00). Vacío = una sola franja. --}}
+    <div>
+        <x-input-label for="hora_fin" value="Hora fin (opcional)" />
+        <x-select id="hora_fin" name="hora_fin" class="mt-1.5 w-full">
+            <option value="">— Una sola franja —</option>
+            @if ($horaFinActual && ! in_array($horaFinActual, $franjas, true))
+                <option value="{{ $horaFinActual }}" selected>{{ $horaFinActual }} (actual)</option>
+            @endif
+            @foreach ($franjas as $f)
+                <option value="{{ $f }}" @selected((string) $horaFinActual === $f)>{{ $f }} hs</option>
+            @endforeach
+        </x-select>
+        <x-input-hint>Para un trabajo que dura varias horas (ej. 08:00 a 18:00).</x-input-hint>
+        <x-input-error :messages="$errors->get('hora_fin')" class="mt-2" />
     </div>
 
     {{-- Servicio del catálogo (opcional) + detalle en vivo --}}
