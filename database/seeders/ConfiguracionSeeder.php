@@ -119,6 +119,18 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno cuando el cliente acepta o no acepta la cotización; el asunto distingue la respuesta.',
             ],
+            // Solicitud del cliente (QR) que entra "por coordinar" a la agenda de
+            // terreno: aviso a ventas para que la coordinen con el cliente.
+            [
+                'clave' => 'notif_plantilla_terreno_solicitada',
+                'valor' => json_encode([
+                    'asunto' => 'Nueva solicitud por coordinar: {cliente} ({tipo})',
+                    'cuerpo' => "{cliente} pidió {tipo} en {ciudad}.\nTeléfono: {telefono} · Prefiere: {preferida}\n\nCoordínala en la agenda de terreno: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas cuando un cliente deja una solicitud por coordinar (QR) en la agenda de terreno.',
+            ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [
                 'clave' => 'umbral_ajuste_produccion_unidades',

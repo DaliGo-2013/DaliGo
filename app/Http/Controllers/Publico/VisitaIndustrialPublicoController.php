@@ -94,6 +94,15 @@ class VisitaIndustrialPublicoController extends Controller
             'creado_por' => 'Cliente (QR)',
         ]);
 
+        // Aviso a ventas (jefe + vendedores) de que hay una solicitud por
+        // coordinar. Secundario: si el aviso falla, la solicitud ya quedó
+        // registrada y el cliente no debe ver un error.
+        try {
+            $trabajo->notificarPorCoordinar();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return redirect()->to(URL::signedRoute('visita-industrial.gracias', ['trabajo' => $trabajo->id]));
     }
 

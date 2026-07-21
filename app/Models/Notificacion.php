@@ -50,6 +50,8 @@ class Notificacion extends Model
         // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
+        // Agenda de terreno · solicitud del cliente (QR) por coordinar
+        'terreno.solicitada' => 'Solicitud del cliente por coordinar (terreno)',
     ];
 
     protected $fillable = [
@@ -122,6 +124,8 @@ class Notificacion extends Model
             'cotizacion.enviada', 'cotizacion.respondida' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,
+            // La solicitud por coordinar se resuelve en la agenda de terreno.
+            'terreno.solicitada' => route('admin.agenda-terreno.index'),
             default => null,
         };
     }
