@@ -30,11 +30,12 @@ class NavigationTest extends TestCase
 
     public function test_admin_ve_todos_los_accesos_de_servicio_tecnico(): void
     {
+        // "Registrar ingreso" ya NO va en el nav: vive como botón dentro de Listado.
         $this->actingAs($this->usuarioCon('admin'))
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Listado')
-            ->assertSee('Registrar ingreso')
+            ->assertDontSee('Registrar ingreso')
             ->assertSee('Ingreso por lote')
             ->assertSee('Códigos QR')
             ->assertSee('Informe');

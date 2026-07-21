@@ -103,9 +103,7 @@
                             @canany(['view servicio tecnico', 'manage servicio tecnico'])
                                 <x-dropdown-link :href="route('admin.servicio-tecnico.index')">Listado</x-dropdown-link>
                             @endcanany
-                            @can('manage servicio tecnico')
-                                <x-dropdown-link :href="route('admin.servicio-tecnico.create')">Registrar ingreso</x-dropdown-link>
-                            @endcan
+                            {{-- "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí). --}}
                             @can('crear lote servicio')
                                 <x-dropdown-link :href="route('admin.servicio-tecnico.lote.create')">Ingreso por lote</x-dropdown-link>
                             @endcan
@@ -219,11 +217,7 @@
                         Listado
                     </x-responsive-nav-link>
                 @endcanany
-                @can('manage servicio tecnico')
-                    <x-responsive-nav-link :href="route('admin.servicio-tecnico.create')" :active="request()->routeIs('admin.servicio-tecnico.create')">
-                        Registrar ingreso
-                    </x-responsive-nav-link>
-                @endcan
+                {{-- "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí). --}}
                 @can('crear lote servicio')
                     <x-responsive-nav-link :href="route('admin.servicio-tecnico.lote.create')" :active="request()->routeIs('admin.servicio-tecnico.lote.*')">
                         Ingreso por lote

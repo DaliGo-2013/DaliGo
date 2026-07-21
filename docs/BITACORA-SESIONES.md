@@ -21,6 +21,11 @@
 
 ## Sesiones
 
+### [2026-07-21] Servicio Técnico: quitar "Registrar ingreso" duplicado del nav
+- **Quién:** Marco + Claude (Opus 4.8)
+- **Qué se hizo:** (rama `fix/nav-registrar-ingreso`) "Registrar ingreso" estaba duplicado: en el dropdown de Servicio Técnico Y como botón dentro de Listado. Se quitó del **nav** (dropdown desktop + menú móvil en `navigation.blade.php`), queda solo el botón de la página Listado. No se pierde acceso (la ruta `servicio-tecnico.create` sigue; solo se elimina el atajo redundante). El badge del menú es `$pendientesServicioTecnico` (equipos por atender), no cuenta ítems → sin efecto. `NavigationTest` ajustado (admin ahora `assertDontSee('Registrar ingreso')` en el nav). Sin clases CSS nuevas → sin build. **701 verdes.**
+- **Pasos marcados:** ninguno (stream boceto). · **Decisiones (dueño):** una sola entrada a "Registrar ingreso" (la de Listado). · **Delegaciones:** ninguna.
+
 ### [2026-07-21] Agenda de terreno: 2 fixes de zona horaria (FechaNegocio)
 - **Quién:** Marco + Claude (Opus 4.8)
 - **Qué se hizo:** (rama `fix/agenda-fechanegocio`) Los 2 últimos usos de fecha del server que quedaban en agenda-terreno (el resto ya usa `FechaNegocio`): **(1)** `index.blade.php` — el resalte del día en la grilla usaba `$d->isToday()` → `\App\Support\FechaNegocio::esHoy($d)` (de noche chilena marcaba mañana). **(2)** `AgendaTrabajoController::update` — el redirect de una solicitud QR sin fecha usaba `now()` → `\App\Support\FechaNegocio::ahora()` (de noche redirigía al mes siguiente). Sin clases CSS nuevas → sin build. **701 verdes.**
