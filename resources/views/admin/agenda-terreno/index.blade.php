@@ -27,14 +27,34 @@
                  fecha + técnico desde "Coordinar" (el form de edición). --}}
             @can('agendar servicio terreno')
                 @if ($porCoordinar->isNotEmpty())
-                    <div class="rounded-2xl border border-brand-200 bg-brand-50 p-4 shadow-sm sm:p-5">
+                    {{-- Carrusel horizontal: se ven ~2 solicitudes; "Ver más →" y "←"
+                         deslizan para revisar el resto (aparecen solo si hay más de 2). --}}
+                    <div class="rounded-2xl border border-brand-200 bg-brand-50 p-4 shadow-sm sm:p-5"
+                         x-data="{
+                            inicio: true, fin: false, hayMas: false,
+                            init() { this.$nextTick(() => this.actualizar()); window.addEventListener('resize', () => this.actualizar()); },
+                            actualizar() {
+                                const el = this.$refs.pista; if (! el) return;
+                                this.hayMas = el.scrollWidth > el.clientWidth + 4;
+                                this.inicio = el.scrollLeft <= 4;
+                                this.fin = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+                            },
+                            mover(dir) { this.$refs.pista.scrollBy({ left: dir * this.$refs.pista.clientWidth * 0.9, behavior: 'smooth' }); }
+                         }">
                         <div class="mb-3 flex items-center gap-2">
                             <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">{{ $porCoordinar->count() }}</span>
                             <h3 class="text-sm font-semibold text-brand-700">Por coordinar (solicitudes del cliente)</h3>
+                            <div class="ml-auto flex items-center gap-1.5" x-show="hayMas" x-cloak>
+                                <button type="button" x-on:click="mover(-1)" x-show="! inicio"
+                                        class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-brand-300 bg-white text-brand-700 transition hover:bg-brand-50" title="Anterior" aria-label="Anterior">&larr;</button>
+                                <button type="button" x-on:click="mover(1)" x-show="! fin"
+                                        class="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-white px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50">Ver más &rarr;</button>
+                            </div>
                         </div>
-                        <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <ul x-ref="pista" x-on:scroll.debounce.50ms="actualizar()"
+                            class="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             @foreach ($porCoordinar as $s)
-                                <li class="flex flex-col gap-3 rounded-xl border border-brand-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                                <li class="flex shrink-0 basis-[86%] snap-start flex-col gap-3 rounded-xl border border-brand-200 bg-white p-3 sm:basis-[calc(50%-0.375rem)]">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
                                             <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $s->tipo_label }}</span>
