@@ -44,7 +44,8 @@ class SeguimientoDemoTest extends TestCase
             ->assertSee('ST-YQUW6P4E')
             ->assertSee('Boceto')
             ->assertSee('En Revision')       // etapa normal (Str::headline)
-            ->assertSee('Esperando Repuesto')
+            ->assertSee('Reparado')
+            ->assertDontSee('Esperando Repuesto') // etapa quitada del seguimiento del cliente
             ->assertSee('Sin Solucion');     // cierre negativo (escenario alterno)
     }
 }
