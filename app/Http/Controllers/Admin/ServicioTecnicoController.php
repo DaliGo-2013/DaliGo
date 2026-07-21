@@ -624,7 +624,10 @@ class ServicioTecnicoController extends Controller
             ]);
         }
 
-        return redirect()->route('admin.servicio-tecnico.index')
+        // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
+        // el técnico puede enviar la cotización enseguida —"guarda antes de
+        // enviar"— sin perder la página y con los datos ya guardados a la vista.
+        return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
             ->with('status', "Reparación de la orden {$orden->folio} actualizada.");
     }
 
