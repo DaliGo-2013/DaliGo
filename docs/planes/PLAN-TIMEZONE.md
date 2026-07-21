@@ -1,6 +1,18 @@
 # PLAN-TIMEZONE · UTC → hora chilena SIN romper el motor — análisis y propuesta
-> **Estado: PROPUESTA (solo plan, CERO código) — sellado contra el código el 2026-07-20 (main @ `0e85281`)**
-> **GATE: visto bueno del Director + dueño ANTES de una línea de código** (dictado v17).
+> **Estado: ✅ APLICADO — 100% EN CÓDIGO (2026-07-21).** Evidencia por capa: **P2 día de
+> negocio** merge `293d0aa` (helper `FechaNegocio`, ~25 sitios, reloj determinista de la
+> suite) · **P1 render** merge `50f1f61` (macro `enChile()`, 8 formatos absolutos,
+> relativos intactos) · **calendario de agenda + hallazgo `update():151`** commit `daf948d`
+> — estos 2 los aplicó **Marcos por canal directo** (decisión del dueño 21-07) · **frontera
+> nocturna+mes blindada** con la rama solo-tests, merge `6e40051`. Pendiente SOLO
+> **P-TZ-03** (QA de borde del dueño ~21:30 Chile — no es código).
+> **Precedente que deja el cierre:** en territorio con churn activo (4 features de agenda
+> en 24h), perseguir el fix con ramas de la flota = colisión perpetua; el fix viaja por el
+> DUEÑO al dev del territorio y la flota **fija el comportamiento con tests que deben nacer
+> verdes**. Funcionó: cero colisiones, comportamiento blindado.
+> _(Historial: PROPUESTA sellada 2026-07-20 contra main @ `0e85281`; gate «visto bueno del
+> Director + dueño antes de una línea de código» (dictado v17) CUMPLIDO — aprobación
+> completa 20-07, ejecución v18-v22.)_
 
 > **Origen:** hallazgo #2 del QA 15-07 — el historial mostraba 15:45 cuando en Chile eran
 > 11:45 (+4h). `app.timezone` es `UTC` (default Laravel jamás tocado, `config/app.php:68`).

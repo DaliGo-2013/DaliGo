@@ -148,6 +148,12 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-07-21] Fix en territorio ajeno con churn activo: el fix viaja por el DUEÑO; la flota lo fija con tests que nacen verdes
+- **Síntoma:** un fix de 1-2 líneas en la agenda (territorio de Marcos, 4 features en 24h) murió DOS veces: la rama editaba un Blade que Marcos borró/reescribió antes del merge — colisión perpetua.
+- **Causa:** perseguir con ramas de la flota un archivo que otro dev está reescribiendo activamente; la rama siempre llega tarde al merge.
+- **Solución:** coreografía canal-directo + tests-flota (decisión del dueño 21-07, cierre del PLAN-TIMEZONE): el dueño le pasa las líneas exactas al dev del territorio (las aplicó como `daf948d`), y la flota sube una rama **SOLO-tests** (cero archivos del territorio) **gated**: los tests deben NACER VERDES — verde = el fix llegó y queda blindado contra regresiones; rojo = confirmación de que aún no llega, la rama espera. Cero colisiones.
+- **Evitar a futuro:** ante churn activo en el territorio del fix, no insistir con la 3ª rama: proponer las líneas exactas en el parte y pedir el canal directo; el valor de la flota queda en los tests de frontera (inmunes al churn por construcción).
+
 ### [2026-07-20] Render en hora chilena: macro `enChile()` SOLO para timestamps con hora — jamás sobre casts `date` (y los `diffForHumans` no se tocan)
 - **Síntoma:** (P-TZ-02) los timestamps absolutos de historiales/auditoría/tandas mostraban la hora UTC del storage (+4h): el QA del 15-07 leyó «15:45» cuando en Chile eran las 11:45.
 - **Causa:** el storage es UTC a propósito (opción C del PLAN-TIMEZONE) y ningún Blade convertía al mostrar — no existía helper central de render.
