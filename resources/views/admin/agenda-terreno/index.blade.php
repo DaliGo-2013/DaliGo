@@ -170,6 +170,18 @@
                                                 <p class="mt-0.5 truncate text-sm text-neutral-600">
                                                     {{ collect([$t->servicio?->nombre, $t->direccion, $t->ciudad])->filter()->implode(' · ') ?: '—' }}
                                                 </p>
+                                                {{-- Viaje de varios días y/o horario extendido (día completo). --}}
+                                                @php $rangoHoras = $t->hora_fin_corta && $t->hora_fin_corta !== $t->hora_corta; @endphp
+                                                @if ($t->abarca_varios_dias || $rangoHoras)
+                                                    <p class="mt-1 flex flex-wrap items-center gap-2">
+                                                        @if ($t->abarca_varios_dias)
+                                                            <span class="inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200">En terreno: {{ $t->rango_fechas_label }}</span>
+                                                        @endif
+                                                        @if ($rangoHoras)
+                                                            <span class="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">Horario: {{ $t->rango_horas_label }} hs</span>
+                                                        @endif
+                                                    </p>
+                                                @endif
                                                 @if ($t->descripcion)
                                                     <p class="mt-0.5 text-sm text-neutral-500">{{ $t->descripcion }}</p>
                                                 @endif
