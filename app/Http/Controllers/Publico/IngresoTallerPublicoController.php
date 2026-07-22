@@ -68,6 +68,9 @@ class IngresoTallerPublicoController extends Controller
             'tipos' => OrdenServicio::TIPOS,
             'facturaciones' => OrdenServicio::FACTURACION,
             'garantiaDocTipos' => OrdenServicio::GARANTIA_DOC_TIPOS,
+            // Volver a la pantalla principal del QR (firmada) para elegir otro
+            // modo de ingreso (por unidad / visita industrial).
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]),
         ]);
     }
 

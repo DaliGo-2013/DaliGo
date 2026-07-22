@@ -77,7 +77,10 @@ class IngresoTallerLotePublicoTest extends TestCase
 
         $this->get(route('ingreso-taller.lote.create', ['sucursal' => $sucursal->id]))->assertForbidden();
         $this->get(URL::signedRoute('ingreso-taller.lote.create', ['sucursal' => $sucursal->id]))
-            ->assertOk()->assertSee('Ingreso por cantidad');
+            ->assertOk()
+            ->assertSee('Ingreso por cantidad')
+            // Botón de regreso a la pantalla principal del QR (elegir otro modo).
+            ->assertSee('Volver al inicio');
     }
 
     public function test_chooser_muestra_las_dos_opciones(): void
