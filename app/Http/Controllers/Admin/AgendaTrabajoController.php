@@ -62,7 +62,7 @@ class AgendaTrabajoController extends Controller
         $inicioMes = $cursor->copy()->startOfMonth()->toDateString();
         $finMes = $cursor->copy()->endOfMonth()->toDateString();
         $trabajos = AgendaTrabajo::query()
-            ->with(['servicio', 'tecnico', 'repuestos'])
+            ->with(['servicio', 'tecnico', 'repuestos', 'cliente'])
             ->whereNotNull('fecha')
             ->whereDate('fecha', '<=', $finMes)
             ->where(function (Builder $q) use ($inicioMes) {
@@ -107,7 +107,12 @@ class AgendaTrabajoController extends Controller
             'trabajosDia' => $jobsPorDia->get($diaSel->toDateString()) ?? collect(),
             'puedeAgendar' => $request->user()->can('agendar servicio terreno'),
             // Solicitudes del cliente (QR) esperando coordinación (sin fecha).
-            'porCoordinar' => AgendaTrabajo::porCoordinar()->with('servicio')->get(),
+            'porCoordinar' => $porCoordinar = AgendaTrabajo::porCoordinar()->with('servicio')->get(),
+            // RUTs de esas solicitudes que YA están en el catálogo → marca "✓ en
+            // catálogo" (una sola consulta para todas). Cubre solicitudes viejas
+            // sin cliente_id enlazado.
+            'rutsEnCatalogo' => Cliente::whereIn('rut', $porCoordinar->pluck('cliente_rut')->filter()->unique()->all())
+                ->pluck('rut')->all(),
             'anio' => $anio,
             'mes' => $mes,
             'mesLabel' => ucfirst($cursor->translatedFormat('F Y')),
@@ -128,13 +133,16 @@ class AgendaTrabajoController extends Controller
 
     public function create(): View
     {
-        return view('admin.agenda-terreno.create', $this->formData());
+        return view('admin.agenda-terreno.create', array_merge($this->formData(), [
+            'clienteCatalogo' => null,
+        ]));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateData($request);
         $this->bloquearSiOcupado($request, $data);
+        $this->sincronizarCatalogo($request, $data);
         $data['creado_por'] = $request->user()->name;
 
         $trabajo = AgendaTrabajo::create($data);
@@ -151,7 +159,13 @@ class AgendaTrabajoController extends Controller
     public function edit(AgendaTrabajo $trabajo): View
     {
         return view('admin.agenda-terreno.edit', array_merge(
-            ['trabajo' => $trabajo->load(['servicio', 'tecnico'])],
+            [
+                'trabajo' => $trabajo->load(['servicio', 'tecnico']),
+                // Ficha del catálogo que calza con este trabajo: la enlazada o, si
+                // no la hay (solicitud vieja), la que matchee por RUT. Alimenta el
+                // recuadro "Cliente conocido" + botón "Usar datos guardados".
+                'clienteCatalogo' => $trabajo->cliente ?: Cliente::buscarPorRut($trabajo->cliente_rut),
+            ],
             // Incluye el servicio ACTUAL del trabajo aunque esté inactivo: si no
             // estuviera en el select, guardar cualquier edición lo desvincularía
             // en silencio (x-model resetea a la opción vacía).
@@ -163,6 +177,7 @@ class AgendaTrabajoController extends Controller
     {
         $data = $this->validateData($request, editando: true);
         $this->bloquearSiOcupado($request, $data, $trabajo->id);
+        $this->sincronizarCatalogo($request, $data);
 
         // Estado ANTES de guardar, para decidir si hay que avisar al cliente.
         $antes = [
@@ -273,6 +288,65 @@ class AgendaTrabajoController extends Controller
     }
 
     // --- Helpers --------------------------------------------------------
+
+    /**
+     * Enlaza el trabajo con la ficha del catálogo por RUT y, si quien coordina lo
+     * pidió, guarda un cliente nuevo o actualiza una ficha LOCAL:
+     *  - RUT ya en catálogo → enlaza (cliente_id) y, con `actualizar_catalogo` y
+     *    solo si la ficha es LOCAL (no de Bsale), refresca sus datos de contacto.
+     *  - RUT nuevo + `guardar_en_catalogo` → crea la ficha y la enlaza.
+     * OJO: NO se tocan fichas de Bsale (email/telefono/direccion/ciudad los pisa
+     * la sync horaria; su fuente de verdad es Bsale). Muta $data['cliente_id'].
+     */
+    private function sincronizarCatalogo(Request $request, array &$data): void
+    {
+        $rut = $data['cliente_rut'] ?? null;
+        if (blank($rut)) {
+            return;
+        }
+
+        $existente = Cliente::where('rut', $rut)->first();
+
+        if ($existente) {
+            $data['cliente_id'] = $existente->id; // asegura el enlace
+
+            if ($request->boolean('actualizar_catalogo') && ! $existente->es_de_bsale) {
+                $existente->update($this->datosContactoCliente($data));
+            }
+
+            return;
+        }
+
+        if ($request->boolean('guardar_en_catalogo')) {
+            try {
+                $cliente = Cliente::create(array_merge(
+                    ['rut' => $rut],
+                    $this->datosContactoCliente($data),
+                ));
+                $data['cliente_id'] = $cliente->id;
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Carrera: si otro proceso ya creó ese RUT, enlaza al existente.
+                $data['cliente_id'] = Cliente::where('rut', $rut)->value('id') ?? ($data['cliente_id'] ?? null);
+            }
+        }
+    }
+
+    /**
+     * Campos de contacto de la ficha tomados de lo que quedó en el trabajo (razón
+     * social = nombre del cliente). Compartido por crear/actualizar catálogo.
+     *
+     * @return array<string, string|null>
+     */
+    private function datosContactoCliente(array $data): array
+    {
+        return [
+            'razon_social' => $data['cliente_nombre'],
+            'email' => $data['cliente_email'] ?? null,
+            'telefono' => $data['cliente_telefono'] ?? null,
+            'direccion' => $data['direccion'] ?? null,
+            'ciudad' => $data['ciudad'] ?? null,
+        ];
+    }
 
     /**
      * Decide, comparando el estado ANTES/DESPUÉS de editar, si hay que avisar al

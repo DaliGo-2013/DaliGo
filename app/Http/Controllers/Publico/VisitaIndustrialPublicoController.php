@@ -78,12 +78,18 @@ class VisitaIndustrialPublicoController extends Controller
             ]);
         }
 
+        // Si el RUT ya está en el catálogo, la solicitud nace ENLAZADA a esa
+        // ficha (invisible para el cliente): quien coordina la reconoce de una y
+        // reutiliza los datos guardados. Si no está, queda sin enlazar (null).
+        $clienteCatalogo = Cliente::buscarPorRut($data['cliente_rut']);
+
         $trabajo = AgendaTrabajo::create([
             'tipo' => $data['tipo'],
             'fecha' => null,                    // la pone quien coordina
             'fecha_preferida' => $data['fecha_preferida'] ?? null,
             'estado' => 'solicitado',
             'servicio_terreno_id' => $data['servicio_terreno_id'] ?? null,
+            'cliente_id' => $clienteCatalogo?->id,
             'cliente_nombre' => $data['cliente_nombre'],
             'cliente_rut' => $data['cliente_rut'],
             'cliente_telefono' => $data['cliente_telefono'],

@@ -59,6 +59,11 @@
                                         <div class="flex flex-wrap items-center gap-2">
                                             <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $s->tipo_label }}</span>
                                             <span class="truncate font-medium text-neutral-900">{{ $s->cliente_nombre }}</span>
+                                            @if ($s->cliente_id || in_array($s->cliente_rut, $rutsEnCatalogo, true))
+                                                <span class="inline-flex items-center gap-0.5 rounded-full bg-brand-100 px-1.5 py-0.5 text-[11px] font-medium text-brand-700" title="Este cliente ya está en tu catálogo">
+                                                    <x-icon.check class="h-3 w-3" /> en catálogo
+                                                </span>
+                                            @endif
                                         </div>
                                         <p class="truncate text-sm text-neutral-600">
                                             {{ collect([$s->servicio?->nombre, $s->direccion, $s->ciudad])->filter()->implode(' · ') }}
@@ -193,7 +198,7 @@
                                 <form method="POST" action="{{ route('admin.agenda-terreno.update', $t) }}">
                                     @csrf
                                     @method('PUT')
-                                    @include('admin.agenda-terreno._form', ['trabajo' => $t])
+                                    @include('admin.agenda-terreno._form', ['trabajo' => $t, 'clienteCatalogo' => $t->cliente])
                                     <div class="mt-6 flex items-center gap-3">
                                         <x-primary-button>Guardar cambios</x-primary-button>
                                     </div>
@@ -225,7 +230,7 @@
                                 <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Nuevo trabajo</p>
                                 <form method="POST" action="{{ route('admin.agenda-terreno.store') }}">
                                     @csrf
-                                    @include('admin.agenda-terreno._form', ['trabajo' => null, 'fechaDefault' => $isoSel])
+                                    @include('admin.agenda-terreno._form', ['trabajo' => null, 'fechaDefault' => $isoSel, 'clienteCatalogo' => null])
                                     <div class="mt-6 flex items-center gap-3">
                                         <x-primary-button>Agendar trabajo</x-primary-button>
                                         @unless ($trabajosDia->isEmpty())
