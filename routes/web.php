@@ -173,8 +173,19 @@ Route::middleware('auth')
             // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
             Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])
                 ->whereNumber('foto')->name('servicio-tecnico.foto');
+            // Comprobante de pago de una cotización (disco privado, con sesión):
+            // lo ve todo el equipo con acceso al ST (transparencia del pago).
+            Route::get('servicio-tecnico/cotizacion/{cotizacion}/comprobante', [ServicioTecnicoController::class, 'comprobanteCotizacion'])
+                ->name('servicio-tecnico.cotizacion.comprobante');
             Route::get('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'show'])
                 ->whereNumber('orden')->name('servicio-tecnico.show');
+        });
+
+        // Autorizar la reparación tras coordinar el pago: vendedor/jefe_ventas/
+        // tecnico/admin (permiso propio; NO exige 'manage', que es solo del taller).
+        Route::middleware('permission:autorizar reparacion')->group(function () {
+            Route::post('servicio-tecnico/{orden}/cotizacion/autorizar', [ServicioTecnicoController::class, 'autorizarReparacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.autorizar');
         });
 
         // Confirmar la recepcion de lo que llego por QR: lo AUTORIZA el jefe de

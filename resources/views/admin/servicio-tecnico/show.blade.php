@@ -194,7 +194,11 @@
 
             {{-- Cotizaciones enviadas al cliente: la ruta completa visible para
                  todo el que ve la orden (transparencia pedida por el dueño). --}}
-            @php $dgCotizaciones = $orden->cotizaciones()->latest('id')->get(); @endphp
+            @php
+                $dgCotizaciones = $orden->cotizaciones()->latest('id')->get();
+                // Cotización ACEPTADA por el cliente (candidata a autorizar / mostrar el pago).
+                $dgAceptada = $dgCotizaciones->firstWhere('estado', 'aceptada');
+            @endphp
             @if ($dgCotizaciones->isNotEmpty())
                 <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cotizaciones al cliente</h3>
@@ -209,6 +213,65 @@
                             </li>
                         @endforeach
                     </ul>
+
+                    {{-- Pago + autorización de la reparación (cotización aceptada). --}}
+                    @if ($dgAceptada)
+                        <div class="mt-4 border-t border-neutral-100 pt-4">
+                            @if ($dgAceptada->esta_autorizada)
+                                {{-- Ya autorizada: info del pago visible para todo el equipo. --}}
+                                <div class="rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                                    <p class="font-semibold text-brand-700">Reparación autorizada</p>
+                                    <p class="mt-0.5">
+                                        {{ $dgAceptada->pago_forma_label }}
+                                        · autorizó {{ $dgAceptada->autorizadaPor?->name ?? '—' }}
+                                        · {{ $dgAceptada->autorizada_at?->format('d-m-Y H:i') }}
+                                    </p>
+                                    @if (filled($dgAceptada->pago_nota))<p class="mt-0.5 text-brand-700">“{{ $dgAceptada->pago_nota }}”</p>@endif
+                                    @if ($dgAceptada->pago_comprobante_ruta)
+                                        <a href="{{ route('admin.servicio-tecnico.cotizacion.comprobante', $dgAceptada) }}" target="_blank"
+                                           class="mt-1 inline-block font-medium text-brand-600 underline">Ver comprobante de pago</a>
+                                    @endif
+                                </div>
+                            @elseif (auth()->user()->can('autorizar reparacion'))
+                                {{-- Pendiente de autorizar: ventas coordina el pago y autoriza. --}}
+                                <p class="text-sm font-medium text-neutral-700">El cliente aceptó. Coordina el pago y autoriza la reparación:</p>
+                                <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.autorizar', $orden) }}"
+                                      enctype="multipart/form-data" class="mt-3 space-y-3" data-una-vez>
+                                    @csrf
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <x-input-label for="pago_forma">Forma de pago <span class="text-red-500">*</span></x-input-label>
+                                            <x-select id="pago_forma" name="pago_forma" class="mt-1.5" required>
+                                                <option value="">— Selecciona —</option>
+                                                @foreach (\App\Models\OrdenServicioCotizacion::FORMAS_PAGO as $val => $et)
+                                                    <option value="{{ $val }}" @selected(old('pago_forma') === $val)>{{ $et }}</option>
+                                                @endforeach
+                                            </x-select>
+                                            <x-input-error :messages="$errors->get('pago_forma')" class="mt-2" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="comprobante" value="Comprobante (opcional)" />
+                                            <input id="comprobante" name="comprobante" type="file" accept="image/*"
+                                                   class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 shadow-sm">
+                                            <x-input-hint>Imagen de la transferencia, si el cliente la envió.</x-input-hint>
+                                            <x-input-error :messages="$errors->get('comprobante')" class="mt-2" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <x-input-label for="pago_nota" value="Nota (opcional)" />
+                                        <x-textarea id="pago_nota" name="pago_nota" rows="2" class="mt-1.5" maxlength="1000"
+                                                    placeholder="Ej. pagó 50% ahora, resto al retiro">{{ old('pago_nota') }}</x-textarea>
+                                    </div>
+                                    <div>
+                                        <x-primary-button>Autorizar reparación</x-primary-button>
+                                        <span class="ml-2 text-xs text-neutral-400">Avisa al técnico para proceder. La info del pago la verá todo el equipo.</span>
+                                    </div>
+                                </form>
+                            @else
+                                <p class="text-sm text-neutral-500">El cliente aceptó. Pendiente de que ventas coordine el pago y autorice la reparación.</p>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             @endif
 

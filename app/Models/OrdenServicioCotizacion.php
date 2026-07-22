@@ -71,6 +71,19 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
         'respuesta_ip',
         'respuesta_user_agent',
         'enviada_por',
+        'pago_forma',
+        'pago_comprobante_ruta',
+        'pago_nota',
+        'autorizada_at',
+        'autorizada_por',
+    ];
+
+    // Forma de pago con que ventas coordina el cobro de la cotización aceptada.
+    public const FORMAS_PAGO = [
+        'sala_ventas' => 'Pagó en sala de ventas',
+        'transferencia' => 'Transferencia',
+        'efectivo' => 'Efectivo',
+        'al_retiro' => 'Paga al retiro',
     ];
 
     protected function casts(): array
@@ -86,7 +99,19 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
             'vence_at' => 'datetime',
             'correo_enviado_at' => 'datetime',
             'respondida_at' => 'datetime',
+            'autorizada_at' => 'datetime',
         ];
+    }
+
+    /** ¿Ya se autorizó la reparación (ventas coordinó el pago)? */
+    public function getEstaAutorizadaAttribute(): bool
+    {
+        return $this->autorizada_at !== null;
+    }
+
+    public function getPagoFormaLabelAttribute(): ?string
+    {
+        return $this->pago_forma ? (self::FORMAS_PAGO[$this->pago_forma] ?? $this->pago_forma) : null;
     }
 
     /** Binding de la ruta pública por token (el id no viaja en el link). */
@@ -105,6 +130,12 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
     public function enviadaPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enviada_por');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function autorizadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'autorizada_por');
     }
 
     /** ¿El cliente todavía puede responder? (enviada y no vencida). */
