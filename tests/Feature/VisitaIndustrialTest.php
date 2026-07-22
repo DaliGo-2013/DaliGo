@@ -63,7 +63,10 @@ class VisitaIndustrialTest extends TestCase
         $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
             ->assertOk()
             ->assertSee('Visita / revisión industrial')
-            ->assertSee('Visita técnica');
+            ->assertSee('Visita técnica')
+            // Botón de regreso a la pantalla principal del QR (elegir otro modo).
+            ->assertSee('Volver al inicio')
+            ->assertSee('ingreso-taller?sucursal='.$sucursal->id, false);
 
         // La opción aparece en el chooser del QR.
         $this->get(URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]))

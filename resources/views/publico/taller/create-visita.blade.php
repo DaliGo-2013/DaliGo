@@ -120,5 +120,14 @@
 
         <x-primary-button class="w-full justify-center py-3 text-base">Enviar solicitud</x-primary-button>
         <p class="text-center text-xs text-neutral-400">Te contactaremos para coordinar el día y la hora de la visita.</p>
+
+        {{-- Volver a la pantalla principal (elegir por unidad / por cantidad).
+             Secundario para no competir con el envío. --}}
+        @if (! empty($urlInicio))
+            <a href="{{ $urlInicio }}"
+               class="block w-full rounded-xl border border-neutral-300 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                Volver al inicio
+            </a>
+        @endif
     </form>
 </x-guest-layout>
