@@ -80,6 +80,44 @@ class ConfirmacionVisitaTest extends TestCase
         Mail::assertSent(AgendaTrabajoAviso::class, fn ($m) => $m->motivo === 'agendada' && $m->hasTo('cliente@example.com'));
     }
 
+    public function test_agendar_en_la_fecha_preferida_no_pide_confirmacion(): void
+    {
+        // El cliente pidió un día; el vendedor lo respeta → correo informativo SIN
+        // botón de confirmar (ya lo eligió; sería doble confirmación).
+        Mail::fake();
+        $preferida = now()->addDays(5)->toDateString();
+        $s = AgendaTrabajo::factory()->create([
+            'estado' => 'solicitado', 'fecha' => null, 'fecha_preferida' => $preferida,
+            'cliente_nombre' => 'Aguas Claras SpA', 'cliente_email' => 'cliente@example.com',
+        ]);
+
+        $this->actingAs($this->vendedor())
+            ->put(route('admin.agenda-terreno.update', $s), $this->coordinarPayload(['fecha' => $preferida]))
+            ->assertRedirect();
+
+        $s->refresh();
+        $this->assertSame('agendado', $s->estado);
+        $this->assertNull($s->confirmacion_token);   // no se le pide confirmar
+        Mail::assertSent(AgendaTrabajoAviso::class, fn ($m) => $m->motivo === 'agendada' && $m->hasTo('cliente@example.com'));
+    }
+
+    public function test_agendar_en_otra_fecha_si_pide_confirmacion(): void
+    {
+        // El técnico no puede el día pedido → el vendedor propone otro → SÍ se le
+        // pide al cliente que confirme la fecha nueva.
+        Mail::fake();
+        $s = AgendaTrabajo::factory()->create([
+            'estado' => 'solicitado', 'fecha' => null, 'fecha_preferida' => now()->addDays(5)->toDateString(),
+            'cliente_email' => 'cliente@example.com',
+        ]);
+
+        $this->actingAs($this->vendedor())
+            ->put(route('admin.agenda-terreno.update', $s), $this->coordinarPayload(['fecha' => now()->addDays(9)->toDateString()]))
+            ->assertRedirect();
+
+        $this->assertNotNull($s->fresh()->confirmacion_token);   // confirma la fecha nueva
+    }
+
     public function test_coordinar_guia_como_confirmarle_al_cliente(): void
     {
         // Al abrir "Coordinar" una solicitud (sin agendar), la pantalla explica

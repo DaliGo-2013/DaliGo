@@ -273,19 +273,21 @@
                         @if (filled($t->cliente_confirmacion_nota))
                             <p class="mt-0.5 text-neutral-600">“{{ $t->cliente_confirmacion_nota }}”</p>
                         @endif
+                    @elseif (! $t->requiereConfirmacionCliente())
+                        Se agendó para el día que el cliente pidió; se le avisó por correo (no necesita confirmar, ya lo eligió).
                     @elseif ($t->confirmacion_enviada_at)
                         Confirmación enviada al cliente el {{ $t->confirmacion_enviada_at->format('d-m-Y H:i') }} · esperando su respuesta. Si cambias la fecha/hora y guardas, se reenvía.
                     @else
-                        Al guardar se le envía al cliente la confirmación de la visita por correo (con el día y un link para responder).
+                        Al guardar se le envía al cliente la confirmación de la visita por correo (con un link para responder).
                     @endif
                 </div>
             @else
                 {{-- Todavía solicitado / no agendado: guía para confirmarle al cliente. --}}
                 <div class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-brand-700">
                     <span class="font-medium">¿Confirmarle al cliente?</span>
-                    Pon la <span class="font-medium">fecha</span>, cambia el <span class="font-medium">estado a «Agendado»</span> y guarda:
-                    se le envía un correo con el día y un link para que confirme. Si <span class="font-medium">no</span> se puede,
-                    cambia el estado a «Cancelado» y guarda para avisarle que se anula.
+                    Pon la <span class="font-medium">fecha</span>, cambia el <span class="font-medium">estado a «Agendado»</span> y guarda.
+                    Si le cambias el día que pidió, el correo lleva un <span class="font-medium">link para que confirme</span>;
+                    si respetas su día, va solo como aviso. Si <span class="font-medium">no</span> se puede, «Cancelado» y guarda para avisarle.
                 </div>
             @endif
         </div>

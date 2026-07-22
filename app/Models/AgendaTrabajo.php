@@ -255,6 +255,37 @@ class AgendaTrabajo extends Model implements AuditableContract
     }
 
     /**
+     * ¿Hay que pedirle al cliente que confirme la fecha? El cliente ya "eligió"
+     * su `fecha_preferida` al pedir por el QR: si la cita quedó agendada para ESE
+     * día, pedirle confirmar sería redundante (doble confirmación). Solo se pide
+     * cuando la fecha agendada DIFIERE de la que pidió (o no indicó ninguna).
+     */
+    public function requiereConfirmacionCliente(): bool
+    {
+        if (! $this->fecha) {
+            return false;
+        }
+
+        return blank($this->fecha_preferida) || ! $this->fecha->isSameDay($this->fecha_preferida);
+    }
+
+    /**
+     * Deja la cita como "avisada sin confirmación pendiente" (se agendó en el día
+     * que el cliente pidió): sin token ni respuesta esperada. El correo sale como
+     * informativo (sin botón de confirmar).
+     */
+    public function marcarAvisoSinConfirmacion(): void
+    {
+        $this->forceFill([
+            'confirmacion_token' => null,
+            'confirmacion_enviada_at' => null,
+            'cliente_confirmacion' => null,
+            'cliente_confirmacion_at' => null,
+            'cliente_confirmacion_nota' => null,
+        ])->save();
+    }
+
+    /**
      * ¿El cliente todavía puede confirmar? Cita agendada, con token, con fecha
      * futura (no tiene sentido confirmar una visita ya pasada) y sin responder
      * aún (la primera respuesta manda; reprogramar la reabre reseteándola).

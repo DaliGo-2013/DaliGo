@@ -4,8 +4,10 @@
     $cuando = $t->fecha?->translatedFormat('l d \d\e F');
     $hora = $t->hora_corta ? ($t->hora_fin_corta && $t->hora_fin_corta !== $t->hora_corta
         ? $t->hora_corta.' a '.$t->hora_fin_corta.' hrs' : 'a las '.$t->hora_corta.' hrs') : null;
+    // Sin link de confirmar = se agendó el día que el cliente pidió → informativo.
+    $agendadaInformativa = $motivo === 'agendada' && ! $urlConfirmar;
     $titulos = [
-        'agendada' => 'Confirmación de tu visita',
+        'agendada' => $agendadaInformativa ? 'Tu visita quedó agendada' : 'Confirmación de tu visita',
         'reprogramada' => 'Cambiamos la fecha de tu visita',
         'anulada' => 'Tu visita fue cancelada',
     ];
@@ -45,6 +47,8 @@
                                     <br>Si tienes dudas o quieres revisar otra alternativa, contáctanos.
                                 @elseif ($motivo === 'reprogramada')
                                     tuvimos que <strong>cambiar la fecha</strong> de tu visita. Estos son los nuevos datos:
+                                @elseif ($agendadaInformativa)
+                                    agendamos tu {{ mb_strtolower($t->tipo_label) }} para el <strong>día que pediste</strong>. Estos son los datos:
                                 @else
                                     coordinamos tu {{ mb_strtolower($t->tipo_label) }}. Estos son los datos:
                                 @endif
@@ -94,6 +98,12 @@
                                 </table>
                                 <p style="margin:0; font-size:13px; color:#525252; line-height:1.5; text-align:center;">
                                     Con un clic nos confirmas que estarás, o nos avisas si <strong>no puedes ese día</strong> para reagendar.
+                                </p>
+                            @endif
+
+                            @if ($agendadaInformativa)
+                                <p style="margin:0; font-size:14px; color:#525252; line-height:1.6;">
+                                    ¡Nos vemos ese día! Si necesitas cambiarlo, responde este correo o llámanos.
                                 </p>
                             @endif
                         </td>

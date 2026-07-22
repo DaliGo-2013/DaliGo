@@ -424,7 +424,14 @@ class AgendaTrabajoController extends Controller
     {
         try {
             if ($motivo !== 'anulada') {
-                $trabajo->prepararConfirmacionCliente();
+                // Solo se le pide CONFIRMAR si la fecha agendada difiere de la que
+                // pidió (si la respetamos, ya la eligió → correo informativo sin
+                // botón, para no pedir una confirmación redundante).
+                if ($trabajo->requiereConfirmacionCliente()) {
+                    $trabajo->prepararConfirmacionCliente();
+                } else {
+                    $trabajo->marcarAvisoSinConfirmacion();
+                }
             }
             Mail::to($trabajo->cliente_email)->send(new AgendaTrabajoAviso($trabajo, $motivo));
         } catch (\Throwable $e) {
