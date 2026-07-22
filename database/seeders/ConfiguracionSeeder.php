@@ -103,7 +103,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_enviada',
                 'valor' => json_encode([
                     'asunto' => 'Cotización enviada — Orden {folio} ({cliente})',
-                    'cuerpo' => "Se envió la cotización de la orden {folio} a {cliente} por {total}.\nEnviada por: {enviada_por}.\n\nVer la orden: {url}",
+                    'cuerpo' => "Se envió la cotización de la orden {folio} a {cliente} por {total}.\nEquipo: {equipo}\nEnviada por: {enviada_por}.\n\nVer la orden: {url}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -113,7 +113,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_respondida',
                 'valor' => json_encode([
                     'asunto' => 'Cotización {respuesta} — Orden {folio} ({cliente})',
-                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nMonto: {total}.\n\nVer la orden: {url}",
+                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nEquipo: {equipo} · Monto: {total}.\n\nVer la orden: {url}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -123,7 +123,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_autorizada',
                 'valor' => json_encode([
                     'asunto' => 'Reparación autorizada — Orden {folio} ({cliente})',
-                    'cuerpo' => "Ventas autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nPago: {pago} · autorizó: {autorizada_por}.\nTécnico: puedes proceder con la reparación.\n\nVer la orden: {url}",
+                    'cuerpo' => "Ventas autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nEquipo: {equipo}\nPago: {pago} · autorizó: {autorizada_por}.\nTécnico: puedes proceder con la reparación.\n\nVer la orden: {url}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -135,7 +135,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_solicitada',
                 'valor' => json_encode([
                     'asunto' => 'Nueva solicitud por coordinar: {cliente} ({tipo})',
-                    'cuerpo' => "{cliente} pidió {tipo} en {ciudad}.\nTeléfono: {telefono} · Prefiere: {preferida}\n\nCoordínala en la agenda de terreno: {url}",
+                    'cuerpo' => "{cliente} pidió {tipo} en {ciudad}.\nServicio: {servicio} · Dirección: {direccion}\nTeléfono: {telefono} · Prefiere: {preferida}\nDetalle del cliente: {descripcion}\n\nCoordínala en la agenda de terreno: {url}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -155,7 +155,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_rechazada',
                 'valor' => json_encode([
                     'asunto' => 'Solicitud rechazada: {cliente} ({tipo})',
-                    'cuerpo' => "Se rechazó la solicitud de {cliente} ({tipo}).\nMotivo: {motivo}\nSe avisó al cliente por correo.\n\nVer en la agenda: {url}",
+                    'cuerpo' => "Se rechazó la solicitud de {cliente} ({tipo}).\nMotivo: {motivo}\nRechazó: {rechazado_por} · Teléfono: {telefono} · Prefería: {preferida}\nSe avisó al cliente por correo.\n\nVer en la agenda: {url}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
