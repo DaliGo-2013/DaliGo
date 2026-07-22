@@ -34,5 +34,12 @@
         <p class="mt-5 text-sm text-neutral-500">
             Te llamaremos al <span class="font-medium text-neutral-700">{{ $trabajo->cliente_telefono }}</span> para coordinar el día y la hora de la visita.
         </p>
+
+        @if (! empty($urlInicio))
+            <a href="{{ $urlInicio }}"
+               class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
+                Volver al inicio
+            </a>
+        @endif
     </div>
 </x-guest-layout>

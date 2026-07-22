@@ -36,5 +36,12 @@
             Muéstrale esta pantalla al encargado del mostrador para que reciba tu equipo.
             Te enviaremos el detalle a <span class="font-medium">{{ $orden->cliente_email }}</span>.
         </p>
+
+        @if (! empty($urlInicio))
+            <a href="{{ $urlInicio }}"
+               class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
+                Volver al inicio
+            </a>
+        @endif
     </div>
 </x-guest-layout>

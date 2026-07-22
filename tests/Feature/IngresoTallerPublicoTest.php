@@ -394,7 +394,8 @@ class IngresoTallerPublicoTest extends TestCase
         $this->get(URL::signedRoute('ingreso-taller.gracias', ['orden' => $orden->id]))
             ->assertOk()
             ->assertSee($orden->folio)
-            ->assertSee('ana@correo.cl');
+            ->assertSee('ana@correo.cl')
+            ->assertSee('Volver al inicio'); // botón de regreso a la pantalla del QR
     }
 
     // --- Confirmacion del encargado ---
