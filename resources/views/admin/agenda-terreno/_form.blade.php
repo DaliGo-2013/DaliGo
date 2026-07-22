@@ -128,6 +128,35 @@
         <x-input-hint>Si ya existe, elígelo y se rellenan sus datos; si no, escríbelos abajo.</x-input-hint>
     </div>
 
+    {{-- "Cliente conocido": si el RUT de esta solicitud ya está en el catálogo,
+         se reconoce solo y con un clic se rellenan sus datos guardados (quedan
+         editables: si algo cambió, se corrige el casillero y listo). --}}
+    @php $cc = $clienteCatalogo ?? null; @endphp
+    @if ($cc)
+        <div class="sm:col-span-2 rounded-xl border border-brand-200 bg-brand-50 p-3">
+            <div class="flex items-start gap-2">
+                <x-icon.check class="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                <div class="min-w-0 text-sm">
+                    <p class="font-medium text-brand-700">
+                        Este RUT ya está en tu catálogo: {{ $cc->razon_social }}@if ($cc->vendedor_nombre) <span class="font-normal text-brand-600">· vendedor {{ $cc->vendedor_nombre }}</span>@endif
+                    </p>
+                    <p class="mt-0.5 text-neutral-600">
+                        Guardado: {{ collect([$cc->telefono, $cc->email, $cc->direccion, $cc->ciudad])->filter()->implode(' · ') ?: 'sin datos de contacto' }}
+                    </p>
+                    <button type="button"
+                            x-on:click="elegirCliente(@js([
+                                'id' => $cc->id, 'rut' => $cc->rut, 'razon_social' => $cc->razon_social,
+                                'telefono' => $cc->telefono, 'email' => $cc->email,
+                                'direccion' => $cc->direccion, 'ciudad' => $cc->ciudad,
+                            ]))"
+                            class="mt-2 inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-white px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-100">
+                        Usar datos guardados
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <input type="hidden" name="cliente_id" :value="clienteId">
 
     <div>
@@ -165,6 +194,30 @@
         <x-text-input id="ciudad" name="ciudad" type="text" class="mt-1.5 w-full" required
             maxlength="191" :value="old('ciudad', $t?->ciudad)" />
         <x-input-error :messages="$errors->get('ciudad')" class="mt-2" />
+    </div>
+
+    {{-- Guardar/actualizar en el catálogo. Ficha de Bsale: NO se toca (la sync
+         horaria la pisa) → se avisa. Ficha local: se puede actualizar. Sin ficha:
+         se ofrece guardarla para autocompletar la próxima vez. --}}
+    <div class="sm:col-span-2">
+        @if ($cc && $cc->es_de_bsale)
+            <p class="rounded-xl bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+                Ficha oficial en Bsale. Lo que corrijas aquí se usa en esta visita; para dejarlo
+                permanente, actualízalo en Bsale (DaliGo lo re-sincroniza solo cada hora).
+            </p>
+        @elseif ($cc)
+            <label class="inline-flex items-start gap-2 text-sm text-neutral-700">
+                <input type="checkbox" name="actualizar_catalogo" value="1"
+                       class="mt-0.5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
+                <span>Actualizar los datos guardados de este cliente con lo de arriba.</span>
+            </label>
+        @else
+            <label class="inline-flex items-start gap-2 text-sm text-neutral-700">
+                <input type="checkbox" name="guardar_en_catalogo" value="1"
+                       class="mt-0.5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
+                <span>Guardar este cliente en el catálogo para autocompletarlo la próxima vez.</span>
+            </label>
+        @endif
     </div>
 
     {{-- Técnico industrial asignado. Si hay UN solo técnico (el caso normal:

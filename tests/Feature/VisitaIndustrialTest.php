@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AgendaTrabajo;
+use App\Models\Cliente;
 use App\Models\ServicioTerreno;
 use App\Models\Sucursal;
 use App\Models\User;
@@ -250,5 +251,120 @@ class VisitaIndustrialTest extends TestCase
                 'descripcion' => 'Trabajo sin fecha',
             ])
             ->assertSessionHasErrors('fecha');
+    }
+
+    // --- Catálogo de clientes: reconocer / guardar / actualizar ---
+
+    public function test_la_solicitud_qr_se_enlaza_a_la_ficha_conocida_por_rut(): void
+    {
+        // El RUT del payload (12.345.678-5) ya está en el catálogo → nace enlazada.
+        $cliente = Cliente::factory()->create(['rut' => '12345678-5']);
+
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+
+        $this->assertSame($cliente->id, AgendaTrabajo::first()->cliente_id);
+    }
+
+    public function test_la_solicitud_qr_no_se_enlaza_si_el_rut_es_desconocido(): void
+    {
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+
+        $this->assertNull(AgendaTrabajo::first()->cliente_id);
+    }
+
+    public function test_coordinar_una_solicitud_sin_fecha_reconoce_al_cliente(): void
+    {
+        // Regresión: abrir "Coordinar" (edit) de una solicitud SIN fecha no debe
+        // crashear, y muestra el recuadro "Cliente conocido" con los datos guardados.
+        Cliente::factory()->create([
+            'rut' => '12345678-5', 'razon_social' => 'Aguas Claras SpA', 'telefono' => '+56 2 2555 0000',
+        ]);
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $t = AgendaTrabajo::first();
+
+        $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.edit', $t))
+            ->assertOk()
+            ->assertSee('Coordinar solicitud')
+            ->assertSee('ya está en tu catálogo')
+            ->assertSee('Usar datos guardados')
+            ->assertSee('+56 2 2555 0000');
+    }
+
+    public function test_guardar_en_catalogo_crea_la_ficha_local_y_la_enlaza(): void
+    {
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $t = AgendaTrabajo::first();
+        $this->assertNull($t->cliente_id); // el RUT no estaba en el catálogo
+
+        $this->actingAs($this->vendedor())
+            ->put(route('admin.agenda-terreno.update', $t), $this->coordinarPayload($t, [
+                'guardar_en_catalogo' => '1',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $cliente = Cliente::where('rut', '12345678-5')->first();
+        $this->assertNotNull($cliente);
+        $this->assertSame('Aguas Claras SpA', $cliente->razon_social);
+        $this->assertNull($cliente->bsale_client_id);          // ficha LOCAL, no de Bsale
+        $this->assertSame($cliente->id, $t->fresh()->cliente_id);
+    }
+
+    public function test_actualizar_catalogo_actualiza_una_ficha_local(): void
+    {
+        $cliente = Cliente::factory()->create([
+            'rut' => '12345678-5', 'telefono' => '+56 9 0000 0000', 'bsale_client_id' => null,
+        ]);
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $t = AgendaTrabajo::first();
+
+        $this->actingAs($this->vendedor())
+            ->put(route('admin.agenda-terreno.update', $t), $this->coordinarPayload($t, [
+                'cliente_telefono' => '+56 9 1111 2222',       // el cliente cambió de número
+                'actualizar_catalogo' => '1',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('+56 9 1111 2222', $cliente->fresh()->telefono);
+    }
+
+    public function test_actualizar_catalogo_no_toca_una_ficha_de_bsale(): void
+    {
+        // Ficha espejo de Bsale: la sync horaria es su fuente de verdad, así que
+        // NO se pisa desde DaliGo (aunque marquen la casilla).
+        $cliente = Cliente::factory()->create([
+            'rut' => '12345678-5', 'telefono' => '+56 9 0000 0000', 'bsale_client_id' => 777,
+        ]);
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $t = AgendaTrabajo::first();
+
+        $this->actingAs($this->vendedor())
+            ->put(route('admin.agenda-terreno.update', $t), $this->coordinarPayload($t, [
+                'cliente_telefono' => '+56 9 1111 2222',
+                'actualizar_catalogo' => '1',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('+56 9 0000 0000', $cliente->fresh()->telefono);   // la ficha no cambia
+        $this->assertSame('+56 9 1111 2222', $t->fresh()->cliente_telefono); // pero la visita sí usa el dato nuevo
+    }
+
+    /**
+     * Payload para coordinar (PUT) una solicitud manteniéndola sin fecha, tomando
+     * los datos del trabajo y permitiendo overrides (teléfono nuevo, casillas…).
+     */
+    private function coordinarPayload(AgendaTrabajo $t, array $overrides = []): array
+    {
+        return array_merge([
+            'tipo' => $t->tipo,
+            'estado' => 'solicitado',
+            'cliente_nombre' => $t->cliente_nombre,
+            'cliente_rut' => $t->cliente_rut,
+            'cliente_telefono' => $t->cliente_telefono,
+            'cliente_email' => $t->cliente_email,
+            'direccion' => $t->direccion,
+            'ciudad' => $t->ciudad,
+            'descripcion' => $t->descripcion,
+        ], $overrides);
     }
 }

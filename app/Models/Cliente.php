@@ -60,6 +60,28 @@ class Cliente extends Model implements AuditableContract
     }
 
     /**
+     * ¿La ficha viene de Bsale (espejo) o es local (creada en DaliGo)? Importa
+     * para decidir si un cambio de contacto se puede guardar: la sync horaria
+     * (bsale:sync-clients) pisa email/telefono/direccion/ciudad de las fichas de
+     * Bsale, así que solo tiene sentido actualizar las locales desde DaliGo.
+     */
+    public function getEsDeBsaleAttribute(): bool
+    {
+        return filled($this->bsale_client_id);
+    }
+
+    /**
+     * Busca una ficha por RUT normalizándolo primero (idempotente si ya viene
+     * canónico). Null si no hay RUT o no existe en el catálogo.
+     */
+    public static function buscarPorRut(?string $rut): ?self
+    {
+        $norm = self::normalizarRut($rut);
+
+        return $norm ? self::where('rut', $norm)->first() : null;
+    }
+
+    /**
      * Normaliza un RUT a su forma canonica `12345678-9`: quita puntos, espacios
      * y guiones, K mayuscula, y separa el digito verificador. Devuelve null si
      * no quedan al menos cuerpo + DV (Bsale trae clientes con code vacio).

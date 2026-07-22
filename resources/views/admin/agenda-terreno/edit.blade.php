@@ -1,9 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Editar trabajo" :subtitle="$trabajo->cliente_nombre.' · '.$trabajo->fecha->format('d-m-Y')">
+        {{-- Una SOLICITUD del QR aún no tiene fecha: el título/subtítulo y el link
+             "Volver" deben ser nulo-seguros (antes crasheaban con fecha null). --}}
+        @php $volver = $trabajo->fecha ?? \App\Support\FechaNegocio::ahora(); @endphp
+        <x-page-header
+            :title="$trabajo->estado === 'solicitado' ? 'Coordinar solicitud' : 'Editar trabajo'"
+            :subtitle="$trabajo->cliente_nombre.($trabajo->fecha ? ' · '.$trabajo->fecha->format('d-m-Y') : ' · por coordinar')">
             <x-slot name="action">
                 <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month])" size="lg" variant="secondary" label="Volver" title="Volver a la agenda">
+                    <x-icon-button :href="route('admin.agenda-terreno.index', ['anio' => $volver->year, 'mes' => $volver->month])" size="lg" variant="secondary" label="Volver" title="Volver a la agenda">
                         <x-icon.arrow-left class="h-5 w-5" />
                     </x-icon-button>
                     <x-icon-button type="submit" form="agenda-form" size="lg" variant="primary" label="Guardar" title="Guardar cambios">
