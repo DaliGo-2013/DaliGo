@@ -80,6 +80,29 @@ class ConfirmacionVisitaTest extends TestCase
         Mail::assertSent(AgendaTrabajoAviso::class, fn ($m) => $m->motivo === 'agendada' && $m->hasTo('cliente@example.com'));
     }
 
+    public function test_coordinar_guia_como_confirmarle_al_cliente(): void
+    {
+        // Al abrir "Coordinar" una solicitud (sin agendar), la pantalla explica
+        // cómo avisarle al cliente (poner fecha + estado Agendado + guardar).
+        $s = $this->solicitud();
+
+        $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.edit', $s))
+            ->assertOk()
+            ->assertSee('¿Confirmarle al cliente?')
+            ->assertSee('estado a «Agendado»', false);
+    }
+
+    public function test_coordinar_muestra_que_la_confirmacion_ya_se_envio(): void
+    {
+        $t = $this->agendada(); // agendada + confirmación enviada
+
+        $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.edit', $t))
+            ->assertOk()
+            ->assertSee('Confirmación enviada al cliente');
+    }
+
     // --- Respuesta del cliente ---
 
     private function agendada(array $overrides = []): AgendaTrabajo

@@ -259,6 +259,38 @@
         </div>
     @endif
 
+    {{-- Confirmación al cliente: al dejar el trabajo AGENDADO con fecha y correo,
+         al guardar se le envía AUTOMÁTICAMENTE un correo con el día + un link para
+         que responda (o para avisarle que se anula). Aquí se ve/guía esa acción. --}}
+    @if ($t && filled($t->cliente_email))
+        <div class="sm:col-span-2">
+            @if ($t->estado === 'agendado')
+                <div class="rounded-xl px-3 py-2.5 text-sm
+                            {{ $t->cliente_confirmacion === 'confirmada' ? 'bg-brand-50 text-brand-700' : ($t->cliente_confirmacion === 'no_puede' ? 'bg-red-50 text-red-700' : 'bg-neutral-50 text-neutral-600') }}">
+                    @if ($t->cliente_confirmacion)
+                        <span class="font-medium">{{ $t->cliente_confirmacion_label }}</span>
+                        @if ($t->cliente_confirmacion_at) · {{ $t->cliente_confirmacion_at->format('d-m-Y H:i') }}@endif
+                        @if (filled($t->cliente_confirmacion_nota))
+                            <p class="mt-0.5 text-neutral-600">“{{ $t->cliente_confirmacion_nota }}”</p>
+                        @endif
+                    @elseif ($t->confirmacion_enviada_at)
+                        Confirmación enviada al cliente el {{ $t->confirmacion_enviada_at->format('d-m-Y H:i') }} · esperando su respuesta. Si cambias la fecha/hora y guardas, se reenvía.
+                    @else
+                        Al guardar se le envía al cliente la confirmación de la visita por correo (con el día y un link para responder).
+                    @endif
+                </div>
+            @else
+                {{-- Todavía solicitado / no agendado: guía para confirmarle al cliente. --}}
+                <div class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-brand-700">
+                    <span class="font-medium">¿Confirmarle al cliente?</span>
+                    Pon la <span class="font-medium">fecha</span>, cambia el <span class="font-medium">estado a «Agendado»</span> y guarda:
+                    se le envía un correo con el día y un link para que confirme. Si <span class="font-medium">no</span> se puede,
+                    cambia el estado a «Cancelado» y guarda para avisarle que se anula.
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Qué hay que hacer --}}
     <div class="sm:col-span-2">
         <x-input-label for="descripcion">Trabajo a realizar (detalle) <span class="text-red-500">*</span></x-input-label>
