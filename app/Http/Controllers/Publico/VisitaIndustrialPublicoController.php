@@ -36,6 +36,9 @@ class VisitaIndustrialPublicoController extends Controller
             'sucursal' => $sucursal,
             'tipos' => AgendaTrabajo::TIPOS,
             'servicios' => ServicioTerreno::activos()->get(),
+            // Volver a la pantalla principal del QR (firmada) para elegir otro
+            // modo de ingreso (por unidad / por cantidad).
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]),
         ]);
     }
 
