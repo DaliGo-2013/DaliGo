@@ -90,7 +90,11 @@ class IngresoTallerLotePublicoTest extends TestCase
         $this->get(URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]))
             ->assertOk()
             ->assertSee('Ingreso por unidad')
-            ->assertSee('Ingreso por cantidad');
+            ->assertSee('Ingreso por cantidad')
+            // El formulario por unidad vuelve al menú con el mismo botón formal
+            // "Volver al inicio" (no el link tenue "Elegir otra forma").
+            ->assertSee('Volver al inicio')
+            ->assertDontSee('Elegir otra forma');
     }
 
     // --- Creación ---

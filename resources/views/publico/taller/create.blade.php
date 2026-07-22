@@ -260,8 +260,13 @@
                 </x-primary-button>
             </form>
 
+            {{-- Volver al menú principal (mismo botón formal que en los otros
+                 formularios del QR). Aquí basta con volver al chooser de la misma
+                 página (modo = null), no hace falta navegar. --}}
             <button type="button" @click="modo = null"
-                class="mt-4 block w-full text-center text-sm text-neutral-400 underline hover:text-neutral-600">&larr; Elegir otra forma</button>
+                class="mt-4 block w-full rounded-xl border border-neutral-300 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                Volver al inicio
+            </button>
         </div>
 
     </div>
