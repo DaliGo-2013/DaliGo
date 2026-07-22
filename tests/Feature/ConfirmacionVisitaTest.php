@@ -284,13 +284,28 @@ class ConfirmacionVisitaTest extends TestCase
     {
         Mail::fake();
         $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
-        $s = $this->solicitud();
+        $vendedor = $this->vendedor();
+        $preferida = now()->addDays(4);
+        $s = AgendaTrabajo::factory()->create([
+            'estado' => 'solicitado', 'fecha' => null, 'tipo' => 'visita_tecnica',
+            'cliente_nombre' => 'Aguas Claras SpA', 'cliente_email' => 'cliente@example.com',
+            'cliente_telefono' => '+56 9 4444 5555',
+            'fecha_preferida' => $preferida->toDateString(),
+        ]);
 
-        $this->actingAs($this->vendedor())
+        $this->actingAs($vendedor)
             ->post(route('admin.agenda-terreno.rechazar', $s), ['motivo' => 'atraso_pagos']);
 
-        $this->assertSame(1, Notificacion::where('user_id', $jefe->id)
+        $notif = Notificacion::where('user_id', $jefe->id)
             ->where('evento', 'terreno.rechazada')
-            ->where('canal', Notificacion::CANAL_DATABASE)->count());
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+
+        $this->assertNotNull($notif);
+        // Campos enriquecidos: quién rechazó (usuario del caller), teléfono y
+        // fecha preferida, todos visibles en el cuerpo renderizado.
+        $this->assertSame($vendedor->name, $notif->payload['rechazado_por']);
+        $this->assertStringContainsString($vendedor->name, $notif->cuerpo);
+        $this->assertStringContainsString('+56 9 4444 5555', $notif->cuerpo);
+        $this->assertStringContainsString($preferida->format('d-m-Y'), $notif->cuerpo);
     }
 }
