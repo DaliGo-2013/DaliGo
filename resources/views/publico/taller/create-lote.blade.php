@@ -214,5 +214,14 @@
 
         <x-primary-button class="w-full justify-center py-3 text-base">Enviar ingreso</x-primary-button>
         <p class="text-center text-xs text-neutral-400">Al enviar, muéstrale la pantalla al encargado del mostrador.</p>
+
+        {{-- Volver a la pantalla principal (elegir por unidad / visita industrial).
+             Secundario para no competir con el envío. --}}
+        @if (! empty($urlInicio))
+            <a href="{{ $urlInicio }}"
+               class="block w-full rounded-xl border border-neutral-300 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                Volver al inicio
+            </a>
+        @endif
     </form>
 </x-guest-layout>
