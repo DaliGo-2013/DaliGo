@@ -86,11 +86,14 @@ class UserController extends Controller
     }
 
     /**
-     * Actualiza el rol y la sucursal de una cuenta.
+     * Actualiza los datos de la cuenta (nombre y correo), su rol y su sucursal.
      */
     public function update(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            // Mismo dominio corporativo que al crear; unico salvo el propio usuario.
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', new ImpdaliEmail, Rule::unique('users')->ignore($user->id)],
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
         ]);
@@ -101,12 +104,16 @@ class UserController extends Controller
 
         $oldRole = $user->getRoleNames()->sort()->values()->implode(', ');
 
-        $user->update(['sucursal_id' => $validated['sucursal_id'] ?? null]);
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'sucursal_id' => $validated['sucursal_id'] ?? null,
+        ]);
         $user->syncRoles([$validated['role']]);
         $this->auditRoleChange($user, $oldRole === '' ? null : $oldRole, $validated['role']);
 
         return redirect()->route('admin.users.index')
-            ->with('status', "Rol de {$user->email} actualizado a {$validated['role']}.");
+            ->with('status', "Cuenta de {$user->email} actualizada.");
     }
 
     /**

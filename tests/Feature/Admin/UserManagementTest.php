@@ -119,7 +119,8 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($this->admin())->get("/admin/users/{$user->id}/edit")
             ->assertOk()
-            ->assertSee('Editar rol');
+            ->assertSee('Editar cuenta')
+            ->assertSee($user->email, false); // nombre/correo ahora editables (value del input)
     }
 
     public function test_admin_can_update_user_role(): void
@@ -128,11 +129,41 @@ class UserManagementTest extends TestCase
         $user->assignRole('member');
 
         $this->actingAs($this->admin())
-            ->put("/admin/users/{$user->id}", ['role' => 'admin'])
+            ->put("/admin/users/{$user->id}", ['role' => 'admin', 'name' => $user->name, 'email' => $user->email])
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertTrue($user->fresh()->hasRole('admin'));
         $this->assertFalse($user->fresh()->hasRole('member'));
+    }
+
+    public function test_admin_can_edit_name_and_email(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('member');
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$user->id}", [
+                'role' => 'member',
+                'name' => 'Carlos Tablante',
+                'email' => 'carlos.tablante@impdali.cl',
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $fresh = $user->fresh();
+        $this->assertSame('Carlos Tablante', $fresh->name);
+        $this->assertSame('carlos.tablante@impdali.cl', $fresh->email);
+    }
+
+    public function test_edit_rejects_non_impdali_email(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('member');
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$user->id}", [
+                'role' => 'member', 'name' => $user->name, 'email' => 'externo@gmail.com',
+            ])
+            ->assertSessionHasErrors('email');
     }
 
     public function test_update_rejects_unknown_role(): void
@@ -149,7 +180,7 @@ class UserManagementTest extends TestCase
     {
         $admin = $this->admin(); // unico admin
 
-        $this->actingAs($admin)->put("/admin/users/{$admin->id}", ['role' => 'member']);
+        $this->actingAs($admin)->put("/admin/users/{$admin->id}", ['role' => 'member', 'name' => $admin->name, 'email' => $admin->email]);
 
         $this->assertTrue($admin->fresh()->hasRole('admin'));
     }
@@ -160,7 +191,7 @@ class UserManagementTest extends TestCase
         $admin2 = $this->admin();
 
         $this->actingAs($admin1)
-            ->put("/admin/users/{$admin2->id}", ['role' => 'member'])
+            ->put("/admin/users/{$admin2->id}", ['role' => 'member', 'name' => $admin2->name, 'email' => $admin2->email])
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertTrue($admin2->fresh()->hasRole('member'));

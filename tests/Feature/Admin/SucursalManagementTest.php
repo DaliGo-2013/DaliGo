@@ -150,6 +150,8 @@ class SucursalManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put("/admin/users/{$user->id}", [
                 'role' => 'member',
+                'name' => $user->name,
+                'email' => $user->email,
                 'sucursal_id' => $sucursal->id,
             ])
             ->assertRedirect(route('admin.users.index'));

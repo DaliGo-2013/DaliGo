@@ -124,7 +124,7 @@ class AuditManagementTest extends TestCase
         $target->assignRole('member');
 
         $this->actingAs($admin)
-            ->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas'])
+            ->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas', 'name' => $target->name, 'email' => $target->email])
             ->assertRedirect(route('admin.users.index'));
 
         $audit = Audit::query()
@@ -147,7 +147,7 @@ class AuditManagementTest extends TestCase
         $target->assignRole('member');
 
         $this->actingAs($admin)
-            ->put("/admin/users/{$target->id}", ['role' => 'member'])
+            ->put("/admin/users/{$target->id}", ['role' => 'member', 'name' => $target->name, 'email' => $target->email])
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseMissing('audits', [
@@ -189,7 +189,7 @@ class AuditManagementTest extends TestCase
         $target = User::factory()->create();
         $target->assignRole('member');
 
-        $this->actingAs($admin)->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas']);
+        $this->actingAs($admin)->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas', 'name' => $target->name, 'email' => $target->email]);
 
         $response = $this->actingAs($admin)
             ->get('/admin/audits?user_id='.$admin->id)
