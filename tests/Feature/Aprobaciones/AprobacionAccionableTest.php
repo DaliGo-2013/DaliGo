@@ -90,10 +90,12 @@ class AprobacionAccionableTest extends TestCase
         $notif = Notificacion::where('evento', 'aprobacion.solicitada')
             ->where('canal', Notificacion::CANAL_DATABASE)->firstOrFail();
 
-        $this->assertSame('Aprobación pendiente: '.$aprobacion->descripcion, $notif->titulo);
+        // Por marcador, no string pegada (los textos exactos viven en el seed;
+        // lote NOTIF-1 movió la magnitud al título y la url al payload).
+        $this->assertStringContainsString('Aprobación pendiente: '.$aprobacion->descripcion, $notif->titulo);
+        $this->assertStringContainsString('100', $notif->titulo);              // magnitud
         $this->assertStringContainsString('Conteo corregido', $notif->cuerpo); // motivo
-        $this->assertStringContainsString('100', $notif->cuerpo);              // magnitud
-        $this->assertStringContainsString(route('aprobaciones.index'), $notif->cuerpo);
+        $this->assertSame(route('aprobaciones.index'), $notif->payload['url']);
     }
 
     public function test_la_resolucion_distingue_el_titulo_por_resultado(): void
@@ -103,13 +105,15 @@ class AprobacionAccionableTest extends TestCase
         [, , $paraAprobar] = $this->pendienteReal();
         app(Aprobaciones::class)->aprobar($paraAprobar, $admin);
         $notif = Notificacion::where('evento', 'aprobacion.resuelta')->latest('id')->firstOrFail();
-        $this->assertSame('Aprobada: '.$paraAprobar->descripcion, $notif->titulo);
-        $this->assertStringContainsString(route('aprobaciones.mias'), $notif->cuerpo);
+        // El marcador es el PREFIJO con el resultado (lote NOTIF-1 sumó
+        // «— {magnitud}» al final y movió la url al payload).
+        $this->assertStringContainsString('Aprobada: '.$paraAprobar->descripcion, $notif->titulo);
+        $this->assertSame(route('aprobaciones.mias'), $notif->payload['url']);
 
         [, , $paraRechazar] = $this->pendienteReal();
         app(Aprobaciones::class)->rechazar($paraRechazar, $admin, 'Los datos no cuadran');
         $notif = Notificacion::where('evento', 'aprobacion.resuelta')->latest('id')->firstOrFail();
-        $this->assertSame('Rechazada: '.$paraRechazar->descripcion, $notif->titulo);
+        $this->assertStringContainsString('Rechazada: '.$paraRechazar->descripcion, $notif->titulo);
         $this->assertStringContainsString('Los datos no cuadran', $notif->cuerpo);
     }
 

@@ -63,14 +63,23 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Nombre del remitente en los correos del sistema (placeholder hasta decidir D-001).',
             ],
-            // Plantillas ricas de aprobaciones (hallazgo #8 del QA 15-07: los
-            // correos eran esqueleticos y los 3 titulos de resolucion identicos).
-            // Placeholders: los entrega Aprobaciones::datosNotificacion (+ url).
+            // Plantillas ricas de aprobaciones (hallazgo #8 del QA 15-07 + lote
+            // NOTIF-1: especificas, con el objeto y el cambio pedido).
+            // Placeholders: los entrega Aprobaciones::datosNotificacion. La {url}
+            // ya NO va en el cuerpo: la fila navega (urlDestino) y el correo
+            // pone un boton estructural desde el payload.
+            //
+            // PATRON DE ENTREGA (lote NOTIF-1): firstOrCreate JAMAS pisa una
+            // clave ya sembrada en prod → todo cambio de texto aqui viaja
+            // ADEMAS en una migracion de datos one-shot que actualiza SOLO si
+            // el valor vigente es EXACTAMENTE el texto del seed anterior (una
+            // edicion manual desde la UI se respeta). Ver
+            // database/migrations/2026_07_22_100000_actualiza_plantillas_aprobacion_notif1.php.
             [
                 'clave' => 'notif_plantilla_aprobacion_solicitada',
                 'valor' => json_encode([
-                    'asunto' => 'Aprobación pendiente: {descripcion}',
-                    'cuerpo' => "{solicitante} pide: {tipo}.\nMotivo: {motivo}\nMagnitud: {magnitud}\n\nResuélvela aquí: {url}",
+                    'asunto' => 'Aprobación pendiente: {descripcion} ({magnitud})',
+                    'cuerpo' => "{solicitante} pide: {tipo}.\nMotivo: {motivo}\nSobre: {objeto}\nCambio: {cambio}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -80,7 +89,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_aprobacion_escalada',
                 'valor' => json_encode([
                     'asunto' => 'Solicitud escalada sin respuesta: {descripcion}',
-                    'cuerpo' => "Escaló a tu rol por falta de respuesta.\nSolicitante: {solicitante}\nMotivo: {motivo}\nMagnitud: {magnitud}\n\nResuélvela aquí: {url}",
+                    'cuerpo' => "Escaló a tu rol desde {rol_anterior} tras {minutos} min sin respuesta.\nSolicitante: {solicitante}\nMotivo: {motivo}\nSobre: {objeto}\nCambio: {cambio}\nPendiente desde: {pendiente_desde}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -89,8 +98,8 @@ class ConfiguracionSeeder extends Seeder
             [
                 'clave' => 'notif_plantilla_aprobacion_resuelta',
                 'valor' => json_encode([
-                    'asunto' => '{resultado}: {descripcion}',
-                    'cuerpo' => "Tu solicitud quedó: {resultado}.\n{resultado_motivo}\n\nVer tus solicitudes: {url}",
+                    'asunto' => '{resultado}: {descripcion} — {magnitud}',
+                    'cuerpo' => "Tu solicitud quedó: {resultado} por {resuelto_por}. Monto: {magnitud}.\n{resultado_motivo}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',

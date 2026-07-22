@@ -34,7 +34,7 @@
                                         @endif
                                         {{ $n->titulo }}
                                     </span>
-                                    <span class="mt-0.5 block text-sm text-neutral-500">{{ $n->cuerpo }}</span>
+                                    <span class="mt-0.5 block whitespace-pre-line text-sm text-neutral-500">{{ $n->cuerpo }}</span>
                                     <span class="mt-1 block text-xs text-neutral-400">{{ $n->created_at?->diffForHumans() }}</span>
                                 </span>
                                 @if ($destino)

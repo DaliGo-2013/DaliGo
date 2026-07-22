@@ -118,6 +118,18 @@ class NotificacionDispatcher
             : Notificacion::EVENTOS[$evento];
         $cuerpo = is_array($plantilla) ? (string) ($plantilla['cuerpo'] ?? '') : '';
 
+        // Fallback nunca-mudo (lote NOTIF-1): un evento sin plantilla degrada
+        // a un cuerpo LEGIBLE con los escalares del payload («clave: valor»
+        // por línea), no a vacío. 'url' se omite: la fila ya navega por
+        // urlDestino() y cruda solo ensucia la campanita.
+        if (! is_array($plantilla)) {
+            $cuerpo = collect($datos)
+                ->filter(fn ($v) => is_scalar($v))
+                ->except('url')
+                ->map(fn ($v, $k) => $k.': '.$v)
+                ->implode("\n");
+        }
+
         $reemplazos = collect($datos)
             ->filter(fn ($v) => is_scalar($v))
             ->mapWithKeys(fn ($v, $k) => ['{'.$k.'}' => (string) $v])

@@ -24,8 +24,9 @@
         @endif
 
         @foreach ($pendientes as $aprobacion)
-            <div x-data="{ paneles: { rechazo: false } }"
-                 class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            {{-- id: ancla de aterrizaje de la campanita (urlDestino puntual, lote NOTIF-1). --}}
+            <div id="aprobacion-{{ $aprobacion->id }}" x-data="{ paneles: { rechazo: false } }"
+                 class="dg-enter scroll-mt-6 rounded-2xl border border-neutral-200 bg-white shadow-sm target:ring-2 target:ring-brand-300">
                 <div class="space-y-3 px-4 py-4 sm:px-6">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">

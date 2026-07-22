@@ -18,7 +18,8 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <ul class="divide-y divide-neutral-100">
                     @foreach ($solicitudes as $solicitud)
-                        <li class="space-y-1 px-4 py-4 sm:px-6">
+                        {{-- id: ancla de aterrizaje de la campanita (urlDestino puntual, lote NOTIF-1). --}}
+                        <li id="aprobacion-{{ $solicitud->id }}" class="space-y-1 scroll-mt-6 px-4 py-4 sm:px-6 target:ring-2 target:ring-inset target:ring-brand-300">
                             <div class="flex items-start justify-between gap-3">
                                 <p class="min-w-0 text-sm font-medium text-neutral-900">{{ $solicitud->descripcion }}</p>
                                 <x-aprobaciones.estado-badge :estado="$solicitud->estado" class="shrink-0" />

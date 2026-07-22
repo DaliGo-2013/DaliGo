@@ -27,9 +27,15 @@
         @forelse ($dgNoLeidas as $dgN)
             <form method="POST" action="{{ route('notificaciones.leer', $dgN) }}">
                 @csrf
+                {{-- ir=1 (lote NOTIF-1): además de marcar leída, la fila NAVEGA
+                     al destino del evento; sin destino cae al back() de siempre. --}}
+                <input type="hidden" name="ir" value="1">
                 <button type="submit" class="block w-full border-t border-neutral-100 px-4 py-2 text-left transition hover:bg-neutral-50">
                     <span class="block truncate text-sm font-medium text-neutral-800">{{ $dgN->titulo }}</span>
-                    <span class="block text-xs text-neutral-400">{{ $dgN->created_at?->diffForHumans() }}</span>
+                    @if (filled($dgN->cuerpo))
+                        <span class="mt-0.5 line-clamp-2 block whitespace-pre-line text-xs text-neutral-500">{{ $dgN->cuerpo }}</span>
+                    @endif
+                    <span class="mt-0.5 block text-xs text-neutral-400">{{ $dgN->created_at?->diffForHumans() }}</span>
                 </button>
             </form>
         @empty

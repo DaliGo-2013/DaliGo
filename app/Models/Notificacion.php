@@ -122,9 +122,14 @@ class Notificacion extends Model
      */
     public function urlDestino(): ?string
     {
+        // Aterrizaje PUNTUAL (lote NOTIF-1): la bandeja y «Mis solicitudes»
+        // emiten el ancla #aprobacion-{id} por tarjeta/fila; notificable_id
+        // es la Aprobacion (el morph del despacho). Sin id → la lista.
+        $ancla = $this->notificable_id ? '#aprobacion-'.$this->notificable_id : '';
+
         return match ($this->evento) {
-            'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index'),
-            'aprobacion.resuelta' => route('aprobaciones.mias'),
+            'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index').$ancla,
+            'aprobacion.resuelta' => route('aprobaciones.mias').$ancla,
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
