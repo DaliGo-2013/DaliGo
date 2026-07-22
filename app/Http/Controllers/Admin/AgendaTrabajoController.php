@@ -283,7 +283,7 @@ class AgendaTrabajoController extends Controller
         }
 
         try {
-            $trabajo->avisarRechazoInterno();
+            $trabajo->avisarRechazoInterno($request->user()?->name);
         } catch (\Throwable $e) {
             report($e);
         }

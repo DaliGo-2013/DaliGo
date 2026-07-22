@@ -175,9 +175,12 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
     public function avisarInternos(string $evento, array $extra = []): void
     {
         $orden = $this->orden;
+        // Qué máquina es (tipo + modelo si lo hay): identifica el equipo cotizado.
+        $equipo = trim($orden->tipo_equipo_label.' '.($orden->modelo ?? ''));
         $datos = array_merge([
             'folio' => $orden->folio,
             'cliente' => $orden->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : '—',
             'total' => '$'.number_format((int) $this->costo_total, 0, ',', '.'),
             'url' => route('admin.servicio-tecnico.show', $orden),
             'cotizacion_id' => $this->id,
