@@ -399,13 +399,16 @@ class ProduccionController extends Controller
 
     /**
      * Productos elegibles como preforma del turno: activos cuya categoria
-     * menciona "preforma". Fallback: todos los activos (para no bloquear si la
-     * categorizacion del catalogo aun no distingue preformas).
+     * menciona "preforma", excluyendo las preformas DANADAS (registran merma
+     * en el catalogo, no son material asignable a un turno). Fallback: todos
+     * los activos (para no bloquear si la categorizacion del catalogo aun no
+     * distingue preformas), con la misma exclusion.
      */
     private function preformasParaSelector()
     {
         $preformas = Producto::query()->where('activo', true)
             ->where('categoria', 'like', '%preforma%')
+            ->where($this->sinPreformasDanadas())
             ->orderBy('nombre')
             ->get(['id', 'sku', 'nombre']);
 
@@ -414,8 +417,23 @@ class ProduccionController extends Controller
         }
 
         return Producto::query()->where('activo', true)
+            ->where($this->sinPreformasDanadas())
             ->orderBy('nombre')
             ->get(['id', 'sku', 'nombre']);
+    }
+
+    /**
+     * Filtro reutilizable (selector y validacion comparten el universo): fuera
+     * los productos cuyo nombre contiene "dañada". Van las DOS variantes de
+     * caja porque el LIKE de SQLite solo case-foldea ASCII ('Ñ' != 'ñ'); en
+     * MySQL (collation ci) la segunda es redundante pero inofensiva.
+     */
+    private function sinPreformasDanadas(): \Closure
+    {
+        return function ($query) {
+            $query->where('nombre', 'not like', '%dañada%')
+                ->where('nombre', 'not like', '%DAÑADA%');
+        };
     }
 
     /**
@@ -436,9 +454,9 @@ class ProduccionController extends Controller
             'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
             // Preforma del turno (producto del catalogo). Opcional: si no se
             // elige, el consumo del kardex queda sin enlace a producto. Se
-            // restringe a productos ACTIVOS (mismo universo que el selector;
-            // un id inactivo o de otra categoria no debe entrar al kardex).
-            'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)],
+            // restringe a productos ACTIVOS y NO dañados (mismo universo que
+            // el selector; un id fuera de ese universo no debe entrar al kardex).
+            'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinPreformasDanadas())],
         ], [
             'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
