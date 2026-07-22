@@ -703,6 +703,65 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * Autoriza la reparación tras coordinar el pago (P-M12-02): sobre la
+     * cotización ACEPTADA por el cliente, ventas registra la forma de pago
+     * (obligatoria; puede ser "paga al retiro"), un comprobante opcional (imagen
+     * de la transferencia, al disco privado) y una nota, y AUTORIZA → avisa al
+     * técnico para que proceda. La info de pago queda visible para todo el
+     * equipo (transparencia pedida por el dueño). No cambia el estado de la orden.
+     */
+    public function autorizarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
+    {
+        $cotizacion = $orden->cotizaciones()->where('estado', 'aceptada')->latest('id')->first();
+
+        if (! $cotizacion) {
+            return back()->with('status', 'No hay una cotización aceptada por el cliente para autorizar.');
+        }
+        if ($cotizacion->esta_autorizada) {
+            return back()->with('status', 'Esta reparación ya estaba autorizada.');
+        }
+
+        $data = $request->validate([
+            'pago_forma' => ['required', Rule::in(array_keys(OrdenServicioCotizacion::FORMAS_PAGO))],
+            'pago_nota' => ['nullable', 'string', 'max:1000'],
+            'comprobante' => ['nullable', 'image', 'max:8192'], // 8 MB; imagen de la transferencia
+        ]);
+
+        $ruta = $request->hasFile('comprobante')
+            ? \App\Support\ImagenComprimida::guardar($request->file('comprobante'), "ordenes-servicio/comprobantes/{$orden->id}")
+            : null;
+
+        $cotizacion->update([
+            'pago_forma' => $data['pago_forma'],
+            'pago_nota' => $data['pago_nota'] ?? null,
+            'pago_comprobante_ruta' => $ruta,
+            'autorizada_at' => now(),
+            'autorizada_por' => $request->user()->id,
+        ]);
+
+        $cotizacion->refresh()->avisarInternos('cotizacion.autorizada', [
+            'pago' => $cotizacion->pago_forma_label,
+            'autorizada_por' => $request->user()->name,
+        ]);
+
+        return back()->with('status', "Reparación autorizada (orden {$orden->folio}). Se avisó al técnico para proceder.");
+    }
+
+    /**
+     * Sirve el comprobante de pago de una cotización desde el disco PRIVADO
+     * `local` (dato sensible: transferencia). Solo con sesión y acceso al ST.
+     */
+    public function comprobanteCotizacion(OrdenServicioCotizacion $cotizacion): StreamedResponse
+    {
+        abort_unless(
+            $cotizacion->pago_comprobante_ruta && Storage::disk('local')->exists($cotizacion->pago_comprobante_ruta),
+            404
+        );
+
+        return Storage::disk('local')->response($cotizacion->pago_comprobante_ruta);
+    }
+
+    /**
      * Autocompletado de cliente por RUT o razon social (JSON). Reutiliza la
      * normalizacion de rut de Cliente: el rut se guarda sin puntos (12345678-9),
      * asi que limpiamos la consulta igual antes del LIKE. Limite 15 + minimo 2

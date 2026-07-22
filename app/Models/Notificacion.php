@@ -50,6 +50,7 @@ class Notificacion extends Model
         // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
+        'cotizacion.autorizada' => 'Reparación autorizada (pago coordinado)',
         // Agenda de terreno · solicitud del cliente (QR) por coordinar
         'terreno.solicitada' => 'Solicitud del cliente por coordinar (terreno)',
         // Agenda de terreno · el cliente respondió a la cita agendada
@@ -123,7 +124,7 @@ class Notificacion extends Model
             'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index'),
             'aprobacion.resuelta' => route('aprobaciones.mias'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
-            'cotizacion.enviada', 'cotizacion.respondida' => $this->notificable_id
+            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,
             // La solicitud por coordinar y la respuesta del cliente se ven en la agenda.

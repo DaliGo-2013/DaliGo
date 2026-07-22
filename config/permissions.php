@@ -28,6 +28,7 @@ return [
         'view servicio tecnico' => 'Ver servicio técnico',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
+        'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
         'view notificaciones' => 'Ver notificaciones',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',

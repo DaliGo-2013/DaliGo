@@ -119,6 +119,16 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno cuando el cliente acepta o no acepta la cotización; el asunto distingue la respuesta.',
             ],
+            [
+                'clave' => 'notif_plantilla_cotizacion_autorizada',
+                'valor' => json_encode([
+                    'asunto' => 'Reparación autorizada — Orden {folio} ({cliente})',
+                    'cuerpo' => "Ventas autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nPago: {pago} · autorizó: {autorizada_por}.\nTécnico: puedes proceder con la reparación.\n\nVer la orden: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso (a técnico + ventas) cuando se autoriza la reparación tras coordinar el pago.',
+            ],
             // Solicitud del cliente (QR) que entra "por coordinar" a la agenda de
             // terreno: aviso a ventas para que la coordinen con el cliente.
             [
