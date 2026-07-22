@@ -30,8 +30,12 @@ class AgendaTrabajoAviso extends Mailable
 
     public function envelope(): Envelope
     {
+        // Sin token = se agendó en el día que el cliente pidió → correo informativo
+        // (no se le pide confirmar). Con token = hay que confirmar la fecha nueva.
+        $pideConfirmar = filled($this->trabajo->confirmacion_token);
+
         $asuntos = [
-            'agendada' => 'Confirmación de tu visita — DaliGo',
+            'agendada' => $pideConfirmar ? 'Confirmación de tu visita — DaliGo' : 'Tu visita quedó agendada — DaliGo',
             'reprogramada' => 'Cambio de fecha de tu visita — DaliGo',
             'anulada' => 'Visita cancelada — DaliGo',
         ];
