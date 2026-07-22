@@ -228,6 +228,8 @@ class IngresoTallerPublicoController extends Controller
     {
         return view('publico.taller.gracias-lote', [
             'lote' => $lote->load(['sucursal', 'ordenes']),
+            // Volver a la pantalla principal del QR (firmada) para ingresar otra.
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $lote->sucursal_id]),
         ]);
     }
 
@@ -369,6 +371,8 @@ class IngresoTallerPublicoController extends Controller
     {
         return view('publico.taller.gracias', [
             'orden' => $orden->load('sucursal'),
+            // Volver a la pantalla principal del QR (firmada) para ingresar otra.
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $orden->sucursal_id]),
         ]);
     }
 }

@@ -253,6 +253,19 @@ class VisitaIndustrialTest extends TestCase
             ->assertSessionHasErrors('fecha');
     }
 
+    public function test_gracias_de_la_visita_ofrece_volver_al_inicio(): void
+    {
+        // Tras enviar, la pantalla "¡Listo!" tiene un botón para volver al inicio
+        // del QR (link firmado con la sucursal) — sin depender del botón «atrás».
+        $sucursal = $this->sucursal();
+        $res = $this->post(route('visita-industrial.store'), $this->payload($sucursal));
+
+        $this->get($res->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('Volver al inicio')
+            ->assertSee('ingreso-taller?sucursal='.$sucursal->id, false);
+    }
+
     // --- Catálogo de clientes: reconocer / guardar / actualizar ---
 
     public function test_la_solicitud_qr_se_enlaza_a_la_ficha_conocida_por_rut(): void

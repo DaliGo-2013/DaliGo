@@ -109,17 +109,28 @@ class VisitaIndustrialPublicoController extends Controller
             report($e);
         }
 
-        return redirect()->to(URL::signedRoute('visita-industrial.gracias', ['trabajo' => $trabajo->id]));
+        // La sucursal viaja firmada en el link de "gracias" (el trabajo no la
+        // persiste) para poder ofrecer "Volver al inicio" del QR desde ahí.
+        return redirect()->to(URL::signedRoute('visita-industrial.gracias', [
+            'trabajo' => $trabajo->id,
+            'sucursal' => $data['sucursal_id'],
+        ]));
     }
 
     /**
      * Pantalla de "listo": confirma que la solicitud quedó registrada y que
      * lo llamarán para coordinar. Link firmado (no enumerable).
      */
-    public function gracias(AgendaTrabajo $trabajo): View
+    public function gracias(Request $request, AgendaTrabajo $trabajo): View
     {
+        // Sucursal embebida en el link firmado → botón "Volver al inicio" del QR.
+        $sucursalId = $request->integer('sucursal');
+
         return view('publico.taller.gracias-visita', [
             'trabajo' => $trabajo->load('servicio'),
+            'urlInicio' => $sucursalId
+                ? URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursalId])
+                : null,
         ]);
     }
 }

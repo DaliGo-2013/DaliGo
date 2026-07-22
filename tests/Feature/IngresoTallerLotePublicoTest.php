@@ -234,6 +234,7 @@ class IngresoTallerLotePublicoTest extends TestCase
         foreach ($lote->ordenes as $o) {
             $res->assertSee($o->folio);
         }
+        $res->assertSee('Volver al inicio'); // botón de regreso a la pantalla del QR
     }
 
     public function test_codigo_es_obligatorio_por_maquina(): void
