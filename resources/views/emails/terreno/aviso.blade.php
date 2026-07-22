@@ -34,7 +34,15 @@
                             <p style="margin:0 0 20px; font-size:15px; color:#525252; line-height:1.6;">
                                 Estimado(a) {{ $t->cliente_nombre }}:
                                 @if ($motivo === 'anulada')
-                                    lamentablemente tuvimos que <strong>cancelar</strong> la visita que teníamos coordinada. Nos pondremos en contacto contigo para acordar una nueva fecha.
+                                    @if ($t->fecha)
+                                        lamentablemente tuvimos que <strong>cancelar</strong> la visita que teníamos coordinada.
+                                    @else
+                                        lamentablemente <strong>no podremos realizar</strong> el servicio que solicitaste ({{ mb_strtolower($t->tipo_label) }}).
+                                    @endif
+                                    @if (filled($t->motivo_cancelacion))
+                                        <br><strong>Motivo:</strong> {{ $t->motivo_cancelacion }}.
+                                    @endif
+                                    <br>Si tienes dudas o quieres revisar otra alternativa, contáctanos.
                                 @elseif ($motivo === 'reprogramada')
                                     tuvimos que <strong>cambiar la fecha</strong> de tu visita. Estos son los nuevos datos:
                                 @else

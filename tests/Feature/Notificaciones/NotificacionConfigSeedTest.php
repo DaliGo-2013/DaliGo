@@ -26,6 +26,7 @@ class NotificacionConfigSeedTest extends TestCase
         // Agenda de terreno · solicitud por coordinar + confirmación del cliente
         'notif_plantilla_terreno_solicitada',
         'notif_plantilla_terreno_confirmada',
+        'notif_plantilla_terreno_rechazada',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

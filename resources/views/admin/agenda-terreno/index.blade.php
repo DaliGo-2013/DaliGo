@@ -78,8 +78,42 @@
                                             ])->filter()->implode(' · ') }}
                                         </p>
                                     </div>
-                                    <div class="shrink-0">
-                                        <x-button-link :href="route('admin.agenda-terreno.edit', $s)">Coordinar</x-button-link>
+                                    <div class="shrink-0" x-data="{ rechazar: false }">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <x-button-link :href="route('admin.agenda-terreno.edit', $s)">Coordinar</x-button-link>
+                                            <button type="button" x-on:click="rechazar = ! rechazar"
+                                                    class="inline-flex items-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50">
+                                                No se puede
+                                            </button>
+                                        </div>
+
+                                        {{-- Rechazo con motivo: marca la solicitud cancelada y le avisa al
+                                             cliente por correo (con el motivo), como la cara "no" de coordinar. --}}
+                                        <div x-show="rechazar" x-cloak class="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+                                             x-data="{ motivo: '' }">
+                                            <form method="POST" action="{{ route('admin.agenda-terreno.rechazar', $s) }}"
+                                                  onsubmit="return confirm('¿Rechazar esta solicitud y avisarle al cliente por correo?');">
+                                                @csrf
+                                                <label for="motivo-{{ $s->id }}" class="block text-xs font-medium text-neutral-600">Motivo del rechazo</label>
+                                                <x-select id="motivo-{{ $s->id }}" name="motivo" x-model="motivo" required class="mt-1 w-full">
+                                                    <option value="">— Elige un motivo —</option>
+                                                    @foreach (\App\Models\AgendaTrabajo::MOTIVOS_CANCELACION as $k => $label)
+                                                        <option value="{{ $k }}">{{ $label }}</option>
+                                                    @endforeach
+                                                </x-select>
+                                                <x-text-input name="motivo_otro" type="text" maxlength="191"
+                                                    x-show="motivo === 'otro'" x-cloak
+                                                    placeholder="Especifica el motivo" class="mt-2 w-full" />
+                                                <div class="mt-3 flex items-center gap-3">
+                                                    <button type="submit"
+                                                            class="inline-flex items-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700">
+                                                        Rechazar y avisar
+                                                    </button>
+                                                    <button type="button" x-on:click="rechazar = false"
+                                                            class="text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
                                 </li>
                             @endforeach

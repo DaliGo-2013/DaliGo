@@ -202,4 +202,57 @@ class ConfirmacionVisitaTest extends TestCase
 
         Mail::assertSent(AgendaTrabajoAviso::class, fn ($m) => $m->motivo === 'anulada');
     }
+
+    // --- Rechazo de una solicitud con motivo (la cara "no" de coordinar) ---
+
+    public function test_rechazar_una_solicitud_la_cancela_y_avisa_al_cliente(): void
+    {
+        Mail::fake();
+        $s = $this->solicitud();
+
+        $this->actingAs($this->vendedor())
+            ->post(route('admin.agenda-terreno.rechazar', $s), ['motivo' => 'tecnico_viaje'])
+            ->assertRedirect();
+
+        $s->refresh();
+        $this->assertSame('cancelado', $s->estado);
+        $this->assertSame('Técnico de viaje / fuera de zona', $s->motivo_cancelacion);
+        Mail::assertSent(AgendaTrabajoAviso::class, fn ($m) => $m->motivo === 'anulada' && $m->hasTo('cliente@example.com'));
+    }
+
+    public function test_rechazar_con_motivo_otro_exige_detalle(): void
+    {
+        $s = $this->solicitud();
+
+        $this->actingAs($this->vendedor())
+            ->post(route('admin.agenda-terreno.rechazar', $s), ['motivo' => 'otro'])
+            ->assertSessionHasErrors('motivo_otro');
+
+        $this->assertSame('solicitado', $s->fresh()->estado); // no se canceló
+    }
+
+    public function test_rechazar_guarda_el_detalle_libre_de_otro(): void
+    {
+        Mail::fake();
+        $s = $this->solicitud();
+
+        $this->actingAs($this->vendedor())
+            ->post(route('admin.agenda-terreno.rechazar', $s), ['motivo' => 'otro', 'motivo_otro' => 'Cliente en otra región']);
+
+        $this->assertSame('Cliente en otra región', $s->fresh()->motivo_cancelacion);
+    }
+
+    public function test_rechazar_avisa_a_ventas(): void
+    {
+        Mail::fake();
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $s = $this->solicitud();
+
+        $this->actingAs($this->vendedor())
+            ->post(route('admin.agenda-terreno.rechazar', $s), ['motivo' => 'atraso_pagos']);
+
+        $this->assertSame(1, Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'terreno.rechazada')
+            ->where('canal', Notificacion::CANAL_DATABASE)->count());
+    }
 }
