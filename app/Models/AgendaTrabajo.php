@@ -73,7 +73,22 @@ class AgendaTrabajo extends Model implements AuditableContract
         'tecnico_id',
         'descripcion',
         'notas_tecnico',
+        'motivo_cancelacion',
         'creado_por',
+    ];
+
+    /**
+     * Motivos para rechazar/cancelar una solicitud (los elige quien coordina).
+     * 'otro' habilita un detalle libre. El texto resuelto se guarda en
+     * `motivo_cancelacion` y se muestra al cliente en el correo de rechazo.
+     */
+    public const MOTIVOS_CANCELACION = [
+        'tecnico_vacaciones' => 'Técnico de vacaciones',
+        'tecnico_viaje' => 'Técnico de viaje / fuera de zona',
+        'atraso_pagos' => 'Atraso en pagos',
+        'equipo_otra_marca' => 'El equipo no es Dali (no trabajamos otras marcas)',
+        'sin_disponibilidad' => 'Sin disponibilidad para la fecha',
+        'otro' => 'Otro motivo',
     ];
 
     protected function casts(): array
@@ -280,6 +295,26 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.confirmada', $this, $u, $datos));
+    }
+
+    /**
+     * Avisa a ventas (jefe + vendedores) que una solicitud fue RECHAZADA y por
+     * qué (misma tribu que el resto del flujo de terreno). Se despacha después de
+     * registrar el rechazo; el emisor lo envuelve en try/catch (secundario).
+     */
+    public function avisarRechazoInterno(): void
+    {
+        $datos = [
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'motivo' => $this->motivo_cancelacion ?: 'sin especificar',
+            'url' => route('admin.agenda-terreno.index'),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('terreno.rechazada', $this, $u, $datos));
     }
 
     public function getTipoLabelAttribute(): string

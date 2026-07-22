@@ -151,6 +151,16 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando el cliente confirma (o avisa que no puede) su visita agendada.',
             ],
+            [
+                'clave' => 'notif_plantilla_terreno_rechazada',
+                'valor' => json_encode([
+                    'asunto' => 'Solicitud rechazada: {cliente} ({tipo})',
+                    'cuerpo' => "Se rechazó la solicitud de {cliente} ({tipo}).\nMotivo: {motivo}\nSe avisó al cliente por correo.\n\nVer en la agenda: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas cuando se rechaza una solicitud de terreno (con el motivo).',
+            ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [
                 'clave' => 'umbral_ajuste_produccion_unidades',

@@ -223,6 +223,8 @@ Route::middleware('auth')
                 ->whereNumber('trabajo')->name('agenda-terreno.edit');
             Route::put('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'update'])
                 ->whereNumber('trabajo')->name('agenda-terreno.update');
+            Route::post('agenda-terreno/{trabajo}/rechazar', [AgendaTrabajoController::class, 'rechazar'])
+                ->whereNumber('trabajo')->name('agenda-terreno.rechazar');
             Route::delete('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'destroy'])
                 ->whereNumber('trabajo')->name('agenda-terreno.destroy');
 

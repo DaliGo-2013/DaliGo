@@ -55,6 +55,8 @@ class Notificacion extends Model
         'terreno.solicitada' => 'Solicitud del cliente por coordinar (terreno)',
         // Agenda de terreno · el cliente respondió a la cita agendada
         'terreno.confirmada' => 'El cliente respondió a la visita agendada',
+        // Agenda de terreno · una solicitud fue rechazada (con motivo)
+        'terreno.rechazada' => 'Solicitud de terreno rechazada',
     ];
 
     protected $fillable = [
@@ -127,8 +129,9 @@ class Notificacion extends Model
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,
-            // La solicitud por coordinar y la respuesta del cliente se ven en la agenda.
-            'terreno.solicitada', 'terreno.confirmada' => route('admin.agenda-terreno.index'),
+            // La solicitud por coordinar, la respuesta del cliente y el rechazo se
+            // ven en la agenda de terreno.
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
             default => null,
         };
     }

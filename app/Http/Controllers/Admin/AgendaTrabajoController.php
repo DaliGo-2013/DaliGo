@@ -255,6 +255,44 @@ class AgendaTrabajoController extends Controller
     }
 
     /**
+     * Rechaza una solicitud/trabajo con un MOTIVO (técnico de vacaciones, equipo
+     * de otra marca, atraso de pagos, etc.): la marca 'cancelado', guarda el
+     * motivo, avisa al CLIENTE por correo (variante 'anulada' con el motivo) y al
+     * EQUIPO por M15. Es la cara "no" del flujo de coordinación (misma vía que el
+     * "sí"). Los avisos son secundarios: un fallo no revierte el rechazo.
+     */
+    public function rechazar(Request $request, AgendaTrabajo $trabajo): RedirectResponse
+    {
+        $data = $request->validate([
+            'motivo' => ['required', Rule::in(array_keys(AgendaTrabajo::MOTIVOS_CANCELACION))],
+            'motivo_otro' => ['nullable', 'required_if:motivo,otro', 'string', 'max:191'],
+        ]);
+
+        $texto = $data['motivo'] === 'otro'
+            ? trim((string) $data['motivo_otro'])
+            : AgendaTrabajo::MOTIVOS_CANCELACION[$data['motivo']];
+
+        $trabajo->update(['estado' => 'cancelado', 'motivo_cancelacion' => $texto]);
+
+        if (filled($trabajo->cliente_email)) {
+            try {
+                Mail::to($trabajo->cliente_email)->send(new AgendaTrabajoAviso($trabajo, 'anulada'));
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        try {
+            $trabajo->avisarRechazoInterno();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return redirect()->route('admin.agenda-terreno.index')
+            ->with('status', "Solicitud de {$trabajo->cliente_nombre} rechazada ({$texto}); se avisó al cliente.");
+    }
+
+    /**
      * Autocompletado del cliente por RUT o razón social (JSON). Mismo contrato
      * que los buscadores de ST; permiso propio de la agenda (los vendedores no
      * tienen 'manage servicio tecnico').

@@ -171,7 +171,8 @@ class VisitaIndustrialTest extends TestCase
         $res->assertOk()
             ->assertSee('Por coordinar (solicitudes del cliente)')
             ->assertSee('Aguas Claras SpA')
-            ->assertSee('Coordinar');
+            ->assertSee('Coordinar')
+            ->assertSee('No se puede'); // botón de rechazo con motivo
 
         // Sin fecha, no está en ningún día del mes (solo en el bloque).
         $this->assertSame(0, AgendaTrabajo::delMes(now()->year, now()->month)->count());
