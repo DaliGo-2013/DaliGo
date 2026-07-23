@@ -131,7 +131,7 @@
                             <p><span class="font-medium text-neutral-700">Ajuste del jefe:</span> <span class="text-neutral-600">{{ $reporte->motivo_ajuste }}</span></p>
                         @endif
                         @if ($reporte->devuelto_motivo)
-                            <p><span class="font-medium text-neutral-700">Motivo de devolución:</span> <span class="text-neutral-600">{{ $reporte->devuelto_motivo }}</span></p>
+                            <p><span class="font-medium text-neutral-700">Motivo del rechazo:</span> <span class="text-neutral-600">{{ $reporte->devuelto_motivo }}</span></p>
                         @endif
                     </div>
                 @endif
@@ -191,27 +191,28 @@
                 <div class="flex flex-wrap gap-3">
                     @if ($reporte->esPendienteDeRevision())
                         <form method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"
-                              x-on:submit="if (! confirm('¿Aprobar el reporte de ' + @js($reporte->soplador->name) + '?')) $event.preventDefault()">
+                              x-on:submit="if (! confirm('¿Autorizar el reporte de ' + @js($reporte->soplador->name) + '?')) $event.preventDefault()">
                             @csrf
-                            <x-primary-button>Aprobar</x-primary-button>
+                            <x-primary-button>Autorizar</x-primary-button>
                         </form>
-                        <x-secondary-button x-on:click="panel = panel === 'devolver' ? null : 'devolver'">Devolver al soplador</x-secondary-button>
+                        <x-secondary-button x-on:click="panel = panel === 'devolver' ? null : 'devolver'">Rechazar</x-secondary-button>
                     @endif
                     <x-secondary-button x-on:click="panel = panel === 'editar' ? null : 'editar'">Editar reporte</x-secondary-button>
                 </div>
 
                 @if ($reporte->esPendienteDeRevision())
-                    {{-- Devolver --}}
+                    {{-- Rechazar (devolver al soplador; ruta y campo conservan el nombre "devolver") --}}
                     <div x-show="panel === 'devolver'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
                         <form method="POST" action="{{ route('admin.produccion.reporte.devolver', $reporte) }}" class="space-y-4">
                             @csrf
                             <div>
-                                <x-input-label for="devuelto_motivo" value="Motivo de la devolución" />
+                                <x-input-label for="devuelto_motivo" value="Motivo del rechazo" />
                                 <x-textarea id="devuelto_motivo" name="devuelto_motivo" rows="3" class="mt-1.5" required>{{ old('devuelto_motivo') }}</x-textarea>
+                                <x-input-hint>El reporte vuelve al soplador con este motivo para que lo corrija.</x-input-hint>
                                 <x-input-error :messages="$errors->get('devuelto_motivo')" class="mt-2" />
                             </div>
                             <div class="flex justify-end">
-                                <x-danger-button>Devolver reporte</x-danger-button>
+                                <x-danger-button>Rechazar reporte</x-danger-button>
                             </div>
                         </form>
                     </div>
