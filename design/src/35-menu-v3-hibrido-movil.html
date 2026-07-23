@@ -1,0 +1,193 @@
+<!-- @dsCard group="Menu Talana" -->
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Menú V3 · Tabs híbrido — móvil 375</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
+    <style>/*__DALIGO_CSS__*/</style>
+    <style>
+        /* Esqueleto e interacción del preview (solo .dsv-) */
+        .dsv-phone {
+            width: 375px;
+            margin: 2rem auto;
+            border: 8px solid #171717;
+            border-radius: 2.5rem;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+        }
+        .dsv-screen { position: relative; height: 720px; overflow-y: auto; }
+        .dsv-menucheck { position: absolute; opacity: 0; pointer-events: none; }
+        .dsv-menupanel { display: none; }
+        .dsv-menucheck:checked ~ .dsv-menupanel { display: block; }
+
+        /* Acordeón de módulos con <details> */
+        details.dsv-acc > summary { list-style: none; cursor: pointer; }
+        details.dsv-acc > summary::-webkit-details-marker { display: none; }
+        .dsv-chev { transition: transform 150ms ease; }
+        details.dsv-acc[open] > summary .dsv-chev { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
+
+    <div class="dsv-phone">
+        <div class="dsv-screen bg-neutral-50">
+            <input type="checkbox" id="dsv-menu" class="dsv-menucheck" checked>
+
+            <!-- Topbar móvil: hamburguesa + logo + campanita SIEMPRE visible -->
+            <header class="sticky top-0 z-10 border-b border-neutral-200 bg-white">
+                <div class="flex h-14 items-center justify-between px-2">
+                    <label for="dsv-menu" class="inline-flex cursor-pointer items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                        <span class="sr-only">Abrir o cerrar el menú</span>
+                    </label>
+                    <a href="#" class="flex items-center gap-2">
+                        <div class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</div>
+                    </a>
+                    <a href="#" aria-label="Notificaciones (3 sin leer)" class="relative inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                        <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
+                        <span class="sr-only">Notificaciones</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Panel del menú (abierto por defecto): fijos arriba + acordeón por módulo -->
+            <nav class="dsv-menupanel border-b border-neutral-200 bg-white pb-2">
+
+                <!-- Accesos fijos: 1 toque, fuera de los módulos (igual que en la topbar desktop) -->
+                <div class="pt-2">
+                    <a href="#" class="block w-full ps-3 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">
+                        Mi producción
+                    </a>
+                    <a href="#" class="block w-full ps-3 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">
+                        Aprobaciones
+                    </a>
+                </div>
+
+                <div class="mx-4 my-1 border-t border-neutral-100" aria-hidden="true"></div>
+
+                <!-- Módulo: Servicio Técnico (abierto) -->
+                <details class="dsv-acc" open>
+                    <summary class="flex items-center justify-between ps-3 pe-4 py-3">
+                        <span class="inline-flex items-center gap-2 text-base font-medium text-neutral-700">
+                            Servicio Técnico
+                            <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                        </span>
+                        <svg class="dsv-chev h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+                    <div class="pb-1">
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-brand-600 text-start text-base font-medium text-brand-700 bg-brand-50 focus:outline-none transition duration-150 ease-in-out">Listado</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Ingreso por lote</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Códigos QR</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Informe</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Seguimiento (boceto)</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Agenda de terreno</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Servicios de terreno</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Instalaciones</a>
+                    </div>
+                </details>
+
+                <!-- Módulo: Comercial (cerrado) -->
+                <details class="dsv-acc">
+                    <summary class="flex items-center justify-between ps-3 pe-4 py-3">
+                        <span class="text-base font-medium text-neutral-700">Comercial</span>
+                        <svg class="dsv-chev h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+                    <div class="pb-1">
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Catálogo</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Precios</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Clientes</a>
+                    </div>
+                </details>
+
+                <!-- Módulo: Operación (cerrado) -->
+                <details class="dsv-acc">
+                    <summary class="flex items-center justify-between ps-3 pe-4 py-3">
+                        <span class="text-base font-medium text-neutral-700">Operación</span>
+                        <svg class="dsv-chev h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+                    <div class="pb-1">
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Inventario</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Producción</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Sopladores</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Kardex</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Máquinas</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Tipos de botellón</a>
+                    </div>
+                </details>
+
+                <!-- Módulo: Administración (cerrado) -->
+                <details class="dsv-acc">
+                    <summary class="flex items-center justify-between ps-3 pe-4 py-3">
+                        <span class="text-base font-medium text-neutral-700">Administración</span>
+                        <svg class="dsv-chev h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+                    <div class="pb-1">
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Usuarios</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Roles</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Sucursales</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Configuración</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Auditoría</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Notificaciones</a>
+                        <a href="#" class="block w-full ps-8 pe-4 py-3 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out">Historial de aprobaciones</a>
+                    </div>
+                </details>
+            </nav>
+
+            <!-- Contenido compacto de fondo: Listado ST -->
+            <main class="space-y-4 px-4 py-4">
+                <div class="min-w-0">
+                    <h2 class="text-xl font-semibold leading-tight text-neutral-900">Servicio Técnico</h2>
+                    <p class="mt-0.5 text-sm text-neutral-500">Equipos en taller.</p>
+                </div>
+
+                <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                    <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Equipos en taller</h3>
+                        <span class="text-xs font-medium text-neutral-400">5 equipos</span>
+                    </div>
+                    <ul role="list" class="divide-y divide-neutral-100">
+                        <li class="flex items-center gap-3 px-4 py-3 transition duration-150 hover:bg-neutral-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">RC</div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-neutral-900">Rosa Contreras</p>
+                                <p class="truncate text-xs text-neutral-500">Dispensador · Mod-482 · N/S SN-1029384</p>
+                            </div>
+                            <span class="inline-flex shrink-0 items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">En revisión</span>
+                        </li>
+                        <li class="flex items-center gap-3 px-4 py-3 transition duration-150 hover:bg-neutral-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">CA</div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-neutral-900">Comercial Los Andes SpA</p>
+                                <p class="truncate text-xs text-neutral-500">Lavadora · Mod-210 · N/S SN-5583021</p>
+                            </div>
+                            <span class="inline-flex shrink-0 items-center rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-brand-600">Cotización</span>
+                        </li>
+                    </ul>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <p class="mx-auto max-w-sm px-6 pb-8 text-center text-xs text-neutral-500">
+        Nota: en móvil, V3 se comporta casi igual que el menú actual — hamburguesa con "Mi producción"
+        y "Aprobaciones" siempre arriba y un acordeón por módulo. La variante no encarece el móvil.
+    </p>
+</body>
+</html>

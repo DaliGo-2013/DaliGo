@@ -26,3 +26,7 @@ Thumbs.db
 
 # Datos de prueba locales (se cargan a mano por phpMyAdmin; nunca al repo/deploy)
 *-demo-staging.sql
+
+# Bundle de diseño (claude.ai/design): capturas crudas y dist generado — regenerables
+/design/.capture/
+/design/dist/

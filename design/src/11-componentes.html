@@ -1,0 +1,334 @@
+<!-- @dsCard group="Fundaciones" -->
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DaliGo · Componentes</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
+    <style>/*__DALIGO_CSS__*/</style>
+    <style>
+        /* CSS propio del preview: SOLO clases con prefijo .dsv- */
+    </style>
+</head>
+<body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
+
+    <main class="mx-auto max-w-5xl p-8">
+
+        <!-- Cabecera de página -->
+        <div class="mb-8 flex items-center gap-3">
+            <div class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</div>
+            <div>
+                <h1 class="text-xl font-semibold text-neutral-900">Componentes</h1>
+                <p class="text-sm text-neutral-500">Réplicas estáticas con las clases exactas de los componentes Blade de la app.</p>
+            </div>
+        </div>
+
+        <div class="space-y-8">
+
+            <!-- ============ BOTONES ============ -->
+            <section class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="border-b border-neutral-100 px-6 py-3">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Botones</h2>
+                </div>
+                <div class="space-y-6 p-6">
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-primary-button&gt; · &lt;x-secondary-button&gt; · &lt;x-danger-button&gt;</p>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+                                Registrar ingreso
+                            </button>
+                            <button type="button" class="inline-flex items-center rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition duration-150 ease-in-out hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 ease-in-out hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+                                Eliminar
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">estado disabled (disabled:opacity-50)</p>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <button type="submit" disabled class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+                                Registrar ingreso
+                            </button>
+                            <button type="button" disabled class="inline-flex items-center rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition duration-150 ease-in-out hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+                                Cancelar
+                            </button>
+                            <button type="submit" disabled class="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 ease-in-out hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+                                Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ FORMULARIOS ============ -->
+            <section class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="border-b border-neutral-100 px-6 py-3">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Formularios</h2>
+                </div>
+                <div class="grid gap-6 p-6 sm:grid-cols-2">
+
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-input-label&gt; + &lt;x-text-input&gt; + &lt;x-input-hint&gt;</p>
+                        <label for="ds-nombre" class="block text-sm font-medium text-neutral-700">Nombre del cliente</label>
+                        <input id="ds-nombre" type="text" value="Rosa Contreras" class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60">
+                        <p class="mt-1.5 text-xs text-neutral-500">Como aparece en la boleta o factura.</p>
+                    </div>
+
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">con error · &lt;x-input-error&gt;</p>
+                        <label for="ds-correo" class="block text-sm font-medium text-neutral-700">Correo electrónico <span class="text-red-600">*</span></label>
+                        <input id="ds-correo" type="email" value="rosa.contreras" class="mt-1.5 block w-full rounded-lg border border-red-500 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm transition duration-150 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30 disabled:cursor-not-allowed disabled:opacity-60">
+                        <ul data-error-message class="dg-shake mt-1.5 space-y-1 text-sm text-red-600">
+                            <li>El correo electrónico no es válido.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-select&gt;</p>
+                        <label for="ds-sucursal" class="block text-sm font-medium text-neutral-700">Sucursal</label>
+                        <select id="ds-sucursal" class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60">
+                            <option>Casa matriz — Santiago</option>
+                            <option selected>Sucursal Rancagua</option>
+                            <option>Sucursal Talca</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">disabled (disabled:opacity-60)</p>
+                        <label for="ds-folio" class="block text-sm font-medium text-neutral-700">Folio</label>
+                        <input id="ds-folio" type="text" value="ST-2026-0148" disabled class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60">
+                        <p class="mt-1.5 text-xs text-neutral-500">Se asigna automáticamente al ingresar el equipo.</p>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ============ BADGES ============ -->
+            <section class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="border-b border-neutral-100 px-6 py-3">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Badges</h2>
+                </div>
+                <div class="space-y-6 p-6">
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-badge variant="brand|neutral|danger"&gt;</p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">Administrador</span>
+                            <span class="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 ring-1 ring-inset ring-neutral-200">Inactivo</span>
+                            <span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-100">Vencido</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-produccion.estado-badge :estado&gt; · los 4 estados del reporte</p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ring-1 ring-inset ring-neutral-200">Borrador</span>
+                            <span class="inline-flex items-center rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-brand-600">Enviado</span>
+                            <span class="inline-flex items-center rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-neutral-800">Aprobado</span>
+                            <span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-200">Devuelto</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ STAT-CARD ============ -->
+            <section class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="border-b border-neutral-100 px-6 py-3">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Indicadores</h2>
+                </div>
+                <div class="p-6">
+                    <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-stat-card :label :valor :href :alerta&gt;</p>
+                    <div class="grid max-w-lg gap-4 sm:grid-cols-2">
+                        <a href="#" class="block rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition duration-150 hover:border-neutral-300 hover:shadow active:scale-[0.98]">
+                            <p class="text-3xl font-semibold text-neutral-900">1.240</p>
+                            <p class="mt-1 text-sm text-neutral-500">Botellones producidos este mes</p>
+                        </a>
+                        <a href="#" class="block rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition duration-150 hover:border-neutral-300 hover:shadow active:scale-[0.98]">
+                            <p class="text-3xl font-semibold text-brand-600">5</p>
+                            <p class="mt-1 text-sm text-neutral-500">Reportes por aprobar</p>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ LIST-CARD + LIST-ROW ============ -->
+            <section class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="border-b border-neutral-100 px-6 py-3">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Listas</h2>
+                </div>
+                <div class="p-6">
+                    <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-list-card&gt; + &lt;x-list-row&gt; (slots leading / meta / actions)</p>
+
+                    <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                        <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Usuarios</h3>
+                            <span class="text-xs font-medium text-neutral-400">3 usuarios</span>
+                        </div>
+                        <ul role="list" class="divide-y divide-neutral-100">
+
+                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+                                <div class="shrink-0">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">RC</div>
+                                </div>
+                                <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Rosa Contreras</p>
+                                        <p class="truncate text-xs text-neutral-500">rosa.contreras@industriasdali.cl</p>
+                                    </div>
+                                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                                        <div class="sm:w-36">
+                                            <span class="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">Administrador</span>
+                                        </div>
+                                        <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0">
+                                            <a href="#" title="Editar" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                </svg>
+                                                <span class="sr-only">Editar</span>
+                                            </a>
+                                            <button type="button" title="Eliminar" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
+                                                <span class="sr-only">Eliminar</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+
+                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+                                <div class="shrink-0">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">PS</div>
+                                </div>
+                                <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Pedro Soto</p>
+                                        <p class="truncate text-xs text-neutral-500">pedro.soto@industriasdali.cl</p>
+                                    </div>
+                                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                                        <div class="sm:w-36">
+                                            <span class="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 ring-1 ring-inset ring-neutral-200">Soplador</span>
+                                        </div>
+                                        <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0">
+                                            <a href="#" title="Editar" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                </svg>
+                                                <span class="sr-only">Editar</span>
+                                            </a>
+                                            <button type="button" title="Eliminar" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
+                                                <span class="sr-only">Eliminar</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+
+                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+                                <div class="shrink-0">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">CM</div>
+                                </div>
+                                <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Carla Muñoz</p>
+                                        <p class="truncate text-xs text-neutral-500">carla.munoz@industriasdali.cl</p>
+                                    </div>
+                                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                                        <div class="sm:w-36">
+                                            <span class="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">Jefa de producción</span>
+                                        </div>
+                                        <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0">
+                                            <a href="#" title="Editar" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                </svg>
+                                                <span class="sr-only">Editar</span>
+                                            </a>
+                                            <button type="button" title="Eliminar" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
+                                                <span class="sr-only">Eliminar</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ NAVEGACIÓN ============ -->
+            <section class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="border-b border-neutral-100 px-6 py-3">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Navegación</h2>
+                </div>
+                <div class="space-y-6 p-6">
+
+                    <div>
+                        <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-nav-link :active&gt; · activo (subrayado brand) vs inactivo</p>
+                        <div class="flex h-16 items-stretch gap-8 border-b border-neutral-200 bg-white px-4">
+                            <a href="#" class="inline-flex items-center px-1 pt-1 border-b-2 border-brand-600 text-sm font-medium leading-5 text-neutral-900 focus:outline-none transition duration-150 ease-in-out">
+                                Dashboard
+                            </a>
+                            <a href="#" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+                                Comercial
+                            </a>
+                            <a href="#" class="inline-flex items-center gap-2 px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+                                Servicio Técnico
+                                <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-start gap-10">
+                        <div>
+                            <p class="mb-3 font-mono text-xs text-neutral-400">campanita con contador</p>
+                            <button type="button" class="relative rounded-full p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                                </svg>
+                                <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
+                                <span class="sr-only">Notificaciones (3 sin leer)</span>
+                            </button>
+                        </div>
+
+                        <div>
+                            <p class="mb-3 font-mono text-xs text-neutral-400">badge contador de Servicio Técnico</p>
+                            <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                        </div>
+
+                        <div>
+                            <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-avatar&gt;</p>
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">RC</div>
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">PS</div>
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">CM</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="mb-3 font-mono text-xs text-neutral-400">&lt;x-application-logo&gt; + marca</p>
+                            <div class="flex items-center gap-2">
+                                <div class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</div>
+                                <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+</body>
+</html>

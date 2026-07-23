@@ -1,0 +1,775 @@
+<!-- @dsCard group="Pantallas actuales" -->
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+
+        <title>DaliGo · Servicio Técnico (pantalla actual)</title>
+
+        
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#EA580C">
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
+
+                <style>/*__DALIGO_CSS__*/</style>
+</head>
+    <body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
+        <div class="min-h-screen">
+            <nav x-data="{ open: false }" class="border-b border-neutral-200 bg-white">
+    
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 justify-between">
+            <div class="flex">
+                <div class="flex shrink-0 items-center">
+                    <a href="#" class="flex items-center gap-2">
+                        <div class="inline-flex items-center justify-center rounded-lg bg-brand-600 font-black text-white h-9 w-9 text-base">D</div>
+                        <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
+                    </a>
+                </div>
+
+                
+                <div class="hidden space-x-8 lg:-my-px lg:ms-10 lg:flex">
+                    <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out" href="#">
+    Inicio
+</a>
+
+                                            <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+    <button type="button" @click="open = ! open" class="inline-flex h-full items-center gap-1 px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+        Comercial
+        
+        
+        <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <div x-show="open"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute start-0 top-full z-50 mt-1 w-48 origin-top-left rounded-md shadow-lg"
+            style="display: none;"
+            @click="open = false">
+        <div class="rounded-md bg-white py-1 ring-1 ring-neutral-200">
+            <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Catálogo</a>
+                                <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Precios</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Clientes</a>
+        </div>
+    </div>
+</div>
+                    
+                                            <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+    <button type="button" @click="open = ! open" class="inline-flex h-full items-center gap-1 px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+        Operación
+        
+        
+        <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <div x-show="open"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute start-0 top-full z-50 mt-1 w-48 origin-top-left rounded-md shadow-lg"
+            style="display: none;"
+            @click="open = false">
+        <div class="rounded-md bg-white py-1 ring-1 ring-neutral-200">
+            <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Inventario</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Producción</a>
+        </div>
+    </div>
+</div>
+                    
+                                            <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+    <button type="button" @click="open = ! open" class="inline-flex h-full items-center gap-1 px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+        Administración
+        
+        
+        <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <div x-show="open"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute start-0 top-full z-50 mt-1 w-48 origin-top-left rounded-md shadow-lg"
+            style="display: none;"
+            @click="open = false">
+        <div class="rounded-md bg-white py-1 ring-1 ring-neutral-200">
+            <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Usuarios</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Roles</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Sucursales</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Configuración</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Auditoría</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Notificaciones</a>
+                                                                                        
+                                <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Historial de aprobaciones</a>
+        </div>
+    </div>
+</div>
+                    
+                                            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out whitespace-nowrap" href="#">
+    Mi producción
+</a>
+                    
+                                            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out whitespace-nowrap" href="#">
+    Aprobaciones
+</a>
+                    
+                                            <div class="relative flex" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+    <button type="button" @click="open = ! open" class="inline-flex h-full items-center gap-1 px-1 pt-1 border-b-2 border-brand-600 text-sm font-medium leading-5 text-neutral-900 focus:outline-none transition duration-150 ease-in-out">
+        Servicio Técnico
+        
+        <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
+                                          title="6 equipo(s) por atender">6</span>
+        <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <div x-show="open"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute start-0 top-full z-50 mt-1 w-48 origin-top-left rounded-md shadow-lg"
+            style="display: none;"
+            @click="open = false">
+        <div class="rounded-md bg-white py-1 ring-1 ring-neutral-200">
+            <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Listado</a>
+                                                        
+                                                            <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Ingreso por lote</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Códigos QR</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Informe</a>
+                                <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Seguimiento (boceto)</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Agenda de terreno</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Servicios de terreno</a>
+                                                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Instalaciones</a>
+        </div>
+    </div>
+</div>
+                                    </div>
+            </div>
+
+            <div class="hidden lg:ms-6 lg:flex lg:items-center">
+                
+                <div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+    <div @click="open = ! open">
+        <button type="button" title="Notificaciones"
+                class="relative inline-flex items-center rounded-md border border-transparent p-2 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
+            <svg class="h-5 w-5 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+</svg>
+                            <span class="absolute right-0.5 top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold leading-none text-white">3</span>
+                        <span class="sr-only">Notificaciones (3 sin leer)</span>
+        </button>
+    </div>
+
+    <div x-show="open"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute z-50 mt-2 w-80 rounded-md shadow-lg ltr:origin-top-right rtl:origin-top-left end-0"
+            style="display: none;"
+            @click="open = false">
+        <div class="rounded-md ring-1 ring-neutral-200 py-1 bg-white">
+            <div class="flex items-center justify-between px-4 py-2">
+            <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">Notificaciones</span>
+                            <form>
+                                        <button type="submit" class="text-xs font-medium text-brand-600 transition hover:text-brand-700">Marcar todas</button>
+                </form>
+                    </div>
+
+                    <form>
+                                <button type="submit" class="block w-full border-t border-neutral-100 px-4 py-2 text-left transition hover:bg-neutral-50">
+                    <span class="block truncate text-sm font-medium text-neutral-800">Equipo listo para entrega</span>
+                    <span class="block text-xs text-neutral-400">hace 0 segundos</span>
+                </button>
+            </form>
+                    <form>
+                                <button type="submit" class="block w-full border-t border-neutral-100 px-4 py-2 text-left transition hover:bg-neutral-50">
+                    <span class="block truncate text-sm font-medium text-neutral-800">Nueva solicitud de aprobación</span>
+                    <span class="block text-xs text-neutral-400">hace 0 segundos</span>
+                </button>
+            </form>
+                    <form>
+                                <button type="submit" class="block w-full border-t border-neutral-100 px-4 py-2 text-left transition hover:bg-neutral-50">
+                    <span class="block truncate text-sm font-medium text-neutral-800">Reporte de producción enviado</span>
+                    <span class="block text-xs text-neutral-400">hace 0 segundos</span>
+                </button>
+            </form>
+        
+        <a href="#"
+           class="block border-t border-neutral-100 px-4 py-2 text-center text-xs font-medium text-brand-600 transition hover:text-brand-700">
+            Ver todas
+        </a>
+        </div>
+    </div>
+</div>
+
+                <div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+    <div @click="open = ! open">
+        <button class="inline-flex items-center rounded-md border border-transparent px-3 py-2 text-sm font-medium leading-4 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
+                            <div>María Demo</div>
+                            <div class="ms-1">
+                                <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </button>
+    </div>
+
+    <div x-show="open"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute z-50 mt-2 w-48 rounded-md shadow-lg ltr:origin-top-right rtl:origin-top-left end-0"
+            style="display: none;"
+            @click="open = false">
+        <div class="rounded-md ring-1 ring-neutral-200 py-1 bg-white">
+            <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Perfil</a>
+
+                        <form>
+                                                        <a class="block w-full px-4 py-2 text-start text-sm leading-5 text-neutral-700 transition duration-150 ease-in-out hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none" href="#">Cerrar sesión</a>
+                        </form>
+        </div>
+    </div>
+</div>
+            </div>
+
+            <div class="-me-2 flex items-center gap-1 lg:hidden">
+                
+                <a href="#"
+                    aria-label="Notificaciones (3 sin leer)"
+                    class="relative inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
+                    <svg class="h-5 w-5 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+</svg>
+                                            <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
+                                        <span class="sr-only">Notificaciones</span>
+                </a>
+                <button @click="open = ! open" class="inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
+                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden lg:hidden">
+        
+        <div class="space-y-1 pb-3 pt-2">
+            <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Inicio
+</a>
+
+                            <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Mi producción
+</a>
+            
+                            <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Aprobaciones
+</a>
+            
+                            <div class="px-4 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    Servicio Técnico
+                                            <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">6</span>
+</div>
+
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-brand-600 text-start text-base font-medium text-brand-700 bg-brand-50 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Listado
+</a>
+                                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Ingreso por lote
+</a>
+                                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Códigos QR
+</a>
+                                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Informe
+</a>
+                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Seguimiento (boceto)
+</a>
+                                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Agenda de terreno
+</a>
+                                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Servicios de terreno
+</a>
+                                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Instalaciones
+</a>
+                            
+                            <div class="px-4 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    Comercial
+</div>
+
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Catálogo
+</a>
+                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Precios
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Clientes
+</a>
+                            
+                            <div class="px-4 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    Operación
+</div>
+
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Inventario
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Producción
+</a>
+                            
+                            <div class="px-4 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    Administración
+</div>
+
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Usuarios
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Roles
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Sucursales
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Configuración
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Auditoría
+</a>
+                
+                                    <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Historial de aprobaciones
+</a>
+                                    </div>
+
+        
+        <div class="border-t border-neutral-200 pb-1 pt-4">
+            <div class="flex items-center justify-between px-4">
+                <span class="inline-flex items-center gap-2 text-base font-medium text-neutral-800">
+                    Notificaciones
+                                            <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">3</span>
+                                    </span>
+                                    <form>
+                                                <button type="submit" class="text-sm font-medium text-brand-600">Marcar todas</button>
+                    </form>
+                            </div>
+            <div class="mt-1">
+                <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Ver mis notificaciones
+</a>
+            </div>
+        </div>
+
+        <div class="border-t border-neutral-200 pb-1 pt-4">
+            <div class="px-4">
+                <div class="text-base font-medium text-neutral-800">María Demo</div>
+                <div class="text-sm font-medium text-neutral-500">admin@daligo.test</div>
+            </div>
+
+            <div class="mt-3 space-y-1">
+                <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Perfil
+</a>
+
+                <form>
+                                        <a class="block w-full ps-3 pe-4 py-2 border-l-4 border-transparent text-start text-base font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300 focus:outline-none transition duration-150 ease-in-out" href="#">
+    Cerrar sesión
+</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+                            <header class="border-b border-neutral-200 bg-white">
+                    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex min-w-0 items-center gap-3">
+                <div class="min-w-0">
+            <h2 class="text-xl font-semibold leading-tight text-neutral-900">Servicio Técnico</h2>
+                            <p class="mt-1 text-sm text-neutral-500">Ingreso de máquinas y lavadoras al taller.</p>
+                    </div>
+    </div>
+            <div class="shrink-0"><div class="flex items-center gap-2">
+                    
+                    <a href="#" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-3.5 border border-neutral-300 bg-white text-neutral-500 shadow-sm hover:bg-neutral-50 hover:text-neutral-700 active:scale-[0.98]" title="Volver al inicio">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+</svg>
+        <span class="sr-only">Volver al inicio</span>    </a>
+
+                    
+                                            <a class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]" href="#">
+    <svg class="h-5 w-5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+</svg>
+                            Registrar ingreso
+</a>
+                                    </div></div>
+    </div>
+                    </div>
+                </header>
+            
+            <main>
+                <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            
+            
+                                        
+            
+            <form
+                  class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-neutral-700" for="q">
+    Buscar (folio, cliente, modelo o serie)
+</label>
+                    <input  class="block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60 mt-1.5" id="q" name="q" type="text" value="" placeholder="ej. 000009, 12.345.678-9, SN-12345">
+                </div>
+                <div class="sm:w-44">
+                    <label class="block text-sm font-medium text-neutral-700" for="sucursal_id">
+    Sucursal (recepción)
+</label>
+                    <select  class="block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60 mt-1.5" id="sucursal_id" name="sucursal_id">
+    <option value="">Todas</option>
+                                                    <option value="3" >Abate Molina</option>
+                                                    <option value="4" >Buzeta</option>
+                                                    <option value="2" >Coquimbo</option>
+                                                    <option value="1" >Mirador</option>
+</select>
+                </div>
+                
+                                                <div class="flex items-center gap-3">
+                    <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98] disabled:opacity-50">
+    Filtrar
+</button>
+                                    </div>
+            </form>
+
+            
+                                        <div>
+                    <div class="mb-2 flex items-baseline justify-between gap-3">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                            Historial
+                        </h3>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                                                            <a href="#"
+                                   class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:border-brand-300 hover:shadow">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Año</p>
+                                    <p class="mt-1 text-2xl font-semibold text-neutral-900">2026</p>
+                                    <p class="mt-1 text-sm text-neutral-600">8 órdenes</p>
+                                    <p class="text-xs text-neutral-400">3 garantía · 5 reparación</p>
+                                </a>
+                                                    </div>
+                                    </div>
+            
+            <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Órdenes</h3>
+                            <span class="text-xs font-medium text-neutral-400">8 órdenes</span>
+                    </div>
+    
+    <ul role="list" class="divide-y divide-neutral-100">
+        <li class="bg-neutral-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 sm:px-6">Julio 2026</li>
+                                        <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-JRS3GJVF</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Sofía Madera</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-red-50 text-red-700 ring-red-100">Sin Solucion</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">8766365-5 · Bomba de agua · Mod-442</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-SNNEEXYL</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Pol Villa Hijo</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-neutral-100 text-neutral-500 ring-neutral-200">Entregado</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">13982265-K · Dispensador · Mod-773</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-M6FRO7EY</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Candela Rodarte</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-brand-50 text-brand-700 ring-brand-100">Reparado</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">13147886-0 · Bomba de agua · Mod-119 · N° SN-8262841</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-OEQMXV88</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Carlota Madrid</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-brand-50 text-brand-700 ring-brand-100">Esperando Repuesto</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">17963939-4 · Otro · N° SN-9002503</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-EP1LEB4S</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Jorge Montalvo</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-brand-50 text-brand-700 ring-brand-100">Cotizacion</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">6792034-1 · Dispensador</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-5PQVOYIR</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Ignacio Olivera</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-brand-50 text-brand-700 ring-brand-100">En Revision</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">23818075-9 · Lavadora · Mod-834</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-GHSMTIC5</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Claudia Villalba</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-brand-50 text-brand-700 ring-brand-100">Recibido</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">15568420-8 · Dispensador</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+                                    
+                                                            <li class="flex items-start gap-4 px-4 py-4 transition duration-150 hover:bg-neutral-50 sm:items-center sm:px-6">
+            <div class="shrink-0"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                                 title="Reparación">R</div></div>
+    
+    <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div class="min-w-0 flex-1"><a href="#" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-mono text-xs text-neutral-400">ST-PJDW6YJI</span>
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">María Pastor</p>
+                                
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-brand-50 text-brand-700 ring-brand-100">Recibido</span>
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">15366092-1 · Lavadora</p>
+                            
+                                                    </a></div>
+
+                    <div class="flex w-full items-center gap-4 sm:w-auto">
+                <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
+                                22-07-2026
+                            </div>                                    <div class="ms-auto flex shrink-0 items-center gap-1 sm:ms-0"><form>
+                                                                        <input type="hidden" name="_method" value="DELETE">                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40 p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Eliminar">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.158-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.043-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+</svg>
+        <span class="sr-only">Eliminar</span>    </button>
+                                </form></div>
+                            </div>
+            </div>
+</li>
+    </ul>
+</div>
+
+                    </div>
+    </div>
+
+            
+        <div id="aviso-nuevos" class="fixed inset-x-0 bottom-4 z-40 hidden text-center">
+            <button type="button"
+                class="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
+                <span id="aviso-nuevos-texto">Llegaron ingresos nuevos por QR</span>
+                <span class="opacity-90">&middot; Actualizar &#8635;</span>
+            </button>
+        </div>
+        
+            </main>
+        </div>
+    </body>
+</html>

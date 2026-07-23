@@ -1,0 +1,277 @@
+<!-- @dsCard group="Menu Talana" -->
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Menú V3 · Tabs híbrido — desktop</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
+    <style>/*__DALIGO_CSS__*/</style>
+    <style>
+        /* Esqueleto e interacción del preview (solo .dsv-) */
+        .dsv-tabradio { position: absolute; opacity: 0; pointer-events: none; }
+        .dsv-sidebar { width: 15rem; flex: none; }
+        .dsv-shell { min-height: calc(100vh - 3.5rem); }
+        .dsv-panel { display: none; }
+
+        /* El radio :checked alterna sidebar contextual + área de contenido */
+        #dsv-tab-st:checked  ~ .dsv-app .dsv-show-st,
+        #dsv-tab-op:checked  ~ .dsv-app .dsv-show-op,
+        #dsv-tab-adm:checked ~ .dsv-app .dsv-show-adm { display: block; }
+
+        /* Estado activo del tab: sale del :checked, no del markup */
+        #dsv-tab-st:checked  ~ .dsv-app .dsv-tab-st,
+        #dsv-tab-op:checked  ~ .dsv-app .dsv-tab-op,
+        #dsv-tab-adm:checked ~ .dsv-app .dsv-tab-adm { border-color: #ea580c; color: #171717; }
+    </style>
+</head>
+<body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
+    <input type="radio" name="dsv-tab" id="dsv-tab-st" class="dsv-tabradio" checked>
+    <input type="radio" name="dsv-tab" id="dsv-tab-op" class="dsv-tabradio">
+    <input type="radio" name="dsv-tab" id="dsv-tab-adm" class="dsv-tabradio">
+
+    <div class="dsv-app min-h-screen">
+
+        <!-- Topbar: logo + tabs de módulo + fijos + campanita/avatar -->
+        <header class="border-b border-neutral-200 bg-white">
+            <div class="flex h-14 items-center gap-6 px-4 sm:px-6 lg:px-8">
+                <a href="#" class="flex shrink-0 items-center gap-2">
+                    <div class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</div>
+                    <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
+                </a>
+
+                <nav class="flex h-full min-w-0 flex-1 gap-x-5">
+                    <!-- Tabs de módulo (Inicio y Comercial decorativos en este preview) -->
+                    <a href="#" class="inline-flex items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+                        Inicio
+                    </a>
+                    <a href="#" class="inline-flex items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+                        Comercial
+                    </a>
+                    <label for="dsv-tab-op" class="dsv-tab-op inline-flex cursor-pointer items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 transition duration-150 ease-in-out">
+                        Operación
+                    </label>
+                    <label for="dsv-tab-adm" class="dsv-tab-adm inline-flex cursor-pointer items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 transition duration-150 ease-in-out">
+                        Administración
+                    </label>
+                    <label for="dsv-tab-st" class="dsv-tab-st inline-flex cursor-pointer items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 transition duration-150 ease-in-out">
+                        Servicio Técnico
+                        <span class="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white" title="5 equipo(s) por atender">5</span>
+                    </label>
+
+                    <!-- Separador: los fijos del operario/jefe quedan FUERA de los módulos -->
+                    <div class="my-auto h-6 w-px shrink-0 bg-neutral-200" aria-hidden="true"></div>
+
+                    <a href="#" class="inline-flex items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+                        Mi producción
+                    </a>
+                    <a href="#" class="inline-flex items-center whitespace-nowrap px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 focus:outline-none focus:text-neutral-800 focus:border-neutral-300 transition duration-150 ease-in-out">
+                        Aprobaciones
+                    </a>
+                </nav>
+
+                <div class="flex shrink-0 items-center gap-3">
+                    <button type="button" title="Notificaciones" class="relative inline-flex items-center rounded-md border border-transparent p-2 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                        <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
+                        <span class="sr-only">Notificaciones (3 sin leer)</span>
+                    </button>
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600" title="María Demo">MD</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="dsv-shell flex">
+
+            <!-- Sidebar contextual: muestra SOLO los items del módulo del tab activo -->
+            <aside class="dsv-sidebar border-r border-neutral-200 bg-white">
+
+                <!-- Módulo: Servicio Técnico -->
+                <nav class="dsv-panel dsv-show-st p-3">
+                    <div class="flex items-center gap-2 px-3 pb-2 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                        Servicio Técnico
+                        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                    </div>
+                    <ul class="space-y-0.5">
+                        <li><a href="#" class="flex items-center rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700">Listado</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Ingreso por lote</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Códigos QR</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Informe</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Seguimiento (boceto)</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Agenda de terreno</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Servicios de terreno</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Instalaciones</a></li>
+                    </ul>
+                </nav>
+
+                <!-- Módulo: Operación -->
+                <nav class="dsv-panel dsv-show-op p-3">
+                    <div class="px-3 pb-2 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Operación</div>
+                    <ul class="space-y-0.5">
+                        <li><a href="#" class="flex items-center rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700">Inventario</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Producción</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Sopladores</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Kardex</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Máquinas</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Tipos de botellón</a></li>
+                    </ul>
+                </nav>
+
+                <!-- Módulo: Administración -->
+                <nav class="dsv-panel dsv-show-adm p-3">
+                    <div class="px-3 pb-2 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Administración</div>
+                    <ul class="space-y-0.5">
+                        <li><a href="#" class="flex items-center rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700">Usuarios</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Roles</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Sucursales</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Configuración</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Auditoría</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Notificaciones</a></li>
+                        <li><a href="#" class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-100 hover:text-neutral-900">Historial de aprobaciones</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Área de contenido: cambia con el mismo radio -->
+            <main class="min-w-0 flex-1">
+
+                <!-- Contenido: Servicio Técnico (página de fondo) -->
+                <section class="dsv-panel dsv-show-st px-4 py-6 sm:px-6 lg:px-8">
+                    <div class="mx-auto max-w-5xl space-y-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <h2 class="text-xl font-semibold leading-tight text-neutral-900">Servicio Técnico</h2>
+                                <p class="mt-1 text-sm text-neutral-500">Equipos en taller y órdenes de reparación.</p>
+                            </div>
+                            <div class="shrink-0">
+                                <a href="#" class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                    Registrar ingreso
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                            <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-3">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Equipos en taller</h3>
+                                <span class="text-xs font-medium text-neutral-400">5 equipos</span>
+                            </div>
+                            <ul role="list" class="divide-y divide-neutral-100">
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">RC</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Rosa Contreras</p>
+                                        <p class="truncate text-xs text-neutral-500">Dispensador · Mod-482 · N/S SN-1029384</p>
+                                    </div>
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">En revisión</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">CA</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Comercial Los Andes SpA</p>
+                                        <p class="truncate text-xs text-neutral-500">Lavadora · Mod-210 · N/S SN-5583021</p>
+                                    </div>
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-brand-600">Cotización</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">HF</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Héctor Fuenzalida</p>
+                                        <p class="truncate text-xs text-neutral-500">Bomba de agua · Mod-119 · N/S SN-8817263</p>
+                                    </div>
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ring-1 ring-inset ring-neutral-200">Recibido</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">AM</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Aguas del Maule Ltda.</p>
+                                        <p class="truncate text-xs text-neutral-500">Dispensador · Mod-773 · N/S SN-3306415</p>
+                                    </div>
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-neutral-800">Reparado</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Contenido: Operación (placeholder) -->
+                <section class="dsv-panel dsv-show-op px-4 py-6 sm:px-6 lg:px-8">
+                    <div class="mx-auto max-w-5xl space-y-6">
+                        <div class="min-w-0">
+                            <h2 class="text-xl font-semibold leading-tight text-neutral-900">Inventario</h2>
+                            <p class="mt-1 text-sm text-neutral-500">Stock consolidado por bodega (espejo Bsale).</p>
+                        </div>
+
+                        <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                            <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-3">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Productos</h3>
+                                <span class="text-xs font-medium text-neutral-400">2 de 148</span>
+                            </div>
+                            <ul role="list" class="divide-y divide-neutral-100">
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">B</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Botellón 20 L policarbonato</p>
+                                        <p class="truncate text-xs text-neutral-500">BOT-20PC · 4 bodegas</p>
+                                    </div>
+                                    <span class="shrink-0 text-sm tabular-nums text-neutral-700">1.240 un</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">P</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Preforma 750 g</p>
+                                        <p class="truncate text-xs text-neutral-500">PRE-750 · 2 bodegas</p>
+                                    </div>
+                                    <span class="shrink-0 text-sm tabular-nums text-neutral-700">86.500 un</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <p class="text-xs text-neutral-400">Contenido de muestra — el foco de este preview es la navegación.</p>
+                    </div>
+                </section>
+
+                <!-- Contenido: Administración (placeholder) -->
+                <section class="dsv-panel dsv-show-adm px-4 py-6 sm:px-6 lg:px-8">
+                    <div class="mx-auto max-w-5xl space-y-6">
+                        <div class="min-w-0">
+                            <h2 class="text-xl font-semibold leading-tight text-neutral-900">Usuarios</h2>
+                            <p class="mt-1 text-sm text-neutral-500">Cuentas, roles y permisos del equipo.</p>
+                        </div>
+
+                        <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                            <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-3">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Usuarios</h3>
+                                <span class="text-xs font-medium text-neutral-400">2 de 14</span>
+                            </div>
+                            <ul role="list" class="divide-y divide-neutral-100">
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">RC</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Rosa Contreras</p>
+                                        <p class="truncate text-xs text-neutral-500">rosa.contreras@dali.cl · Jefa de producción</p>
+                                    </div>
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 ring-1 ring-inset ring-neutral-200">Activo</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold uppercase text-neutral-600">JM</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Jorge Maldonado</p>
+                                        <p class="truncate text-xs text-neutral-500">jorge.maldonado@dali.cl · Técnico de servicio</p>
+                                    </div>
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 ring-1 ring-inset ring-neutral-200">Activo</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <p class="text-xs text-neutral-400">Contenido de muestra — el foco de este preview es la navegación.</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

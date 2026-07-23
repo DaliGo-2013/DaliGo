@@ -1,0 +1,487 @@
+<!-- @dsCard group="Menu Talana" -->
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Menú V2 · Waffle Talana — desktop</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
+    <style>/*__DALIGO_CSS__*/</style>
+    <style>
+        /* Esqueleto de la variante (solo .dsv-) */
+        .dsv-hide { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+        .dsv-app { position: relative; display: flex; min-height: 100vh; flex-direction: column; }
+        .dsv-shell { display: flex; flex: 1 1 auto; align-items: stretch; }
+        .dsv-sb { display: none; width: 15rem; flex-shrink: 0; }
+        .dsv-view { display: none; }
+        .dsv-name { display: none; align-items: center; gap: 0.5rem; white-space: nowrap; }
+        .dsv-atajo-st { display: inline-flex; }
+        .dsv-overlay { display: none; position: fixed; inset: 0; z-index: 40; }
+        .dsv-panel { display: none; position: absolute; top: 3rem; right: 1rem; z-index: 50; width: 24rem; max-width: calc(100vw - 2rem); }
+
+        /* Waffle abre/cierra el panel */
+        #dsv-waffle:checked ~ .dsv-app .dsv-panel { display: block; }
+        #dsv-waffle:checked ~ .dsv-app .dsv-overlay { display: block; }
+        #dsv-waffle:checked ~ .dsv-app .dsv-waffle-btn { background: #fff7ed; color: #c2410c; }
+
+        /* Cambio de módulo: sidebar contextual */
+        #dsv-mod-st:checked ~ .dsv-app .dsv-sb-st,
+        #dsv-mod-op:checked ~ .dsv-app .dsv-sb-op,
+        #dsv-mod-adm:checked ~ .dsv-app .dsv-sb-adm { display: block; }
+
+        /* Cambio de módulo: contenido */
+        #dsv-mod-st:checked ~ .dsv-app .dsv-view-st,
+        #dsv-mod-op:checked ~ .dsv-app .dsv-view-op,
+        #dsv-mod-adm:checked ~ .dsv-app .dsv-view-adm { display: block; }
+
+        /* Cambio de módulo: nombre en la topbar */
+        #dsv-mod-st:checked ~ .dsv-app .dsv-name-st,
+        #dsv-mod-op:checked ~ .dsv-app .dsv-name-op,
+        #dsv-mod-adm:checked ~ .dsv-app .dsv-name-adm { display: inline-flex; }
+
+        /* Tarjeta activa del waffle (ring-2 brand-600) */
+        #dsv-mod-st:checked ~ .dsv-app .dsv-card-st,
+        #dsv-mod-op:checked ~ .dsv-app .dsv-card-op,
+        #dsv-mod-adm:checked ~ .dsv-app .dsv-card-adm { box-shadow: 0 0 0 2px #ea580c; }
+
+        /* El atajo de ST en la topbar solo aparece cuando ST NO es el módulo activo
+           (regla: el contador de Servicio Técnico queda SIEMPRE visible) */
+        #dsv-mod-st:checked ~ .dsv-app .dsv-atajo-st { display: none; }
+    </style>
+</head>
+<body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
+
+    <input type="radio" name="dsv-modulo" id="dsv-mod-st" class="dsv-hide" checked>
+    <input type="radio" name="dsv-modulo" id="dsv-mod-op" class="dsv-hide">
+    <input type="radio" name="dsv-modulo" id="dsv-mod-adm" class="dsv-hide">
+    <input type="checkbox" id="dsv-waffle" class="dsv-hide" checked>
+
+    <div class="dsv-app">
+
+        <!-- TOPBAR delgada -->
+        <header class="flex h-12 items-center gap-3 border-b border-neutral-200 bg-white px-4">
+            <a href="#" class="flex shrink-0 items-center gap-2">
+                <div class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</div>
+                <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
+            </a>
+            <div class="h-6 w-px shrink-0 bg-neutral-200"></div>
+
+            <span class="dsv-name dsv-name-st text-sm font-medium text-neutral-900">
+                Servicio Técnico
+                <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+            </span>
+            <span class="dsv-name dsv-name-op text-sm font-medium text-neutral-900">Operación</span>
+            <span class="dsv-name dsv-name-adm text-sm font-medium text-neutral-900">Administración</span>
+
+            <div class="ms-auto flex items-center gap-1">
+                <!-- Atajo fijo a Servicio Técnico (visible cuando ST no es el módulo activo) -->
+                <a href="#" class="dsv-atajo-st relative items-center justify-center rounded-lg p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700" title="Servicio Técnico · 5 equipos en taller">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
+                    </svg>
+                    <span class="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                    <span class="sr-only">Servicio Técnico (5 equipos en taller)</span>
+                </a>
+
+                <!-- Campanita -->
+                <button type="button" class="relative inline-flex items-center justify-center rounded-lg p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700" title="Notificaciones">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                    </svg>
+                    <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
+                    <span class="sr-only">Notificaciones (3 sin leer)</span>
+                </button>
+
+                <!-- Waffle 3×3 -->
+                <label for="dsv-waffle" class="dsv-waffle-btn inline-flex cursor-pointer items-center justify-center rounded-lg p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700" title="Módulos">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="5" cy="5" r="1.6"/><circle cx="12" cy="5" r="1.6"/><circle cx="19" cy="5" r="1.6"/>
+                        <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
+                        <circle cx="5" cy="19" r="1.6"/><circle cx="12" cy="19" r="1.6"/><circle cx="19" cy="19" r="1.6"/>
+                    </svg>
+                    <span class="sr-only">Abrir selector de módulos</span>
+                </label>
+
+                <div class="ms-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-600" title="María Demo">MD</div>
+            </div>
+        </header>
+
+        <!-- Clic afuera cierra el waffle -->
+        <label for="dsv-waffle" class="dsv-overlay" aria-hidden="true"></label>
+
+        <!-- PANEL WAFFLE (abierto por defecto) -->
+        <div class="dsv-panel rounded-2xl border border-neutral-200 bg-white p-4 shadow-lg">
+            <p class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Módulos</p>
+            <div class="grid grid-cols-2 gap-2">
+
+                <!-- Inicio (no interactivo en este preview) -->
+                <div class="flex items-start gap-3 rounded-2xl border border-neutral-200 p-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-neutral-900">Inicio</span>
+                        <span class="mt-0.5 block truncate text-xs text-neutral-500">Panel general e indicadores</span>
+                    </span>
+                </div>
+
+                <!-- Comercial (no interactivo en este preview) -->
+                <div class="flex items-start gap-3 rounded-2xl border border-neutral-200 p-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                        </svg>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-neutral-900">Comercial</span>
+                        <span class="mt-0.5 block truncate text-xs text-neutral-500">Catálogo, precios y clientes</span>
+                    </span>
+                </div>
+
+                <!-- Operación (cambia el módulo) -->
+                <label for="dsv-mod-op" class="dsv-card-op flex cursor-pointer items-start gap-3 rounded-2xl border border-neutral-200 p-3 transition duration-150 hover:border-brand-300 hover:bg-neutral-50">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h1.5c.621 0 1.125.504 1.125 1.125V21m7.5-10.5h.75m-.75 3h.75m-.75 3h.75" />
+                        </svg>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-neutral-900">Operación</span>
+                        <span class="mt-0.5 block truncate text-xs text-neutral-500">Inventario y producción</span>
+                    </span>
+                </label>
+
+                <!-- Administración (cambia el módulo) -->
+                <label for="dsv-mod-adm" class="dsv-card-adm flex cursor-pointer items-start gap-3 rounded-2xl border border-neutral-200 p-3 transition duration-150 hover:border-brand-300 hover:bg-neutral-50">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                        </svg>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-neutral-900">Administración</span>
+                        <span class="mt-0.5 block truncate text-xs text-neutral-500">Usuarios, roles y configuración</span>
+                    </span>
+                </label>
+
+                <!-- Servicio Técnico (activo, cambia el módulo) -->
+                <label for="dsv-mod-st" class="dsv-card-st flex cursor-pointer items-start gap-3 rounded-2xl border border-neutral-200 p-3 transition duration-150 hover:border-brand-300 hover:bg-neutral-50">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
+                        </svg>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="flex items-center gap-1.5 text-sm font-medium text-neutral-900">
+                            Servicio Técnico
+                            <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                        </span>
+                        <span class="mt-0.5 block truncate text-xs text-neutral-500">Taller, terreno e instalaciones</span>
+                    </span>
+                </label>
+
+                <!-- Mi trabajo (no interactivo en este preview) -->
+                <div class="flex items-start gap-3 rounded-2xl border border-neutral-200 p-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        </svg>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-neutral-900">Mi trabajo</span>
+                        <span class="mt-0.5 block truncate text-xs text-neutral-500">Mi producción y aprobaciones</span>
+                    </span>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="dsv-shell">
+
+            <!-- SIDEBAR contextual · Servicio Técnico -->
+            <aside class="dsv-sb dsv-sb-st border-r border-neutral-200 bg-white py-4">
+                <p class="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Servicio Técnico</p>
+                <nav class="space-y-0.5">
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-brand-600 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                        </svg>
+                        Listado
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m7.875 14.25 1.214 1.942a2.25 2.25 0 0 0 1.908 1.058h2.006c.776 0 1.497-.4 1.908-1.058l1.214-1.942M2.41 9h4.636a2.25 2.25 0 0 1 1.872 1.002l.164.246a2.25 2.25 0 0 0 1.872 1.002h2.092a2.25 2.25 0 0 0 1.872-1.002l.164-.246A2.25 2.25 0 0 1 16.954 9h4.636M2.41 9a2.25 2.25 0 0 0-.16.832V12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 12V9.832c0-.287-.055-.57-.16-.832M2.41 9l4.72-4.72A2.25 2.25 0 0 1 8.72 3.62h6.56a2.25 2.25 0 0 1 1.59.66L21.59 9" />
+                        </svg>
+                        Ingreso por lote
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
+                        </svg>
+                        Códigos QR
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                        </svg>
+                        Informe
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        Seguimiento (boceto)
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                        </svg>
+                        Agenda de terreno
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                        </svg>
+                        Servicios de terreno
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" />
+                        </svg>
+                        Instalaciones
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- SIDEBAR contextual · Operación -->
+            <aside class="dsv-sb dsv-sb-op border-r border-neutral-200 bg-white py-4">
+                <p class="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Operación</p>
+                <nav class="space-y-0.5">
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                        </svg>
+                        Inventario
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-brand-600 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        Producción
+                    </a>
+                    <div class="ml-7 mt-1 space-y-0.5 border-l border-neutral-200 pl-3 pr-2">
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Sopladores</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Kardex</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Máquinas</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Tipos de botellón</a>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- SIDEBAR contextual · Administración -->
+            <aside class="dsv-sb dsv-sb-adm border-r border-neutral-200 bg-white py-4">
+                <p class="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Administración</p>
+                <nav class="space-y-0.5">
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-brand-600 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                        </svg>
+                        Usuarios
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+                        </svg>
+                        Roles
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z" />
+                        </svg>
+                        Sucursales
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                        </svg>
+                        Configuración
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                        Auditoría
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                        Notificaciones
+                    </a>
+                    <a href="#" class="flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm font-medium text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        Historial de aprobaciones
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- CONTENIDO -->
+            <main class="min-w-0 flex-1">
+
+                <!-- Vista · Servicio Técnico -->
+                <div class="dsv-view dsv-view-st">
+                    <div class="mx-auto max-w-5xl space-y-6 px-6 py-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <h2 class="text-xl font-semibold leading-tight text-neutral-900">Servicio Técnico</h2>
+                                <p class="mt-1 text-sm text-neutral-500">Equipos en taller y servicios de terreno.</p>
+                            </div>
+                            <a href="#" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Registrar ingreso
+                            </a>
+                        </div>
+
+                        <div class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                            <div class="border-b border-neutral-100 px-6 py-3">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Equipos en taller · 5 equipos</h3>
+                            </div>
+                            <ul class="divide-y divide-neutral-100">
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">RC</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Rosa Contreras</p>
+                                        <p class="truncate text-xs text-neutral-500">Dispensador · Mod-482 · N/S SN-1029384</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ring-1 ring-inset ring-neutral-200">Recibido</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">CA</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Comercial Los Andes SpA</p>
+                                        <p class="truncate text-xs text-neutral-500">Lavadora · Mod-210 · N/S SN-5583021</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">En revisión</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">HF</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Hernán Fuentes</p>
+                                        <p class="truncate text-xs text-neutral-500">Dispensador · Mod-773 · N/S SN-8814520</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-brand-600">Cotización</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">AM</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Aguas del Maule Ltda</p>
+                                        <p class="truncate text-xs text-neutral-500">Bomba de agua · Mod-119 · N/S SN-3307765</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-neutral-800">Reparado</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista · Operación -->
+                <div class="dsv-view dsv-view-op">
+                    <div class="mx-auto max-w-5xl space-y-6 px-6 py-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <h2 class="text-xl font-semibold leading-tight text-neutral-900">Producción</h2>
+                                <p class="mt-1 text-sm text-neutral-500">Asignaciones y reportes del día.</p>
+                            </div>
+                            <a href="#" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Asignar producción
+                            </a>
+                        </div>
+
+                        <div class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                            <div class="border-b border-neutral-100 px-6 py-3">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cola de reportes · hoy · 2 reportes</h3>
+                            </div>
+                            <ul class="divide-y divide-neutral-100">
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">PS</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Pedro Salinas</p>
+                                        <p class="truncate text-xs text-neutral-500">Máquina M-02 · Turno día · 450 de 500 asignadas</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-brand-600">Enviado</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">LC</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Luisa Carrasco</p>
+                                        <p class="truncate text-xs text-neutral-500">Máquina M-01 · Turno día · 380 de 380 asignadas</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-neutral-800">Aprobado</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista · Administración -->
+                <div class="dsv-view dsv-view-adm">
+                    <div class="mx-auto max-w-5xl space-y-6 px-6 py-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <h2 class="text-xl font-semibold leading-tight text-neutral-900">Usuarios</h2>
+                                <p class="mt-1 text-sm text-neutral-500">Cuentas y roles del sistema.</p>
+                            </div>
+                            <a href="#" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Nuevo usuario
+                            </a>
+                        </div>
+
+                        <div class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                            <div class="border-b border-neutral-100 px-6 py-3">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Usuarios activos · 2 usuarios</h3>
+                            </div>
+                            <ul class="divide-y divide-neutral-100">
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">MR</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">María Riquelme</p>
+                                        <p class="truncate text-xs text-neutral-500">maria.riquelme@dali.cl · Sucursal Mirador</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-100">Administradora</span>
+                                </li>
+                                <li class="flex items-center gap-4 px-6 py-4 transition duration-150 hover:bg-neutral-50">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-600">TH</div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">Tomás Herrera</p>
+                                        <p class="truncate text-xs text-neutral-500">tomas.herrera@dali.cl · Sucursal Buzeta</p>
+                                    </div>
+                                    <span class="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 ring-1 ring-inset ring-neutral-200">Jefe de producción</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+</body>
+</html>

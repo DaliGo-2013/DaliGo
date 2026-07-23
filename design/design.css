@@ -1,0 +1,8 @@
+/* Entry Tailwind DEDICADO al bundle de diseño (design/dist para claude.ai/design).
+   Hereda el @theme (tokens brand, Instrument Sans) y el motion de la app, y además
+   escanea los HTML de design/src — así las utilidades que usan las variantes de menú
+   (y que la app aún no usa) NO quedan purgadas por Tailwind v4.
+   Compilar: npx --yes @tailwindcss/cli@latest -i design/design.css -o design/.capture/design-tw.css --minify */
+@import '../resources/css/app.css';
+
+@source './src/**/*.html';
