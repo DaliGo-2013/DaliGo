@@ -143,6 +143,77 @@ class ProduccionTest extends TestCase
         ]);
     }
 
+    public function test_asignar_guarda_la_procedencia_de_la_preforma(): void
+    {
+        // Tarjeta 02-07: opción saco/caja para conocer la procedencia de la preforma.
+        $soplador = $this->soplador();
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), [
+            'soplador_id' => $soplador->id,
+            'turno' => 'dia',
+            'fecha' => now()->toDateString(),
+            'asignadas' => 500,
+            'procedencia' => 'saco',
+        ])->assertRedirect(route('admin.produccion.index'));
+
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'asignadas' => 500, 'procedencia' => 'saco',
+        ]);
+    }
+
+    public function test_asignar_procedencia_es_opcional_y_de_lista_cerrada(): void
+    {
+        $soplador = $this->soplador();
+        $base = ['soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+
+        // Como el navegador: el select no elegido viaja como '' → queda null.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $base + ['procedencia' => ''])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'procedencia' => null,
+        ]);
+
+        // Un valor fuera de la lista (saco|caja) se rechaza.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $base + ['procedencia' => 'bolsa'])
+            ->assertSessionHasErrors('procedencia');
+        $this->assertSame(1, ProduccionAsignacion::where('soplador_id', $soplador->id)->count());
+    }
+
+    public function test_form_de_asignar_ofrece_la_procedencia(): void
+    {
+        $this->actingAs($this->jefe())->get(route('admin.produccion.asignar'))
+            ->assertOk()
+            ->assertSee('Procedencia de la preforma')
+            ->assertViewHas('procedencias', \App\Models\ProduccionAsignacion::PROCEDENCIAS);
+    }
+
+    public function test_procedencia_visible_en_reporte_aprobado(): void
+    {
+        // Hallazgo de la revisión: la procedencia debe poder consultarse
+        // también con el reporte APROBADO (estado permanente), no solo en el
+        // preview del kardex de los enviados.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO);
+        $reporte->asignacion->update(['procedencia' => 'caja']);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('Preforma del turno:')
+            ->assertSee('en caja');
+    }
+
+    public function test_procedencia_sin_preforma_no_oculta_el_aviso_del_kardex(): void
+    {
+        // Hallazgo de la revisión: elegir procedencia SIN preforma no debe
+        // enmascarar la señal "(sin preforma asignada)" del preview del kardex.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
+        $reporte->asignacion->update(['procedencia' => 'saco']);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('(sin preforma asignada)')
+            ->assertSee('en saco'); // la procedencia igual se informa, en los metadatos
+    }
+
     public function test_asignar_de_nuevo_crea_otra_produccion(): void
     {
         $soplador = $this->soplador();

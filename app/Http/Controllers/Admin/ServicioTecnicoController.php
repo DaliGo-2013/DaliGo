@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\CotizacionCliente;
+use App\Mail\DetalleTrabajoCliente;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\AgendaTrabajo;
 use App\Models\AgendaTrabajoRepuesto;
@@ -507,9 +508,97 @@ class ServicioTecnicoController extends Controller
             // Valor hora de mano de obra (precio con IVA del SKU de servicio
             // tecnico). Null si no existe/no tiene precio -> mano de obra manual.
             'precioHoraServicio' => $this->precioHoraServicio(),
-            // Historial de cotizaciones enviadas al cliente (la última manda).
-            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
         ]);
+    }
+
+    /**
+     * Pestaña Cotización (ver + enviar): muestra el desglose GUARDADO de la
+     * reparación (repuestos, mano de obra, descuento, total) y la tarjeta para
+     * enviar la cotización al cliente + historial. Los números se ingresan en la
+     * etapa de reparación; aquí solo se ven y se envían.
+     */
+    public function cotizacion(OrdenServicio $orden): View
+    {
+        return view('admin.servicio-tecnico.cotizacion', [
+            'orden' => $orden->load(['producto', 'repuestos']),
+            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
+            // Valor hora para la calculadora de mano de obra (aquí es donde se
+            // arma el precio). Null si no existe/no tiene precio -> mano de obra manual.
+            'precioHoraServicio' => $this->precioHoraServicio(),
+        ]);
+    }
+
+    /**
+     * Guarda el desglose de PRECIOS que arma la cotización: precio de cada
+     * repuesto, mano de obra y descuento → total a pagar. El técnico solo deja
+     * QUÉ repuestos usó (nombre + cantidad) en su parte; aquí se les pone precio.
+     * Solo aplica a reparaciones (garantía no se cobra, no se cotiza).
+     */
+    public function guardarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
+    {
+        if ($orden->condicion_efectiva !== 'reparacion') {
+            return back()->with('status', 'Equipo en garantía vigente: no se cotiza (no hay cobro).');
+        }
+
+        $data = $request->validate([
+            'mano_obra' => ['nullable', 'integer', 'min:0'],
+            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
+            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
+            'repuestos' => ['array'],
+            'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
+            'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
+        ], [
+            'descuento_motivo.required' => 'Indica el motivo del descuento.',
+        ]);
+
+        // Validacion por fila: las filas vacias se ignoran; una fila con nombre
+        // exige nombre (min 3) y precio (>0), porque aqui es donde se cobra. Se
+        // pueden agregar repuestos con el buscador del catalogo, igual que en el
+        // parte del tecnico.
+        $errores = [];
+        foreach ($request->input('repuestos', []) as $i => $r) {
+            $nombre = trim((string) ($r['nombre'] ?? ''));
+            if ($nombre === '') {
+                continue;
+            }
+            if (mb_strlen($nombre) < 3) {
+                $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
+            }
+            if ((int) ($r['precio_unitario'] ?? 0) < 1) {
+                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0).';
+            }
+        }
+        if ($errores) {
+            throw ValidationException::withMessages($errores);
+        }
+
+        $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+
+        $orden->update([
+            'mano_obra' => $data['mano_obra'] ?? null,
+            'descuento_pct' => $descuentoPct,
+            'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
+        ]);
+
+        // Reemplazo de repuestos ya con precio. Nombre y cantidad vienen del parte
+        // del técnico como campos ocultos (aquí son de solo lectura).
+        $orden->repuestos()->delete();
+        foreach ($data['repuestos'] ?? [] as $r) {
+            if (empty($r['nombre'])) {
+                continue;
+            }
+            $orden->repuestos()->create([
+                'nombre' => $r['nombre'],
+                'cantidad' => $r['cantidad'] ?? 1,
+                'precio_unitario' => $r['precio_unitario'] ?? 0,
+            ]);
+        }
+
+        $total = '$'.number_format((int) $orden->fresh()->costo_total, 0, ',', '.');
+
+        return redirect()->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->with('status', "Cotización de la orden {$orden->folio} actualizada (total {$total}).");
     }
 
     /**
@@ -570,8 +659,10 @@ class ServicioTecnicoController extends Controller
             'descuento_motivo.required' => 'Indica el motivo del descuento.',
         ]);
 
-        // Validacion por fila: si el tecnico empezo a llenar un repuesto, exige
-        // nombre (min 3) y, cuando se cobra (reparacion), un precio mayor a 0.
+        // Validacion por fila: el tecnico solo declara QUE repuesto uso y cuantos;
+        // si empezo a llenar una fila, exige el nombre (min 3). El PRECIO ya no se
+        // ingresa aqui —se pone en la pestaña Cotización— pero se preserva si viene
+        // (campo oculto) para no perderlo al re-guardar el parte del técnico.
         $errores = [];
         foreach ($request->input('repuestos', []) as $i => $r) {
             $nombre = trim((string) ($r['nombre'] ?? ''));
@@ -585,9 +676,6 @@ class ServicioTecnicoController extends Controller
 
             if (mb_strlen($nombre) < 3) {
                 $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
-            }
-            if ($esReparacion && $precio < 1) {
-                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0).';
             }
         }
         if ($errores) {
@@ -685,6 +773,38 @@ class ServicioTecnicoController extends Controller
         return back()->with('status', $correoOk
             ? "Correo de la cotización reenviado a {$cotizacion->cliente_email}."
             : 'El correo volvió a fallar. Revisa el correo del cliente o inténtalo más tarde.');
+    }
+
+    /**
+     * Garantía: envía al cliente el DETALLE del trabajo realizado, SIN cobro.
+     * Reemplaza a la cotización cuando el equipo está en garantía vigente: el
+     * cliente no paga, solo recibe el resumen de lo que se hizo (trabajo, causa y
+     * repuestos usados, sin precios). Correo secundario (try/catch): si el SMTP
+     * falla se avisa sin tumbar nada.
+     */
+    public function enviarDetalleTrabajo(OrdenServicio $orden): RedirectResponse
+    {
+        if ($orden->condicion_efectiva !== 'garantia') {
+            return back()->with('status', 'El equipo no está en garantía vigente: usa «Enviar cotización».');
+        }
+        if (blank($orden->cliente_email)) {
+            return back()->with('status', 'La orden no tiene correo del cliente: agrégalo en los datos de recepción.');
+        }
+        if (blank($orden->trabajo_realizado)) {
+            return back()->with('status', 'Registra primero el trabajo realizado en «Parte del técnico».');
+        }
+
+        try {
+            Mail::to($orden->cliente_email)->send(new DetalleTrabajoCliente($orden->load('repuestos')));
+            $ok = true;
+        } catch (\Throwable $e) {
+            report($e);
+            $ok = false;
+        }
+
+        return back()->with('status', $ok
+            ? "Detalle del trabajo enviado a {$orden->cliente_email} (orden {$orden->folio}, sin costo por garantía)."
+            : 'No se pudo enviar el correo ahora. Revisa el correo del cliente o inténtalo más tarde.');
     }
 
     /** Manda la carta y estampa `correo_enviado_at`; false si el SMTP falló. */

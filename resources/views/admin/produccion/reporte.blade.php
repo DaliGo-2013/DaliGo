@@ -119,8 +119,22 @@
                     </div>
                 @endif
 
-                @if ($reporte->motivo || $reporte->obs || $reporte->motivo_ajuste || $reporte->devuelto_motivo)
+                @php
+                    // Preforma del turno + procedencia (saco/caja). Va en los metadatos
+                    // del reporte (visibles en TODO estado) y no solo en el preview del
+                    // kardex de los enviados: la procedencia debe poder consultarse
+                    // también en un reporte ya aprobado. Se arma en @php para no
+                    // encadenar condicionales inline (gotcha del compilador Blade).
+                    $preformaTurno = collect([
+                        $reporte->asignacion?->preforma?->nombre,
+                        $reporte->asignacion?->procedencia ? 'en '.$reporte->asignacion->procedencia : null,
+                    ])->filter()->implode(' · ');
+                @endphp
+                @if ($preformaTurno !== '' || $reporte->motivo || $reporte->obs || $reporte->motivo_ajuste || $reporte->devuelto_motivo)
                     <div class="space-y-2 border-t border-neutral-100 px-6 py-4 text-sm">
+                        @if ($preformaTurno !== '')
+                            <p><span class="font-medium text-neutral-700">Preforma del turno:</span> <span class="text-neutral-600">{{ $preformaTurno }}</span></p>
+                        @endif
                         @if ($reporte->motivo)
                             <p><span class="font-medium text-neutral-700">Motivo del soplador:</span> <span class="text-neutral-600">{{ $reporte->motivo }}</span></p>
                         @endif

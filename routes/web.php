@@ -283,13 +283,25 @@ Route::middleware('auth')
             Route::put('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'guardarReparacion'])
                 ->name('servicio-tecnico.reparacion.guardar');
 
+            // Pestaña Cotización (ver + enviar): desglose guardado + envío al
+            // cliente. GET propio; el POST de abajo (mismo path) es el envío.
+            Route::get('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'cotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion');
+
             // Cotización al cliente (P-M12-02): enviar la carta / reintentar el
             // correo si el SMTP falló. {cotizacion:id} porque el binding por
             // defecto del modelo es el token (para el link público).
             Route::post('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'enviarCotizacion'])
                 ->name('servicio-tecnico.cotizacion.enviar');
+            // Guardar el desglose de precios (repuestos, mano de obra, descuento)
+            // que arma la cotización. PUT sobre el mismo path (POST = enviar).
+            Route::put('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'guardarCotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.guardar');
             Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/reintentar', [ServicioTecnicoController::class, 'reintentarCorreoCotizacion'])
                 ->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.reintentar');
+            // Garantía: enviar al cliente el DETALLE del trabajo (sin cobro).
+            Route::post('servicio-tecnico/{orden}/detalle-trabajo', [ServicioTecnicoController::class, 'enviarDetalleTrabajo'])
+                ->whereNumber('orden')->name('servicio-tecnico.detalle-trabajo.enviar');
 
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])

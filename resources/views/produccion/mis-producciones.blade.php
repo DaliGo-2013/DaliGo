@@ -38,7 +38,12 @@
                     @foreach ($reportes as $reporte)
                         @php
                             $editable = $reporte->editablePorSoplador();
+                            // Nombre de la preforma, con la procedencia (saco/caja) solo cuando
+                            // hay nombre que acompañar — un "en saco" suelto no informa nada.
                             $preforma = $reporte->asignacion?->preforma?->nombre;
+                            if ($preforma && $reporte->asignacion?->procedencia) {
+                                $preforma .= ' · en '.$reporte->asignacion->procedencia;
+                            }
                         @endphp
                         <a href="{{ route('produccion.mi.show', $reporte) }}"
                            class="block rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:bg-neutral-50 active:scale-[0.99] sm:p-5">

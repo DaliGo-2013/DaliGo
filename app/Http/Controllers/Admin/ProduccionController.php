@@ -394,6 +394,7 @@ class ProduccionController extends Controller
             'sopladores' => User::permission('report production')->orderBy('name')->get(),
             'turnos' => self::TURNOS,
             'preformas' => $this->preformasParaSelector(),
+            'procedencias' => ProduccionAsignacion::PROCEDENCIAS,
         ]);
     }
 
@@ -457,6 +458,9 @@ class ProduccionController extends Controller
             // restringe a productos ACTIVOS y NO dañados (mismo universo que
             // el selector; un id fuera de ese universo no debe entrar al kardex).
             'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinPreformasDanadas())],
+            // Procedencia de la preforma (saco o caja). Opcional; el select
+            // no elegido llega '' y ConvertEmptyStringsToNull lo vuelve null.
+            'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::PROCEDENCIAS)],
         ], [
             'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
@@ -470,6 +474,7 @@ class ProduccionController extends Controller
                 'turno' => $validated['turno'],
                 'asignadas' => $validated['asignadas'],
                 'preforma_id' => $validated['preforma_id'] ?? null,
+                'procedencia' => $validated['procedencia'] ?? null,
                 'creado_por' => $request->user()->id,
             ]);
 

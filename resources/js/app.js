@@ -296,9 +296,12 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
     elegirRepuesto(i, s) {
         // `s` puede ser {nombre, sku, precio} del catalogo, o {nombre} del historial.
         this.repuestos[i].nombre = s.nombre;
-        // Si el catalogo trae precio (con IVA), se pre-rellena como sugerencia
-        // editable; el tecnico lo puede ajustar.
-        if (s.precio !== null && s.precio !== undefined && s.precio !== '') {
+        // Si el catalogo trae precio (con IVA), se pre-rellena como sugerencia.
+        // OJO: el precio se edita en la pestaña Cotización y aquí (parte del
+        // técnico) viaja oculto; NO lo pisamos si ya tiene un precio cotizado
+        // (> 0), para no borrar en silencio lo que puso la cotización.
+        const yaTienePrecio = Number(this.repuestos[i].precio_unitario) > 0;
+        if (! yaTienePrecio && s.precio !== null && s.precio !== undefined && s.precio !== '') {
             this.repuestos[i].precio_unitario = Number(s.precio);
         }
         this.cerrarSugerencias();

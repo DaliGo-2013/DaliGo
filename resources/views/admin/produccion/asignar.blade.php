@@ -58,6 +58,18 @@
                         <x-input-error :messages="$errors->get('preforma_id')" class="mt-2" />
                     </div>
 
+                    <div>
+                        <x-input-label for="procedencia" value="Procedencia de la preforma (opcional)" />
+                        <x-select id="procedencia" name="procedencia" class="mt-1.5">
+                            <option value="" @selected(! old('procedencia'))>Sin especificar</option>
+                            @foreach ($procedencias as $procedencia)
+                                <option value="{{ $procedencia }}" @selected(old('procedencia') === $procedencia)>{{ ucfirst($procedencia) }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>En qué formato llegó la preforma de este turno (saco o caja).</x-input-hint>
+                        <x-input-error :messages="$errors->get('procedencia')" class="mt-2" />
+                    </div>
+
                     <x-form-footer :cancel="route('admin.produccion.index')">
                         <x-primary-button>Guardar asignación</x-primary-button>
                     </x-form-footer>
