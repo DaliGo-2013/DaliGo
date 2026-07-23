@@ -10,12 +10,17 @@ class ProduccionAsignacion extends Model
 {
     protected $table = 'produccion_asignaciones';
 
+    // En qué formato llegó la preforma del turno. Fuente única para el
+    // selector del form de asignar y su validación (Rule::in).
+    public const PROCEDENCIAS = ['saco', 'caja'];
+
     protected $fillable = [
         'soplador_id',
         'fecha',
         'turno',
         'asignadas',
         'preforma_id',
+        'procedencia',
         'creado_por',
     ];
 

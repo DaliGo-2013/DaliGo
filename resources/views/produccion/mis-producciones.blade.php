@@ -38,7 +38,11 @@
                     @foreach ($reportes as $reporte)
                         @php
                             $editable = $reporte->editablePorSoplador();
-                            $preforma = $reporte->asignacion?->preforma?->nombre;
+                            // Nombre de la preforma + procedencia (saco/caja) si la asignación la trae.
+                            $preforma = collect([
+                                $reporte->asignacion?->preforma?->nombre,
+                                $reporte->asignacion?->procedencia ? 'en '.$reporte->asignacion->procedencia : null,
+                            ])->filter()->implode(' · ') ?: null;
                         @endphp
                         <a href="{{ route('produccion.mi.show', $reporte) }}"
                            class="block rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:bg-neutral-50 active:scale-[0.99] sm:p-5">

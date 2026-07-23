@@ -147,7 +147,15 @@
                     </div>
                     <ul class="divide-y divide-neutral-100 text-sm">
                         <li class="flex items-center justify-between px-6 py-3">
-                            <span class="text-neutral-700">Consumo de preforma{{ $reporte->asignacion?->preforma ? ' · '.$reporte->asignacion->preforma->nombre : ' (sin preforma asignada)' }}</span>
+                            @php
+                                // Preforma + procedencia (saco/caja) en una sola cadena; se arma en
+                                // @php para no encadenar condicionales inline (gotcha del compilador).
+                                $detallePreforma = collect([
+                                    $reporte->asignacion?->preforma?->nombre,
+                                    $reporte->asignacion?->procedencia ? 'en '.$reporte->asignacion->procedencia : null,
+                                ])->filter()->implode(' · ');
+                            @endphp
+                            <span class="text-neutral-700">Consumo de preforma{{ $detallePreforma !== '' ? ' · '.$detallePreforma : ' (sin preforma asignada)' }}</span>
                             <span class="font-medium text-neutral-900">−{{ number_format($reporte->total, 0, ',', '.') }}</span>
                         </li>
                         <li class="flex items-center justify-between px-6 py-3">

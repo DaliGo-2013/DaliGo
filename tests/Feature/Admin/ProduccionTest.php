@@ -143,6 +143,50 @@ class ProduccionTest extends TestCase
         ]);
     }
 
+    public function test_asignar_guarda_la_procedencia_de_la_preforma(): void
+    {
+        // Tarjeta 02-07: opción saco/caja para conocer la procedencia de la preforma.
+        $soplador = $this->soplador();
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), [
+            'soplador_id' => $soplador->id,
+            'turno' => 'dia',
+            'fecha' => now()->toDateString(),
+            'asignadas' => 500,
+            'procedencia' => 'saco',
+        ])->assertRedirect(route('admin.produccion.index'));
+
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'asignadas' => 500, 'procedencia' => 'saco',
+        ]);
+    }
+
+    public function test_asignar_procedencia_es_opcional_y_de_lista_cerrada(): void
+    {
+        $soplador = $this->soplador();
+        $base = ['soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+
+        // Como el navegador: el select no elegido viaja como '' → queda null.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $base + ['procedencia' => ''])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'procedencia' => null,
+        ]);
+
+        // Un valor fuera de la lista (saco|caja) se rechaza.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $base + ['procedencia' => 'bolsa'])
+            ->assertSessionHasErrors('procedencia');
+        $this->assertSame(1, ProduccionAsignacion::where('soplador_id', $soplador->id)->count());
+    }
+
+    public function test_form_de_asignar_ofrece_la_procedencia(): void
+    {
+        $this->actingAs($this->jefe())->get(route('admin.produccion.asignar'))
+            ->assertOk()
+            ->assertSee('Procedencia de la preforma')
+            ->assertViewHas('procedencias', \App\Models\ProduccionAsignacion::PROCEDENCIAS);
+    }
+
     public function test_asignar_de_nuevo_crea_otra_produccion(): void
     {
         $soplador = $this->soplador();
