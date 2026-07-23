@@ -288,8 +288,15 @@ Route::middleware('auth')
             // defecto del modelo es el token (para el link público).
             Route::post('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'enviarCotizacion'])
                 ->name('servicio-tecnico.cotizacion.enviar');
+            // Guardar el desglose de precios (repuestos, mano de obra, descuento)
+            // que arma la cotización. PUT sobre el mismo path (POST = enviar).
+            Route::put('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'guardarCotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.guardar');
             Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/reintentar', [ServicioTecnicoController::class, 'reintentarCorreoCotizacion'])
                 ->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.reintentar');
+            // Garantía: enviar al cliente el DETALLE del trabajo (sin cobro).
+            Route::post('servicio-tecnico/{orden}/detalle-trabajo', [ServicioTecnicoController::class, 'enviarDetalleTrabajo'])
+                ->whereNumber('orden')->name('servicio-tecnico.detalle-trabajo.enviar');
 
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])

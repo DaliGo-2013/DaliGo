@@ -861,19 +861,22 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSessionHasErrors('estado');
     }
 
-    public function test_repuesto_en_reparacion_exige_nombre_y_precio(): void
+    public function test_repuesto_en_parte_del_tecnico_exige_nombre_pero_no_precio(): void
     {
+        // El precio ya NO se ingresa en el parte del técnico (va en Cotización):
+        // aquí solo se exige el nombre del repuesto.
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
-                'causa_falla' => 'uso_normal',   // para llegar a la validación de repuestos
+                'causa_falla' => 'uso_normal',
                 'repuestos' => [
                     ['nombre' => 'XY', 'cantidad' => 1, 'precio_unitario' => 0], // nombre corto + sin precio
                 ],
             ])
-            ->assertSessionHasErrors(['repuestos.0.nombre', 'repuestos.0.precio_unitario']);
+            ->assertSessionHasErrors(['repuestos.0.nombre'])
+            ->assertSessionDoesntHaveErrors(['repuestos.0.precio_unitario']);
     }
 
     // --- Filtros ---
@@ -1106,28 +1109,29 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertJsonFragment(['sku' => 'REP-001', 'nombre' => 'Caldera X', 'precio' => 4990]);
     }
 
-    public function test_reparacion_pasa_el_valor_hora_de_servicio(): void
+    public function test_cotizacion_pasa_el_valor_hora_de_servicio(): void
     {
-        // El producto SKU 9771001 (config) con precio con IVA es el valor hora.
+        // El valor hora vive donde se arma el precio (Cotización), no en el
+        // parte del técnico. SKU 9771001 (config) con precio con IVA = valor hora.
         $hora = Producto::factory()->create(['sku' => '9771001', 'nombre' => 'Hora servicio técnico']);
         Precio::factory()->create(['producto_id' => $hora->id, 'precio_con_iva' => 4500]);
 
-        $orden = OrdenServicio::factory()->create();
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
-            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', 4500)
             ->assertSee('Horas de servicio técnico');
     }
 
-    public function test_reparacion_sin_producto_hora_deja_mano_de_obra_manual(): void
+    public function test_cotizacion_sin_producto_hora_deja_mano_de_obra_manual(): void
     {
         // Sin el SKU de la hora, no hay valor hora (mano de obra manual).
-        $orden = OrdenServicio::factory()->create();
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
-            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', null)
             ->assertDontSee('Horas de servicio técnico');

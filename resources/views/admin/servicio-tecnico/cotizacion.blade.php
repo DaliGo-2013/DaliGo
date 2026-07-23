@@ -8,7 +8,13 @@
             $orden->producto?->sku,
             $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
         ])->filter()->implode(' · ');
-        $tieneDetalle = $orden->repuestos->isNotEmpty() || $orden->mano_obra || $orden->descuento_pct;
+
+        // Repuestos que dejó el técnico (nombre + cantidad): aquí se les pone precio.
+        $repInit = $orden->repuestos->map(fn ($r) => [
+            'nombre' => $r->nombre,
+            'cantidad' => $r->cantidad,
+            'precio_unitario' => $r->precio_unitario,
+        ])->values();
     @endphp
 
     <x-slot name="header">
@@ -28,53 +34,194 @@
 
             <x-status-alert :status="session('status')" />
 
-            {{-- Desglose GUARDADO (solo lectura). Los números se ingresan en la
-                 etapa «Parte del técnico»; aquí solo se ven y se envían. --}}
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-                <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del presupuesto</h3>
-                    <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Editar en parte del técnico →</a>
-                </div>
-
-                @if ($esGarantia)
-                    <div class="rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+            @if ($esGarantia)
+                {{-- ===================== GARANTÍA: detalle sin cobro ===================== --}}
+                @php
+                    $causaTxt = filled($orden->causa_falla) ? \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$orden->causa_falla] : null;
+                    $faltas = collect([
+                        blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
+                        blank($orden->trabajo_realizado) ? 'registra el trabajo realizado en «Parte del técnico»' : null,
+                    ])->filter();
+                @endphp
+                <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del trabajo (garantía)</h3>
                         <x-badge variant="neutral">Garantía</x-badge>
-                        <span class="ml-1">Garantía vigente: la reparación no se cobra, así que no se cotiza.</span>
                     </div>
-                @elseif (! $tieneDetalle)
-                    <p class="text-sm text-neutral-400">Aún sin repuestos ni mano de obra. Regístralos en «Parte del técnico».</p>
-                @else
-                    @if ($orden->repuestos->isNotEmpty())
-                        <div class="mb-4">
-                            <dt class="mb-1 text-xs text-neutral-400">Repuestos</dt>
-                            <ul class="divide-y divide-neutral-100 rounded-lg border border-neutral-200 text-sm">
-                                @foreach ($orden->repuestos as $r)
-                                    <li class="flex items-center justify-between px-3 py-2">
-                                        <span class="text-neutral-900">{{ $r->nombre }} <span class="text-neutral-400">× {{ $r->cantidad }}</span></span>
-                                        <span class="text-neutral-600">{{ $clp($r->subtotal) }}</span>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-                    <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                        <div><dt class="text-xs text-neutral-400">Mano de obra</dt><dd class="text-sm text-neutral-900">{{ $clp($orden->mano_obra ?? 0) }}</dd></div>
-                        @if ($orden->descuento_pct > 0)
-                            <div>
-                                <dt class="text-xs text-neutral-400">Descuento</dt>
-                                <dd class="text-sm text-neutral-900">{{ $orden->descuento_pct }}% · −{{ $clp($orden->descuento_monto) }}
-                                    <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></dd>
-                            </div>
-                        @endif
-                        <div><dt class="text-xs text-neutral-400">Costo total</dt><dd class="text-sm font-semibold text-neutral-900">{{ $clp($orden->costo_total) }}</dd></div>
-                    </dl>
-                @endif
-            </div>
+                    <p class="mb-4 text-sm text-neutral-600">
+                        Equipo en garantía vigente: <span class="font-medium">no se cobra</span>, así que no se cotiza.
+                        Al cliente se le envía solo el detalle de lo que se hizo.
+                    </p>
 
-            {{-- ===== Envío al cliente + historial (P-M12-02) =====
-                 Solo reparaciones que se cobran (garantía no cotiza). Usa lo
-                 GUARDADO (snapshot), no lo que esté a medio editar en reparación. --}}
-            @if ($esReparacion)
+                    <dl class="divide-y divide-neutral-100 rounded-xl border border-neutral-200 text-sm">
+                        <div class="flex items-start justify-between gap-4 px-4 py-3">
+                            <dt class="text-neutral-500">Trabajo realizado</dt>
+                            <dd class="text-right text-neutral-900">{{ $orden->trabajo_realizado ?: '—' }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 px-4 py-3">
+                            <dt class="text-neutral-500">Causa de la falla</dt>
+                            <dd class="text-right text-neutral-900">{{ $causaTxt ?: 'Sin determinar' }}</dd>
+                        </div>
+                        <div class="px-4 py-3">
+                            <dt class="mb-1.5 text-neutral-500">Repuestos usados</dt>
+                            <dd>
+                                @forelse ($orden->repuestos as $r)
+                                    <div class="flex items-center justify-between py-0.5 text-neutral-900">
+                                        <span>{{ $r->nombre }}</span>
+                                        <span class="text-neutral-400">× {{ $r->cantidad }}</span>
+                                    </div>
+                                @empty
+                                    <span class="text-neutral-400">Sin repuestos registrados.</span>
+                                @endforelse
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="mt-4">
+                        @if ($faltas->isEmpty())
+                            <form method="POST" action="{{ route('admin.servicio-tecnico.detalle-trabajo.enviar', $orden) }}" data-una-vez
+                                  onsubmit="return confirm('Se enviará el detalle del trabajo (sin costo, garantía) a {{ $orden->cliente_email }}. ¿Continuar?');">
+                                @csrf
+                                <x-primary-button type="submit">Enviar detalle del trabajo</x-primary-button>
+                            </form>
+                            <p class="mt-2 text-xs text-neutral-400">
+                                El cliente recibe el trabajo realizado, la causa de la falla y los repuestos usados (sin precios),
+                                con la nota «Sin costo — cubierto por la garantía».
+                            </p>
+                        @else
+                            <p class="text-sm text-neutral-500">Para enviar el detalle: {{ $faltas->implode('; ') }}.</p>
+                        @endif
+                    </div>
+                </div>
+            @else
+                {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
+                <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
+                      class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8" data-una-vez
+                      x-data="{
+                        repuestos: @js($repInit),
+                        manoObra: {{ (int) old('mano_obra', $orden->mano_obra ?? 0) }},
+                        descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }},
+                        precioHora: {{ (int) ($precioHoraServicio ?? 0) }},
+                        horas: 0,
+                        calcularManoObra() { if (this.precioHora > 0) this.manoObra = Math.round((Number(this.horas) || 0) * this.precioHora); },
+                        clp(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-CL'); },
+                        sub(r) { return (Number(r.precio_unitario) || 0) * (Number(r.cantidad) || 1); },
+                        get totalRepuestos() { return this.repuestos.reduce((s, r) => s + this.sub(r), 0); },
+                        get bruto() { return this.totalRepuestos + (Number(this.manoObra) || 0); },
+                        get descMonto() { return Math.round(this.bruto * (Number(this.descuentoPct) || 0) / 100); },
+                        get total() { return this.bruto - this.descMonto; },
+                      }">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="mb-3 flex items-center justify-between">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del presupuesto</h3>
+                        <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Repuestos usados en parte del técnico →</a>
+                    </div>
+
+                    {{-- Repuestos (nombre y cantidad vienen del parte del técnico; aquí precio) --}}
+                    <div>
+                        <x-input-label value="Repuestos" />
+                        <div class="mt-2 space-y-2">
+                            <template x-for="(r, i) in repuestos" :key="i">
+                                <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-center sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
+                                    <input type="hidden" :name="`repuestos[${i}][nombre]`" :value="r.nombre">
+                                    <input type="hidden" :name="`repuestos[${i}][cantidad]`" :value="r.cantidad">
+                                    <div class="min-w-0 sm:flex-1">
+                                        <span class="text-sm text-neutral-900" x-text="r.nombre"></span>
+                                        <span class="text-sm text-neutral-400" x-text="'× ' + r.cantidad"></span>
+                                    </div>
+                                    <div class="flex items-end gap-2">
+                                        <div class="flex-1 sm:w-32 sm:flex-none">
+                                            <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Precio c/u</label>
+                                            <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
+                                                placeholder="Precio"
+                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                        </div>
+                                        <div class="w-24 shrink-0 pb-2 text-right text-sm text-neutral-600" x-text="clp(sub(r))"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            <p x-show="repuestos.length === 0" class="py-2 text-sm text-neutral-400">
+                                Sin repuestos. Se agregan en «Parte del técnico»; aquí solo se les pone precio.
+                            </p>
+                        </div>
+                        @php $errBag = $errors->getMessages(); @endphp
+                        @foreach ($errBag as $key => $msgs)
+                            @if (\Illuminate\Support\Str::startsWith($key, 'repuestos.'))
+                                <p class="mt-1 text-sm text-red-600">{{ $msgs[0] }}</p>
+                            @endif
+                        @endforeach
+                    </div>
+
+                    {{-- Mano de obra + descuento --}}
+                    <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                @if ($precioHoraServicio)
+                                    <div>
+                                        <x-input-label for="horas_servicio" value="Horas de servicio técnico" />
+                                        <x-text-input id="horas_servicio" class="mt-1.5" type="number" min="0" step="0.5"
+                                            x-model.number="horas" x-on:input="calcularManoObra()" placeholder="Ej. 1, 1.5, 2" />
+                                        <x-input-hint>
+                                            Valor hora: {{ '$'.number_format($precioHoraServicio, 0, ',', '.') }} (cód. {{ config('servicio_tecnico.sku_hora_servicio') }}). La mano de obra se calcula sola; la puedes ajustar.
+                                        </x-input-hint>
+                                    </div>
+                                @endif
+                                <div>
+                                    <x-input-label for="mano_obra" value="Mano de obra ($)" />
+                                    <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
+                                        x-model.number="manoObra" />
+                                    <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <x-input-label for="descuento_pct" value="Descuento" />
+                                    <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
+                                        <option value="0">Sin descuento</option>
+                                        @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
+                                            <option value="{{ $pct }}">{{ $pct }}%</option>
+                                        @endforeach
+                                    </x-select>
+                                    <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                                </div>
+                                <div x-show="descuentoPct > 0" x-cloak>
+                                    <x-input-label for="descuento_motivo" value="Motivo *" />
+                                    <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
+                                        <option value="">— Selecciona —</option>
+                                        @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
+                                            <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
+                                        @endforeach
+                                    </x-select>
+                                    <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
+                                <p class="text-sm text-neutral-600">Costo total a pagar</p>
+                                <p class="mt-0.5 text-2xl font-semibold text-neutral-900" x-text="clp(total)"></p>
+                                <p class="mt-0.5 text-xs text-neutral-500">
+                                    Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
+                                </p>
+                                <p x-show="descuentoPct > 0" x-cloak class="mt-1 text-xs font-medium text-brand-700">
+                                    Descuento <span x-text="descuentoPct"></span>%: −<span x-text="clp(descMonto)"></span>
+                                    <span class="text-neutral-400">· subtotal <span x-text="clp(bruto)"></span></span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 flex items-center justify-end border-t border-neutral-100 pt-5">
+                        <x-primary-button>
+                            <x-icon.check class="h-4 w-4" /> Guardar cotización
+                        </x-primary-button>
+                    </div>
+                </form>
+
+                {{-- ===== Envío al cliente + historial (P-M12-02) =====
+                     Usa lo GUARDADO (snapshot), no lo que esté a medio editar. --}}
                 @php $ultima = $cotizaciones->first(); @endphp
                 <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -102,9 +249,9 @@
                     @php
                         // Qué falta para poder enviar (espejo de la validación del server).
                         $faltas = collect([
-                            $orden->estado !== 'cotizacion' ? 'pon la orden en etapa «Cotización» y guarda' : null,
+                            $orden->estado !== 'cotizacion' ? 'pon la orden en etapa «Cotización» (en Parte del técnico) y guarda' : null,
                             blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
-                            (int) $orden->costo_total <= 0 ? 'lo guardado suma $0 (registra repuestos o mano de obra y guarda)' : null,
+                            (int) $orden->costo_total <= 0 ? 'lo guardado suma $0 (pon precios arriba y guarda la cotización)' : null,
                         ])->filter();
                     @endphp
                     <div class="mt-4">
@@ -117,7 +264,7 @@
                                 </x-primary-button>
                             </form>
                             <p class="mt-2 text-xs text-neutral-400">
-                                Se envía lo último <span class="font-medium">guardado</span> (guarda antes de enviar en «Parte del técnico»).
+                                Se envía lo último <span class="font-medium">guardado</span> (guarda arriba antes de enviar).
                                 El cliente responde ACEPTO / NO ACEPTO por un link y el aviso llega a taller y ventas.
                                 @if ($ultima && $ultima->estado === 'enviada') Enviar una nueva reemplaza la anterior. @endif
                             </p>
