@@ -219,9 +219,13 @@ class AgendaTrabajo extends Model implements AuditableContract
         $datos = [
             'cliente' => $this->cliente_nombre,
             'tipo' => $this->tipo_label,
+            'servicio' => $this->servicio?->nombre ?: '—',
             'ciudad' => $this->ciudad ?: 'sin ciudad',
+            'direccion' => $this->direccion ?: '—',
             'telefono' => $this->cliente_telefono ?: 's/i',
             'preferida' => $this->fecha_preferida?->format('d-m-Y') ?: 'sin fecha preferida',
+            // Lo que escribió el cliente: es lo más útil para quien coordina.
+            'descripcion' => $this->descripcion ?: '—',
             'url' => route('admin.agenda-terreno.index'),
         ];
 
@@ -333,12 +337,16 @@ class AgendaTrabajo extends Model implements AuditableContract
      * qué (misma tribu que el resto del flujo de terreno). Se despacha después de
      * registrar el rechazo; el emisor lo envuelve en try/catch (secundario).
      */
-    public function avisarRechazoInterno(): void
+    public function avisarRechazoInterno(?string $rechazadoPor = null): void
     {
         $datos = [
             'cliente' => $this->cliente_nombre,
             'tipo' => $this->tipo_label,
             'motivo' => $this->motivo_cancelacion ?: 'sin especificar',
+            // Quién rechazó lo trae el caller (el modelo no ve al request/user).
+            'rechazado_por' => $rechazadoPor ?: '—',
+            'telefono' => $this->cliente_telefono ?: '—',
+            'preferida' => $this->fecha_preferida?->format('d-m-Y') ?: '—',
             'url' => route('admin.agenda-terreno.index'),
         ];
 

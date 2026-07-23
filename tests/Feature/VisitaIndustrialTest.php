@@ -111,6 +111,27 @@ class VisitaIndustrialTest extends TestCase
             ->where('evento', 'terreno.solicitada')->count());
     }
 
+    public function test_el_aviso_por_coordinar_lleva_servicio_direccion_y_detalle(): void
+    {
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $servicio = ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T']);
+
+        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [
+            'servicio_terreno_id' => $servicio->id,
+        ]));
+
+        $notif = \App\Models\Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'terreno.solicitada')
+            ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->first();
+
+        $this->assertNotNull($notif);
+        // Campos que antes no viajaban: servicio, dirección y el detalle escrito
+        // por el cliente (lo más útil para quien coordina).
+        $this->assertSame('Full planta 1T', $notif->payload['servicio']);
+        $this->assertSame('Camino Industrial 500', $notif->payload['direccion']);
+        $this->assertSame('La planta de osmosis 1T pierde presión.', $notif->payload['descripcion']);
+    }
+
     public function test_crea_la_solicitud_sin_fecha_y_con_preferida(): void
     {
         $sucursal = $this->sucursal();

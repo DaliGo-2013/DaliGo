@@ -175,7 +175,7 @@ class CotizacionEnviarTest extends TestCase
         $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
         $vendedor = tap(User::factory()->create())->assignRole('vendedor');
 
-        $this->enviar($this->ordenCotizable(), $tecnico);
+        $this->enviar($this->ordenCotizable(['tipo_equipo' => 'lavadora', 'modelo' => 'LB-07B']), $tecnico);
 
         // Campanita (canal database) para cada rol avisado.
         foreach ([$tecnico, $jefe, $vendedor] as $u) {
@@ -186,5 +186,12 @@ class CotizacionEnviarTest extends TestCase
                 "Falta la campanita de {$u->name}"
             );
         }
+
+        // El aviso identifica la máquina cotizada (tipo + modelo).
+        $notif = Notificacion::where('user_id', $jefe->id)->where('evento', 'cotizacion.enviada')
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+        $this->assertStringContainsString('LB-07B', $notif->payload['equipo']);
+        $this->assertStringContainsString('Equipo:', $notif->cuerpo);
+        $this->assertStringContainsString('LB-07B', $notif->cuerpo);
     }
 }

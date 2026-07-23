@@ -93,4 +93,24 @@ class NotificacionConfigSeedTest extends TestCase
         $this->assertStringContainsString('Enviada el 2026-07-04.', $notificacion->cuerpo);
         $this->assertSame(Notificacion::PENDIENTE, $notificacion->estado);
     }
+
+    public function test_plantillas_internas_usan_los_campos_enriquecidos(): void
+    {
+        $this->seed(ConfiguracionSeeder::class);
+
+        $solicitada = Configuracion::get('notif_plantilla_terreno_solicitada')['cuerpo'];
+        foreach (['{servicio}', '{direccion}', '{descripcion}'] as $ph) {
+            $this->assertStringContainsString($ph, $solicitada, "terreno.solicitada debe usar {$ph}");
+        }
+
+        $rechazada = Configuracion::get('notif_plantilla_terreno_rechazada')['cuerpo'];
+        foreach (['{rechazado_por}', '{telefono}', '{preferida}'] as $ph) {
+            $this->assertStringContainsString($ph, $rechazada, "terreno.rechazada debe usar {$ph}");
+        }
+
+        foreach (['enviada', 'respondida', 'autorizada'] as $evento) {
+            $cuerpo = Configuracion::get("notif_plantilla_cotizacion_{$evento}")['cuerpo'];
+            $this->assertStringContainsString('{equipo}', $cuerpo, "cotizacion.{$evento} debe usar {equipo}");
+        }
+    }
 }
