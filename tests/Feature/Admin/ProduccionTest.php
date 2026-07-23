@@ -743,6 +743,21 @@ class ProduccionTest extends TestCase
             ->assertSee('Incoloro 10L retornable');
     }
 
+    public function test_reporte_enviado_ofrece_autorizar_y_rechazar(): void
+    {
+        // Tarjeta 02-07: las acciones de decisión del jefe se llaman
+        // Autorizar / Rechazar (rechazo con motivo obligatorio); los estados
+        // del modelo siguen siendo aprobado/devuelto.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('Autorizar')
+            ->assertSee('Rechazar')
+            ->assertSee('Motivo del rechazo')
+            ->assertDontSee('Devolver al soplador');
+    }
+
     public function test_reporte_editado_marca_la_divergencia_en_el_detalle(): void
     {
         $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
