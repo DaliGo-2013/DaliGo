@@ -27,8 +27,12 @@ class DashboardColoresController extends Controller
             throw ValidationException::withMessages(['colores' => 'Card desconocida.']);
         }
 
+        // MERGE, no reemplazo: el cliente manda solo las cards que VE (filtro
+        // por permiso en el render) — un reemplazo total borraría en silencio
+        // las preferencias de cards hoy invisibles (permisos que van y vienen).
+        // Acotado igual: keys solo del catálogo, valores solo de la paleta.
         $user = $request->user();
-        $user->dashboard_colores = $data['colores'];
+        $user->dashboard_colores = array_merge($user->dashboard_colores ?? [], $data['colores']);
         $user->save();
 
         return response()->json(['ok' => true]);

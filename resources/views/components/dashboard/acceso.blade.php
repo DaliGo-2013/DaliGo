@@ -12,6 +12,7 @@
          es único en dgTiles, así que abrir una card cierra la anterior sola. --}}
     <a href="{{ $item['href'] }}" title="{{ $item['desc'] }}"
         @click="if (editando) { $event.preventDefault(); $event.stopPropagation(); abrir('{{ $item['key'] }}') }"
+        :aria-expanded="editando ? String(abierto === '{{ $item['key'] }}') : null"
         :class="editando && 'border-dashed border-brand-300'"
         class="flex flex-col items-center gap-2.5 rounded-2xl border border-neutral-200 bg-white p-4 text-center shadow-sm transition duration-150 hover:border-neutral-300 hover:shadow active:scale-[0.98]">
         <span data-squircle
@@ -40,7 +41,7 @@
             <button type="button" @click="pintar('{{ $item['key'] }}', '{{ $colorKey }}')"
                 :aria-pressed="String(colores['{{ $item['key'] }}'] === '{{ $colorKey }}')"
                 aria-label="{{ $c['nombre'] }}" title="{{ $c['nombre'] }}"
-                class="relative flex h-11 w-11 items-center justify-center rounded-full transition duration-150 hover:bg-neutral-50 active:scale-[0.98]">
+                class="relative flex h-11 w-11 items-center justify-center rounded-full transition duration-150 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">
                 <span class="h-7 w-7 rounded-full ring-1 ring-inset {{ $c['dot'] }}"></span>
                 <x-icon.check x-show="colores['{{ $item['key'] }}'] === '{{ $colorKey }}'" x-cloak
                     class="absolute h-4 w-4 text-neutral-700" />

@@ -51,6 +51,41 @@ class DashboardColoresTest extends TestCase
         $this->assertSame(['catalogo' => 'verde', 'usuarios' => 'celeste'], $user->fresh()->dashboard_colores);
     }
 
+    public function test_patch_parcial_hace_merge_y_conserva_lo_ya_guardado(): void
+    {
+        // Contrato: el cliente manda solo las cards que VE (filtro por permiso
+        // en el render) → el servidor MERGEA, no reemplaza. Sin esto, un
+        // usuario que pierde un permiso temporalmente perdería en silencio la
+        // preferencia de esas cards al personalizar cualquier otra.
+        $user = User::factory()->create();
+        $user->dashboard_colores = ['usuarios' => 'violeta'];
+        $user->save();
+
+        $this->actingAs($user)
+            ->patchJson(route('dashboard.colores.update'), ['colores' => ['catalogo' => 'verde']])
+            ->assertOk();
+
+        $this->assertSame(
+            ['usuarios' => 'violeta', 'catalogo' => 'verde'],
+            $user->fresh()->dashboard_colores,
+        );
+    }
+
+    public function test_rechaza_colores_vacio_y_no_array(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patchJson(route('dashboard.colores.update'), ['colores' => []])
+            ->assertUnprocessable();
+
+        $this->actingAs($user)
+            ->patchJson(route('dashboard.colores.update'), ['colores' => 'verde'])
+            ->assertUnprocessable();
+
+        $this->assertNull($user->fresh()->dashboard_colores);
+    }
+
     public function test_rechaza_color_fuera_de_paleta(): void
     {
         $user = User::factory()->create();
@@ -162,6 +197,17 @@ class DashboardColoresTest extends TestCase
             $this->actingAs($user)->get('/dashboard')
                 ->assertSee('duration-150 ' . $esperadas[$color], false);
         }
+
+        // Candado en la OTRA dirección (Blade→PHP): una key agregada solo al
+        // $paleta del Blade renderizaría un swatch de más cuyo PATCH daría 422.
+        // Cada card pinta exactamente count(COLORES) swatches (:aria-pressed
+        // es el marcador por-swatch; Alpine lo deja literal en el HTML).
+        $res = $this->actingAs($user)->get('/dashboard');
+        $cards = collect($res->viewData('accesos'))->flatten(1)->count();
+        $this->assertSame(
+            $cards * count(AccesosDashboard::COLORES),
+            substr_count($res->getContent(), ':aria-pressed'),
+        );
     }
 
     public function test_toda_card_tiene_icono_existente(): void

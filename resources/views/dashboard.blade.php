@@ -155,12 +155,13 @@
                     @keydown.escape.window="salir()">
                     <div class="flex items-center justify-between gap-4">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Accesos directos</h3>
-                        <button type="button" x-show="!editando" @click="editando = true"
-                            class="text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600">Personalizar</button>
+                        <button type="button" x-show="!editando"
+                            @click="editando = true; $nextTick(() => $refs.btnListo.focus())"
+                            class="rounded text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white">Personalizar</button>
                         <div x-show="editando" x-cloak class="flex items-center gap-3">
                             <span class="text-xs text-neutral-400" aria-live="polite" x-text="mensaje"></span>
-                            <button type="button" @click="salir()"
-                                class="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">Listo</button>
+                            <button type="button" x-ref="btnListo" @click="salir()"
+                                class="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">Listo</button>
                         </div>
                     </div>
                     <div class="mt-3 space-y-4">
