@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-07-23] Gate R-31 + merge a main de los accesos con ícono (E10-v1.2 CERRADA)
+- **Quién:** Mauricio + Claude (Fable 5)
+- **Objetivo declarado:** P-M16V1-05 (gate `/pre-merge` + merge de `feature/m16-accesos-iconos`)
+- **Qué se hizo:** Gate R-31 adversarial (5 lentes independientes — MySQL 5.7, seguridad/locks, UI/paleta/purge, tests anti-verde-engañoso, reincidencia vs bitácora — con verificación por panel; los verificadores cayeron por límite de sesión y los 9 hallazgos crudos se adjudicaron contra el código): **35/36 gates OK**; 3 hallazgos reales corregidos en `326d87f` (anillo de foco de marca en Personalizar/Listo/swatches, `aria-expanded` + foco a «Listo» al entrar al modo, y el endpoint pasó de reemplazo a **MERGE** del mapa — un PATCH parcial ya no borra en silencio las prefs de cards invisibles — con 3 candados de test nuevos, incl. dirección Blade→PHP del anti-drift); 1 falsa alarma rechazada con razón (validar por scope de permiso NO aplica: la doctrina protege datos del kardex, no preferencias propias nunca renderizadas sin permiso). Flaky PREEXISTENTE cazado de pasada: `IngresoTallerPublicoTest::envio_publico_guarda_producto_id` (idéntico a main, 12/12 verde aislado, 2/1/0 rojos en corridas completas idénticas) — territorio de Marcos, derivado a tarea aparte, NO bloquea. Dos movimientos de main EN VUELO absorbidos con merge + bundle regenerado (`c4877bd` — `app.js`/`routes` auto-mergeados conservando ambos aportes, `public/build` regenerado jamás a mano). **VEREDICTO: APROBADO CON OBSERVACIONES (corregidas)** → merge `--no-ff` a main **`6d8ae18`** por orden del dueño, suite final **790 verdes** (2574 aserciones).
+- **Pasos marcados:** P-M16V1-05 [x] — **E10-v1.2 CERRADA**
+- **Decisiones:** ninguna nueva (D-013 ya tomada el 22-07)
+- **Delegaciones:** tarea aparte para el flaky del QR (diagnóstico → canal directo a Marcos)
+- **Próximo paso:** vigilar Actions (Tests + Deploy) del push; QA de 5 segundos del dueño en staging
+
 ### [2026-07-22] Inicio: accesos como cards con ícono + color personalizable por usuario (estilo Bsale sobrio)
 - **Quién:** Mauricio + Claude (Fable 5)
 - **Objetivo declarado:** P-M16V1-04 (paso NUEVO, agregado como ficha E10-v1.2 — el jefe pidió cards de módulo estilo Bsale: ícono + palabra en cuadradito de color)
