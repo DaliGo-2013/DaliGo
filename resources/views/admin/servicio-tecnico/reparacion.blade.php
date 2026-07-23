@@ -118,11 +118,6 @@
                     @csrf
                     @method('PUT')
 
-                    {{-- Los precios se conservan OCULTOS (se editan en Cotización). --}}
-                    <input type="hidden" name="mano_obra" x-model.number="manoObra">
-                    <input type="hidden" name="descuento_pct" x-model.number="descuentoPct">
-                    <input type="hidden" name="descuento_motivo" value="{{ old('descuento_motivo', $orden->descuento_motivo) }}">
-
                     {{-- Estado / etapa --}}
                     <div>
                         <x-input-label for="estado">Estado / etapa <span class="text-red-500">*</span></x-input-label>
@@ -143,9 +138,9 @@
                         $opcionesTrabajo = collect($respuestasTrabajo)->flatten()->all();
                         $trabajoFueraDeLista = filled($trabajoActual) && ! in_array($trabajoActual, $opcionesTrabajo, true);
                     @endphp
-                    <div>
+                    <div x-data="{ mapa: @js($tiemposMap), valorHora: {{ (int) ($precioHoraServicio ?? 0) }}, trabajo: @js(old('trabajo_realizado', $orden->trabajo_realizado)) }">
                         <x-input-label for="trabajo_realizado" value="Trabajo realizado" />
-                        <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5">
+                        <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5" x-model="trabajo">
                             <option value="">— Selecciona —</option>
                             @if ($trabajoFueraDeLista)
                                 {{-- Valor histórico (texto libre anterior): se conserva. --}}
@@ -160,6 +155,21 @@
                             @endforeach
                         </x-select>
                         <x-input-hint>Elige la respuesta que más se acerque al trabajo hecho.</x-input-hint>
+                        {{-- Mano de obra FIJA por el trabajo: informativa (la fija jefatura). --}}
+                        <div class="mt-2 text-sm" x-cloak>
+                            <template x-if="trabajo && mapa[trabajo] !== undefined">
+                                <p class="rounded-lg bg-neutral-50 px-3 py-2 text-neutral-600">
+                                    Tiempo estándar: <span class="font-medium text-neutral-900" x-text="String(mapa[trabajo]).replace('.', ',')"></span> h
+                                    → mano de obra <span class="font-medium text-neutral-900" x-text="'$' + Math.round(mapa[trabajo] * valorHora).toLocaleString('es-CL')"></span>
+                                    <span class="text-neutral-400">· la fija jefatura, no se edita</span>
+                                </p>
+                            </template>
+                            <template x-if="trabajo && mapa[trabajo] === undefined">
+                                <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
+                                    Este trabajo no tiene tiempo estándar → mano de obra $0. Jefatura puede agregarlo en «Costos generales de reparación».
+                                </p>
+                            </template>
+                        </div>
                         <x-input-error :messages="$errors->get('trabajo_realizado')" class="mt-2" />
                     </div>
 

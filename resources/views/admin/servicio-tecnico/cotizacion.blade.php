@@ -197,23 +197,23 @@
                     {{-- Mano de obra + descuento --}}
                     <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div class="space-y-3">
-                            <div class="grid grid-cols-2 gap-3">
-                                @if ($precioHoraServicio)
-                                    <div>
-                                        <x-input-label for="horas_servicio" value="Horas de servicio técnico" />
-                                        <x-text-input id="horas_servicio" class="mt-1.5" type="number" min="0" step="0.5"
-                                            x-model.number="horas" x-on:input="calcularManoObra()" placeholder="Ej. 1, 1.5, 2" />
-                                        <x-input-hint>
-                                            Valor hora: {{ '$'.number_format($precioHoraServicio, 0, ',', '.') }} (cód. {{ config('servicio_tecnico.sku_hora_servicio') }}). La mano de obra se calcula sola; la puedes ajustar.
-                                        </x-input-hint>
-                                    </div>
+                            {{-- Mano de obra FIJA por el trabajo (no editable aquí):
+                                 horas estándar del catálogo × valor hora. --}}
+                            <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                                <p class="text-xs text-neutral-500">Mano de obra (fijada por el trabajo)</p>
+                                <p class="mt-0.5 text-lg font-semibold text-neutral-900" x-text="clp(manoObra)"></p>
+                                @if ($orden->trabajo_realizado && $horasTrabajo !== null)
+                                    <p class="mt-0.5 text-xs text-neutral-500">
+                                        {{ rtrim(rtrim(number_format((float) $horasTrabajo, 1, ',', ''), '0'), ',') }} h
+                                        × {{ $precioHoraServicio ? '$'.number_format($precioHoraServicio, 0, ',', '.') : '—' }}
+                                        · «{{ $orden->trabajo_realizado }}»
+                                    </p>
+                                    <p class="mt-1 text-xs text-neutral-400">La define jefatura en «Costos generales de reparación»; el técnico no la modifica.</p>
+                                @elseif ($orden->trabajo_realizado)
+                                    <p class="mt-0.5 text-xs text-amber-700">El trabajo «{{ $orden->trabajo_realizado }}» no tiene tiempo estándar. Agrégalo en «Costos generales de reparación».</p>
+                                @else
+                                    <p class="mt-0.5 text-xs text-neutral-400">Elige el «Trabajo realizado» en Parte del técnico para fijar la mano de obra.</p>
                                 @endif
-                                <div>
-                                    <x-input-label for="mano_obra" value="Mano de obra ($)" />
-                                    <x-text-input id="mano_obra" class="mt-1.5" type="number" min="0" step="1" name="mano_obra"
-                                        x-model.number="manoObra" />
-                                    <x-input-error :messages="$errors->get('mano_obra')" class="mt-2" />
-                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>

@@ -33,5 +33,6 @@ return [
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
         'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
+        'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
     ],
 ];
