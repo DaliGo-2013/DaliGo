@@ -187,6 +187,33 @@ class ProduccionTest extends TestCase
             ->assertViewHas('procedencias', \App\Models\ProduccionAsignacion::PROCEDENCIAS);
     }
 
+    public function test_procedencia_visible_en_reporte_aprobado(): void
+    {
+        // Hallazgo de la revisión: la procedencia debe poder consultarse
+        // también con el reporte APROBADO (estado permanente), no solo en el
+        // preview del kardex de los enviados.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO);
+        $reporte->asignacion->update(['procedencia' => 'caja']);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('Preforma del turno:')
+            ->assertSee('en caja');
+    }
+
+    public function test_procedencia_sin_preforma_no_oculta_el_aviso_del_kardex(): void
+    {
+        // Hallazgo de la revisión: elegir procedencia SIN preforma no debe
+        // enmascarar la señal "(sin preforma asignada)" del preview del kardex.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
+        $reporte->asignacion->update(['procedencia' => 'saco']);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('(sin preforma asignada)')
+            ->assertSee('en saco'); // la procedencia igual se informa, en los metadatos
+    }
+
     public function test_asignar_de_nuevo_crea_otra_produccion(): void
     {
         $soplador = $this->soplador();
