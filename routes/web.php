@@ -278,6 +278,11 @@ Route::middleware('auth')
             Route::put('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'guardarReparacion'])
                 ->name('servicio-tecnico.reparacion.guardar');
 
+            // Pestaña Cotización (ver + enviar): desglose guardado + envío al
+            // cliente. GET propio; el POST de abajo (mismo path) es el envío.
+            Route::get('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'cotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion');
+
             // Cotización al cliente (P-M12-02): enviar la carta / reintentar el
             // correo si el SMTP falló. {cotizacion:id} porque el binding por
             // defecto del modelo es el token (para el link público).

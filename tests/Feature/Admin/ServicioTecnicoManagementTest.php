@@ -625,7 +625,33 @@ class ServicioTecnicoManagementTest extends TestCase
         $tecnico = tap(User::factory()->create())->assignRole('tecnico');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            // Barra de etapas (3 pestañas del flujo del técnico).
+            ->assertSee('Recepción')
+            ->assertSee('Cotización')
+            ->assertSee('Parte del técnico');
+    }
+
+    public function test_member_cannot_open_cotizacion(): void
+    {
+        $member = tap(User::factory()->create())->assignRole('member');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertForbidden();
+    }
+
+    public function test_tecnico_can_open_cotizacion(): void
+    {
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('Detalle del presupuesto')
+            // Misma barra de etapas.
+            ->assertSee('Recepción')
+            ->assertSee('Parte del técnico');
     }
 
     public function test_reparacion_ofrece_respuestas_fijas_de_trabajo(): void

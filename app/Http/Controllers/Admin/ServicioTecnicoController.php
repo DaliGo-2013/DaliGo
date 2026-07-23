@@ -507,7 +507,19 @@ class ServicioTecnicoController extends Controller
             // Valor hora de mano de obra (precio con IVA del SKU de servicio
             // tecnico). Null si no existe/no tiene precio -> mano de obra manual.
             'precioHoraServicio' => $this->precioHoraServicio(),
-            // Historial de cotizaciones enviadas al cliente (la última manda).
+        ]);
+    }
+
+    /**
+     * Pestaña Cotización (ver + enviar): muestra el desglose GUARDADO de la
+     * reparación (repuestos, mano de obra, descuento, total) y la tarjeta para
+     * enviar la cotización al cliente + historial. Los números se ingresan en la
+     * etapa de reparación; aquí solo se ven y se envían.
+     */
+    public function cotizacion(OrdenServicio $orden): View
+    {
+        return view('admin.servicio-tecnico.cotizacion', [
+            'orden' => $orden->load(['producto', 'repuestos']),
             'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
         ]);
     }
