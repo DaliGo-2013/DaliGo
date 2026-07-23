@@ -99,7 +99,8 @@ class DashboardTest extends TestCase
             ->assertSee('Comercial')
             ->assertSee('Administración')
             ->assertSee('Auditoría')
-            ->assertSee('Aprobaciones'); // historial del motor, ahora en el zócalo
+            ->assertSee('Aprobaciones') // historial del motor, ahora en el zócalo
+            ->assertSee('Personalizar'); // modo de color de las cards (D-013)
 
         $this->assertSame([], $res->viewData('excepciones'));
     }
@@ -114,7 +115,8 @@ class DashboardTest extends TestCase
             ->assertDontSee('Requiere tu atención')
             ->assertDontSee('Accesos directos')
             ->assertDontSee('Administración')
-            ->assertDontSee('Usuarios');
+            ->assertDontSee('Usuarios')
+            ->assertDontSee('Personalizar'); // sin accesos no hay modo de color
     }
 
     public function test_member_sees_only_greeting(): void

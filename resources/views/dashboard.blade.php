@@ -129,18 +129,50 @@
                 </div>
             @endif
 
-            {{-- ③ Zócalo: accesos directos compactos (bajan de jerarquía, no se botan) --}}
+            {{-- ③ Zócalo: cards de acceso con ícono + color personalizable por
+                 usuario (modo Personalizar → dgTiles en app.js; D-013). El mapa
+                 $paleta vive AQUÍ y solo aquí, con las clases LITERALES:
+                 Tailwind v4 purga toda clase interpolada o definida en app/. --}}
             @if (count($accesos))
-                <div class="dg-enter">
-                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Accesos directos</h3>
-                    <div class="mt-3 space-y-3">
+                @php
+                    $paleta = [
+                        'naranjo' => ['nombre' => 'Naranjo', 'tile' => 'bg-brand-50 text-brand-700', 'dot' => 'bg-brand-200 ring-brand-300'],
+                        'gris' => ['nombre' => 'Gris', 'tile' => 'bg-neutral-100 text-neutral-600', 'dot' => 'bg-neutral-200 ring-neutral-300'],
+                        'celeste' => ['nombre' => 'Celeste', 'tile' => 'bg-sky-100 text-sky-700', 'dot' => 'bg-sky-200 ring-sky-300'],
+                        'verde' => ['nombre' => 'Verde', 'tile' => 'bg-emerald-100 text-emerald-700', 'dot' => 'bg-emerald-200 ring-emerald-300'],
+                        'ambar' => ['nombre' => 'Ámbar', 'tile' => 'bg-amber-100 text-amber-700', 'dot' => 'bg-amber-200 ring-amber-300'],
+                        'violeta' => ['nombre' => 'Violeta', 'tile' => 'bg-violet-100 text-violet-700', 'dot' => 'bg-violet-200 ring-violet-300'],
+                        'turquesa' => ['nombre' => 'Turquesa', 'tile' => 'bg-teal-100 text-teal-700', 'dot' => 'bg-teal-200 ring-teal-300'],
+                        'indigo' => ['nombre' => 'Índigo', 'tile' => 'bg-indigo-100 text-indigo-700', 'dot' => 'bg-indigo-200 ring-indigo-300'],
+                    ];
+                @endphp
+                <div class="dg-enter"
+                    x-data="dgTiles({
+                        url: @js(route('dashboard.colores.update')),
+                        colores: @js(collect($accesos)->flatten(1)->pluck('color', 'key')),
+                        paleta: @js(collect($paleta)->map(fn ($c) => $c['tile'])),
+                    })"
+                    @keydown.escape.window="salir()">
+                    <div class="flex items-center justify-between gap-4">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Accesos directos</h3>
+                        <button type="button" x-show="!editando"
+                            @click="editando = true; $nextTick(() => $refs.btnListo.focus())"
+                            class="rounded text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white">Personalizar</button>
+                        <div x-show="editando" x-cloak class="flex items-center gap-3">
+                            <span class="text-xs text-neutral-400" aria-live="polite" x-text="mensaje"></span>
+                            <button type="button" x-ref="btnListo" @click="salir()"
+                                class="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:ring-offset-white active:scale-[0.98]">Listo</button>
+                        </div>
+                    </div>
+                    <div class="mt-3 space-y-4">
                         @foreach ($accesos as $grupo => $items)
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="w-full text-xs text-neutral-400 sm:w-28 sm:shrink-0">{{ $grupo }}</span>
-                                @foreach ($items as $item)
-                                    <a href="{{ $item['href'] }}" title="{{ $item['desc'] }}"
-                                        class="inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 ring-1 ring-inset ring-neutral-200 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.98]">{{ $item['label'] }}</a>
-                                @endforeach
+                            <div>
+                                <p class="text-xs text-neutral-400">{{ $grupo }}</p>
+                                <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                    @foreach ($items as $item)
+                                        <x-dashboard.acceso :item="$item" :paleta="$paleta" />
+                                    @endforeach
+                                </div>
                             </div>
                         @endforeach
                     </div>

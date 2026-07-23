@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AprobacionController;
+use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
@@ -45,6 +46,10 @@ Route::middleware('auth')->group(function () {
 
     // Preferencias de notificación del usuario (M15): opt-out por evento×canal.
     Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])->name('perfil.notificaciones.update');
+
+    // Color de las cards de accesos del Inicio (M16, D-013): preferencia
+    // personal, guardada por fetch desde el modo "Personalizar" del dashboard.
+    Route::patch('/dashboard/colores', DashboardColoresController::class)->name('dashboard.colores.update');
 
     // Campanita (M15): bandeja personal in-app; cualquier usuario gestiona LO SUYO.
     Route::get('/notificaciones', [NotificacionUsuarioController::class, 'index'])->name('notificaciones.index');

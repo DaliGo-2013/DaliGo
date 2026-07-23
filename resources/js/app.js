@@ -581,6 +581,73 @@ Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente, tipoDefaul
 }));
 
 /**
+ * Cards de accesos del Inicio (M16, D-013): modo "Personalizar" — el usuario
+ * elige el color del squircle de cada card y se guarda al instante (pintado
+ * optimista con rollback si el PATCH falla). El token CSRF se lee FRESCO del
+ * <meta> en cada request (patrón de la cola offline: jamás serializar _token).
+ * `paleta` llega del Blade (key → clases del squircle, literales allá para
+ * que Tailwind no las purgue).
+ */
+Alpine.data('dgTiles', ({ url, colores, paleta }) => ({
+    editando: false,
+    abierto: null, // key de la card con el panel de swatches abierto
+    colores,
+    mensaje: '',
+    timerMensaje: null,
+
+    abrir(key) {
+        this.abierto = this.abierto === key ? null : key;
+    },
+
+    salir() {
+        this.editando = false;
+        this.abierto = null;
+        this.mensaje = '';
+    },
+
+    aviso(texto) {
+        this.mensaje = texto;
+        clearTimeout(this.timerMensaje);
+        this.timerMensaje = setTimeout(() => (this.mensaje = ''), 2500);
+    },
+
+    // Swap de clases del squircle (server-side rendered): quitar toda la
+    // paleta y poner la elegida — nunca dos bg-* conviviendo.
+    pintarSquircle(key, color) {
+        const squircle = this.$root.querySelector(`[data-tile="${key}"] [data-squircle]`);
+        if (!squircle) return;
+        Object.values(paleta).forEach((clases) => squircle.classList.remove(...clases.split(' ')));
+        squircle.classList.add(...paleta[color].split(' '));
+    },
+
+    async pintar(key, color) {
+        const anterior = this.colores[key];
+        this.abierto = null;
+        if (anterior === color) return;
+
+        this.colores[key] = color;
+        this.pintarSquircle(key, color); // optimista; rollback si falla
+        try {
+            const resp = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ colores: this.colores }),
+            });
+            if (!resp.ok) throw new Error(String(resp.status));
+            this.aviso('Guardado ✓');
+        } catch (e) {
+            this.colores[key] = anterior;
+            this.pintarSquircle(key, anterior);
+            this.aviso(e.message === '419' ? 'Sesión expirada — recarga la página' : 'No se pudo guardar');
+        }
+    },
+}));
+
+/**
  * Estado de red global (spike PWA, P-SPK-01). Indicador informativo para el
  * operario: navigator.onLine tiene falsos positivos (WiFi sin internet), asi
  * que al volver "online" se confirma con un HEAD al health check /up (ya
