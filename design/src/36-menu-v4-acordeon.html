@@ -4,94 +4,34 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Menú V4 · Waffle acordeón — desktop</title>
+    <title>Menú V4 · Sidebar acordeón — desktop</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet" />
     <style>/*__DALIGO_CSS__*/</style>
     <style>
-        /* Esqueleto de la variante (solo .dsv-) */
-        .dsv-hide { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-        .dsv-app { position: relative; display: flex; min-height: 100vh; flex-direction: column; }
-        .dsv-overlay { display: none; position: fixed; inset: 0; z-index: 40; }
-        .dsv-panel { display: none; position: absolute; top: 3rem; right: 1rem; z-index: 50; width: 22rem; max-width: calc(100vw - 2rem); }
-
-        /* Waffle abre/cierra el panel */
-        #dsv-waffle:checked ~ .dsv-app .dsv-panel { display: block; }
-        #dsv-waffle:checked ~ .dsv-app .dsv-overlay { display: block; }
-        #dsv-waffle:checked ~ .dsv-app .dsv-waffle-btn { background: #fff7ed; color: #c2410c; }
-
-        /* Acordeón por módulo: la flecha (chevron-right) gira hacia abajo y
-           se despliegan las opciones del módulo. CSS-only. */
-        .dsv-acc-links { display: none; }
+        /* Esqueleto del layout (solo .dsv-*): sidebar izquierda fija como V1,
+           módulos en acordeón — flecha a la DERECHA que gira hacia abajo. */
+        .dsv-shell { display: flex; min-height: 100vh; }
+        .dsv-sidebar { width: 264px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+        .dsv-main { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
+        .dsv-nav summary { list-style: none; cursor: pointer; }
+        .dsv-nav summary::-webkit-details-marker { display: none; }
         .dsv-chev { transition: transform 150ms ease; }
+        .dsv-nav details[open] > summary .dsv-chev { transform: rotate(90deg); }
         @media (prefers-reduced-motion: reduce) { .dsv-chev { transition: none; } }
-        #dsv-acc-com:checked ~ .dsv-app .dsv-links-com { display: block; }
-        #dsv-acc-com:checked ~ .dsv-app .dsv-chev-com { transform: rotate(90deg); }
-        #dsv-acc-op:checked ~ .dsv-app .dsv-links-op { display: block; }
-        #dsv-acc-op:checked ~ .dsv-app .dsv-chev-op { transform: rotate(90deg); }
-        #dsv-acc-adm:checked ~ .dsv-app .dsv-links-adm { display: block; }
-        #dsv-acc-adm:checked ~ .dsv-app .dsv-chev-adm { transform: rotate(90deg); }
-        #dsv-acc-st:checked ~ .dsv-app .dsv-links-st { display: block; }
-        #dsv-acc-st:checked ~ .dsv-app .dsv-chev-st { transform: rotate(90deg); }
-        #dsv-acc-mt:checked ~ .dsv-app .dsv-links-mt { display: block; }
-        #dsv-acc-mt:checked ~ .dsv-app .dsv-chev-mt { transform: rotate(90deg); }
     </style>
 </head>
-<body class="bg-neutral-50 font-sans text-neutral-900 antialiased">
+<body class="min-h-full bg-neutral-50 font-sans text-neutral-900 antialiased">
+    <div class="dsv-shell">
 
-    <!-- Estado CSS-only: waffle abierto por defecto y Servicio Técnico desplegado -->
-    <input type="checkbox" id="dsv-waffle" class="dsv-hide" checked>
-    <input type="checkbox" id="dsv-acc-com" class="dsv-hide">
-    <input type="checkbox" id="dsv-acc-op" class="dsv-hide">
-    <input type="checkbox" id="dsv-acc-adm" class="dsv-hide">
-    <input type="checkbox" id="dsv-acc-st" class="dsv-hide" checked>
-    <input type="checkbox" id="dsv-acc-mt" class="dsv-hide">
-
-    <div class="dsv-app">
-
-        <!-- TOPBAR delgada -->
-        <header class="flex h-12 items-center gap-3 border-b border-neutral-200 bg-white px-4">
-            <a href="#" class="flex shrink-0 items-center gap-2">
+        <!-- SIDEBAR izquierda (acordeón por módulo) -->
+        <aside class="dsv-sidebar border-r border-neutral-200 bg-white">
+            <div class="flex items-center gap-2 border-b border-neutral-100 px-4 py-4">
                 <div class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">D</div>
                 <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
-            </a>
-            <div class="h-6 w-px shrink-0 bg-neutral-200"></div>
-            <span class="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-neutral-900">
-                Servicio Técnico
-                <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
-            </span>
-
-            <div class="ms-auto flex items-center gap-1">
-                <!-- Campanita -->
-                <button type="button" class="relative inline-flex items-center justify-center rounded-lg p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700" title="Notificaciones">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                    </svg>
-                    <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
-                    <span class="sr-only">Notificaciones (3 sin leer)</span>
-                </button>
-
-                <!-- Waffle 3×3 (abre el menú de módulos, arriba a la derecha) -->
-                <label for="dsv-waffle" class="dsv-waffle-btn inline-flex cursor-pointer items-center justify-center rounded-lg p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700" title="Módulos">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <circle cx="5" cy="5" r="1.6"/><circle cx="12" cy="5" r="1.6"/><circle cx="19" cy="5" r="1.6"/>
-                        <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
-                        <circle cx="5" cy="19" r="1.6"/><circle cx="12" cy="19" r="1.6"/><circle cx="19" cy="19" r="1.6"/>
-                    </svg>
-                    <span class="sr-only">Abrir selector de módulos</span>
-                </label>
-
-                <div class="ms-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-600" title="María Demo">MD</div>
             </div>
-        </header>
 
-        <!-- Clic afuera cierra el waffle -->
-        <label for="dsv-waffle" class="dsv-overlay" aria-hidden="true"></label>
-
-        <!-- PANEL WAFFLE · lista acordeón de módulos (abierto por defecto) -->
-        <div class="dsv-panel overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg">
-            <p class="border-b border-neutral-100 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Módulos</p>
-            <nav class="max-h-[calc(100vh-7rem)] overflow-y-auto p-2">
+            <nav class="dsv-nav space-y-1 px-3 py-4">
 
                 <!-- Inicio (link directo, sin submenú) -->
                 <a href="#" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
@@ -104,122 +44,149 @@
                 </a>
 
                 <!-- Comercial -->
-                <label for="dsv-acc-com" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                <details>
+                    <summary class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                            </svg>
+                        </span>
+                        <span class="flex-1">Comercial</span>
+                        <svg class="dsv-chev h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
-                    </span>
-                    Comercial
-                    <svg class="dsv-chev dsv-chev-com ms-auto h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
-                </label>
-                <div class="dsv-acc-links dsv-links-com ms-11 border-l border-neutral-200 ps-3 pe-2 pb-1">
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Productos</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Clientes</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Listas de precios</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Stock por bodega</a>
-                </div>
+                    </summary>
+                    <div class="ms-7 mt-1 space-y-0.5 border-l border-neutral-200 ps-3 pe-2 pb-1">
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Productos</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Clientes</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Listas de precios</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Stock por bodega</a>
+                    </div>
+                </details>
 
                 <!-- Operación -->
-                <label for="dsv-acc-op" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h1.5c.621 0 1.125.504 1.125 1.125V21m7.5-10.5h.75m-.75 3h.75m-.75 3h.75" />
+                <details>
+                    <summary class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h1.5c.621 0 1.125.504 1.125 1.125V21m7.5-10.5h.75m-.75 3h.75m-.75 3h.75" />
+                            </svg>
+                        </span>
+                        <span class="flex-1">Operación</span>
+                        <svg class="dsv-chev h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
-                    </span>
-                    Operación
-                    <svg class="dsv-chev dsv-chev-op ms-auto h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
-                </label>
-                <div class="dsv-acc-links dsv-links-op ms-11 border-l border-neutral-200 ps-3 pe-2 pb-1">
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Inventario</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Producción</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Sopladores</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Kardex</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Máquinas</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Tipos de botellón</a>
-                </div>
+                    </summary>
+                    <div class="ms-7 mt-1 space-y-0.5 border-l border-neutral-200 ps-3 pe-2 pb-1">
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Inventario</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Producción</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Sopladores</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Kardex</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Máquinas</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Tipos de botellón</a>
+                    </div>
+                </details>
 
                 <!-- Administración -->
-                <label for="dsv-acc-adm" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                <details>
+                    <summary class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                            </svg>
+                        </span>
+                        <span class="flex-1">Administración</span>
+                        <svg class="dsv-chev h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
-                    </span>
-                    Administración
-                    <svg class="dsv-chev dsv-chev-adm ms-auto h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
-                </label>
-                <div class="dsv-acc-links dsv-links-adm ms-11 border-l border-neutral-200 ps-3 pe-2 pb-1">
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Usuarios</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Roles</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Sucursales</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Configuración</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Auditoría</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Notificaciones</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Historial de aprobaciones</a>
-                </div>
+                    </summary>
+                    <div class="ms-7 mt-1 space-y-0.5 border-l border-neutral-200 ps-3 pe-2 pb-1">
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Usuarios</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Roles</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Sucursales</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Configuración</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Auditoría</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Notificaciones</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Historial de aprobaciones</a>
+                    </div>
+                </details>
 
                 <!-- Servicio Técnico (desplegado por defecto en este preview) -->
-                <label for="dsv-acc-st" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
+                <details open>
+                    <summary class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
+                            </svg>
+                        </span>
+                        <span class="flex flex-1 items-center gap-1.5">
+                            Servicio Técnico
+                            <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                        </span>
+                        <svg class="dsv-chev h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
-                    </span>
-                    <span class="flex items-center gap-1.5">
-                        Servicio Técnico
-                        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
-                    </span>
-                    <svg class="dsv-chev dsv-chev-st ms-auto h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
-                </label>
-                <div class="dsv-acc-links dsv-links-st ms-11 border-l border-neutral-200 ps-3 pe-2 pb-1">
-                    <a href="#" class="block rounded-lg bg-brand-50 px-2 py-1.5 text-sm font-medium text-brand-700">Listado</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Ingreso por lote</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Códigos QR</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Informe</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Seguimiento (boceto)</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Agenda de terreno</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Servicios de terreno</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Instalaciones</a>
-                </div>
+                    </summary>
+                    <div class="ms-7 mt-1 space-y-0.5 border-l border-neutral-200 ps-3 pe-2 pb-1">
+                        <a href="#" class="block rounded-lg bg-brand-50 px-2 py-1.5 text-sm font-medium text-brand-700">Listado</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Ingreso por lote</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Códigos QR</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Informe</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Seguimiento (boceto)</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Agenda de terreno</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Servicios de terreno</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Instalaciones</a>
+                    </div>
+                </details>
 
                 <!-- Mi trabajo -->
-                <label for="dsv-acc-mt" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                <details>
+                    <summary class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                            </svg>
+                        </span>
+                        <span class="flex-1">Mi trabajo</span>
+                        <svg class="dsv-chev h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
-                    </span>
-                    Mi trabajo
-                    <svg class="dsv-chev dsv-chev-mt ms-auto h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
-                </label>
-                <div class="dsv-acc-links dsv-links-mt ms-11 border-l border-neutral-200 ps-3 pe-2 pb-1">
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Mi producción</a>
-                    <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Mis aprobaciones</a>
-                </div>
+                    </summary>
+                    <div class="ms-7 mt-1 space-y-0.5 border-l border-neutral-200 ps-3 pe-2 pb-1">
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Mi producción</a>
+                        <a href="#" class="block rounded-lg px-2 py-1.5 text-sm text-neutral-600 transition duration-150 hover:bg-neutral-50 hover:text-neutral-900">Mis aprobaciones</a>
+                    </div>
+                </details>
             </nav>
-        </div>
+        </aside>
 
-        <!-- CONTENIDO (placeholder: el foco de esta tarjeta es el menú) -->
-        <main class="flex-1 px-6 py-6">
-            <div class="mx-auto max-w-5xl">
+        <!-- MAIN -->
+        <div class="dsv-main">
+            <header class="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-6">
+                <span class="flex items-center gap-1.5 text-sm font-medium text-neutral-900">
+                    Servicio Técnico
+                    <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">5</span>
+                </span>
+                <div class="flex items-center gap-1">
+                    <button type="button" class="relative inline-flex items-center justify-center rounded-lg p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700" title="Notificaciones">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                        <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">3</span>
+                        <span class="sr-only">Notificaciones (3 sin leer)</span>
+                    </button>
+                    <div class="ms-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-600" title="María Demo">MD</div>
+                </div>
+            </header>
+
+            <main class="flex-1 p-8">
                 <div class="rounded-2xl border border-dashed border-neutral-300 bg-white p-10 text-center">
                     <p class="text-sm font-medium text-neutral-500">Contenido del módulo activo</p>
-                    <p class="mt-1 text-xs text-neutral-400">Esta tarjeta muestra el menú waffle en modo acordeón: cada módulo es un título con flecha; al tocarla gira hacia abajo y despliega sus opciones.</p>
+                    <p class="mt-1 text-xs text-neutral-400">Sidebar izquierda con módulos en acordeón: cada título lleva una flecha a la derecha; al tocarla gira hacia abajo y despliega las opciones del módulo.</p>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 </body>
 </html>
