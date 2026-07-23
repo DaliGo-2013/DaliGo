@@ -4,6 +4,9 @@ namespace Tests\Feature\Admin;
 
 use App\Mail\DetalleTrabajoCliente;
 use App\Models\OrdenServicio;
+use App\Models\Precio;
+use App\Models\Producto;
+use App\Models\TiempoReparacion;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,15 +56,31 @@ class CotizacionGuardarTest extends TestCase
         ], $overrides));
     }
 
+    /** Valor hora: producto SKU de la config con precio con IVA. */
+    private function conValorHora(int $valor = 4000): void
+    {
+        $p = Producto::factory()->create(['sku' => config('servicio_tecnico.sku_hora_servicio')]);
+        Precio::factory()->create(['producto_id' => $p->id, 'precio_con_iva' => $valor]);
+    }
+
+    private function tiempo(string $trabajo, float $horas): void
+    {
+        TiempoReparacion::create(['trabajo' => $trabajo, 'horas' => $horas, 'activo' => true]);
+    }
+
     // --- Guardar precios (reparación) ---
 
-    public function test_guardar_cotizacion_registra_precios_mano_de_obra_y_total(): void
+    public function test_guardar_cotizacion_registra_precios_y_mano_de_obra_del_trabajo(): void
     {
-        $orden = $this->reparacion();
+        // La mano de obra la FIJA el trabajo (horas estándar × valor hora); lo que
+        // se envíe en el form se ignora.
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);   // → 6000
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
         $this->actingAs($this->tecnico())
             ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'mano_obra' => 15000,
+                'mano_obra' => 999999,   // se ignora
                 'descuento_pct' => 0,
                 'repuestos' => [
                     ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000],
@@ -71,10 +90,31 @@ class CotizacionGuardarTest extends TestCase
             ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
 
         $fresh = $orden->fresh()->load('repuestos');
-        $this->assertSame(15000, $fresh->mano_obra);
+        $this->assertSame(6000, $fresh->mano_obra);          // 1,5h × 4000 (no lo enviado)
         $this->assertCount(2, $fresh->repuestos);
-        // 30000 + 2×5000 + 15000
-        $this->assertSame(55000, (int) $fresh->costo_total);
+        $this->assertSame(46000, (int) $fresh->costo_total); // 40000 repuestos + 6000
+    }
+
+    public function test_guardar_cotizacion_aplica_descuento_con_motivo(): void
+    {
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);   // → 6000
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
+                'descuento_pct' => 20,
+                'descuento_motivo' => 'cliente_grande',
+                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+            ])
+            ->assertRedirect();
+
+        $fresh = $orden->fresh();
+        // bruto = 14000 + 6000 = 20000; 20% = 4000; total = 16000
+        $this->assertSame(20, $fresh->descuento_pct);
+        $this->assertSame('cliente_grande', $fresh->descuento_motivo);
+        $this->assertSame(4000, $fresh->descuento_monto);
+        $this->assertSame(16000, (int) $fresh->costo_total);
     }
 
     public function test_guardar_cotizacion_exige_precio_de_cada_repuesto(): void

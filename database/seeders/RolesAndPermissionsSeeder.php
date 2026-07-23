@@ -45,6 +45,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'agendar servicio terreno',   // jefe/vendedores: agendar trabajos + editar el catalogo de servicios
             'ver agenda terreno',         // tecnico industrial: ver la agenda y marcar lo realizado
             'gestionar instalaciones',    // tecnico industrial / jefes: registro de instalaciones (Excel de terreno)
+            'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
             // Modulo Notificaciones (M15).
             'view notificaciones',        // ver el panel de todas las notificaciones del sistema
             // Modulo Aprobaciones (M14).
@@ -76,7 +77,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).

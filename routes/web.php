@@ -234,6 +234,14 @@ Route::middleware('auth')
                 ->only(['index', 'create', 'store', 'edit', 'update']);
         });
 
+        // "Costos generales de reparación": catálogo de tiempos estándar por
+        // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
+        Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
+            Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
+                ->parameters(['tiempos-reparacion' => 'tiempo'])
+                ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
         // Registro de INSTALACIONES del tecnico industrial (Excel de Carlos
         // Tablante): ledger editable. Lo gestionan el tecnico industrial, jefes
         // de venta y admin (buscar-cliente ANTES del resource para no chocar con

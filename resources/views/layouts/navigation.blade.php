@@ -89,7 +89,7 @@
                         </x-nav-link>
                     @endcan
 
-                    @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio', 'ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones'])
+                    @canany(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio', 'ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion'])
                         <x-nav-dropdown label="Servicio Técnico"
                             :active="request()->routeIs('admin.servicio-tecnico.*', 'admin.agenda-terreno.*', 'admin.servicios-terreno.*', 'admin.instalaciones.*')">
                             {{-- Contador: equipos activos en el taller (todo salvo entregado / sin solución).
@@ -122,6 +122,9 @@
                             @endcan
                             @can('gestionar instalaciones')
                                 <x-dropdown-link :href="route('admin.instalaciones.index')">Instalaciones</x-dropdown-link>
+                            @endcan
+                            @can('gestionar tiempos reparacion')
+                                <x-dropdown-link :href="route('admin.tiempos-reparacion.index')">Costos generales de reparación</x-dropdown-link>
                             @endcan
                         </x-nav-dropdown>
                     @endcanany
@@ -249,6 +252,11 @@
                 @can('gestionar instalaciones')
                     <x-responsive-nav-link :href="route('admin.instalaciones.index')" :active="request()->routeIs('admin.instalaciones.*')">
                         Instalaciones
+                    </x-responsive-nav-link>
+                @endcan
+                @can('gestionar tiempos reparacion')
+                    <x-responsive-nav-link :href="route('admin.tiempos-reparacion.index')" :active="request()->routeIs('admin.tiempos-reparacion.*')">
+                        Costos generales de reparación
                     </x-responsive-nav-link>
                 @endcan
             @endcanany

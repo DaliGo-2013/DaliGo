@@ -705,7 +705,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => 'reparado',
                 'causa_falla' => 'uso_normal',   // obligatoria al cerrar como reparado
                 'trabajo_realizado' => 'Cambio de motor y correa',
-                'mano_obra' => 15000,
+                'mano_obra' => 15000,            // el técnico NO fija la mano de obra: se ignora
                 'fecha_aviso' => now()->toDateString(),
                 'repuestos' => [
                     ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000],
@@ -718,46 +718,12 @@ class ServicioTecnicoManagementTest extends TestCase
         $fresh = $orden->fresh()->load('repuestos');
         $this->assertSame('reparado', $fresh->estado);
         $this->assertSame('Cambio de motor y correa', $fresh->trabajo_realizado);
-        $this->assertSame(15000, $fresh->mano_obra);
+        // Mano de obra fijada por el trabajo: ese trabajo no está en el catálogo
+        // de tiempos (ni hay valor hora) → 0. Lo enviado (15000) se ignora.
+        $this->assertSame(0, $fresh->mano_obra);
         $this->assertCount(2, $fresh->repuestos);                 // la vacia no se guarda
-        $this->assertSame(55000, $fresh->costo_total);            // 30000 + (2*5000) + 15000
+        $this->assertSame(40000, $fresh->costo_total);            // 30000 + (2*5000), sin mano de obra
         $this->assertDatabaseHas('orden_servicio_repuestos', ['orden_servicio_id' => $orden->id, 'nombre' => 'Motor']);
-    }
-
-    public function test_guardar_reparacion_aplica_descuento_con_motivo(): void
-    {
-        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
-
-        $this->actingAs($this->admin())
-            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
-                'estado' => 'reparado',
-                'causa_falla' => 'uso_normal',
-                'mano_obra' => 10000,
-                'descuento_pct' => 20,
-                'descuento_motivo' => 'cliente_grande',
-                'repuestos' => [],
-            ])
-            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
-
-        $fresh = $orden->fresh();
-        $this->assertSame(20, $fresh->descuento_pct);
-        $this->assertSame('cliente_grande', $fresh->descuento_motivo);
-        $this->assertSame(2000, $fresh->descuento_monto);   // 20% de 10000
-        $this->assertSame(8000, $fresh->costo_total);        // 10000 - 2000
-    }
-
-    public function test_descuento_exige_motivo(): void
-    {
-        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
-
-        $this->actingAs($this->admin())
-            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
-                'estado' => 'en_revision',   // no exige causa_falla; aisla el error del motivo
-                'mano_obra' => 10000,
-                'descuento_pct' => 15,       // con descuento pero SIN motivo
-                'repuestos' => [],
-            ])
-            ->assertSessionHasErrors('descuento_motivo');
     }
 
     public function test_guardar_reparacion_registra_la_causa_de_falla(): void
@@ -1111,8 +1077,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_cotizacion_pasa_el_valor_hora_de_servicio(): void
     {
-        // El valor hora vive donde se arma el precio (Cotización), no en el
-        // parte del técnico. SKU 9771001 (config) con precio con IVA = valor hora.
+        // El valor hora (SKU 9771001 con precio con IVA) alimenta la mano de obra
+        // FIJA que se muestra de solo lectura en Cotización.
         $hora = Producto::factory()->create(['sku' => '9771001', 'nombre' => 'Hora servicio técnico']);
         Precio::factory()->create(['producto_id' => $hora->id, 'precio_con_iva' => 4500]);
 
@@ -1122,19 +1088,19 @@ class ServicioTecnicoManagementTest extends TestCase
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', 4500)
-            ->assertSee('Horas de servicio técnico');
+            ->assertSee('Mano de obra (fijada por el trabajo)');
     }
 
-    public function test_cotizacion_sin_producto_hora_deja_mano_de_obra_manual(): void
+    public function test_cotizacion_sin_valor_hora_igual_carga(): void
     {
-        // Sin el SKU de la hora, no hay valor hora (mano de obra manual).
+        // Sin el SKU de la hora, la mano de obra queda en $0 pero la vista carga.
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', null)
-            ->assertDontSee('Horas de servicio técnico');
+            ->assertSee('Mano de obra (fijada por el trabajo)');
     }
 
     /** Las fotos del equipo se ven tanto al EDITAR como en el DETALLE (staff). */
