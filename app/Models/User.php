@@ -25,6 +25,7 @@ class User extends Authenticatable implements AuditableContract, MustVerifyEmail
     protected $auditExclude = [
         'password',
         'remember_token',
+        'dashboard_colores', // preferencia de UI, no evento de negocio
     ];
 
     /**
@@ -59,6 +60,9 @@ class User extends Authenticatable implements AuditableContract, MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // Mapa {card => color} de los accesos del Inicio (TEXT en BD por
+            // MySQL 5.7). NO va en $fillable: solo escribe su endpoint dedicado.
+            'dashboard_colores' => 'array',
         ];
     }
 

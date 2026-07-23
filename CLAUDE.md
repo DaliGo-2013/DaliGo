@@ -53,6 +53,7 @@ Tema **claro y sobrio**: naranjo de marca + blanco + neutros, **sin degradados**
 - Neutros: escala `neutral-*` (texto `neutral-900/700/600/500/400`, fondos `neutral-50/100`, bordes `neutral-200/300`, sólidos `neutral-800/900`).
 - **Cómo mapear intención sin colores extra:** *producido / métrica-foco / “lo bueno”* → `brand` (naranjo, nuestra producción); *secundario / merma / de-enfatizado* → `neutral` atenuado (`neutral-500`, menor peso); *requiere acción / atención* → `brand`; *en reposo / final / “todo al día”* → `neutral`. Estados por **relleno**: badge *Enviado* = `brand-600` sólido (acción), *Aprobado* = `neutral-800` sólido (final), *Borrador* = `neutral` suave, *Devuelto* = `red` suave.
 - Destructivo/error (única excepción de color): `red-600`/`red-500`/`red-50`.
+- **Excepción sancionada (D-013):** los **squircles de ícono de las cards de accesos del Inicio** pueden usar la paleta pastel curada de 8 (`$paleta` en `resources/views/dashboard.blade.php` — celeste/verde/ámbar/violeta/turquesa/índigo + naranjo/gris) **solo ahí y solo si el usuario lo personaliza** (default sobrio brand/neutral, preferencia por perfil en `users.dashboard_colores`). El resto de la app sigue con la paleta de 4; el rojo NO es elegible.
 
 **Iconos** — Heroicons estilo **outline**, como componentes Blade en `resources/views/components/icon/`, usados con `<x-icon.nombre />` (hoy: `pencil`, `trash`, `plus`):
 - Formato exacto del SVG: `fill="none"`, `viewBox="0 0 24 24"`, `stroke-width="1.5"`, `stroke="currentColor"`, `aria-hidden="true"`. Tamaño por defecto `h-5 w-5` (sobrescribible; `h-4 w-4` dentro de botones).
@@ -99,6 +100,7 @@ La app es **mobile-first**. Toda pantalla y componente debe verse bien y **sin s
 - **Feedback:** `badge` (`variant=brand|neutral|danger`), `status-alert` (`:status`), `auth-session-status`, `stat-card` (indicador clickeable del Inicio: `label`/`valor`/`href`/`alerta`), `produccion.estado-badge` (`:estado` del reporte), `produccion.metrica` (etiqueta + valor de **ancho fijo** `text-right tabular-nums` para columnas alineadas entre filas; props `label`/`w`/`tone`).
 - **Íconos:** `icon.pencil`, `icon.trash`, `icon.plus`, `icon.chevron-down`, `icon.information-circle` (agrega nuevos como Heroicons outline; ver Reglas de diseño).
 - **Ayuda contextual:** `info-tip` (ⓘ que revela un globo con el slot como explicación; abre al **tocar** en móvil y al **hover** en desktop —`matchMedia('(hover:hover)')`—, cierra con click-afuera/Esc; globo viewport-safe; prop `align=right|left`). Reutilizable en cualquier tarjeta; en esquina va dentro de un `<span class="absolute right-2 top-2">` sobre un contenedor `relative` (si la tarjeta es un `<a>`, la ⓘ va como **hermano** superpuesto, no anidada).
+- **Inicio:** `dashboard.acceso` (card de acceso del zócalo del dashboard: squircle de ícono + label; props `:item`/`:paleta`; el color del squircle es personalizable por usuario vía el modo «Personalizar» — `dgTiles` en `app.js`, endpoint `dashboard.colores.update`, D-013).
 
 Si algo no existe y se va a usar seguido, créalo siguiendo el formato de los componentes existentes.
 

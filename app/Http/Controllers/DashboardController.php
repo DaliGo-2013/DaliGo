@@ -7,6 +7,7 @@ use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
+use App\Support\AccesosDashboard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
@@ -204,31 +205,26 @@ class DashboardController extends Controller
             ];
         }
 
-        // ── ③ Zócalo: accesos directos compactos (mismos grupos que el nav) ──
-        $accesos = collect([
-            'Comercial' => [
-                ['label' => 'Catálogo', 'desc' => 'Productos: peso y dimensiones para despacho', 'href' => route('admin.productos.index'), 'permiso' => 'manage productos'],
-                ['label' => 'Precios', 'desc' => 'Listas de precios (espejo de Bsale)', 'href' => route('admin.listas-precios.index'), 'permiso' => 'manage productos'],
-                ['label' => 'Clientes', 'desc' => 'Ficha local sincronizada con Bsale', 'href' => route('admin.clientes.index'), 'permiso' => 'manage clientes'],
-            ],
-            'Operación' => [
-                ['label' => 'Inventario', 'desc' => 'Stock por bodega (espejo de Bsale)', 'href' => route('admin.bodegas.index'), 'permiso' => 'manage productos'],
-                ['label' => 'Producción', 'desc' => 'Asignar y revisar reportes de soplado', 'href' => route('admin.produccion.index'), 'permiso' => 'manage production'],
-            ],
-            'Servicio Técnico' => [
-                ['label' => 'Servicio Técnico', 'desc' => 'Ingreso de máquinas y lavadoras al taller', 'href' => route('admin.servicio-tecnico.index'), 'permiso' => 'manage servicio tecnico'],
-            ],
-            'Administración' => [
-                ['label' => 'Usuarios', 'desc' => 'Cuentas y roles del equipo', 'href' => route('admin.users.index'), 'permiso' => 'view users'],
-                ['label' => 'Roles', 'desc' => 'Permisos por rol', 'href' => route('admin.roles.index'), 'permiso' => 'manage roles'],
-                ['label' => 'Sucursales', 'desc' => 'Mirador, Coquimbo, Abate Molina, Buzeta', 'href' => route('admin.sucursales.index'), 'permiso' => 'manage sucursales'],
-                ['label' => 'Configuración', 'desc' => 'Parámetros globales de la app', 'href' => route('admin.configuracion.index'), 'permiso' => 'manage settings'],
-                ['label' => 'Auditoría', 'desc' => 'Quién cambió qué y cuándo', 'href' => route('admin.audits.index'), 'permiso' => 'view audit'],
-                ['label' => 'Notificaciones', 'desc' => 'Envíos, reintentos y fallas', 'href' => route('admin.notificaciones.index'), 'permiso' => 'view notificaciones'],
-                ['label' => 'Aprobaciones', 'desc' => 'Historial del motor de aprobaciones', 'href' => route('admin.aprobaciones.index'), 'permiso' => 'view aprobaciones'],
-            ],
-        ])
-            ->map(fn (array $items) => array_values(array_filter($items, fn ($i) => $user->can($i['permiso']))))
+        // ── ③ Zócalo: cards de acceso con ícono (mismos grupos que el nav).
+        // Definición central en AccesosDashboard; el color de cada card
+        // respeta la preferencia del usuario (D-013) — solo keys de paleta
+        // válidas: una pref legacy/corrupta cae al default sin reventar.
+        $prefs = $user->dashboard_colores ?? [];
+        $accesos = collect(AccesosDashboard::GRUPOS)
+            ->map(fn (array $items) => collect($items)
+                ->filter(fn (array $def) => $user->can($def['permiso']))
+                ->map(fn (array $def, string $key) => [
+                    'key' => $key,
+                    'label' => $def['label'],
+                    'desc' => $def['desc'],
+                    'href' => route($def['route']),
+                    'icon' => $def['icon'],
+                    'color' => in_array($prefs[$key] ?? null, AccesosDashboard::COLORES, true)
+                        ? $prefs[$key]
+                        : $def['color'],
+                ])
+                ->values()
+                ->all())
             ->filter(fn (array $items) => $items !== []);
 
         return view('dashboard', [

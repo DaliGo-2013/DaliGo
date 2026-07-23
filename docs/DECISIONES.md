@@ -41,6 +41,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 | D-010 | Computadores nuevos para devs | 🟢 CERRADA (PCs obtenidos) | Mauricio (2026-07-08) | — | — |
 | D-011 | URL oficial (`daligo.impdali.cl`) y estrategia de entornos | 🟢 TOMADA | Mauricio (2026-07-02) | — | — |
 | D-012 | Visibilidad del repo GitHub: queda PÚBLICO | 🟢 TOMADA | Mauricio (2026-07-08) | — | — |
+| D-013 | Excepción de paleta: pasteles opt-in en squircles del Inicio | 🟢 TOMADA | Mauricio (2026-07-22) | — | — |
 | D-000 | [retroactiva] Roles reconciliados a 8 ASCII | 🟢 TOMADA | equipo (2026-06) | — | — |
 
 **Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026**.
@@ -173,6 +174,14 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 ---
 
 ## 4. Decisiones TOMADAS (cronológico inverso)
+
+### D-013 · Excepción de paleta: colores pastel OPT-IN en los squircles de los accesos del Inicio
+- **Estado:** TOMADA (2026-07-22) · **Decisor:** Mauricio
+- **Contexto:** el jefe pidió cards de módulo estilo Bsale en el Inicio (ícono + palabra, cuadradito de color suave); la paleta estricta de 4 de `CLAUDE.md` prohíbe verde/ámbar/azul.
+- **Opciones:** (a) multicolor curado por defecto (look Bsale out-of-the-box); (b) **default sobrio** brand/neutral + paleta pastel curada de 8 que cada usuario elige POR CARD, persistida POR PERFIL (recomendada — no se pierde la sobriedad y quien quiera color lo activa).
+- **Decisión:** (b), 2026-07-22, Mauricio. Los pasteles (celeste/verde/ámbar/violeta/turquesa/índigo, tono 100 de fondo + 700 de ícono) existen **SOLO** en el squircle del ícono de las cards del zócalo del dashboard y **SOLO** si el usuario los elige (`users.dashboard_colores`). El rojo sigue reservado a destructivo (fuera de la paleta elegible).
+- **Consecuencias:** regla de paleta de `CLAUDE.md` enmendada con la excepción acotada; el mapa key→clases vive únicamente en `dashboard.blade.php` (`$paleta`, anti-purge); keys en `App\Support\AccesosDashboard`.
+- **Bloquea:** nada.
 
 ### D-001 · Nombre definitivo del sistema: **DaliGo**
 - **Estado:** TOMADA (2026-07-08) · **Decisor:** Mauricio
