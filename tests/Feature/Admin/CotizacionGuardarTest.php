@@ -117,6 +117,34 @@ class CotizacionGuardarTest extends TestCase
         $this->assertSame(16000, (int) $fresh->costo_total);
     }
 
+    public function test_reguardar_el_parte_del_tecnico_no_borra_el_descuento(): void
+    {
+        // El descuento se fija en Cotización; re-guardar el parte del técnico
+        // (que no toca el descuento) no debe borrarlo.
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
+                'descuento_pct' => 20,
+                'descuento_motivo' => 'cliente_grande',
+                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+            ]);
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
+                'estado' => 'reparado',
+                'causa_falla' => 'uso_normal',
+                'trabajo_realizado' => 'Cambio de caldera — funciona normal',
+                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+            ]);
+
+        $fresh = $orden->fresh();
+        $this->assertSame(20, $fresh->descuento_pct);
+        $this->assertSame('cliente_grande', $fresh->descuento_motivo);
+    }
+
     public function test_guardar_cotizacion_exige_precio_de_cada_repuesto(): void
     {
         $orden = $this->reparacion();
