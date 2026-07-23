@@ -205,6 +205,43 @@ class DashboardController extends Controller
             ];
         }
 
+        // ── Tarjetas de taller por estado (acceso rápido al listado filtrado) ──
+        // Para el técnico y los jefes (ver/gestionar servicio técnico): un vistazo
+        // a cuántos equipos hay por etapa + el total ingresado en el mes, y al
+        // tocar una tarjeta se abre el listado ya filtrado por ese estado/periodo.
+        $tallerCards = null;
+
+        if ($user->canAny(['view servicio tecnico', 'manage servicio tecnico'])) {
+            // Conteo por estado en una sola query (portable). Los estados activos
+            // (recibido/cotización/reparado) suman lo que hay hoy en el taller.
+            $porEstado = OrdenServicio::selectRaw('estado, COUNT(*) as c')->groupBy('estado')->pluck('c', 'estado');
+
+            $ahora = \App\Support\FechaNegocio::ahora();
+            $totalMes = OrdenServicio::whereDate('fecha_ingreso', '>=', $ahora->copy()->startOfMonth()->toDateString())
+                ->whereDate('fecha_ingreso', '<=', $ahora->copy()->endOfMonth()->toDateString())
+                ->count();
+
+            $card = fn (string $label, string $estado) => [
+                'label' => $label,
+                'cantidad' => (int) ($porEstado[$estado] ?? 0),
+                'href' => route('admin.servicio-tecnico.index', ['estado' => $estado]),
+                'destacado' => false,
+            ];
+
+            $tallerCards = [
+                $card('Recibido', 'recibido'),
+                $card('En cotización', 'cotizacion'),
+                $card('Reparadas', 'reparado'),
+                $card('Entregadas', 'entregado'),
+                [
+                    'label' => 'Total del mes',
+                    'cantidad' => $totalMes,
+                    'href' => route('admin.servicio-tecnico.index', ['anio' => $ahora->year, 'mes' => $ahora->month]),
+                    'destacado' => true,
+                ],
+            ];
+        }
+
         // ── ③ Zócalo: cards de acceso con ícono (mismos grupos que el nav).
         // Definición central en AccesosDashboard; el color de cada card
         // respeta la preferencia del usuario (D-013) — solo keys de paleta
@@ -232,6 +269,7 @@ class DashboardController extends Controller
             'puedeVerExcepciones' => $puedeVerExcepciones,
             'pulsoProduccion' => $pulsoProduccion,
             'pulsoTaller' => $pulsoTaller,
+            'tallerCards' => $tallerCards,
             'accesos' => $accesos,
         ]);
     }
