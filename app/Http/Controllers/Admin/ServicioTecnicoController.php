@@ -77,7 +77,7 @@ class ServicioTecnicoController extends Controller
 
         return view('admin.servicio-tecnico.index', array_merge([
             'ordenes' => $ordenes,
-            'filtros' => $request->only(['q', 'estado', 'tipo_equipo', 'facturacion', 'sucursal_id', 'anio', 'mes']),
+            'filtros' => $request->only(['q', 'estado', 'estados', 'tipo_equipo', 'facturacion', 'sucursal_id', 'anio', 'mes', 'por']),
             // Cards de navegacion del historial (Año → Mes) sobre el listado.
             'historial' => $this->resumenHistorial($request->filled('anio') ? (int) $request->input('anio') : null),
             // Maquinas que llegaron por QR y esperan que el encargado confirme la
@@ -1025,6 +1025,9 @@ class ServicioTecnicoController extends Controller
         $f = $request->validate([
             'q' => ['nullable', 'string', 'max:191'],
             'estado' => ['nullable', Rule::in(OrdenServicio::ESTADOS)],
+            // Varios estados a la vez (CSV): lo usan las tarjetas del Inicio que
+            // agrupan etapas (ej. Recibido + Cotización en una sola card).
+            'estados' => ['nullable', 'string', 'max:191'],
             'tipo_equipo' => ['nullable', Rule::in(OrdenServicio::TIPOS)],
             'facturacion' => ['nullable', Rule::in(OrdenServicio::FACTURACION)],
             // Sucursal de RECEPCION (donde se ingreso el equipo). El historial es
@@ -1034,6 +1037,9 @@ class ServicioTecnicoController extends Controller
             // Periodo del historial (cards Año → Mes del listado).
             'anio' => ['nullable', 'integer', 'between:2020,2100'],
             'mes' => ['nullable', 'integer', 'between:1,12'],
+            // Sobre qué fecha aplica el período: 'ingreso' (default) o 'retiro'
+            // (para "Entregadas del mes": las que el cliente retiró en el mes).
+            'por' => ['nullable', Rule::in(['ingreso', 'retiro'])],
         ]);
 
         return OrdenServicio::query()
@@ -1053,6 +1059,13 @@ class ServicioTecnicoController extends Controller
                 });
             })
             ->when($f['estado'] ?? null, fn (Builder $qb, $v) => $qb->where('estado', $v))
+            ->when($f['estados'] ?? null, function (Builder $qb, $v) {
+                // CSV → solo estados válidos (ignora basura); vacío no filtra.
+                $lista = array_values(array_intersect(explode(',', $v), OrdenServicio::ESTADOS));
+                if ($lista) {
+                    $qb->whereIn('estado', $lista);
+                }
+            })
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
             ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v))
             ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v))
@@ -1064,8 +1077,11 @@ class ServicioTecnicoController extends Controller
                 $mes = isset($f['mes']) ? (int) $f['mes'] : null;
                 $desde = Carbon::create($anio, $mes ?? 1, 1);
                 $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
-                $qb->whereDate('fecha_ingreso', '>=', $desde->toDateString())
-                    ->whereDate('fecha_ingreso', '<=', $hasta->toDateString());
+                // Por defecto el período es por fecha de ingreso; 'retiro' lo aplica
+                // sobre fecha_retiro (para "Entregadas del mes").
+                $col = ($f['por'] ?? 'ingreso') === 'retiro' ? 'fecha_retiro' : 'fecha_ingreso';
+                $qb->whereDate($col, '>=', $desde->toDateString())
+                    ->whereDate($col, '<=', $hasta->toDateString());
             });
     }
 

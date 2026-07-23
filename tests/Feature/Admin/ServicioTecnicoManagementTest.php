@@ -890,6 +890,31 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Cliente Folio');
     }
 
+    public function test_index_filtra_por_varios_estados(): void
+    {
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Recibido SA', 'estado' => 'recibido']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cotiza SA', 'estado' => 'cotizacion']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Reparada SA', 'estado' => 'reparado']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?estados=recibido,cotizacion')
+            ->assertOk()
+            ->assertSee('Recibido SA')
+            ->assertSee('Cotiza SA')
+            ->assertDontSee('Reparada SA');
+    }
+
+    public function test_index_periodo_por_fecha_de_retiro(): void
+    {
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Este Mes', 'estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Mes Pasado', 'estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico?estado=entregado&anio='.now()->year.'&mes='.now()->month.'&por=retiro')
+            ->assertOk()
+            ->assertSee('Retiro Este Mes')
+            ->assertDontSee('Retiro Mes Pasado');
+    }
+
     public function test_cada_orden_recibe_un_codigo_unico_impredecible(): void
     {
         $a = OrdenServicio::factory()->create();

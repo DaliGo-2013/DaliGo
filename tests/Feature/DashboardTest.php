@@ -315,29 +315,31 @@ class DashboardTest extends TestCase
         $this->assertTrue($res->viewData('puedeVerExcepciones'));
     }
 
-    public function test_tarjetas_de_taller_por_estado_enlazan_al_listado_filtrado(): void
+    public function test_tarjetas_de_taller_agrupan_estados_y_entregadas_es_del_mes(): void
     {
+        // Pendientes (ciclo abierto): cuentan por estado actual, sin acotar al mes.
         OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
         OrdenServicio::factory()->create(['estado' => 'cotizacion']);
         OrdenServicio::factory()->create(['estado' => 'reparado']);
-        OrdenServicio::factory()->create(['estado' => 'entregado']);
+        // Entregadas: solo las retiradas ESTE mes cuentan en la tarjeta.
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]); // mes pasado → no
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => null]);                              // histórica → no
 
         $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
 
         $res->assertOk()
-            ->assertSee('Recibido')
-            ->assertSee('En cotización')
+            ->assertSee('Recibido / Cotización')
             ->assertSee('Reparadas')
-            ->assertSee('Entregadas')
+            ->assertSee('Entregadas (mes)')
             ->assertSee('Total del mes')
-            // La tarjeta enlaza al listado ya filtrado por ese estado.
-            ->assertSee(route('admin.servicio-tecnico.index', ['estado' => 'reparado']), false);
+            // La card combinada enlaza al listado filtrado por ambos estados.
+            ->assertSee(route('admin.servicio-tecnico.index', ['estados' => 'recibido,cotizacion']), false);
 
         $cards = collect($res->viewData('tallerCards'))->keyBy('label');
-        $this->assertSame(2, $cards['Recibido']['cantidad']);
-        $this->assertSame(1, $cards['En cotización']['cantidad']);
+        $this->assertSame(3, $cards['Recibido / Cotización']['cantidad']);   // 2 + 1
         $this->assertSame(1, $cards['Reparadas']['cantidad']);
-        $this->assertSame(1, $cards['Entregadas']['cantidad']);
+        $this->assertSame(1, $cards['Entregadas (mes)']['cantidad']);         // solo la de este mes
     }
 
     public function test_sin_permiso_de_servicio_tecnico_no_hay_tarjetas_de_taller(): void

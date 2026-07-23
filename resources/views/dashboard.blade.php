@@ -26,7 +26,7 @@
             {{-- Taller por estado: acceso rápido al listado filtrado. Cada tarjeta
                  abre el listado ya filtrado por ese estado (o por el mes). --}}
             @if ($tallerCards)
-                <div class="dg-enter grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div class="dg-enter grid grid-cols-2 gap-3 sm:grid-cols-4">
                     @foreach ($tallerCards as $c)
                         <a href="{{ $c['href'] }}"
                            class="group flex flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition duration-150 hover:shadow-md active:scale-[0.98]

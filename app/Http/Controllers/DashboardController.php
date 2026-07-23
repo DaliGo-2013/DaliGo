@@ -213,26 +213,50 @@ class DashboardController extends Controller
 
         if ($user->canAny(['view servicio tecnico', 'manage servicio tecnico'])) {
             // Conteo por estado en una sola query (portable). Los estados activos
-            // (recibido/cotización/reparado) suman lo que hay hoy en el taller.
+            // NO se acotan al mes: son pendientes de ciclo abierto (una máquina en
+            // cotización o reparada-por-retirar sigue contando aunque cambie el mes,
+            // hasta que se entrega). Solo "Entregadas" (ciclo cerrado) se acota.
             $porEstado = OrdenServicio::selectRaw('estado, COUNT(*) as c')->groupBy('estado')->pluck('c', 'estado');
+            $n = fn (string $estado) => (int) ($porEstado[$estado] ?? 0);
 
             $ahora = \App\Support\FechaNegocio::ahora();
-            $totalMes = OrdenServicio::whereDate('fecha_ingreso', '>=', $ahora->copy()->startOfMonth()->toDateString())
-                ->whereDate('fecha_ingreso', '<=', $ahora->copy()->endOfMonth()->toDateString())
+            $mesIni = $ahora->copy()->startOfMonth()->toDateString();
+            $mesFin = $ahora->copy()->endOfMonth()->toDateString();
+
+            // Entregadas DEL MES: las que el cliente retiró (fecha_retiro) dentro del
+            // mes en curso. Las históricas sin fecha de retiro no se cuentan.
+            $entregadasMes = OrdenServicio::where('estado', 'entregado')
+                ->whereDate('fecha_retiro', '>=', $mesIni)
+                ->whereDate('fecha_retiro', '<=', $mesFin)
                 ->count();
 
-            $card = fn (string $label, string $estado) => [
-                'label' => $label,
-                'cantidad' => (int) ($porEstado[$estado] ?? 0),
-                'href' => route('admin.servicio-tecnico.index', ['estado' => $estado]),
-                'destacado' => false,
-            ];
+            $totalMes = OrdenServicio::whereDate('fecha_ingreso', '>=', $mesIni)
+                ->whereDate('fecha_ingreso', '<=', $mesFin)
+                ->count();
 
             $tallerCards = [
-                $card('Recibido', 'recibido'),
-                $card('En cotización', 'cotizacion'),
-                $card('Reparadas', 'reparado'),
-                $card('Entregadas', 'entregado'),
+                // Recibido + Cotización en una sola card (pendientes por cotizar).
+                [
+                    'label' => 'Recibido / Cotización',
+                    'cantidad' => $n('recibido') + $n('cotizacion'),
+                    'href' => route('admin.servicio-tecnico.index', ['estados' => 'recibido,cotizacion']),
+                    'destacado' => false,
+                ],
+                // Reparadas: listas, pendientes de que el cliente retire.
+                [
+                    'label' => 'Reparadas',
+                    'cantidad' => $n('reparado'),
+                    'href' => route('admin.servicio-tecnico.index', ['estado' => 'reparado']),
+                    'destacado' => false,
+                ],
+                // Entregadas en el mes (ciclo cerrado): por fecha de retiro.
+                [
+                    'label' => 'Entregadas (mes)',
+                    'cantidad' => $entregadasMes,
+                    'href' => route('admin.servicio-tecnico.index', ['estado' => 'entregado', 'anio' => $ahora->year, 'mes' => $ahora->month, 'por' => 'retiro']),
+                    'destacado' => false,
+                ],
+                // Total ingresado en el mes.
                 [
                     'label' => 'Total del mes',
                     'cantidad' => $totalMes,
