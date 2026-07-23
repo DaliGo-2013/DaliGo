@@ -23,6 +23,24 @@
                 </div>
             </div>
 
+            {{-- Taller por estado: acceso rápido al listado filtrado. Cada tarjeta
+                 abre el listado ya filtrado por ese estado (o por el mes). --}}
+            @if ($tallerCards)
+                <div class="dg-enter grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    @foreach ($tallerCards as $c)
+                        <a href="{{ $c['href'] }}"
+                           class="group flex flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition duration-150 hover:shadow-md active:scale-[0.98]
+                                  {{ $c['destacado'] ? 'border-brand-200 bg-brand-50' : 'border-neutral-200' }}">
+                            <span class="text-3xl font-semibold tabular-nums {{ $c['destacado'] ? 'text-brand-700' : 'text-neutral-900' }}">{{ number_format($c['cantidad'], 0, ',', '.') }}</span>
+                            <span class="mt-1 flex items-center justify-between gap-1">
+                                <span class="text-sm font-medium {{ $c['destacado'] ? 'text-brand-700' : 'text-neutral-600' }}">{{ $c['label'] }}</span>
+                                <x-icon.chevron-down class="h-4 w-4 shrink-0 -rotate-90 {{ $c['destacado'] ? 'text-brand-400' : 'text-neutral-300' }} transition group-hover:translate-x-0.5" />
+                            </span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- CTA del operario: su pantalla de trabajo, a un clic --}}
             @can('report production')
                 <div class="dg-enter rounded-2xl border border-brand-100 bg-brand-50 p-6 shadow-sm sm:flex sm:items-center sm:justify-between">

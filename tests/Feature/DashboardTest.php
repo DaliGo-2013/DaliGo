@@ -315,6 +315,37 @@ class DashboardTest extends TestCase
         $this->assertTrue($res->viewData('puedeVerExcepciones'));
     }
 
+    public function test_tarjetas_de_taller_por_estado_enlazan_al_listado_filtrado(): void
+    {
+        OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
+        OrdenServicio::factory()->create(['estado' => 'cotizacion']);
+        OrdenServicio::factory()->create(['estado' => 'reparado']);
+        OrdenServicio::factory()->create(['estado' => 'entregado']);
+
+        $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
+
+        $res->assertOk()
+            ->assertSee('Recibido')
+            ->assertSee('En cotización')
+            ->assertSee('Reparadas')
+            ->assertSee('Entregadas')
+            ->assertSee('Total del mes')
+            // La tarjeta enlaza al listado ya filtrado por ese estado.
+            ->assertSee(route('admin.servicio-tecnico.index', ['estado' => 'reparado']), false);
+
+        $cards = collect($res->viewData('tallerCards'))->keyBy('label');
+        $this->assertSame(2, $cards['Recibido']['cantidad']);
+        $this->assertSame(1, $cards['En cotización']['cantidad']);
+        $this->assertSame(1, $cards['Reparadas']['cantidad']);
+        $this->assertSame(1, $cards['Entregadas']['cantidad']);
+    }
+
+    public function test_sin_permiso_de_servicio_tecnico_no_hay_tarjetas_de_taller(): void
+    {
+        $res = $this->actingAs($this->userWithRole('soplador'))->get('/dashboard');
+        $this->assertNull($res->viewData('tallerCards'));
+    }
+
     public function test_zocalo_filtra_accesos_por_permiso(): void
     {
         // vendedor: solo Comercial (Clientes); nada de Operación/Administración.
