@@ -545,17 +545,26 @@ class ServicioTecnicoController extends Controller
             'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
             'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
             'repuestos' => ['array'],
-            'repuestos.*.nombre' => ['required', 'string', 'max:191'],
+            'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
             'descuento_motivo.required' => 'Indica el motivo del descuento.',
         ]);
 
-        // Cada repuesto que viene del parte del técnico debe quedar con precio (>0)
-        // para poder cotizarlo (aquí es donde se cobra).
+        // Validacion por fila: las filas vacias se ignoran; una fila con nombre
+        // exige nombre (min 3) y precio (>0), porque aqui es donde se cobra. Se
+        // pueden agregar repuestos con el buscador del catalogo, igual que en el
+        // parte del tecnico.
         $errores = [];
         foreach ($request->input('repuestos', []) as $i => $r) {
+            $nombre = trim((string) ($r['nombre'] ?? ''));
+            if ($nombre === '') {
+                continue;
+            }
+            if (mb_strlen($nombre) < 3) {
+                $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
+            }
             if ((int) ($r['precio_unitario'] ?? 0) < 1) {
                 $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0).';
             }

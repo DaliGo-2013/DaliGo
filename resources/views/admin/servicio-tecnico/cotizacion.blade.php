@@ -97,54 +97,94 @@
                 {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
                 <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
                       class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8" data-una-vez
-                      x-data="{
-                        repuestos: @js($repInit),
-                        manoObra: {{ (int) old('mano_obra', $orden->mano_obra ?? 0) }},
-                        descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }},
-                        precioHora: {{ (int) ($precioHoraServicio ?? 0) }},
-                        horas: 0,
-                        calcularManoObra() { if (this.precioHora > 0) this.manoObra = Math.round((Number(this.horas) || 0) * this.precioHora); },
-                        clp(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-CL'); },
-                        sub(r) { return (Number(r.precio_unitario) || 0) * (Number(r.cantidad) || 1); },
-                        get totalRepuestos() { return this.repuestos.reduce((s, r) => s + this.sub(r), 0); },
-                        get bruto() { return this.totalRepuestos + (Number(this.manoObra) || 0); },
-                        get descMonto() { return Math.round(this.bruto * (Number(this.descuentoPct) || 0) / 100); },
-                        get total() { return this.bruto - this.descMonto; },
-                      }">
+                      x-data="reparacionForm({ repuestos: @js($repInit), manoObra: {{ (int) old('mano_obra', $orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
                     @csrf
                     @method('PUT')
 
                     <div class="mb-3 flex items-center justify-between">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del presupuesto</h3>
-                        <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Repuestos usados en parte del técnico →</a>
+                        <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Ver parte del técnico →</a>
                     </div>
 
-                    {{-- Repuestos (nombre y cantidad vienen del parte del técnico; aquí precio) --}}
+                    {{-- Repuestos: se pueden agregar buscándolos del catálogo, con precio.
+                         (También llegan los que declaró el técnico en su parte.) --}}
                     <div>
-                        <x-input-label value="Repuestos" />
+                        <div class="flex items-center justify-between">
+                            <x-input-label value="Repuestos" />
+                            <button type="button" x-on:click="agregar()"
+                                class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
+                                <x-icon.plus class="h-4 w-4" /> Agregar repuesto
+                            </button>
+                        </div>
+
                         <div class="mt-2 space-y-2">
                             <template x-for="(r, i) in repuestos" :key="i">
-                                <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-center sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
-                                    <input type="hidden" :name="`repuestos[${i}][nombre]`" :value="r.nombre">
-                                    <input type="hidden" :name="`repuestos[${i}][cantidad]`" :value="r.cantidad">
-                                    <div class="min-w-0 sm:flex-1">
-                                        <span class="text-sm text-neutral-900" x-text="r.nombre"></span>
-                                        <span class="text-sm text-neutral-400" x-text="'× ' + r.cantidad"></span>
+                                <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
+                                    <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
+                                        <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
+                                            placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
+                                            x-on:input.debounce.250ms="buscarRepuesto(i)"
+                                            x-on:focus="buscarRepuesto(i)"
+                                            x-on:keydown.escape="cerrarSugerencias()"
+                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+
+                                        <div x-show="filaActiva === i && (buscandoRepuesto || sugerencias.length)" x-cloak
+                                            class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                            <template x-if="buscandoRepuesto && sugerencias.length === 0">
+                                                <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
+                                            </template>
+                                            <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
+                                                <template x-for="(s, si) in sugerencias" :key="si">
+                                                    <li>
+                                                        <button type="button" x-on:click="elegirRepuesto(i, s)"
+                                                            class="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
+                                                            <span class="min-w-0">
+                                                                <span x-show="s.sku" class="font-mono text-xs text-neutral-400" x-text="s.sku"></span>
+                                                                <span x-text="s.nombre"></span>
+                                                            </span>
+                                                            <span x-show="s.precio !== null && s.precio !== undefined" class="shrink-0 text-xs font-medium text-neutral-500" x-text="'$' + Number(s.precio).toLocaleString('es-CL')"></span>
+                                                        </button>
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </div>
                                     </div>
-                                    <div class="flex items-end gap-2">
-                                        <div class="flex-1 sm:w-32 sm:flex-none">
+
+                                    {{-- Cantidad, precio, subtotal y quitar. --}}
+                                    <div class="flex items-start gap-2">
+                                        <div class="w-20 sm:w-16">
+                                            <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
+                                            <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                        </div>
+                                        <div class="flex-1 sm:w-28 sm:flex-none">
                                             <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Precio c/u</label>
                                             <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
                                                 placeholder="Precio"
                                                 class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                         </div>
-                                        <div class="w-24 shrink-0 pb-2 text-right text-sm text-neutral-600" x-text="clp(sub(r))"></div>
+                                        <div class="w-24 shrink-0 text-right text-sm text-neutral-600">
+                                            <span class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Subtotal</span>
+                                            <span class="block sm:pt-2" x-text="clp(subtotal(r))"></span>
+                                        </div>
+                                        <button type="button" x-on:click="quitar(i)"
+                                            class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
+                                            <x-icon.trash class="h-5 w-5" />
+                                        </button>
                                     </div>
                                 </div>
                             </template>
+
                             <p x-show="repuestos.length === 0" class="py-2 text-sm text-neutral-400">
-                                Sin repuestos. Se agregan en «Parte del técnico»; aquí solo se les pone precio.
+                                Sin repuestos. Usa «Agregar repuesto» y búscalos del catálogo.
                             </p>
+                        </div>
+                        <div class="mt-1 hidden gap-3 text-xs text-neutral-400 sm:flex">
+                            <span class="flex-1">Repuesto</span>
+                            <span class="w-16 text-center">Cant.</span>
+                            <span class="w-28">Precio c/u</span>
+                            <span class="w-24 text-right">Subtotal</span>
+                            <span class="w-9"></span>
                         </div>
                         @php $errBag = $errors->getMessages(); @endphp
                         @foreach ($errBag as $key => $msgs)
@@ -206,8 +246,8 @@
                                     Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
                                 </p>
                                 <p x-show="descuentoPct > 0" x-cloak class="mt-1 text-xs font-medium text-brand-700">
-                                    Descuento <span x-text="descuentoPct"></span>%: −<span x-text="clp(descMonto)"></span>
-                                    <span class="text-neutral-400">· subtotal <span x-text="clp(bruto)"></span></span>
+                                    Descuento <span x-text="descuentoPct"></span>%: −<span x-text="clp(descuentoMonto)"></span>
+                                    <span class="text-neutral-400">· subtotal <span x-text="clp(costoBruto)"></span></span>
                                 </p>
                             </div>
                         </div>
