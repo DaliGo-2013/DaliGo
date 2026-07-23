@@ -359,10 +359,12 @@ class Aprobaciones
         $anterior = is_array($anterior) ? $anterior : [];
         $nuevo = is_array($nuevo) ? $nuevo : [];
 
-        // Solo lo que difiere (mismo criterio que el diff de la bandeja);
-        // comparación laxa a propósito: '500' y 500 son el mismo valor.
+        // Solo lo que difiere, comparando como STRING: '500' y 500 son el
+        // mismo valor, pero un 0 nuevo SIN valor anterior sí es un cambio
+        // (con != laxo, null != 0 es false y se perdía — gate R-31).
+        $aStr = fn ($x) => is_scalar($x) ? (string) $x : '';
         $cambios = collect($nuevo)
-            ->filter(fn ($v, $campo) => is_scalar($v) && ($anterior[$campo] ?? null) != $v)
+            ->filter(fn ($v, $campo) => is_scalar($v) && $aStr($anterior[$campo] ?? null) !== (string) $v)
             ->map(fn ($v, $campo) => ucfirst((string) $campo).': '.(is_scalar($anterior[$campo] ?? null) ? $anterior[$campo] : '—').' → '.$v);
 
         return $cambios->isNotEmpty() ? $cambios->implode(' · ') : '—';

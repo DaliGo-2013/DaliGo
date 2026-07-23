@@ -61,7 +61,11 @@ class NotificacionEspecificaTest extends TestCase
 
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('CTX-CAMPANITA-9d');
+            ->assertSee('CTX-CAMPANITA-9d')
+            // El CABLEADO de la navegación (gate R-31): la campanita es el único
+            // emisor de name="ir" en resources/ — sin este assert, quitar el
+            // hidden dejaría la fila sin navegar con la suite verde.
+            ->assertSee('name="ir"', false);
     }
 
     public function test_la_fila_de_la_campanita_marca_leida_y_navega_al_destino(): void

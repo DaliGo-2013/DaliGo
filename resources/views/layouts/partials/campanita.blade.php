@@ -33,7 +33,9 @@
                 <button type="submit" class="block w-full border-t border-neutral-100 px-4 py-2 text-left transition hover:bg-neutral-50">
                     <span class="block truncate text-sm font-medium text-neutral-800">{{ $dgN->titulo }}</span>
                     @if (filled($dgN->cuerpo))
-                        <span class="mt-0.5 line-clamp-2 block whitespace-pre-line text-xs text-neutral-500">{{ $dgN->cuerpo }}</span>
+                        {{-- Sin 'block': line-clamp-2 define su propio display (-webkit-box) y
+                             un display:block posterior en el bundle lo anularía (gate R-31). --}}
+                        <span class="mt-0.5 line-clamp-2 whitespace-pre-line text-xs text-neutral-500">{{ $dgN->cuerpo }}</span>
                     @endif
                     <span class="mt-0.5 block text-xs text-neutral-400">{{ $dgN->created_at?->diffForHumans() }}</span>
                 </button>
