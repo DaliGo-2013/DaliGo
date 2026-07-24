@@ -60,7 +60,9 @@ class AprobacionCategoriaTest extends TestCase
 
         $res = $this->actingAs($admin)->get(route('aprobaciones.index'))->assertOk();
 
-        // Cada categoría con su cabecera (el tipo simulado cae al id crudo).
+        // Ambas categorías aparecen (el label del tipo simulado cae al id crudo).
+        // Que estén SEPARADAS por categoría lo prueba el assertSeeInOrder de abajo
+        // (este par solo confirma que los dos labels se renderizan).
         $res->assertSee('Ajuste de reporte de producción');
         $res->assertSee(self::OTRO_TIPO);
 
