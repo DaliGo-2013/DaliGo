@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\AgendaTrabajo;
 use App\Models\Aprobacion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
@@ -100,8 +101,10 @@ class MenuPrincipal
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',
             'icon' => 'wrench-screwdriver',
-            'badge' => 'st_pendientes',
-            'badge_title' => ':n equipo(s) por atender',
+            // Sin badge de módulo a propósito (decisión del dueño 24-07): los
+            // números del menú son ACCIONES ancladas a su ítem — la carga del
+            // taller (equipos activos) es un estado y vive en el Inicio y en
+            // el Listado, no aquí.
             // Pantallas de detalle de ST (show, cotización, reparación…) no
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
@@ -112,7 +115,7 @@ class MenuPrincipal
                 'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
                 'seguimiento' => ['label' => 'Seguimiento (boceto)', 'route' => 'admin.servicio-tecnico.seguimiento-demo', 'activo' => ['admin.servicio-tecnico.seguimiento-demo'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
-                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno'],
+                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
@@ -190,11 +193,11 @@ class MenuPrincipal
             // candado de MenuPrincipalTest llama badges(null)). Todos son
             // COUNTs sobre columnas indexadas.
             $atributos->set($key, [
-                'st_pendientes' => ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
-                    ? OrdenServicio::pendientesTecnico()->count()
-                    : 0,
                 'st_por_confirmar' => ($user && $user->can('confirmar servicio tecnico'))
                     ? OrdenServicio::porConfirmar()->count()
+                    : 0,
+                'agenda_por_coordinar' => ($user && $user->canAny(['ver agenda terreno', 'agendar servicio terreno']))
+                    ? AgendaTrabajo::porCoordinar()->count()
                     : 0,
                 'aprobaciones_bandeja' => ($user && $user->can('aprobar solicitudes'))
                     ? Aprobacion::bandejaDe($user)->count()
