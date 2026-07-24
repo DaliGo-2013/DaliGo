@@ -5,15 +5,14 @@ namespace App\View\Components\Layout;
 use App\Support\MenuPrincipal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\View\Component;
 use Illuminate\View\View;
 
 /**
  * Sidebar V4 (menú Talana): computa el árbol podado por permisos, el módulo
- * activo y los badges desde MenuPrincipal (fuente única). Desde el pulido
- * 24-07 (pedido del dueño: máximo espacio vertical) también lleva el PIE con
- * la campanita M15 y el bloque de usuario — en desktop no hay topbar.
+ * activo y los badges desde MenuPrincipal (fuente única). Lleva la campanita
+ * M15 (cabecera, desktop) y el bloque de usuario (pie) — en desktop no hay
+ * topbar (pedido del dueño 24-07: máximo espacio vertical).
  */
 class Sidebar extends Component
 {
@@ -26,12 +25,10 @@ class Sidebar extends Component
     /** @var array<string, int> */
     public array $badges;
 
-    /** Campanita M15 (pie de la sidebar). */
+    /** Campanita M15 (cabecera de la sidebar). */
     public Collection $noLeidas;
 
     public int $conteo;
-
-    public string $iniciales;
 
     public function __construct()
     {
@@ -43,12 +40,6 @@ class Sidebar extends Component
         $campanita = MenuPrincipal::campanita($user);
         $this->noLeidas = $campanita['noLeidas'];
         $this->conteo = $campanita['conteo'];
-
-        $this->iniciales = collect(explode(' ', $user?->name ?? ''))
-            ->filter()
-            ->map(fn (string $parte) => Str::substr($parte, 0, 1))
-            ->take(2)
-            ->implode('');
     }
 
     public function render(): View

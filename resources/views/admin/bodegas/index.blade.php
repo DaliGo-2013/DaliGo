@@ -28,8 +28,11 @@
                         @endif
 
                         <x-slot name="meta">
-                            <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
-                                {{ number_format($bodega->stocks_count, 0, ',', '.') }} {{ \Illuminate\Support\Str::plural('producto', $bodega->stocks_count) }}
+                            <div class="flex items-center gap-1 text-sm text-neutral-500 sm:w-48 sm:shrink-0 sm:justify-end">
+                                <span>{{ number_format($bodega->stocks_count, 0, ',', '.') }} {{ \Illuminate\Support\Str::plural('producto', $bodega->stocks_count) }} en catálogo</span>
+                                <x-info-tip>
+                                    Cuenta los productos del catálogo con seguimiento en esta bodega (espejo de Bsale) — no indica cuántas unidades hay disponibles. Para ver el stock real, usa "Ver stock" y el filtro "Solo con stock disponible".
+                                </x-info-tip>
                             </div>
                         </x-slot>
 
