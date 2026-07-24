@@ -221,6 +221,19 @@ class ServicioTecnicoController extends Controller
         $realizados = $base()->where('estado', 'realizado')->count();
         $pendientes = $total - $realizados;
         $pctCumplimiento = $total > 0 ? (int) round($realizados / $total * 100) : 0;
+        $pctPendientes = $total > 0 ? (int) round($pendientes / $total * 100) : 0;
+
+        // Detalle cliqueable de las tarjetas Realizados/Pendientes: la lista de
+        // trabajos que hay detrás de cada número, para pasar del agregado al
+        // detalle sin salir del informe. Volumen de terreno es bajo (decenas por
+        // período), así que se cargan completas. Realizados: lo más reciente
+        // primero; pendientes: lo más próximo primero.
+        $realizadosLista = $base()->where('estado', 'realizado')
+            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->orderByDesc('fecha')->get();
+        $pendientesLista = $base()->where('estado', 'agendado')
+            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->orderBy('fecha')->get();
 
         // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.
         $visitas = $base()->where('tipo', 'visita_tecnica')->count();
@@ -270,6 +283,9 @@ class ServicioTecnicoController extends Controller
             'realizados' => $realizados,
             'pendientes' => $pendientes,
             'pctCumplimiento' => $pctCumplimiento,
+            'pctPendientes' => $pctPendientes,
+            'realizadosLista' => $realizadosLista,
+            'pendientesLista' => $pendientesLista,
             'visitas' => $visitas,
             'visitasRealizadas' => $visitasRealizadas,
             'pctVisitas' => $pctVisitas,
