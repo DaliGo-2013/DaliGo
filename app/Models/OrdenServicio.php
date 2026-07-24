@@ -117,6 +117,11 @@ class OrdenServicio extends Model implements AuditableContract
     // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
     public const TASA_IVA = 0.19;
 
+    // Umbral de "reparación cara": si el costo supera este % del precio de venta
+    // del equipo, se advierte (como la pérdida total de los autos). No bloquea:
+    // avisa para consultar al cliente si conviene repararlo.
+    public const UMBRAL_REPARACION_ALTA = 0.40;
+
     // Descuentos permitidos sobre el total de una reparacion cobrable (%).
     public const DESCUENTOS_PCT = [10, 15, 20];
 

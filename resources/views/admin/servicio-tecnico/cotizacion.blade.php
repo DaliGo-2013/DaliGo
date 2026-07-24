@@ -258,6 +258,22 @@
                         </div>
                     </div>
 
+                    {{-- Advertencia de gasto: si la reparación supera el 40% del
+                         valor del equipo (como la "pérdida total" de los autos).
+                         No bloquea: avisa para consultar al cliente. --}}
+                    @if ($precioVentaEquipo)
+                        @php $umbralAlto = (int) round($precioVentaEquipo * \App\Models\OrdenServicio::UMBRAL_REPARACION_ALTA); @endphp
+                        <div x-show="total > {{ $umbralAlto }}" x-cloak class="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+                            <p class="font-semibold">⚠️ Costo de reparación alto</p>
+                            <p class="mt-0.5">
+                                El total (<span x-text="clp(total)"></span>) es el
+                                <span class="font-semibold" x-text="Math.round(total / {{ $precioVentaEquipo }} * 100)"></span>%
+                                del valor del equipo ({{ $clp($precioVentaEquipo) }}) y supera el 40%.
+                                <span class="font-medium">Consulta con el cliente</span> si le conviene reparar o cambiar el equipo antes de continuar.
+                            </p>
+                        </div>
+                    @endif
+
                     <div class="mt-5 flex items-center justify-end border-t border-neutral-100 pt-5">
                         <x-primary-button>
                             <x-icon.check class="h-4 w-4" /> Guardar cotización

@@ -911,6 +911,22 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSee('Total con IVA');
     }
 
+    public function test_advierte_cuando_la_reparacion_supera_el_40_del_valor_del_equipo(): void
+    {
+        $equipo = Producto::factory()->create();
+        Precio::factory()->create(['producto_id' => $equipo->id, 'precio_con_iva' => 50000]);
+
+        // Cara: 30.000 supera el 40% de 50.000 (= 20.000) → advertencia.
+        $cara = OrdenServicio::factory()->create(['producto_id' => $equipo->id, 'facturacion' => 'reparacion', 'mano_obra' => 30000]);
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $cara))
+            ->assertOk()->assertSee('Costo de reparación alto');
+
+        // Barata: 10.000 no llega al 40% → sin advertencia.
+        $barata = OrdenServicio::factory()->create(['producto_id' => $equipo->id, 'facturacion' => 'reparacion', 'mano_obra' => 10000]);
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $barata))
+            ->assertOk()->assertDontSee('Costo de reparación alto');
+    }
+
     public function test_index_filtra_por_varios_estados(): void
     {
         OrdenServicio::factory()->create(['cliente_nombre' => 'Recibido SA', 'estado' => 'recibido']);
