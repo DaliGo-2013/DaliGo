@@ -1,8 +1,4 @@
 <x-app-layout>
-    @php
-        $labels = config('permissions.labels');
-    @endphp
-
     <x-slot name="header">
         <x-page-header title="Editar rol">
             <x-slot name="action">
@@ -32,20 +28,7 @@
 
                     <div>
                         <x-input-label value="Permisos" />
-                        <div class="mt-1.5 space-y-2">
-                            @foreach ($permissions as $permission)
-                                @php $locked = $role->name === 'admin' && $permission->name === 'manage roles'; @endphp
-                                <x-checkbox-item name="permissions[]" :value="$permission->name" :checked="in_array($permission->name, old('permissions', $assigned))" :disabled="$locked">
-                                    {{ $labels[$permission->name] ?? $permission->name }}
-                                    @if ($locked)
-                                        <x-slot name="note">obligatorio para admin</x-slot>
-                                    @endif
-                                </x-checkbox-item>
-                                @if ($locked)
-                                    <input type="hidden" name="permissions[]" value="manage roles">
-                                @endif
-                            @endforeach
-                        </div>
+                        @include('admin.roles._permisos', ['permissions' => $permissions, 'assigned' => $assigned, 'lockRole' => $role->name])
                         <x-input-error :messages="$errors->get('permissions')" class="mt-2" />
                     </div>
 

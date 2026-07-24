@@ -37,4 +37,29 @@ return [
         'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
         'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Categorías de permisos (UI de Roles)
+    |--------------------------------------------------------------------------
+    |
+    | Agrupa los permisos por dominio en la pantalla de Roles. Cada categoría
+    | lista SUBSTRINGS que se buscan en el nombre técnico del permiso; el PRIMER
+    | keyword que matchea (recorriendo en este orden) manda. Los permisos que no
+    | matchean ninguno caen en "Generales" (fallback). Así, cuando se agrega un
+    | permiso nuevo con el tiempo, se deriva SOLO a su categoría; si abre un
+    | dominio nuevo, basta con agregar una categoría aquí. El orden define además
+    | el orden en que se muestran las categorías. Ver App\Support\PermisosAgrupados.
+    |
+    */
+    'grupos' => [
+        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento'],
+        'Terreno' => ['servicio terreno', 'agenda terreno', 'instalaciones'],
+        'Producción' => ['production'],
+        'Comercial' => ['clientes', 'productos'],
+        'Usuarios y accesos' => ['users', 'roles'],
+        'Aprobaciones' => ['aprobaciones', 'solicitudes'],
+        'Notificaciones' => ['notificaciones'],
+        'Sistema' => ['settings', 'sucursales', 'audit'],
+    ],
 ];
