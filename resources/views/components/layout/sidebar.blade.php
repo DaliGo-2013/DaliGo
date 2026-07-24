@@ -104,6 +104,16 @@
                         {{ __('Profile') }}
                     </x-dropdown-link>
 
+                    {{-- Ítems del área de cuenta (ej. Configuración): links
+                         separados de Perfil a propósito (pedido del dueño
+                         24-07) — son cosas distintas: autoservicio del
+                         usuario vs. parámetros del negocio. --}}
+                    @foreach ($cuenta as $item)
+                        <x-dropdown-link :href="route($item['route'])">
+                            {{ $item['label'] }}
+                        </x-dropdown-link>
+                    @endforeach
+
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <x-dropdown-link :href="route('logout')"

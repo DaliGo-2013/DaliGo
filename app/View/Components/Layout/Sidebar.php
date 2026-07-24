@@ -25,6 +25,9 @@ class Sidebar extends Component
     /** @var array<string, int> */
     public array $badges;
 
+    /** Ítems del área de cuenta (dropdown del pie, junto a Perfil). */
+    public array $cuenta;
+
     /** Campanita M15 (cabecera de la sidebar). */
     public Collection $noLeidas;
 
@@ -36,6 +39,7 @@ class Sidebar extends Component
         $this->modulos = MenuPrincipal::para($user);
         $this->activo = MenuPrincipal::moduloActivo();
         $this->badges = MenuPrincipal::badges($user);
+        $this->cuenta = MenuPrincipal::cuenta($user);
 
         $campanita = MenuPrincipal::campanita($user);
         $this->noLeidas = $campanita['noLeidas'];
