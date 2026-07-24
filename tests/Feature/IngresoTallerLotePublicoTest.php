@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\LoteServicio;
 use App\Models\OrdenServicio;
+use App\Models\Notificacion;
 use App\Models\Producto;
 use App\Models\Sucursal;
+use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -132,6 +135,26 @@ class IngresoTallerLotePublicoTest extends TestCase
 
         // Entran a la cola "por confirmar" del mostrador.
         $this->assertSame(2, OrdenServicio::porConfirmar()->count());
+    }
+
+    public function test_el_ingreso_por_lote_avisa_una_sola_vez_por_rol(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+
+        // payload() trae 2 máquinas → UN aviso por rol (no uno por máquina).
+        $this->post(route('ingreso-taller.lote.store'), $this->payload($sucursal))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, LoteServicio::first()->total_ordenes);
+        foreach ([$jefe, $tecnico] as $u) {
+            $this->assertSame(1, Notificacion::where('user_id', $u->id)
+                ->where('evento', 'taller.ingresado')
+                ->where('canal', Notificacion::CANAL_DATABASE)->count(),
+                "El lote debe avisar UNA vez a {$u->name}, no una por máquina");
+        }
     }
 
     public function test_exige_dos_fotos_por_maquina(): void
