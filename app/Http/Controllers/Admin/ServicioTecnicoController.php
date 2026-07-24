@@ -451,10 +451,31 @@ class ServicioTecnicoController extends Controller
 
     public function show(OrdenServicio $orden): View
     {
+        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos']);
+
         return view('admin.servicio-tecnico.show', [
-            'orden' => $orden->load(['producto', 'sucursal', 'repuestos', 'fotos']),
+            'orden' => $orden,
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
         ]);
+    }
+
+    /**
+     * Precio de venta (con IVA) del producto en el catálogo: prioriza una lista
+     * activa, si no cualquiera. Null si no hay producto o no tiene precio. Se usa
+     * para advertir cuando la reparación es cara respecto al valor del equipo.
+     */
+    private function precioVentaProducto(?Producto $producto): ?int
+    {
+        if (! $producto) {
+            return null;
+        }
+
+        $producto->loadMissing('precios.lista');
+        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
+            ?? $producto->precios->first();
+
+        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
     }
 
     /**
@@ -523,11 +544,15 @@ class ServicioTecnicoController extends Controller
      */
     public function cotizacion(OrdenServicio $orden): View
     {
+        $orden->load(['producto.precios.lista', 'repuestos']);
+
         return view('admin.servicio-tecnico.cotizacion', [
-            'orden' => $orden->load(['producto', 'repuestos']),
+            'orden' => $orden,
             'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
             // Valor hora vigente (para mostrar cómo se compone la mano de obra fija).
             'precioHoraServicio' => $this->precioHoraServicio(),
+            // Precio de venta del equipo: si la reparación supera el 40% se advierte.
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
             // Horas estándar del trabajo de esta orden (null si el trabajo no está
             // en el catálogo): la mano de obra se muestra de solo lectura.
             'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),

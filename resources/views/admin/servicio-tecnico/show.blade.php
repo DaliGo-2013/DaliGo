@@ -197,6 +197,16 @@
                         <div><dt class="text-xs text-neutral-400">Fecha de aviso al cliente</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_aviso?->format('d-m-Y') ?: '—' }}</dd></div>
                         <div><dt class="text-xs text-neutral-400">Fecha de retiro</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_retiro?->format('d-m-Y') ?: '—' }}</dd></div>
                     </dl>
+
+                    {{-- Advertencia de gasto: reparación > 40% del valor del equipo. --}}
+                    @if ($esReparacion && ($precioVentaEquipo ?? null) && $orden->costo_total > $precioVentaEquipo * \App\Models\OrdenServicio::UMBRAL_REPARACION_ALTA)
+                        <div class="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                            <p class="font-semibold">⚠️ Costo de reparación alto</p>
+                            <p class="mt-0.5">
+                                El total ({{ $clp($orden->costo_total) }}) es el {{ round($orden->costo_total / $precioVentaEquipo * 100) }}% del valor del equipo ({{ $clp($precioVentaEquipo) }}) y supera el 40%. Conviene consultar al cliente si le conviene reparar o cambiar el equipo.
+                            </p>
+                        </div>
+                    @endif
                 @endunless
             </div>
 
