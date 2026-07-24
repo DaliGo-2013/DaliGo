@@ -71,6 +71,9 @@
                                         @if ($s->descripcion)
                                             <p class="truncate text-sm text-neutral-500">{{ $s->descripcion }}</p>
                                         @endif
+                                        @if ($s->disponibilidad)
+                                            <p class="text-sm text-neutral-500"><span class="font-medium text-neutral-600">Disponibilidad:</span> {{ $s->disponibilidad }}</p>
+                                        @endif
                                         <p class="text-xs text-neutral-400">
                                             {{ collect([
                                                 $s->cliente_telefono,
@@ -193,6 +196,7 @@
                                 </div>
                                 <p class="mt-1 text-sm text-neutral-600">{{ collect([$t->rango_horas_label ? $t->rango_horas_label.' hs' : null, $t->servicio?->nombre, $t->direccion, $t->ciudad])->filter()->implode(' · ') }}</p>
                                 @if ($t->descripcion)<p class="mt-1 text-sm text-neutral-500">{{ $t->descripcion }}</p>@endif
+                                @if ($t->disponibilidad)<p class="mt-1 text-sm text-neutral-500"><span class="font-medium text-neutral-600">Disponibilidad:</span> {{ $t->disponibilidad }}</p>@endif
                             </div>
                         @empty
                             <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">Sin trabajo por realizar este día.</div>

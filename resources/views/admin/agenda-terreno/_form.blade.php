@@ -301,6 +301,16 @@
         <x-input-error :messages="$errors->get('descripcion')" class="mt-2" />
     </div>
 
+    {{-- Disponibilidad del cliente (la escribe en el QR): cuándo puede y cuándo
+         no. La usa quien coordina para fijar la fecha; editable si tras hablar
+         con el cliente cambia. --}}
+    <div class="sm:col-span-2">
+        <x-input-label for="disponibilidad" value="Disponibilidad del cliente (cuándo puede / cuándo no)" />
+        <x-textarea id="disponibilidad" name="disponibilidad" rows="2" class="mt-1.5" maxlength="1000"
+            placeholder="Ej. Fines de semana no; después de las 15 h; el taller cierra a las 18 h.">{{ old('disponibilidad', $t?->disponibilidad) }}</x-textarea>
+        <x-input-error :messages="$errors->get('disponibilidad')" class="mt-2" />
+    </div>
+
     @if ($t)
         <div class="sm:col-span-2">
             <x-input-label for="notas_tecnico" value="Notas del técnico (al cerrar)" />
