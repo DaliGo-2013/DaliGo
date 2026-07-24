@@ -19,6 +19,8 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_reintentos_max',
         'notif_backoff_minutos',
         'notif_remitente_nombre',
+        // Taller · aviso de ingreso por QR (ventas + técnico)
+        'notif_plantilla_taller_ingresado',
         // P-M12-02 · Cotización del taller (avisos internos)
         'notif_plantilla_cotizacion_enviada',
         'notif_plantilla_cotizacion_respondida',

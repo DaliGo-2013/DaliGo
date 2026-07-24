@@ -400,6 +400,42 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Roles que reciben aviso cuando ENTRA un equipo al taller por QR (ingreso
+     * del cliente): el técnico que repara + ventas (para el paso a paso). El
+     * jefe de bodega NO va aquí: ya ve la cola "por confirmar" en la barra.
+     */
+    public const ROLES_AVISO_INGRESO = ['tecnico', 'jefe_ventas', 'vendedor', 'admin'];
+
+    /**
+     * Avisa por M15 (campanita + correo según preferencias) a ventas y al técnico
+     * que entró un equipo al taller (ingreso por QR, unidad). Secundario: el
+     * emisor (controlador público) lo envuelve en try/catch para no tumbar el
+     * ingreso si el aviso falla.
+     */
+    public function notificarIngresoInterno(): void
+    {
+        $equipo = collect([
+            $this->tipo_equipo_label,
+            $this->producto?->sku,
+            $this->numero_serie ? 'N° '.$this->numero_serie : null,
+        ])->filter()->implode(' · ');
+
+        $datos = [
+            'cliente' => $this->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
+            'maquinas' => '1 equipo',
+            'sucursal' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
+            'condicion' => $this->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación',
+            'url' => route('admin.servicio-tecnico.index'),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_INGRESO)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
+    }
+
+    /**
      * Folio visible = codigo unico impredecible (ST-XXXXXXXX). Se reemplazo el
      * correlativo #000123 porque era enumerable (un cliente podia espiar ordenes
      * ajenas). El fallback al id con ceros es solo defensivo por si alguna fila

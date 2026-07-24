@@ -4,12 +4,15 @@
      ya había divergido). El estado `menuAbierto` vive en el x-data del shell
      (layouts/app.blade.php). Anti-flash pre-Alpine: la clase estática
      max-lg:-translate-x-full oculta el drawer desde el primer paint; Alpine
-     solo la RETIRA al abrir (nunca hay dos utilidades translate en pugna). --}}
+     solo la RETIRA al abrir (nunca hay dos utilidades translate en pugna).
+     flex-col: el nav crece y el PIE (campanita + usuario) queda abajo —
+     en desktop NO hay topbar (el espacio vertical es área de trabajo,
+     pedido del dueño 24-07). --}}
 <aside
-    class="fixed inset-y-0 left-0 z-40 w-[300px] max-lg:-translate-x-full overflow-y-auto border-r border-neutral-200 bg-white max-lg:transition-transform max-lg:duration-150 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[264px] lg:shrink-0"
+    class="fixed inset-y-0 left-0 z-40 flex w-[300px] max-lg:-translate-x-full flex-col border-r border-neutral-200 bg-white max-lg:transition-transform max-lg:duration-150 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[264px] lg:shrink-0"
     :class="{ 'max-lg:-translate-x-full': ! menuAbierto }">
 
-    <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-4">
+    <div class="flex shrink-0 items-center justify-between border-b border-neutral-100 px-4 py-4">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
             <x-application-logo class="h-9 w-9 text-base" />
             <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
@@ -21,7 +24,7 @@
         </button>
     </div>
 
-    <nav class="space-y-1 px-3 py-4" aria-label="Menú principal">
+    <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Menú principal">
         @foreach ($modulos as $key => $modulo)
             @isset($modulo['items'])
                 <x-sidebar-group :modulo="$modulo" :clave="$key"
@@ -47,4 +50,42 @@
             @endisset
         @endforeach
     </nav>
+
+    {{-- PIE: campanita M15 + usuario (antes vivían en la topbar). El dropdown
+         de la campanita abre HACIA ARRIBA (direction=up). En móvil este mismo
+         pie va al fondo del drawer; la campana de la barra móvil se mantiene
+         aparte por la regla QA 14-07 (siempre visible, nunca solo dentro del
+         menú). --}}
+    <div class="shrink-0 border-t border-neutral-100 p-3">
+        <div class="flex items-center gap-1">
+            @include('layouts.partials.campanita', ['dgNoLeidas' => $noLeidas, 'dgConteo' => $conteo, 'dgArriba' => true, 'dgAlign' => 'left'])
+
+            <x-dropdown align="left" width="48" direction="up">
+                <x-slot name="trigger">
+                    <button type="button" title="{{ Auth::user()->name }}"
+                            class="inline-flex max-w-full items-center gap-2 rounded-lg p-1.5 pe-3 transition duration-150 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none">
+                        <x-avatar size="h-8 w-8 text-xs">{{ $iniciales }}</x-avatar>
+                        <span class="min-w-0 text-start">
+                            <span class="block truncate text-sm font-medium text-neutral-800">{{ Auth::user()->name }}</span>
+                            <span class="block truncate text-xs text-neutral-500">{{ Auth::user()->email }}</span>
+                        </span>
+                    </button>
+                </x-slot>
+
+                <x-slot name="content">
+                    <x-dropdown-link :href="route('profile.edit')">
+                        {{ __('Profile') }}
+                    </x-dropdown-link>
+
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <x-dropdown-link :href="route('logout')"
+                                onclick="event.preventDefault(); this.closest('form').submit();">
+                            {{ __('Log Out') }}
+                        </x-dropdown-link>
+                    </form>
+                </x-slot>
+            </x-dropdown>
+        </div>
+    </div>
 </aside>
