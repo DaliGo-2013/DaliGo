@@ -35,13 +35,15 @@
                     <x-slot name="summary">{{ $rangoLegible }}</x-slot>
 
                     <form method="GET" action="{{ route('produccion.mi.historial') }}" class="space-y-3">
+                        {{-- max=hoy: no se puede pedir futuro desde el date picker
+                             (el controlador lo recorta igual como respaldo). --}}
                         <div>
                             <x-input-label for="desde" value="Desde" />
-                            <x-text-input id="desde" name="desde" type="date" class="mt-1.5 h-12" :value="$desde" />
+                            <x-text-input id="desde" name="desde" type="date" class="mt-1.5 h-12" :value="$desde" :max="$hoy" />
                         </div>
                         <div>
                             <x-input-label for="hasta" value="Hasta" />
-                            <x-text-input id="hasta" name="hasta" type="date" class="mt-1.5 h-12" :value="$hasta" />
+                            <x-text-input id="hasta" name="hasta" type="date" class="mt-1.5 h-12" :value="$hasta" :max="$hoy" />
                         </div>
                         <x-primary-button class="h-12 w-full justify-center">Ver estos días</x-primary-button>
                     </form>

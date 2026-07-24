@@ -109,6 +109,29 @@ class MiHistorialTest extends TestCase
         $this->assertSame([$ultimo->id, $primero->id], $this->idsDe($res));
         $res->assertDontSee('href="'.route('produccion.mi.show', $antes).'"', false);
         $res->assertDontSee('href="'.route('produccion.mi.show', $despues).'"', false);
+
+        // ECO del rango pedido: la lista puede estar bien y el formulario/titulo
+        // mostrar OTRO rango (hueco cazado por el gate R-31 — hardcodear el
+        // default dejaba la suite verde con el operario viendo un rango falso).
+        $res->assertSee('value="'.$desde.'"', false);
+        $res->assertSee('value="'.$hasta.'"', false);
+    }
+
+    public function test_el_filtro_activo_ofrece_volver_al_default(): void
+    {
+        // La unica salida del filtro para un operario en planta (sin ella queda
+        // atrapado en su rango). Sin filtro no se ofrece (no aplica).
+        $soplador = $this->soplador();
+        $volver = 'Volver a los últimos 45 días';
+
+        $this->actingAs($soplador)
+            ->get(route('produccion.mi.historial', ['desde' => $this->hoyMenos(3)]))
+            ->assertOk()
+            ->assertSee($volver);
+
+        $this->actingAs($soplador)->get(route('produccion.mi.historial'))
+            ->assertOk()
+            ->assertDontSee($volver);
     }
 
     public function test_un_rango_de_un_solo_dia_incluye_el_reporte_de_ese_dia(): void
@@ -203,16 +226,55 @@ class MiHistorialTest extends TestCase
         $this->actingAs($yo)->get(route('produccion.mi.show', $ajeno))->assertForbidden();
     }
 
-    public function test_fecha_ilegible_cae_al_default_sin_romper(): void
+    /**
+     * Toda la familia de basura cae al default SIN 500. Cada caso es un modo de
+     * fallo distinto y real (los 3 ultimos los caza el gate R-31):
+     *  - 'chao'/'' : no parece fecha (lo rechaza cualquier guarda).
+     *  - '99999-01-01' : el patron 'Y' de Carbon::hasFormat acepta 5 digitos pero
+     *    el 'Y' de createFromFormat consume 4 => lanzaba InvalidFormatException.
+     *  - '2026-02-31' : dia valido para el regex, inexistente en el mes => antes
+     *    se DESBORDABA callado a 2026-03-03 (rango que el operario no pidio).
+     *  - '2026-07-19extra' : basura pegada a una fecha valida.
+     */
+    public static function fechasIlegibles(): array
     {
-        // Rojo (500) si alguien reemplaza el helper tolerante por $request->date():
-        // Carbon::parse('chao') lanza.
+        return [
+            'texto' => ['chao'],
+            'vacio' => [''],
+            'anio de 5 digitos' => ['99999-01-01'],
+            'dia inexistente' => ['2026-02-31'],
+            'sufijo pegado' => ['2026-07-19extra'],
+            'separadores raros' => ['2026/07/19'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('fechasIlegibles')]
+    public function test_fecha_ilegible_cae_al_default_sin_romper(string $basura): void
+    {
         $soplador = $this->soplador();
 
         $this->actingAs($soplador)
-            ->get(route('produccion.mi.historial', ['desde' => 'chao', 'hasta' => '']))
-            ->assertOk()
+            ->get(route('produccion.mi.historial', ['desde' => $basura, 'hasta' => '']))
+            ->assertOk()   // rojo con 500 si la guarda deja pasar algo no parseable
             ->assertSee('value="'.$this->hoyMenos(44).'"', false);
+    }
+
+    public function test_un_hasta_futuro_no_deja_la_ventana_en_el_futuro(): void
+    {
+        // Sin techo, un 'hasta' lejano empujaba el piso (clamp de 180 dias anclado
+        // en hasta) y la ventana quedaba ENTERA en el futuro: lista vacia y ambos
+        // inputs repintados con fechas futuras, sin explicacion. Alcanzable desde
+        // el date picker, no hace falta editar la URL.
+        $soplador = $this->soplador();
+        $reciente = $this->reporteEn($soplador, $this->hoyMenos(1));
+
+        $res = $this->actingAs($soplador)
+            ->get(route('produccion.mi.historial', ['hasta' => '9999-12-31']))
+            ->assertOk();
+
+        $this->assertSame([$reciente->id], $this->idsDe($res));
+        $res->assertSee('value="'.$this->hoyMenos(0).'"', false);   // hasta = hoy
+        $res->assertDontSee('value="9999-12-31"', false);
     }
 
     public function test_rango_invertido_se_ordena_en_vez_de_rechazar(): void

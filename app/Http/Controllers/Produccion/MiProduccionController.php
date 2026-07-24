@@ -76,6 +76,13 @@ class MiProduccionController extends Controller
             [$desde, $hasta] = [$hasta, $desde];
         }
 
+        // Techo en hoy: sin esto un 'hasta' futuro (alcanzable desde el propio
+        // date picker) empujaba el piso del clamp de abajo y dejaba la ventana
+        // ENTERA en el futuro => lista vacia sin explicacion (gate R-31).
+        if ($hasta->gt($hoy)) {
+            $hasta = $hoy->copy();
+        }
+
         // Ventana absurda: se recorta conservando lo mas reciente. Se compara por
         // fecha (no diffInDays: en Carbon el diff es float y con signo).
         $piso = $hasta->copy()->subDays(ProduccionReporte::HISTORIAL_DIAS_MAX - 1);
@@ -115,20 +122,38 @@ class MiProduccionController extends Controller
     }
 
     /**
-     * Fecha del filtro, tolerante: solo Y-m-d (lo que emite <input type="date">);
-     * cualquier otra cosa se ignora y cae al default. A proposito NO se usa
-     * $request->date(): con basura hace Carbon::parse('abc') y revienta en 500.
+     * Fecha del filtro, tolerante: solo Y-m-d REAL (lo que emite un
+     * <input type="date">); cualquier otra cosa cae al default, nunca a un 500.
+     *
+     * Se valida con regex propia + ROUND-TRIP, no con Carbon::hasFormat ni con
+     * $request->date(), porque ambos dejan pasar basura (gate R-31, 2026-07-24):
+     *  - hasFormat es un match de regex y su patron de 'Y' acepta 5 digitos
+     *    ('99999-01-01'), pero el 'Y' de createFromFormat consume 4 => lanzaba
+     *    InvalidFormatException("The separation symbol could not be found") = 500.
+     *  - un dia inexistente ('2026-02-31') pasa el regex y createFromFormat lo
+     *    DESBORDA callado a 2026-03-03: el operario consultaba un rango que no
+     *    pidio. El round-trip (format('Y-m-d') === $valor) lo descarta.
+     *  - $request->date() hace Carbon::parse() y con basura tambien revienta.
+     * El try/catch es el cinturon final: ninguna entrada de la URL debe poder
+     * tumbar una pantalla de planta.
      */
     private function fechaDelFiltro(Request $request, string $campo): ?Carbon
     {
         $valor = $request->query($campo);
 
-        if (! is_string($valor) || ! Carbon::hasFormat($valor, 'Y-m-d')) {
+        if (! is_string($valor) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor) !== 1) {
             return null;
         }
 
-        // '!' resetea la hora a 00:00 (sin el, toma la hora actual).
-        return Carbon::createFromFormat('!Y-m-d', $valor, config('daligo.tz_negocio'));
+        try {
+            // '!' resetea la hora a 00:00 (sin el, toma la hora actual).
+            $fecha = Carbon::createFromFormat('!Y-m-d', $valor, config('daligo.tz_negocio'));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        // Round-trip: descarta los desbordes de mes/dia (2026-02-31 -> 03-03).
+        return $fecha->format('Y-m-d') === $valor ? $fecha : null;
     }
 
     /**
