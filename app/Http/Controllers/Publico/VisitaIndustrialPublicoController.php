@@ -70,6 +70,8 @@ class VisitaIndustrialPublicoController extends Controller
             // chileno (P-TZ-01): el borde es el día de negocio, no el del server.
             'fecha_preferida' => ['nullable', 'date', 'after_or_equal:'.\App\Support\FechaNegocio::hoy()],
             'descripcion' => ['required', 'string', 'min:3'],
+            // Disponibilidad libre del cliente (cuándo puede/no): la usa quien coordina.
+            'disponibilidad' => ['nullable', 'string', 'max:1000'],
         ]);
 
         // Si la fecha preferida cae en días en que el técnico ya está ocupado o de
@@ -100,6 +102,7 @@ class VisitaIndustrialPublicoController extends Controller
             'direccion' => $data['direccion'],
             'ciudad' => $data['ciudad'],
             'descripcion' => $data['descripcion'],
+            'disponibilidad' => $data['disponibilidad'] ?? null,
             'creado_por' => 'Cliente (QR)',
         ]);
 

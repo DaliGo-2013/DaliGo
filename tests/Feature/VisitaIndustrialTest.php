@@ -132,6 +132,40 @@ class VisitaIndustrialTest extends TestCase
         $this->assertSame('La planta de osmosis 1T pierde presión.', $notif->payload['descripcion']);
     }
 
+    public function test_el_formulario_ofrece_el_campo_de_disponibilidad(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
+            ->assertOk()
+            ->assertSee('¿Cuándo puedes y cuándo no?');
+    }
+
+    public function test_guarda_la_disponibilidad_escrita_por_el_cliente(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('visita-industrial.store'), $this->payload($sucursal, [
+            'disponibilidad' => 'Fines de semana no; ir después de las 15 h.',
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertSame('Fines de semana no; ir después de las 15 h.', AgendaTrabajo::first()->disponibilidad);
+    }
+
+    public function test_la_agenda_muestra_la_disponibilidad_al_coordinar(): void
+    {
+        $sucursal = $this->sucursal();
+        $this->post(route('visita-industrial.store'), $this->payload($sucursal, [
+            'disponibilidad' => 'Solo martes y jueves en la mañana',
+        ]));
+
+        // Quien coordina (vendedor) la ve en la lista "por coordinar".
+        $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.index'))
+            ->assertOk()
+            ->assertSee('Solo martes y jueves en la mañana');
+    }
+
     public function test_crea_la_solicitud_sin_fecha_y_con_preferida(): void
     {
         $sucursal = $this->sucursal();
