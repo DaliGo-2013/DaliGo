@@ -97,20 +97,71 @@ class MenuPrincipalTest extends TestCase
     {
         $resueltas = array_keys(MenuPrincipal::badges(null));
 
+        // Módulos (badge propio, ej. ST) + ítems y links directos (items()
+        // aplana ambos): todo badge declarado necesita resolver y tooltip.
+        $declarantes = MenuPrincipal::items();
         foreach (MenuPrincipal::MODULOS as $key => $modulo) {
-            if (isset($modulo['badge'])) {
+            $declarantes["modulo:{$key}"] = $modulo;
+        }
+
+        foreach ($declarantes as $key => $def) {
+            if (isset($def['badge'])) {
                 $this->assertContains(
-                    $modulo['badge'],
+                    $def['badge'],
                     $resueltas,
-                    "El módulo [{$key}] declara el badge [{$modulo['badge']}] sin resolver en badges()."
+                    "[{$key}] declara el badge [{$def['badge']}] sin resolver en badges()."
                 );
                 $this->assertArrayHasKey(
                     'badge_title',
-                    $modulo,
-                    "El módulo [{$key}] tiene badge pero no badge_title (tooltip accesible)."
+                    $def,
+                    "[{$key}] tiene badge pero no badge_title (tooltip accesible)."
                 );
             }
         }
+    }
+
+    public function test_badges_cuentan_pendientes_y_respetan_permisos(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        // Señales reales: 1 aprobación pendiente, 1 orden por confirmar (QR),
+        // 1 reporte enviado (por aprobar) y 1 devuelto del soplador.
+        \App\Models\Aprobacion::create([
+            'tipo_accion' => \App\Models\Aprobacion::ACCION_AJUSTE_REPORTE,
+            'motivo' => 'm',
+            'descripcion' => 'd',
+            'rol_aprobador' => 'jefe_bodega',
+        ]);
+        \App\Models\OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => null]);
+
+        $soplador = tap(\App\Models\User::factory()->create())->assignRole('soplador');
+        $asignacion = fn () => \App\Models\ProduccionAsignacion::create([
+            'soplador_id' => $soplador->id, 'fecha' => now()->toDateString(), 'turno' => 'dia', 'asignadas' => 100,
+        ]);
+        \App\Models\ProduccionReporte::create([
+            'asignacion_id' => $asignacion()->id, 'soplador_id' => $soplador->id,
+            'fecha' => now()->toDateString(), 'turno' => 'dia', 'asignadas' => 100,
+            'estado' => \App\Models\ProduccionReporte::ENVIADO,
+        ]);
+        \App\Models\ProduccionReporte::create([
+            'asignacion_id' => $asignacion()->id, 'soplador_id' => $soplador->id,
+            'fecha' => now()->toDateString(), 'turno' => 'dia', 'asignadas' => 100,
+            'estado' => \App\Models\ProduccionReporte::DEVUELTO,
+        ]);
+
+        // Admin: ve todas las señales globales + la bandeja completa.
+        $admin = tap(\App\Models\User::factory()->create())->assignRole('admin');
+        $badgesAdmin = MenuPrincipal::badges($admin);
+        $this->assertSame(1, $badgesAdmin['aprobaciones_bandeja']);
+        $this->assertSame(1, $badgesAdmin['st_por_confirmar']);
+        $this->assertSame(1, $badgesAdmin['produccion_por_aprobar']);
+
+        // Soplador: solo su señal personal; las gateadas por permiso dan 0.
+        $badgesSoplador = MenuPrincipal::badges($soplador);
+        $this->assertSame(1, $badgesSoplador['mi_produccion_devueltos']);
+        $this->assertSame(0, $badgesSoplador['aprobaciones_bandeja']);
+        $this->assertSame(0, $badgesSoplador['st_por_confirmar']);
+        $this->assertSame(0, $badgesSoplador['produccion_por_aprobar']);
     }
 
     public function test_labels_de_menu_unicos(): void

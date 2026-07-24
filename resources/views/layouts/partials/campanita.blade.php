@@ -41,5 +41,29 @@
            class="block border-t border-neutral-100 px-4 py-2 text-center text-xs font-medium text-brand-600 transition hover:text-brand-700">
             Ver todas
         </a>
+
+        {{-- Hub de funciones (pedido del jefe 24-07): todo lo relacionado a
+             notificaciones/aprobaciones agrupado en la campanita. Cada link se
+             gatea por permiso; $dgBadges llega memoizado desde la sidebar. --}}
+        <div class="border-t border-neutral-100 px-4 pb-1 pt-2">
+            <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">Funciones</span>
+        </div>
+        @can('aprobar solicitudes')
+            <a href="{{ route('aprobaciones.index') }}" class="flex items-center justify-between gap-2 px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-900">
+                Bandeja de aprobaciones
+                @if (($dgBadges['aprobaciones_bandeja'] ?? 0) > 0)
+                    <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white">{{ $dgBadges['aprobaciones_bandeja'] }}</span>
+                @endif
+            </a>
+        @endcan
+        @if (($dgBadges['mis_solicitudes'] ?? 0) > 0)
+            <a href="{{ route('aprobaciones.mias') }}" class="block px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-900">Mis solicitudes</a>
+        @endif
+        @can('view aprobaciones')
+            <a href="{{ route('admin.aprobaciones.index') }}" class="block px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-900">Historial de aprobaciones</a>
+        @endcan
+        @can('view notificaciones')
+            <a href="{{ route('admin.notificaciones.index') }}" class="block px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-900">Panel de notificaciones</a>
+        @endcan
     </x-slot>
 </x-dropdown>

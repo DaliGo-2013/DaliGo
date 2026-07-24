@@ -27,17 +27,29 @@
     <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Menú principal">
         @foreach ($modulos as $key => $modulo)
             @isset($modulo['items'])
+                {{-- Suma de pendientes de los ítems visibles: la categoría la
+                     muestra cuando está CERRADA (pedido del jefe 24-07). --}}
+                @php
+                    $badgeHijos = collect($modulo['items'])
+                        ->sum(fn ($i) => isset($i['badge']) ? ($badges[$i['badge']] ?? 0) : 0);
+                @endphp
                 <x-sidebar-group :modulo="$modulo" :clave="$key"
                     :abierto="($activo['key'] ?? null) === $key"
-                    :badge="isset($modulo['badge']) ? ($badges[$modulo['badge']] ?? 0) : 0">
+                    :activo="($activo['key'] ?? null) === $key"
+                    :badge="isset($modulo['badge']) ? ($badges[$modulo['badge']] ?? 0) : 0"
+                    :badge-hijos="$badgeHijos">
                     @foreach ($modulo['items'] as $item)
-                        <x-sidebar-item :item="$item" :activo="request()->routeIs(...$item['activo'])" />
+                        <x-sidebar-item :item="$item" :activo="request()->routeIs(...$item['activo'])"
+                            :badge="isset($item['badge']) ? ($badges[$item['badge']] ?? 0) : 0" />
                     @endforeach
                 </x-sidebar-group>
             @else
                 {{-- Link directo de primer nivel (Dashboard / Mi producción /
                      Aprobaciones): el acceso 1-clic del operario es a propósito. --}}
-                @php $esActivo = request()->routeIs(...$modulo['activo']); @endphp
+                @php
+                    $esActivo = request()->routeIs(...$modulo['activo']);
+                    $badgeDirecto = isset($modulo['badge']) ? ($badges[$modulo['badge']] ?? 0) : 0;
+                @endphp
                 <a href="{{ route($modulo['route']) }}"@if ($esActivo) aria-current="page"@endif
                    class="{{ $esActivo
                        ? 'flex items-center gap-3 rounded-lg bg-brand-50 px-3 py-3 text-sm font-semibold text-brand-700 lg:py-2.5'
@@ -48,6 +60,10 @@
                         <x-dynamic-component :component="'icon.' . $modulo['icon']" class="h-5 w-5" />
                     </span>
                     {{ $modulo['label'] }}
+                    @if ($badgeDirecto > 0)
+                        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
+                              title="{{ str_replace(':n', $badgeDirecto, $modulo['badge_title'] ?? ':n') }}">{{ $badgeDirecto }}</span>
+                    @endif
                 </a>
             @endisset
         @endforeach
@@ -60,7 +76,7 @@
          menú). --}}
     <div class="shrink-0 border-t border-neutral-100 p-3">
         <div class="flex items-center gap-1">
-            @include('layouts.partials.campanita', ['dgNoLeidas' => $noLeidas, 'dgConteo' => $conteo, 'dgArriba' => true, 'dgAlign' => 'left'])
+            @include('layouts.partials.campanita', ['dgNoLeidas' => $noLeidas, 'dgConteo' => $conteo, 'dgBadges' => $badges, 'dgArriba' => true, 'dgAlign' => 'left'])
 
             <x-dropdown align="left" width="48" direction="up">
                 <x-slot name="trigger">

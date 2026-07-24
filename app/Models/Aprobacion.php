@@ -121,6 +121,21 @@ class Aprobacion extends Model implements AuditableContract
             ->where('rol_aprobador', $rol);
     }
 
+    /**
+     * La bandeja COMPLETA del usuario: pendientes de cualquiera de sus roles;
+     * el admin ve TODAS (PLAN-M14 §1.3, deliberado y auditado). Espejo único
+     * para la bandeja, el dashboard y el badge del menú — si la regla cambia,
+     * cambia en un solo lugar.
+     */
+    public function scopeBandejaDe(Builder $query, User $user): Builder
+    {
+        return $query->where('estado', self::ESTADO_PENDIENTE)
+            ->when(
+                ! $user->hasRole('admin'),
+                fn ($q) => $q->whereIn('rol_aprobador', $user->getRoleNames()),
+            );
+    }
+
     public function esPendiente(): bool
     {
         return $this->estado === self::ESTADO_PENDIENTE;

@@ -166,4 +166,53 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
             ->assertViewHas('visitasRealizadas', 2)
             ->assertViewHas('pctVisitas', 50);
     }
+
+    // --- Detalle cliqueable de Realizados / Pendientes ---
+
+    public function test_pendientes_expone_su_porcentaje_del_periodo(): void
+    {
+        AgendaTrabajo::factory()->count(3)->create(['fecha' => '2026-07-10', 'estado' => 'realizado']);
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-11', 'estado' => 'agendado']);
+
+        // 1 de 4 pendiente = 25% (complemento del 75% de cumplimiento).
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->assertViewHas('pctPendientes', 25);
+    }
+
+    public function test_las_listas_de_detalle_traen_solo_su_estado_del_periodo(): void
+    {
+        $realizado = AgendaTrabajo::factory()->create(['fecha' => '2026-07-10', 'estado' => 'realizado']);
+        $pendiente = AgendaTrabajo::factory()->create(['fecha' => '2026-07-20', 'estado' => 'agendado']);
+        // Ruido: otro mes, cancelado y solicitud sin fecha → en ninguna lista.
+        AgendaTrabajo::factory()->create(['fecha' => '2026-06-10', 'estado' => 'realizado']);
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-15', 'estado' => 'cancelado']);
+        AgendaTrabajo::factory()->create(['fecha' => null, 'estado' => 'solicitado']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->assertViewHas('realizadosLista', fn (Collection $l) => $l->pluck('id')->all() === [$realizado->id])
+            ->assertViewHas('pendientesLista', fn (Collection $l) => $l->pluck('id')->all() === [$pendiente->id]);
+    }
+
+    public function test_la_vista_muestra_el_detalle_de_lo_hecho_y_lo_por_hacer(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'fecha' => '2026-07-10', 'estado' => 'realizado',
+            'cliente_nombre' => 'Cliente Hecho', 'notas_tecnico' => 'Se cambio la membrana',
+        ]);
+        AgendaTrabajo::factory()->create([
+            'fecha' => '2026-07-20', 'estado' => 'agendado',
+            'cliente_nombre' => 'Cliente Por Hacer', 'descripcion' => 'Revisar bomba dosificadora',
+        ]);
+
+        // Los paneles se renderizan en el servidor (Alpine solo los muestra/oculta),
+        // así que el detalle está en el HTML aunque el panel arranque cerrado.
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->assertSee('Cliente Hecho')
+            ->assertSee('Se cambio la membrana')
+            ->assertSee('Cliente Por Hacer')
+            ->assertSee('Revisar bomba dosificadora');
+    }
 }
