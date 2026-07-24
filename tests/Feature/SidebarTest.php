@@ -83,6 +83,18 @@ class SidebarTest extends TestCase
             ->assertSee('aria-label="Notificaciones"', false);
     }
 
+    public function test_acordeon_es_exclusivo_por_grupo_nativo(): void
+    {
+        // Contrato del acordeón exclusivo (pedido UX 24-07): los <details>
+        // comparten name="dg-menu" — el navegador cierra solo la categoría
+        // anterior al abrir otra. Si un refactor quita el atributo, el menú
+        // vuelve a multi-abierto en silencio.
+        $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('name="dg-menu"', false);
+    }
+
     public function test_drawer_movil_nace_oculto_sin_flash(): void
     {
         // Candado del anti-flash pre-Alpine: la clase estática

@@ -60,6 +60,18 @@
 }
 .dg-destacado { animation: dg-shake 0.38s ease-in-out, dg-destacar-ring 1.4s ease-out; }
 
+/* Acordeón del menú (sidebar V4): apertura/cierre con altura interpolada —
+   liviano y nativo. Navegadores sin interpolate-size abren sin animar
+   (degradación limpia); el bloque de prefers-reduced-motion de abajo la
+   recorta igual que al resto. */
+.dg-menu-grupo { interpolate-size: allow-keywords; }
+.dg-menu-grupo::details-content {
+    height: 0;
+    overflow: clip;
+    transition: height 150ms ease, content-visibility 150ms allow-discrete;
+}
+.dg-menu-grupo[open]::details-content { height: auto; }
+
 /* Accesibilidad: respetar prefers-reduced-motion (no es opcional) */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
