@@ -235,7 +235,12 @@ class ServicioTecnicoManagementTest extends TestCase
 
         // Ve listado y detalle.
         $this->actingAs($vendedor)->get('/admin/servicio-tecnico')->assertOk();
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))->assertOk();
+        // En la ficha NO se le ofrecen las pestañas de taller (no tiene 'manage'):
+        // así no ve enlaces que le darían 403.
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('Parte del técnico')
+            ->assertDontSee('Cotización');
 
         // No puede gestionar ni entrar al taller.
         $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertForbidden();
@@ -581,13 +586,23 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_admin_can_view_orden_detail(): void
     {
-        $orden = OrdenServicio::factory()->create(['cliente_nombre' => 'Detalle SpA']);
+        $orden = OrdenServicio::factory()->create([
+            'cliente_nombre' => 'Detalle SpA',
+            'falla_reportada' => 'No enfría, no calienta',
+        ]);
 
         $this->actingAs($this->admin())
             ->get(route('admin.servicio-tecnico.show', $orden))
             ->assertOk()
             ->assertSee('Detalle SpA')
-            ->assertSee($orden->folio);
+            ->assertSee($orden->folio)
+            // Barra de etapas en la ficha (admin gestiona → ve las 3).
+            ->assertSee('Recepción')
+            ->assertSee('Cotización')
+            ->assertSee('Parte del técnico')
+            // La falla reportada se muestra dentro de Equipo.
+            ->assertSee('Falla reportada')
+            ->assertSee('No enfría, no calienta');
     }
 
     public function test_member_cannot_view_orden_detail(): void
@@ -644,8 +659,9 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            // Barra de etapas: el técnico trabaja Cotización + Parte del técnico
-            // (la pestaña Recepción no aparece porque no puede editar la recepción).
+            // Barra de etapas: el técnico ve las 3 (Recepción lo lleva a la ficha
+            // de solo lectura, ya que no puede editar la recepción).
+            ->assertSee('Recepción')
             ->assertSee('Cotización')
             ->assertSee('Parte del técnico');
     }
@@ -666,7 +682,9 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertSee('Detalle del presupuesto')
-            // Barra de etapas del técnico (sin Recepción, que no puede editar).
+            // Barra de etapas del técnico: ve las 3 (Recepción abre la ficha de
+            // solo lectura, porque no puede editar la recepción).
+            ->assertSee('Recepción')
             ->assertSee('Parte del técnico');
     }
 
