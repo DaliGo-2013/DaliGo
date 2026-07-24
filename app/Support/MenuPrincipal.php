@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\User;
 
@@ -183,6 +184,29 @@ class MenuPrincipal
                 'st_pendientes' => ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
                     ? OrdenServicio::pendientesTecnico()->count()
                     : 0,
+            ]);
+        }
+
+        return $atributos->get($key);
+    }
+
+    /**
+     * Datos de la campanita M15 para el shell (v1 sin polling, se refresca al
+     * navegar). Memoizado en el request igual que badges(): el pie de la
+     * sidebar (desktop) y la campana de la barra móvil los piden en la misma
+     * página sin duplicar las 2 queries.
+     *
+     * @return array{noLeidas: \Illuminate\Support\Collection, conteo: int}
+     */
+    public static function campanita(?User $user): array
+    {
+        $atributos = request()->attributes;
+        $key = 'dg.menu.campanita.'.($user?->id ?? 0);
+
+        if (! $atributos->has($key)) {
+            $atributos->set($key, [
+                'noLeidas' => Notificacion::campanitaDe($user?->id)->latest('id')->take(5)->get(),
+                'conteo' => Notificacion::campanitaDe($user?->id)->count(),
             ]);
         }
 

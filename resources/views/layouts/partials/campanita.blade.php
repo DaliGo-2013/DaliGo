@@ -1,7 +1,8 @@
 {{-- Campanita in-app (M15). v1 sin polling: se refresca al navegar. Recibe
      $dgNoLeidas (colección, 5 últimas) y $dgConteo (total no-leídas) ya
-     calculados en navigation.blade.php — así el nav no repite la query. --}}
-<x-dropdown align="right" width="w-80">
+     calculados por quien la incluye — así no se repite la query. Opcionales:
+     $dgArriba (el panel abre hacia arriba — pie de la sidebar) y $dgAlign. --}}
+<x-dropdown :align="$dgAlign ?? 'right'" width="w-80" :direction="($dgArriba ?? false) ? 'up' : 'down'">
     <x-slot name="trigger">
         <button type="button" title="Notificaciones"
                 class="relative inline-flex items-center rounded-md border border-transparent p-2 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
