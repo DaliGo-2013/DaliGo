@@ -31,11 +31,7 @@ class AprobacionController extends Controller
     {
         $user = $request->user();
 
-        $pendientes = Aprobacion::where('estado', Aprobacion::ESTADO_PENDIENTE)
-            ->when(
-                ! $user->hasRole('admin'),
-                fn ($q) => $q->whereIn('rol_aprobador', $user->getRoleNames()),
-            )
+        $pendientes = Aprobacion::bandejaDe($user)
             ->with(['solicitante', 'aprobable'])
             ->oldest() // las mas antiguas primero: son las que mas urgen
             ->get();

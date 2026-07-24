@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Aprobacion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
+use App\Models\ProduccionReporte;
 use App\Models\User;
 
 /**
@@ -59,7 +61,7 @@ class MenuPrincipal
             'icon' => 'building-office-2',
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production'],
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
             ],
         ],
         'administracion' => [
@@ -83,6 +85,8 @@ class MenuPrincipal
             'route' => 'produccion.mi.index',
             'activo' => ['produccion.mi.*'],
             'permiso' => 'report production',
+            'badge' => 'mi_produccion_devueltos',
+            'badge_title' => ':n reporte(s) devuelto(s)',
         ],
         'aprobaciones' => [
             'label' => 'Aprobaciones',
@@ -90,6 +94,8 @@ class MenuPrincipal
             'route' => 'aprobaciones.index',
             'activo' => ['aprobaciones.*'],
             'permiso' => 'aprobar solicitudes',
+            'badge' => 'aprobaciones_bandeja',
+            'badge_title' => ':n solicitud(es) por aprobar',
         ],
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',
@@ -100,7 +106,7 @@ class MenuPrincipal
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
             'items' => [
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
+                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
                 'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
@@ -180,9 +186,31 @@ class MenuPrincipal
         $key = 'dg.menu.badges.'.($user?->id ?? 0);
 
         if (! $atributos->has($key)) {
+            // Cada resolver se gatea por SU permiso y tolera $user null (el
+            // candado de MenuPrincipalTest llama badges(null)). Todos son
+            // COUNTs sobre columnas indexadas.
             $atributos->set($key, [
                 'st_pendientes' => ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
                     ? OrdenServicio::pendientesTecnico()->count()
+                    : 0,
+                'st_por_confirmar' => ($user && $user->can('confirmar servicio tecnico'))
+                    ? OrdenServicio::porConfirmar()->count()
+                    : 0,
+                'aprobaciones_bandeja' => ($user && $user->can('aprobar solicitudes'))
+                    ? Aprobacion::bandejaDe($user)->count()
+                    : 0,
+                'produccion_por_aprobar' => ($user && $user->can('manage production'))
+                    ? ProduccionReporte::pendientes()->count()
+                    : 0,
+                'mi_produccion_devueltos' => ($user && $user->can('report production'))
+                    ? ProduccionReporte::devueltosDe($user->id)->count()
+                    : 0,
+                // Solo visibilidad del link "Mis solicitudes" del hub: quien
+                // nunca ha solicitado nada no necesita verlo (y el candado de
+                // AprobacionAccionableTest exige que ninguna superficie ajena
+                // a la fila aporte ese href para un usuario sin historia).
+                'mis_solicitudes' => $user
+                    ? Aprobacion::where('solicitante_id', $user->id)->count()
                     : 0,
             ]);
         }
