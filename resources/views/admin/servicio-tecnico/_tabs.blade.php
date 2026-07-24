@@ -5,14 +5,18 @@
     'cotizacion', 'tecnico'].
 --}}
 @php
-    $stTabs = [
-        'recepcion' => ['label' => 'Recepción', 'url' => route('admin.servicio-tecnico.edit', $orden)],
-        'cotizacion' => ['label' => 'Cotización', 'url' => route('admin.servicio-tecnico.cotizacion', $orden)],
-        'tecnico' => ['label' => 'Parte del técnico', 'url' => route('admin.servicio-tecnico.reparacion', $orden)],
-    ];
+    $stTabs = [];
+    // La pestaña Recepción (editable) solo la ve quien puede editar la recepción;
+    // el técnico trabaja con Cotización + Parte del técnico (y ve el resumen de la
+    // recepción dentro de esas pantallas).
+    if (auth()->user()?->can('editar recepcion servicio tecnico')) {
+        $stTabs['recepcion'] = ['label' => 'Recepción', 'url' => route('admin.servicio-tecnico.edit', $orden)];
+    }
+    $stTabs['cotizacion'] = ['label' => 'Cotización', 'url' => route('admin.servicio-tecnico.cotizacion', $orden)];
+    $stTabs['tecnico'] = ['label' => 'Parte del técnico', 'url' => route('admin.servicio-tecnico.reparacion', $orden)];
 @endphp
 <nav aria-label="Etapas de la orden"
-     class="mb-4 grid grid-cols-3 gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1">
+     class="mb-4 grid {{ count($stTabs) === 3 ? 'grid-cols-3' : 'grid-cols-2' }} gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1">
     @foreach ($stTabs as $key => $tab)
         <a href="{{ $tab['url'] }}"
            @if ($key === $activa) aria-current="page" @endif

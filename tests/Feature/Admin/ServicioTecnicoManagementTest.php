@@ -210,6 +210,23 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertRedirect(route('admin.servicio-tecnico.index'));
     }
 
+    public function test_tecnico_no_puede_editar_recepcion_ni_eliminar(): void
+    {
+        // Pedido de gerencia: el técnico mantiene registrar ingreso + parte del
+        // técnico + cotización, pero NO editar la recepción ni eliminar la orden.
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.edit', $orden))->assertForbidden();
+        $this->actingAs($tecnico)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
+        $this->actingAs($tecnico)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
+
+        // Conserva su flujo: registrar ingreso, parte del técnico y cotización.
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.create'))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertOk();
+    }
+
     public function test_vendedor_puede_ver_pero_no_gestionar(): void
     {
         // El seeder le da 'view servicio tecnico' al vendedor (solo lectura).
@@ -627,8 +644,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            // Barra de etapas (3 pestañas del flujo del técnico).
-            ->assertSee('Recepción')
+            // Barra de etapas: el técnico trabaja Cotización + Parte del técnico
+            // (la pestaña Recepción no aparece porque no puede editar la recepción).
             ->assertSee('Cotización')
             ->assertSee('Parte del técnico');
     }
@@ -649,8 +666,7 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertSee('Detalle del presupuesto')
-            // Misma barra de etapas.
-            ->assertSee('Recepción')
+            // Barra de etapas del técnico (sin Recepción, que no puede editar).
             ->assertSee('Parte del técnico');
     }
 

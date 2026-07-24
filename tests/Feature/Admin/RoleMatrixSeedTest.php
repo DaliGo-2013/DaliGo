@@ -28,7 +28,7 @@ class RoleMatrixSeedTest extends TestCase
                 'view users', 'create users', 'edit users', 'delete users',
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
-                'view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'crear lote servicio',
+                'view servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'crear lote servicio',
                 'agendar servicio terreno', 'ver agenda terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
                 'view notificaciones', 'aprobar solicitudes', 'view aprobaciones',
             ],
@@ -38,7 +38,7 @@ class RoleMatrixSeedTest extends TestCase
             'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes'],
             'conductor' => ['crear lote servicio'],
             'tecnico' => ['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion'],
-            'tecnico_industrial' => ['ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones'],
+            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones'],
             'soplador' => ['report production'],
         ];
     }
