@@ -1,8 +1,4 @@
 <x-app-layout>
-    @php
-        $labels = config('permissions.labels');
-    @endphp
-
     <x-slot name="header">
         <x-page-header title="Crear rol">
             <x-slot name="action">
@@ -26,13 +22,7 @@
 
                     <div>
                         <x-input-label value="Permisos" />
-                        <div class="mt-1.5 space-y-2">
-                            @foreach ($permissions as $permission)
-                                <x-checkbox-item name="permissions[]" :value="$permission->name" :checked="in_array($permission->name, old('permissions', []))">
-                                    {{ $labels[$permission->name] ?? $permission->name }}
-                                </x-checkbox-item>
-                            @endforeach
-                        </div>
+                        @include('admin.roles._permisos', ['permissions' => $permissions, 'assigned' => []])
                         <x-input-error :messages="$errors->get('permissions')" class="mt-2" />
                     </div>
 
