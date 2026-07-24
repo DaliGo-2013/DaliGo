@@ -45,7 +45,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Preferencias de notificación del usuario (M15): opt-out por evento×canal.
-    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])->name('perfil.notificaciones.update');
+    // Solo Luis + administradores TI las gestionan (pedido del jefe): gate por
+    // permiso; el resto del perfil sigue abierto a cualquier autenticado.
+    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])
+        ->middleware('permission:gestionar notificaciones')
+        ->name('perfil.notificaciones.update');
 
     // Color de las cards de accesos del Inicio (M16, D-013): preferencia
     // personal, guardada por fetch desde el modo "Personalizar" del dashboard.

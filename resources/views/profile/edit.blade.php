@@ -19,11 +19,16 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
-                <div class="max-w-xl">
-                    @include('profile.partials.preferencias-notificaciones', ['user' => $user])
+            {{-- Solo Luis + administradores TI gestionan los canales (pedido del
+                 jefe). El resto de usuarios queda con el default del sistema
+                 (campanita siempre + correo) y no ve esta tarjeta. --}}
+            @can('gestionar notificaciones')
+                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+                    <div class="max-w-xl">
+                        @include('profile.partials.preferencias-notificaciones', ['user' => $user])
+                    </div>
                 </div>
-            </div>
+            @endcan
 
             <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="max-w-xl">

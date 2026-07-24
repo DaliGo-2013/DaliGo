@@ -30,7 +30,7 @@ class RoleMatrixSeedTest extends TestCase
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio',
                 'agendar servicio terreno', 'ver agenda terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
-                'view notificaciones', 'aprobar solicitudes', 'view aprobaciones',
+                'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion'],

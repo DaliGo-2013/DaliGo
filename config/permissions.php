@@ -32,6 +32,7 @@ return [
         'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
         'aplicar descuento servicio tecnico' => 'Aplicar descuento en la cotización (servicio técnico)',
         'view notificaciones' => 'Ver notificaciones',
+        'gestionar notificaciones' => 'Gestionar canales de notificación (correo/WhatsApp del perfil)',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
         'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',

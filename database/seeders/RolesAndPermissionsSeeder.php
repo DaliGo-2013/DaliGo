@@ -50,6 +50,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
             // Modulo Notificaciones (M15).
             'view notificaciones',        // ver el panel de todas las notificaciones del sistema
+            'gestionar notificaciones',   // editar las preferencias de canal (correo/WhatsApp) del perfil — SOLO Luis + TI (pedido del jefe); distinto de 'view notificaciones' (panel de solo lectura)
             // Modulo Aprobaciones (M14).
             'aprobar solicitudes',        // bandeja /aprobaciones: resolver pendientes del propio rol
             'view aprobaciones',          // historial completo del motor (admin)
