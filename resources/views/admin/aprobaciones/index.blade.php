@@ -63,8 +63,8 @@
                 </div>
             </form>
 
-            {{-- Resumen (respeta los filtros): por estado + por aprobador/solicitante --}}
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {{-- Resumen (respeta los filtros): por estado + por tipo + por aprobador/solicitante --}}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                     <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por estado</p>
                     <div class="mt-3 flex flex-wrap gap-2">
@@ -81,6 +81,22 @@
                             <span class="text-sm text-neutral-500">Sin datos.</span>
                         @endif
                     </div>
+                </div>
+
+                {{-- Por tipo (categoría de la solicitud). Future-proof: hoy un solo
+                     tipo; al integrarse M04/M05/M07/M13 aparecen sus categorías. --}}
+                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo</p>
+                    <ul class="mt-3 space-y-1.5">
+                        @forelse ($porTipo as $tipoAccion => $c)
+                            <li class="flex items-center justify-between gap-3 text-sm">
+                                <span class="truncate text-neutral-700">{{ $tipos[$tipoAccion] ?? $tipoAccion }}</span>
+                                <span class="shrink-0 font-semibold tabular-nums text-neutral-900">{{ $c }}</span>
+                            </li>
+                        @empty
+                            <li class="text-sm text-neutral-500">Sin datos.</li>
+                        @endforelse
+                    </ul>
                 </div>
 
                 <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
