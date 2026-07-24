@@ -2,12 +2,9 @@
 
 namespace App\Providers;
 
-use App\Models\OrdenServicio;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -45,17 +42,9 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Contador de la barra: cuantas ordenes tiene "en mano" el tecnico
-        // (recibidas + en cotizacion). Solo se calcula para quien ve servicio
-        // tecnico; un COUNT liviano sobre la columna indexada `estado`.
-        View::composer('layouts.navigation', function ($view) {
-            $user = Auth::user();
-            $view->with(
-                'pendientesServicioTecnico',
-                ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
-                    ? OrdenServicio::pendientesTecnico()->count()
-                    : 0
-            );
-        });
+        // El contador de Servicio Técnico de la barra vive ahora en
+        // App\Support\MenuPrincipal::badges() (fuente única del menú V4):
+        // los componentes x-layout.sidebar / x-layout.topbar traen sus datos,
+        // sin View::composer atado a un nombre de vista.
     }
 }

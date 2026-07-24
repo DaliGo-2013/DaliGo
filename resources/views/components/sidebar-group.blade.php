@@ -5,7 +5,7 @@
      El bloque global de prefers-reduced-motion (app.css) recorta la rotación. --}}
 @props(['modulo', 'abierto' => false, 'badge' => 0])
 
-<details @if ($abierto) open @endif class="group">
+<details {{ $abierto ? 'open' : '' }} class="group">
     <summary class="flex cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50 lg:py-2.5 [&::-webkit-details-marker]:hidden">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
             <x-dynamic-component :component="'icon.' . $modulo['icon']" class="h-5 w-5" />

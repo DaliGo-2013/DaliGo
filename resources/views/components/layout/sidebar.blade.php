@@ -35,7 +35,7 @@
                 {{-- Link directo de primer nivel (Dashboard / Mi producción /
                      Aprobaciones): el acceso 1-clic del operario es a propósito. --}}
                 @php $esActivo = request()->routeIs(...$modulo['activo']); @endphp
-                <a href="{{ route($modulo['route']) }}" @if ($esActivo) aria-current="page" @endif
+                <a href="{{ route($modulo['route']) }}"@if ($esActivo) aria-current="page"@endif
                    class="{{ $esActivo
                        ? 'flex items-center gap-3 rounded-lg bg-brand-50 px-3 py-3 text-sm font-medium text-brand-700 lg:py-2.5'
                        : 'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50 lg:py-2.5' }}">
