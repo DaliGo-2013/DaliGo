@@ -23,7 +23,7 @@
     @endif
 
     <form method="POST" action="{{ route('ingreso-taller.lote.store') }}" enctype="multipart/form-data" class="space-y-5"
-          x-data="loteServicioForm({ endpointProducto: '{{ route('ingreso-taller.buscar-producto') }}', tipoDefault: @js(old('tipo_default', 'dispensador')), tiposSerie: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS) })">
+          x-data="loteServicioForm({ tipoDefault: @js(old('tipo_default', 'dispensador')), tiposSerie: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS) })">
         @csrf
         <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
         {{-- Honeypot anti-bot (un humano no lo ve ni lo llena). --}}
@@ -158,30 +158,13 @@
                             </div>
                         </div>
 
-                        {{-- Código del catálogo (OBLIGATORIO): se elige del buscador. --}}
-                        <div class="relative mt-2" x-on:click.outside="filaActiva === i && cerrar()">
-                            <label class="mb-0.5 block text-xs text-neutral-500">Código (producto Dali) <span class="text-red-500">*</span></label>
-                            <input type="hidden" :name="`maquinas[${i}][producto_id]`" x-model="m.producto_id">
-                            <input type="text" x-model="m.producto_label" autocomplete="off"
-                                placeholder="Código o nombre del equipo"
-                                x-on:input.debounce.250ms="buscar(i)" x-on:focus="buscar(i)" x-on:keydown.escape="cerrar()"
-                                class="block w-full rounded-lg border bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                                :class="filaIncompleta(m) ? 'border-red-300' : 'border-neutral-300'">
-                            <div x-show="filaActiva === i && (buscando || sugerencias.length)" x-cloak
-                                class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
-                                <ul class="max-h-56 divide-y divide-neutral-100 overflow-auto">
-                                    <template x-for="(s, si) in sugerencias" :key="si">
-                                        <li>
-                                            <button type="button" x-on:click="elegir(i, s)"
-                                                class="block w-full px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
-                                                <span class="font-mono text-xs text-neutral-400" x-text="s.sku"></span>
-                                                <span x-text="' ' + s.nombre"></span>
-                                            </button>
-                                        </li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <p x-show="filaIncompleta(m)" x-cloak class="mt-1 text-xs text-red-500">Busca y elige el código de esta máquina.</p>
+                        {{-- Equipo (marca/modelo): texto libre OBLIGATORIO. Sin catálogo:
+                             gerencia no quiere exponerle al cliente la variedad de productos. --}}
+                        <div class="mt-2">
+                            <label class="mb-0.5 block text-xs text-neutral-500">Equipo (marca y modelo) <span class="text-red-500">*</span></label>
+                            <input type="text" x-model="m.modelo" :name="`maquinas[${i}][modelo]`" maxlength="191" required
+                                placeholder="Ej. Dispensador LB-16 blanco"
+                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                         </div>
 
                         {{-- Falla y estado de ESTA máquina (golpes, rayas, caja, piezas). --}}
