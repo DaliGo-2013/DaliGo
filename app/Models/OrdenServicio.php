@@ -382,6 +382,51 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Acota la consulta a lo que un usuario PUEDE VER en Servicio Técnico
+     * (regla #2 del negocio: la gestión es por vendedor). Quien tiene el permiso
+     * 'ver todo servicio tecnico' (técnico, jefe de ventas, jefe de bodega,
+     * admin) ve todas las órdenes. El resto (vendedor / jefatura) solo ve las de
+     * SU cartera: órdenes cuyo cliente (por RUT) está asignado a él o a un
+     * vendedor a su cargo. El enlace es por `cliente_rut` porque `cliente_id` no
+     * se popula al ingresar (mostrador ni QR); ambos RUT están normalizados
+     * (Cliente::normalizarRut). Sin cartera asignada, no ve nada.
+     */
+    public function scopeVisiblePara(Builder $query, User $user): Builder
+    {
+        if ($user->can('ver todo servicio tecnico')) {
+            return $query;
+        }
+
+        $vendedorIds = $user->idsCarteraServicioTecnico();
+
+        return $query->whereIn('cliente_rut', function ($sub) use ($vendedorIds) {
+            $sub->select('rut')
+                ->from('clientes')
+                ->whereIn('vendedor_id', $vendedorIds)
+                ->whereNotNull('rut');
+        });
+    }
+
+    /**
+     * ¿Este usuario puede ver esta orden? Misma regla que scopeVisiblePara, para
+     * proteger las páginas de detalle por URL (show/foto/comprobante).
+     */
+    public function esVisiblePara(User $user): bool
+    {
+        if ($user->can('ver todo servicio tecnico')) {
+            return true;
+        }
+
+        if (blank($this->cliente_rut)) {
+            return false;
+        }
+
+        return Cliente::whereIn('vendedor_id', $user->idsCarteraServicioTecnico())
+            ->where('rut', $this->cliente_rut)
+            ->exists();
+    }
+
+    /**
      * Producto Dali del catalogo (el "codigo" del equipo, por SKU).
      *
      * @return BelongsTo<Producto, $this>

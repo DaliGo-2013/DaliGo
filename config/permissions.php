@@ -26,6 +26,7 @@ return [
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
         'view servicio tecnico' => 'Ver servicio técnico',
+        'ver todo servicio tecnico' => 'Ver TODO el servicio técnico (no solo la cartera propia)',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
         'editar recepcion servicio tecnico' => 'Editar recepción / eliminar orden (servicio técnico)',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',

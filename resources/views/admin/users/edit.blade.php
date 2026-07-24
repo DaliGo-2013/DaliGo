@@ -50,6 +50,18 @@
                         <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
                     </div>
 
+                    <div>
+                        <x-input-label for="jefe_id" value="Jefe directo (opcional)" />
+                        <x-select id="jefe_id" name="jefe_id" class="mt-1.5">
+                            <option value="">— Sin jefe —</option>
+                            @foreach ($jefes as $j)
+                                <option value="{{ $j->id }}" @selected((int) old('jefe_id', $user->jefe_id) === $j->id)>{{ $j->name }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>El jefe que elijas verá en Servicio Técnico la cartera de esta persona (además de la suya).</x-input-hint>
+                        <x-input-error :messages="$errors->get('jefe_id')" class="mt-2" />
+                    </div>
+
                 </form>
             </div>
         </div>

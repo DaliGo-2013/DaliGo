@@ -229,9 +229,11 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_vendedor_puede_ver_pero_no_gestionar(): void
     {
-        // El seeder le da 'view servicio tecnico' al vendedor (solo lectura).
+        // El seeder le da 'view servicio tecnico' al vendedor (solo lectura), pero
+        // acotado a SU cartera: la orden debe ser de un cliente asignado a él.
         $vendedor = tap(User::factory()->create())->assignRole('vendedor');
-        $orden = OrdenServicio::factory()->create();
+        $cliente = Cliente::factory()->create(['rut' => '12345678-5', 'vendedor_id' => $vendedor->id]);
+        $orden = OrdenServicio::factory()->create(['cliente_rut' => $cliente->rut]);
 
         // Ve listado y detalle.
         $this->actingAs($vendedor)->get('/admin/servicio-tecnico')->assertOk();

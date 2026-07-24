@@ -52,6 +52,18 @@
                     </div>
 
                     <div>
+                        <x-input-label for="jefe_id" value="Jefe directo (opcional)" />
+                        <x-select id="jefe_id" name="jefe_id" class="mt-1.5">
+                            <option value="">— Sin jefe —</option>
+                            @foreach ($jefes as $j)
+                                <option value="{{ $j->id }}" @selected((int) old('jefe_id') === $j->id)>{{ $j->name }}</option>
+                            @endforeach
+                        </x-select>
+                        <x-input-hint>El jefe que elijas verá en Servicio Técnico la cartera de esta persona (además de la suya).</x-input-hint>
+                        <x-input-error :messages="$errors->get('jefe_id')" class="mt-2" />
+                    </div>
+
+                    <div>
                         <x-input-label for="password" value="Contraseña inicial" />
                         <x-password-input id="password" class="mt-1.5" name="password" required autocomplete="new-password" placeholder="••••••••" />
                         <x-input-hint>Mínimo 8 caracteres.</x-input-hint>

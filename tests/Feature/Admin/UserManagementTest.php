@@ -136,6 +136,33 @@ class UserManagementTest extends TestCase
         $this->assertFalse($user->fresh()->hasRole('member'));
     }
 
+    public function test_admin_puede_asignar_un_jefe_directo(): void
+    {
+        $jefe = User::factory()->create();
+        $user = tap(User::factory()->create())->assignRole('vendedor');
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$user->id}", [
+                'role' => 'vendedor', 'name' => $user->name, 'email' => $user->email, 'jefe_id' => $jefe->id,
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertSame($jefe->id, $user->fresh()->jefe_id);
+    }
+
+    public function test_un_usuario_no_puede_ser_su_propio_jefe(): void
+    {
+        $user = tap(User::factory()->create())->assignRole('vendedor');
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$user->id}", [
+                'role' => 'vendedor', 'name' => $user->name, 'email' => $user->email, 'jefe_id' => $user->id,
+            ])
+            ->assertSessionHasErrors('jefe_id');
+
+        $this->assertNull($user->fresh()->jefe_id);
+    }
+
     public function test_admin_can_edit_name_and_email(): void
     {
         $user = User::factory()->create();
