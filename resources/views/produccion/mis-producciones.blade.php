@@ -76,6 +76,18 @@
                     @endforeach
                 </div>
             @endif
+
+            {{-- Historial: SIEMPRE visible (FUERA del if de "hoy", para que
+                 aparezca también cuando no hay producciones asignadas) y al pie,
+                 para no competir con la tarea del día. Estilo neutro: el único
+                 acento de marca sigue siendo la acción del turno. --}}
+            <a href="{{ route('produccion.mi.historial') }}"
+               class="dg-enter mt-4 flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 shadow-sm transition duration-150 hover:bg-neutral-50 active:scale-[0.99]">
+                <span>Mi historial
+                    <span class="font-normal text-neutral-500">· últimos {{ \App\Models\ProduccionReporte::HISTORIAL_DIAS }} días</span>
+                </span>
+                <span class="shrink-0 text-neutral-400" aria-hidden="true">&rarr;</span>
+            </a>
         </div>
     </div>
 </x-app-layout>
