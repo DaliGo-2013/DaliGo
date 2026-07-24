@@ -40,6 +40,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'editar recepcion servicio tecnico', // gerencia: EDITAR los datos de recepcion de una orden + eliminarla (aparte de 'manage', para poder limitarlo al tecnico)
             'confirmar servicio tecnico', // jefe de bodega / tecnico: autorizar la recepcion de lo que llego por QR
             'autorizar reparacion',       // vendedor/jefe_ventas/tecnico: coordina el pago de la cotizacion y autoriza al tecnico a reparar
+            'aplicar descuento servicio tecnico', // jefe_ventas/admin: aplicar descuentos en la cotizacion (decision comercial; el tecnico NO)
             'crear lote servicio',        // conductor: ingreso por lote en ruta (acotado, NO edita el taller)
             // Agenda de terreno (tecnico industrial): plantas de osmosis,
             // llenadoras y lavadoras en el cliente.
@@ -77,8 +78,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
+        // Jefe de ventas supervisa TODO el servicio técnico (pedido de gerencia):
+        // taller (Fernando) — gestiona/edita/confirma y aplica descuentos — e
+        // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
+        // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).

@@ -308,10 +308,11 @@ class DashboardTest extends TestCase
         $this->assertNull($res->viewData('pulsoProduccion'));
         $this->assertNotNull($res->viewData('pulsoTaller'));
 
-        // jefe_ventas: sin pulsos, pero SÍ puede tener excepciones (aprobaciones).
+        // jefe_ventas: ahora gestiona el taller (pedido de gerencia) → ve el pulso
+        // de taller; producción no. Y puede ver excepciones (aprobaciones).
         $res = $this->actingAs($this->userWithRole('jefe_ventas'))->get('/dashboard');
         $this->assertNull($res->viewData('pulsoProduccion'));
-        $this->assertNull($res->viewData('pulsoTaller'));
+        $this->assertNotNull($res->viewData('pulsoTaller'));
         $this->assertTrue($res->viewData('puedeVerExcepciones'));
     }
 

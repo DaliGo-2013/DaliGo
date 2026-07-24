@@ -603,14 +603,24 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
-        $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+        // El descuento es decisión COMERCIAL: solo quien tiene el permiso lo
+        // cambia (jefatura de ventas / admin). Si no lo tiene (p. ej. el técnico
+        // que arma la cotización), se conserva el descuento ya guardado — no puede
+        // aplicarlo ni quitarlo por más que manipule el formulario.
+        if ($request->user()->can('aplicar descuento servicio tecnico')) {
+            $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+            $descuentoMotivo = $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null;
+        } else {
+            $descuentoPct = (int) $orden->descuento_pct;
+            $descuentoMotivo = $orden->descuento_motivo;
+        }
 
         $orden->update([
             // Mano de obra FIJA por el trabajo (no se edita aquí): se recalcula
             // por si jefatura cambió el tiempo estándar en el ínterin.
             'mano_obra' => $this->manoObraDe($orden->trabajo_realizado),
             'descuento_pct' => $descuentoPct,
-            'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
+            'descuento_motivo' => $descuentoMotivo,
         ]);
 
         // Reemplazo de repuestos ya con precio. Nombre y cantidad vienen del parte

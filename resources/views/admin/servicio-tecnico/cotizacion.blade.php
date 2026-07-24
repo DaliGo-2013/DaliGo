@@ -215,28 +215,44 @@
                                     <p class="mt-0.5 text-xs text-neutral-400">Elige el «Trabajo realizado» en Parte del técnico para fijar la mano de obra.</p>
                                 @endif
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <x-input-label for="descuento_pct" value="Descuento" />
-                                    <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
-                                        <option value="0">Sin descuento</option>
-                                        @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
-                                            <option value="{{ $pct }}">{{ $pct }}%</option>
-                                        @endforeach
-                                    </x-select>
-                                    <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                            {{-- El descuento es decisión COMERCIAL: solo jefatura de ventas
+                                 (permiso 'aplicar descuento servicio tecnico') lo edita. El
+                                 técnico lo ve en solo lectura (el total ya lo refleja). --}}
+                            @can('aplicar descuento servicio tecnico')
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <x-input-label for="descuento_pct" value="Descuento" />
+                                        <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
+                                            <option value="0">Sin descuento</option>
+                                            @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
+                                                <option value="{{ $pct }}">{{ $pct }}%</option>
+                                            @endforeach
+                                        </x-select>
+                                        <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                                    </div>
+                                    <div x-show="descuentoPct > 0" x-cloak>
+                                        <x-input-label for="descuento_motivo" value="Motivo *" />
+                                        <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
+                                            <option value="">— Selecciona —</option>
+                                            @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
+                                                <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
+                                            @endforeach
+                                        </x-select>
+                                        <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                                    </div>
                                 </div>
-                                <div x-show="descuentoPct > 0" x-cloak>
-                                    <x-input-label for="descuento_motivo" value="Motivo *" />
-                                    <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
-                                        <option value="">— Selecciona —</option>
-                                        @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
-                                            <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
-                                        @endforeach
-                                    </x-select>
-                                    <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                            @else
+                                <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+                                    <p class="text-xs text-neutral-500">Descuento</p>
+                                    @if ($orden->descuento_pct > 0)
+                                        <p class="mt-0.5 font-medium text-neutral-900">{{ $orden->descuento_pct }}%
+                                            <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></p>
+                                    @else
+                                        <p class="mt-0.5 text-neutral-500">Sin descuento.</p>
+                                    @endif
+                                    <p class="mt-1 text-xs text-neutral-400">Solo jefatura de ventas aplica descuentos.</p>
                                 </div>
-                            </div>
+                            @endcan
                         </div>
                         <div class="flex flex-col justify-end">
                             <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
