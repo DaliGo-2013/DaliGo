@@ -113,6 +113,10 @@ class OrdenServicio extends Model implements AuditableContract
     // Duracion de la garantia desde la fecha de compra.
     public const GARANTIA_MESES = 6;
 
+    // Los precios del catálogo (repuestos, valor hora) se guardan CON IVA, así
+    // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
+    public const TASA_IVA = 0.19;
+
     // Descuentos permitidos sobre el total de una reparacion cobrable (%).
     public const DESCUENTOS_PCT = [10, 15, 20];
 
@@ -301,6 +305,21 @@ class OrdenServicio extends Model implements AuditableContract
     public function getCostoTotalAttribute(): int
     {
         return $this->costo_bruto - $this->descuento_monto;
+    }
+
+    /**
+     * Neto del total a pagar. El total YA viene con IVA (precios del catálogo con
+     * IVA), así que el neto se obtiene dividiendo por (1 + IVA).
+     */
+    public function getCostoNetoAttribute(): int
+    {
+        return (int) round($this->costo_total / (1 + self::TASA_IVA));
+    }
+
+    /** IVA contenido en el total (total − neto): así neto + IVA == total exacto. */
+    public function getCostoIvaAttribute(): int
+    {
+        return $this->costo_total - $this->costo_neto;
     }
 
     /**

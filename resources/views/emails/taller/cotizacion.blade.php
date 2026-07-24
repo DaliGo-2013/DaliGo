@@ -82,13 +82,22 @@
                                         <td style="padding:8px 14px; border-top:1px solid #f5f5f5; color:#15803d; text-align:right; white-space:nowrap;">−{{ $clp($cotizacion->descuento_monto) }}</td>
                                     </tr>
                                 @endif
+                                {{-- Desglose de IVA (el total ya lo incluye): neto + IVA = total. --}}
+                                <tr>
+                                    <td style="padding:8px 14px; border-top:1px solid #e5e5e5; color:#737373;">Neto</td>
+                                    <td style="padding:8px 14px; border-top:1px solid #e5e5e5; color:#171717; text-align:right; white-space:nowrap;">{{ $clp($cotizacion->costo_neto) }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px 14px; border-top:1px solid #f5f5f5; color:#737373;">IVA (19%)</td>
+                                    <td style="padding:8px 14px; border-top:1px solid #f5f5f5; color:#171717; text-align:right; white-space:nowrap;">{{ $clp($cotizacion->costo_iva) }}</td>
+                                </tr>
                             </table>
 
                             {{-- Total destacado --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
                                 <tr>
                                     <td style="background-color:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:16px 20px; text-align:center;">
-                                        <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#9a3412;">Costo total a pagar</div>
+                                        <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#9a3412;">Total a pagar (IVA incluido)</div>
                                         <div style="font-size:28px; font-weight:bold; color:#EA580C; letter-spacing:1px;">{{ $clp($cotizacion->costo_total) }}</div>
                                     </td>
                                 </tr>
