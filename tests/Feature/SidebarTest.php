@@ -142,12 +142,14 @@ class SidebarTest extends TestCase
             'motivo' => 'm', 'descripcion' => 'd', 'rol_aprobador' => 'jefe_bodega',
         ]);
         OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => null]);
+        \App\Models\AgendaTrabajo::factory()->create(['estado' => 'solicitado']);
 
         $this->actingAs($this->usuarioCon('admin'))
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('1 solicitud(es) por aprobar')
             ->assertSee('1 ingreso(s) por confirmar')
+            ->assertSee('1 visita(s) por coordinar')
             ->assertSee('pendiente(s) en esta sección')
             ->assertSee('group-open:hidden', false);
     }

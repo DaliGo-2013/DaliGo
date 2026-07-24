@@ -133,6 +133,7 @@ class MenuPrincipalTest extends TestCase
             'rol_aprobador' => 'jefe_bodega',
         ]);
         \App\Models\OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => null]);
+        \App\Models\AgendaTrabajo::factory()->create(['estado' => 'solicitado']);
 
         $soplador = tap(\App\Models\User::factory()->create())->assignRole('soplador');
         $asignacion = fn () => \App\Models\ProduccionAsignacion::create([
@@ -154,6 +155,7 @@ class MenuPrincipalTest extends TestCase
         $badgesAdmin = MenuPrincipal::badges($admin);
         $this->assertSame(1, $badgesAdmin['aprobaciones_bandeja']);
         $this->assertSame(1, $badgesAdmin['st_por_confirmar']);
+        $this->assertSame(1, $badgesAdmin['agenda_por_coordinar']);
         $this->assertSame(1, $badgesAdmin['produccion_por_aprobar']);
 
         // Soplador: solo su señal personal; las gateadas por permiso dan 0.
@@ -161,6 +163,7 @@ class MenuPrincipalTest extends TestCase
         $this->assertSame(1, $badgesSoplador['mi_produccion_devueltos']);
         $this->assertSame(0, $badgesSoplador['aprobaciones_bandeja']);
         $this->assertSame(0, $badgesSoplador['st_por_confirmar']);
+        $this->assertSame(0, $badgesSoplador['agenda_por_coordinar']);
         $this->assertSame(0, $badgesSoplador['produccion_por_aprobar']);
     }
 

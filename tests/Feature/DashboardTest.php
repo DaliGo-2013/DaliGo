@@ -361,42 +361,41 @@ class DashboardTest extends TestCase
         $this->assertSame(['Comercial'], $grupos->keys()->all());
     }
 
-    // --- Badge del nav (sin cambios en M16-v1) ---------------------------------
+    // --- Badges del menú (re-anclados en el pulido 4 del menú V4) --------------
+    // Doctrina: los números del menú son ACCIONES ancladas a su ítem. El conteo
+    // de equipos activos del taller es un ESTADO: vive en las tarjetas del
+    // Inicio y en el Listado, nunca más como badge del menú.
 
-    public function test_barra_muestra_contador_de_pendientes_de_servicio_tecnico(): void
+    public function test_menu_muestra_contador_accionable_de_ingresos_por_confirmar(): void
     {
-        // Pendientes = todos los estados activos (recibido, en_revision, cotizacion,
-        // esperando_repuesto, reparado). Solo entregado y sin_solucion NO cuentan.
-        OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
-        OrdenServicio::factory()->create(['estado' => 'cotizacion']);
-        OrdenServicio::factory()->create(['estado' => 'reparado']);       // ahora SÍ cuenta
-        OrdenServicio::factory()->create(['estado' => 'entregado']);      // no cuenta
-        OrdenServicio::factory()->create(['estado' => 'sin_solucion']);   // no cuenta
+        OrdenServicio::factory()->count(2)->create(['fuente' => 'qr', 'confirmada_at' => null]);
+        OrdenServicio::factory()->create(['estado' => 'recibido']); // activo en taller: NO es acción
 
-        $this->assertSame(4, OrdenServicio::pendientesTecnico()->count());
-
-        // El técnico ve el badge con el número en la barra.
+        // El técnico (permiso confirmar servicio tecnico) ve el badge del ítem.
         $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard')
             ->assertOk()
-            ->assertSee('4 equipo(s) por atender');
+            ->assertSee('2 ingreso(s) por confirmar')
+            ->assertDontSee('equipo(s) por atender'); // el badge de estado no vuelve al menú
     }
 
-    public function test_barra_no_muestra_contador_a_rol_sin_acceso_a_servicio_tecnico(): void
+    public function test_menu_no_muestra_contadores_de_st_a_rol_sin_permiso(): void
     {
-        OrdenServicio::factory()->count(2)->create(['estado' => 'recibido']);
+        OrdenServicio::factory()->count(2)->create(['fuente' => 'qr', 'confirmada_at' => null]);
 
-        // Un rol sin permiso de servicio técnico no ve el link ni el contador.
         $this->actingAs($this->userWithRole('soplador'))->get('/dashboard')
             ->assertOk()
+            ->assertDontSee('ingreso(s) por confirmar')
             ->assertDontSee('equipo(s) por atender');
     }
 
-    public function test_barra_no_muestra_badge_si_no_hay_pendientes(): void
+    public function test_menu_sin_acciones_pendientes_no_muestra_badge(): void
     {
-        OrdenServicio::factory()->create(['estado' => 'entregado']);   // no pendiente
+        // Órdenes activas en el taller pero NADA accionable: menú limpio.
+        OrdenServicio::factory()->count(3)->create(['estado' => 'recibido']);
 
         $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard')
             ->assertOk()
+            ->assertDontSee('ingreso(s) por confirmar')
             ->assertDontSee('equipo(s) por atender');
     }
 }
