@@ -220,6 +220,15 @@ class IngresoTallerPublicoController extends Controller
             }
         }
 
+        // Aviso interno (M15): ventas + el técnico saben que entró un lote. UN
+        // solo aviso por lote (no por máquina). Secundario: un aviso que falle NO
+        // debe tumbar el ingreso público ya creado.
+        try {
+            $lote->notificarIngresoInterno();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return redirect()->to(URL::signedRoute('ingreso-taller.lote.gracias', ['lote' => $lote->id]));
     }
 
@@ -324,6 +333,14 @@ class IngresoTallerPublicoController extends Controller
             $orden->fotos()->create([
                 'ruta' => ImagenComprimida::guardar($foto, "ordenes-servicio/fotos/{$orden->id}"),
             ]);
+        }
+
+        // Aviso interno (M15): ventas + el técnico saben que entró un equipo.
+        // Secundario: un aviso que falle NO debe tumbar el ingreso público.
+        try {
+            $orden->notificarIngresoInterno();
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         // El correo NO se manda aqui: sale cuando el encargado confirma la
