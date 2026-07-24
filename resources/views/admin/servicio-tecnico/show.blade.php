@@ -184,7 +184,15 @@
                                         <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></dd>
                                 </div>
                             @endif
-                            <div><dt class="text-xs text-neutral-400">Costo total</dt><dd class="text-sm font-semibold text-neutral-900">{{ $clp($orden->costo_total) }}</dd></div>
+                            {{-- Desglose de IVA (los precios ya vienen con IVA): neto + IVA = total. --}}
+                            <div class="sm:col-span-2">
+                                <dt class="text-xs text-neutral-400">Costo (IVA incluido)</dt>
+                                <dd class="mt-1 space-y-0.5 text-sm">
+                                    <div class="flex justify-between"><span class="text-neutral-500">Neto</span><span class="text-neutral-900">{{ $clp($orden->costo_neto) }}</span></div>
+                                    <div class="flex justify-between"><span class="text-neutral-500">IVA (19%)</span><span class="text-neutral-900">{{ $clp($orden->costo_iva) }}</span></div>
+                                    <div class="flex justify-between border-t border-neutral-100 pt-0.5 font-semibold text-neutral-900"><span>Total con IVA</span><span>{{ $clp($orden->costo_total) }}</span></div>
+                                </dd>
+                            </div>
                         @endif
                         <div><dt class="text-xs text-neutral-400">Fecha de aviso al cliente</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_aviso?->format('d-m-Y') ?: '—' }}</dd></div>
                         <div><dt class="text-xs text-neutral-400">Fecha de retiro</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_retiro?->format('d-m-Y') ?: '—' }}</dd></div>

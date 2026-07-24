@@ -890,6 +890,27 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertOk()->assertSee('Cliente Folio');
     }
 
+    public function test_costo_desglosa_neto_e_iva_del_total_con_iva(): void
+    {
+        // Los precios del catálogo ya vienen con IVA → el total lo incluye. El
+        // neto se obtiene dividiendo por 1,19 y el IVA es la diferencia (cuadra exacto).
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'mano_obra' => 6248]);
+        $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 14024]);
+        $orden->refresh()->load('repuestos');
+
+        $this->assertSame(20272, $orden->costo_total);  // bruto (con IVA): 14024 + 6248
+        $this->assertSame(17035, $orden->costo_neto);   // 20272 / 1,19
+        $this->assertSame(3237, $orden->costo_iva);     // total − neto
+        $this->assertSame($orden->costo_total, $orden->costo_neto + $orden->costo_iva);
+
+        // La ficha muestra el desglose.
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Neto')
+            ->assertSee('IVA (19%)')
+            ->assertSee('Total con IVA');
+    }
+
     public function test_index_filtra_por_varios_estados(): void
     {
         OrdenServicio::factory()->create(['cliente_nombre' => 'Recibido SA', 'estado' => 'recibido']);

@@ -64,11 +64,20 @@
                     <span class="font-medium">−{{ $clp($cotizacion->descuento_monto) }}</span>
                 </div>
             @endif
+            {{-- Desglose de IVA (el total ya lo incluye): neto + IVA = total. --}}
+            <div class="flex justify-between border-t border-neutral-200 px-5 py-2">
+                <span class="text-neutral-500">Neto</span>
+                <span class="text-neutral-900">{{ $clp($cotizacion->costo_neto) }}</span>
+            </div>
+            <div class="flex justify-between border-t border-neutral-100 px-5 py-2">
+                <span class="text-neutral-500">IVA (19%)</span>
+                <span class="text-neutral-900">{{ $clp($cotizacion->costo_iva) }}</span>
+            </div>
         </div>
 
         {{-- Total --}}
         <div class="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 text-center">
-            <div class="text-xs font-medium uppercase tracking-wide text-brand-700">Costo total a pagar</div>
+            <div class="text-xs font-medium uppercase tracking-wide text-brand-700">Total a pagar (IVA incluido)</div>
             <div class="text-3xl font-bold tracking-wide text-brand-600">{{ $clp($cotizacion->costo_total) }}</div>
         </div>
 

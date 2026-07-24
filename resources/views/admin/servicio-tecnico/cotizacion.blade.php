@@ -240,9 +240,14 @@
                         </div>
                         <div class="flex flex-col justify-end">
                             <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
-                                <p class="text-sm text-neutral-600">Costo total a pagar</p>
+                                <p class="text-sm text-neutral-600">Costo total a pagar (IVA incluido)</p>
                                 <p class="mt-0.5 text-2xl font-semibold text-neutral-900" x-text="clp(total)"></p>
-                                <p class="mt-0.5 text-xs text-neutral-500">
+                                {{-- Desglose de IVA en vivo: el total ya viene con IVA → neto = total/1,19. --}}
+                                <div class="mt-1.5 space-y-0.5 border-t border-brand-200 pt-1.5 text-xs text-neutral-600">
+                                    <div class="flex justify-between"><span>Neto</span><span x-text="clp(Math.round(total / 1.19))"></span></div>
+                                    <div class="flex justify-between"><span>IVA (19%)</span><span x-text="clp(total - Math.round(total / 1.19))"></span></div>
+                                </div>
+                                <p class="mt-1.5 text-xs text-neutral-500">
                                     Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
                                 </p>
                                 <p x-show="descuentoPct > 0" x-cloak class="mt-1 text-xs font-medium text-brand-700">
