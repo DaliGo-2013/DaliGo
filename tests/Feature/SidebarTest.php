@@ -246,4 +246,43 @@ class SidebarTest extends TestCase
             ->assertSee('text-neutral-900">'.config('app.name', 'DaliGo').'</h1>', false)
             ->assertDontSee('<details open', false);
     }
+
+    public function test_configuracion_vive_en_el_menu_de_cuenta_no_en_administracion(): void
+    {
+        // Pedido del dueño 24-07: Configuración salió de la categoría
+        // Administración y ahora es un link del dropdown de usuario (junto a
+        // Perfil), gateado por el mismo permiso 'manage settings' de siempre.
+        $contenido = $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $rutaConfig = route('admin.configuracion.index');
+
+        $inicioAdmin = strpos($contenido, 'data-modulo="administracion"');
+        $finAdmin = strpos($contenido, '</details>', $inicioAdmin);
+        $bloqueAdministracion = substr($contenido, $inicioAdmin, $finAdmin - $inicioAdmin);
+
+        $inicioCuenta = strpos($contenido, 'data-menu-usuario');
+        $bloqueCuenta = substr($contenido, $inicioCuenta);
+
+        $this->assertStringNotContainsString(
+            $rutaConfig,
+            $bloqueAdministracion,
+            'Configuración ya no debe listarse dentro de la categoría Administración.'
+        );
+        $this->assertStringContainsString(
+            $rutaConfig,
+            $bloqueCuenta,
+            'Configuración debe aparecer en el dropdown de usuario (pie de la sidebar).'
+        );
+    }
+
+    public function test_configuracion_no_aparece_para_rol_sin_manage_settings(): void
+    {
+        $this->actingAs($this->usuarioCon('vendedor'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee(route('admin.configuracion.index'), false);
+    }
 }

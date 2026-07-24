@@ -220,4 +220,23 @@ class MenuPrincipalTest extends TestCase
         // Invitado sin usuario: árbol vacío.
         $this->assertSame([], MenuPrincipal::para(null));
     }
+
+    public function test_cuenta_se_poda_por_permiso_y_no_vive_en_administracion(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        // Configuración salió de Administración (pedido del dueño 24-07): es
+        // de cuenta, no de negocio-por-módulo.
+        $this->assertArrayNotHasKey('configuracion', MenuPrincipal::MODULOS['administracion']['items']);
+        $this->assertArrayHasKey('configuracion', MenuPrincipal::CUENTA);
+
+        $admin = tap(\App\Models\User::factory()->create())->assignRole('admin');
+        $this->assertArrayHasKey('configuracion', MenuPrincipal::cuenta($admin));
+
+        // vendedor no tiene 'manage settings': no ve el ítem de cuenta.
+        $vendedor = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        $this->assertArrayNotHasKey('configuracion', MenuPrincipal::cuenta($vendedor));
+
+        $this->assertSame([], MenuPrincipal::cuenta(null));
+    }
 }

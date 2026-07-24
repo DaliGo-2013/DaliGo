@@ -72,7 +72,8 @@ class MenuPrincipal
                 'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*'], 'permiso' => 'view users'],
                 'roles' => ['label' => 'Roles', 'route' => 'admin.roles.index', 'activo' => ['admin.roles.*'], 'permiso' => 'manage roles'],
                 'sucursales' => ['label' => 'Sucursales', 'route' => 'admin.sucursales.index', 'activo' => ['admin.sucursales.*'], 'permiso' => 'manage sucursales'],
-                'configuracion' => ['label' => 'Configuración', 'route' => 'admin.configuracion.index', 'activo' => ['admin.configuracion.*'], 'permiso' => 'manage settings'],
+                // Configuración NO va aquí: es de cuenta, no de negocio-por-módulo
+                // (ver self::CUENTA más abajo) — pedido del dueño 2026-07-24.
                 'auditoria' => ['label' => 'Auditoría', 'route' => 'admin.audits.index', 'activo' => ['admin.audits.*'], 'permiso' => 'view audit'],
                 'notificaciones' => ['label' => 'Notificaciones', 'route' => 'admin.notificaciones.index', 'activo' => ['admin.notificaciones.*'], 'permiso' => 'view notificaciones'],
                 // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
@@ -124,6 +125,19 @@ class MenuPrincipal
     ];
 
     /**
+     * Ítems del ÁREA DE CUENTA (dropdown del pie de la sidebar, junto a
+     * Perfil/Cerrar sesión) — NO del árbol de navegación. Lista plana, sin
+     * acordeón. Pedido del dueño 2026-07-24: "Configuración" no pertenece a
+     * Administración (mezcla parámetros de negocio con Usuarios/Roles/
+     * Auditoría); Perfil y Configuración son conceptualmente distintos
+     * (autoservicio del usuario vs. reglas del sistema) así que quedan como
+     * links SEPARADOS en el mismo menú, no fusionados en una pantalla.
+     */
+    public const CUENTA = [
+        'configuracion' => ['label' => 'Configuración', 'route' => 'admin.configuracion.index', 'activo' => ['admin.configuracion.*'], 'permiso' => 'manage settings'],
+    ];
+
+    /**
      * Árbol podado por permisos para el usuario: módulos con al menos un ítem
      * visible (o links directos permitidos). La visibilidad del módulo se
      * deriva — no existe una lista @canany aparte que pueda driftear.
@@ -152,6 +166,24 @@ class MenuPrincipal
         }
 
         return $arbol;
+    }
+
+    /**
+     * Ítems del área de cuenta visibles para el usuario (poda por permiso,
+     * mismo criterio que para()). Lista plana para el dropdown del pie.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function cuenta(?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return array_filter(
+            self::CUENTA,
+            fn (array $item) => self::puedeVer($user, $item['permiso'])
+        );
     }
 
     /**
@@ -246,7 +278,12 @@ class MenuPrincipal
 
     /**
      * Mapa plano "modulo" o "modulo.item" => definición, para los candados de
-     * MenuPrincipalTest (espejo de AccesosDashboard::cards()).
+     * MenuPrincipalTest (espejo de AccesosDashboard::cards()). Incluye
+     * self::CUENTA (prefijo "cuenta.*") — aunque esos ítems no viven en el
+     * árbol de navegación, deben pasar los mismos candados de route/permiso
+     * y seguir siendo encontrables por el candado que verifica que las cards
+     * del Inicio sean subconjunto del menú (AccesosDashboard tiene un card
+     * de Configuración).
      *
      * @return array<string, array<string, mixed>>
      */
@@ -261,6 +298,9 @@ class MenuPrincipal
             } else {
                 $items[$key] = $modulo;
             }
+        }
+        foreach (self::CUENTA as $key => $item) {
+            $items["cuenta.{$key}"] = $item;
         }
 
         return $items;
