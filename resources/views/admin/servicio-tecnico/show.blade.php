@@ -24,6 +24,8 @@
                         <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" size="lg" variant="secondary" label="Reparación" title="Reparación (taller)">
                             <x-icon.wrench-screwdriver class="h-5 w-5" />
                         </x-icon-button>
+                    @endcan
+                    @can('editar recepcion servicio tecnico')
                         <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" size="lg" variant="primary" label="Editar" title="Editar recepción">
                             <x-icon.pencil class="h-5 w-5" />
                         </x-icon-button>

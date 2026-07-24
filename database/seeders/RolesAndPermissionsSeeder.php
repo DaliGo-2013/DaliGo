@@ -36,7 +36,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage production',  // jefe de bodega: asigna y revisa/aprueba/devuelve
             // Modulo Servicio Tecnico (taller).
             'view servicio tecnico',      // jefes/vendedores: ver listado + detalle (solo lectura)
-            'manage servicio tecnico',    // tecnico: ingreso/edicion + etapa de taller
+            'manage servicio tecnico',    // tecnico: ingreso + etapa de taller (parte del tecnico) + cotizacion
+            'editar recepcion servicio tecnico', // gerencia: EDITAR los datos de recepcion de una orden + eliminarla (aparte de 'manage', para poder limitarlo al tecnico)
             'confirmar servicio tecnico', // jefe de bodega / tecnico: autorizar la recepcion de lo que llego por QR
             'autorizar reparacion',       // vendedor/jefe_ventas/tecnico: coordina el pago de la cotizacion y autoriza al tecnico a reparar
             'crear lote servicio',        // conductor: ingreso por lote en ruta (acotado, NO edita el taller)
@@ -95,8 +96,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // llenadoras, lavadoras en el cliente): gestiona su agenda (agenda,
         // edita y marca lo realizado desde el calendario) e instalaciones. Es un
         // rol aparte del tecnico de taller.
+        // El tecnico INDUSTRIAL, por pedido de gerencia, solo VE su agenda (y marca
+        // realizado); NO agenda ni edita la agenda (eso lo hacen jefes/vendedores).
+        // Mantiene su registro de Instalaciones (su planilla). Si gerencia quiere
+        // habilitarle agendar, lo activa en Administracion -> Roles.
         Role::firstOrCreate(['name' => 'tecnico_industrial', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver agenda terreno', 'agendar servicio terreno', 'gestionar instalaciones']);
+            ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
     }

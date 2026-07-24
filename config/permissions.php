@@ -27,6 +27,7 @@ return [
         'manage production' => 'Gestionar producción',
         'view servicio tecnico' => 'Ver servicio técnico',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
+        'editar recepcion servicio tecnico' => 'Editar recepción / eliminar orden (servicio técnico)',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
         'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
         'view notificaciones' => 'Ver notificaciones',

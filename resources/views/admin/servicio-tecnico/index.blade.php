@@ -180,7 +180,7 @@
                             ])->filter()->implode(' · ');
                         @endphp
                         @php
-                            $verHref = auth()->user()->can('manage servicio tecnico')
+                            $verHref = auth()->user()->can('editar recepcion servicio tecnico')
                                 ? route('admin.servicio-tecnico.edit', $orden)
                                 : route('admin.servicio-tecnico.show', $orden);
                         @endphp
@@ -206,7 +206,7 @@
                             </div>
                         </x-slot>
 
-                        @can('manage servicio tecnico')
+                        @can('editar recepcion servicio tecnico')
                             <x-slot name="actions">
                                 <form method="POST" action="{{ route('admin.servicio-tecnico.destroy', $orden) }}" onsubmit="return confirm('¿Eliminar la orden {{ $orden->folio }}?');">
                                     @csrf
