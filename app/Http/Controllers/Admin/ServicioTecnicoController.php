@@ -69,7 +69,13 @@ class ServicioTecnicoController extends Controller
 
     public function index(Request $request): View
     {
+        $user = $request->user();
+
+        // Visibilidad por vendedor (regla #2): quien no tiene 'ver todo servicio
+        // tecnico' solo ve las ordenes de SU cartera (+ la de su equipo si es
+        // jefatura). Ver OrdenServicio::scopeVisiblePara.
         $ordenes = $this->filteredQuery($request)
+            ->visiblePara($user)
             ->with(['producto', 'sucursal'])
             ->latest('fecha_ingreso')->latest('id')
             ->paginate(25)
@@ -81,11 +87,16 @@ class ServicioTecnicoController extends Controller
             // Cards de navegacion del historial (Año → Mes) sobre el listado.
             'historial' => $this->resumenHistorial($request->filled('anio') ? (int) $request->input('anio') : null),
             // Maquinas que llegaron por QR y esperan que el encargado confirme la
-            // recepcion (bloque destacado arriba del listado).
+            // recepcion (bloque destacado arriba del listado). Se acota igual que
+            // el listado para no filtrar carteras ajenas.
             'porConfirmar' => OrdenServicio::porConfirmar()
+                ->visiblePara($user)
                 ->with('sucursal')
                 ->latest('id')
                 ->get(),
+            // Aviso suave en la vista cuando el listado esta acotado a la cartera
+            // propia (el usuario ve menos ordenes a proposito, no por un bug).
+            'soloMiCartera' => ! $user->can('ver todo servicio tecnico'),
         ], $this->formData()));
     }
 
@@ -467,6 +478,10 @@ class ServicioTecnicoController extends Controller
 
     public function show(OrdenServicio $orden): View
     {
+        // Visibilidad por vendedor: no dejar abrir por URL una orden fuera de la
+        // cartera propia (quien tiene 'ver todo servicio tecnico' pasa siempre).
+        abort_unless($orden->esVisiblePara(auth()->user()), 403);
+
         $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos']);
 
         return view('admin.servicio-tecnico.show', [
@@ -501,6 +516,8 @@ class ServicioTecnicoController extends Controller
      */
     public function foto(OrdenServicioFoto $foto): StreamedResponse
     {
+        // Misma visibilidad por cartera que la ficha: la foto es parte del detalle.
+        abort_unless($foto->orden->esVisiblePara(auth()->user()), 403);
         abort_unless(Storage::disk('local')->exists($foto->ruta), 404);
 
         return Storage::disk('local')->response($foto->ruta);
@@ -933,6 +950,8 @@ class ServicioTecnicoController extends Controller
      */
     public function comprobanteCotizacion(OrdenServicioCotizacion $cotizacion): StreamedResponse
     {
+        // Dato sensible (transferencia): misma visibilidad por cartera que la ficha.
+        abort_unless($cotizacion->orden->esVisiblePara(auth()->user()), 403);
         abort_unless(
             $cotizacion->pago_comprobante_ruta && Storage::disk('local')->exists($cotizacion->pago_comprobante_ruta),
             404

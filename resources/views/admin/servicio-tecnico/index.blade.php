@@ -26,6 +26,16 @@
         <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
             <x-status-alert :status="session('status')" />
 
+            {{-- Visibilidad por vendedor: si el usuario no ve todo el taller, el
+                 listado esta acotado a la cartera de sus clientes (regla #2). Se
+                 avisa para que quede claro que ve menos ordenes a proposito. --}}
+            @if ($soloMiCartera ?? false)
+                <div class="flex items-start gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a1 1 0 0 0 0 2v3a1 1 0 0 0 1 1h1a1 1 0 1 0 0-2v-3a1 1 0 0 0-1-1H9Z" clip-rule="evenodd"/></svg>
+                    <span>Estás viendo solo las órdenes de <span class="font-medium text-neutral-700">tu cartera</span> (tus clientes{{-- jefatura: + equipo --}} y los de tu equipo). El técnico y la jefatura de ventas ven todas.</span>
+                </div>
+            @endif
+
             {{-- Por confirmar: maquinas que llegaron por QR (celular del cliente) y
                  esperan que quien autoriza (jefe de bodega / tecnico) revise los
                  datos y confirme la recepcion. --}}
