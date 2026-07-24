@@ -96,6 +96,46 @@ class SidebarTest extends TestCase
             ->assertSee('name="dg-menu"', false);
     }
 
+    public function test_campanita_vive_en_la_cabecera_antes_del_bloque_de_usuario(): void
+    {
+        // Pedido del dueño 24-07: la campanita se mudó de la cabecera del pie
+        // (donde se veía "extraña" junto al nombre) a la cabecera de la
+        // sidebar. Candado estructural por posición en el HTML (evita
+        // depender de clases CSS que otros avatares legítimos de la página
+        // también usan, ej. el círculo de técnico en el listado de ST).
+        $contenido = $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $posCampanita = strpos($contenido, 'data-menu-campanita');
+        $posUsuario = strpos($contenido, 'data-menu-usuario');
+
+        $this->assertNotFalse($posCampanita, 'Falta el marcador de la campanita en la cabecera.');
+        $this->assertNotFalse($posUsuario, 'Falta el marcador del bloque de usuario en el pie.');
+        $this->assertLessThan($posUsuario, $posCampanita, 'La campanita debe aparecer ANTES que el bloque de usuario.');
+    }
+
+    public function test_pie_de_la_sidebar_sin_avatar_de_iniciales(): void
+    {
+        // Pedido del dueño: el círculo de iniciales "es ruido, no aporta".
+        // Acotado al bloque data-menu-usuario (no a la página completa): la
+        // página SÍ puede tener otros avatares legítimos (ej. el círculo de
+        // técnico en un listado), así que no basta un assertDontSee global.
+        $contenido = $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $bloqueUsuario = substr($contenido, strpos($contenido, 'data-menu-usuario'));
+
+        $this->assertStringNotContainsString(
+            'bg-neutral-100 text-sm font-semibold uppercase',
+            $bloqueUsuario,
+            'El pie de la sidebar todavía renderiza el círculo de iniciales (x-avatar).'
+        );
+    }
+
     public function test_drawer_movil_nace_oculto_sin_flash(): void
     {
         // Candado del anti-flash pre-Alpine: la clase estática

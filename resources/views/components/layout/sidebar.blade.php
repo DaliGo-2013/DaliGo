@@ -5,9 +5,13 @@
      (layouts/app.blade.php). Anti-flash pre-Alpine: la clase estática
      max-lg:-translate-x-full oculta el drawer desde el primer paint; Alpine
      solo la RETIRA al abrir (nunca hay dos utilidades translate en pugna).
-     flex-col: el nav crece y el PIE (campanita + usuario) queda abajo —
-     en desktop NO hay topbar (el espacio vertical es área de trabajo,
-     pedido del dueño 24-07). --}}
+     flex-col: el nav crece y el PIE (usuario) queda abajo — en desktop NO
+     hay topbar (el espacio vertical es área de trabajo, pedido del dueño
+     24-07). La campanita vive en la CABECERA (desktop): pedido del dueño
+     24-07 tras QA — junto al nombre en el pie se veía "extraña"; en la
+     cabecera es "arriba a la derecha" del panel de nav, sin restar alto ni
+     chocar con los botones de acción que cada pantalla ya tiene arriba a
+     la derecha (evita el riesgo de un botón flotante sobre el contenido). --}}
 <aside
     class="fixed inset-y-0 left-0 z-40 flex w-[300px] max-lg:-translate-x-full flex-col border-r border-neutral-200 bg-white max-lg:transition-transform max-lg:duration-150 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[264px] lg:shrink-0"
     :class="{ 'max-lg:-translate-x-full': ! menuAbierto }">
@@ -17,6 +21,14 @@
             <x-application-logo class="h-9 w-9 text-base" />
             <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
         </a>
+
+        {{-- Campanita: SOLO desktop (móvil ya la tiene, siempre visible, en
+             su propia barra — regla QA 14-07). Mutuamente excluyente con el
+             botón de cerrar de abajo (lg:hidden): nunca se ven los dos. --}}
+        <div class="hidden lg:flex" data-menu-campanita>
+            @include('layouts.partials.campanita', ['dgNoLeidas' => $noLeidas, 'dgConteo' => $conteo, 'dgBadges' => $badges])
+        </div>
+
         <button type="button" @click="menuAbierto = false"
                 class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none lg:hidden">
             <x-icon.x-mark class="h-5 w-5" />
@@ -69,24 +81,21 @@
         @endforeach
     </nav>
 
-    {{-- PIE: campanita M15 + usuario (antes vivían en la topbar). El dropdown
-         de la campanita abre HACIA ARRIBA (direction=up). En móvil este mismo
-         pie va al fondo del drawer; la campana de la barra móvil se mantiene
-         aparte por la regla QA 14-07 (siempre visible, nunca solo dentro del
-         menú). --}}
-    <div class="shrink-0 border-t border-neutral-100 p-3">
+    {{-- PIE: usuario (la campanita se mudó a la cabecera, pulido 24-07). Sin
+         avatar de iniciales a propósito (pedido del dueño: "es ruido, no
+         aporta") — el chevron es la señal de "esto abre un menú". En móvil
+         este mismo pie va al fondo del drawer. --}}
+    <div class="shrink-0 border-t border-neutral-100 p-3" data-menu-usuario>
         <div class="flex items-center gap-1">
-            @include('layouts.partials.campanita', ['dgNoLeidas' => $noLeidas, 'dgConteo' => $conteo, 'dgBadges' => $badges, 'dgArriba' => true, 'dgAlign' => 'left'])
-
             <x-dropdown align="left" width="48" direction="up">
                 <x-slot name="trigger">
                     <button type="button" title="{{ Auth::user()->name }}"
-                            class="inline-flex max-w-full items-center gap-2 rounded-lg p-1.5 pe-3 transition duration-150 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none">
-                        <x-avatar size="h-8 w-8 text-xs">{{ $iniciales }}</x-avatar>
-                        <span class="min-w-0 text-start">
+                            class="flex w-full items-center gap-2 rounded-lg px-2 py-2.5 transition duration-150 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none">
+                        <span class="min-w-0 flex-1 text-start">
                             <span class="block truncate text-sm font-medium text-neutral-800">{{ Auth::user()->name }}</span>
                             <span class="block truncate text-xs text-neutral-500">{{ Auth::user()->email }}</span>
                         </span>
+                        <x-icon.chevron-down class="h-4 w-4 shrink-0 text-neutral-400" />
                     </button>
                 </x-slot>
 
