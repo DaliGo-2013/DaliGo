@@ -131,15 +131,16 @@
                     <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-1.5" />
                 </div>
 
-                {{-- Código del producto Dali: autocompletado contra el catálogo (SKU o
-                     nombre). Opcional; escribe el código que trae el equipo. --}}
-                <x-buscador-remoto
-                    name="producto_id"
-                    label="Código del equipo (producto Dali)"
-                    chip="Producto"
-                    :endpoint="route('ingreso-taller.buscar-producto')"
-                    placeholder="Escribe el código (SKU) o el nombre…"
-                    hint="Opcional. Búscalo por el código que trae el equipo (ej. LB-07)." />
+                {{-- Equipo: el cliente escribe A MANO la marca/modelo (o el código
+                     que trae el equipo). Sin catálogo: gerencia no quiere exponerle
+                     al cliente la variedad de productos. Opcional. --}}
+                <div>
+                    <x-input-label for="modelo" value="Equipo (marca y modelo)" />
+                    <x-text-input id="modelo" name="modelo" type="text" class="mt-1.5 block w-full"
+                                  :value="old('modelo')" maxlength="191" placeholder="Ej. Dispensador LB-16 blanco" />
+                    <x-input-hint>Escríbelo como lo conozcas: marca, modelo o color (opcional).</x-input-hint>
+                    <x-input-error :messages="$errors->get('modelo')" class="mt-1.5" />
+                </div>
 
                 {{-- N° de serie: obligatorio solo para dispensador/lavadora (serie
                      unica); opcional para bombas/herramientas. El asterisco y el
