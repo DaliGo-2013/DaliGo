@@ -96,6 +96,19 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Plantilla al resolverse una solicitud (va al solicitante); el asunto distingue Aprobada/Rechazada.',
             ],
+            // Ingreso de un equipo al taller por QR (aviso INTERNO a ventas + el
+            // técnico). Clave nueva → el firstOrCreate del seeder la crea en el
+            // deploy; no requiere migración.
+            [
+                'clave' => 'notif_plantilla_taller_ingresado',
+                'valor' => json_encode([
+                    'asunto' => 'Ingreso al taller: {cliente} ({condicion})',
+                    'cuerpo' => "{cliente} ingresó {maquinas} en {sucursal} ({condicion}).\nDetalle: {equipo}\n\nRevísalo y confírmalo en el listado: {url}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno (ventas + técnico) cuando un cliente ingresa un equipo por QR (unidad o lote).',
+            ],
             // Cotización del taller al cliente (P-M12-02, fase correo). Aviso
             // INTERNO a los roles del taller/ventas; la carta al cliente es un
             // Mailable dedicado (CotizacionCliente), no pasa por plantilla.

@@ -119,6 +119,48 @@ class IngresoTallerPublicoTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_el_ingreso_avisa_a_ventas_y_al_tecnico(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+        $bodega = tap(User::factory()->create())->assignRole('jefe_bodega');
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal))->assertSessionHasNoErrors();
+
+        // Fernando (técnico) + ventas reciben la campanita del ingreso.
+        foreach ([$tecnico, $jefe, $vendedor] as $u) {
+            $this->assertSame(1, \App\Models\Notificacion::where('user_id', $u->id)
+                ->where('evento', 'taller.ingresado')
+                ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->count(),
+                "Falta el aviso de ingreso a {$u->name}");
+        }
+        // El jefe de bodega NO va en este aviso (lo ve por el badge «por confirmar»).
+        $this->assertSame(0, \App\Models\Notificacion::where('user_id', $bodega->id)
+            ->where('evento', 'taller.ingresado')->count());
+    }
+
+    public function test_el_ingreso_por_garantia_tambien_avisa(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-1',
+            'garantia_doc_fecha' => now()->subMonth()->toDateString(),
+        ]))->assertSessionHasNoErrors();
+
+        // El corte de garantía es en la etapa de cotización; el INGRESO avisa igual.
+        $this->assertSame(1, \App\Models\Notificacion::where('user_id', $tecnico->id)
+            ->where('evento', 'taller.ingresado')
+            ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->count());
+    }
+
     public function test_formulario_ofrece_elegir_modo_de_ingreso(): void
     {
         $sucursal = $this->sucursal();

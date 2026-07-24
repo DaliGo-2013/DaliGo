@@ -98,4 +98,27 @@ class LoteServicio extends Model implements AuditableContract
     {
         return $this->belongsTo(User::class, 'conductor_id');
     }
+
+    /**
+     * Aviso interno de ingreso (M15) para un LOTE (varias máquinas de una vez):
+     * UN solo aviso resumido, no uno por máquina. Mismos roles que el ingreso por
+     * unidad (OrdenServicio::ROLES_AVISO_INGRESO). Secundario: el emisor lo
+     * envuelve en try/catch.
+     */
+    public function notificarIngresoInterno(): void
+    {
+        $datos = [
+            'cliente' => $this->cliente_nombre,
+            'equipo' => OrdenServicio::etiquetaTipo($this->tipo_default),
+            'maquinas' => $this->total_ordenes.' equipos',
+            'sucursal' => $this->sucursal?->nombre ?: '—',
+            'condicion' => $this->facturacion_default === 'garantia' ? 'Garantía' : 'Reparación',
+            'url' => route('admin.servicio-tecnico.index'),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(OrdenServicio::ROLES_AVISO_INGRESO)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
+    }
 }
