@@ -30,6 +30,7 @@ return [
         'editar recepcion servicio tecnico' => 'Editar recepción / eliminar orden (servicio técnico)',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
         'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
+        'aplicar descuento servicio tecnico' => 'Aplicar descuento en la cotización (servicio técnico)',
         'view notificaciones' => 'Ver notificaciones',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
