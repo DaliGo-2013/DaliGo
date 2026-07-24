@@ -34,6 +34,12 @@ class CotizacionGuardarTest extends TestCase
         return tap(User::factory()->create())->assignRole('tecnico');
     }
 
+    /** Jefatura de ventas: gestiona el taller y ADEMÁS puede aplicar descuentos. */
+    private function jefeVentas(): User
+    {
+        return tap(User::factory()->create())->assignRole('jefe_ventas');
+    }
+
     private function reparacion(array $overrides = []): OrdenServicio
     {
         return OrdenServicio::factory()->create(array_merge([
@@ -101,7 +107,8 @@ class CotizacionGuardarTest extends TestCase
         $this->tiempo('Cambio de caldera — funciona normal', 1.5);   // → 6000
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
-        $this->actingAs($this->tecnico())
+        // El descuento lo aplica jefatura de ventas (el técnico no está autorizado).
+        $this->actingAs($this->jefeVentas())
             ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
                 'descuento_pct' => 20,
                 'descuento_motivo' => 'cliente_grande',
@@ -125,13 +132,15 @@ class CotizacionGuardarTest extends TestCase
         $this->tiempo('Cambio de caldera — funciona normal', 1.5);
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
-        $this->actingAs($this->tecnico())
+        // Jefatura aplica el descuento…
+        $this->actingAs($this->jefeVentas())
             ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
                 'descuento_pct' => 20,
                 'descuento_motivo' => 'cliente_grande',
                 'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
             ]);
 
+        // …y el técnico re-guarda su parte (no toca el descuento).
         $this->actingAs($this->tecnico())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
@@ -162,13 +171,63 @@ class CotizacionGuardarTest extends TestCase
     {
         $orden = $this->reparacion();
 
-        $this->actingAs($this->tecnico())
+        $this->actingAs($this->jefeVentas())
             ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
                 'mano_obra' => 10000,
                 'descuento_pct' => 20,   // con descuento pero sin motivo
                 'repuestos' => [],
             ])
             ->assertSessionHasErrors('descuento_motivo');
+    }
+
+    public function test_el_tecnico_no_puede_aplicar_ni_quitar_descuento(): void
+    {
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
+
+        // Jefatura aplica 20%.
+        $this->actingAs($this->jefeVentas())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
+                'descuento_pct' => 20, 'descuento_motivo' => 'cliente_grande',
+                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+            ]);
+        $this->assertSame(20, $orden->fresh()->descuento_pct);
+
+        // El técnico re-guarda la cotización intentando QUITARLO → se ignora.
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
+                'descuento_pct' => 0,
+                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+            ]);
+        $this->assertSame(20, $orden->fresh()->descuento_pct, 'El técnico no puede quitar el descuento.');
+
+        // Y tampoco puede APLICAR uno nuevo en otra orden sin descuento.
+        $orden2 = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden2), [
+                'descuento_pct' => 15, 'descuento_motivo' => 'cliente_grande',
+                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+            ]);
+        $this->assertSame(0, $orden2->fresh()->descuento_pct, 'El técnico no puede aplicar descuento.');
+    }
+
+    public function test_la_vista_de_cotizacion_oculta_el_descuento_al_tecnico(): void
+    {
+        $orden = $this->reparacion(['trabajo_realizado' => 'Algo']);
+
+        // El técnico ve el aviso, no el selector de descuento.
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('Solo jefatura de ventas aplica descuentos');
+
+        // Jefatura de ventas SÍ ve el selector (no el aviso de bloqueo).
+        $this->actingAs($this->jefeVentas())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertDontSee('Solo jefatura de ventas aplica descuentos')
+            ->assertSee('name="descuento_pct"', false);
     }
 
     public function test_garantia_no_se_puede_cotizar(): void

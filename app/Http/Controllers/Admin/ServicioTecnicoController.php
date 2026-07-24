@@ -451,10 +451,31 @@ class ServicioTecnicoController extends Controller
 
     public function show(OrdenServicio $orden): View
     {
+        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos']);
+
         return view('admin.servicio-tecnico.show', [
-            'orden' => $orden->load(['producto', 'sucursal', 'repuestos', 'fotos']),
+            'orden' => $orden,
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
         ]);
+    }
+
+    /**
+     * Precio de venta (con IVA) del producto en el catálogo: prioriza una lista
+     * activa, si no cualquiera. Null si no hay producto o no tiene precio. Se usa
+     * para advertir cuando la reparación es cara respecto al valor del equipo.
+     */
+    private function precioVentaProducto(?Producto $producto): ?int
+    {
+        if (! $producto) {
+            return null;
+        }
+
+        $producto->loadMissing('precios.lista');
+        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
+            ?? $producto->precios->first();
+
+        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
     }
 
     /**
@@ -523,11 +544,15 @@ class ServicioTecnicoController extends Controller
      */
     public function cotizacion(OrdenServicio $orden): View
     {
+        $orden->load(['producto.precios.lista', 'repuestos']);
+
         return view('admin.servicio-tecnico.cotizacion', [
-            'orden' => $orden->load(['producto', 'repuestos']),
+            'orden' => $orden,
             'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
             // Valor hora vigente (para mostrar cómo se compone la mano de obra fija).
             'precioHoraServicio' => $this->precioHoraServicio(),
+            // Precio de venta del equipo: si la reparación supera el 40% se advierte.
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
             // Horas estándar del trabajo de esta orden (null si el trabajo no está
             // en el catálogo): la mano de obra se muestra de solo lectura.
             'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
@@ -578,14 +603,24 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
-        $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+        // El descuento es decisión COMERCIAL: solo quien tiene el permiso lo
+        // cambia (jefatura de ventas / admin). Si no lo tiene (p. ej. el técnico
+        // que arma la cotización), se conserva el descuento ya guardado — no puede
+        // aplicarlo ni quitarlo por más que manipule el formulario.
+        if ($request->user()->can('aplicar descuento servicio tecnico')) {
+            $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+            $descuentoMotivo = $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null;
+        } else {
+            $descuentoPct = (int) $orden->descuento_pct;
+            $descuentoMotivo = $orden->descuento_motivo;
+        }
 
         $orden->update([
             // Mano de obra FIJA por el trabajo (no se edita aquí): se recalcula
             // por si jefatura cambió el tiempo estándar en el ínterin.
             'mano_obra' => $this->manoObraDe($orden->trabajo_realizado),
             'descuento_pct' => $descuentoPct,
-            'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
+            'descuento_motivo' => $descuentoMotivo,
         ]);
 
         // Reemplazo de repuestos ya con precio. Nombre y cantidad vienen del parte

@@ -210,6 +210,23 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertRedirect(route('admin.servicio-tecnico.index'));
     }
 
+    public function test_tecnico_no_puede_editar_recepcion_ni_eliminar(): void
+    {
+        // Pedido de gerencia: el técnico mantiene registrar ingreso + parte del
+        // técnico + cotización, pero NO editar la recepción ni eliminar la orden.
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.edit', $orden))->assertForbidden();
+        $this->actingAs($tecnico)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
+        $this->actingAs($tecnico)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
+
+        // Conserva su flujo: registrar ingreso, parte del técnico y cotización.
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.create'))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertOk();
+    }
+
     public function test_vendedor_puede_ver_pero_no_gestionar(): void
     {
         // El seeder le da 'view servicio tecnico' al vendedor (solo lectura).
@@ -218,7 +235,12 @@ class ServicioTecnicoManagementTest extends TestCase
 
         // Ve listado y detalle.
         $this->actingAs($vendedor)->get('/admin/servicio-tecnico')->assertOk();
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))->assertOk();
+        // En la ficha NO se le ofrecen las pestañas de taller (no tiene 'manage'):
+        // así no ve enlaces que le darían 403.
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('Parte del técnico')
+            ->assertDontSee('Cotización');
 
         // No puede gestionar ni entrar al taller.
         $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertForbidden();
@@ -564,13 +586,23 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_admin_can_view_orden_detail(): void
     {
-        $orden = OrdenServicio::factory()->create(['cliente_nombre' => 'Detalle SpA']);
+        $orden = OrdenServicio::factory()->create([
+            'cliente_nombre' => 'Detalle SpA',
+            'falla_reportada' => 'No enfría, no calienta',
+        ]);
 
         $this->actingAs($this->admin())
             ->get(route('admin.servicio-tecnico.show', $orden))
             ->assertOk()
             ->assertSee('Detalle SpA')
-            ->assertSee($orden->folio);
+            ->assertSee($orden->folio)
+            // Barra de etapas en la ficha (admin gestiona → ve las 3).
+            ->assertSee('Recepción')
+            ->assertSee('Cotización')
+            ->assertSee('Parte del técnico')
+            // La falla reportada se muestra dentro de Equipo.
+            ->assertSee('Falla reportada')
+            ->assertSee('No enfría, no calienta');
     }
 
     public function test_member_cannot_view_orden_detail(): void
@@ -627,7 +659,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            // Barra de etapas (3 pestañas del flujo del técnico).
+            // Barra de etapas: el técnico ve las 3 (Recepción lo lleva a la ficha
+            // de solo lectura, ya que no puede editar la recepción).
             ->assertSee('Recepción')
             ->assertSee('Cotización')
             ->assertSee('Parte del técnico');
@@ -649,7 +682,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertSee('Detalle del presupuesto')
-            // Misma barra de etapas.
+            // Barra de etapas del técnico: ve las 3 (Recepción abre la ficha de
+            // solo lectura, porque no puede editar la recepción).
             ->assertSee('Recepción')
             ->assertSee('Parte del técnico');
     }
@@ -888,6 +922,43 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$orden->codigo)
             ->assertOk()->assertSee('Cliente Folio');
+    }
+
+    public function test_costo_desglosa_neto_e_iva_del_total_con_iva(): void
+    {
+        // Los precios del catálogo ya vienen con IVA → el total lo incluye. El
+        // neto se obtiene dividiendo por 1,19 y el IVA es la diferencia (cuadra exacto).
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'mano_obra' => 6248]);
+        $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 14024]);
+        $orden->refresh()->load('repuestos');
+
+        $this->assertSame(20272, $orden->costo_total);  // bruto (con IVA): 14024 + 6248
+        $this->assertSame(17035, $orden->costo_neto);   // 20272 / 1,19
+        $this->assertSame(3237, $orden->costo_iva);     // total − neto
+        $this->assertSame($orden->costo_total, $orden->costo_neto + $orden->costo_iva);
+
+        // La ficha muestra el desglose.
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Neto')
+            ->assertSee('IVA (19%)')
+            ->assertSee('Total con IVA');
+    }
+
+    public function test_advierte_cuando_la_reparacion_supera_el_40_del_valor_del_equipo(): void
+    {
+        $equipo = Producto::factory()->create();
+        Precio::factory()->create(['producto_id' => $equipo->id, 'precio_con_iva' => 50000]);
+
+        // Cara: 30.000 supera el 40% de 50.000 (= 20.000) → advertencia.
+        $cara = OrdenServicio::factory()->create(['producto_id' => $equipo->id, 'facturacion' => 'reparacion', 'mano_obra' => 30000]);
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $cara))
+            ->assertOk()->assertSee('Costo de reparación alto');
+
+        // Barata: 10.000 no llega al 40% → sin advertencia.
+        $barata = OrdenServicio::factory()->create(['producto_id' => $equipo->id, 'facturacion' => 'reparacion', 'mano_obra' => 10000]);
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $barata))
+            ->assertOk()->assertDontSee('Costo de reparación alto');
     }
 
     public function test_index_filtra_por_varios_estados(): void

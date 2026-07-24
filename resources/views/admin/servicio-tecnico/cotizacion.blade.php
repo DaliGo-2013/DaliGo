@@ -215,34 +215,55 @@
                                     <p class="mt-0.5 text-xs text-neutral-400">Elige el «Trabajo realizado» en Parte del técnico para fijar la mano de obra.</p>
                                 @endif
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <x-input-label for="descuento_pct" value="Descuento" />
-                                    <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
-                                        <option value="0">Sin descuento</option>
-                                        @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
-                                            <option value="{{ $pct }}">{{ $pct }}%</option>
-                                        @endforeach
-                                    </x-select>
-                                    <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                            {{-- El descuento es decisión COMERCIAL: solo jefatura de ventas
+                                 (permiso 'aplicar descuento servicio tecnico') lo edita. El
+                                 técnico lo ve en solo lectura (el total ya lo refleja). --}}
+                            @can('aplicar descuento servicio tecnico')
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <x-input-label for="descuento_pct" value="Descuento" />
+                                        <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">
+                                            <option value="0">Sin descuento</option>
+                                            @foreach (\App\Models\OrdenServicio::DESCUENTOS_PCT as $pct)
+                                                <option value="{{ $pct }}">{{ $pct }}%</option>
+                                            @endforeach
+                                        </x-select>
+                                        <x-input-error :messages="$errors->get('descuento_pct')" class="mt-2" />
+                                    </div>
+                                    <div x-show="descuentoPct > 0" x-cloak>
+                                        <x-input-label for="descuento_motivo" value="Motivo *" />
+                                        <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
+                                            <option value="">— Selecciona —</option>
+                                            @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
+                                                <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
+                                            @endforeach
+                                        </x-select>
+                                        <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                                    </div>
                                 </div>
-                                <div x-show="descuentoPct > 0" x-cloak>
-                                    <x-input-label for="descuento_motivo" value="Motivo *" />
-                                    <x-select id="descuento_motivo" name="descuento_motivo" class="mt-1.5" x-bind:required="descuentoPct > 0">
-                                        <option value="">— Selecciona —</option>
-                                        @foreach (\App\Models\OrdenServicio::DESCUENTO_MOTIVOS as $val => $label)
-                                            <option value="{{ $val }}" @selected(old('descuento_motivo', $orden->descuento_motivo) === $val)>{{ $label }}</option>
-                                        @endforeach
-                                    </x-select>
-                                    <x-input-error :messages="$errors->get('descuento_motivo')" class="mt-2" />
+                            @else
+                                <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+                                    <p class="text-xs text-neutral-500">Descuento</p>
+                                    @if ($orden->descuento_pct > 0)
+                                        <p class="mt-0.5 font-medium text-neutral-900">{{ $orden->descuento_pct }}%
+                                            <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></p>
+                                    @else
+                                        <p class="mt-0.5 text-neutral-500">Sin descuento.</p>
+                                    @endif
+                                    <p class="mt-1 text-xs text-neutral-400">Solo jefatura de ventas aplica descuentos.</p>
                                 </div>
-                            </div>
+                            @endcan
                         </div>
                         <div class="flex flex-col justify-end">
                             <div class="rounded-lg border border-brand-200 bg-brand-50 p-4">
-                                <p class="text-sm text-neutral-600">Costo total a pagar</p>
+                                <p class="text-sm text-neutral-600">Costo total a pagar (IVA incluido)</p>
                                 <p class="mt-0.5 text-2xl font-semibold text-neutral-900" x-text="clp(total)"></p>
-                                <p class="mt-0.5 text-xs text-neutral-500">
+                                {{-- Desglose de IVA en vivo: el total ya viene con IVA → neto = total/1,19. --}}
+                                <div class="mt-1.5 space-y-0.5 border-t border-brand-200 pt-1.5 text-xs text-neutral-600">
+                                    <div class="flex justify-between"><span>Neto</span><span x-text="clp(Math.round(total / 1.19))"></span></div>
+                                    <div class="flex justify-between"><span>IVA (19%)</span><span x-text="clp(total - Math.round(total / 1.19))"></span></div>
+                                </div>
+                                <p class="mt-1.5 text-xs text-neutral-500">
                                     Repuestos <span x-text="clp(totalRepuestos)"></span> + mano de obra.
                                 </p>
                                 <p x-show="descuentoPct > 0" x-cloak class="mt-1 text-xs font-medium text-brand-700">
@@ -252,6 +273,22 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Advertencia de gasto: si la reparación supera el 40% del
+                         valor del equipo (como la "pérdida total" de los autos).
+                         No bloquea: avisa para consultar al cliente. --}}
+                    @if ($precioVentaEquipo)
+                        @php $umbralAlto = (int) round($precioVentaEquipo * \App\Models\OrdenServicio::UMBRAL_REPARACION_ALTA); @endphp
+                        <div x-show="total > {{ $umbralAlto }}" x-cloak class="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+                            <p class="font-semibold">⚠️ Costo de reparación alto</p>
+                            <p class="mt-0.5">
+                                El total (<span x-text="clp(total)"></span>) es el
+                                <span class="font-semibold" x-text="Math.round(total / {{ $precioVentaEquipo }} * 100)"></span>%
+                                del valor del equipo ({{ $clp($precioVentaEquipo) }}) y supera el 40%.
+                                <span class="font-medium">Consulta con el cliente</span> si le conviene reparar o cambiar el equipo antes de continuar.
+                            </p>
+                        </div>
+                    @endif
 
                     <div class="mt-5 flex items-center justify-end border-t border-neutral-100 pt-5">
                         <x-primary-button>

@@ -74,8 +74,9 @@ class AgendaTerrenoTest extends TestCase
         ]);
         $t = AgendaTrabajo::first();
 
-        // Sin ?dia: la vista abre en HOY y muestra su trabajo como formulario editable.
-        $this->actingAs($this->tecnicoIndustrial())
+        // Sin ?dia: la vista abre en HOY y muestra su trabajo como formulario editable
+        // (para quien puede agendar; el vendedor sí).
+        $this->actingAs($this->vendedor())
             ->get('/admin/agenda-terreno')
             ->assertOk()
             ->assertSee('Lun')                                                   // calendario
@@ -87,8 +88,8 @@ class AgendaTerrenoTest extends TestCase
     public function test_dia_sin_trabajos_muestra_formulario_para_agregar(): void
     {
         // Un día del mes sin trabajos: la derecha muestra el form de "Nuevo trabajo"
-        // con la fecha prellenada (como cuando se ingresa por primera vez).
-        $this->actingAs($this->tecnicoIndustrial())
+        // con la fecha prellenada (quien puede agendar: el vendedor).
+        $this->actingAs($this->vendedor())
             ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-15')
             ->assertOk()
             ->assertSee('Nuevo trabajo')
@@ -119,8 +120,8 @@ class AgendaTerrenoTest extends TestCase
         ]);
 
         // Al seleccionar un día INTERMEDIO del viaje, el trabajo sigue apareciendo
-        // (se expande a cada día que abarca).
-        $this->actingAs($this->tecnicoIndustrial())
+        // (se expande a cada día que abarca). Con vendedor se ve como formulario.
+        $this->actingAs($this->vendedor())
             ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-09')
             ->assertOk()
             ->assertSee('Editar trabajo')
@@ -209,14 +210,15 @@ class AgendaTerrenoTest extends TestCase
         $this->actingAs($this->vendedor())->get('/admin/agenda-terreno/crear')->assertOk();
     }
 
-    public function test_tecnico_industrial_ve_y_ahora_agenda(): void
+    public function test_tecnico_industrial_ve_pero_no_agenda(): void
     {
+        // Pedido de gerencia: el técnico industrial SOLO ve su agenda; no agenda
+        // ni edita (eso lo hacen jefes/vendedores). Marcar realizado sí puede.
         $tecnico = $this->tecnicoIndustrial();
 
-        // Carlos (técnico industrial) ahora gestiona su agenda: ve, agenda y edita.
-        $this->actingAs($tecnico)->get('/admin/agenda-terreno')->assertOk();
-        $this->actingAs($tecnico)->get('/admin/agenda-terreno/crear')->assertOk();
-        $this->actingAs($tecnico)->post('/admin/agenda-terreno', $this->payload())->assertRedirect();
+        $this->actingAs($tecnico)->get('/admin/agenda-terreno')->assertOk();          // ve
+        $this->actingAs($tecnico)->get('/admin/agenda-terreno/crear')->assertForbidden();
+        $this->actingAs($tecnico)->post('/admin/agenda-terreno', $this->payload())->assertForbidden();
     }
 
     // --- Agendar ---
@@ -276,14 +278,15 @@ class AgendaTerrenoTest extends TestCase
         $this->assertSame('realizado', $agendado->fresh()->estado);
     }
 
-    public function test_tecnico_industrial_ahora_puede_cancelar(): void
+    public function test_tecnico_industrial_no_puede_cancelar(): void
     {
-        // Con su nuevo permiso de agendar, el técnico también cambia estados.
+        // Sin permiso de agendar, el técnico industrial NO cancela (solo marca
+        // realizado, cubierto por test_solo_ver_agenda_...).
         $agendado = AgendaTrabajo::factory()->create(['estado' => 'agendado']);
         $this->actingAs($this->tecnicoIndustrial())
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
-            ->assertRedirect();
-        $this->assertSame('cancelado', $agendado->fresh()->estado);
+            ->assertForbidden();
+        $this->assertSame('agendado', $agendado->fresh()->estado);
     }
 
     public function test_editar_conserva_un_servicio_que_quedo_inactivo(): void

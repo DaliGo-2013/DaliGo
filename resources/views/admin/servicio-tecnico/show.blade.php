@@ -24,6 +24,8 @@
                         <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" size="lg" variant="secondary" label="Reparación" title="Reparación (taller)">
                             <x-icon.wrench-screwdriver class="h-5 w-5" />
                         </x-icon-button>
+                    @endcan
+                    @can('editar recepcion servicio tecnico')
                         <x-icon-button :href="route('admin.servicio-tecnico.edit', $orden)" size="lg" variant="primary" label="Editar" title="Editar recepción">
                             <x-icon.pencil class="h-5 w-5" />
                         </x-icon-button>
@@ -35,6 +37,9 @@
 
     <div class="py-12">
         <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
+
+            {{-- Etapas de la orden: recepción (esta ficha) · cotización · parte del técnico. --}}
+            @include('admin.servicio-tecnico._tabs', ['activa' => 'recepcion'])
 
             <x-status-alert :status="session('status')" />
 
@@ -96,6 +101,17 @@
                     <div><dt class="text-xs text-neutral-400">Fecha de ingreso</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_ingreso?->format('d-m-Y') ?: '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Fecha de entrega (estimada)</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_entrega?->format('d-m-Y') ?: '—' }}</dd></div>
                     <div><dt class="text-xs text-neutral-400">Recibido por</dt><dd class="text-sm text-neutral-900">{{ $orden->recibida_por ?: '—' }}</dd></div>
+                    {{-- Falla reportada: dentro de Equipo (a ancho completo). --}}
+                    <div class="border-t border-neutral-100 pt-3 sm:col-span-2">
+                        <dt class="text-xs text-neutral-400">Falla reportada</dt>
+                        <dd class="mt-0.5 whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_reportada ?: '—' }}</dd>
+                    </div>
+                    @if ($orden->falla_tecnico)
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs text-neutral-400">Condiciones de entrega</dt>
+                            <dd class="mt-0.5 whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_tecnico }}</dd>
+                        </div>
+                    @endif
                 </dl>
             </div>
 
@@ -112,18 +128,6 @@
                     </dl>
                 </div>
             @endif
-
-            {{-- Falla --}}
-            <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Falla reportada</h3>
-                <p class="whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_reportada ?: '—' }}</p>
-                @if ($orden->falla_tecnico)
-                    <div class="mt-4 border-t border-neutral-100 pt-4">
-                        <dt class="text-xs text-neutral-400">Condiciones de entrega</dt>
-                        <dd class="mt-0.5 whitespace-pre-line text-sm text-neutral-900">{{ $orden->falla_tecnico }}</dd>
-                    </div>
-                @endif
-            </div>
 
             {{-- Reparacion (taller) --}}
             <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
@@ -184,11 +188,29 @@
                                         <span class="text-neutral-400">({{ $orden->descuento_motivo_label }})</span></dd>
                                 </div>
                             @endif
-                            <div><dt class="text-xs text-neutral-400">Costo total</dt><dd class="text-sm font-semibold text-neutral-900">{{ $clp($orden->costo_total) }}</dd></div>
+                            {{-- Desglose de IVA (los precios ya vienen con IVA): neto + IVA = total. --}}
+                            <div class="sm:col-span-2">
+                                <dt class="text-xs text-neutral-400">Costo (IVA incluido)</dt>
+                                <dd class="mt-1 space-y-0.5 text-sm">
+                                    <div class="flex justify-between"><span class="text-neutral-500">Neto</span><span class="text-neutral-900">{{ $clp($orden->costo_neto) }}</span></div>
+                                    <div class="flex justify-between"><span class="text-neutral-500">IVA (19%)</span><span class="text-neutral-900">{{ $clp($orden->costo_iva) }}</span></div>
+                                    <div class="flex justify-between border-t border-neutral-100 pt-0.5 font-semibold text-neutral-900"><span>Total con IVA</span><span>{{ $clp($orden->costo_total) }}</span></div>
+                                </dd>
+                            </div>
                         @endif
                         <div><dt class="text-xs text-neutral-400">Fecha de aviso al cliente</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_aviso?->format('d-m-Y') ?: '—' }}</dd></div>
                         <div><dt class="text-xs text-neutral-400">Fecha de retiro</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_retiro?->format('d-m-Y') ?: '—' }}</dd></div>
                     </dl>
+
+                    {{-- Advertencia de gasto: reparación > 40% del valor del equipo. --}}
+                    @if ($esReparacion && ($precioVentaEquipo ?? null) && $orden->costo_total > $precioVentaEquipo * \App\Models\OrdenServicio::UMBRAL_REPARACION_ALTA)
+                        <div class="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                            <p class="font-semibold">⚠️ Costo de reparación alto</p>
+                            <p class="mt-0.5">
+                                El total ({{ $clp($orden->costo_total) }}) es el {{ round($orden->costo_total / $precioVentaEquipo * 100) }}% del valor del equipo ({{ $clp($precioVentaEquipo) }}) y supera el 40%. Conviene consultar al cliente si le conviene reparar o cambiar el equipo.
+                            </p>
+                        </div>
+                    @endif
                 @endunless
             </div>
 

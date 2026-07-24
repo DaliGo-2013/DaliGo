@@ -100,6 +100,18 @@ class CotizacionEnviarTest extends TestCase
         $this->assertSame(14000, OrdenServicioCotizacion::first()->costo_total);
     }
 
+    public function test_snapshot_desglosa_neto_e_iva_del_total(): void
+    {
+        // El total del snapshot ya viene con IVA (14000): neto + IVA = total.
+        $this->enviar($this->ordenCotizable());
+
+        $c = OrdenServicioCotizacion::first();
+        $this->assertSame(14000, (int) $c->costo_total);
+        $this->assertSame(11765, $c->costo_neto);   // 14000 / 1,19
+        $this->assertSame(2235, $c->costo_iva);      // total − neto
+        $this->assertSame((int) $c->costo_total, $c->costo_neto + $c->costo_iva);
+    }
+
     public function test_reenvio_reemplaza_la_anterior_pero_no_las_respondidas(): void
     {
         $orden = $this->ordenCotizable();

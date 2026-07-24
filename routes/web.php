@@ -311,14 +311,28 @@ Route::middleware('auth')
             Route::post('servicio-tecnico/{orden}/detalle-trabajo', [ServicioTecnicoController::class, 'enviarDetalleTrabajo'])
                 ->whereNumber('orden')->name('servicio-tecnico.detalle-trabajo.enviar');
 
+            // Registrar ingreso (crear) queda en 'manage': el técnico SÍ registra
+            // equipos. Editar la recepción y eliminar se separan abajo.
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])
-                ->only(['create', 'store', 'edit', 'update', 'destroy']);
+                ->only(['create', 'store']);
 
             // Conductores (choferes de ruta) — administrables desde la app.
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
+        // EDITAR la recepción de una orden (datos de ingreso) y ELIMINARLA: permiso
+        // aparte para poder limitárselo al técnico (pedido de gerencia). El técnico
+        // conserva registrar ingreso + parte del técnico + cotización.
+        Route::middleware('permission:editar recepcion servicio tecnico')->group(function () {
+            Route::get('servicio-tecnico/{orden}/edit', [ServicioTecnicoController::class, 'edit'])
+                ->whereNumber('orden')->name('servicio-tecnico.edit');
+            Route::put('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'update'])
+                ->whereNumber('orden')->name('servicio-tecnico.update');
+            Route::delete('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'destroy'])
+                ->whereNumber('orden')->name('servicio-tecnico.destroy');
         });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.

@@ -20,7 +20,7 @@
                 <div class="text-2xl font-bold tracking-wide {{ $cotizacion->estado === 'aceptada' ? 'text-brand-600' : 'text-neutral-700' }}">
                     {{ $cotizacion->estado === 'aceptada' ? 'ACEPTO' : 'NO ACEPTO' }}
                 </div>
-                <div class="mt-1 text-sm text-neutral-500">Orden {{ $cotizacion->orden->folio }} · ${{ number_format((int) $cotizacion->costo_total, 0, ',', '.') }}</div>
+                <div class="mt-1 text-sm text-neutral-500">Orden {{ $cotizacion->orden->folio }} · ${{ number_format((int) $cotizacion->costo_total, 0, ',', '.') }} (IVA incluido)</div>
             </div>
 
             <p class="mt-5 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-700">
