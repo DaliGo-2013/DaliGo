@@ -40,9 +40,11 @@
                 @php $esActivo = request()->routeIs(...$modulo['activo']); @endphp
                 <a href="{{ route($modulo['route']) }}"@if ($esActivo) aria-current="page"@endif
                    class="{{ $esActivo
-                       ? 'flex items-center gap-3 rounded-lg bg-brand-50 px-3 py-3 text-sm font-medium text-brand-700 lg:py-2.5'
+                       ? 'flex items-center gap-3 rounded-lg bg-brand-50 px-3 py-3 text-sm font-semibold text-brand-700 lg:py-2.5'
                        : 'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-neutral-900 transition duration-150 hover:bg-neutral-50 lg:py-2.5' }}">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                    <span class="{{ $esActivo
+                        ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white'
+                        : 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700' }}">
                         <x-dynamic-component :component="'icon.' . $modulo['icon']" class="h-5 w-5" />
                     </span>
                     {{ $modulo['label'] }}
