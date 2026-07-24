@@ -257,6 +257,17 @@ class ProduccionReporte extends Model implements AuditableContract
         return $query->where('estado', self::ENVIADO);
     }
 
+    /**
+     * Devueltos de UN soplador (señal de "te toca corregir"): alimenta el
+     * badge de Mi producción en el menú. Sin filtro de fecha a propósito —
+     * un devuelto viejo sigue pendiente de acción.
+     */
+    public function scopeDevueltosDe(Builder $query, int $sopladorId): Builder
+    {
+        return $query->where('soplador_id', $sopladorId)
+            ->where('estado', self::DEVUELTO);
+    }
+
     public function scopeDelDia(Builder $query, $fecha = null): Builder
     {
         // Fallback en día de NEGOCIO (P-TZ-01): aunque hoy todos los callers

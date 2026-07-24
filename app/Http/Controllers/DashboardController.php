@@ -98,8 +98,7 @@ class DashboardController extends Controller
             $puedeVerExcepciones = true;
 
             // Espejo de la bandeja: el número = lo que verá al hacer click.
-            $bandeja = fn () => Aprobacion::where('estado', Aprobacion::ESTADO_PENDIENTE)
-                ->when(! $user->hasRole('admin'), fn ($q) => $q->whereIn('rol_aprobador', $user->getRoleNames()));
+            $bandeja = fn () => Aprobacion::bandejaDe($user);
             $pendientes = $bandeja()->count();
             if ($pendientes > 0) {
                 $excepciones[] = [

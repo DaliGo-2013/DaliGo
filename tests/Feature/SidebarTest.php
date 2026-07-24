@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Aprobacion;
 use App\Models\OrdenServicio;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -117,6 +118,68 @@ class SidebarTest extends TestCase
             ->assertSee(route('produccion.mi.index'), false)
             ->assertDontSee(route('admin.users.index'), false)
             ->assertDontSee('Administración');
+    }
+
+    public function test_categoria_del_item_activo_queda_marcada_aunque_se_cierre(): void
+    {
+        // data-activo lleva las clases ESTÁTICAS del "aquí estás trabajando":
+        // sobreviven al colapso manual y al acordeón exclusivo (pedido del
+        // dueño 24-07 — cerrar Comercial estando en Catálogo no debe apagar
+        // la señal).
+        $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('admin.productos.index'))
+            ->assertOk()
+            ->assertSee('data-activo="true"', false);
+    }
+
+    public function test_badges_de_pendientes_se_ven_en_el_menu(): void
+    {
+        // 1 solicitud pendiente (admin ve toda bandeja) + 1 ingreso QR por
+        // confirmar → pills con su title-contrato en el link directo
+        // Aprobaciones, el ítem Listado y la suma de la categoría ST cerrada.
+        Aprobacion::create([
+            'tipo_accion' => Aprobacion::ACCION_AJUSTE_REPORTE,
+            'motivo' => 'm', 'descripcion' => 'd', 'rol_aprobador' => 'jefe_bodega',
+        ]);
+        OrdenServicio::factory()->create(['fuente' => 'qr', 'confirmada_at' => null]);
+
+        $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('1 solicitud(es) por aprobar')
+            ->assertSee('1 ingreso(s) por confirmar')
+            ->assertSee('pendiente(s) en esta sección')
+            ->assertSee('group-open:hidden', false);
+    }
+
+    public function test_hub_de_la_campanita_gatea_las_funciones_por_permiso(): void
+    {
+        // Admin con historia de solicitante ve las 4 funciones del hub.
+        $admin = $this->usuarioCon('admin');
+        Aprobacion::create([
+            'tipo_accion' => Aprobacion::ACCION_AJUSTE_REPORTE,
+            'motivo' => 'm', 'descripcion' => 'd', 'rol_aprobador' => 'admin',
+            'solicitante_id' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Bandeja de aprobaciones')
+            ->assertSee('Mis solicitudes')
+            ->assertSee('Historial de aprobaciones')
+            ->assertSee('Panel de notificaciones');
+
+        // Soplador sin permisos NI solicitudes: el hub no aporta ninguno de
+        // esos hrefs (coherente con el candado de AprobacionAccionableTest:
+        // "Mis solicitudes" solo aparece para quien tiene historia).
+        $this->actingAs($this->usuarioCon('soplador'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Bandeja de aprobaciones')
+            ->assertDontSee('Mis solicitudes')
+            ->assertDontSee('Historial de aprobaciones')
+            ->assertDontSee('Panel de notificaciones');
     }
 
     public function test_topbar_muestra_el_titulo_del_modulo_activo(): void
