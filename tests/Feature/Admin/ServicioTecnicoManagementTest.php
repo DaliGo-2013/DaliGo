@@ -235,7 +235,12 @@ class ServicioTecnicoManagementTest extends TestCase
 
         // Ve listado y detalle.
         $this->actingAs($vendedor)->get('/admin/servicio-tecnico')->assertOk();
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))->assertOk();
+        // En la ficha NO se le ofrecen las pestañas de taller (no tiene 'manage'):
+        // así no ve enlaces que le darían 403.
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('Parte del técnico')
+            ->assertDontSee('Cotización');
 
         // No puede gestionar ni entrar al taller.
         $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertForbidden();
