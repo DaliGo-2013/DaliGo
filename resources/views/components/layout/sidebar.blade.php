@@ -24,7 +24,7 @@
     <nav class="space-y-1 px-3 py-4" aria-label="Menú principal">
         @foreach ($modulos as $key => $modulo)
             @isset($modulo['items'])
-                <x-sidebar-group :modulo="$modulo"
+                <x-sidebar-group :modulo="$modulo" :clave="$key"
                     :abierto="($activo['key'] ?? null) === $key"
                     :badge="isset($modulo['badge']) ? ($badges[$modulo['badge']] ?? 0) : 0">
                     @foreach ($modulo['items'] as $item)

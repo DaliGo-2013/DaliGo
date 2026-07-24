@@ -167,15 +167,26 @@ class MenuPrincipal
      * del View::composer de AppServiceProvider: COUNT liviano sobre la
      * columna indexada `estado`, solo para quien puede ver servicio técnico.
      *
+     * Memoizado EN EL REQUEST (los atributos mueren con él — seguro entre
+     * requests de un mismo test): sidebar y topbar lo piden en la misma
+     * página y el COUNT no debe correr dos veces.
+     *
      * @return array<string, int>
      */
     public static function badges(?User $user): array
     {
-        return [
-            'st_pendientes' => ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
-                ? OrdenServicio::pendientesTecnico()->count()
-                : 0,
-        ];
+        $atributos = request()->attributes;
+        $key = 'dg.menu.badges.'.($user?->id ?? 0);
+
+        if (! $atributos->has($key)) {
+            $atributos->set($key, [
+                'st_pendientes' => ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
+                    ? OrdenServicio::pendientesTecnico()->count()
+                    : 0,
+            ]);
+        }
+
+        return $atributos->get($key);
     }
 
     /**

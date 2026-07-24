@@ -9,7 +9,7 @@
                     </x-icon-button>
 
                     {{-- Las acciones secundarias (Informe, Lote, QR, Seguimiento…)
-                         viven en el dropdown «Servicio Técnico» del nav superior,
+                         viven en el acordeón «Servicio Técnico» de la sidebar,
                          para no duplicarlas. Aquí queda solo el CTA primario. --}}
                     @can('manage servicio tecnico')
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
@@ -236,7 +236,9 @@
              "por confirmar" en segundo plano; si llegaron ingresos nuevos por QR
              desde que cargó la página, muestra este banner para actualizar cuando
              el encargado quiera. Se pausa si la pestaña no está visible. --}}
-        <div id="aviso-nuevos" class="fixed inset-x-0 bottom-4 z-40 hidden text-center">
+        {{-- z-20: bajo el backdrop (z-30) y el drawer (z-40) del shell V4 —
+             con el menú móvil abierto el banner no debe flotar encima. --}}
+        <div id="aviso-nuevos" class="fixed inset-x-0 bottom-4 z-20 hidden text-center">
             <button type="button" onclick="window.location.reload()"
                 class="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
                 <span id="aviso-nuevos-texto">Llegaron ingresos nuevos por QR</span>

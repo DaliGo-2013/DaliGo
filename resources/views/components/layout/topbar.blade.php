@@ -9,13 +9,10 @@
         <span class="sr-only">Abrir menú</span>
     </button>
 
-    <span class="flex items-center gap-1.5 text-sm font-medium text-neutral-900">
-        {{ $activo['label'] ?? config('app.name', 'DaliGo') }}
-        @if ($badgeActivo > 0)
-            <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
-                  title="{{ str_replace(':n', $badgeActivo, $activo['badge_title'] ?? ':n') }}">{{ $badgeActivo }}</span>
-        @endif
-    </span>
+    {{-- h1 único de la página (a11y) y render PEGADO al tag a propósito:
+         la forma contigua `text-neutral-900">Label` es el ancla estable de
+         SidebarTest (doctrina anti verde-engañoso). --}}
+    <h1 class="flex items-center gap-1.5 text-sm font-medium text-neutral-900">{{ $activo['label'] ?? config('app.name', 'DaliGo') }}@if ($badgeActivo > 0) <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white" title="{{ str_replace(':n', $badgeActivo, $activo['badge_title'] ?? ':n') }}">{{ $badgeActivo }}</span>@endif</h1>
 
     <div class="ms-auto flex items-center gap-1">
         {{-- Campanita dropdown (desktop) — el partial M15 se reusa sin cambios. --}}
@@ -41,7 +38,7 @@
             <x-slot name="trigger">
                 <button type="button" title="{{ Auth::user()->name }}"
                         class="inline-flex items-center justify-center rounded-full p-1.5 transition duration-150 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none">
-                    <x-avatar class="h-8 w-8 text-xs">{{ $iniciales }}</x-avatar>
+                    <x-avatar size="h-8 w-8 text-xs">{{ $iniciales }}</x-avatar>
                     <span class="sr-only">Menú de usuario</span>
                 </button>
             </x-slot>

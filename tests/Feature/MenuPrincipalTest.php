@@ -73,6 +73,26 @@ class MenuPrincipalTest extends TestCase
         }
     }
 
+    public function test_todo_patron_activo_extra_matchea_rutas_registradas(): void
+    {
+        // activo_extra cubre pantallas de detalle sin ítem propio (show,
+        // cotización…): un typo en el patrón falla silencioso (el acordeón
+        // simplemente no abre). Candado: cada patrón matchea al menos una
+        // ruta registrada real.
+        $nombres = collect(Route::getRoutes()->getRoutes())
+            ->map(fn ($ruta) => $ruta->getName())
+            ->filter();
+
+        foreach (MenuPrincipal::MODULOS as $key => $modulo) {
+            foreach ($modulo['activo_extra'] ?? [] as $patron) {
+                $this->assertTrue(
+                    $nombres->contains(fn (string $nombre) => Str::is($patron, $nombre)),
+                    "El patrón activo_extra [{$patron}] del módulo [{$key}] no matchea ninguna ruta registrada."
+                );
+            }
+        }
+    }
+
     public function test_toda_key_de_badge_tiene_resolver(): void
     {
         $resueltas = array_keys(MenuPrincipal::badges(null));
