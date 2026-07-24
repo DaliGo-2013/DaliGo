@@ -19,20 +19,32 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
-        <div class="min-h-screen">
-            @include('layouts.navigation')
+        {{-- Shell V4 (menú Talana): sidebar izquierda + columna de contenido.
+             `menuAbierto` controla el drawer móvil (bajo lg:). min-w-0 en la
+             columna es OBLIGATORIO: sin él una tabla ancha revienta el flex y
+             aparece scroll horizontal (gate R-31). --}}
+        <div class="flex min-h-screen" x-data="{ menuAbierto: false }" @keydown.escape.window="menuAbierto = false">
+            <x-layout.sidebar />
 
-            @isset($header)
-                <header class="border-b border-neutral-200 bg-white">
-                    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endisset
+            {{-- Tocar fuera cierra el drawer (solo móvil). --}}
+            <div x-show="menuAbierto" x-cloak @click="menuAbierto = false"
+                 class="fixed inset-0 z-30 bg-neutral-900/30 lg:hidden" aria-hidden="true"></div>
 
-            <main>
-                {{ $slot }}
-            </main>
+            <div class="flex min-w-0 flex-1 flex-col">
+                <x-layout.topbar />
+
+                @isset($header)
+                    <header class="border-b border-neutral-200 bg-white">
+                        <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                            {{ $header }}
+                        </div>
+                    </header>
+                @endisset
+
+                <main class="flex-1">
+                    {{ $slot }}
+                </main>
+            </div>
         </div>
     </body>
 </html>

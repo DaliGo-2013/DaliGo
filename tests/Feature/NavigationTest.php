@@ -8,10 +8,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Menú "Servicio Técnico" de la barra superior: es un dropdown (como
- * Administración) cuyos ítems se muestran por permiso. Cada aserción usa
- * textos que solo pueden venir del nav en el dashboard (la cabecera de la
- * página de ST no se renderiza ahí), así que confirman el gateo del menú.
+ * Módulo "Servicio Técnico" del menú (sidebar V4: acordeón renderizado desde
+ * App\Support\MenuPrincipal) cuyos ítems se muestran por permiso. Cada
+ * aserción usa textos que solo pueden venir del menú en el dashboard (la
+ * cabecera de la página de ST no se renderiza ahí), así que confirman el
+ * gateo — vale igual para desktop y móvil porque ambos son el MISMO aside.
  */
 class NavigationTest extends TestCase
 {
