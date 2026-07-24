@@ -97,6 +97,25 @@ class FechaNegocioTest extends TestCase
             ->assertSee(route('produccion.mi.show', $reporte), false);
     }
 
+    public function test_el_historial_del_soplador_usa_la_ventana_del_dia_chileno(): void
+    {
+        // La ventana de 45 días sale del día de NEGOCIO: a las 23:00 de Chile el
+        // "hoy" UTC ya es mañana y la ventana se correría un día (el reporte del
+        // turno noche quedaría en el borde equivocado). Rojo si el método usa
+        // now() en vez de FechaNegocio::ahora().
+        $soplador = $this->userWithRole('soplador');
+        $reporte = $this->produccionDeHoyChileno($soplador);
+
+        $desdeEsperado = Carbon::parse(self::DIA_NEGOCIO)->subDays(44)->toDateString();
+
+        $this->actingAs($soplador)->get(route('produccion.mi.historial'))
+            ->assertOk()
+            ->assertSee('value="'.self::DIA_NEGOCIO.'"', false)   // hasta = hoy chileno
+            ->assertDontSee('value="'.self::DIA_UTC.'"', false)   // no el hoy UTC
+            ->assertSee('value="'.$desdeEsperado.'"', false)
+            ->assertSee('href="'.route('produccion.mi.show', $reporte).'"', false);
+    }
+
     public function test_la_cola_del_jefe_lista_el_dia_chileno_y_el_pulso_tiene_datos(): void
     {
         $soplador = $this->userWithRole('soplador');

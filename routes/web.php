@@ -368,10 +368,18 @@ Route::middleware(['auth', 'permission:report production'])
     ->name('produccion.')
     ->group(function () {
         Route::get('mi-reporte', [MiProduccionController::class, 'index'])->name('mi.index');
-        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->name('mi.show');
-        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->name('mi.update');
-        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->name('mi.registros.store');
-        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->name('mi.registros.destroy');
+        // Historial propio (ultimos 45 dias por defecto, filtro desde/hasta).
+        // Path HERMANO a proposito, NO 'mi-reporte/historial': el {reporte} de
+        // abajo captura cualquier segmento y el binding buscaria un reporte con
+        // id "historial" (404). Peor: el resultado depende del matcher (sin
+        // cache manda el orden de registro; con route:cache —que corre en cada
+        // deploy— manda el mapa estatico de Symfony) => divergencia local/prod.
+        Route::get('mi-historial', [MiProduccionController::class, 'historial'])->name('mi.historial');
+        // whereNumber: cinturon para el proximo que cuelgue un path bajo mi-reporte/.
+        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->whereNumber('reporte')->name('mi.show');
+        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->whereNumber('reporte')->name('mi.update');
+        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->whereNumber('reporte')->name('mi.registros.store');
+        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
     });
 
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
