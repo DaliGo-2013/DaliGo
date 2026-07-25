@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="formulario">
     <x-slot name="header">
         <x-page-header title="Registrar instalación" subtitle="Instalación / puesta en marcha en terreno."
                        :back="route('admin.instalaciones.index')" backTitle="Volver al registro">
@@ -11,20 +11,18 @@
     </x-slot>
 
     <div class="py-8 sm:py-12">
-        <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
-                 x-data="instalacionForm({
-                    endpointCliente: '{{ route('admin.instalaciones.buscar-cliente') }}',
-                    clienteId: {{ (int) old('cliente_id', 0) }},
-                 })">
-                <form id="instalacion-form" method="POST" action="{{ route('admin.instalaciones.store') }}" data-una-vez>
-                    @csrf
-                    @include('admin.instalaciones._form', ['instalacion' => null])
-                    <div class="mt-6">
-                        <x-primary-button class="w-full justify-center py-3 sm:w-auto">Registrar instalación</x-primary-button>
-                    </div>
-                </form>
-            </div>
+        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
+             x-data="instalacionForm({
+                endpointCliente: '{{ route('admin.instalaciones.buscar-cliente') }}',
+                clienteId: {{ (int) old('cliente_id', 0) }},
+             })">
+            <form id="instalacion-form" method="POST" action="{{ route('admin.instalaciones.store') }}" data-una-vez>
+                @csrf
+                @include('admin.instalaciones._form', ['instalacion' => null])
+                <div class="mt-6">
+                    <x-primary-button class="w-full justify-center py-3 sm:w-auto">Registrar instalación</x-primary-button>
+                </div>
+            </form>
         </div>
     </div>
 </x-app-layout>

@@ -1,10 +1,10 @@
-<x-app-layout>
+<x-app-layout ancho="formulario">
     {{-- Bandeja movil del aprobador (M14): pantalla de celular en terreno —
          titulo compacto en una linea (sin banda de cabecera), tarjetas con lo
          justo, aprobar en <=2 taps, rechazo con motivo obligatorio en un
          colapsable por tarjeta. Las solicitudes van SEPARADAS POR CATEGORIA
          (tipo de accion): hoy un solo tipo, listo para M04/M05/M07/M13. --}}
-    <div class="mx-auto max-w-2xl space-y-4 px-4 py-6 sm:px-6">
+    <div class="space-y-4 py-6">
         <div class="flex items-center justify-between gap-3">
             <h1 class="text-xl font-semibold text-neutral-900">
                 Aprobaciones
