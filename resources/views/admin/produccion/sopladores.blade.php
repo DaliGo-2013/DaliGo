@@ -1,10 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Sopladores" subtitle="Entra a un soplador para ver su historial de asignaciones y producción.">
-            <x-slot name="action">
-                <x-secondary-link :href="route('admin.produccion.index')">← Producción</x-secondary-link>
-            </x-slot>
-        </x-page-header>
+        <x-page-header title="Sopladores" subtitle="Entra a un soplador para ver su historial de asignaciones y producción."
+                       :back="route('admin.produccion.index')" backTitle="Volver a Producción" />
     </x-slot>
 
     <div class="py-12">

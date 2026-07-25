@@ -6,14 +6,11 @@
 --}}
 <x-app-layout>
     <x-slot name="header">
+        {{-- Sin "Volver": es un ítem del menú (acordeón Servicio Técnico), no
+             cuelga del listado. Se llega y se sale por la sidebar. --}}
         <x-page-header title="Códigos QR" subtitle="Imprime y pega uno en el mostrador de cada sucursal.">
             <x-slot name="action">
-                <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-primary-button type="button" onclick="window.print()">Imprimir</x-primary-button>
-                </div>
+                <x-primary-button type="button" onclick="window.print()">Imprimir</x-primary-button>
             </x-slot>
         </x-page-header>
     </x-slot>

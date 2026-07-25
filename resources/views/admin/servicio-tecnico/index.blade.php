@@ -3,11 +3,8 @@
         <x-page-header title="Servicio Técnico" subtitle="Ingreso de máquinas y lavadoras al taller.">
             <x-slot name="action">
                 <div class="flex items-center gap-2">
-                    {{-- Volver al inicio (visible para todos los que ven el listado). --}}
-                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-
+                    {{-- Sin "Volver": este listado ES un ítem del menú, no tiene
+                         pantalla padre (doctrina del botón único, 24-07). --}}
                     {{-- Las acciones secundarias (Informe, Lote, QR, Seguimiento…)
                          viven en el acordeón «Servicio Técnico» de la sidebar,
                          para no duplicarlas. Aquí queda solo el CTA primario. --}}

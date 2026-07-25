@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\MenuPrincipal;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
@@ -105,5 +108,81 @@ class VolverTest extends TestCase
 
         $this->assertSame(0, $this->cuantosVolver($html),
             'Un listado del menú no lleva Volver: se llega por la sidebar.');
+    }
+
+    /**
+     * Los FORMULARIOS que además son ítem del menú son la única excepción: por
+     * decisión del dueño un formulario tiene exactamente una salida, y es el
+     * Volver (reemplazó a la X y al "Cancelar"). En lote/create el destino se
+     * calcula por permiso: el conductor no puede ver el listado de ST (403), así
+     * que para él el padre es el Inicio.
+     */
+    private const FORMULARIOS_DEL_MENU = ['admin.servicio-tecnico.lote.create'];
+
+    /**
+     * Candado DERIVADO de MenuPrincipal: cubre solo los ítems del menú de hoy y
+     * cualquiera que se agregue mañana, sin mantener una lista a mano. Atrapó
+     * drift real al construir esto (qr, seguimiento y informes son ítems del
+     * menú y se les había puesto Volver por error).
+     */
+    public function test_ningun_item_del_menu_lleva_volver(): void
+    {
+        $usuario = User::factory()->create();
+        $usuario->givePermissionTo(Permission::all()); // todo el menú alcanzable
+
+        $revisados = 0;
+
+        foreach (MenuPrincipal::items() as $key => $item) {
+            if (in_array($item['route'], self::FORMULARIOS_DEL_MENU, true)) {
+                continue;
+            }
+
+            // Los ítems con parámetros en la URL no se pueden pedir sin fixtures.
+            $ruta = Route::getRoutes()->getByName($item['route']);
+            if ($ruta === null || $ruta->parameterNames() !== []) {
+                continue;
+            }
+
+            $html = $this->actingAs($usuario)->get(route($item['route']))->assertOk()->getContent();
+            $revisados++;
+
+            $this->assertSame(0, $this->cuantosVolver($html),
+                "El ítem de menú [{$key}] ({$item['route']}) NO debe llevar Volver: "
+                .'se llega por la sidebar, no cuelga de un listado.');
+        }
+
+        // Si un refactor deja items() vacío o todo con parámetros, el foreach no
+        // asserta nada y el test pasaría en falso.
+        $this->assertGreaterThan(10, $revisados, 'Se revisaron muy pocos ítems del menú.');
+    }
+
+    /**
+     * Excepción obligatoria: Máquinas, Tipos de botellón y Conductores NO están
+     * en el menú (huérfanas, P-NAV-06 pendiente), así que su Volver es la ÚNICA
+     * salida. Este candado documenta la excepción y avisa en los dos sentidos:
+     * si alguien les quita el Volver, el usuario queda atrapado; si alguien las
+     * agrega al menú, hay que quitárselo.
+     */
+    public function test_los_listados_huerfanos_conservan_su_volver(): void
+    {
+        $huerfanos = [
+            'admin.maquinas.index' => 'admin.produccion.index',
+            'admin.tipos-botellon.index' => 'admin.produccion.index',
+            'admin.conductores.index' => 'admin.servicio-tecnico.index',
+        ];
+
+        $enElMenu = array_column(MenuPrincipal::items(), 'route');
+
+        foreach ($huerfanos as $ruta => $padre) {
+            $this->assertNotContains($ruta, $enElMenu,
+                "[{$ruta}] ya está en el menú: quítale el Volver y sácala de esta lista.");
+
+            $html = $this->actingAs($this->admin())->get(route($ruta))->assertOk()->getContent();
+
+            $this->assertSame(1, $this->cuantosVolver($html),
+                "[{$ruta}] es huérfana (no está en el menú): su Volver es la única salida.");
+            $this->assertStringContainsString('href="'.route($padre).'" data-dg-volver', $html,
+                "[{$ruta}] debe volver a [{$padre}].");
+        }
     }
 }

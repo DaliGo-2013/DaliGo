@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Máquinas" subtitle="Máquinas sopladoras por sucursal.">
+        {{-- Excepción sancionada a "un listado del menú no lleva Volver": esta
+             pantalla NO está en MenuPrincipal (huérfana, P-NAV-06 pendiente), así
+             que su Volver es la ÚNICA salida. Cuando entre al menú, se le quita. --}}
+        <x-page-header title="Máquinas" subtitle="Máquinas sopladoras por sucursal."
+                       :back="route('admin.produccion.index')" backTitle="Volver a Producción">
             <x-slot name="action">
                 <x-button-link :href="route('admin.maquinas.create')">
                     <x-icon.plus class="h-4 w-4" />
@@ -57,9 +61,6 @@
                 @endforelse
             </x-list-card>
 
-            <div class="mt-6">
-                <x-secondary-link :href="route('admin.produccion.index')">← Volver a Producción</x-secondary-link>
-            </div>
         </div>
     </div>
 </x-app-layout>

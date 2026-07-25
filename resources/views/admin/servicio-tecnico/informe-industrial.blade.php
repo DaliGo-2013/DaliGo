@@ -2,13 +2,8 @@
      repuestos en números, % por tipo de trabajo y servicios más usados. --}}
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Informe · Industrial" subtitle="Estadísticas del servicio en terreno por período.">
-            <x-slot name="action">
-                <x-icon-button :href="route('admin.servicio-tecnico.informe')" size="lg" variant="secondary" label="Volver a informes" title="Volver a informes">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
-            </x-slot>
-        </x-page-header>
+        <x-page-header title="Informe · Industrial" subtitle="Estadísticas del servicio en terreno por período."
+                       :back="route('admin.servicio-tecnico.informe')" backTitle="Volver a informes" />
     </x-slot>
 
     <div class="py-12">

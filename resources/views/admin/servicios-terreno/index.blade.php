@@ -2,15 +2,10 @@
     <x-slot name="header">
         <x-page-header title="Catálogo de servicios de terreno" subtitle="Tarifario en UF del técnico industrial (editable).">
             <x-slot name="action">
-                <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('admin.agenda-terreno.index')" size="lg" variant="secondary" label="Volver" title="Volver a la agenda">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-button-link :href="route('admin.servicios-terreno.create')">
-                        <x-icon.plus class="h-4 w-4" />
-                        Nuevo servicio
-                    </x-button-link>
-                </div>
+                <x-button-link :href="route('admin.servicios-terreno.create')">
+                    <x-icon.plus class="h-4 w-4" />
+                    Nuevo servicio
+                </x-button-link>
             </x-slot>
         </x-page-header>
     </x-slot>

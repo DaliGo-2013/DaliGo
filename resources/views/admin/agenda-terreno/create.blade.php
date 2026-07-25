@@ -1,15 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Agendar trabajo" subtitle="Mantención, reparación o instalación en terreno.">
+        <x-page-header title="Agendar trabajo" subtitle="Mantención, reparación o instalación en terreno."
+                       :back="route('admin.agenda-terreno.index')" backTitle="Volver a la agenda">
             <x-slot name="action">
-                <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('admin.agenda-terreno.index')" size="lg" variant="secondary" label="Volver" title="Volver a la agenda">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-icon-button type="submit" form="agenda-form" size="lg" variant="primary" label="Guardar" title="Agendar">
-                        <x-icon.check class="h-5 w-5" />
-                    </x-icon-button>
-                </div>
+                <x-icon-button type="submit" form="agenda-form" size="lg" variant="primary" label="Guardar" title="Agendar">
+                    <x-icon.check class="h-5 w-5" />
+                </x-icon-button>
             </x-slot>
         </x-page-header>
     </x-slot>

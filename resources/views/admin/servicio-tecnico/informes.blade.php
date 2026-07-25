@@ -2,13 +2,10 @@
      elegir el dominio — Dispensadores (taller) e Industrial (terreno). --}}
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Informes · Servicio Técnico" subtitle="Elige qué estadísticas quieres ver.">
-            <x-slot name="action">
-                <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver al listado" title="Volver al listado">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
-            </x-slot>
-        </x-page-header>
+        {{-- Sin "Volver": es un ítem del menú. Las dos pantallas que cuelgan de
+             aquí (informe-dispensadores, informe-industrial) sí lo llevan, y
+             apuntan a esta. --}}
+        <x-page-header title="Informes · Servicio Técnico" subtitle="Elige qué estadísticas quieres ver." />
     </x-slot>
 
     <div class="py-12">

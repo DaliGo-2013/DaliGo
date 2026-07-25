@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="$bodega->nombre" subtitle="Stock espejado desde Bsale (solo lectura)." />
+        <x-page-header :title="$bodega->nombre" subtitle="Stock espejado desde Bsale (solo lectura)."
+                       :back="route('admin.bodegas.index')" backTitle="Volver a bodegas" />
     </x-slot>
 
     <div class="py-12">
@@ -75,9 +76,6 @@
                 <div>{{ $stocks->links() }}</div>
             @endif
 
-            <div>
-                <x-secondary-link :href="route('admin.bodegas.index')">← Volver a bodegas</x-secondary-link>
-            </div>
         </div>
     </div>
 </x-app-layout>

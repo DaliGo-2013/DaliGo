@@ -2,15 +2,10 @@
     <x-slot name="header">
         <x-page-header title="Instalaciones" subtitle="Registro de instalaciones y puestas en marcha del técnico industrial.">
             <x-slot name="action">
-                <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                    <x-button-link :href="route('admin.instalaciones.create')">
-                        <x-icon.plus class="h-4 w-4" />
-                        Registrar instalación
-                    </x-button-link>
-                </div>
+                <x-button-link :href="route('admin.instalaciones.create')">
+                    <x-icon.plus class="h-4 w-4" />
+                    Registrar instalación
+                </x-button-link>
             </x-slot>
         </x-page-header>
     </x-slot>

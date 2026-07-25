@@ -3,9 +3,10 @@
          Título y fecha en una sola línea compacta. --}}
     <div class="py-4 sm:py-8">
         <div class="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
-            <x-secondary-link :href="route('produccion.mi.index')" class="mb-3 inline-flex items-center gap-1">
-                <span aria-hidden="true">&larr;</span> Mis producciones
-            </x-secondary-link>
+            {{-- El <x-volver> va suelto en el cuerpo (no en un page-header): esta
+                 pantalla omite la banda de cabecera a propósito. Misma posición
+                 relativa —antes del título— y mismo pixel que en el resto de la app. --}}
+            <x-volver :href="route('produccion.mi.index')" titulo="Volver a Mis producciones" class="mb-3" />
             <div class="mb-3 flex items-baseline justify-between gap-3">
                 <h2 class="text-lg font-semibold leading-tight text-neutral-900">Mi producción</h2>
                 <p class="text-xs text-neutral-500">{{ ($reporte?->fecha ?? \App\Support\FechaNegocio::ahora())->translatedFormat('l d \\d\\e F') }}</p>

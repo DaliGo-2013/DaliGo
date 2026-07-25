@@ -1,21 +1,16 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Ingreso por lote" subtitle="Retiro en ruta · varias máquinas de una empresa.">
-            <x-slot name="action">
-                {{-- El conductor solo tiene 'crear lote servicio' y esta es su UNICA
-                     pantalla: el listado de ST le daba 403 cada vez que tocaba
-                     "Volver". Para el, "Volver" es el Inicio. --}}
-                @canany(['view servicio tecnico', 'manage servicio tecnico'])
-                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                @else
-                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver" title="Volver al Inicio">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
-                @endcanany
-            </x-slot>
-        </x-page-header>
+        {{-- El conductor solo tiene 'crear lote servicio' y esta es su ÚNICA
+             pantalla: el listado de ST le daba 403 cada vez que tocaba "Volver".
+             Para él, el padre es el Inicio. El destino se calcula aquí (la prop
+             :back recibe una URL, no una ruta, justamente para esto). --}}
+        @php
+            $volverA = auth()->user()->canAny(['view servicio tecnico', 'manage servicio tecnico'])
+                ? ['url' => route('admin.servicio-tecnico.index'), 'titulo' => 'Volver al listado']
+                : ['url' => route('dashboard'), 'titulo' => 'Volver al Inicio'];
+        @endphp
+        <x-page-header title="Ingreso por lote" subtitle="Retiro en ruta · varias máquinas de una empresa."
+                       :back="$volverA['url']" :backTitle="$volverA['titulo']" />
     </x-slot>
 
     <div class="py-8">

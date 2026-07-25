@@ -1,10 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Importar catálogo" subtitle="Carga masiva de productos desde un CSV.">
-            <x-slot name="action">
-                <x-secondary-link :href="route('admin.productos.index')">Volver al catálogo</x-secondary-link>
-            </x-slot>
-        </x-page-header>
+        <x-page-header title="Importar catálogo" subtitle="Carga masiva de productos desde un CSV."
+                       :back="route('admin.productos.index')" backTitle="Volver al catálogo" />
     </x-slot>
 
     <div class="py-12">
