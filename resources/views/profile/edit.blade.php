@@ -5,35 +5,33 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
-            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-profile-information-form')
-                </div>
+    <div class="space-y-6 py-12">
+        <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+            <div class="max-w-xl">
+                @include('profile.partials.update-profile-information-form')
             </div>
+        </div>
 
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+            <div class="max-w-xl">
+                @include('profile.partials.update-password-form')
+            </div>
+        </div>
+
+        {{-- Solo Luis + administradores TI gestionan los canales (pedido del
+             jefe). El resto de usuarios queda con el default del sistema
+             (campanita siempre + correo) y no ve esta tarjeta. --}}
+        @can('gestionar notificaciones')
             <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="max-w-xl">
-                    @include('profile.partials.update-password-form')
+                    @include('profile.partials.preferencias-notificaciones', ['user' => $user])
                 </div>
             </div>
+        @endcan
 
-            {{-- Solo Luis + administradores TI gestionan los canales (pedido del
-                 jefe). El resto de usuarios queda con el default del sistema
-                 (campanita siempre + correo) y no ve esta tarjeta. --}}
-            @can('gestionar notificaciones')
-                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
-                    <div class="max-w-xl">
-                        @include('profile.partials.preferencias-notificaciones', ['user' => $user])
-                    </div>
-                </div>
-            @endcan
-
-            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
-                <div class="max-w-xl">
-                    @include('profile.partials.delete-user-form')
-                </div>
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+            <div class="max-w-xl">
+                @include('profile.partials.delete-user-form')
             </div>
         </div>
     </div>

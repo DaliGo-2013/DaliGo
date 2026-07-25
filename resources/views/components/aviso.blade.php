@@ -1,4 +1,4 @@
-@props(['aviso' => null])
+@props(['aviso' => null, 'maxW' => 'max-w-7xl'])
 
 {{-- Mini-notificacion de BLOQUEO (403/404): la escribe el render() de
      bootstrap/app.php cuando manda al usuario al Inicio, y explica por que la
@@ -18,8 +18,11 @@
      que estas en el Inicio — si se esconde solo, quien mire el celular tarde
      queda sin saber que paso. Muere igual en la siguiente navegacion. --}}
 @if ($aviso)
+    {{-- $maxW lo pasa el layout: sin eso, en una vista angosta este aviso queda
+         corrido respecto del título y del contenido (tres bordes izquierdos
+         distintos en la misma página). --}}
     <div data-aviso x-data="{ visible: true }" x-show="visible"
-         class="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+         class="mx-auto {{ $maxW }} px-4 pt-4 sm:px-6 lg:px-8">
         <div role="status" aria-live="polite"
              class="dg-enter flex items-start gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 shadow-sm">
             <x-icon.information-circle class="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />

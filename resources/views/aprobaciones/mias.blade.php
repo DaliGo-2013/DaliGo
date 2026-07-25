@@ -1,8 +1,8 @@
-<x-app-layout>
+<x-app-layout ancho="formulario">
     {{-- Historial personal del solicitante (M14): que pedi, en que quedo y por
          que. Solo lectura; el mismo idioma compacto de la bandeja, SEPARADO POR
          CATEGORIA (tipo de solicitud). --}}
-    <div class="mx-auto max-w-2xl space-y-4 px-4 py-6 sm:px-6">
+    <div class="space-y-4 py-6">
         <div class="flex items-center justify-between gap-3">
             <h1 class="text-xl font-semibold text-neutral-900">Mis solicitudes</h1>
             @can('aprobar solicitudes')
