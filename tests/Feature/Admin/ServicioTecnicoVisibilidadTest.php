@@ -111,7 +111,13 @@ class ServicioTecnicoVisibilidadTest extends TestCase
         $ordenAjena = OrdenServicio::factory()->create(['cliente_rut' => '99999999-9']);
         $foto = $ordenAjena->fotos()->create(['ruta' => 'ordenes-servicio/fotos/'.$ordenAjena->id.'/x.jpg']);
 
-        $this->actingAs($vendedorA)->get(route('admin.servicio-tecnico.foto', $foto))->assertRedirect(route('dashboard'))
-            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        // Este endpoint se consume como <img src> (_fotos.blade.php:12), no como
+        // navegacion: el navegador lo pide con Sec-Fetch-Mode: no-cors, asi que
+        // conserva su 403 en vez de redirigir (redirigir devolveria HTML donde el
+        // navegador espera una imagen). Se manda el header para probar el contrato
+        // REAL y no el de un GET de navegacion (gate R-31, 2026-07-24).
+        $this->actingAs($vendedorA)
+            ->get(route('admin.servicio-tecnico.foto', $foto), ['Sec-Fetch-Mode' => 'no-cors'])
+            ->assertForbidden();
     }
 }

@@ -24,11 +24,13 @@
              class="dg-enter flex items-start gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 shadow-sm">
             <x-icon.information-circle class="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
             <p class="min-w-0 flex-1 text-sm font-medium text-neutral-800">{{ $aviso }}</p>
-            <button type="button" x-on:click="visible = false"
-                    class="-me-2 -mt-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-brand-600 transition duration-150 hover:bg-brand-100 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40">
+            {{-- x-icon-button (no un <button> a mano): trae el objetivo tactil
+                 estandar del proyecto (size=lg = 48px), el anillo de foco y el
+                 sr-only del label. --}}
+            <x-icon-button variant="brand" size="lg" label="Cerrar aviso"
+                           x-on:click="visible = false" class="-me-2 -mt-2 shrink-0">
                 <x-icon.x-mark class="h-5 w-5" />
-                <span class="sr-only">Cerrar aviso</span>
-            </button>
+            </x-icon-button>
         </div>
     </div>
 @endif

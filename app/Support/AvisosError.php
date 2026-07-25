@@ -44,14 +44,33 @@ final class AvisosError
         'This action is unauthorized.',
     ];
 
-    /** ¿El mensaje de la excepcion lo escribimos NOSOTROS en un abort()? */
+    /**
+     * ¿El mensaje de la excepcion lo escribimos NOSOTROS en un abort()?
+     *
+     * Ademas de la lista de arriba se descarta lo que PAREZCA interno, porque el
+     * default de este metodo es "mostrar el texto tal cual": un abort(403, ...)
+     * de un paquete vendor, o de alguien que no leyo D-014, se le imprimiria al
+     * usuario. Los mensajes propios del proyecto son frases cortas en español;
+     * los del framework traen FQCN (`App\Models\...`, corchetes) o son largos.
+     */
     public static function tieneMensajePropio(HttpException $e): bool
     {
         if ($e instanceof UnauthorizedException || $e instanceof InvalidSignatureException) {
             return false;
         }
 
-        return ! in_array(trim($e->getMessage()), self::DEL_FRAMEWORK, true);
+        $mensaje = trim($e->getMessage());
+
+        if (in_array($mensaje, self::DEL_FRAMEWORK, true)) {
+            return false;
+        }
+
+        // Huele a internals: FQCN, corchetes de clase, o un parrafo entero.
+        if (mb_strlen($mensaje) > 160 || preg_match('/[\\\\\[\]{}]|::/', $mensaje) === 1) {
+            return false;
+        }
+
+        return true;
     }
 
     /** El texto que se le muestra al usuario para un 403. */

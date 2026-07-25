@@ -104,18 +104,33 @@ class ManejoErroresTest extends TestCase
 
     // --- 404 ----------------------------------------------------------------
 
-    public function test_una_uri_sin_ruta_muestra_la_pagina_con_marca_con_salida_al_inicio(): void
+    public function test_una_uri_sin_ruta_siempre_ofrece_la_salida_al_inicio(): void
     {
-        // Frontera VERIFICADA empiricamente: una URI que no matchea NINGUNA ruta
-        // se resuelve ANTES del middleware `web`, asi que no hay sesion ni usuario
-        // y no se puede redirigir con un flash. Igual no se ve la pantalla de
-        // Symfony: le toca errors/404.blade.php, con su boton "Ir al Inicio".
-        // (Un 404 lanzado DENTRO de una ruta —binding que no resuelve— si redirige;
-        // eso lo cubre el test de abajo.)
-        $this->actingAs($this->soplador())->get('/esto-no-existe-en-ninguna-parte')
+        // Frontera verificada: una URI que no matchea NINGUNA ruta se resuelve
+        // ANTES del grupo `web`, asi que NO corre StartSession y `@auth` es false
+        // aunque el usuario tenga sesion => la pagina no puede condicionar el
+        // boton a estar autenticado (gate R-31: con @auth el usuario real quedaba
+        // en un callejon sin salida, y el test lo tapaba porque actingAs() SI deja
+        // al usuario en el guard).
+        //
+        // Se prueba como INVITADO REAL —sin actingAs previo, que persiste en la
+        // instancia del test— porque eso es lo que ve produccion en este caso.
+        $this->get('/esto-no-existe-en-ninguna-parte')
             ->assertNotFound()
             ->assertSee('No encontramos esa página')
+            ->assertSee('Ir al Inicio')
             ->assertSee(route('dashboard'), false);
+    }
+
+    public function test_un_endpoint_de_imagen_conserva_su_403_en_el_navegador(): void
+    {
+        // Un <img src> real llega con Sec-Fetch-Mode: no-cors, NO 'navigate':
+        // redirigirlo al Inicio devolveria HTML donde el navegador espera una
+        // imagen. La guarda del handler lo mantiene en 403 (sin ella, este test
+        // se pone rojo). Caso real: admin/servicio-tecnico/_fotos.blade.php.
+        $this->actingAs($this->soplador())
+            ->get('/admin/produccion', ['Sec-Fetch-Mode' => 'no-cors'])
+            ->assertForbidden();
     }
 
     public function test_el_404_de_un_binding_no_filtra_internals(): void

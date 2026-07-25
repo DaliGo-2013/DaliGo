@@ -92,9 +92,14 @@ return Application::configure(basePath: dirname(__DIR__))
             // 'permiso' con referer interno = bug nuestro (mostramos un enlace que
             // no correspondia); un 404 con referer interno = enlace roto.
             if ($request->isMethod('GET')) {
+                // url() y el referer SIN query a proposito: un fullUrl() se llevaria
+                // al log el ?signature=/?expires= de las rutas firmadas (existe una
+                // autenticada: verification.verify) y el referer crudo podria traer
+                // una capability valida de un link firmado sin expiracion. Para
+                // diagnosticar un enlace roto basta la ruta (gate R-31).
                 \Illuminate\Support\Facades\Log::warning("HTTP {$status} redirigido al Inicio", [
-                    'url' => $request->fullUrl(),
-                    'referer' => $request->headers->get('referer'),
+                    'url' => $request->url(),
+                    'referer' => strtok((string) $request->headers->get('referer'), '?') ?: null,
                     'user' => $request->user()->id,
                     'motivo' => \App\Support\AvisosError::motivo($e),
                 ]);

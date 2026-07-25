@@ -72,6 +72,73 @@ class AprobacionAccionableTest extends TestCase
             ->assertSee('active:scale-[0.98]', false);
     }
 
+    /**
+     * EL bug que motivó urlDestinoPara(): las notificaciones de cotización se
+     * despachan a ROLES_AVISO (tecnico/jefe_ventas/vendedor/admin), así que un
+     * vendedor recibía la de un cliente de OTRA cartera y al tocarla caía en 403
+     * (ServicioTecnicoController::show → OrdenServicio::esVisiblePara).
+     *
+     * Es la rama con más lógica (canAny + instanceof + esVisiblePara) y el gate
+     * R-31 probó que sin estos dos tests se puede borrar el guard completo y la
+     * suite queda verde.
+     */
+    private function notifDeCotizacion(\App\Models\User $user, string $rutCliente): \App\Models\Notificacion
+    {
+        $orden = \App\Models\OrdenServicio::factory()->create(['cliente_rut' => $rutCliente]);
+
+        return \App\Models\Notificacion::create([
+            'evento' => 'cotizacion.enviada', 'user_id' => $user->id,
+            'canal' => \App\Models\Notificacion::CANAL_DATABASE,
+            'titulo' => 'Cotización enviada', 'cuerpo' => 'C',
+            'estado' => \App\Models\Notificacion::ENVIADA,
+            'notificable_type' => $orden->getMorphClass(), 'notificable_id' => $orden->id,
+        ]);
+    }
+
+    public function test_la_cotizacion_de_su_cartera_si_enlaza(): void
+    {
+        $vendedor = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        \App\Models\Cliente::factory()->create(['rut' => '11111111-1', 'vendedor_id' => $vendedor->id]);
+        $notif = $this->notifDeCotizacion($vendedor, '11111111-1');
+
+        $this->assertSame(
+            route('admin.servicio-tecnico.show', $notif->notificable_id),
+            $notif->urlDestinoPara($vendedor),
+        );
+
+        $this->actingAs($vendedor)->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertSee(route('admin.servicio-tecnico.show', $notif->notificable_id), false);
+    }
+
+    public function test_la_cotizacion_de_OTRA_cartera_no_enlaza(): void
+    {
+        $vendedor = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        \App\Models\Cliente::factory()->create(['rut' => '11111111-1', 'vendedor_id' => $vendedor->id]);
+        // Cliente de otro vendedor: la orden NO es de su cartera.
+        $otro = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        \App\Models\Cliente::factory()->create(['rut' => '99999999-9', 'vendedor_id' => $otro->id]);
+        $notif = $this->notifDeCotizacion($vendedor, '99999999-9');
+
+        $this->assertNull($notif->urlDestinoPara($vendedor));
+        // El mapeo crudo sigue apuntando ahi: lo que corta es el scope de cartera.
+        $this->assertNotNull($notif->urlDestino());
+
+        $this->actingAs($vendedor)->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertSee('Cotización enviada')
+            ->assertDontSee(route('admin.servicio-tecnico.show', $notif->notificable_id), false);
+    }
+
+    public function test_sin_permiso_de_servicio_tecnico_la_cotizacion_no_enlaza(): void
+    {
+        // Un soplador no tiene view/manage servicio tecnico: ni con cartera.
+        $soplador = tap(\App\Models\User::factory()->create())->assignRole('soplador');
+        $notif = $this->notifDeCotizacion($soplador, '11111111-1');
+
+        $this->assertNull($notif->urlDestinoPara($soplador));
+    }
+
     public function test_la_fila_no_enlaza_si_el_usuario_no_puede_llegar(): void
     {
         // Sin 'aprobar solicitudes', la bandeja de aprobaciones le daria 403:

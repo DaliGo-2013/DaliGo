@@ -2,7 +2,6 @@
 
 namespace Tests;
 
-use App\Support\AvisosError;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Testing\TestResponse;
 
@@ -23,22 +22,14 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Denegacion de una NAVEGACION (GET) por permiso o por propiedad: el handler
-     * de bootstrap/app.php la manda al Inicio con la mini-notificacion.
+     * Rechazo por el ESTADO del recurso (no por permiso): el handler de
+     * bootstrap/app.php devuelve al formulario conservando el mensaje del
+     * abort(403, '...'), que es copy de negocio (D-014).
      *
-     * El candado sigue siendo la DENEGACION, no el redirect: session('aviso') la
-     * escribe UNICAMENTE ese handler (ninguna otra parte del repo usa esa clave),
-     * asi que asertarla prueba que se denego — y ademas por que.
-     */
-    protected function assertSinPermiso(TestResponse $response): void
-    {
-        $response->assertRedirect(route('dashboard'))
-            ->assertSessionHas('aviso', AvisosError::SIN_PERMISO);
-    }
-
-    /**
-     * Rechazo por el ESTADO del recurso (no por permiso): conserva el mensaje
-     * del abort(403, '...'), que es copy de negocio.
+     * Nota de doctrina para los ~56 asserts de denegacion por PERMISO, escritos
+     * inline como assertRedirect(route('dashboard')) + assertSessionHas('aviso'):
+     * lo que prueba la denegacion es la CLAVE de sesion, porque `aviso` la
+     * escribe UNICAMENTE ese handler — ninguna otra parte del repo la usa.
      */
     protected function assertRechazado(TestResponse $response, string $mensaje): void
     {

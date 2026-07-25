@@ -6,8 +6,10 @@
      NUNCA se imprime $exception->getMessage() (spatie lo pone en ingles). --}}
 <x-errors.shell titulo="Sin permiso">
     @auth
+        {{-- El parrafo IMPRIME la constante (no una copia a mano): si alguien
+             cambia el texto del aviso, esta pagina no queda diciendo otra cosa. --}}
         <h1>No tienes permiso para entrar ahí</h1>
-        <p>Habla con un administrador si necesitas acceso a esta parte del sistema.</p>
+        <p>{{ \App\Support\AvisosError::SIN_PERMISO }}</p>
         <a class="btn" href="{{ route('dashboard') }}">Ir al Inicio</a>
     @else
         {{-- Cliente sin cuenta (QR / link de cotizacion): no tiene sesion que
