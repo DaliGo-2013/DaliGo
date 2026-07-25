@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="formulario">
     <x-slot name="header">
         {{-- Una SOLICITUD del QR aún no tiene fecha: el título/subtítulo y el link
              "Volver" deben ser nulo-seguros (antes crasheaban con fecha null). --}}
@@ -16,33 +16,31 @@
         </x-page-header>
     </x-slot>
 
-    <div class="py-8 sm:py-12">
-        <div class="mx-auto max-w-3xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
-                 x-data="agendaTerrenoForm({
-                    endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
-                    servicios: @js($serviciosJs),
-                    clienteId: {{ (int) old('cliente_id', $trabajo->cliente_id ?? 0) }},
-                    servicioId: @js((string) old('servicio_terreno_id', $trabajo->servicio_terreno_id ?? '')),
-                 })">
-                <form id="agenda-form" method="POST" action="{{ route('admin.agenda-terreno.update', $trabajo) }}">
-                    @csrf
-                    @method('PUT')
-                    @include('admin.agenda-terreno._form', ['trabajo' => $trabajo])
-                    <div class="mt-6">
-                        <x-primary-button class="w-full justify-center py-3 sm:w-auto">Guardar cambios</x-primary-button>
-                    </div>
-                </form>
-            </div>
-
-            {{-- Eliminar (solo desde editar, con confirmación) --}}
-            <form method="POST" action="{{ route('admin.agenda-terreno.destroy', $trabajo) }}"
-                  onsubmit="return confirm('¿Eliminar este trabajo de la agenda? Esta acción no se puede deshacer.');"
-                  class="text-right">
+    <div class="space-y-5 py-8 sm:py-12">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
+             x-data="agendaTerrenoForm({
+                endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
+                servicios: @js($serviciosJs),
+                clienteId: {{ (int) old('cliente_id', $trabajo->cliente_id ?? 0) }},
+                servicioId: @js((string) old('servicio_terreno_id', $trabajo->servicio_terreno_id ?? '')),
+             })">
+            <form id="agenda-form" method="POST" action="{{ route('admin.agenda-terreno.update', $trabajo) }}">
                 @csrf
-                @method('DELETE')
-                <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-700">Eliminar de la agenda</button>
+                @method('PUT')
+                @include('admin.agenda-terreno._form', ['trabajo' => $trabajo])
+                <div class="mt-6">
+                    <x-primary-button class="w-full justify-center py-3 sm:w-auto">Guardar cambios</x-primary-button>
+                </div>
             </form>
         </div>
+
+        {{-- Eliminar (solo desde editar, con confirmación) --}}
+        <form method="POST" action="{{ route('admin.agenda-terreno.destroy', $trabajo) }}"
+              onsubmit="return confirm('¿Eliminar este trabajo de la agenda? Esta acción no se puede deshacer.');"
+              class="text-right">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-700">Eliminar de la agenda</button>
+        </form>
     </div>
 </x-app-layout>
