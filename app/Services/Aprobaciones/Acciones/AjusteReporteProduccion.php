@@ -20,7 +20,17 @@ class AjusteReporteProduccion implements AccionAprobable
         // bloqueada por el servicio; orden de locks estable: aprobacion → reporte).
         $reporte = ProduccionReporte::whereKey($aprobacion->aprobable_id)
             ->lockForUpdate()
-            ->firstOrFail();
+            ->first();
+
+        // El jefe pudo borrar el reporte (produccion.reporte.destroy) mientras la
+        // solicitud estaba pendiente: con firstOrFail el aprobador recibia un 404
+        // crudo al apretar "Aprobar". Como conflicto, la solicitud se rechaza sola
+        // y el aprobador lee "No se pudo aplicar: ..." en su bandeja.
+        if ($reporte === null) {
+            throw new ConflictoAccionException(
+                'el reporte de esta solicitud ya no existe (fue eliminado).',
+            );
+        }
 
         $snapshot = $aprobacion->datos['objetivo_updated_at'] ?? null;
 

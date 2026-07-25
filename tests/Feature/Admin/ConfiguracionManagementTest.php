@@ -50,8 +50,10 @@ class ConfiguracionManagementTest extends TestCase
         $member->assignRole('member');
         $ajuste = $this->ajuste(Configuracion::TIPO_INTEGER, '10');
 
-        $this->actingAs($member)->get('/admin/configuracion')->assertForbidden();
-        $this->actingAs($member)->get("/admin/configuracion/{$ajuste->id}/edit")->assertForbidden();
+        $this->actingAs($member)->get('/admin/configuracion')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get("/admin/configuracion/{$ajuste->id}/edit")->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->put("/admin/configuracion/{$ajuste->id}", ['valor' => '20'])->assertForbidden();
     }
 

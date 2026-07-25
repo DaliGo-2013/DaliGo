@@ -18,6 +18,12 @@
         </include>
     </source>
     <php>
+        <!-- La suite pasó de los 128M por defecto de PHP (889 tests, pico ~130M):
+             sin esto `php artisan test` muere con "Allowed memory size exhausted"
+             en Filesystem.php ANTES de correr un solo test, tanto en local como
+             en la CI (que corre ese mismo comando). Se fija aca para que el
+             limite viaje con el repo y no dependa del php.ini de cada maquina. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="AUDITING_ENABLED" value="true"/>

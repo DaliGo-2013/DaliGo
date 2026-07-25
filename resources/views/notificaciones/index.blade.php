@@ -22,7 +22,10 @@
                             $noLeida = $n->estado === \App\Models\Notificacion::ENVIADA;
                             // Fila accionable (hallazgo #5 del QA 15-07): el contenido ES el
                             // link al destino del evento. Un <a> sin href no es clickeable.
-                            $destino = $n->urlDestino();
+                            // urlDestinoPara (no urlDestino): solo enlaza si el usuario PUEDE
+                            // llegar — antes un vendedor tocaba la notificacion de una
+                            // cotizacion de otra cartera y caia en 403.
+                            $destino = $n->urlDestinoPara(auth()->user());
                         @endphp
                         <li class="flex items-start gap-3 px-4 py-3 sm:px-6 {{ $noLeida ? 'bg-brand-50/40' : '' }}">
                             <a @if ($destino) href="{{ $destino }}" @endif

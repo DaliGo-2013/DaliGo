@@ -101,7 +101,8 @@ class LoteServicioTest extends TestCase
     public function test_sin_permiso_es_forbidden(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/servicio-tecnico/lote')->assertForbidden();
+            ->get('/admin/servicio-tecnico/lote')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_conductor_puede_abrir_el_formulario(): void
@@ -116,7 +117,8 @@ class LoteServicioTest extends TestCase
         // El permiso del lote NO da acceso a la etapa de reparación (manage).
         $orden = OrdenServicio::factory()->create();
         $this->actingAs($this->conductor())
-            ->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- Creación ---

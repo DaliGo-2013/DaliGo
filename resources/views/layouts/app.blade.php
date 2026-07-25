@@ -42,6 +42,13 @@
                 @endisset
 
                 <main class="flex-1">
+                    {{-- Mini-notificacion de bloqueo (403/404), canal propio
+                         session('aviso'). Va aca, UNA sola vez y como primer
+                         nodo de <main>, para que cubra TODAS las vistas (el
+                         dashboard incluido, que no pinta <x-status-alert>) y se
+                         vea sin scroll en movil. --}}
+                    <x-aviso :aviso="session('aviso')" />
+
                     {{ $slot }}
                 </main>
             </div>

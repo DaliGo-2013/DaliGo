@@ -42,8 +42,10 @@ class BodegaManagementTest extends TestCase
         $member->assignRole('member');
         $bodega = Bodega::factory()->create();
 
-        $this->actingAs($member)->get('/admin/bodegas')->assertForbidden();
-        $this->actingAs($member)->get("/admin/bodegas/{$bodega->id}")->assertForbidden();
+        $this->actingAs($member)->get('/admin/bodegas')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get("/admin/bodegas/{$bodega->id}")->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_admin_sees_index(): void

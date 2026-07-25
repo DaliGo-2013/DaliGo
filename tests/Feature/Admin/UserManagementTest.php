@@ -55,7 +55,8 @@ class UserManagementTest extends TestCase
 
     public function test_non_admin_cannot_access_user_management(): void
     {
-        $this->actingAs(User::factory()->create())->get('/admin/users')->assertForbidden();
+        $this->actingAs(User::factory()->create())->get('/admin/users')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_guest_is_redirected_from_user_management(): void
@@ -230,7 +231,8 @@ class UserManagementTest extends TestCase
         $user = $this->userWith(['view users']);
 
         $this->actingAs($user)->get('/admin/users')->assertOk();
-        $this->actingAs($user)->get('/admin/users/create')->assertForbidden();
+        $this->actingAs($user)->get('/admin/users/create')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_edit_permission_required_for_edit_and_update(): void
@@ -239,7 +241,8 @@ class UserManagementTest extends TestCase
         $target = User::factory()->create();
         $target->assignRole('member');
 
-        $this->actingAs($viewer)->get("/admin/users/{$target->id}/edit")->assertForbidden();
+        $this->actingAs($viewer)->get("/admin/users/{$target->id}/edit")->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($viewer)->put("/admin/users/{$target->id}", ['role' => 'admin'])->assertForbidden();
     }
 

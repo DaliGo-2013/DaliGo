@@ -187,10 +187,13 @@ class ServicioTecnicoManagementTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/servicio-tecnico')->assertForbidden();
+        $this->actingAs($member)->get('/admin/servicio-tecnico')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->post('/admin/servicio-tecnico', $this->payload())->assertForbidden();
-        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-cliente?q=test')->assertForbidden();
-        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-producto?q=test')->assertForbidden();
+        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-cliente?q=test')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-producto?q=test')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_permission_grants_access(): void
@@ -217,7 +220,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $tecnico = tap(User::factory()->create())->assignRole('tecnico');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.edit', $orden))->assertForbidden();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.edit', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($tecnico)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
         $this->actingAs($tecnico)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
 
@@ -245,8 +249,10 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertDontSee('Cotización');
 
         // No puede gestionar ni entrar al taller.
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertForbidden();
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($vendedor)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
         $this->actingAs($vendedor)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
     }
@@ -612,7 +618,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $member = tap(User::factory()->create())->assignRole('member');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($member)->get(route('admin.servicio-tecnico.show', $orden))->assertForbidden();
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.show', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_garantia_sin_documento_se_trata_como_reparacion(): void
@@ -651,7 +658,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $member = tap(User::factory()->create())->assignRole('member');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($member)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_tecnico_can_open_reparacion(): void
@@ -673,7 +681,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $member = tap(User::factory()->create())->assignRole('member');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($member)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertForbidden();
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_tecnico_can_open_cotizacion(): void

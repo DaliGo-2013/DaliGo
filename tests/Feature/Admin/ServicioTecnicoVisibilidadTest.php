@@ -65,7 +65,8 @@ class ServicioTecnicoVisibilidadTest extends TestCase
         $ordenAjena = OrdenServicio::factory()->create(['cliente_rut' => '99999999-9']);
 
         $this->actingAs($vendedorA)->get(route('admin.servicio-tecnico.show', $ordenA))->assertOk();
-        $this->actingAs($vendedorA)->get(route('admin.servicio-tecnico.show', $ordenAjena))->assertForbidden();
+        $this->actingAs($vendedorA)->get(route('admin.servicio-tecnico.show', $ordenAjena))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_la_jefatura_ve_su_cartera_y_la_de_sus_vendedores(): void
@@ -110,6 +111,7 @@ class ServicioTecnicoVisibilidadTest extends TestCase
         $ordenAjena = OrdenServicio::factory()->create(['cliente_rut' => '99999999-9']);
         $foto = $ordenAjena->fotos()->create(['ruta' => 'ordenes-servicio/fotos/'.$ordenAjena->id.'/x.jpg']);
 
-        $this->actingAs($vendedorA)->get(route('admin.servicio-tecnico.foto', $foto))->assertForbidden();
+        $this->actingAs($vendedorA)->get(route('admin.servicio-tecnico.foto', $foto))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 }

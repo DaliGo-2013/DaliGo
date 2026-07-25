@@ -36,7 +36,8 @@ class AprobacionBandejaTest extends TestCase
     {
         $soplador = tap(User::factory()->create())->assignRole('soplador');
 
-        $this->actingAs($soplador)->get(route('aprobaciones.index'))->assertForbidden();
+        $this->actingAs($soplador)->get(route('aprobaciones.index'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_la_bandeja_muestra_solo_las_pendientes_del_rol_vigente(): void

@@ -49,7 +49,8 @@ class ServicioTecnicoInformeTest extends TestCase
     public function test_member_without_permission_is_forbidden(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/servicio-tecnico/informe/dispensadores')->assertForbidden();
+            ->get('/admin/servicio-tecnico/informe/dispensadores')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_view_permission_puede_ver_el_informe(): void

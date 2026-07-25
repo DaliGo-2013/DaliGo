@@ -169,7 +169,8 @@ class MiHistorialTest extends TestCase
     {
         $sinPermiso = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($sinPermiso)->get(route('produccion.mi.historial'))->assertForbidden();
+        $this->actingAs($sinPermiso)->get(route('produccion.mi.historial'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_invitado_es_redirigido_al_login(): void
@@ -223,7 +224,8 @@ class MiHistorialTest extends TestCase
         $yo = $this->soplador();
         $ajeno = $this->reporteEn($this->soplador(), $this->hoyMenos(30));
 
-        $this->actingAs($yo)->get(route('produccion.mi.show', $ajeno))->assertForbidden();
+        $this->actingAs($yo)->get(route('produccion.mi.show', $ajeno))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     /**

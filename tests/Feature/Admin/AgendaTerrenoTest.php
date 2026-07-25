@@ -201,7 +201,8 @@ class AgendaTerrenoTest extends TestCase
     public function test_sin_permiso_es_forbidden(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/agenda-terreno')->assertForbidden();
+            ->get('/admin/agenda-terreno')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_vendedor_puede_ver_y_agendar(): void
@@ -217,7 +218,8 @@ class AgendaTerrenoTest extends TestCase
         $tecnico = $this->tecnicoIndustrial();
 
         $this->actingAs($tecnico)->get('/admin/agenda-terreno')->assertOk();          // ve
-        $this->actingAs($tecnico)->get('/admin/agenda-terreno/crear')->assertForbidden();
+        $this->actingAs($tecnico)->get('/admin/agenda-terreno/crear')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($tecnico)->post('/admin/agenda-terreno', $this->payload())->assertForbidden();
     }
 
@@ -270,7 +272,8 @@ class AgendaTerrenoTest extends TestCase
         $agendado = AgendaTrabajo::factory()->create(['estado' => 'agendado']);
         $this->actingAs($soloVe)
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
-            ->assertForbidden();
+            ->assertRedirect()
+            ->assertSessionHas('aviso', 'Solo puedes marcar como realizado un trabajo agendado.');
 
         $this->actingAs($soloVe)
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'realizado'])
@@ -285,7 +288,8 @@ class AgendaTerrenoTest extends TestCase
         $agendado = AgendaTrabajo::factory()->create(['estado' => 'agendado']);
         $this->actingAs($this->tecnicoIndustrial())
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
-            ->assertForbidden();
+            ->assertRedirect()
+            ->assertSessionHas('aviso', 'Solo puedes marcar como realizado un trabajo agendado.');
         $this->assertSame('agendado', $agendado->fresh()->estado);
     }
 
