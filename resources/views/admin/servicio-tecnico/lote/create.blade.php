@@ -2,9 +2,18 @@
     <x-slot name="header">
         <x-page-header title="Ingreso por lote" subtitle="Retiro en ruta · varias máquinas de una empresa.">
             <x-slot name="action">
-                <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
+                {{-- El conductor solo tiene 'crear lote servicio' y esta es su UNICA
+                     pantalla: el listado de ST le daba 403 cada vez que tocaba
+                     "Volver". Para el, "Volver" es el Inicio. --}}
+                @canany(['view servicio tecnico', 'manage servicio tecnico'])
+                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado">
+                        <x-icon.arrow-left class="h-5 w-5" />
+                    </x-icon-button>
+                @else
+                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver" title="Volver al Inicio">
+                        <x-icon.arrow-left class="h-5 w-5" />
+                    </x-icon-button>
+                @endcanany
             </x-slot>
         </x-page-header>
     </x-slot>

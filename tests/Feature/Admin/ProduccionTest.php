@@ -107,7 +107,8 @@ class ProduccionTest extends TestCase
 
     public function test_soplador_no_puede_ver_el_panel_del_jefe(): void
     {
-        $this->actingAs($this->soplador())->get('/admin/produccion')->assertForbidden();
+        $this->actingAs($this->soplador())->get('/admin/produccion')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_invitado_es_redirigido_al_login(): void
@@ -119,7 +120,8 @@ class ProduccionTest extends TestCase
     public function test_member_sin_permiso_no_entra_a_mi_produccion(): void
     {
         $member = tap(User::factory()->create())->assignRole('member');
-        $this->actingAs($member)->get('/produccion/mi-reporte')->assertForbidden();
+        $this->actingAs($member)->get('/produccion/mi-reporte')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- Asignacion (jefe) ---
@@ -482,7 +484,12 @@ class ProduccionTest extends TestCase
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
 
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10])->assertForbidden();
+        // Rechazo por ESTADO (no por permiso): el handler devuelve al formulario
+        // con el mensaje de negocio, en vez de un 403 pelado.
+        $this->assertRechazado(
+            $this->agregarTanda($soplador, $reporte, ['primera' => 10]),
+            'Este reporte ya no se puede editar.',
+        );
     }
 
     public function test_registro_de_otro_reporte_devuelve_404_al_borrar(): void
@@ -657,9 +664,11 @@ class ProduccionTest extends TestCase
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
 
-        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
-            'enviar' => 0,
-        ])->assertForbidden();
+        // Rechazo por ESTADO: vuelve al reporte con el mensaje de negocio.
+        $this->assertRechazado(
+            $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), ['enviar' => 0]),
+            'Este reporte ya no se puede editar.',
+        );
     }
 
     // --- Reportes devueltos de otros dias ---
@@ -689,7 +698,8 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($this->soplador());
         $otro = $this->soplador();
 
-        $this->actingAs($otro)->get(route('produccion.mi.show', $reporte))->assertForbidden();
+        $this->actingAs($otro)->get(route('produccion.mi.show', $reporte))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- Backfill de transicion ---
@@ -999,7 +1009,8 @@ class ProduccionTest extends TestCase
             route('admin.produccion.maquina', $maquina),
             route('admin.produccion.tipo', $tipo),
         ] as $url) {
-            $this->actingAs($sop)->get($url)->assertForbidden();
+            $this->actingAs($sop)->get($url)->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         }
     }
 

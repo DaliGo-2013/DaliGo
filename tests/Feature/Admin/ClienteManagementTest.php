@@ -68,7 +68,8 @@ class ClienteManagementTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/clientes')->assertForbidden();
+        $this->actingAs($member)->get('/admin/clientes')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->post('/admin/clientes', $this->payload())->assertForbidden();
     }
 

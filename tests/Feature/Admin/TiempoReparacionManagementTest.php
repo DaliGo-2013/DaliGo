@@ -39,7 +39,8 @@ class TiempoReparacionManagementTest extends TestCase
         // El técnico de taller NO fija los tiempos (esa es la gracia): solo jefatura.
         $tecnico = tap(User::factory()->create())->assignRole('tecnico');
 
-        $this->actingAs($tecnico)->get('/admin/tiempos-reparacion')->assertForbidden();
+        $this->actingAs($tecnico)->get('/admin/tiempos-reparacion')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($tecnico)->post('/admin/tiempos-reparacion', [
             'trabajo' => 'X', 'horas' => '1',
         ])->assertForbidden();

@@ -101,6 +101,39 @@ class Notificacion extends Model
         return $this->morphTo();
     }
 
+    /**
+     * El destino de la fila, SOLO si este usuario puede llegar (null si no).
+     *
+     * La bandeja enlazaba a ciegas con urlDestino(): las notificaciones de
+     * cotizacion se despachan a ROLES_AVISO (tecnico/jefe_ventas/vendedor/admin),
+     * asi que un vendedor SIN 'ver todo servicio tecnico' que tocaba la de un
+     * cliente de OTRA cartera caia en 403 (ServicioTecnicoController::show ->
+     * OrdenServicio::esVisiblePara). Los permisos que se chequean aca son los
+     * mismos gates de esas rutas en routes/web.php.
+     */
+    public function urlDestinoPara(?User $user): ?string
+    {
+        $url = $this->urlDestino();
+
+        if ($url === null || $user === null) {
+            return null;
+        }
+
+        $puede = match ($this->evento) {
+            'aprobacion.solicitada', 'aprobacion.escalada' => $user->can('aprobar solicitudes'),
+            'aprobacion.resuelta' => true, // "mis solicitudes": basta estar autenticado
+            'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico']),
+            // Detalle de una orden: permiso Y scope de cartera del vendedor.
+            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
+                && $this->notificable instanceof OrdenServicio
+                && $this->notificable->esVisiblePara($user),
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            default => false,
+        };
+
+        return $puede ? $url : null;
+    }
+
     /** No-leidas de la campanita de un usuario (canal database, aun no leidas). */
     public function scopeCampanitaDe($query, int $userId)
     {

@@ -45,7 +45,8 @@ class NotificacionPanelTest extends TestCase
     {
         $this->actingAs(User::factory()->create())
             ->get(route('admin.notificaciones.index'))
-            ->assertForbidden();
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_filtro_por_estado_acota(): void

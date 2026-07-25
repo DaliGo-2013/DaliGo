@@ -35,7 +35,8 @@ class ConductorTest extends TestCase
     public function test_sin_permiso_es_forbidden(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/conductores')->assertForbidden();
+            ->get('/admin/conductores')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_gestor_ve_el_listado_y_crea(): void

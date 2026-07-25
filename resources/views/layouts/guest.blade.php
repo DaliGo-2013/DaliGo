@@ -25,7 +25,12 @@
             </a>
 
             <div class="dg-enter mt-8 w-full sm:max-w-md rounded-2xl border border-neutral-200 bg-white px-6 py-8 shadow-sm sm:px-8">
-                {{ $slot }}
+                {{-- Mismo canal que el layout autenticado: sin esto, un back()->with('aviso')
+             que aterrice en una pantalla de invitado se perderia en silencio (el bug
+             que este lote arreglo para session('status') en el dashboard). --}}
+        <x-aviso :aviso="session('aviso')" />
+
+        {{ $slot }}
             </div>
         </div>
     </body>

@@ -41,7 +41,8 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
     public function test_sin_permiso_no_ve_el_landing(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/servicio-tecnico/informe')->assertForbidden();
+            ->get('/admin/servicio-tecnico/informe')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_landing_muestra_las_dos_carpetas(): void
