@@ -1,8 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Crear sucursal">
+        <x-page-header title="Crear sucursal"
+                       :back="route('admin.sucursales.index')" backTitle="Volver a sucursales">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.sucursales.index')" form="sucursal-form" submitLabel="Crear sucursal" />
+                <x-form-actions form="sucursal-form" submitLabel="Crear sucursal" />
             </x-slot>
         </x-page-header>
     </x-slot>

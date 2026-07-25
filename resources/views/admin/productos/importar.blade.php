@@ -60,7 +60,7 @@
                         <x-input-error :messages="$errors->get('archivo')" class="mt-2" />
                     </div>
 
-                    <x-form-footer :cancel="route('admin.productos.index')">
+                    <x-form-footer>
                         <x-primary-button>Importar</x-primary-button>
                     </x-form-footer>
                 </form>

@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'Editar: '.\Illuminate\Support\Str::headline($configuracion->clave)" />
+        <x-page-header :title="'Editar: '.\Illuminate\Support\Str::headline($configuracion->clave)"
+                       :back="route('admin.configuracion.index')" backTitle="Volver a configuración" />
     </x-slot>
 
     <div class="py-12">
@@ -44,7 +45,7 @@
                         <x-input-error :messages="$errors->get('valor')" class="mt-2" />
                     </div>
 
-                    <x-form-footer :cancel="route('admin.configuracion.index')">
+                    <x-form-footer>
                         <x-primary-button>Guardar cambios</x-primary-button>
                     </x-form-footer>
                 </form>

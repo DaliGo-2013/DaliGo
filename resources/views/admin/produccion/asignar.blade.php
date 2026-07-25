@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Asignar producción" subtitle="Define las preformas asignadas a un soplador para el día." />
+        <x-page-header title="Asignar producción" subtitle="Define las preformas asignadas a un soplador para el día."
+                       :back="route('admin.produccion.index')" backTitle="Volver a Producción" />
     </x-slot>
 
     <div class="py-12">
@@ -70,7 +71,7 @@
                         <x-input-error :messages="$errors->get('procedencia')" class="mt-2" />
                     </div>
 
-                    <x-form-footer :cancel="route('admin.produccion.index')">
+                    <x-form-footer>
                         <x-primary-button>Guardar asignación</x-primary-button>
                     </x-form-footer>
                 </form>

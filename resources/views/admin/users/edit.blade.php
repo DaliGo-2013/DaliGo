@@ -1,8 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Editar cuenta">
+        <x-page-header title="Editar cuenta"
+                       :back="route('admin.users.index')" backTitle="Volver a cuentas">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.users.index')" form="user-form" submitLabel="Guardar cambios" />
+                <x-form-actions form="user-form" submitLabel="Guardar cambios" />
             </x-slot>
         </x-page-header>
     </x-slot>

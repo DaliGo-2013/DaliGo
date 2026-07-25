@@ -185,4 +185,56 @@ class VolverTest extends TestCase
                 "[{$ruta}] debe volver a [{$padre}].");
         }
     }
+
+    /**
+     * Candado anti-deriva: barre los fuentes Blade buscando los idiomas viejos.
+     * Sin esto, la próxima pantalla que alguien escriba copiando una vecina
+     * reintroduce una familia y volvemos de a poco a las 13 de antes.
+     *
+     * NO prohíbe la flecha en general: el carrusel y el mes anterior de la
+     * agenda, el reset "← Todos los años" del listado de ST y el conmutador del
+     * boceto de seguimiento usan la misma flecha y NO son navegación.
+     */
+    public function test_no_quedan_formas_viejas_de_volver(): void
+    {
+        $prohibidos = [
+            'onclick="if (window.history.length'
+                => 'el onclick de history.back copiado a mano (ahora lo hace el handler de data-dg-volver en app.js)',
+            'label="Volver'
+                => 'el icon-button con flecha escrito a mano (usa :back del page-header, o <x-volver> si la vista no tiene cabecera)',
+            ':cancel='
+                => 'la prop cancel de form-actions/form-footer (la única salida de un formulario es el Volver del encabezado)',
+        ];
+
+        $archivos = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(resource_path('views'), \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        $revisados = 0;
+
+        foreach ($archivos as $archivo) {
+            if ($archivo->getExtension() !== 'php') {
+                continue;
+            }
+
+            $contenido = file_get_contents($archivo->getPathname());
+            $relativo = str_replace(resource_path('views').DIRECTORY_SEPARATOR, '', $archivo->getPathname());
+            $revisados++;
+
+            foreach ($prohibidos as $aguja => $porque) {
+                $this->assertStringNotContainsString($aguja, $contenido,
+                    "[{$relativo}] reintroduce {$porque}.");
+            }
+
+            // Enlace tenue con flecha como salida (la familia que vivía en tres
+            // posiciones distintas, incluida el final de la página).
+            $this->assertDoesNotMatchRegularExpression(
+                '/<x-secondary-link[^>]*>\s*(?:←|&larr;|<span[^>]*>\s*(?:←|&larr;))/u',
+                $contenido,
+                "[{$relativo}] usa un x-secondary-link con flecha como salida; usa <x-volver>."
+            );
+        }
+
+        $this->assertGreaterThan(100, $revisados, 'Se revisaron muy pocas vistas.');
+    }
 }

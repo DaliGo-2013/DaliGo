@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Editar tipo de botellón" />
+        <x-page-header title="Editar tipo de botellón"
+                       :back="route('admin.tipos-botellon.index')" backTitle="Volver a tipos de botellón" />
     </x-slot>
 
     <div class="py-12">
@@ -11,7 +12,7 @@
                     @method('PUT')
                     @include('admin.tipos-botellon._form', ['tipo' => $tipo])
 
-                    <x-form-footer :cancel="route('admin.tipos-botellon.index')">
+                    <x-form-footer>
                         <x-primary-button>Guardar cambios</x-primary-button>
                     </x-form-footer>
                 </form>
