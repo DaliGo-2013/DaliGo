@@ -1157,36 +1157,41 @@ class ServicioTecnicoController extends Controller
 
     /**
      * Resumen para las cards de navegacion del historial (Año → Mes) del
-     * listado. Una sola query liviana (solo fecha y condicion) agrupada en
-     * PHP: el volumen es bajo (cientos de ordenes por año) y evita SQL de
-     * fechas no portable entre MySQL 5.7 y el SQLite de los tests.
+     * listado. Agregado en SQL (no en PHP): `fecha_ingreso` se guarda
+     * 'YYYY-MM-DD', y SUBSTR es idéntico en MySQL y SQLite (a diferencia de
+     * YEAR()/EXTRACT, que no son portables) — evita traer TODAS las órdenes
+     * de la historia a PHP en cada carga del listado (crecía sin cota;
+     * perf, hallazgo 2026-07-24).
      */
     private function resumenHistorial(?int $anioActivo): array
     {
-        $ordenes = OrdenServicio::query()
-            ->whereNotNull('fecha_ingreso')
-            ->get(['fecha_ingreso', 'facturacion']);
-
         // Reparacion = total - garantia (igual que condicion_efectiva: las
         // ordenes viejas con facturacion NULL cuentan como reparacion).
-        $anios = $ordenes
-            ->groupBy(fn (OrdenServicio $o) => $o->fecha_ingreso->year)
-            ->map(function ($grupo) {
-                $garantia = $grupo->where('facturacion', 'garantia')->count();
-
-                return [
-                    'total' => $grupo->count(),
-                    'garantia' => $garantia,
-                    'reparacion' => $grupo->count() - $garantia,
-                ];
-            })
+        $anios = OrdenServicio::query()
+            ->whereNotNull('fecha_ingreso')
+            ->selectRaw("SUBSTR(fecha_ingreso, 1, 4) as anio, COUNT(*) as total, SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) as garantia")
+            ->groupBy('anio')
+            ->get()
+            ->mapWithKeys(fn ($fila) => [
+                (int) $fila->anio => [
+                    'total' => (int) $fila->total,
+                    'garantia' => (int) $fila->garantia,
+                    'reparacion' => (int) $fila->total - (int) $fila->garantia,
+                ],
+            ])
             ->sortKeysDesc();
 
         $meses = null;
         if ($anioActivo !== null) {
-            $delAnio = $ordenes->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->year === $anioActivo);
+            $porMes = OrdenServicio::query()
+                ->whereNotNull('fecha_ingreso')
+                ->whereRaw('SUBSTR(fecha_ingreso, 1, 4) = ?', [(string) $anioActivo])
+                ->selectRaw('SUBSTR(fecha_ingreso, 6, 2) as mes, COUNT(*) as total')
+                ->groupBy('mes')
+                ->pluck('total', 'mes');
+
             $meses = collect(range(1, 12))
-                ->mapWithKeys(fn (int $m) => [$m => $delAnio->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->month === $m)->count()])
+                ->mapWithKeys(fn (int $m) => [$m => (int) ($porMes[str_pad((string) $m, 2, '0', STR_PAD_LEFT)] ?? 0)])
                 ->all();
         }
 
