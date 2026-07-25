@@ -14,5 +14,5 @@
 <x-errors.shell titulo="No encontrado">
     <h1>No encontramos esa página</h1>
     <p>El enlace puede estar roto o el registro ya no existe.</p>
-    <a class="btn" href="{{ route('dashboard') }}">Ir al Inicio</a>
+    <a class="btn" href="{{ url('/dashboard') }}">Ir al Inicio</a>
 </x-errors.shell>

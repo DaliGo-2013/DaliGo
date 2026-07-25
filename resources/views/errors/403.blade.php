@@ -10,7 +10,7 @@
              cambia el texto del aviso, esta pagina no queda diciendo otra cosa. --}}
         <h1>No tienes permiso para entrar ahí</h1>
         <p>{{ \App\Support\AvisosError::SIN_PERMISO }}</p>
-        <a class="btn" href="{{ route('dashboard') }}">Ir al Inicio</a>
+        <a class="btn" href="{{ url('/dashboard') }}">Ir al Inicio</a>
     @else
         {{-- Cliente sin cuenta (QR / link de cotizacion): no tiene sesion que
              iniciar, mandarlo a /login seria empujarlo a una puerta sin llave. --}}

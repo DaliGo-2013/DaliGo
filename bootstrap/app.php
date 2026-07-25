@@ -38,9 +38,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // shouldntReport() antes de llegar aca: un abort(500) explicito no
         // genera codigo (ni linea de log). Es correcto — no hay excepcion que
         // buscar — y la vista degrada sola.
-        $exceptions->context(fn (\Throwable $e) => [
-            'incidente' => \App\Support\CodigoIncidente::deEstaPeticion(),
-        ]);
+        // El try/catch NO es decorativo: Handler::exceptionContext() NO envuelve
+        // los contextCallbacks (a diferencia de su hermana context(), que si
+        // protege Auth::id()), y reportException() corre antes de renderException()
+        // sin proteccion. El gate R-31 lo probo: si este callback lanza, la
+        // excepcion ESCAPA del kernel y el usuario no ve ni la pagina con marca ni
+        // queda la linea de log del error original. Un fallo de entropia en
+        // random_int es improbabilisimo, pero el radio de dano seria total.
+        $exceptions->context(function (\Throwable $e): array {
+            try {
+                return ['incidente' => \App\Support\CodigoIncidente::deEstaPeticion()];
+            } catch (\Throwable) {
+                return [];
+            }
+        });
 
         // 419 (token CSRF / sesion expirada): Laravel convierte
         // TokenMismatchException en HttpException(419) ANTES de los render

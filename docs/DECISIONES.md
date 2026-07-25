@@ -42,6 +42,8 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 | D-011 | URL oficial (`daligo.impdali.cl`) y estrategia de entornos | 🟢 TOMADA | Mauricio (2026-07-02) | — | — |
 | D-012 | Visibilidad del repo GitHub: queda PÚBLICO | 🟢 TOMADA | Mauricio (2026-07-08) | — | — |
 | D-013 | Excepción de paleta: pasteles opt-in en squircles del Inicio | 🟢 TOMADA | Mauricio (2026-07-22) | — | — |
+| D-014 | Qué ve el usuario en un 403 / 404 (al Inicio + mini-notificación) | 🟢 TOMADA | Mauricio (2026-07-24) | — | — |
+| D-015 | Código de incidente en la página de error 500 | 🟢 TOMADA | Mauricio (2026-07-24) | — | — |
 | D-000 | [retroactiva] Roles reconciliados a 8 ASCII | 🟢 TOMADA | equipo (2026-06) | — | — |
 
 **Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026**.
@@ -178,17 +180,18 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 ### D-015 · Código de incidente en la página de error 500
 - **Estado:** TOMADA (2026-07-24) · **Decisor:** Mauricio
 - **Contexto:** cerrando la familia de páginas de error (500/429/503/comodines), un 500 le decía al usuario «algo falló» y nada más; cuando llamaba a TI había que adivinar la hora exacta para encontrar la excepción en el log.
-- **Decisión:** la página del 500 muestra un **código de 6 caracteres** («A3F91C») que el usuario dicta a soporte, y el **mismo** código viaja en la línea de log de esa excepción. Detalles no obvios:
+- **Decisión:** la página del 500 muestra un **código de 6 caracteres** («A3F9KC») que el usuario dicta a soporte, y el **mismo** código viaja en la línea de log de esa excepción. Detalles no obvios:
   1. **Alfabeto sin `0/O`, `1/I/L` ni `U`** — se dicta por teléfono, y esos son los caracteres que se confunden al hablar.
   2. Se genera en el callback de **`$exceptions->context()`**, no en `report()`: los `contextCallbacks` corren dentro de `buildExceptionContext()`, o sea en el array de contexto de **esa misma línea de log**. Un `report()` obligaría a ensuciar el logger global con `Log::withContext()` (además de ser inasertable con `Log::spy()`).
   3. Vive en `Context::rememberHidden` (binding `scoped`), **no** en un `static`: así muere con la instancia de la app y no se filtra entre peticiones ni entre tests. *Hidden* porque el contexto visible se inyecta en el `extra` de **todas** las líneas de log de la petición, y aquí solo interesa la de la excepción.
   4. **Un `abort(500)` explícito NO muestra código**: los `HttpException` están en `$internalDontReport`, no se reportan y por lo tanto no hay línea de log que buscar. La vista degrada sola — mostrar un código mandaría a TI a buscar algo inexistente.
+- **Alcance y límites (gate R-31):** el callback de `context()` es **global**: corre para TODA excepción reportada —incluidos comandos y jobs de cola y peticiones JSON, donde ninguna página muestra el código—, así que desde ahora **toda línea de log de excepción lleva la clave `incidente`** (útil al grepear logs). Va envuelto en `try/catch` porque `Handler::exceptionContext()` **no** protege los contextCallbacks: si lanzara, la excepción escaparía del kernel y el usuario no vería ni la página ni quedaría el log del error original. Límite aceptado: `Context::dehydrate()` incluye el contexto oculto y la cola deshidrata en cada `push`, así que una petición que reportó una excepción y luego despacha un job estampa ese código en el payload; si el job falla, su log reusa el mismo código. Es ambigüedad diagnóstica (no seguridad ni corrección) y no se corrige para no perder el ciclo de vida `scoped` que nos da el reset automático.
 - **Consecuencias:** `App\Support\CodigoIncidente` es la fuente única (incluido el patrón, que los tests reusan en vez de duplicarlo); el candado central de `ErroresServidorTest` es que el código **mostrado** sea el **logueado**. Si algún día se quiere el código también para los 4xx, habría que `stopIgnoring(HttpException::class)`, lo que empezaría a loguear cada 404 — no se hace.
 - **Bloquea:** nada.
 
 ### D-014 · Qué ve el usuario cuando cae en un 403 o un 404
 - **Estado:** TOMADA (2026-07-24) · **Decisor:** Mauricio
-- **Contexto:** un 403/404 mostraba la pantalla genérica de Symfony (sin logo, sin menú, sin salida) y, en el caso de spatie, **en inglés** (`User does not have the right permissions.`). El dueño pidió una mini-notificación («no tienes permiso… habla con un administrador») o que lo lleve al Inicio.
+- **Contexto:** un 403/404 mostraba una pantalla sin logo, sin menú y sin salida —la vista *minimal* del vendor de Laravel; la genérica de Symfony sale para los status que el vendor no trae— y, en el caso de spatie, **en inglés** (`User does not have the right permissions.`). El dueño pidió una mini-notificación («no tienes permiso… habla con un administrador») o que lo lleve al Inicio.
 - **Decisión:** al usuario que **NAVEGA** (GET autenticado) se lo lleva al **Inicio con una mini-notificación** (canal de sesión propio `aviso`, renderizado una vez en el layout); todo lo demás conserva su status HTTP y cae en `errors/{403,404}.blade.php` con la marca DaliGo. Tres sub-decisiones no obvias:
   1. **Permiso y propiedad comparten el mismo texto genérico.** Decirle «ese reporte es de otro soplador» le confirma que el recurso existe (enumeración) y el remedio para él es idéntico. Se distinguen **solo en el log** (`motivo`: permiso|propiedad|estado|firma|no-encontrado).
   2. **Una ACCIÓN (POST/PUT/DELETE) rechazada por permiso se queda en 403**, no redirige: es un botón que no debió existir (bug de UI, no navegación del usuario), y así el contrato HTTP de las acciones no cambia.

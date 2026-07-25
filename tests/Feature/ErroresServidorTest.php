@@ -84,18 +84,69 @@ class ErroresServidorTest extends TestCase
         Log::shouldNotHaveReceived('error');
     }
 
-    public function test_la_pagina_del_500_no_depende_de_route_auth_ni_vite(): void
+    public function test_ninguna_pagina_de_error_depende_de_route_o_de_vite(): void
     {
-        // Candado ESTRUCTURAL: el fallo que previene (route:cache a medias, sesion
-        // en MySQL caida, manifest de Vite incompleto) solo se manifiesta en
-        // produccion y no se puede simular barato. Ver el docblock de la vista.
-        $blade = file_get_contents(resource_path('views/errors/500.blade.php'));
-        $codigo = preg_replace('/\{\{--.*?--\}\}/s', '', $blade); // fuera los comentarios
+        // Candado ESTRUCTURAL sobre TODAS las vistas de error y el shell (antes
+        // cubria solo la 500: el gate R-31 probo que cambiar url() por route() en
+        // los comodines 4xx/5xx dejaba la suite verde, y que con la ruta dashboard
+        // ausente la vista LANZA y en produccion vuelve la pantalla generica).
+        //
+        // @auth NO esta en la lista general: el 403 y el 429 lo usan a proposito
+        // (ahi la app esta sana y hay sesion). En la 500 si esta prohibido, porque
+        // la sesion vive en MySQL, que es la causa mas probable de un 500.
+        $vistas = array_merge(
+            glob(resource_path('views/errors/*.blade.php')),
+            [resource_path('views/components/errors/shell.blade.php')],
+        );
+        $this->assertGreaterThanOrEqual(10, count($vistas));
 
-        foreach (['route(', '@auth', 'Auth::', '@vite', 'getMessage()'] as $prohibido) {
-            $this->assertStringNotContainsString($prohibido, $codigo,
-                "errors/500.blade.php no puede usar {$prohibido}: se muestra cuando la app ya esta rota.");
+        foreach ($vistas as $archivo) {
+            $codigo = preg_replace('/\{\{--.*?--\}\}/s', '', file_get_contents($archivo));
+            $nombre = basename($archivo);
+
+            foreach (['route(', '@vite', 'getMessage()'] as $prohibido) {
+                $this->assertStringNotContainsString($prohibido, $codigo,
+                    "errors/{$nombre} no puede usar {$prohibido}: una pagina de error no puede depender de que la app este sana.");
+            }
+
+            if ($nombre === '500.blade.php') {
+                foreach (['@auth', 'Auth::'] as $prohibido) {
+                    $this->assertStringNotContainsString($prohibido, $codigo,
+                        "errors/500 no puede usar {$prohibido}: la sesion vive en MySQL, la causa mas probable de un 500.");
+                }
+            }
         }
+    }
+
+    public function test_el_429_sin_retry_after_no_dice_un_numero_inventado(): void
+    {
+        // El @else de la vista (un abort(429) a mano, sin header) no tenia candado:
+        // el gate R-31 mostro que reescribirlo en ingles, o quitar la cota de 300,
+        // dejaba la suite verde (y con la cota fuera, un abort(429) mostraba
+        // "Espera 0 segundos").
+        Route::middleware('web')->get('/zz-429-pelado', fn () => abort(429));
+
+        $this->get('/zz-429-pelado')
+            ->assertStatus(429)
+            ->assertSee('Espera un minuto')
+            ->assertDontSee('0 segundos')
+            ->assertDontSee('TOO MANY');
+    }
+
+    public function test_el_429_con_una_espera_larga_no_promete_un_minuto(): void
+    {
+        // Hoy todos los throttle son de 1 minuto, asi que esto es preventivo: si
+        // alguien agrega uno con decay mayor, la pagina no debe mentir hacia el
+        // lado peligroso ("espera un minuto" cuando faltan horas).
+        Route::middleware('web')->get('/zz-429-largo', function () {
+            throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException(3600);
+        });
+
+        $this->get('/zz-429-largo')
+            ->assertStatus(429)
+            ->assertSee('más tarde')
+            ->assertDontSee('un minuto')
+            ->assertDontSee('3600 segundos');
     }
 
     // --- 429: el cliente del QR --------------------------------------------
@@ -112,9 +163,15 @@ class ErroresServidorTest extends TestCase
             ->assertStatus(429)
             ->assertSee('Vas muy rápido')
             ->assertSee('60 segundos')
-            ->assertSee('tus datos siguen en el formulario')
+            // Advertencia anti-duplicado: el bucket del throttle NO distingue la
+            // ruta, asi que se puede caer en 429 DESPUES de enviar bien (las
+            // paginas de "listo" estan en el mismo bucket). La pagina no puede
+            // prometer que no se envio nada ni invitar a reenviar (gate R-31).
+            ->assertSee('no lo envíes de nuevo', false)
+            ->assertDontSee('tus datos siguen en el formulario')
+            ->assertDontSee('envía el formulario otra vez')
             ->assertDontSee('TOO MANY')
-            // Es un cliente sin cuenta: ninguna salida a la app.
+            // Cliente del QR (invitado): ninguna salida a la app.
             ->assertDontSee('Ir al Inicio')
             ->assertDontSee(url('/dashboard'), false)
             ->assertDontSee(url('/login'), false);
@@ -183,6 +240,14 @@ class ErroresServidorTest extends TestCase
         $vendor = glob(base_path('vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/views/*.blade.php'));
         $this->assertNotEmpty($vendor);
 
+        // El namespace errors:: lo registra el Handler al renderizar; aca se hace lo
+        // mismo para poder RENDERIZAR cada vista, no solo comprobar que el archivo
+        // exista (el gate R-31 probo que con el assertFileExists solo, copiar las
+        // vistas EN INGLES del vendor encima de 401/402/5xx dejaba la suite verde:
+        // el defecto que este lote existe para cerrar podia reaparecer sin que nada
+        // se pusiera rojo).
+        (new \Illuminate\Foundation\Exceptions\RegisterErrorViewPaths)();
+
         foreach ($vendor as $archivo) {
             $status = basename($archivo, '.blade.php');
 
@@ -192,6 +257,29 @@ class ErroresServidorTest extends TestCase
 
             $this->assertFileExists(resource_path("views/errors/{$status}.blade.php"),
                 "El vendor trae errors/{$status} EN INGLES y Laravel lo prefiere al comodin.");
+
+            $html = view("errors::{$status}", [
+                'exception' => new \Symfony\Component\HttpKernel\Exception\HttpException((int) $status),
+            ])->render();
+
+            // Las del vendor heredan errors::minimal, que imprime el status y el
+            // texto en ingles en mayusculas.
+            foreach (['SERVER ERROR', 'TOO MANY REQUESTS', 'NOT FOUND', 'FORBIDDEN', 'UNAUTHORIZED', 'SERVICE UNAVAILABLE', 'PAYMENT REQUIRED'] as $ingles) {
+                $this->assertStringNotContainsString($ingles, $html,
+                    "errors/{$status} esta sirviendo la vista EN INGLES del vendor.");
+            }
+
+            $this->assertStringContainsString('DaliGo', $html, "errors/{$status} no lleva la marca DaliGo.");
+        }
+
+        // Los comodines: mismo trato (no los cubre el loop del vendor).
+        foreach (['4xx' => 405, '5xx' => 502] as $comodin => $status) {
+            $html = view("errors::{$comodin}", [
+                'exception' => new \Symfony\Component\HttpKernel\Exception\HttpException($status),
+            ])->render();
+
+            $this->assertStringContainsString('DaliGo', $html);
+            $this->assertStringNotContainsString('Error', $html, "errors/{$comodin} parece estar en ingles.");
         }
 
         // El namespace errors:: lo registra el propio Handler al renderizar

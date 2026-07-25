@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Context;
 
 /**
  * El codigo corto que la pagina de error 500 le muestra al usuario para que se
- * lo dicte a TI ("me salio el error A3F91C"), y que viaja en la MISMA linea de
+ * lo dicte a TI ("me salio el error A3F9KC"), y que viaja en la MISMA linea de
  * log de la excepcion — con eso se ubica el error exacto sin adivinar la hora.
  *
  * Vive en el Context de la peticion (no en un static) por dos razones:
