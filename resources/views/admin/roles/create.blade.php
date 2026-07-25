@@ -1,8 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Crear rol">
+        <x-page-header title="Crear rol"
+                       :back="route('admin.roles.index')" backTitle="Volver a roles">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.roles.index')" form="role-form" submitLabel="Crear rol" />
+                <x-form-actions form="role-form" submitLabel="Crear rol" />
             </x-slot>
         </x-page-header>
     </x-slot>

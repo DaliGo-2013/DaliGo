@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Crear máquina" />
+        <x-page-header title="Crear máquina"
+                       :back="route('admin.maquinas.index')" backTitle="Volver a máquinas" />
     </x-slot>
 
     <div class="py-12">
@@ -10,7 +11,7 @@
                     @csrf
                     @include('admin.maquinas._form', ['maquina' => null])
 
-                    <x-form-footer :cancel="route('admin.maquinas.index')">
+                    <x-form-footer>
                         <x-primary-button>Crear máquina</x-primary-button>
                     </x-form-footer>
                 </form>

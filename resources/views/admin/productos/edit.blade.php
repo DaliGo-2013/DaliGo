@@ -1,8 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'Editar: '.$producto->nombre">
+        <x-page-header :title="'Editar: '.$producto->nombre"
+                       :back="route('admin.productos.index')" backTitle="Volver al catálogo">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.productos.index')" form="producto-form" submitLabel="Guardar cambios" />
+                <x-form-actions form="producto-form" submitLabel="Guardar cambios" />
             </x-slot>
         </x-page-header>
     </x-slot>

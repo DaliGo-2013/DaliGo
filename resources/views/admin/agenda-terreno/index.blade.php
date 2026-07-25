@@ -3,9 +3,6 @@
         <x-page-header title="Agenda de terreno" subtitle="Mantenciones, reparaciones e instalaciones del técnico industrial.">
             <x-slot name="action">
                 <div class="flex items-center gap-2">
-                    <x-icon-button :href="route('dashboard')" size="lg" variant="secondary" label="Volver al inicio" title="Volver al inicio">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
                     @can('agendar servicio terreno')
                         <x-secondary-link :href="route('admin.servicios-terreno.index')">Catálogo de servicios</x-secondary-link>
                         <x-button-link :href="route('admin.agenda-terreno.create')">

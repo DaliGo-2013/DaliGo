@@ -13,9 +13,8 @@
 
     <div class="py-4 sm:py-8">
         <div class="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
-            <x-secondary-link :href="route('produccion.mi.index')" class="inline-flex min-h-12 items-center gap-1">
-                <span aria-hidden="true">&larr;</span> Mis producciones
-            </x-secondary-link>
+            {{-- Suelto en el cuerpo: pantalla de operario sin banda de cabecera. --}}
+            <x-volver :href="route('produccion.mi.index')" titulo="Volver a Mis producciones" class="mb-3" />
 
             <div class="mb-3 flex items-baseline justify-between gap-3">
                 <h2 class="text-lg font-semibold leading-tight text-neutral-900">Mi historial</h2>

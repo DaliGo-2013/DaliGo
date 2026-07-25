@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Crear tipo de botellón" />
+        <x-page-header title="Crear tipo de botellón"
+                       :back="route('admin.tipos-botellon.index')" backTitle="Volver a tipos de botellón" />
     </x-slot>
 
     <div class="py-12">
@@ -10,7 +11,7 @@
                     @csrf
                     @include('admin.tipos-botellon._form', ['tipo' => null])
 
-                    <x-form-footer :cancel="route('admin.tipos-botellon.index')">
+                    <x-form-footer>
                         <x-primary-button>Crear tipo</x-primary-button>
                     </x-form-footer>
                 </form>

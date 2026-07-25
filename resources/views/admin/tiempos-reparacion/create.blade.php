@@ -1,12 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Nuevo trabajo (tiempo estándar)" subtitle="Se suma a los costos generales de reparación.">
-            <x-slot name="action">
-                <x-icon-button :href="route('admin.tiempos-reparacion.index')" size="lg" variant="secondary" label="Volver" title="Volver al catálogo">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
-            </x-slot>
-        </x-page-header>
+        <x-page-header title="Nuevo trabajo (tiempo estándar)" subtitle="Se suma a los costos generales de reparación."
+                       :back="route('admin.tiempos-reparacion.index')" backTitle="Volver al catálogo" />
     </x-slot>
 
     <div class="py-8 sm:py-12">

@@ -6,13 +6,8 @@
 --}}
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Seguimiento del equipo (boceto)" subtitle="Vista de prueba de cómo se le avisará al cliente. Aún no conectado.">
-            <x-slot name="action">
-                <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
-            </x-slot>
-        </x-page-header>
+        {{-- Sin "Volver": es un ítem del menú, no cuelga del listado. --}}
+        <x-page-header title="Seguimiento del equipo (boceto)" subtitle="Vista de prueba de cómo se le avisará al cliente. Aún no conectado." />
     </x-slot>
 
     <div class="py-10">

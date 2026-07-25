@@ -13,8 +13,11 @@
         <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
             <x-status-alert :status="session('status')" />
 
+            {{-- Sin "← Volver a la cola": esta pantalla ya tiene su Volver en el
+                 encabezado. Convivían DOS con destinos distintos (cola vs soplador)
+                 — el defecto que motivó unificar todo esto. Los enlaces que quedan
+                 son "ver además", no salidas. --}}
             <div class="flex flex-wrap gap-x-4 gap-y-2">
-                <x-secondary-link :href="route('admin.produccion.index')">← Volver a la cola</x-secondary-link>
                 <x-secondary-link :href="route('admin.produccion.soplador', $reporte->soplador)">Ver historial del soplador</x-secondary-link>
                 {{-- Traza completa del registro (hallazgo #9b del QA 15-07: la ficha
                      muestra solo el último ajuste; la historia vive en auditoría). --}}

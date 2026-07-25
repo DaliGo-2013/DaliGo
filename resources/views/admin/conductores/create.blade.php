@@ -1,12 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Nuevo conductor" subtitle="Se agrega al selector del ingreso por lote.">
-            <x-slot name="action">
-                <x-icon-button :href="route('admin.conductores.index')" size="lg" variant="secondary" label="Volver" title="Volver a conductores">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
-            </x-slot>
-        </x-page-header>
+        <x-page-header title="Nuevo conductor" subtitle="Se agrega al selector del ingreso por lote."
+                       :back="route('admin.conductores.index')" backTitle="Volver a conductores" />
     </x-slot>
 
     <div class="py-8 sm:py-12">

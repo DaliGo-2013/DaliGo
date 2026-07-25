@@ -1,8 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'Editar: '.$cliente->razon_social">
+        <x-page-header :title="'Editar: '.$cliente->razon_social"
+                       :back="route('admin.clientes.index')" backTitle="Volver a clientes">
             <x-slot name="action">
-                <x-form-actions :cancel="route('admin.clientes.index')" form="cliente-form" submitLabel="Guardar cambios" />
+                <x-form-actions form="cliente-form" submitLabel="Guardar cambios" />
             </x-slot>
         </x-page-header>
     </x-slot>

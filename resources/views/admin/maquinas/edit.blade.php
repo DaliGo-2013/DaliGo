@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Editar máquina" />
+        <x-page-header title="Editar máquina"
+                       :back="route('admin.maquinas.index')" backTitle="Volver a máquinas" />
     </x-slot>
 
     <div class="py-12">
@@ -11,7 +12,7 @@
                     @method('PUT')
                     @include('admin.maquinas._form', ['maquina' => $maquina])
 
-                    <x-form-footer :cancel="route('admin.maquinas.index')">
+                    <x-form-footer>
                         <x-primary-button>Guardar cambios</x-primary-button>
                     </x-form-footer>
                 </form>

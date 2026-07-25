@@ -11,15 +11,10 @@
     @endphp
 
     <x-slot name="header">
-        <x-page-header :title="'Orden '.$orden->folio" :subtitle="$orden->cliente_nombre">
+        <x-page-header :title="'Orden '.$orden->folio" :subtitle="$orden->cliente_nombre"
+                       :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado">
             <x-slot name="action">
                 <div class="flex items-center gap-2">
-                    {{-- "Atrás" del navegador: vuelve al listado en el mes/scroll donde
-                         estaba; el link al índice queda de respaldo (carga directa). --}}
-                    <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver"
-                        onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }">
-                        <x-icon.arrow-left class="h-5 w-5" />
-                    </x-icon-button>
                     @can('manage servicio tecnico')
                         <x-icon-button :href="route('admin.servicio-tecnico.reparacion', $orden)" size="lg" variant="secondary" label="Reparación" title="Reparación (taller)">
                             <x-icon.wrench-screwdriver class="h-5 w-5" />

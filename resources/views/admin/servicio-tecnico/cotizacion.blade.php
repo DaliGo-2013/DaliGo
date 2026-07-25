@@ -18,14 +18,8 @@
     @endphp
 
     <x-slot name="header">
-        <x-page-header :title="'Cotización · '.$orden->folio" :subtitle="$orden->cliente_nombre.($equipo ? ' · '.$equipo : '')">
-            <x-slot name="action">
-                <x-icon-button :href="route('admin.servicio-tecnico.index')" size="lg" variant="secondary" label="Volver" title="Volver al listado"
-                    onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }">
-                    <x-icon.arrow-left class="h-5 w-5" />
-                </x-icon-button>
-            </x-slot>
-        </x-page-header>
+        <x-page-header :title="'Cotización · '.$orden->folio" :subtitle="$orden->cliente_nombre.($equipo ? ' · '.$equipo : '')"
+                       :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado" />
     </x-slot>
 
     <div class="py-12">
