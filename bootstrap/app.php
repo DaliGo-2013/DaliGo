@@ -23,6 +23,25 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // CODIGO DE INCIDENTE: la pagina errors/500 le muestra al usuario 6
+        // caracteres para que los dicte a TI, y con este callback el MISMO codigo
+        // queda en la linea de log de la excepcion.
+        //
+        // Va en context() y no en report(): los contextCallbacks corren DENTRO de
+        // buildExceptionContext(), o sea en el array de contexto de esa misma
+        // linea de log (Handler.php:399 y 532-556). Un report() tambien correria
+        // antes del logger, pero para meter el codigo en el log habria que
+        // ensuciar el logger global con Log::withContext(), que ademas es
+        // inasertable con Log::spy().
+        //
+        // Los HttpException estan en $internalDontReport y report() sale por
+        // shouldntReport() antes de llegar aca: un abort(500) explicito no
+        // genera codigo (ni linea de log). Es correcto — no hay excepcion que
+        // buscar — y la vista degrada sola.
+        $exceptions->context(fn (\Throwable $e) => [
+            'incidente' => \App\Support\CodigoIncidente::deEstaPeticion(),
+        ]);
+
         // 419 (token CSRF / sesion expirada): Laravel convierte
         // TokenMismatchException en HttpException(419) ANTES de los render
         // callbacks, por eso se intercepta por status 419 (no por la clase).

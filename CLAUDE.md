@@ -161,6 +161,18 @@ Copia esta plantilla y pégala **al inicio** de la sección Bitácora (las entra
 
 > Las entradas más recientes van arriba. Sembrada con los problemas ya resueltos del proyecto.
 
+### [2026-07-24] Las vistas de error del VENDOR ganan al comodín (y por eso un 500 salía en inglés), + `APP_DEBUG` de producción VERIFICADO por fin
+
+- **Síntoma:** con el 403/404 ya resueltos, un 500 seguía mostrando «500 | SERVER ERROR» y un 429 «429 | TOO MANY REQUESTS» — **en inglés, sin logo y sin salida**. (Ojo: NO era la pantalla de Symfony, como se dijo primero; era la vista *minimal* del vendor de Laravel. La de Symfony aparece solo para los status que el vendor no trae, p. ej. 405.)
+- **Causa:** `Handler::getHttpExceptionView()` prueba `errors::{status}` y **solo si no existe en NINGUNA parte** cae en `errors::{N}xx`. El vendor trae `errors/{401,402,403,404,419,429,500,503}.blade.php`, así que **para esos 8 el comodín nunca se usa**: hay que crear el archivo en la app para pisarlos. Un `errors/5xx.blade.php` por sí solo no cubre el 500 ni el 503.
+- **Solución:** las 8 del vendor + los comodines `4xx`/`5xx` (que sí atrapan 405, 400, 410, 413, 502, 504…), todas sobre `components/errors/shell.blade.php`. Candado que se auto-actualiza en `ErroresServidorTest`: recorre las vistas numéricas del vendor y exige la nuestra, así un `composer update` que agregue una vista nueva pone el test rojo en vez de dejar una página en inglés.
+- **Segundo hallazgo (el que decidía si todo esto servía):** nadie había verificado nunca `APP_DEBUG` en el servidor — se deducía. Importa porque con `debug=true` un 500 real **nunca** llega a la vista (`prepareResponse` corta antes) y además expone el stack trace. **Verificado: `APP_DEBUG=false` en staging**, con una sonda HTTP inocua que además sobrevive a este lote porque no pasa por las vistas:
+  ```bash
+  curl -sS -H 'Accept: application/json' https://staging.impdali.cl/_no-existe | grep -q '"trace"' && echo 'DEBUG ON - PELIGRO' || echo 'DEBUG OFF - ok'
+  ```
+  (`convertExceptionToArray()` es el único punto donde `app.debug` cambia una respuesta **sin** depender de las vistas, y aplica también a los HttpException, que se provocan sin daño.)
+- **Evitar a futuro:** (1) al crear una vista de error, comprobar si el vendor ya trae ese status — si lo trae, el comodín no te salva; (2) la página del 500 se muestra **cuando la app ya está rota**: prohibido `route()` (usa `url()`), `@auth`/`Auth::` (la sesión vive en MySQL, la causa más probable del 500), `@vite` y `$exception->getMessage()` (para un 500 ese mensaje **es** el `SQLSTATE` original) — hay un candado estructural que lee el Blade y lo verifica; (3) `APP_DEBUG` en el servidor se **comprueba**, no se deduce: la sonda de arriba es de solo lectura y no rompe nada.
+
 ### [2026-07-24] Manejo amable de 403/404: `back()` en un GET fallido es un BUCLE, la vista de error con layout revienta SOLO en prod, y un 403 que se vuelve 302 borra tandas del soplador
 
 - **Síntoma:** (D-014) un 403/404 mostraba la pantalla genérica de Symfony, en inglés para los de spatie. Al implementar el manejo amable aparecieron tres trampas, ninguna evidente:

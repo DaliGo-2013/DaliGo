@@ -28,6 +28,10 @@
         p { margin: 8px 0 0; max-width: 28rem; font-size: 14px; color: #737373; line-height: 1.5; }
         a.btn { margin-top: 32px; display: inline-block; background: #ea580c; color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 8px; transition: background .15s; }
         a.btn:hover { background: #c2410c; }
+        /* Codigo de incidente (solo errors/500): el padding-left extra compensa
+           el letter-spacing, que si no descentra el texto hacia la derecha. */
+        .codigo-label { margin: 24px 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #a3a3a3; }
+        .codigo { margin: 6px 0 0; display: inline-block; padding: 10px 14px 10px 18px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 20px; font-weight: 700; letter-spacing: .18em; color: #171717; }
     </style>
 </head>
 <body>

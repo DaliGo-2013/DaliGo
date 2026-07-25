@@ -175,6 +175,17 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 
 ## 4. Decisiones TOMADAS (cronológico inverso)
 
+### D-015 · Código de incidente en la página de error 500
+- **Estado:** TOMADA (2026-07-24) · **Decisor:** Mauricio
+- **Contexto:** cerrando la familia de páginas de error (500/429/503/comodines), un 500 le decía al usuario «algo falló» y nada más; cuando llamaba a TI había que adivinar la hora exacta para encontrar la excepción en el log.
+- **Decisión:** la página del 500 muestra un **código de 6 caracteres** («A3F91C») que el usuario dicta a soporte, y el **mismo** código viaja en la línea de log de esa excepción. Detalles no obvios:
+  1. **Alfabeto sin `0/O`, `1/I/L` ni `U`** — se dicta por teléfono, y esos son los caracteres que se confunden al hablar.
+  2. Se genera en el callback de **`$exceptions->context()`**, no en `report()`: los `contextCallbacks` corren dentro de `buildExceptionContext()`, o sea en el array de contexto de **esa misma línea de log**. Un `report()` obligaría a ensuciar el logger global con `Log::withContext()` (además de ser inasertable con `Log::spy()`).
+  3. Vive en `Context::rememberHidden` (binding `scoped`), **no** en un `static`: así muere con la instancia de la app y no se filtra entre peticiones ni entre tests. *Hidden* porque el contexto visible se inyecta en el `extra` de **todas** las líneas de log de la petición, y aquí solo interesa la de la excepción.
+  4. **Un `abort(500)` explícito NO muestra código**: los `HttpException` están en `$internalDontReport`, no se reportan y por lo tanto no hay línea de log que buscar. La vista degrada sola — mostrar un código mandaría a TI a buscar algo inexistente.
+- **Consecuencias:** `App\Support\CodigoIncidente` es la fuente única (incluido el patrón, que los tests reusan en vez de duplicarlo); el candado central de `ErroresServidorTest` es que el código **mostrado** sea el **logueado**. Si algún día se quiere el código también para los 4xx, habría que `stopIgnoring(HttpException::class)`, lo que empezaría a loguear cada 404 — no se hace.
+- **Bloquea:** nada.
+
 ### D-014 · Qué ve el usuario cuando cae en un 403 o un 404
 - **Estado:** TOMADA (2026-07-24) · **Decisor:** Mauricio
 - **Contexto:** un 403/404 mostraba la pantalla genérica de Symfony (sin logo, sin menú, sin salida) y, en el caso de spatie, **en inglés** (`User does not have the right permissions.`). El dueño pidió una mini-notificación («no tienes permiso… habla con un administrador») o que lo lleve al Inicio.
