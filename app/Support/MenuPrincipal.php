@@ -8,6 +8,7 @@ use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionReporte;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Fuente única del menú principal (sidebar V4 "menú Talana"): módulos, ítems,
@@ -204,14 +205,23 @@ class MenuPrincipal
         return null;
     }
 
+    /** TTL del caché de badges: perf (hallazgo 2026-07-24) — el sidebar dispara
+     *  hasta 6 COUNTs en CADA página; 10s de margen es imperceptible para
+     *  contadores de "pendientes" y corta ese costo en navegaciones seguidas.
+     *  Decisión del dueño 2026-07-24 (AskUserQuestion): cachear, 10s exactos. */
+    private const TTL_BADGES = 10;
+
     /**
      * Resolución centralizada de badges (key simbólica => conteo). Migrado
      * del View::composer de AppServiceProvider: COUNT liviano sobre la
      * columna indexada `estado`, solo para quien puede ver servicio técnico.
      *
-     * Memoizado EN EL REQUEST (los atributos mueren con él — seguro entre
-     * requests de un mismo test): sidebar y topbar lo piden en la misma
-     * página y el COUNT no debe correr dos veces.
+     * Dos capas: memoizado EN EL REQUEST (request()->attributes, como antes
+     * — sidebar y topbar lo piden en la misma página, 0 costo extra) y, por
+     * fuera, cacheado 10s por usuario (Cache::remember) para no repetir los
+     * COUNTs en cada navegación dentro de esa ventana. Nunca cachea para
+     * usuario null (candado de MenuPrincipalTest llama badges(null); no vale
+     * la pena cachear "todo en cero").
      *
      * @return array<string, int>
      */
@@ -221,36 +231,42 @@ class MenuPrincipal
         $key = 'dg.menu.badges.'.($user?->id ?? 0);
 
         if (! $atributos->has($key)) {
-            // Cada resolver se gatea por SU permiso y tolera $user null (el
-            // candado de MenuPrincipalTest llama badges(null)). Todos son
-            // COUNTs sobre columnas indexadas.
-            $atributos->set($key, [
-                'st_por_confirmar' => ($user && $user->can('confirmar servicio tecnico'))
-                    ? OrdenServicio::porConfirmar()->count()
-                    : 0,
-                'agenda_por_coordinar' => ($user && $user->canAny(['ver agenda terreno', 'agendar servicio terreno']))
-                    ? AgendaTrabajo::porCoordinar()->count()
-                    : 0,
-                'aprobaciones_bandeja' => ($user && $user->can('aprobar solicitudes'))
-                    ? Aprobacion::bandejaDe($user)->count()
-                    : 0,
-                'produccion_por_aprobar' => ($user && $user->can('manage production'))
-                    ? ProduccionReporte::pendientes()->count()
-                    : 0,
-                'mi_produccion_devueltos' => ($user && $user->can('report production'))
-                    ? ProduccionReporte::devueltosDe($user->id)->count()
-                    : 0,
-                // Solo visibilidad del link "Mis solicitudes" del hub: quien
-                // nunca ha solicitado nada no necesita verlo (y el candado de
-                // AprobacionAccionableTest exige que ninguna superficie ajena
-                // a la fila aporte ese href para un usuario sin historia).
-                'mis_solicitudes' => $user
-                    ? Aprobacion::where('solicitante_id', $user->id)->count()
-                    : 0,
-            ]);
+            $atributos->set($key, $user
+                ? Cache::remember($key, self::TTL_BADGES, fn () => self::resolverBadges($user))
+                : self::resolverBadges(null));
         }
 
         return $atributos->get($key);
+    }
+
+    /** Los 6 resolvers de badges: cada uno se gatea por SU permiso y tolera
+     *  $user null. Todos son COUNTs sobre columnas indexadas. */
+    private static function resolverBadges(?User $user): array
+    {
+        return [
+            'st_por_confirmar' => ($user && $user->can('confirmar servicio tecnico'))
+                ? OrdenServicio::porConfirmar()->count()
+                : 0,
+            'agenda_por_coordinar' => ($user && $user->canAny(['ver agenda terreno', 'agendar servicio terreno']))
+                ? AgendaTrabajo::porCoordinar()->count()
+                : 0,
+            'aprobaciones_bandeja' => ($user && $user->can('aprobar solicitudes'))
+                ? Aprobacion::bandejaDe($user)->count()
+                : 0,
+            'produccion_por_aprobar' => ($user && $user->can('manage production'))
+                ? ProduccionReporte::pendientes()->count()
+                : 0,
+            'mi_produccion_devueltos' => ($user && $user->can('report production'))
+                ? ProduccionReporte::devueltosDe($user->id)->count()
+                : 0,
+            // Solo visibilidad del link "Mis solicitudes" del hub: quien
+            // nunca ha solicitado nada no necesita verlo (y el candado de
+            // AprobacionAccionableTest exige que ninguna superficie ajena
+            // a la fila aporte ese href para un usuario sin historia).
+            'mis_solicitudes' => $user
+                ? Aprobacion::where('solicitante_id', $user->id)->count()
+                : 0,
+        ];
     }
 
     /**

@@ -72,12 +72,30 @@
 }
 .dg-menu-grupo[open]::details-content { height: auto; }
 
-/* Accesibilidad: respetar prefers-reduced-motion (no es opcional) */
+/* View Transitions (cross-document, MPA): transición suave nativa entre
+   páginas completas — Chrome 126+/Edge 126+/Safari 18+ (2026-07: sin Firefox
+   aún). Progresiva: en navegadores sin soporte esto no hace nada, cero JS,
+   cero riesgo para Alpine. Perf 1/2 (pedido del dueño 24-07): "que se sienta
+   más rápido" — esto no evita la recarga de datos (eso es la fase 2, Turbo
+   Drive si hace falta), solo pule la transición visual entre secciones. */
+@view-transition {
+    navigation: auto;
+}
+
+/* Accesibilidad: respetar prefers-reduced-motion (no es opcional). Los
+   pseudo-elementos ::view-transition-* del navegador NO los alcanza el
+   selector universal `*` de arriba — se apagan aparte. */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
     }
 }
