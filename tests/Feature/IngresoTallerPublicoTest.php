@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Mail\IngresoTallerRecibido;
 use App\Models\OrdenServicio;
-use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -119,6 +118,48 @@ class IngresoTallerPublicoTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_el_ingreso_avisa_a_ventas_y_al_tecnico(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+        $bodega = tap(User::factory()->create())->assignRole('jefe_bodega');
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal))->assertSessionHasNoErrors();
+
+        // Fernando (técnico) + ventas reciben la campanita del ingreso.
+        foreach ([$tecnico, $jefe, $vendedor] as $u) {
+            $this->assertSame(1, \App\Models\Notificacion::where('user_id', $u->id)
+                ->where('evento', 'taller.ingresado')
+                ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->count(),
+                "Falta el aviso de ingreso a {$u->name}");
+        }
+        // El jefe de bodega NO va en este aviso (lo ve por el badge «por confirmar»).
+        $this->assertSame(0, \App\Models\Notificacion::where('user_id', $bodega->id)
+            ->where('evento', 'taller.ingresado')->count());
+    }
+
+    public function test_el_ingreso_por_garantia_tambien_avisa(): void
+    {
+        Mail::fake();
+        $sucursal = $this->sucursal();
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, [
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => 'B-1',
+            'garantia_doc_fecha' => now()->subMonth()->toDateString(),
+        ]))->assertSessionHasNoErrors();
+
+        // El corte de garantía es en la etapa de cotización; el INGRESO avisa igual.
+        $this->assertSame(1, \App\Models\Notificacion::where('user_id', $tecnico->id)
+            ->where('evento', 'taller.ingresado')
+            ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->count());
+    }
+
     public function test_formulario_ofrece_elegir_modo_de_ingreso(): void
     {
         $sucursal = $this->sucursal();
@@ -140,115 +181,26 @@ class IngresoTallerPublicoTest extends TestCase
 
         $this->get($this->linkCreate($sucursal))
             ->assertOk()
-            ->assertSee('Código del equipo')
+            ->assertSee('Equipo (marca y modelo)')   // campo de texto libre (sin catálogo)
             ->assertSee('Fecha de ingreso')
             ->assertSee(now()->format('Y-m-d'));   // fecha de hoy prellenada
     }
 
-    public function test_buscar_producto_publico_devuelve_coincidencias(): void
-    {
-        $producto = Producto::factory()->create([
-            'sku' => 'LB-07', 'nombre' => 'Dispensador Silver Black',
-            'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR',
-        ]);
-
-        // Sin login (es público): matchea por SKU y por nombre.
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-07']))
-            ->assertOk()
-            ->assertJsonFragment(['id' => $producto->id]);
-
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Silver']))
-            ->assertOk()
-            ->assertJsonFragment(['sku' => 'LB-07']);
-    }
-
-    public function test_buscar_producto_publico_solo_muestra_equipos(): void
-    {
-        // Equipo (categoría de taller) vs accesorio (otra categoría). El cliente
-        // solo debe ver el equipo, aunque ambos matcheen la búsqueda por nombre.
-        $equipo = Producto::factory()->create([
-            'sku' => '1040001', 'nombre' => 'Dispensador Rosa LB-16',
-            'categoria' => 'AGUA DISP. PEDESTAL VENTILADOR',
-        ]);
-        $accesorio = Producto::factory()->create([
-            'sku' => '1020104', 'nombre' => 'Soporte Rosa Nacional',
-            'categoria' => 'Accesorios',
-        ]);
-
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'Rosa']))
-            ->assertOk()
-            ->assertJsonFragment(['id' => $equipo->id])
-            ->assertJsonMissing(['id' => $accesorio->id]);
-    }
-
-    public function test_buscar_producto_publico_filtra_categoria_sin_importar_mayusculas(): void
-    {
-        // La categoría que manda Bsale puede venir en otra capitalización que la
-        // configurada; el filtro compara en minúsculas.
-        $producto = Producto::factory()->create([
-            'sku' => 'BX-500', 'nombre' => 'Bomba de agua USB portátil',
-            'categoria' => 'AGUA BOMBA USB',
-        ]);
-
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'BX-500']))
-            ->assertOk()
-            ->assertJsonFragment(['id' => $producto->id]);
-    }
-
-    public function test_buscar_producto_publico_excluye_sin_categoria(): void
-    {
-        // Un producto sin categoría (no calza con ningún equipo) no se sugiere.
-        Producto::factory()->create(['sku' => 'SC-01', 'nombre' => 'Cosa sin categoria', 'categoria' => null]);
-
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'SC-01']))
-            ->assertOk()
-            ->assertExactJson([]);
-    }
-
-    public function test_buscar_producto_publico_muestra_dispensadores(): void
-    {
-        // Categoría real de Bsale (mayúsculas, con punto): debe calzar con el
-        // config vía el match tolerante y mostrar el dispensador en el buscador.
-        $disp = Producto::factory()->create([
-            'sku' => '1040001', 'nombre' => 'DISP. LB-16 L/D BLUE/SILVER',
-            'categoria' => 'AGUA DISP. SOBREMESA COMPRESOR',
-        ]);
-
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'LB-16']))
-            ->assertOk()
-            ->assertJsonFragment(['id' => $disp->id]);
-    }
-
-    public function test_buscar_producto_publico_exige_dos_caracteres(): void
-    {
-        Producto::factory()->create(['sku' => 'X1']);
-
-        $this->getJson(route('ingreso-taller.buscar-producto', ['q' => 'X']))
-            ->assertOk()
-            ->assertExactJson([]);
-    }
-
-    public function test_envio_publico_guarda_producto_id(): void
+    public function test_envio_publico_guarda_el_modelo_escrito(): void
     {
         Mail::fake();
         $sucursal = $this->sucursal();
-        $producto = Producto::factory()->create();
 
-        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['producto_id' => $producto->id]))
+        // El cliente escribe a mano el equipo (sin catálogo): se guarda en `modelo`
+        // y NO se enlaza ningún producto del catálogo.
+        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['modelo' => 'Dispensador LB-16 blanco']))
             ->assertRedirectContains('/ingreso-taller/listo');
 
         $this->assertDatabaseHas('ordenes_servicio', [
-            'producto_id' => $producto->id,
+            'modelo' => 'Dispensador LB-16 blanco',
+            'producto_id' => null,
             'fuente' => 'qr',
         ]);
-    }
-
-    public function test_producto_inexistente_es_rechazado(): void
-    {
-        $sucursal = $this->sucursal();
-
-        $this->post(route('ingreso-taller.store'), $this->payload($sucursal, ['producto_id' => 999999]))
-            ->assertSessionHasErrors('producto_id');
     }
 
     public function test_honeypot_lleno_no_crea_orden(): void

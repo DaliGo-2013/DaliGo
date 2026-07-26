@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -48,6 +49,111 @@ class MiProduccionController extends Controller
             'reportes' => $reportes,
             'devueltos' => $devueltos,
         ]);
+    }
+
+    /**
+     * Historial propio: que produjo dia por dia. Por defecto los ultimos
+     * ProduccionReporte::HISTORIAL_DIAS dias (hoy incluido); el operario puede
+     * cambiar el rango con desde/hasta. Solo lectura: el detalle de un dia reusa
+     * mi.show, cuyo abort_unless de propiedad ya cubre cualquier fecha.
+     */
+    public function historial(Request $request): View
+    {
+        $user = $request->user();
+        // Dia de NEGOCIO (P-TZ-01): a las 22:00 de Chile el "hoy" UTC ya es
+        // manana y la ventana se correria un dia.
+        $hoy = \App\Support\FechaNegocio::ahora()->startOfDay();
+
+        // 45 dias DISTINTOS incluyendo hoy: los whereDate >= / <= son inclusivos
+        // en ambos bordes, asi que la cuenta es (hasta - desde + 1).
+        $desde = $this->fechaDelFiltro($request, 'desde')
+            ?? $hoy->copy()->subDays(ProduccionReporte::HISTORIAL_DIAS - 1);
+        $hasta = $this->fechaDelFiltro($request, 'hasta') ?? $hoy->copy();
+
+        // Rango invertido: se ORDENA, no se rechaza (una pantalla de planta no
+        // muestra errores de validacion por un query string).
+        if ($desde->gt($hasta)) {
+            [$desde, $hasta] = [$hasta, $desde];
+        }
+
+        // Techo en hoy: sin esto un 'hasta' futuro (alcanzable desde el propio
+        // date picker) empujaba el piso del clamp de abajo y dejaba la ventana
+        // ENTERA en el futuro => lista vacia sin explicacion (gate R-31).
+        if ($hasta->gt($hoy)) {
+            $hasta = $hoy->copy();
+        }
+
+        // Ventana absurda: se recorta conservando lo mas reciente. Se compara por
+        // fecha (no diffInDays: en Carbon el diff es float y con signo).
+        $piso = $hasta->copy()->subDays(ProduccionReporte::HISTORIAL_DIAS_MAX - 1);
+        if ($desde->lt($piso)) {
+            $desde = $piso;
+        }
+
+        // whereDate en los DOS bordes, JAMAS whereBetween: la columna 'fecha' es
+        // cast date y se guarda "Y-m-d 00:00:00", asi que el borde superior del
+        // between se escapa (bitacora 2026-07-01 y su reincidencia del 07-02, que
+        // fue en este mismo historial pero del lado del jefe).
+        // El where('soplador_id') es el aislamiento: jamas se lee un id de la URL.
+        $reportes = ProduccionReporte::where('soplador_id', $user->id)
+            ->whereDate('fecha', '>=', $desde->toDateString())
+            ->whereDate('fecha', '<=', $hasta->toDateString())
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->get();
+
+        // Sin with(): la fila usa solo columnas denormalizadas y accessors. El
+        // with(['registros...']) del historial admin aqui seria peso muerto
+        // (cientos de tandas cargadas para nada en 45 dias).
+        $totales = [
+            'vendibles' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->producido),
+            'merma' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->merma),
+            'turnos' => $reportes->count(),
+        ];
+
+        return view('produccion.mi-historial', [
+            'reportes' => $reportes,
+            'totales' => $totales,
+            'desde' => $desde->toDateString(),
+            'hasta' => $hasta->toDateString(),
+            'hoy' => $hoy->toDateString(),
+            'esDefault' => ! $request->hasAny(['desde', 'hasta']),
+        ]);
+    }
+
+    /**
+     * Fecha del filtro, tolerante: solo Y-m-d REAL (lo que emite un
+     * <input type="date">); cualquier otra cosa cae al default, nunca a un 500.
+     *
+     * Se valida con regex propia + ROUND-TRIP, no con Carbon::hasFormat ni con
+     * $request->date(), porque ambos dejan pasar basura (gate R-31, 2026-07-24):
+     *  - hasFormat es un match de regex y su patron de 'Y' acepta 5 digitos
+     *    ('99999-01-01'), pero el 'Y' de createFromFormat consume 4 => lanzaba
+     *    InvalidFormatException("The separation symbol could not be found") = 500.
+     *  - un dia inexistente ('2026-02-31') pasa el regex y createFromFormat lo
+     *    DESBORDA callado a 2026-03-03: el operario consultaba un rango que no
+     *    pidio. El round-trip (format('Y-m-d') === $valor) lo descarta.
+     *  - $request->date() hace Carbon::parse() y con basura tambien revienta.
+     * El try/catch es el cinturon final: ninguna entrada de la URL debe poder
+     * tumbar una pantalla de planta.
+     */
+    private function fechaDelFiltro(Request $request, string $campo): ?Carbon
+    {
+        $valor = $request->query($campo);
+
+        if (! is_string($valor) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor) !== 1) {
+            return null;
+        }
+
+        try {
+            // '!' resetea la hora a 00:00 (sin el, toma la hora actual).
+            $fecha = Carbon::createFromFormat('!Y-m-d', $valor, config('daligo.tz_negocio'));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        // Round-trip: descarta los desbordes de mes/dia (2026-02-31 -> 03-03).
+        return $fecha->format('Y-m-d') === $valor ? $fecha : null;
     }
 
     /**

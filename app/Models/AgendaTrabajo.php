@@ -72,6 +72,7 @@ class AgendaTrabajo extends Model implements AuditableContract
         'ciudad',
         'tecnico_id',
         'descripcion',
+        'disponibilidad',
         'notas_tecnico',
         'motivo_cancelacion',
         'creado_por',

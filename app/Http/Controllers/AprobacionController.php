@@ -31,11 +31,7 @@ class AprobacionController extends Controller
     {
         $user = $request->user();
 
-        $pendientes = Aprobacion::where('estado', Aprobacion::ESTADO_PENDIENTE)
-            ->when(
-                ! $user->hasRole('admin'),
-                fn ($q) => $q->whereIn('rol_aprobador', $user->getRoleNames()),
-            )
+        $pendientes = Aprobacion::bandejaDe($user)
             ->with(['solicitante', 'aprobable'])
             ->oldest() // las mas antiguas primero: son las que mas urgen
             ->get();
@@ -132,9 +128,15 @@ class AprobacionController extends Controller
 
         $porEstado = $filtrada()->selectRaw('estado, COUNT(*) c')->groupBy('estado')->pluck('c', 'estado');
 
+        // Desglose por categoría (tipo de solicitud), respetando los filtros:
+        // [tipo_accion => conteo]. Hoy solo hay un tipo, pero la caja queda lista
+        // para cuando M04/M05/M07/M13 enchufen los suyos.
+        $porTipo = $filtrada()->selectRaw('tipo_accion, COUNT(*) c')->groupBy('tipo_accion')->pluck('c', 'tipo_accion');
+
         return view('admin.aprobaciones.index', [
             'aprobaciones' => $aprobaciones,
             'porEstado' => $porEstado,
+            'porTipo' => $porTipo,
             'porSolicitante' => $this->agruparPorUsuario($filtrada(), 'solicitante_id'),
             'porAprobador' => $this->agruparPorUsuario($filtrada(), 'resuelto_por'),
             'usuarios' => User::orderBy('name')->get(['id', 'name']),

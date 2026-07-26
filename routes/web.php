@@ -45,7 +45,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Preferencias de notificación del usuario (M15): opt-out por evento×canal.
-    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])->name('perfil.notificaciones.update');
+    // Solo Luis + administradores TI las gestionan (pedido del jefe): gate por
+    // permiso; el resto del perfil sigue abierto a cualquier autenticado.
+    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])
+        ->middleware('permission:gestionar notificaciones')
+        ->name('perfil.notificaciones.update');
 
     // Color de las cards de accesos del Inicio (M16, D-013): preferencia
     // personal, guardada por fetch desde el modo "Personalizar" del dashboard.
@@ -311,14 +315,28 @@ Route::middleware('auth')
             Route::post('servicio-tecnico/{orden}/detalle-trabajo', [ServicioTecnicoController::class, 'enviarDetalleTrabajo'])
                 ->whereNumber('orden')->name('servicio-tecnico.detalle-trabajo.enviar');
 
+            // Registrar ingreso (crear) queda en 'manage': el técnico SÍ registra
+            // equipos. Editar la recepción y eliminar se separan abajo.
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])
-                ->only(['create', 'store', 'edit', 'update', 'destroy']);
+                ->only(['create', 'store']);
 
             // Conductores (choferes de ruta) — administrables desde la app.
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
+        // EDITAR la recepción de una orden (datos de ingreso) y ELIMINARLA: permiso
+        // aparte para poder limitárselo al técnico (pedido de gerencia). El técnico
+        // conserva registrar ingreso + parte del técnico + cotización.
+        Route::middleware('permission:editar recepcion servicio tecnico')->group(function () {
+            Route::get('servicio-tecnico/{orden}/edit', [ServicioTecnicoController::class, 'edit'])
+                ->whereNumber('orden')->name('servicio-tecnico.edit');
+            Route::put('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'update'])
+                ->whereNumber('orden')->name('servicio-tecnico.update');
+            Route::delete('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'destroy'])
+                ->whereNumber('orden')->name('servicio-tecnico.destroy');
         });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
@@ -354,10 +372,18 @@ Route::middleware(['auth', 'permission:report production'])
     ->name('produccion.')
     ->group(function () {
         Route::get('mi-reporte', [MiProduccionController::class, 'index'])->name('mi.index');
-        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->name('mi.show');
-        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->name('mi.update');
-        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->name('mi.registros.store');
-        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->name('mi.registros.destroy');
+        // Historial propio (ultimos 45 dias por defecto, filtro desde/hasta).
+        // Path HERMANO a proposito, NO 'mi-reporte/historial': el {reporte} de
+        // abajo captura cualquier segmento y el binding buscaria un reporte con
+        // id "historial" (404). Peor: el resultado depende del matcher (sin
+        // cache manda el orden de registro; con route:cache —que corre en cada
+        // deploy— manda el mapa estatico de Symfony) => divergencia local/prod.
+        Route::get('mi-historial', [MiProduccionController::class, 'historial'])->name('mi.historial');
+        // whereNumber: cinturon para el proximo que cuelgue un path bajo mi-reporte/.
+        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->whereNumber('reporte')->name('mi.show');
+        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->whereNumber('reporte')->name('mi.update');
+        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->whereNumber('reporte')->name('mi.registros.store');
+        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
     });
 
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
@@ -415,10 +441,5 @@ Route::middleware('throttle:6,1')->group(function () {
     Route::get('confirmacion-visita/{token}/gracias', [VisitaConfirmacionController::class, 'gracias'])
         ->middleware('signed')->name('confirmacion-visita.gracias');
 });
-
-// Autocompletado publico del producto Dali para el formulario del QR. Throttle
-// propio (mas alto que el envio) porque dispara en cada tecla; solo lee catalogo.
-Route::get('ingreso-taller/buscar-producto', [IngresoTallerPublicoController::class, 'buscarProducto'])
-    ->middleware('throttle:30,1')->name('ingreso-taller.buscar-producto');
 
 require __DIR__.'/auth.php';

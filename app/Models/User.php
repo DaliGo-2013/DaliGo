@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use OwenIt\Auditing\Auditable as AuditableTrait;
@@ -38,6 +39,7 @@ class User extends Authenticatable implements AuditableContract, MustVerifyEmail
         'email',
         'password',
         'sucursal_id',
+        'jefe_id',
     ];
 
     /**
@@ -74,5 +76,38 @@ class User extends Authenticatable implements AuditableContract, MustVerifyEmail
     public function sucursal(): BelongsTo
     {
         return $this->belongsTo(Sucursal::class);
+    }
+
+    /**
+     * Jefe directo (jefatura) de este usuario, si tiene.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function jefe(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'jefe_id');
+    }
+
+    /**
+     * Vendedores a cargo de este usuario (jefatura -> su equipo).
+     *
+     * @return HasMany<User>
+     */
+    public function subordinados(): HasMany
+    {
+        return $this->hasMany(User::class, 'jefe_id');
+    }
+
+    /**
+     * IDs de los vendedores cuya cartera de clientes este usuario puede ver en
+     * Servicio Técnico: la propia + la de sus subordinados directos. Un vendedor
+     * sin equipo obtiene solo su propio id; una jefatura suma la de su equipo.
+     * Es la base del scope de visibilidad (ver App\Models\OrdenServicio).
+     *
+     * @return list<int>
+     */
+    public function idsCarteraServicioTecnico(): array
+    {
+        return $this->subordinados()->pluck('id')->push($this->id)->all();
     }
 }

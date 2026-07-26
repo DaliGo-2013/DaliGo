@@ -29,7 +29,8 @@ class SeguimientoDemoTest extends TestCase
     public function test_sin_permiso_es_forbidden(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/admin/servicio-tecnico/seguimiento-demo')->assertForbidden();
+            ->get('/admin/servicio-tecnico/seguimiento-demo')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_staff_ve_el_boceto_con_las_etapas(): void

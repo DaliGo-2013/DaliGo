@@ -47,7 +47,8 @@ class MaquinaManagementTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/maquinas')->assertForbidden();
+        $this->actingAs($member)->get('/admin/maquinas')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->post('/admin/maquinas', ['nombre' => 'X'])->assertForbidden();
     }
 
@@ -55,7 +56,8 @@ class MaquinaManagementTest extends TestCase
     {
         $soplador = tap(User::factory()->create())->assignRole('soplador');
 
-        $this->actingAs($soplador)->get('/admin/maquinas')->assertForbidden();
+        $this->actingAs($soplador)->get('/admin/maquinas')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_jefe_bodega_y_admin_ven_el_listado(): void

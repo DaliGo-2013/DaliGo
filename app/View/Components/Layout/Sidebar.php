@@ -3,14 +3,16 @@
 namespace App\View\Components\Layout;
 
 use App\Support\MenuPrincipal;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Component;
 use Illuminate\View\View;
 
 /**
  * Sidebar V4 (menú Talana): computa el árbol podado por permisos, el módulo
- * activo y los badges desde MenuPrincipal (fuente única). Reemplaza al
- * View::composer de layouts.navigation — el componente trae sus datos.
+ * activo y los badges desde MenuPrincipal (fuente única). Lleva la campanita
+ * M15 (cabecera, desktop) y el bloque de usuario (pie) — en desktop no hay
+ * topbar (pedido del dueño 24-07: máximo espacio vertical).
  */
 class Sidebar extends Component
 {
@@ -23,12 +25,25 @@ class Sidebar extends Component
     /** @var array<string, int> */
     public array $badges;
 
+    /** Ítems del área de cuenta (dropdown del pie, junto a Perfil). */
+    public array $cuenta;
+
+    /** Campanita M15 (cabecera de la sidebar). */
+    public Collection $noLeidas;
+
+    public int $conteo;
+
     public function __construct()
     {
         $user = Auth::user();
         $this->modulos = MenuPrincipal::para($user);
         $this->activo = MenuPrincipal::moduloActivo();
         $this->badges = MenuPrincipal::badges($user);
+        $this->cuenta = MenuPrincipal::cuenta($user);
+
+        $campanita = MenuPrincipal::campanita($user);
+        $this->noLeidas = $campanita['noLeidas'];
+        $this->conteo = $campanita['conteo'];
     }
 
     public function render(): View

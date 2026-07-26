@@ -54,6 +54,39 @@ document.addEventListener('submit', (e) => {
 }, true);
 
 /**
+ * "Volver" unico (doctrina del dueno, 2026-07-24). Cada <x-volver> lleva un href
+ * REAL a la pantalla padre: ese es el destino garantizado, lo que abre el
+ * ctrl/cmd-clic y lo que pasa si este script no corre. Este handler solo agrega
+ * una mejora: si la pagina anterior YA es ese mismo padre, usa el historial en
+ * vez de navegar, y asi el listado vuelve con su scroll y su mes abierto. Antes
+ * esto era un onclick copiado a mano en 5 vistas — y faltaba justo en una
+ * hermana (reparacion, que si lo necesitaba).
+ *
+ * Compara SOLO el pathname a proposito: el href es /admin/agenda-terreno y el
+ * referrer /admin/agenda-terreno?anio=2026&mes=7 — ese query string es
+ * precisamente el estado que queremos recuperar. Si el referrer es otra pantalla
+ * (llegaste desde el Inicio o desde una notificacion) no se toca el clic: el
+ * usuario termina en el listado igual, que es el destino predecible.
+ */
+document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    const enlace = e.target.closest('a[data-dg-volver]');
+    if (!enlace || !document.referrer || window.history.length <= 1) return;
+
+    try {
+        const destino = new URL(enlace.href);
+        const anterior = new URL(document.referrer);
+        if (anterior.origin === window.location.origin && anterior.pathname === destino.pathname) {
+            e.preventDefault();
+            window.history.back();
+        }
+    } catch (err) {
+        // href o referrer no parseable: se sigue el enlace normal.
+    }
+});
+
+/**
  * Buscador remoto reutilizable (Servicio Tecnico): autocompletado contra un
  * endpoint JSON (limit 15). Se usa para cliente (por RUT/nombre) y para producto
  * (por SKU/nombre); el id elegido se guarda en un <input hidden> que define la

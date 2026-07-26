@@ -60,12 +60,42 @@
 }
 .dg-destacado { animation: dg-shake 0.38s ease-in-out, dg-destacar-ring 1.4s ease-out; }
 
-/* Accesibilidad: respetar prefers-reduced-motion (no es opcional) */
+/* Acordeón del menú (sidebar V4): apertura/cierre con altura interpolada —
+   liviano y nativo. Navegadores sin interpolate-size abren sin animar
+   (degradación limpia); el bloque de prefers-reduced-motion de abajo la
+   recorta igual que al resto. */
+.dg-menu-grupo { interpolate-size: allow-keywords; }
+.dg-menu-grupo::details-content {
+    height: 0;
+    overflow: clip;
+    transition: height 150ms ease, content-visibility 150ms allow-discrete;
+}
+.dg-menu-grupo[open]::details-content { height: auto; }
+
+/* View Transitions (cross-document, MPA): transición suave nativa entre
+   páginas completas — Chrome 126+/Edge 126+/Safari 18+ (2026-07: sin Firefox
+   aún). Progresiva: en navegadores sin soporte esto no hace nada, cero JS,
+   cero riesgo para Alpine. Perf 1/2 (pedido del dueño 24-07): "que se sienta
+   más rápido" — esto no evita la recarga de datos (eso es la fase 2, Turbo
+   Drive si hace falta), solo pule la transición visual entre secciones. */
+@view-transition {
+    navigation: auto;
+}
+
+/* Accesibilidad: respetar prefers-reduced-motion (no es opcional). Los
+   pseudo-elementos ::view-transition-* del navegador NO los alcanza el
+   selector universal `*` de arriba — se apagan aparte. */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
     }
 }

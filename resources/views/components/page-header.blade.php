@@ -1,11 +1,14 @@
-@props(['title', 'subtitle' => null, 'back' => null])
+@props(['title', 'subtitle' => null, 'back' => null, 'backTitle' => null])
 
+{{-- $back = URL de la pantalla padre → renderiza el <x-volver> canónico a la
+     IZQUIERDA del título. $backTitle nombra el destino en el tooltip cuando no
+     es obvio ("Volver a la agenda"); el texto visible siempre dice "Volver".
+     Es una URL, no una ruta, para que la vista pueda calcularla (ej. el
+     conductor de lote/create, que no puede ver el listado de ST y va al Inicio). --}}
 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex min-w-0 items-center gap-3">
         @isset($back)
-            <x-icon-button :href="$back" size="lg" variant="secondary" label="Volver" title="Volver">
-                <x-icon.arrow-left class="h-5 w-5" />
-            </x-icon-button>
+            <x-volver :href="$back" :titulo="$backTitle" />
         @endisset
         <div class="min-w-0">
             <h2 class="text-xl font-semibold leading-tight text-neutral-900">{{ $title }}</h2>

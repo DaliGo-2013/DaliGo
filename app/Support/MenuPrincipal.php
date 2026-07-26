@@ -2,8 +2,13 @@
 
 namespace App\Support;
 
+use App\Models\AgendaTrabajo;
+use App\Models\Aprobacion;
+use App\Models\Notificacion;
 use App\Models\OrdenServicio;
+use App\Models\ProduccionReporte;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Fuente única del menú principal (sidebar V4 "menú Talana"): módulos, ítems,
@@ -58,7 +63,7 @@ class MenuPrincipal
             'icon' => 'building-office-2',
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production'],
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
             ],
         ],
         'administracion' => [
@@ -68,7 +73,8 @@ class MenuPrincipal
                 'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*'], 'permiso' => 'view users'],
                 'roles' => ['label' => 'Roles', 'route' => 'admin.roles.index', 'activo' => ['admin.roles.*'], 'permiso' => 'manage roles'],
                 'sucursales' => ['label' => 'Sucursales', 'route' => 'admin.sucursales.index', 'activo' => ['admin.sucursales.*'], 'permiso' => 'manage sucursales'],
-                'configuracion' => ['label' => 'Configuración', 'route' => 'admin.configuracion.index', 'activo' => ['admin.configuracion.*'], 'permiso' => 'manage settings'],
+                // Configuración NO va aquí: es de cuenta, no de negocio-por-módulo
+                // (ver self::CUENTA más abajo) — pedido del dueño 2026-07-24.
                 'auditoria' => ['label' => 'Auditoría', 'route' => 'admin.audits.index', 'activo' => ['admin.audits.*'], 'permiso' => 'view audit'],
                 'notificaciones' => ['label' => 'Notificaciones', 'route' => 'admin.notificaciones.index', 'activo' => ['admin.notificaciones.*'], 'permiso' => 'view notificaciones'],
                 // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
@@ -82,6 +88,8 @@ class MenuPrincipal
             'route' => 'produccion.mi.index',
             'activo' => ['produccion.mi.*'],
             'permiso' => 'report production',
+            'badge' => 'mi_produccion_devueltos',
+            'badge_title' => ':n reporte(s) devuelto(s)',
         ],
         'aprobaciones' => [
             'label' => 'Aprobaciones',
@@ -89,28 +97,45 @@ class MenuPrincipal
             'route' => 'aprobaciones.index',
             'activo' => ['aprobaciones.*'],
             'permiso' => 'aprobar solicitudes',
+            'badge' => 'aprobaciones_bandeja',
+            'badge_title' => ':n solicitud(es) por aprobar',
         ],
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',
             'icon' => 'wrench-screwdriver',
-            'badge' => 'st_pendientes',
-            'badge_title' => ':n equipo(s) por atender',
+            // Sin badge de módulo a propósito (decisión del dueño 24-07): los
+            // números del menú son ACCIONES ancladas a su ítem — la carga del
+            // taller (equipos activos) es un estado y vive en el Inicio y en
+            // el Listado, no aquí.
             // Pantallas de detalle de ST (show, cotización, reparación…) no
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
             'items' => [
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
+                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
                 'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
                 'seguimiento' => ['label' => 'Seguimiento (boceto)', 'route' => 'admin.servicio-tecnico.seguimiento-demo', 'activo' => ['admin.servicio-tecnico.seguimiento-demo'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
-                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno'],
+                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
             ],
         ],
+    ];
+
+    /**
+     * Ítems del ÁREA DE CUENTA (dropdown del pie de la sidebar, junto a
+     * Perfil/Cerrar sesión) — NO del árbol de navegación. Lista plana, sin
+     * acordeón. Pedido del dueño 2026-07-24: "Configuración" no pertenece a
+     * Administración (mezcla parámetros de negocio con Usuarios/Roles/
+     * Auditoría); Perfil y Configuración son conceptualmente distintos
+     * (autoservicio del usuario vs. reglas del sistema) así que quedan como
+     * links SEPARADOS en el mismo menú, no fusionados en una pantalla.
+     */
+    public const CUENTA = [
+        'configuracion' => ['label' => 'Configuración', 'route' => 'admin.configuracion.index', 'activo' => ['admin.configuracion.*'], 'permiso' => 'manage settings'],
     ];
 
     /**
@@ -145,6 +170,24 @@ class MenuPrincipal
     }
 
     /**
+     * Ítems del área de cuenta visibles para el usuario (poda por permiso,
+     * mismo criterio que para()). Lista plana para el dropdown del pie.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function cuenta(?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return array_filter(
+            self::CUENTA,
+            fn (array $item) => self::puedeVer($user, $item['permiso'])
+        );
+    }
+
+    /**
      * Módulo cuyo patrón 'activo' (de ítems o del módulo) matchea la ruta
      * actual: abre su acordeón y da el título de la topbar. null si la ruta
      * no pertenece al menú (ej. perfil).
@@ -162,14 +205,23 @@ class MenuPrincipal
         return null;
     }
 
+    /** TTL del caché de badges: perf (hallazgo 2026-07-24) — el sidebar dispara
+     *  hasta 6 COUNTs en CADA página; 10s de margen es imperceptible para
+     *  contadores de "pendientes" y corta ese costo en navegaciones seguidas.
+     *  Decisión del dueño 2026-07-24 (AskUserQuestion): cachear, 10s exactos. */
+    private const TTL_BADGES = 10;
+
     /**
      * Resolución centralizada de badges (key simbólica => conteo). Migrado
      * del View::composer de AppServiceProvider: COUNT liviano sobre la
      * columna indexada `estado`, solo para quien puede ver servicio técnico.
      *
-     * Memoizado EN EL REQUEST (los atributos mueren con él — seguro entre
-     * requests de un mismo test): sidebar y topbar lo piden en la misma
-     * página y el COUNT no debe correr dos veces.
+     * Dos capas: memoizado EN EL REQUEST (request()->attributes, como antes
+     * — sidebar y topbar lo piden en la misma página, 0 costo extra) y, por
+     * fuera, cacheado 10s por usuario (Cache::remember) para no repetir los
+     * COUNTs en cada navegación dentro de esa ventana. Nunca cachea para
+     * usuario null (candado de MenuPrincipalTest llama badges(null); no vale
+     * la pena cachear "todo en cero").
      *
      * @return array<string, int>
      */
@@ -179,10 +231,61 @@ class MenuPrincipal
         $key = 'dg.menu.badges.'.($user?->id ?? 0);
 
         if (! $atributos->has($key)) {
+            $atributos->set($key, $user
+                ? Cache::remember($key, self::TTL_BADGES, fn () => self::resolverBadges($user))
+                : self::resolverBadges(null));
+        }
+
+        return $atributos->get($key);
+    }
+
+    /** Los 6 resolvers de badges: cada uno se gatea por SU permiso y tolera
+     *  $user null. Todos son COUNTs sobre columnas indexadas. */
+    private static function resolverBadges(?User $user): array
+    {
+        return [
+            'st_por_confirmar' => ($user && $user->can('confirmar servicio tecnico'))
+                ? OrdenServicio::porConfirmar()->count()
+                : 0,
+            'agenda_por_coordinar' => ($user && $user->canAny(['ver agenda terreno', 'agendar servicio terreno']))
+                ? AgendaTrabajo::porCoordinar()->count()
+                : 0,
+            'aprobaciones_bandeja' => ($user && $user->can('aprobar solicitudes'))
+                ? Aprobacion::bandejaDe($user)->count()
+                : 0,
+            'produccion_por_aprobar' => ($user && $user->can('manage production'))
+                ? ProduccionReporte::pendientes()->count()
+                : 0,
+            'mi_produccion_devueltos' => ($user && $user->can('report production'))
+                ? ProduccionReporte::devueltosDe($user->id)->count()
+                : 0,
+            // Solo visibilidad del link "Mis solicitudes" del hub: quien
+            // nunca ha solicitado nada no necesita verlo (y el candado de
+            // AprobacionAccionableTest exige que ninguna superficie ajena
+            // a la fila aporte ese href para un usuario sin historia).
+            'mis_solicitudes' => $user
+                ? Aprobacion::where('solicitante_id', $user->id)->count()
+                : 0,
+        ];
+    }
+
+    /**
+     * Datos de la campanita M15 para el shell (v1 sin polling, se refresca al
+     * navegar). Memoizado en el request igual que badges(): el pie de la
+     * sidebar (desktop) y la campana de la barra móvil los piden en la misma
+     * página sin duplicar las 2 queries.
+     *
+     * @return array{noLeidas: \Illuminate\Support\Collection, conteo: int}
+     */
+    public static function campanita(?User $user): array
+    {
+        $atributos = request()->attributes;
+        $key = 'dg.menu.campanita.'.($user?->id ?? 0);
+
+        if (! $atributos->has($key)) {
             $atributos->set($key, [
-                'st_pendientes' => ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
-                    ? OrdenServicio::pendientesTecnico()->count()
-                    : 0,
+                'noLeidas' => Notificacion::campanitaDe($user?->id)->latest('id')->take(5)->get(),
+                'conteo' => Notificacion::campanitaDe($user?->id)->count(),
             ]);
         }
 
@@ -191,7 +294,12 @@ class MenuPrincipal
 
     /**
      * Mapa plano "modulo" o "modulo.item" => definición, para los candados de
-     * MenuPrincipalTest (espejo de AccesosDashboard::cards()).
+     * MenuPrincipalTest (espejo de AccesosDashboard::cards()). Incluye
+     * self::CUENTA (prefijo "cuenta.*") — aunque esos ítems no viven en el
+     * árbol de navegación, deben pasar los mismos candados de route/permiso
+     * y seguir siendo encontrables por el candado que verifica que las cards
+     * del Inicio sean subconjunto del menú (AccesosDashboard tiene un card
+     * de Configuración).
      *
      * @return array<string, array<string, mixed>>
      */
@@ -206,6 +314,9 @@ class MenuPrincipal
             } else {
                 $items[$key] = $modulo;
             }
+        }
+        foreach (self::CUENTA as $key => $item) {
+            $items["cuenta.{$key}"] = $item;
         }
 
         return $items;

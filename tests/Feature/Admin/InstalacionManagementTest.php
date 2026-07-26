@@ -52,7 +52,8 @@ class InstalacionManagementTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/instalaciones')->assertForbidden();
+        $this->actingAs($member)->get('/admin/instalaciones')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->post('/admin/instalaciones', $this->payload())->assertForbidden();
     }
 

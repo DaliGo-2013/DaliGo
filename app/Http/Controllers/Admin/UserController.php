@@ -36,6 +36,8 @@ class UserController extends Controller
         return view('admin.users.create', [
             'roles' => Role::orderBy('name')->pluck('name'),
             'sucursales' => Sucursal::where('activa', true)->orderBy('nombre')->get(),
+            // Posibles jefes directos (jerarquía comercial): cualquier usuario.
+            'jefes' => User::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -49,6 +51,8 @@ class UserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', new ImpdaliEmail, 'unique:'.User::class],
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
+            // Jefe directo (para la visibilidad por cartera en Servicio Técnico).
+            'jefe_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
@@ -57,6 +61,7 @@ class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'sucursal_id' => $validated['sucursal_id'] ?? null,
+            'jefe_id' => $validated['jefe_id'] ?? null,
         ]);
 
         // Cuenta interna creada por un admin: se marca verificada.
@@ -82,6 +87,9 @@ class UserController extends Controller
                 ->orWhere('id', $user->sucursal_id)
                 ->orderBy('nombre')
                 ->get(),
+            // Posibles jefes directos, excluyendo al propio usuario (no puede ser
+            // su propio jefe).
+            'jefes' => User::where('id', '!=', $user->id)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -96,6 +104,8 @@ class UserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', new ImpdaliEmail, Rule::unique('users')->ignore($user->id)],
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
+            // Jefe directo: existe y no puede ser el propio usuario.
+            'jefe_id' => ['nullable', 'integer', Rule::exists('users', 'id'), Rule::notIn([$user->id])],
         ]);
 
         if ($this->wouldRemoveLastAdmin($user, $validated['role'])) {
@@ -108,6 +118,7 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'sucursal_id' => $validated['sucursal_id'] ?? null,
+            'jefe_id' => $validated['jefe_id'] ?? null,
         ]);
         $user->syncRoles([$validated['role']]);
         $this->auditRoleChange($user, $oldRole === '' ? null : $oldRole, $validated['role']);

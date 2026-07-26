@@ -58,15 +58,102 @@ class AprobacionAccionableTest extends TestCase
 
     public function test_la_fila_de_la_bandeja_lleva_a_su_destino(): void
     {
-        // Usuario SIN rol: ni el nav ni el zocalo aportan este href — si la
-        // ruta aparece, la trae la FILA (leccion del verde-engañoso 2026-07-20:
-        // asertar donde ninguna otra superficie pueda satisfacer la cadena).
-        $user = User::factory()->create();
+        // El usuario DEBE poder llegar al destino: la fila ya no enlaza a ciegas
+        // (antes un vendedor caia en 403 al tocar la notificacion de una
+        // cotizacion de otra cartera). Con el permiso, el nav tambien pinta ese
+        // href, asi que el assert de la FILA es su clase de fila-enlazada, que en
+        // esta pagina solo existe cuando hay destino (verde-engañoso 2026-07-20).
+        $user = tap(User::factory()->create())->assignRole('jefe_bodega');
         $this->notifDe($user, 'aprobacion.solicitada');
 
         $this->actingAs($user)->get(route('notificaciones.index'))
             ->assertOk()
-            ->assertSee(route('aprobaciones.index'), false);
+            ->assertSee(route('aprobaciones.index'), false)
+            ->assertSee('active:scale-[0.98]', false);
+    }
+
+    /**
+     * EL bug que motivó urlDestinoPara(): las notificaciones de cotización se
+     * despachan a ROLES_AVISO (tecnico/jefe_ventas/vendedor/admin), así que un
+     * vendedor recibía la de un cliente de OTRA cartera y al tocarla caía en 403
+     * (ServicioTecnicoController::show → OrdenServicio::esVisiblePara).
+     *
+     * Es la rama con más lógica (canAny + instanceof + esVisiblePara) y el gate
+     * R-31 probó que sin estos dos tests se puede borrar el guard completo y la
+     * suite queda verde.
+     */
+    private function notifDeCotizacion(\App\Models\User $user, string $rutCliente): \App\Models\Notificacion
+    {
+        $orden = \App\Models\OrdenServicio::factory()->create(['cliente_rut' => $rutCliente]);
+
+        return \App\Models\Notificacion::create([
+            'evento' => 'cotizacion.enviada', 'user_id' => $user->id,
+            'canal' => \App\Models\Notificacion::CANAL_DATABASE,
+            'titulo' => 'Cotización enviada', 'cuerpo' => 'C',
+            'estado' => \App\Models\Notificacion::ENVIADA,
+            'notificable_type' => $orden->getMorphClass(), 'notificable_id' => $orden->id,
+        ]);
+    }
+
+    public function test_la_cotizacion_de_su_cartera_si_enlaza(): void
+    {
+        $vendedor = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        \App\Models\Cliente::factory()->create(['rut' => '11111111-1', 'vendedor_id' => $vendedor->id]);
+        $notif = $this->notifDeCotizacion($vendedor, '11111111-1');
+
+        $this->assertSame(
+            route('admin.servicio-tecnico.show', $notif->notificable_id),
+            $notif->urlDestinoPara($vendedor),
+        );
+
+        $this->actingAs($vendedor)->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertSee(route('admin.servicio-tecnico.show', $notif->notificable_id), false);
+    }
+
+    public function test_la_cotizacion_de_OTRA_cartera_no_enlaza(): void
+    {
+        $vendedor = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        \App\Models\Cliente::factory()->create(['rut' => '11111111-1', 'vendedor_id' => $vendedor->id]);
+        // Cliente de otro vendedor: la orden NO es de su cartera.
+        $otro = tap(\App\Models\User::factory()->create())->assignRole('vendedor');
+        \App\Models\Cliente::factory()->create(['rut' => '99999999-9', 'vendedor_id' => $otro->id]);
+        $notif = $this->notifDeCotizacion($vendedor, '99999999-9');
+
+        $this->assertNull($notif->urlDestinoPara($vendedor));
+        // El mapeo crudo sigue apuntando ahi: lo que corta es el scope de cartera.
+        $this->assertNotNull($notif->urlDestino());
+
+        $this->actingAs($vendedor)->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertSee('Cotización enviada')
+            ->assertDontSee(route('admin.servicio-tecnico.show', $notif->notificable_id), false);
+    }
+
+    public function test_sin_permiso_de_servicio_tecnico_la_cotizacion_no_enlaza(): void
+    {
+        // Un soplador no tiene view/manage servicio tecnico: ni con cartera.
+        $soplador = tap(\App\Models\User::factory()->create())->assignRole('soplador');
+        $notif = $this->notifDeCotizacion($soplador, '11111111-1');
+
+        $this->assertNull($notif->urlDestinoPara($soplador));
+    }
+
+    public function test_la_fila_no_enlaza_si_el_usuario_no_puede_llegar(): void
+    {
+        // Sin 'aprobar solicitudes', la bandeja de aprobaciones le daria 403:
+        // la fila se muestra pero NO es un link (ni href ni estilo de enlazada).
+        $user = tap(User::factory()->create())->assignRole('soplador');
+        $notif = $this->notifDe($user, 'aprobacion.solicitada');
+
+        $this->assertNull($notif->urlDestinoPara($user));
+        $this->assertSame(route('aprobaciones.index'), $notif->urlDestino()); // el mapeo sigue intacto
+
+        $this->actingAs($user)->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertSee($notif->titulo)
+            ->assertDontSee(route('aprobaciones.index'), false)
+            ->assertDontSee('active:scale-[0.98]', false);
     }
 
     public function test_la_fila_sin_destino_no_es_link(): void

@@ -52,7 +52,8 @@ class AuditManagementTest extends TestCase
         $member = User::factory()->create();
         $member->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/audits')->assertForbidden();
+        $this->actingAs($member)->get('/admin/audits')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_admin_can_view_index(): void
@@ -63,7 +64,8 @@ class AuditManagementTest extends TestCase
     public function test_view_audit_permission_grants_access(): void
     {
         $this->actingAs($this->userWith(['view audit']))->get('/admin/audits')->assertOk();
-        $this->actingAs($this->userWith([]))->get('/admin/audits')->assertForbidden();
+        $this->actingAs($this->userWith([]))->get('/admin/audits')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- La auditoria realmente registra -------------------------------

@@ -114,6 +114,21 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
         return $this->pago_forma ? (self::FORMAS_PAGO[$this->pago_forma] ?? $this->pago_forma) : null;
     }
 
+    /**
+     * Desglose de IVA del total cotizado. El total ya viene CON IVA, así que el
+     * neto se obtiene dividiendo por (1 + IVA) y el IVA es la diferencia (neto +
+     * IVA == total exacto).
+     */
+    public function getCostoNetoAttribute(): int
+    {
+        return (int) round((int) $this->costo_total / (1 + OrdenServicio::TASA_IVA));
+    }
+
+    public function getCostoIvaAttribute(): int
+    {
+        return (int) $this->costo_total - $this->costo_neto;
+    }
+
     /** Binding de la ruta pública por token (el id no viaja en el link). */
     public function getRouteKeyName(): string
     {

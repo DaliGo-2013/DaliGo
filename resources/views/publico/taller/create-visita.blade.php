@@ -72,6 +72,13 @@
                 <x-input-hint>Es una referencia: el día definitivo se coordina contigo.</x-input-hint>
                 <x-input-error :messages="$errors->get('fecha_preferida')" class="mt-2" />
             </div>
+            <div>
+                <x-input-label for="disponibilidad" value="¿Cuándo puedes y cuándo no? (opcional)" />
+                <x-textarea id="disponibilidad" name="disponibilidad" rows="3" class="mt-1.5" maxlength="1000"
+                    placeholder="Ej. Fines de semana no; ir después de las 15 h; el taller cierra a las 18 h; avisar antes de llegar.">{{ old('disponibilidad') }}</x-textarea>
+                <x-input-hint>Cuéntanos tus horarios o restricciones para que coordinemos la visita a tu medida.</x-input-hint>
+                <x-input-error :messages="$errors->get('disponibilidad')" class="mt-2" />
+            </div>
         </div>
 
         {{-- Tus datos --}}

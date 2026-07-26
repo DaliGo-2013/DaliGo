@@ -27,7 +27,8 @@ class AprobacionHistorialTest extends TestCase
         // jefe_bodega tiene 'aprobar solicitudes' (bandeja) pero NO 'view
         // aprobaciones' (historial): el historial es solo del admin.
         $jefe = tap(User::factory()->create())->assignRole('jefe_bodega');
-        $this->actingAs($jefe)->get(route('admin.aprobaciones.index'))->assertForbidden();
+        $this->actingAs($jefe)->get(route('admin.aprobaciones.index'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
 
         $admin = tap(User::factory()->create())->assignRole('admin');
         $this->actingAs($admin)->get(route('admin.aprobaciones.index'))->assertOk();

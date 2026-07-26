@@ -482,6 +482,9 @@ class AgendaTrabajoController extends Controller
             'ciudad' => ['required', 'string', 'max:191'],
             'tecnico_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'descripcion' => ['required', 'string'],
+            // Disponibilidad del cliente (cuándo puede/no): la escribe en el QR y
+            // quien coordina la puede ajustar tras hablar con él.
+            'disponibilidad' => ['nullable', 'string', 'max:1000'],
             'notas_tecnico' => ['nullable', 'string'],
         ]);
     }

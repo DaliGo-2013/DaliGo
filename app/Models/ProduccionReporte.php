@@ -28,6 +28,15 @@ class ProduccionReporte extends Model implements AuditableContract
     // valor del radio; el controlador lo resuelve al texto libre de motivo_otro).
     public const MOTIVO_OTRO = '__otro__';
 
+    // Ventana por defecto del historial del soplador (pedido del dueno): los
+    // ultimos 45 dias DISTINTOS, hoy incluido. Fuente unica del controlador y de
+    // las dos vistas (el enlace de mis-producciones tambien lo rotula).
+    public const HISTORIAL_DIAS = 45;
+
+    // Tope duro de la ventana que se puede pedir por query string: protege la
+    // query y la pantalla de un rango absurdo (?desde=2015-01-01).
+    public const HISTORIAL_DIAS_MAX = 180;
+
     // Motivos por los que lo producido no cuadra con lo asignado. Lista abierta:
     // se ofrecen como chips tocables y, si ninguno aplica, el operario escribe en
     // "Otro" (por eso 'motivo' no se restringe con Rule::in). Fuente unica para
@@ -255,6 +264,17 @@ class ProduccionReporte extends Model implements AuditableContract
     public function scopePendientes(Builder $query): Builder
     {
         return $query->where('estado', self::ENVIADO);
+    }
+
+    /**
+     * Devueltos de UN soplador (señal de "te toca corregir"): alimenta el
+     * badge de Mi producción en el menú. Sin filtro de fecha a propósito —
+     * un devuelto viejo sigue pendiente de acción.
+     */
+    public function scopeDevueltosDe(Builder $query, int $sopladorId): Builder
+    {
+        return $query->where('soplador_id', $sopladorId)
+            ->where('estado', self::DEVUELTO);
     }
 
     public function scopeDelDia(Builder $query, $fecha = null): Builder

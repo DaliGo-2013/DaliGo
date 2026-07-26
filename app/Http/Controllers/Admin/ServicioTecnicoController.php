@@ -69,7 +69,13 @@ class ServicioTecnicoController extends Controller
 
     public function index(Request $request): View
     {
+        $user = $request->user();
+
+        // Visibilidad por vendedor (regla #2): quien no tiene 'ver todo servicio
+        // tecnico' solo ve las ordenes de SU cartera (+ la de su equipo si es
+        // jefatura). Ver OrdenServicio::scopeVisiblePara.
         $ordenes = $this->filteredQuery($request)
+            ->visiblePara($user)
             ->with(['producto', 'sucursal'])
             ->latest('fecha_ingreso')->latest('id')
             ->paginate(25)
@@ -81,11 +87,16 @@ class ServicioTecnicoController extends Controller
             // Cards de navegacion del historial (Año → Mes) sobre el listado.
             'historial' => $this->resumenHistorial($request->filled('anio') ? (int) $request->input('anio') : null),
             // Maquinas que llegaron por QR y esperan que el encargado confirme la
-            // recepcion (bloque destacado arriba del listado).
+            // recepcion (bloque destacado arriba del listado). Se acota igual que
+            // el listado para no filtrar carteras ajenas.
             'porConfirmar' => OrdenServicio::porConfirmar()
+                ->visiblePara($user)
                 ->with('sucursal')
                 ->latest('id')
                 ->get(),
+            // Aviso suave en la vista cuando el listado esta acotado a la cartera
+            // propia (el usuario ve menos ordenes a proposito, no por un bug).
+            'soloMiCartera' => ! $user->can('ver todo servicio tecnico'),
         ], $this->formData()));
     }
 
@@ -221,6 +232,19 @@ class ServicioTecnicoController extends Controller
         $realizados = $base()->where('estado', 'realizado')->count();
         $pendientes = $total - $realizados;
         $pctCumplimiento = $total > 0 ? (int) round($realizados / $total * 100) : 0;
+        $pctPendientes = $total > 0 ? (int) round($pendientes / $total * 100) : 0;
+
+        // Detalle cliqueable de las tarjetas Realizados/Pendientes: la lista de
+        // trabajos que hay detrás de cada número, para pasar del agregado al
+        // detalle sin salir del informe. Volumen de terreno es bajo (decenas por
+        // período), así que se cargan completas. Realizados: lo más reciente
+        // primero; pendientes: lo más próximo primero.
+        $realizadosLista = $base()->where('estado', 'realizado')
+            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->orderByDesc('fecha')->get();
+        $pendientesLista = $base()->where('estado', 'agendado')
+            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->orderBy('fecha')->get();
 
         // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.
         $visitas = $base()->where('tipo', 'visita_tecnica')->count();
@@ -270,6 +294,9 @@ class ServicioTecnicoController extends Controller
             'realizados' => $realizados,
             'pendientes' => $pendientes,
             'pctCumplimiento' => $pctCumplimiento,
+            'pctPendientes' => $pctPendientes,
+            'realizadosLista' => $realizadosLista,
+            'pendientesLista' => $pendientesLista,
             'visitas' => $visitas,
             'visitasRealizadas' => $visitasRealizadas,
             'pctVisitas' => $pctVisitas,
@@ -451,10 +478,35 @@ class ServicioTecnicoController extends Controller
 
     public function show(OrdenServicio $orden): View
     {
+        // Visibilidad por vendedor: no dejar abrir por URL una orden fuera de la
+        // cartera propia (quien tiene 'ver todo servicio tecnico' pasa siempre).
+        abort_unless($orden->esVisiblePara(auth()->user()), 403);
+
+        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos']);
+
         return view('admin.servicio-tecnico.show', [
-            'orden' => $orden->load(['producto', 'sucursal', 'repuestos', 'fotos']),
+            'orden' => $orden,
             'sucursalCentral' => Sucursal::firstWhere('es_central', true),
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
         ]);
+    }
+
+    /**
+     * Precio de venta (con IVA) del producto en el catálogo: prioriza una lista
+     * activa, si no cualquiera. Null si no hay producto o no tiene precio. Se usa
+     * para advertir cuando la reparación es cara respecto al valor del equipo.
+     */
+    private function precioVentaProducto(?Producto $producto): ?int
+    {
+        if (! $producto) {
+            return null;
+        }
+
+        $producto->loadMissing('precios.lista');
+        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
+            ?? $producto->precios->first();
+
+        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
     }
 
     /**
@@ -464,6 +516,8 @@ class ServicioTecnicoController extends Controller
      */
     public function foto(OrdenServicioFoto $foto): StreamedResponse
     {
+        // Misma visibilidad por cartera que la ficha: la foto es parte del detalle.
+        abort_unless($foto->orden->esVisiblePara(auth()->user()), 403);
         abort_unless(Storage::disk('local')->exists($foto->ruta), 404);
 
         return Storage::disk('local')->response($foto->ruta);
@@ -523,11 +577,15 @@ class ServicioTecnicoController extends Controller
      */
     public function cotizacion(OrdenServicio $orden): View
     {
+        $orden->load(['producto.precios.lista', 'repuestos']);
+
         return view('admin.servicio-tecnico.cotizacion', [
-            'orden' => $orden->load(['producto', 'repuestos']),
+            'orden' => $orden,
             'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
             // Valor hora vigente (para mostrar cómo se compone la mano de obra fija).
             'precioHoraServicio' => $this->precioHoraServicio(),
+            // Precio de venta del equipo: si la reparación supera el 40% se advierte.
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
             // Horas estándar del trabajo de esta orden (null si el trabajo no está
             // en el catálogo): la mano de obra se muestra de solo lectura.
             'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
@@ -578,14 +636,24 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
-        $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+        // El descuento es decisión COMERCIAL: solo quien tiene el permiso lo
+        // cambia (jefatura de ventas / admin). Si no lo tiene (p. ej. el técnico
+        // que arma la cotización), se conserva el descuento ya guardado — no puede
+        // aplicarlo ni quitarlo por más que manipule el formulario.
+        if ($request->user()->can('aplicar descuento servicio tecnico')) {
+            $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
+            $descuentoMotivo = $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null;
+        } else {
+            $descuentoPct = (int) $orden->descuento_pct;
+            $descuentoMotivo = $orden->descuento_motivo;
+        }
 
         $orden->update([
             // Mano de obra FIJA por el trabajo (no se edita aquí): se recalcula
             // por si jefatura cambió el tiempo estándar en el ínterin.
             'mano_obra' => $this->manoObraDe($orden->trabajo_realizado),
             'descuento_pct' => $descuentoPct,
-            'descuento_motivo' => $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null,
+            'descuento_motivo' => $descuentoMotivo,
         ]);
 
         // Reemplazo de repuestos ya con precio. Nombre y cantidad vienen del parte
@@ -882,6 +950,8 @@ class ServicioTecnicoController extends Controller
      */
     public function comprobanteCotizacion(OrdenServicioCotizacion $cotizacion): StreamedResponse
     {
+        // Dato sensible (transferencia): misma visibilidad por cartera que la ficha.
+        abort_unless($cotizacion->orden->esVisiblePara(auth()->user()), 403);
         abort_unless(
             $cotizacion->pago_comprobante_ruta && Storage::disk('local')->exists($cotizacion->pago_comprobante_ruta),
             404
@@ -1087,36 +1157,41 @@ class ServicioTecnicoController extends Controller
 
     /**
      * Resumen para las cards de navegacion del historial (Año → Mes) del
-     * listado. Una sola query liviana (solo fecha y condicion) agrupada en
-     * PHP: el volumen es bajo (cientos de ordenes por año) y evita SQL de
-     * fechas no portable entre MySQL 5.7 y el SQLite de los tests.
+     * listado. Agregado en SQL (no en PHP): `fecha_ingreso` se guarda
+     * 'YYYY-MM-DD', y SUBSTR es idéntico en MySQL y SQLite (a diferencia de
+     * YEAR()/EXTRACT, que no son portables) — evita traer TODAS las órdenes
+     * de la historia a PHP en cada carga del listado (crecía sin cota;
+     * perf, hallazgo 2026-07-24).
      */
     private function resumenHistorial(?int $anioActivo): array
     {
-        $ordenes = OrdenServicio::query()
-            ->whereNotNull('fecha_ingreso')
-            ->get(['fecha_ingreso', 'facturacion']);
-
         // Reparacion = total - garantia (igual que condicion_efectiva: las
         // ordenes viejas con facturacion NULL cuentan como reparacion).
-        $anios = $ordenes
-            ->groupBy(fn (OrdenServicio $o) => $o->fecha_ingreso->year)
-            ->map(function ($grupo) {
-                $garantia = $grupo->where('facturacion', 'garantia')->count();
-
-                return [
-                    'total' => $grupo->count(),
-                    'garantia' => $garantia,
-                    'reparacion' => $grupo->count() - $garantia,
-                ];
-            })
+        $anios = OrdenServicio::query()
+            ->whereNotNull('fecha_ingreso')
+            ->selectRaw("SUBSTR(fecha_ingreso, 1, 4) as anio, COUNT(*) as total, SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) as garantia")
+            ->groupBy('anio')
+            ->get()
+            ->mapWithKeys(fn ($fila) => [
+                (int) $fila->anio => [
+                    'total' => (int) $fila->total,
+                    'garantia' => (int) $fila->garantia,
+                    'reparacion' => (int) $fila->total - (int) $fila->garantia,
+                ],
+            ])
             ->sortKeysDesc();
 
         $meses = null;
         if ($anioActivo !== null) {
-            $delAnio = $ordenes->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->year === $anioActivo);
+            $porMes = OrdenServicio::query()
+                ->whereNotNull('fecha_ingreso')
+                ->whereRaw('SUBSTR(fecha_ingreso, 1, 4) = ?', [(string) $anioActivo])
+                ->selectRaw('SUBSTR(fecha_ingreso, 6, 2) as mes, COUNT(*) as total')
+                ->groupBy('mes')
+                ->pluck('total', 'mes');
+
             $meses = collect(range(1, 12))
-                ->mapWithKeys(fn (int $m) => [$m => $delAnio->filter(fn (OrdenServicio $o) => $o->fecha_ingreso->month === $m)->count()])
+                ->mapWithKeys(fn (int $m) => [$m => (int) ($porMes[str_pad((string) $m, 2, '0', STR_PAD_LEFT)] ?? 0)])
                 ->all();
         }
 

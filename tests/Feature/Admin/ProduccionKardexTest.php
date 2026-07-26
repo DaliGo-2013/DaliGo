@@ -188,7 +188,8 @@ class ProduccionKardexTest extends TestCase
 
     public function test_kardex_requiere_permiso(): void
     {
-        $this->actingAs($this->soplador())->get(route('admin.produccion.movimientos'))->assertForbidden();
+        $this->actingAs($this->soplador())->get(route('admin.produccion.movimientos'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_kardex_filtra_por_tipo(): void

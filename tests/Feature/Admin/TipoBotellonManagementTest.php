@@ -37,7 +37,8 @@ class TipoBotellonManagementTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/tipos-botellon')->assertForbidden();
+        $this->actingAs($member)->get('/admin/tipos-botellon')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_jefe_bodega_ve_el_listado(): void
