@@ -87,6 +87,165 @@ document.addEventListener('click', (e) => {
 });
 
 /**
+ * Panel flotante que SIEMPRE cabe (doctrina del dueno, 2026-07-26).
+ *
+ * El problema que resuelve: un panel `absolute` anclado con `start-0`/`end-0`
+ * apuesta a que del lado elegido sobra espacio, y esa apuesta se hace al
+ * escribir la vista, cuando todavia no se sabe donde va a caer el disparador ni
+ * de que ancho es la pantalla. Cuando falla, el panel se sale por ese lado y el
+ * contenido queda inalcanzable: la campanita (w-80 = 320px anclada `end-0`
+ * dentro de una sidebar de 264px) perdia 72px por la izquierda. Es el MISMO
+ * error que la bitacora ya habia diagnosticado el 2026-07-01 en los globos ⓘ
+ * ("el align es estatico y no se puede acertar"); alla se arreglo a mano, aca
+ * se arregla el mecanismo.
+ *
+ * Que hace: al abrirse, MIDE y decide.
+ *   1. Horizontal: el panel nace hacia el lado con mas espacio libre.
+ *   2. Si aun asi se sale, lo corre hacia adentro.
+ *   3. Vertical: si no cabe abajo lo voltea sobre el disparador; si no cabe en
+ *      ninguno de los dos lados, lo deja scrollear por dentro.
+ * El paso 1 es el que reemplaza al `align` escrito a mano, y no es una
+ * heuristica arbitraria: reproduce exactamente lo que las vistas ya elegian a
+ * dedo (un ⓘ en la esquina de una tarjeta cae a la derecha del centro y abre
+ * hacia la izquierda; uno pegado a un titulo cae a la izquierda y abre hacia la
+ * derecha), con la diferencia de que ahora se acierta solo en cualquier ancho.
+ *
+ * Por que directiva y no estado del componente: asi sirve igual al x-dropdown
+ * (abre por click) y al x-info-tip (abre por hover en desktop, con su
+ * single-open por evento de ventana) SIN tocar la logica de apertura de
+ * ninguno de los dos.
+ *
+ * Si el panel es `position: fixed` no hace nada: ese es el caso "ya anclado al
+ * viewport" (la hoja inferior del ⓘ en movil), que no se puede desbordar.
+ */
+Alpine.directive('dg-anclar', (el, {}, { cleanup }) => {
+    const MARGEN = 8; // respiro minimo contra el borde de la pantalla
+    const ALTO_MINIMO = 160; // por debajo de esto el panel deja de ser util
+
+    // La correccion se escribe en `left`/`top`, NO en `translate` ni en
+    // `transform`: Tailwind v4 compila `scale-95` y `translate-y-1` a las
+    // propiedades independientes `scale`/`translate`, y los dos componentes las
+    // usan en su x-transition. Un estilo inline gana sobre la clase, asi que
+    // escribir ahi apagaria la animacion de apertura (y es primo del gotcha de
+    // la bitacora [2026-07-22], donde x-transition dejo estilos inline pegados).
+    const limpiar = () => {
+        el.style.left = '';
+        el.style.right = '';
+        el.style.top = '';
+        el.style.bottom = '';
+        el.style.maxHeight = '';
+        el.style.overflowY = '';
+    };
+
+    const colocar = () => {
+        const estilo = window.getComputedStyle(el);
+        if (estilo.display === 'none') return; // cerrado: nada que medir
+        if (estilo.position === 'fixed') { limpiar(); return; }
+
+        // Volver a la posicion que manda el CSS antes de medir: si no, cada
+        // reposicion mediria sobre la correccion anterior y se acumularian.
+        limpiar();
+
+        const contenedor = el.offsetParent;
+        if (!contenedor) return;
+
+        // Se mide en coordenadas de LAYOUT (offset*) y no con
+        // getBoundingClientRect(): durante la animacion de apertura el panel
+        // lleva `scale: 95%` y el rect devolveria la caja ESCALADA — 5% menos
+        // de ancho y un borde corrido. Los offset* ignoran scale/translate, asi
+        // que la medida es la misma en el primer frame y en el ultimo.
+        const base = contenedor.getBoundingClientRect(); // = la caja del disparador
+        const offsetX = el.offsetLeft;
+        const offsetY = el.offsetTop;
+        const ancho = el.offsetWidth;
+        const alto = el.offsetHeight;
+        const izquierda = base.left + offsetX; // borde izq. del panel en pantalla
+        const arriba = base.top + offsetY;
+
+        const vpAncho = document.documentElement.clientWidth;
+        const vpAlto = document.documentElement.clientHeight;
+
+        // Horizontal: el panel nace hacia el lado con MAS espacio libre. Esta
+        // sola regla reproduce todas las elecciones que hoy estan a mano —un ⓘ
+        // en la esquina de una tarjeta queda a la derecha del centro, asi que
+        // abre hacia la izquierda; uno pegado a un titulo queda a la izquierda
+        // y abre hacia la derecha— y de paso arregla la campanita, que abria
+        // hacia el lado sin espacio. Nadie tiene que acertarlo desde la vista.
+        const naceDerecha = base.left; // borde izq. del panel = borde izq. del disparador
+        const naceIzquierda = base.right - ancho; // borde der. = borde der. del disparador
+        const libreDerecha = vpAncho - MARGEN - base.left;
+        const libreIzquierda = base.right - MARGEN;
+
+        let dx = (libreDerecha >= libreIzquierda ? naceDerecha : naceIzquierda) - izquierda;
+
+        // Y si aun asi se sale (panel mas ancho que el hueco), correrlo hacia
+        // adentro. El segundo if gana sobre el primero a proposito: con un
+        // panel mas ancho que la pantalla se prefiere ver su inicio.
+        if (izquierda + dx + ancho > vpAncho - MARGEN) dx = vpAncho - MARGEN - ancho - izquierda;
+        if (izquierda + dx < MARGEN) dx = MARGEN - izquierda;
+
+        // Vertical: si no cabe donde esta, probar el otro lado del disparador
+        // (solo si alla cabe entero; si no, mejor quedarse y scrollear).
+        let dy = 0;
+        if (arriba + alto > vpAlto - MARGEN && base.top - MARGEN >= alto) {
+            dy = base.top - MARGEN - alto - arriba; // voltea ARRIBA
+        } else if (arriba < MARGEN && vpAlto - MARGEN - base.bottom >= alto) {
+            dy = base.bottom + MARGEN - arriba; // voltea ABAJO
+        }
+
+        // Se descuentan los margenes (mt-2 / mb-2 del componente): con `top`
+        // implicito el margen YA esta dentro de offsetTop, pero al fijar `top`
+        // el navegador lo vuelve a sumar y el panel baja 8px de mas — lo justo
+        // para que el borde inferior quede pegado al filo de la pantalla.
+        const margenSup = parseFloat(estilo.marginTop) || 0;
+        const margenIzq = parseFloat(estilo.marginLeft) || 0;
+
+        // Se anulan right/bottom para no quedar sobre-restringidos con la clase
+        // (end-0, bottom-full), que si no seguiria mandando.
+        el.style.left = `${Math.round(offsetX + dx - margenIzq)}px`;
+        el.style.right = 'auto';
+        el.style.top = `${Math.round(offsetY + dy - margenSup)}px`;
+        el.style.bottom = 'auto';
+
+        // Ultimo recurso: no cabe entero por ningun lado -> scroll adentro, que
+        // es preferible a que la mitad quede fuera de la pantalla.
+        const disponible = vpAlto - MARGEN - (arriba + dy);
+        if (alto > disponible) {
+            el.style.maxHeight = `${Math.max(Math.round(disponible), ALTO_MINIMO)}px`;
+            el.style.overflowY = 'auto';
+        }
+    };
+
+    // x-show togglea `display` en el atributo style: observarlo es lo que
+    // permite reposicionar al abrir sin tocar el codigo de apertura de cada
+    // componente. Las escrituras propias (left/top/maxHeight) no cambian
+    // `display`, asi que no se realimenta.
+    let visible = false;
+    const sincronizar = () => {
+        const ahora = window.getComputedStyle(el).display !== 'none';
+        if (ahora && !visible) colocar();
+        visible = ahora;
+    };
+
+    const observador = new MutationObserver(sincronizar);
+    observador.observe(el, { attributeFilter: ['style', 'class'] });
+    sincronizar();
+
+    // Con el panel abierto, cualquier cosa que mueva al disparador o cambie el
+    // viewport invalida la medida (incluye cruzar el breakpoint del ⓘ, donde
+    // el panel pasa de `fixed` a `absolute`).
+    const alMoverse = () => { if (visible) colocar(); };
+    window.addEventListener('resize', alMoverse);
+    window.addEventListener('scroll', alMoverse, { passive: true, capture: true });
+
+    cleanup(() => {
+        observador.disconnect();
+        window.removeEventListener('resize', alMoverse);
+        window.removeEventListener('scroll', alMoverse, { capture: true });
+    });
+});
+
+/**
  * Buscador remoto reutilizable (Servicio Tecnico): autocompletado contra un
  * endpoint JSON (limit 15). Se usa para cliente (por RUT/nombre) y para producto
  * (por SKU/nombre); el id elegido se guarda en un <input hidden> que define la

@@ -90,7 +90,7 @@
                 <div>
                     <div class="flex items-center gap-1.5">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por periodo</h3>
-                        <x-info-tip align="left">Producción de los días del rango elegido (por defecto, últimos 7): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
+                        <x-info-tip>Producción de los días del rango elegido (por defecto, últimos 7): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
                     </div>
                     <p class="mt-0.5 text-sm text-neutral-500">{{ $rangoLabel }}</p>
                 </div>
@@ -125,7 +125,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Ranking de sopladores · periodo</h3>
-                    <x-info-tip align="left">Producción de cada soplador en el rango, de mayor a menor. Toca un soplador para ver su historial.</x-info-tip>
+                    <x-info-tip>Producción de cada soplador en el rango, de mayor a menor. Toca un soplador para ver su historial.</x-info-tip>
                 </div>
                 @include('admin.produccion.partials._desglose', [
                     'items' => $rankingSopladores,
@@ -135,7 +135,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de botellón · periodo</h3>
-                    <x-info-tip align="left">Cuánto se produjo de cada tipo de botellón en el rango. Toca un tipo para ver su detalle.</x-info-tip>
+                    <x-info-tip>Cuánto se produjo de cada tipo de botellón en el rango. Toca un tipo para ver su detalle.</x-info-tip>
                 </div>
                 @include('admin.produccion.partials._desglose', [
                     'items' => $porTipoPeriodo,
@@ -151,7 +151,7 @@
                 <div class="flex items-center justify-between gap-3 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <div class="flex items-center gap-1.5">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por máquina · hoy</h3>
-                        <x-info-tip align="left">Producción de hoy por máquina, según las tandas reportadas (puede diferir de totales editados). Toca una máquina para ver su rendimiento.</x-info-tip>
+                        <x-info-tip>Producción de hoy por máquina, según las tandas reportadas (puede diferir de totales editados). Toca una máquina para ver su rendimiento.</x-info-tip>
                     </div>
                     <span class="text-right text-xs font-medium text-neutral-400">según tandas reportadas · puede diferir de totales editados</span>
                 </div>

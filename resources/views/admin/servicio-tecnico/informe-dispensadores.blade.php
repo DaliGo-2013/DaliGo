@@ -73,7 +73,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Equipos que más ingresan</h3>
-                    <x-info-tip align="left">Modelos del catálogo con más ingresos al taller en el período. Los ingresos por QR sin código del catálogo se agrupan como "Sin código".</x-info-tip>
+                    <x-info-tip>Modelos del catálogo con más ingresos al taller en el período. Los ingresos por QR sin código del catálogo se agrupan como "Sin código".</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $topEquipos,
@@ -85,7 +85,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Clientes que más traen equipos</h3>
-                    <x-info-tip align="left">Clientes con más órdenes en el período (agrupados por RUT).</x-info-tip>
+                    <x-info-tip>Clientes con más órdenes en el período (agrupados por RUT).</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $topClientes->map(fn ($c) => (object) [
@@ -98,7 +98,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de equipo</h3>
-                    <x-info-tip align="left">Cuántos equipos de cada tipo (dispensador, lavadora, herramienta…) ingresaron en el período.</x-info-tip>
+                    <x-info-tip>Cuántos equipos de cada tipo (dispensador, lavadora, herramienta…) ingresaron en el período.</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $porTipo->map(fn ($t) => (object) ['nombre' => \App\Models\OrdenServicio::etiquetaTipo($t->nombre), 'cantidad' => $t->cantidad]),
@@ -109,7 +109,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por estado</h3>
-                    <x-info-tip align="left">En qué estado están hoy las órdenes que ingresaron en el período.</x-info-tip>
+                    <x-info-tip>En qué estado están hoy las órdenes que ingresaron en el período.</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $porEstado->map(fn ($e) => (object) ['nombre' => \Illuminate\Support\Str::headline($e->nombre), 'cantidad' => $e->cantidad]),
@@ -120,7 +120,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por causa de la falla</h3>
-                    <x-info-tip align="left">Diagnóstico del técnico al reparar. Sirve para reforzar la capacitación al cliente: si muchas fallas son por mal uso, conviene enseñar mejor el uso del producto. "Sin determinar" = el técnico aún no la registró.</x-info-tip>
+                    <x-info-tip>Diagnóstico del técnico al reparar. Sirve para reforzar la capacitación al cliente: si muchas fallas son por mal uso, conviene enseñar mejor el uso del producto. "Sin determinar" = el técnico aún no la registró.</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $porCausa->map(fn ($c) => (object) [
@@ -137,7 +137,7 @@
         <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
             <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos usados en el período</h3>
-                <x-info-tip align="left">Suma de los repuestos registrados en las reparaciones de las órdenes que ingresaron en el período. Sirve de apoyo para el control y la reposición del inventario del taller.</x-info-tip>
+                <x-info-tip>Suma de los repuestos registrados en las reparaciones de las órdenes que ingresaron en el período. Sirve de apoyo para el control y la reposición del inventario del taller.</x-info-tip>
             </div>
             @if ($repuestos->isEmpty())
                 <p class="px-4 py-6 text-center text-sm text-neutral-500 sm:px-6">Sin repuestos registrados en el período.</p>
