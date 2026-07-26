@@ -122,7 +122,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de trabajo</h3>
-                    <x-info-tip align="left">Porcentaje de trabajos por tipo (reparación, instalación, mantención, visita técnica) sobre el total del período.</x-info-tip>
+                    <x-info-tip>Porcentaje de trabajos por tipo (reparación, instalación, mantención, visita técnica) sobre el total del período.</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $porTipo->map(fn ($t) => (object) ['nombre' => \App\Models\AgendaTrabajo::TIPO_ETIQUETAS[$t->nombre] ?? $t->nombre, 'cantidad' => $t->cantidad]),
@@ -133,7 +133,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Servicios que más se usan</h3>
-                    <x-info-tip align="left">Servicios del catálogo con más trabajos en el período. Los trabajos "fuera de tarifa" (solo descripción) se agrupan aparte.</x-info-tip>
+                    <x-info-tip>Servicios del catálogo con más trabajos en el período. Los trabajos "fuera de tarifa" (solo descripción) se agrupan aparte.</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $topServicios,
@@ -145,7 +145,7 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Clientes que más solicitan</h3>
-                    <x-info-tip align="left">Clientes con más trabajos de terreno en el período (agrupados por RUT).</x-info-tip>
+                    <x-info-tip>Clientes con más trabajos de terreno en el período (agrupados por RUT).</x-info-tip>
                 </div>
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $topClientes->map(fn ($c) => (object) [
@@ -161,7 +161,7 @@
         <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
             <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Uso de repuestos en el período</h3>
-                <x-info-tip align="left">Suma de los repuestos que el técnico industrial registró al cerrar cada trabajo. Sirve de apoyo para reponer stock (membranas, filtros, etc.).</x-info-tip>
+                <x-info-tip>Suma de los repuestos que el técnico industrial registró al cerrar cada trabajo. Sirve de apoyo para reponer stock (membranas, filtros, etc.).</x-info-tip>
             </div>
             @if ($repuestos->isEmpty())
                 <p class="px-4 py-6 text-center text-sm text-neutral-500 sm:px-6">Sin repuestos registrados en el período.</p>

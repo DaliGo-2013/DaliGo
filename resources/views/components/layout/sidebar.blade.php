@@ -11,9 +11,15 @@
      24-07 tras QA — junto al nombre en el pie se veía "extraña"; en la
      cabecera es "arriba a la derecha" del panel de nav, sin restar alto ni
      chocar con los botones de acción que cada pantalla ya tiene arriba a
-     la derecha (evita el riesgo de un botón flotante sobre el contenido). --}}
+     la derecha (evita el riesgo de un botón flotante sobre el contenido).
+     z-40 TAMBIÉN en lg: (antes la reseteaba a auto ahí): el panel mide
+     320px y la sidebar 264px, así que al abrirse cruza sobre <main>. `sticky`
+     crea contexto de apilamiento aunque el z-index sea auto, y con `auto` la
+     sidebar pintaba por DEBAJO de los z-10/z-20/z-30 del contenido (los
+     autocompletados, las cabeceras pegajosas de ST). Los z-50 legítimos
+     —modal, lightbox de fotos, ayuda-serie— siguen ganando, que es correcto. --}}
 <aside
-    class="fixed inset-y-0 left-0 z-40 flex w-[300px] max-lg:-translate-x-full flex-col border-r border-neutral-200 bg-white max-lg:transition-transform max-lg:duration-150 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[264px] lg:shrink-0"
+    class="fixed inset-y-0 left-0 z-40 flex w-[300px] max-lg:-translate-x-full flex-col border-r border-neutral-200 bg-white max-lg:transition-transform max-lg:duration-150 lg:sticky lg:top-0 lg:h-screen lg:w-[264px] lg:shrink-0"
     :class="{ 'max-lg:-translate-x-full': ! menuAbierto }">
 
     <div class="flex shrink-0 items-center justify-between border-b border-neutral-100 px-4 py-4">
@@ -87,7 +93,7 @@
          este mismo pie va al fondo del drawer. --}}
     <div class="shrink-0 border-t border-neutral-100 p-3" data-menu-usuario>
         <div class="flex items-center gap-1">
-            <x-dropdown align="left" width="48" direction="up">
+            <x-dropdown align="left" width="w-48" direction="up">
                 <x-slot name="trigger">
                     <button type="button" title="{{ Auth::user()->name }}"
                             class="flex w-full items-center gap-2 rounded-lg px-2 py-2.5 transition duration-150 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none">

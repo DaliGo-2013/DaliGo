@@ -10,9 +10,14 @@
      lo que impedía que el @click.outside de los otros tips se enterara). Toda ruta
      de cierre resetea open y hover (evita el hover "pegado" en dispositivos que
      reportan hover:hover por error). Cierra con tocar fuera / backdrop / Esc.
-     Props: align = right (globo hacia la izquierda, para esquinas) | left (hacia
-     la derecha, para headers pegados al borde izquierdo) — solo aplica en desktop. --}}
-@props(['align' => 'right'])
+
+     SIN prop `align` (2026-07-26): existía sólo para elegir a mano hacia qué
+     lado abre el globo en desktop, y la bitácora [2026-07-01] ya había
+     concluido que "el align es estático y no se puede acertar". Ahora lo decide
+     `x-dg-anclar` midiendo: el globo nace hacia el lado con más espacio libre.
+     Eso reproduce solo las dos formas que se escribían a dedo —esquina de
+     tarjeta → abre a la izquierda; pegado a un título → abre a la derecha— y
+     acierta también en anchos donde la elección fija fallaba. --}}
 
 <span x-data="{ open: false, hover: false, canHover: window.matchMedia('(hover: hover)').matches }"
       class="relative inline-flex"
@@ -38,13 +43,17 @@
          x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          class="fixed inset-0 z-40 bg-neutral-900/20 sm:hidden"></div>
 
-    {{-- Globo: móvil = hoja inferior a ancho completo; desktop = popover junto al ícono. --}}
+    {{-- Globo: móvil = hoja inferior a ancho completo; desktop = popover junto al ícono.
+         En móvil es `fixed`, o sea ya anclado al viewport, y x-dg-anclar se
+         abstiene de tocarlo; desde sm: pasa a `absolute` y ahí sí lo coloca. --}}
     <div x-show="open || (canHover && hover)" x-cloak
+         x-dg-anclar
+         data-dg-panel
          @click.stop
          x-transition:enter="transition ease-out duration-150"
          x-transition:enter-start="opacity-0 translate-y-1"
          x-transition:enter-end="opacity-100 translate-y-0"
-         class="fixed inset-x-4 bottom-4 z-50 rounded-xl border border-neutral-200 bg-white p-4 text-left text-sm font-normal leading-relaxed text-neutral-600 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:mt-2 sm:w-64 sm:max-w-[calc(100vw-2rem)] sm:p-3 sm:text-xs sm:shadow-lg {{ $align === 'left' ? 'sm:left-0' : 'sm:right-0' }}">
+         class="fixed inset-x-4 bottom-4 z-50 rounded-xl border border-neutral-200 bg-white p-4 text-left text-sm font-normal leading-relaxed text-neutral-600 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:mt-2 sm:w-64 sm:max-w-[calc(100vw-2rem)] sm:p-3 sm:text-xs sm:shadow-lg sm:right-0">
         {{ $slot }}
     </div>
 </span>
