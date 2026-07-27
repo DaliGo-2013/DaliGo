@@ -6,7 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Tests\TestCase;
 
 /**
- * Verifica que las 4 syncs de Bsale queden registradas en el scheduler (lo que
+ * Verifica que las 5 syncs de Bsale queden registradas en el scheduler (lo que
  * el cron de cPanel ejecutara via `schedule:run`). No corre las syncs; solo
  * inspecciona el registro definido en routes/console.php.
  */
@@ -29,6 +29,7 @@ class ScheduleBsaleTest extends TestCase
         $this->assertStringContainsString('bsale:sync-clients', $comandos);
         $this->assertStringContainsString('bsale:sync-prices', $comandos);
         $this->assertStringContainsString('bsale:sync-stock', $comandos);
+        $this->assertStringContainsString('bsale:sync-documents', $comandos);
     }
 
     public function test_las_syncs_van_en_la_grilla_de_15(): void
@@ -41,6 +42,9 @@ class ScheduleBsaleTest extends TestCase
             'bsale:sync-clients' => '15 * * * *',
             'bsale:sync-prices' => '30 * * * *',
             'bsale:sync-stock' => '45 * * * *',
+            // DESPACHOS-v1: documentos va en :30 junto a prices (liviana por
+            // ventana); :45 ya es el slot pesado (stock ~28k filas).
+            'bsale:sync-documents' => '30 * * * *',
         ];
 
         foreach ($esperadas as $comando => $expresion) {
@@ -61,7 +65,7 @@ class ScheduleBsaleTest extends TestCase
         $eventos = collect(app(Schedule::class)->events())
             ->filter(fn ($e) => str_contains((string) $e->command, 'bsale:sync-'));
 
-        $this->assertCount(4, $eventos);
+        $this->assertCount(5, $eventos);
         foreach ($eventos as $evento) {
             $this->assertTrue($evento->withoutOverlapping, "La sync {$evento->command} debe tener withoutOverlapping.");
         }

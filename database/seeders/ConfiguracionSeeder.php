@@ -198,6 +198,25 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'aprobaciones',
                 'descripcion' => 'Minutos sin respuesta antes de escalar una solicitud pendiente al siguiente rol (granularidad efectiva 15 min por la grilla */15 del scheduler: escala en el siguiente slot tras vencer).',
             ],
+            // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
+            [
+                'clave' => 'documentos_sync_desde',
+                'valor' => null,
+                'tipo' => Configuracion::TIPO_STRING,
+                'grupo' => 'despachos',
+                // OJO: `descripcion` es varchar(255) — texto largo revienta en MySQL
+                // (SQLite no valida longitudes, así que la suite NO lo caza). Ver
+                // ConfiguracionSeedLongitudTest, que fija ese límite. Detalle extenso
+                // del backfill por tramos: docs/planes/PLAN-DESPACHOS-V1.md.
+                'descripcion' => 'Fecha de arranque (Y-m-d) del espejo de documentos: la sync nunca retrocede más atrás. Vacío = últimos 7 días en el primer run. Un piso antiguo se pone al día por tramos de 30 días (backfill masivo prohibido).',
+            ],
+            [
+                'clave' => 'documentos_sync_watermark',
+                'valor' => null,
+                'tipo' => Configuracion::TIPO_STRING,
+                'grupo' => 'despachos',
+                'descripcion' => 'Interno (lo escribe bsale:sync-documents): hasta dónde el espejo de documentos quedó completo. No editar a mano.',
+            ],
         ];
 
         foreach ($ajustes as $a) {

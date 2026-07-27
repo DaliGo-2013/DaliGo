@@ -39,6 +39,15 @@ Schedule::command('bsale:sync-stock')
     ->withoutOverlapping(15)
     ->appendOutputTo(storage_path('logs/bsale-sync.log'));
 
+// DESPACHOS-v1 (sync #5): espejo de documentos de venta por ventana de fecha.
+// Va en :30 junto a prices (liviana) y NO en :45: stock procesa ~28k filas y
+// ese slot ya es el pesado (observación del Director al plan, 2026-07-14).
+// Corre tras clients (:15) de la misma hora para maximizar el match cliente_id.
+Schedule::command('bsale:sync-documents')
+    ->hourlyAt(30)
+    ->withoutOverlapping(15)
+    ->appendOutputTo(storage_path('logs/bsale-sync.log'));
+
 // --- M15 · Reintentos de notificaciones fallidas -------------------------
 // Cada 15 min (grilla */15 de I-01: :00/:15/:30/:45) re-encola las fallidas
 // cuyo backoff ya venció. El comando reclama por `programada_para <= now()`,

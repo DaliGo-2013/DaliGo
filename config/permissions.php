@@ -38,6 +38,8 @@ return [
         'view aprobaciones' => 'Ver historial de aprobaciones',
         'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
         'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
+        'manage despachos' => 'Gestionar despachos',
+        'confirmar entrega' => 'Confirmar entrega (conductor)',
     ],
 
     /*
@@ -58,6 +60,9 @@ return [
         'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento'],
         'Terreno' => ['servicio terreno', 'agenda terreno', 'instalaciones'],
         'Producción' => ['production'],
+        // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
+        // ningún permiso de ST/terreno (verificado sobre la lista de labels).
+        'Despachos' => ['despachos', 'entrega'],
         'Comercial' => ['clientes', 'productos'],
         'Usuarios y accesos' => ['users', 'roles'],
         'Aprobaciones' => ['aprobaciones', 'solicitudes'],
