@@ -1,28 +1,36 @@
 <?php
 
+use App\Http\Controllers\Admin\AgendaTrabajoController;
+use App\Http\Controllers\Admin\ConductorController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\DespachoController;
+use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
-use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServicioTecnicoController;
+use App\Http\Controllers\Admin\ServicioTerrenoController;
 use App\Http\Controllers\Admin\SucursalController;
+use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AprobacionController;
+use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Produccion\MiProduccionController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Publico\CotizacionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
+use App\Http\Controllers\Publico\VisitaConfirmacionController;
+use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -38,7 +46,15 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Preferencias de notificación del usuario (M15): opt-out por evento×canal.
-    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])->name('perfil.notificaciones.update');
+    // Solo Luis + administradores TI las gestionan (pedido del jefe): gate por
+    // permiso; el resto del perfil sigue abierto a cualquier autenticado.
+    Route::put('/perfil/notificaciones', [NotificacionPreferenciaController::class, 'update'])
+        ->middleware('permission:gestionar notificaciones')
+        ->name('perfil.notificaciones.update');
+
+    // Color de las cards de accesos del Inicio (M16, D-013): preferencia
+    // personal, guardada por fetch desde el modo "Personalizar" del dashboard.
+    Route::patch('/dashboard/colores', DashboardColoresController::class)->name('dashboard.colores.update');
 
     // Campanita (M15): bandeja personal in-app; cualquier usuario gestiona LO SUYO.
     Route::get('/notificaciones', [NotificacionUsuarioController::class, 'index'])->name('notificaciones.index');
@@ -120,6 +136,8 @@ Route::middleware('auth')
             Route::get('productos/exportar', [ProductoController::class, 'export'])->name('productos.export');
             Route::get('productos/plantilla', [ProductoController::class, 'template'])->name('productos.template');
             Route::get('productos/plantilla-medidas', [ProductoController::class, 'plantillaMedidas'])->name('productos.plantilla.medidas');
+            // Asignacion masiva de categoria INTERNA (propia de DaliGo; no toca Bsale).
+            Route::post('productos/clasificacion-interna', [ProductoController::class, 'clasificacionInterna'])->name('productos.clasificacion-interna');
         });
         Route::resource('productos', ProductoController::class)
             ->middleware('permission:manage productos')
@@ -149,15 +167,35 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
-            // Informe de estadisticas por periodo (año o mes) para los jefes.
-            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informe'])
+            // Informes: landing con dos "carpetas" (Dispensadores / Industrial),
+            // y el informe de cada uno por periodo (año o mes) para los jefes.
+            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informes'])
                 ->name('servicio-tecnico.informe');
+            Route::get('servicio-tecnico/informe/dispensadores', [ServicioTecnicoController::class, 'informeDispensadores'])
+                ->name('servicio-tecnico.informe.dispensadores');
+            Route::get('servicio-tecnico/informe/industrial', [ServicioTecnicoController::class, 'informeIndustrial'])
+                ->name('servicio-tecnico.informe.industrial');
+            // BOCETO interno: vista de seguimiento (estilo Blue Express) del estado
+            // de un equipo. Sin conexion a datos; solo un adelanto del diseño.
+            Route::get('servicio-tecnico/seguimiento-demo', [ServicioTecnicoController::class, 'seguimientoDemo'])
+                ->name('servicio-tecnico.seguimiento-demo');
             // Foto de recepcion (disco privado, servida con sesion). ANTES del show
             // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
             Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])
                 ->whereNumber('foto')->name('servicio-tecnico.foto');
+            // Comprobante de pago de una cotización (disco privado, con sesión):
+            // lo ve todo el equipo con acceso al ST (transparencia del pago).
+            Route::get('servicio-tecnico/cotizacion/{cotizacion}/comprobante', [ServicioTecnicoController::class, 'comprobanteCotizacion'])
+                ->name('servicio-tecnico.cotizacion.comprobante');
             Route::get('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'show'])
                 ->whereNumber('orden')->name('servicio-tecnico.show');
+        });
+
+        // Autorizar la reparación tras coordinar el pago: vendedor/jefe_ventas/
+        // tecnico/admin (permiso propio; NO exige 'manage', que es solo del taller).
+        Route::middleware('permission:autorizar reparacion')->group(function () {
+            Route::post('servicio-tecnico/{orden}/cotizacion/autorizar', [ServicioTecnicoController::class, 'autorizarReparacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.autorizar');
         });
 
         // Confirmar la recepcion de lo que llego por QR: lo AUTORIZA el jefe de
@@ -171,6 +209,59 @@ Route::middleware('auth')
             // (poll sin recargar la pagina).
             Route::get('servicio-tecnico/por-confirmar/conteo', [ServicioTecnicoController::class, 'porConfirmarConteo'])
                 ->name('servicio-tecnico.por-confirmar.conteo');
+        });
+
+        // Agenda de terreno (tecnico industrial): quien VE la agenda (tecnico
+        // industrial) puede ademas marcar el estado de un trabajo; AGENDAR y
+        // editar el catalogo de servicios queda para jefe/vendedores.
+        Route::middleware('permission:ver agenda terreno|agendar servicio terreno')->group(function () {
+            Route::get('agenda-terreno', [AgendaTrabajoController::class, 'index'])
+                ->name('agenda-terreno.index');
+            Route::get('agenda-terreno/calendario', [AgendaTrabajoController::class, 'calendario'])
+                ->name('agenda-terreno.calendario');
+            Route::patch('agenda-terreno/{trabajo}/estado', [AgendaTrabajoController::class, 'estado'])
+                ->whereNumber('trabajo')->name('agenda-terreno.estado');
+        });
+        Route::middleware('permission:agendar servicio terreno')->group(function () {
+            Route::get('agenda-terreno/crear', [AgendaTrabajoController::class, 'create'])
+                ->name('agenda-terreno.create');
+            Route::post('agenda-terreno', [AgendaTrabajoController::class, 'store'])
+                ->name('agenda-terreno.store');
+            Route::get('agenda-terreno/buscar-cliente', [AgendaTrabajoController::class, 'buscarCliente'])
+                ->name('agenda-terreno.buscar-cliente');
+            Route::get('agenda-terreno/{trabajo}/editar', [AgendaTrabajoController::class, 'edit'])
+                ->whereNumber('trabajo')->name('agenda-terreno.edit');
+            Route::put('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'update'])
+                ->whereNumber('trabajo')->name('agenda-terreno.update');
+            Route::post('agenda-terreno/{trabajo}/rechazar', [AgendaTrabajoController::class, 'rechazar'])
+                ->whereNumber('trabajo')->name('agenda-terreno.rechazar');
+            Route::delete('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'destroy'])
+                ->whereNumber('trabajo')->name('agenda-terreno.destroy');
+
+            // Catalogo de servicios de terreno (tarifario UF, editable).
+            Route::resource('servicios-terreno', ServicioTerrenoController::class)
+                ->parameters(['servicios-terreno' => 'servicio'])
+                ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
+        // "Costos generales de reparación": catálogo de tiempos estándar por
+        // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
+        Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
+            Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
+                ->parameters(['tiempos-reparacion' => 'tiempo'])
+                ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
+        // Registro de INSTALACIONES del tecnico industrial (Excel de Carlos
+        // Tablante): ledger editable. Lo gestionan el tecnico industrial, jefes
+        // de venta y admin (buscar-cliente ANTES del resource para no chocar con
+        // instalaciones/{instalacion}).
+        Route::middleware('permission:gestionar instalaciones')->group(function () {
+            Route::get('instalaciones/buscar-cliente', [InstalacionController::class, 'buscarCliente'])
+                ->name('instalaciones.buscar-cliente');
+            Route::resource('instalaciones', InstalacionController::class)
+                ->parameters(['instalaciones' => 'instalacion'])
+                ->except(['show']);
         });
 
         // Ingreso por LOTE (conductor en ruta): permiso acotado, NO gestiona el
@@ -205,9 +296,48 @@ Route::middleware('auth')
             Route::put('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'guardarReparacion'])
                 ->name('servicio-tecnico.reparacion.guardar');
 
+            // Pestaña Cotización (ver + enviar): desglose guardado + envío al
+            // cliente. GET propio; el POST de abajo (mismo path) es el envío.
+            Route::get('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'cotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion');
+
+            // Cotización al cliente (P-M12-02): enviar la carta / reintentar el
+            // correo si el SMTP falló. {cotizacion:id} porque el binding por
+            // defecto del modelo es el token (para el link público).
+            Route::post('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'enviarCotizacion'])
+                ->name('servicio-tecnico.cotizacion.enviar');
+            // Guardar el desglose de precios (repuestos, mano de obra, descuento)
+            // que arma la cotización. PUT sobre el mismo path (POST = enviar).
+            Route::put('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'guardarCotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.guardar');
+            Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/reintentar', [ServicioTecnicoController::class, 'reintentarCorreoCotizacion'])
+                ->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.reintentar');
+            // Garantía: enviar al cliente el DETALLE del trabajo (sin cobro).
+            Route::post('servicio-tecnico/{orden}/detalle-trabajo', [ServicioTecnicoController::class, 'enviarDetalleTrabajo'])
+                ->whereNumber('orden')->name('servicio-tecnico.detalle-trabajo.enviar');
+
+            // Registrar ingreso (crear) queda en 'manage': el técnico SÍ registra
+            // equipos. Editar la recepción y eliminar se separan abajo.
             Route::resource('servicio-tecnico', ServicioTecnicoController::class)
                 ->parameters(['servicio-tecnico' => 'orden'])
-                ->only(['create', 'store', 'edit', 'update', 'destroy']);
+                ->only(['create', 'store']);
+
+            // Conductores (choferes de ruta) — administrables desde la app.
+            Route::resource('conductores', ConductorController::class)
+                ->parameters(['conductores' => 'conductor'])
+                ->only(['index', 'create', 'store', 'edit', 'update']);
+        });
+
+        // EDITAR la recepción de una orden (datos de ingreso) y ELIMINARLA: permiso
+        // aparte para poder limitárselo al técnico (pedido de gerencia). El técnico
+        // conserva registrar ingreso + parte del técnico + cotización.
+        Route::middleware('permission:editar recepcion servicio tecnico')->group(function () {
+            Route::get('servicio-tecnico/{orden}/edit', [ServicioTecnicoController::class, 'edit'])
+                ->whereNumber('orden')->name('servicio-tecnico.edit');
+            Route::put('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'update'])
+                ->whereNumber('orden')->name('servicio-tecnico.update');
+            Route::delete('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'destroy'])
+                ->whereNumber('orden')->name('servicio-tecnico.destroy');
         });
 
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
@@ -252,10 +382,18 @@ Route::middleware(['auth', 'permission:report production'])
     ->name('produccion.')
     ->group(function () {
         Route::get('mi-reporte', [MiProduccionController::class, 'index'])->name('mi.index');
-        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->name('mi.show');
-        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->name('mi.update');
-        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->name('mi.registros.store');
-        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->name('mi.registros.destroy');
+        // Historial propio (ultimos 45 dias por defecto, filtro desde/hasta).
+        // Path HERMANO a proposito, NO 'mi-reporte/historial': el {reporte} de
+        // abajo captura cualquier segmento y el binding buscaria un reporte con
+        // id "historial" (404). Peor: el resultado depende del matcher (sin
+        // cache manda el orden de registro; con route:cache —que corre en cada
+        // deploy— manda el mapa estatico de Symfony) => divergencia local/prod.
+        Route::get('mi-historial', [MiProduccionController::class, 'historial'])->name('mi.historial');
+        // whereNumber: cinturon para el proximo que cuelgue un path bajo mi-reporte/.
+        Route::get('mi-reporte/{reporte}', [MiProduccionController::class, 'show'])->whereNumber('reporte')->name('mi.show');
+        Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->whereNumber('reporte')->name('mi.update');
+        Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->whereNumber('reporte')->name('mi.registros.store');
+        Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
     });
 
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
@@ -283,11 +421,35 @@ Route::middleware('throttle:6,1')->group(function () {
         ->name('ingreso-taller.lote.store');
     Route::get('ingreso-taller/lote/listo/{lote}', [IngresoTallerPublicoController::class, 'graciasLote'])
         ->middleware('signed')->name('ingreso-taller.lote.gracias');
-});
 
-// Autocompletado publico del producto Dali para el formulario del QR. Throttle
-// propio (mas alto que el envio) porque dispara en cada tecla; solo lee catalogo.
-Route::get('ingreso-taller/buscar-producto', [IngresoTallerPublicoController::class, 'buscarProducto'])
-    ->middleware('throttle:30,1')->name('ingreso-taller.buscar-producto');
+    // Solicitud de visita/revision INDUSTRIAL (el tecnico va donde el cliente):
+    // entra a la Agenda de terreno como 'solicitado' y el staff la coordina.
+    Route::get('visita-industrial', [VisitaIndustrialPublicoController::class, 'create'])
+        ->middleware('signed')->name('visita-industrial.create');
+    Route::post('visita-industrial', [VisitaIndustrialPublicoController::class, 'store'])
+        ->name('visita-industrial.store');
+    Route::get('visita-industrial/listo/{trabajo}', [VisitaIndustrialPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('visita-industrial.gracias');
+
+    // Respuesta del cliente a una COTIZACION del taller (P-M12-02): link firmado
+    // del correo. El POST tambien va firmado (autorizacion comercial: no espera
+    // al endurecimiento P-F3-01 del QR). Binding por token (no enumerable).
+    Route::get('cotizacion/{cotizacion}', [CotizacionPublicoController::class, 'mostrar'])
+        ->middleware('signed')->name('cotizacion.mostrar');
+    Route::post('cotizacion/{cotizacion}/respuesta', [CotizacionPublicoController::class, 'responder'])
+        ->middleware('signed')->name('cotizacion.responder');
+    Route::get('cotizacion/{cotizacion}/gracias', [CotizacionPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('cotizacion.gracias');
+
+    // Confirmación del cliente a una visita de terreno agendada (link firmado).
+    // Token propio (no enumerable); el POST también va firmado. Confirma que
+    // puede ese día o avisa que no, con un comentario libre corto.
+    Route::get('confirmacion-visita/{token}', [VisitaConfirmacionController::class, 'mostrar'])
+        ->middleware('signed')->name('confirmacion-visita.mostrar');
+    Route::post('confirmacion-visita/{token}/respuesta', [VisitaConfirmacionController::class, 'responder'])
+        ->middleware('signed')->name('confirmacion-visita.responder');
+    Route::get('confirmacion-visita/{token}/gracias', [VisitaConfirmacionController::class, 'gracias'])
+        ->middleware('signed')->name('confirmacion-visita.gracias');
+});
 
 require __DIR__.'/auth.php';

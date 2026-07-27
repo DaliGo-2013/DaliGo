@@ -57,16 +57,21 @@ class ProductoManagementTest extends TestCase
         $member = User::factory()->create();
         $member->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/productos')->assertForbidden();
-        $this->actingAs($member)->get('/admin/productos/create')->assertForbidden();
-        $this->actingAs($member)->get('/admin/productos/exportar')->assertForbidden();
-        $this->actingAs($member)->get('/admin/productos/importar')->assertForbidden();
+        $this->actingAs($member)->get('/admin/productos')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get('/admin/productos/create')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get('/admin/productos/exportar')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get('/admin/productos/importar')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_manage_productos_permission_grants_access(): void
     {
         $this->actingAs($this->userWith(['manage productos']))->get('/admin/productos')->assertOk();
-        $this->actingAs($this->userWith([]))->get('/admin/productos')->assertForbidden();
+        $this->actingAs($this->userWith([]))->get('/admin/productos')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- CRUD -----------------------------------------------------------
@@ -445,7 +450,8 @@ class ProductoManagementTest extends TestCase
 
         $member = User::factory()->create();
         $member->assignRole('member');
-        $this->actingAs($member)->get('/admin/productos/plantilla-medidas')->assertForbidden();
+        $this->actingAs($member)->get('/admin/productos/plantilla-medidas')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_plantilla_medidas_downloads_pending_and_honors_filters(): void

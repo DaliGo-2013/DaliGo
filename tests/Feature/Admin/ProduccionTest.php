@@ -107,7 +107,8 @@ class ProduccionTest extends TestCase
 
     public function test_soplador_no_puede_ver_el_panel_del_jefe(): void
     {
-        $this->actingAs($this->soplador())->get('/admin/produccion')->assertForbidden();
+        $this->actingAs($this->soplador())->get('/admin/produccion')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_invitado_es_redirigido_al_login(): void
@@ -119,7 +120,8 @@ class ProduccionTest extends TestCase
     public function test_member_sin_permiso_no_entra_a_mi_produccion(): void
     {
         $member = tap(User::factory()->create())->assignRole('member');
-        $this->actingAs($member)->get('/produccion/mi-reporte')->assertForbidden();
+        $this->actingAs($member)->get('/produccion/mi-reporte')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- Asignacion (jefe) ---
@@ -141,6 +143,77 @@ class ProduccionTest extends TestCase
         $this->assertDatabaseHas('produccion_reportes', [
             'soplador_id' => $soplador->id, 'asignadas' => 1200, 'estado' => 'borrador',
         ]);
+    }
+
+    public function test_asignar_guarda_la_procedencia_de_la_preforma(): void
+    {
+        // Tarjeta 02-07: opción saco/caja para conocer la procedencia de la preforma.
+        $soplador = $this->soplador();
+
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), [
+            'soplador_id' => $soplador->id,
+            'turno' => 'dia',
+            'fecha' => now()->toDateString(),
+            'asignadas' => 500,
+            'procedencia' => 'saco',
+        ])->assertRedirect(route('admin.produccion.index'));
+
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'asignadas' => 500, 'procedencia' => 'saco',
+        ]);
+    }
+
+    public function test_asignar_procedencia_es_opcional_y_de_lista_cerrada(): void
+    {
+        $soplador = $this->soplador();
+        $base = ['soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+
+        // Como el navegador: el select no elegido viaja como '' → queda null.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $base + ['procedencia' => ''])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('produccion_asignaciones', [
+            'soplador_id' => $soplador->id, 'procedencia' => null,
+        ]);
+
+        // Un valor fuera de la lista (saco|caja) se rechaza.
+        $this->actingAs($this->jefe())->post(route('admin.produccion.asignar.store'), $base + ['procedencia' => 'bolsa'])
+            ->assertSessionHasErrors('procedencia');
+        $this->assertSame(1, ProduccionAsignacion::where('soplador_id', $soplador->id)->count());
+    }
+
+    public function test_form_de_asignar_ofrece_la_procedencia(): void
+    {
+        $this->actingAs($this->jefe())->get(route('admin.produccion.asignar'))
+            ->assertOk()
+            ->assertSee('Procedencia de la preforma')
+            ->assertViewHas('procedencias', \App\Models\ProduccionAsignacion::PROCEDENCIAS);
+    }
+
+    public function test_procedencia_visible_en_reporte_aprobado(): void
+    {
+        // Hallazgo de la revisión: la procedencia debe poder consultarse
+        // también con el reporte APROBADO (estado permanente), no solo en el
+        // preview del kardex de los enviados.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::APROBADO);
+        $reporte->asignacion->update(['procedencia' => 'caja']);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('Preforma del turno:')
+            ->assertSee('en caja');
+    }
+
+    public function test_procedencia_sin_preforma_no_oculta_el_aviso_del_kardex(): void
+    {
+        // Hallazgo de la revisión: elegir procedencia SIN preforma no debe
+        // enmascarar la señal "(sin preforma asignada)" del preview del kardex.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
+        $reporte->asignacion->update(['procedencia' => 'saco']);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('(sin preforma asignada)')
+            ->assertSee('en saco'); // la procedencia igual se informa, en los metadatos
     }
 
     public function test_asignar_de_nuevo_crea_otra_produccion(): void
@@ -411,7 +484,12 @@ class ProduccionTest extends TestCase
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
 
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10])->assertForbidden();
+        // Rechazo por ESTADO (no por permiso): el handler devuelve al formulario
+        // con el mensaje de negocio, en vez de un 403 pelado.
+        $this->assertRechazado(
+            $this->agregarTanda($soplador, $reporte, ['primera' => 10]),
+            'Este reporte ya no se puede editar.',
+        );
     }
 
     public function test_registro_de_otro_reporte_devuelve_404_al_borrar(): void
@@ -586,9 +664,11 @@ class ProduccionTest extends TestCase
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
 
-        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), [
-            'enviar' => 0,
-        ])->assertForbidden();
+        // Rechazo por ESTADO: vuelve al reporte con el mensaje de negocio.
+        $this->assertRechazado(
+            $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), ['enviar' => 0]),
+            'Este reporte ya no se puede editar.',
+        );
     }
 
     // --- Reportes devueltos de otros dias ---
@@ -618,7 +698,8 @@ class ProduccionTest extends TestCase
         $reporte = $this->reporteDe($this->soplador());
         $otro = $this->soplador();
 
-        $this->actingAs($otro)->get(route('produccion.mi.show', $reporte))->assertForbidden();
+        $this->actingAs($otro)->get(route('produccion.mi.show', $reporte))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- Backfill de transicion ---
@@ -741,6 +822,21 @@ class ProduccionTest extends TestCase
             ->assertSee('Detalle por máquina y tipo')
             ->assertSee('Sopladora Sur')
             ->assertSee('Incoloro 10L retornable');
+    }
+
+    public function test_reporte_enviado_ofrece_autorizar_y_rechazar(): void
+    {
+        // Tarjeta 02-07: las acciones de decisión del jefe se llaman
+        // Autorizar / Rechazar (rechazo con motivo obligatorio); los estados
+        // del modelo siguen siendo aprobado/devuelto.
+        $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
+
+        $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('Autorizar')
+            ->assertSee('Rechazar')
+            ->assertSee('Motivo del rechazo')
+            ->assertDontSee('Devolver al soplador');
     }
 
     public function test_reporte_editado_marca_la_divergencia_en_el_detalle(): void
@@ -913,7 +1009,8 @@ class ProduccionTest extends TestCase
             route('admin.produccion.maquina', $maquina),
             route('admin.produccion.tipo', $tipo),
         ] as $url) {
-            $this->actingAs($sop)->get($url)->assertForbidden();
+            $this->actingAs($sop)->get($url)->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         }
     }
 

@@ -22,6 +22,10 @@ class NotificacionUsuarioController extends Controller
         $notificaciones = Notificacion::query()
             ->where('user_id', $request->user()->id)
             ->where('canal', Notificacion::CANAL_DATABASE)
+            // notificable: la vista pregunta por urlDestinoPara(), que para las
+            // cotizaciones mira el scope de cartera de la orden. Sin el eager
+            // load serian 20 queries (una por fila).
+            ->with('notificable')
             ->orderByRaw("CASE estado WHEN '".Notificacion::ENVIADA."' THEN 0 ELSE 1 END")
             ->latest('id')
             ->paginate(20);

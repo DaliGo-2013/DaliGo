@@ -47,6 +47,19 @@ class Notificacion extends Model
         'aprobacion.solicitada' => 'Solicitud de aprobación pendiente',
         'aprobacion.escalada' => 'Solicitud de aprobación escalada',
         'aprobacion.resuelta' => 'Solicitud de aprobación resuelta',
+        // Taller · un cliente ingresó un equipo por QR (unidad o cantidad):
+        // aviso a ventas + al técnico para que sepan que entró una máquina.
+        'taller.ingresado' => 'Ingreso de equipo al taller (QR)',
+        // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
+        'cotizacion.enviada' => 'Cotización enviada al cliente',
+        'cotizacion.respondida' => 'El cliente respondió la cotización',
+        'cotizacion.autorizada' => 'Reparación autorizada (pago coordinado)',
+        // Agenda de terreno · solicitud del cliente (QR) por coordinar
+        'terreno.solicitada' => 'Solicitud del cliente por coordinar (terreno)',
+        // Agenda de terreno · el cliente respondió a la cita agendada
+        'terreno.confirmada' => 'El cliente respondió a la visita agendada',
+        // Agenda de terreno · una solicitud fue rechazada (con motivo)
+        'terreno.rechazada' => 'Solicitud de terreno rechazada',
     ];
 
     protected $fillable = [
@@ -88,6 +101,39 @@ class Notificacion extends Model
         return $this->morphTo();
     }
 
+    /**
+     * El destino de la fila, SOLO si este usuario puede llegar (null si no).
+     *
+     * La bandeja enlazaba a ciegas con urlDestino(): las notificaciones de
+     * cotizacion se despachan a ROLES_AVISO (tecnico/jefe_ventas/vendedor/admin),
+     * asi que un vendedor SIN 'ver todo servicio tecnico' que tocaba la de un
+     * cliente de OTRA cartera caia en 403 (ServicioTecnicoController::show ->
+     * OrdenServicio::esVisiblePara). Los permisos que se chequean aca son los
+     * mismos gates de esas rutas en routes/web.php.
+     */
+    public function urlDestinoPara(?User $user): ?string
+    {
+        $url = $this->urlDestino();
+
+        if ($url === null || $user === null) {
+            return null;
+        }
+
+        $puede = match ($this->evento) {
+            'aprobacion.solicitada', 'aprobacion.escalada' => $user->can('aprobar solicitudes'),
+            'aprobacion.resuelta' => true, // "mis solicitudes": basta estar autenticado
+            'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico']),
+            // Detalle de una orden: permiso Y scope de cartera del vendedor.
+            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
+                && $this->notificable instanceof OrdenServicio
+                && $this->notificable->esVisiblePara($user),
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            default => false,
+        };
+
+        return $puede ? $url : null;
+    }
+
     /** No-leidas de la campanita de un usuario (canal database, aun no leidas). */
     public function scopeCampanitaDe($query, int $userId)
     {
@@ -102,5 +148,30 @@ class Notificacion extends Model
         if ($this->estado !== self::LEIDA) {
             $this->update(['estado' => self::LEIDA, 'leida_at' => now()]);
         }
+    }
+
+    /**
+     * Destino accionable de la notificacion segun su evento (hallazgo #5 del
+     * QA 15-07: "toda alerta necesita superficie donde actuar"). Los eventos
+     * de aprobacion llegan al APROBADOR (solicitada/escalada → su bandeja) o
+     * al SOLICITANTE (resuelta → sus solicitudes). Null = fila no accionable.
+     */
+    public function urlDestino(): ?string
+    {
+        return match ($this->evento) {
+            'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index'),
+            'aprobacion.resuelta' => route('aprobaciones.mias'),
+            // Ingreso por QR (por confirmar): la superficie para actuar es el
+            // listado de servicio técnico (ahí se confirma la recepción).
+            'taller.ingresado' => route('admin.servicio-tecnico.index'),
+            // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
+            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
+                ? route('admin.servicio-tecnico.show', $this->notificable_id)
+                : null,
+            // La solicitud por coordinar, la respuesta del cliente y el rechazo se
+            // ven en la agenda de terreno.
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
+            default => null,
+        };
     }
 }

@@ -46,6 +46,14 @@ class NotificacionDispatcher
         $creadas = collect();
 
         foreach ($this->canalesEfectivos($evento, $user) as $canal) {
+            // El canal database no tiene transporte externo: nace ENVIADA y la
+            // campanita lo muestra AL TIRO (hallazgo #9 del QA 15-07 — viajar
+            // por la cola de la grilla le metía hasta 15 min de latencia
+            // artificial). mail/whatsapp siguen por la cola como siempre; el
+            // job conserva su rama database para filas pendientes previas al
+            // deploy (idempotente).
+            $esDatabase = $canal === Notificacion::CANAL_DATABASE;
+
             $notificacion = Notificacion::create([
                 'evento' => $evento,
                 'notificable_type' => $origen?->getMorphClass(),
@@ -56,10 +64,13 @@ class NotificacionDispatcher
                 'titulo' => $titulo,
                 'cuerpo' => $cuerpo,
                 'payload' => $datos,
-                'estado' => Notificacion::PENDIENTE,
+                'estado' => $esDatabase ? Notificacion::ENVIADA : Notificacion::PENDIENTE,
+                'enviada_at' => $esDatabase ? now() : null,
             ]);
 
-            EnviarNotificacion::dispatch($notificacion->id);
+            if (! $esDatabase) {
+                EnviarNotificacion::dispatch($notificacion->id);
+            }
 
             $creadas->push($notificacion);
         }

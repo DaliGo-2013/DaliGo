@@ -1,7 +1,8 @@
-<x-app-layout>
+<x-app-layout ancho="formulario">
     {{-- Historial personal del solicitante (M14): que pedi, en que quedo y por
-         que. Solo lectura; el mismo idioma compacto de la bandeja. --}}
-    <div class="mx-auto max-w-2xl space-y-4 px-4 py-6 sm:px-6">
+         que. Solo lectura; el mismo idioma compacto de la bandeja, SEPARADO POR
+         CATEGORIA (tipo de solicitud). --}}
+    <div class="space-y-4 py-6">
         <div class="flex items-center justify-between gap-3">
             <h1 class="text-xl font-semibold text-neutral-900">Mis solicitudes</h1>
             @can('aprobar solicitudes')
@@ -15,27 +16,42 @@
                 <p class="mt-1 text-sm text-neutral-500">Cuando una acción tuya requiera aprobación, aparecerá aquí.</p>
             </div>
         @else
-            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                <ul class="divide-y divide-neutral-100">
-                    @foreach ($solicitudes as $solicitud)
-                        <li class="space-y-1 px-4 py-4 sm:px-6">
-                            <div class="flex items-start justify-between gap-3">
-                                <p class="min-w-0 text-sm font-medium text-neutral-900">{{ $solicitud->descripcion }}</p>
-                                <x-aprobaciones.estado-badge :estado="$solicitud->estado" class="shrink-0" />
-                            </div>
-                            <p class="text-xs text-neutral-500">
-                                {{ $solicitud->etiquetaTipo() }} · {{ $solicitud->created_at->format('d-m-Y H:i') }}
-                                @if ($solicitud->resuelta_at)
-                                    · resuelta {{ $solicitud->resuelta_at->diffForHumans() }}
-                                @endif
-                            </p>
-                            @if ($solicitud->estado === \App\Models\Aprobacion::ESTADO_RECHAZADA && $solicitud->resultado_motivo)
-                                <p class="text-xs text-red-700">{{ $solicitud->resultado_motivo }}</p>
-                            @endif
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
+            {{-- Una sección por categoría; sortKeys da orden estable entre renders. --}}
+            @foreach ($solicitudes->groupBy('tipo_accion')->sortKeys() as $tipoAccion => $delTipo)
+                <section class="space-y-3">
+                    <div class="flex items-center gap-2 px-1">
+                        <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $delTipo->first()->etiquetaTipo() }}</h2>
+                        <x-badge variant="neutral">{{ $delTipo->count() }}</x-badge>
+                    </div>
+
+                    <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                        <ul class="divide-y divide-neutral-100">
+                            @foreach ($delTipo as $solicitud)
+                                <li class="space-y-1 px-4 py-4 sm:px-6">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <p class="min-w-0 text-sm font-medium text-neutral-900">{{ $solicitud->descripcion }}</p>
+                                        <x-aprobaciones.estado-badge :estado="$solicitud->estado" class="shrink-0" />
+                                    </div>
+                                    <p class="text-xs text-neutral-500">
+                                        {{ $solicitud->etiquetaTipo() }} · {{ $solicitud->created_at->enChile()->format('d-m-Y H:i') }}
+                                        @if ($solicitud->resuelta_at)
+                                            · resuelta {{ $solicitud->resuelta_at->diffForHumans() }}
+                                        @endif
+                                    </p>
+                                    {{-- Qué pedí (hallazgo #3 del QA 15-07): sin esto el solicitante
+                                         no distingue sus solicitudes entre sí. --}}
+                                    <p class="text-xs text-neutral-600">
+                                        {{ $solicitud->motivo }}@if ($solicitud->monto !== null) <span class="text-neutral-400">· magnitud <span class="tabular-nums">{{ number_format($solicitud->monto, 0, ',', '.') }}</span></span>@endif
+                                    </p>
+                                    @if ($solicitud->estado === \App\Models\Aprobacion::ESTADO_RECHAZADA && $solicitud->resultado_motivo)
+                                        <p class="text-xs text-red-700">{{ $solicitud->resultado_motivo }}</p>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </section>
+            @endforeach
         @endif
     </div>
 </x-app-layout>

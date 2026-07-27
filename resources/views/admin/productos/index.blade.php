@@ -2,10 +2,22 @@
     <x-slot name="header">
         <x-page-header title="Catálogo" subtitle="Productos (SKU), con peso y dimensiones para despacho.">
             <x-slot name="action">
-                <div class="flex flex-wrap items-center gap-2">
-                    <x-secondary-link :href="route('admin.productos.plantilla.medidas', request()->query())">Plantilla de medidas</x-secondary-link>
-                    <x-secondary-link :href="route('admin.productos.import.form')">Importar CSV</x-secondary-link>
-                    <x-secondary-link :href="route('admin.productos.export', request()->query())">Exportar CSV</x-secondary-link>
+                <div class="flex items-center gap-2">
+                    {{-- Acciones secundarias (CSV/plantilla) agrupadas en un menú
+                         para no amontonar el header; queda solo el CTA primario. --}}
+                    <x-dropdown align="right" width="w-56">
+                        <x-slot name="trigger">
+                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                                Más
+                                <x-icon.chevron-down class="h-4 w-4" />
+                            </button>
+                        </x-slot>
+                        <x-slot name="content">
+                            <x-dropdown-link :href="route('admin.productos.plantilla.medidas', request()->query())">Plantilla de medidas</x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.productos.import.form')">Importar CSV</x-dropdown-link>
+                            <x-dropdown-link :href="route('admin.productos.export', request()->query())">Exportar CSV</x-dropdown-link>
+                        </x-slot>
+                    </x-dropdown>
                     <x-button-link :href="route('admin.productos.create')">
                         <x-icon.plus class="h-4 w-4" />
                         Crear producto
@@ -15,80 +27,134 @@
         </x-page-header>
     </x-slot>
 
-    <div class="py-12">
-        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
-            <x-status-alert :status="session('status')" />
+    <div class="space-y-6 py-12">
+        <x-status-alert :status="session('status')" />
 
-            {{-- Filtros --}}
-            <form method="GET" action="{{ route('admin.productos.index') }}"
-                  class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
-                <div class="flex-1">
-                    <x-input-label for="q" value="Buscar (SKU o nombre)" />
-                    <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. botellón" />
+        {{-- Filtros --}}
+        <form method="GET" action="{{ route('admin.productos.index') }}"
+              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+            <div class="flex-1">
+                <x-input-label for="q" value="Buscar (SKU o nombre)" />
+                <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. botellón" />
+            </div>
+            <div class="sm:w-44">
+                <x-input-label for="categoria" value="Categoría" />
+                <x-select id="categoria" name="categoria" class="mt-1.5">
+                    <option value="">Todas</option>
+                    @foreach ($categorias as $c)
+                        <option value="{{ $c }}" @selected(($filtros['categoria'] ?? '') === $c)>{{ $c }}</option>
+                    @endforeach
+                </x-select>
+            </div>
+            <div class="sm:w-44">
+                <x-input-label for="corregidos" value="Corregidos" />
+                <x-select id="corregidos" name="corregidos" class="mt-1.5">
+                    <option value="">Todos</option>
+                    <option value="1" @selected(($filtros['corregidos'] ?? '') === '1')>Corregidos en DaliGo</option>
+                    <option value="0" @selected(($filtros['corregidos'] ?? '') === '0')>Sin corregir</option>
+                </x-select>
+            </div>
+            <div class="sm:w-44">
+                <x-input-label for="marca" value="Marca" />
+                <x-select id="marca" name="marca" class="mt-1.5">
+                    <option value="">Todas</option>
+                    @foreach ($marcas as $m)
+                        <option value="{{ $m }}" @selected(($filtros['marca'] ?? '') === $m)>{{ $m }}</option>
+                    @endforeach
+                </x-select>
+            </div>
+            <div class="sm:w-36">
+                <x-input-label for="activo" value="Estado" />
+                <x-select id="activo" name="activo" class="mt-1.5">
+                    <option value="">Todos</option>
+                    <option value="1" @selected(($filtros['activo'] ?? '') === '1')>Activos</option>
+                    <option value="0" @selected(($filtros['activo'] ?? '') === '0')>Inactivos</option>
+                </x-select>
+            </div>
+            <div class="sm:w-40">
+                <x-input-label for="medidas" value="Medidas" />
+                <x-select id="medidas" name="medidas" class="mt-1.5">
+                    <option value="">Todas</option>
+                    <option value="incompletas" @selected(($filtros['medidas'] ?? '') === 'incompletas')>Incompletas</option>
+                    <option value="completas" @selected(($filtros['medidas'] ?? '') === 'completas')>Completas</option>
+                </x-select>
+            </div>
+            <div class="flex items-center gap-3">
+                <x-primary-button>Filtrar</x-primary-button>
+                @if (array_filter($filtros))
+                    <x-secondary-link :href="route('admin.productos.index')">Limpiar</x-secondary-link>
+                @endif
+            </div>
+        </form>
+
+        {{-- Progreso de la carga de medidas (peso + dimensiones, productos activos) --}}
+        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm shadow-sm">
+            <span class="font-medium text-neutral-700">Medidas completas:</span>
+            <x-badge>{{ $activosCompletos }} de {{ $activos }} activos</x-badge>
+            @if ($activos > 0)
+                <span class="text-xs text-neutral-500">({{ round($activosCompletos * 100 / $activos) }}%)</span>
+            @endif
+            @if ($activosCompletos < $activos)
+                <span class="text-xs text-neutral-400">— descarga la «Plantilla de medidas» para completar los pendientes.</span>
+            @endif
+        </div>
+
+        {{-- Selección múltiple para CORREGIR la categoría (propia de DaliGo; NO
+             toca lo que viene de Bsale, que queda como referencia). La barra de
+             acción va como form APARTE de las filas (los forms de eliminar no
+             se pueden anidar). La selección es por página. --}}
+        <div x-data="{ sel: [], pageIds: @js($productos->pluck('id')->map(fn ($i) => (string) $i)->values()) }">
+            {{-- Barra de acción (aparece al seleccionar) --}}
+            <form method="POST" action="{{ route('admin.productos.clasificacion-interna') }}"
+                  x-show="sel.length" x-cloak
+                  class="mb-3 flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+                @csrf
+                <template x-for="id in sel" :key="id"><input type="hidden" name="ids[]" :value="id"></template>
+                <div class="text-sm font-medium text-brand-700">
+                    <span x-text="sel.length"></span> seleccionado(s)
+                    <button type="button" class="ml-2 text-xs font-normal text-neutral-500 underline" @click="sel = []">limpiar</button>
                 </div>
-                <div class="sm:w-44">
-                    <x-input-label for="categoria" value="Categoría" />
-                    <x-select id="categoria" name="categoria" class="mt-1.5">
-                        <option value="">Todas</option>
-                        @foreach ($categorias as $c)
-                            <option value="{{ $c }}" @selected(($filtros['categoria'] ?? '') === $c)>{{ $c }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-44">
-                    <x-input-label for="marca" value="Marca" />
-                    <x-select id="marca" name="marca" class="mt-1.5">
-                        <option value="">Todas</option>
-                        @foreach ($marcas as $m)
-                            <option value="{{ $m }}" @selected(($filtros['marca'] ?? '') === $m)>{{ $m }}</option>
-                        @endforeach
-                    </x-select>
-                </div>
-                <div class="sm:w-36">
-                    <x-input-label for="activo" value="Estado" />
-                    <x-select id="activo" name="activo" class="mt-1.5">
-                        <option value="">Todos</option>
-                        <option value="1" @selected(($filtros['activo'] ?? '') === '1')>Activos</option>
-                        <option value="0" @selected(($filtros['activo'] ?? '') === '0')>Inactivos</option>
-                    </x-select>
-                </div>
-                <div class="sm:w-40">
-                    <x-input-label for="medidas" value="Medidas" />
-                    <x-select id="medidas" name="medidas" class="mt-1.5">
-                        <option value="">Todas</option>
-                        <option value="incompletas" @selected(($filtros['medidas'] ?? '') === 'incompletas')>Incompletas</option>
-                        <option value="completas" @selected(($filtros['medidas'] ?? '') === 'completas')>Completas</option>
-                    </x-select>
-                </div>
-                <div class="flex items-center gap-3">
-                    <x-primary-button>Filtrar</x-primary-button>
-                    @if (array_filter($filtros))
-                        <x-secondary-link :href="route('admin.productos.index')">Limpiar</x-secondary-link>
-                    @endif
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+                    <div>
+                        <label for="cat_interna_bulk" class="block text-xs font-medium text-neutral-500">Corregir categoría a</label>
+                        <input id="cat_interna_bulk" name="categoria_interna" list="cats-efectivas" type="text" autocomplete="off"
+                               placeholder="Ej. Repuestos industriales" maxlength="191"
+                               class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 sm:w-56">
+                        <datalist id="cats-efectivas">
+                            @foreach ($categorias as $c)<option value="{{ $c }}"></option>@endforeach
+                        </datalist>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="submit" name="accion" value="asignar" class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700">Aplicar corrección</button>
+                        <button type="submit" name="accion" value="quitar" class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50">Quitar corrección</button>
+                    </div>
                 </div>
             </form>
 
-            {{-- Progreso de la carga de medidas (peso + dimensiones, productos activos) --}}
-            <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm shadow-sm">
-                <span class="font-medium text-neutral-700">Medidas completas:</span>
-                <x-badge>{{ $activosCompletos }} de {{ $activos }} activos</x-badge>
-                @if ($activos > 0)
-                    <span class="text-xs text-neutral-500">({{ round($activosCompletos * 100 / $activos) }}%)</span>
-                @endif
-                @if ($activosCompletos < $activos)
-                    <span class="text-xs text-neutral-400">— descarga la «Plantilla de medidas» para completar los pendientes.</span>
-                @endif
-            </div>
+            {{-- Seleccionar todos los de la página --}}
+            <label class="mb-2 flex items-center gap-2 px-1 text-sm text-neutral-500">
+                <input type="checkbox" @change="sel = $event.target.checked ? [...pageIds] : []"
+                       :checked="pageIds.length && sel.length === pageIds.length"
+                       class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
+                Seleccionar todos los de esta página (<span x-text="pageIds.length"></span>)
+            </label>
 
             <x-list-card title="Productos" :count="$productos->total()" :countLabel="\Illuminate\Support\Str::plural('producto', $productos->total())">
                 @forelse ($productos as $producto)
                     <x-list-row>
                         <x-slot name="leading">
-                            <x-avatar>{{ mb_substr($producto->nombre, 0, 1) }}</x-avatar>
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" value="{{ $producto->id }}" x-model="sel"
+                                       class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
+                                <x-avatar>{{ mb_substr($producto->nombre, 0, 1) }}</x-avatar>
+                            </div>
                         </x-slot>
 
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="truncate font-medium text-neutral-900">{{ $producto->nombre }}</p>
+                            @if ($producto->categoria_interna)
+                                <x-badge>corregida</x-badge>
+                            @endif
                             @if ($producto->marca)
                                 <x-badge variant="neutral">{{ $producto->marca }}</x-badge>
                             @endif
@@ -97,7 +163,10 @@
                             @endunless
                         </div>
                         <p class="truncate text-sm text-neutral-500">
-                            {{ $producto->sku }}@if ($producto->categoria) · {{ $producto->categoria }}@endif
+                            {{ $producto->sku }}@if ($producto->categoria_efectiva) · {{ $producto->categoria_efectiva }}@endif
+                            @if ($producto->categoria_interna && $producto->categoria)
+                                <span class="text-neutral-400">· Bsale: {{ $producto->categoria }}</span>
+                            @endif
                         </p>
 
                         <x-slot name="meta">
@@ -131,7 +200,7 @@
             </x-list-card>
 
             @if ($productos->hasPages())
-                <div>{{ $productos->links() }}</div>
+                <div class="mt-4">{{ $productos->links() }}</div>
             @endif
         </div>
     </div>

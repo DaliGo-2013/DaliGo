@@ -62,9 +62,15 @@ class DespachoTest extends TestCase
 
     public function test_panel_403_sin_permiso_y_200_para_jefe_bodega(): void
     {
+        // Contrato de "errores amables" de main (bootstrap/app.php): una
+        // NAVEGACIÓN GET autenticada sin permiso no ve el 403 crudo — se la
+        // lleva al Inicio con un aviso. Lo que importa sigue verificado: no
+        // entra al panel. (Un POST por permiso sí conserva el 403 — ver
+        // test_create_y_store_tambien_exigen_el_permiso.)
         $this->actingAs(User::factory()->create())
             ->get(route('admin.despachos.index'))
-            ->assertForbidden();
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso');
 
         $this->actingAs($this->jefe())
             ->get(route('admin.despachos.index'))
@@ -273,7 +279,11 @@ class DespachoTest extends TestCase
     {
         $sinPermiso = User::factory()->create();
 
-        $this->actingAs($sinPermiso)->get(route('admin.despachos.create'))->assertForbidden();
+        // GET (navegación) → aviso en el Inicio; POST (acción) → 403 real.
+        $this->actingAs($sinPermiso)
+            ->get(route('admin.despachos.create'))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso');
         $this->actingAs($sinPermiso)
             ->post(route('admin.despachos.store'), ['documento_venta_id' => 1])
             ->assertForbidden();

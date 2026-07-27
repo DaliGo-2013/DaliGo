@@ -179,9 +179,11 @@ class BsaleClientesSyncTest extends TestCase
         $this->assertSame(2, Cliente::whereNull('rut')->count());
     }
 
-    public function test_rut_collision_is_skipped_and_reported(): void
+    public function test_rut_collision_is_counted_as_duplicate_not_error(): void
     {
         // Dos clientes Bsale distintos con el mismo RUT (duplicados historicos).
+        // Es una condicion ESPERADA del origen: se clasifica como `duplicados`,
+        // NO como `errores`, para que el sync no parezca roto cada corrida.
         $this->fakeBsale([
             $this->bsaleClient(1, '12.345.678-5'),
             $this->bsaleClient(2, '12345678-5'),
@@ -190,9 +192,9 @@ class BsaleClientesSyncTest extends TestCase
         $stats = $this->sync();
 
         $this->assertSame(1, $stats['creados']);
-        $this->assertSame(1, $stats['omitidos']);
-        $this->assertCount(1, $stats['errores']);
-        $this->assertSame(2, $stats['errores'][0]['client_id']);
+        $this->assertSame(1, $stats['duplicados']);
+        $this->assertSame(1, $stats['omitidos']);   // duplicado sigue contando como omitido
+        $this->assertEmpty($stats['errores']);       // pero NO es un error
         $this->assertSame(1, Cliente::where('rut', '12345678-5')->count());
     }
 

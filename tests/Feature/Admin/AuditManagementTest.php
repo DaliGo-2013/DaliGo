@@ -52,7 +52,8 @@ class AuditManagementTest extends TestCase
         $member = User::factory()->create();
         $member->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/audits')->assertForbidden();
+        $this->actingAs($member)->get('/admin/audits')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_admin_can_view_index(): void
@@ -63,7 +64,8 @@ class AuditManagementTest extends TestCase
     public function test_view_audit_permission_grants_access(): void
     {
         $this->actingAs($this->userWith(['view audit']))->get('/admin/audits')->assertOk();
-        $this->actingAs($this->userWith([]))->get('/admin/audits')->assertForbidden();
+        $this->actingAs($this->userWith([]))->get('/admin/audits')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- La auditoria realmente registra -------------------------------
@@ -124,7 +126,7 @@ class AuditManagementTest extends TestCase
         $target->assignRole('member');
 
         $this->actingAs($admin)
-            ->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas'])
+            ->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas', 'name' => $target->name, 'email' => $target->email])
             ->assertRedirect(route('admin.users.index'));
 
         $audit = Audit::query()
@@ -147,7 +149,7 @@ class AuditManagementTest extends TestCase
         $target->assignRole('member');
 
         $this->actingAs($admin)
-            ->put("/admin/users/{$target->id}", ['role' => 'member'])
+            ->put("/admin/users/{$target->id}", ['role' => 'member', 'name' => $target->name, 'email' => $target->email])
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseMissing('audits', [
@@ -189,7 +191,7 @@ class AuditManagementTest extends TestCase
         $target = User::factory()->create();
         $target->assignRole('member');
 
-        $this->actingAs($admin)->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas']);
+        $this->actingAs($admin)->put("/admin/users/{$target->id}", ['role' => 'jefe_ventas', 'name' => $target->name, 'email' => $target->email]);
 
         $response = $this->actingAs($admin)
             ->get('/admin/audits?user_id='.$admin->id)

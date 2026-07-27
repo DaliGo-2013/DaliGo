@@ -5,6 +5,12 @@
         'default' => 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700',
         'danger' => 'text-neutral-400 hover:bg-red-50 hover:text-red-600',
         'primary' => 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:scale-[0.98]',
+        // brand: icono de marca sobre un fondo tintado (cerrar el <x-aviso>).
+        // Va como VARIANTE y no por class del llamador porque el merge de
+        // atributos CONCATENA: un text-brand-600 pasado por fuera pelearia con
+        // el text-neutral-400 del default y ganaria el que ordene el CSS
+        // (mismo mecanismo del gotcha de tamano de los iconos, 2026-07-24).
+        'brand' => 'text-brand-600 hover:bg-brand-100 hover:text-brand-700',
         'secondary' => 'border border-neutral-300 bg-white text-neutral-500 shadow-sm hover:bg-neutral-50 hover:text-neutral-700 active:scale-[0.98]',
     ];
     // sm = acciones de fila (36px); lg = acciones principales, cómodas al tocar en móvil (48px).

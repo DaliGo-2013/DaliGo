@@ -41,9 +41,13 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 | D-010 | Computadores nuevos para devs | 🟢 CERRADA (PCs obtenidos) | Mauricio (2026-07-08) | — | — |
 | D-011 | URL oficial (`daligo.impdali.cl`) y estrategia de entornos | 🟢 TOMADA | Mauricio (2026-07-02) | — | — |
 | D-012 | Visibilidad del repo GitHub: queda PÚBLICO | 🟢 TOMADA | Mauricio (2026-07-08) | — | — |
+| D-014 | Qué ve el usuario cuando cae en un 403 o un 404 | 🟢 TOMADA | Mauricio (2026-07-24) | — | — |
+| D-013 | Excepción de paleta: pasteles opt-in en squircles del Inicio | 🟢 TOMADA | Mauricio (2026-07-22) | — | — |
 | D-000 | [retroactiva] Roles reconciliados a 8 ASCII | 🟢 TOMADA | equipo (2026-06) | — | — |
 
-**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026**.
+> D-014 se agregó al semáforo el 2026-07-26: tenía su ficha completa en §4 desde el 24-07 pero faltaba en esta tabla, que es la que se revisa. Una decisión que no aparece acá, para el ritual del viernes no existe.
+
+**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026** — quedan **5 abiertas** (D-003, D-004, D-005, D-006, D-008) y faltan menos de 5 días.
 
 ---
 
@@ -173,6 +177,24 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 ---
 
 ## 4. Decisiones TOMADAS (cronológico inverso)
+
+### D-014 · Qué ve el usuario cuando cae en un 403 o un 404
+- **Estado:** TOMADA (2026-07-24) · **Decisor:** Mauricio
+- **Contexto:** un 403/404 mostraba la pantalla genérica de Symfony (sin logo, sin menú, sin salida) y, en el caso de spatie, **en inglés** (`User does not have the right permissions.`). El dueño pidió una mini-notificación («no tienes permiso… habla con un administrador») o que lo lleve al Inicio.
+- **Decisión:** al usuario que **NAVEGA** (GET autenticado) se lo lleva al **Inicio con una mini-notificación** (canal de sesión propio `aviso`, renderizado una vez en el layout); todo lo demás conserva su status HTTP y cae en `errors/{403,404}.blade.php` con la marca DaliGo. Tres sub-decisiones no obvias:
+  1. **Permiso y propiedad comparten el mismo texto genérico.** Decirle «ese reporte es de otro soplador» le confirma que el recurso existe (enumeración) y el remedio para él es idéntico. Se distinguen **solo en el log** (`motivo`: permiso|propiedad|estado|firma|no-encontrado).
+  2. **Una ACCIÓN (POST/PUT/DELETE) rechazada por permiso se queda en 403**, no redirige: es un botón que no debió existir (bug de UI, no navegación del usuario), y así el contrato HTTP de las acciones no cambia.
+  3. **El mensaje propio de `abort(403, '…')` se PRESERVA** (p. ej. «Este reporte ya no se puede editar.»): es copy de negocio para esa situación exacta; pisarlo con «habla con un administrador» sería mentir, porque el administrador no reabre un reporte cerrado. Corolario: el 2º argumento de `abort(403, …)` es **texto de cara al usuario** — jamás datos de otro usuario.
+- **Consecuencias:** `session('aviso')` queda reservada al handler (`bootstrap/app.php`) y es la prueba de denegación en los tests (~56 asserts migrados de `assertForbidden` a `assertRedirect` + `assertSessionHas`); las peticiones JSON/fetch **conservan** su 403 porque `offline-queue.js` clasifica ese status como rechazo permanente; frontera aceptada: una URI que no matchea ninguna ruta no puede redirigir (no hay sesión) y muestra la página 404 con marca.
+- **Bloquea:** nada.
+
+### D-013 · Excepción de paleta: colores pastel OPT-IN en los squircles de los accesos del Inicio
+- **Estado:** TOMADA (2026-07-22) · **Decisor:** Mauricio
+- **Contexto:** el jefe pidió cards de módulo estilo Bsale en el Inicio (ícono + palabra, cuadradito de color suave); la paleta estricta de 4 de `CLAUDE.md` prohíbe verde/ámbar/azul.
+- **Opciones:** (a) multicolor curado por defecto (look Bsale out-of-the-box); (b) **default sobrio** brand/neutral + paleta pastel curada de 8 que cada usuario elige POR CARD, persistida POR PERFIL (recomendada — no se pierde la sobriedad y quien quiera color lo activa).
+- **Decisión:** (b), 2026-07-22, Mauricio. Los pasteles (celeste/verde/ámbar/violeta/turquesa/índigo, tono 100 de fondo + 700 de ícono) existen **SOLO** en el squircle del ícono de las cards del zócalo del dashboard y **SOLO** si el usuario los elige (`users.dashboard_colores`). El rojo sigue reservado a destructivo (fuera de la paleta elegible).
+- **Consecuencias:** regla de paleta de `CLAUDE.md` enmendada con la excepción acotada; el mapa key→clases vive únicamente en `dashboard.blade.php` (`$paleta`, anti-purge); keys en `App\Support\AccesosDashboard`.
+- **Bloquea:** nada.
 
 ### D-001 · Nombre definitivo del sistema: **DaliGo**
 - **Estado:** TOMADA (2026-07-08) · **Decisor:** Mauricio

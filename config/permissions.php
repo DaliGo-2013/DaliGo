@@ -26,12 +26,47 @@ return [
         'report production' => 'Reportar producción',
         'manage production' => 'Gestionar producción',
         'view servicio tecnico' => 'Ver servicio técnico',
+        'ver todo servicio tecnico' => 'Ver TODO el servicio técnico (no solo la cartera propia)',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
+        'editar recepcion servicio tecnico' => 'Editar recepción / eliminar orden (servicio técnico)',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
+        'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
+        'aplicar descuento servicio tecnico' => 'Aplicar descuento en la cotización (servicio técnico)',
         'view notificaciones' => 'Ver notificaciones',
+        'gestionar notificaciones' => 'Gestionar canales de notificación (correo/WhatsApp del perfil)',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
+        'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
+        'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
         'manage despachos' => 'Gestionar despachos',
         'confirmar entrega' => 'Confirmar entrega (conductor)',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Categorías de permisos (UI de Roles)
+    |--------------------------------------------------------------------------
+    |
+    | Agrupa los permisos por dominio en la pantalla de Roles. Cada categoría
+    | lista SUBSTRINGS que se buscan en el nombre técnico del permiso; el PRIMER
+    | keyword que matchea (recorriendo en este orden) manda. Los permisos que no
+    | matchean ninguno caen en "Generales" (fallback). Así, cuando se agrega un
+    | permiso nuevo con el tiempo, se deriva SOLO a su categoría; si abre un
+    | dominio nuevo, basta con agregar una categoría aquí. El orden define además
+    | el orden en que se muestran las categorías. Ver App\Support\PermisosAgrupados.
+    |
+    */
+    'grupos' => [
+        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento'],
+        'Terreno' => ['servicio terreno', 'agenda terreno', 'instalaciones'],
+        'Producción' => ['production'],
+        // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
+        // ningún permiso de ST/terreno (verificado sobre la lista de labels).
+        'Despachos' => ['despachos', 'entrega'],
+        'Comercial' => ['clientes', 'productos'],
+        'Usuarios y accesos' => ['users', 'roles'],
+        'Aprobaciones' => ['aprobaciones', 'solicitudes'],
+        'Notificaciones' => ['notificaciones'],
+        'Sistema' => ['settings', 'sucursales', 'audit'],
     ],
 ];

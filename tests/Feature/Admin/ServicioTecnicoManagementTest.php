@@ -137,7 +137,7 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_maquina_propia_detecta_variantes_del_nombre(): void
     {
-        foreach (['importadora dali', 'IMP DALI', 'Imp. Dali'] as $nombre) {
+        foreach (['importadora dali', 'IMP DALI', 'Imp. Dali', 'IMP.DALI', 'IMP, DALI', 'DALI'] as $nombre) {
             $payload = $this->payload(['cliente_nombre' => $nombre]);
             unset($payload['cliente_rut'], $payload['cliente_email']);
 
@@ -187,10 +187,13 @@ class ServicioTecnicoManagementTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/servicio-tecnico')->assertForbidden();
+        $this->actingAs($member)->get('/admin/servicio-tecnico')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->post('/admin/servicio-tecnico', $this->payload())->assertForbidden();
-        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-cliente?q=test')->assertForbidden();
-        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-producto?q=test')->assertForbidden();
+        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-cliente?q=test')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get('/admin/servicio-tecnico/buscar-producto?q=test')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_permission_grants_access(): void
@@ -210,19 +213,46 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertRedirect(route('admin.servicio-tecnico.index'));
     }
 
+    public function test_tecnico_no_puede_editar_recepcion_ni_eliminar(): void
+    {
+        // Pedido de gerencia: el técnico mantiene registrar ingreso + parte del
+        // técnico + cotización, pero NO editar la recepción ni eliminar la orden.
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.edit', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($tecnico)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
+        $this->actingAs($tecnico)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
+
+        // Conserva su flujo: registrar ingreso, parte del técnico y cotización.
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.create'))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertOk();
+    }
+
     public function test_vendedor_puede_ver_pero_no_gestionar(): void
     {
-        // El seeder le da 'view servicio tecnico' al vendedor (solo lectura).
+        // El seeder le da 'view servicio tecnico' al vendedor (solo lectura), pero
+        // acotado a SU cartera: la orden debe ser de un cliente asignado a él.
         $vendedor = tap(User::factory()->create())->assignRole('vendedor');
-        $orden = OrdenServicio::factory()->create();
+        $cliente = Cliente::factory()->create(['rut' => '12345678-5', 'vendedor_id' => $vendedor->id]);
+        $orden = OrdenServicio::factory()->create(['cliente_rut' => $cliente->rut]);
 
         // Ve listado y detalle.
         $this->actingAs($vendedor)->get('/admin/servicio-tecnico')->assertOk();
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))->assertOk();
+        // En la ficha NO se le ofrecen las pestañas de taller (no tiene 'manage'):
+        // así no ve enlaces que le darían 403.
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('Parte del técnico')
+            ->assertDontSee('Cotización');
 
         // No puede gestionar ni entrar al taller.
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertForbidden();
-        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.create'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($vendedor)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($vendedor)->put(route('admin.servicio-tecnico.update', $orden), [])->assertForbidden();
         $this->actingAs($vendedor)->delete(route('admin.servicio-tecnico.destroy', $orden))->assertForbidden();
     }
@@ -564,13 +594,23 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_admin_can_view_orden_detail(): void
     {
-        $orden = OrdenServicio::factory()->create(['cliente_nombre' => 'Detalle SpA']);
+        $orden = OrdenServicio::factory()->create([
+            'cliente_nombre' => 'Detalle SpA',
+            'falla_reportada' => 'No enfría, no calienta',
+        ]);
 
         $this->actingAs($this->admin())
             ->get(route('admin.servicio-tecnico.show', $orden))
             ->assertOk()
             ->assertSee('Detalle SpA')
-            ->assertSee($orden->folio);
+            ->assertSee($orden->folio)
+            // Barra de etapas en la ficha (admin gestiona → ve las 3).
+            ->assertSee('Recepción')
+            ->assertSee('Cotización')
+            ->assertSee('Parte del técnico')
+            // La falla reportada se muestra dentro de Equipo.
+            ->assertSee('Falla reportada')
+            ->assertSee('No enfría, no calienta');
     }
 
     public function test_member_cannot_view_orden_detail(): void
@@ -578,7 +618,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $member = tap(User::factory()->create())->assignRole('member');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($member)->get(route('admin.servicio-tecnico.show', $orden))->assertForbidden();
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.show', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_garantia_sin_documento_se_trata_como_reparacion(): void
@@ -617,7 +658,8 @@ class ServicioTecnicoManagementTest extends TestCase
         $member = tap(User::factory()->create())->assignRole('member');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($member)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertForbidden();
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_tecnico_can_open_reparacion(): void
@@ -625,7 +667,36 @@ class ServicioTecnicoManagementTest extends TestCase
         $tecnico = tap(User::factory()->create())->assignRole('tecnico');
         $orden = OrdenServicio::factory()->create();
 
-        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))->assertOk();
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            // Barra de etapas: el técnico ve las 3 (Recepción lo lleva a la ficha
+            // de solo lectura, ya que no puede editar la recepción).
+            ->assertSee('Recepción')
+            ->assertSee('Cotización')
+            ->assertSee('Parte del técnico');
+    }
+
+    public function test_member_cannot_open_cotizacion(): void
+    {
+        $member = tap(User::factory()->create())->assignRole('member');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($member)->get(route('admin.servicio-tecnico.cotizacion', $orden))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+    }
+
+    public function test_tecnico_can_open_cotizacion(): void
+    {
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('Detalle del presupuesto')
+            // Barra de etapas del técnico: ve las 3 (Recepción abre la ficha de
+            // solo lectura, porque no puede editar la recepción).
+            ->assertSee('Recepción')
+            ->assertSee('Parte del técnico');
     }
 
     public function test_reparacion_ofrece_respuestas_fijas_de_trabajo(): void
@@ -653,7 +724,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'causa_falla' => 'uso_normal',
                 'trabajo_realizado' => $respuesta,
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertSame($respuesta, $orden->fresh()->trabajo_realizado);
     }
@@ -679,7 +750,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => 'reparado',
                 'causa_falla' => 'uso_normal',   // obligatoria al cerrar como reparado
                 'trabajo_realizado' => 'Cambio de motor y correa',
-                'mano_obra' => 15000,
+                'mano_obra' => 15000,            // el técnico NO fija la mano de obra: se ignora
                 'fecha_aviso' => now()->toDateString(),
                 'repuestos' => [
                     ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000],
@@ -687,51 +758,17 @@ class ServicioTecnicoManagementTest extends TestCase
                     ['nombre' => '', 'cantidad' => 1, 'precio_unitario' => 0], // fila vacia => se ignora
                 ],
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $fresh = $orden->fresh()->load('repuestos');
         $this->assertSame('reparado', $fresh->estado);
         $this->assertSame('Cambio de motor y correa', $fresh->trabajo_realizado);
-        $this->assertSame(15000, $fresh->mano_obra);
+        // Mano de obra fijada por el trabajo: ese trabajo no está en el catálogo
+        // de tiempos (ni hay valor hora) → 0. Lo enviado (15000) se ignora.
+        $this->assertSame(0, $fresh->mano_obra);
         $this->assertCount(2, $fresh->repuestos);                 // la vacia no se guarda
-        $this->assertSame(55000, $fresh->costo_total);            // 30000 + (2*5000) + 15000
+        $this->assertSame(40000, $fresh->costo_total);            // 30000 + (2*5000), sin mano de obra
         $this->assertDatabaseHas('orden_servicio_repuestos', ['orden_servicio_id' => $orden->id, 'nombre' => 'Motor']);
-    }
-
-    public function test_guardar_reparacion_aplica_descuento_con_motivo(): void
-    {
-        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
-
-        $this->actingAs($this->admin())
-            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
-                'estado' => 'reparado',
-                'causa_falla' => 'uso_normal',
-                'mano_obra' => 10000,
-                'descuento_pct' => 20,
-                'descuento_motivo' => 'cliente_grande',
-                'repuestos' => [],
-            ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
-
-        $fresh = $orden->fresh();
-        $this->assertSame(20, $fresh->descuento_pct);
-        $this->assertSame('cliente_grande', $fresh->descuento_motivo);
-        $this->assertSame(2000, $fresh->descuento_monto);   // 20% de 10000
-        $this->assertSame(8000, $fresh->costo_total);        // 10000 - 2000
-    }
-
-    public function test_descuento_exige_motivo(): void
-    {
-        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'estado' => 'recibido']);
-
-        $this->actingAs($this->admin())
-            ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
-                'estado' => 'en_revision',   // no exige causa_falla; aisla el error del motivo
-                'mano_obra' => 10000,
-                'descuento_pct' => 15,       // con descuento pero SIN motivo
-                'repuestos' => [],
-            ])
-            ->assertSessionHasErrors('descuento_motivo');
     }
 
     public function test_guardar_reparacion_registra_la_causa_de_falla(): void
@@ -743,7 +780,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => 'reparado',
                 'causa_falla' => 'mal_uso',
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertSame('mal_uso', $orden->fresh()->causa_falla);
     }
@@ -771,7 +808,7 @@ class ServicioTecnicoManagementTest extends TestCase
                 'estado' => 'en_revision',
                 'causa_falla' => '',
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertNull($orden->fresh()->causa_falla);
     }
@@ -819,7 +856,7 @@ class ServicioTecnicoManagementTest extends TestCase
                     ['nombre' => 'Nuevo', 'cantidad' => 1, 'precio_unitario' => 2000],
                 ],
             ])
-            ->assertRedirect(route('admin.servicio-tecnico.index'));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $this->assertDatabaseMissing('orden_servicio_repuestos', ['nombre' => 'Viejo']);
         $this->assertDatabaseHas('orden_servicio_repuestos', ['nombre' => 'Nuevo']);
@@ -835,19 +872,22 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSessionHasErrors('estado');
     }
 
-    public function test_repuesto_en_reparacion_exige_nombre_y_precio(): void
+    public function test_repuesto_en_parte_del_tecnico_exige_nombre_pero_no_precio(): void
     {
+        // El precio ya NO se ingresa en el parte del técnico (va en Cotización):
+        // aquí solo se exige el nombre del repuesto.
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
-                'causa_falla' => 'uso_normal',   // para llegar a la validación de repuestos
+                'causa_falla' => 'uso_normal',
                 'repuestos' => [
                     ['nombre' => 'XY', 'cantidad' => 1, 'precio_unitario' => 0], // nombre corto + sin precio
                 ],
             ])
-            ->assertSessionHasErrors(['repuestos.0.nombre', 'repuestos.0.precio_unitario']);
+            ->assertSessionHasErrors(['repuestos.0.nombre'])
+            ->assertSessionDoesntHaveErrors(['repuestos.0.precio_unitario']);
     }
 
     // --- Filtros ---
@@ -893,6 +933,68 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico?q='.$orden->codigo)
             ->assertOk()->assertSee('Cliente Folio');
+    }
+
+    public function test_costo_desglosa_neto_e_iva_del_total_con_iva(): void
+    {
+        // Los precios del catálogo ya vienen con IVA → el total lo incluye. El
+        // neto se obtiene dividiendo por 1,19 y el IVA es la diferencia (cuadra exacto).
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion', 'mano_obra' => 6248]);
+        $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 14024]);
+        $orden->refresh()->load('repuestos');
+
+        $this->assertSame(20272, $orden->costo_total);  // bruto (con IVA): 14024 + 6248
+        $this->assertSame(17035, $orden->costo_neto);   // 20272 / 1,19
+        $this->assertSame(3237, $orden->costo_iva);     // total − neto
+        $this->assertSame($orden->costo_total, $orden->costo_neto + $orden->costo_iva);
+
+        // La ficha muestra el desglose.
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Neto')
+            ->assertSee('IVA (19%)')
+            ->assertSee('Total con IVA');
+    }
+
+    public function test_advierte_cuando_la_reparacion_supera_el_40_del_valor_del_equipo(): void
+    {
+        $equipo = Producto::factory()->create();
+        Precio::factory()->create(['producto_id' => $equipo->id, 'precio_con_iva' => 50000]);
+
+        // Cara: 30.000 supera el 40% de 50.000 (= 20.000) → advertencia.
+        $cara = OrdenServicio::factory()->create(['producto_id' => $equipo->id, 'facturacion' => 'reparacion', 'mano_obra' => 30000]);
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $cara))
+            ->assertOk()->assertSee('Costo de reparación alto');
+
+        // Barata: 10.000 no llega al 40% → sin advertencia.
+        $barata = OrdenServicio::factory()->create(['producto_id' => $equipo->id, 'facturacion' => 'reparacion', 'mano_obra' => 10000]);
+        $this->actingAs($this->admin())->get(route('admin.servicio-tecnico.show', $barata))
+            ->assertOk()->assertDontSee('Costo de reparación alto');
+    }
+
+    public function test_index_filtra_por_varios_estados(): void
+    {
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Recibido SA', 'estado' => 'recibido']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Cotiza SA', 'estado' => 'cotizacion']);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Reparada SA', 'estado' => 'reparado']);
+
+        $this->actingAs($this->admin())->get('/admin/servicio-tecnico?estados=recibido,cotizacion')
+            ->assertOk()
+            ->assertSee('Recibido SA')
+            ->assertSee('Cotiza SA')
+            ->assertDontSee('Reparada SA');
+    }
+
+    public function test_index_periodo_por_fecha_de_retiro(): void
+    {
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Este Mes', 'estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Mes Pasado', 'estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico?estado=entregado&anio='.now()->year.'&mes='.now()->month.'&por=retiro')
+            ->assertOk()
+            ->assertSee('Retiro Este Mes')
+            ->assertDontSee('Retiro Mes Pasado');
     }
 
     public function test_cada_orden_recibe_un_codigo_unico_impredecible(): void
@@ -1080,31 +1182,32 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertJsonFragment(['sku' => 'REP-001', 'nombre' => 'Caldera X', 'precio' => 4990]);
     }
 
-    public function test_reparacion_pasa_el_valor_hora_de_servicio(): void
+    public function test_cotizacion_pasa_el_valor_hora_de_servicio(): void
     {
-        // El producto SKU 9771001 (config) con precio con IVA es el valor hora.
+        // El valor hora (SKU 9771001 con precio con IVA) alimenta la mano de obra
+        // FIJA que se muestra de solo lectura en Cotización.
         $hora = Producto::factory()->create(['sku' => '9771001', 'nombre' => 'Hora servicio técnico']);
         Precio::factory()->create(['producto_id' => $hora->id, 'precio_con_iva' => 4500]);
 
-        $orden = OrdenServicio::factory()->create();
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
-            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', 4500)
-            ->assertSee('Horas de servicio técnico');
+            ->assertSee('Mano de obra (fijada por el trabajo)');
     }
 
-    public function test_reparacion_sin_producto_hora_deja_mano_de_obra_manual(): void
+    public function test_cotizacion_sin_valor_hora_igual_carga(): void
     {
-        // Sin el SKU de la hora, no hay valor hora (mano de obra manual).
-        $orden = OrdenServicio::factory()->create();
+        // Sin el SKU de la hora, la mano de obra queda en $0 pero la vista carga.
+        $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
 
         $this->actingAs($this->admin())
-            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', null)
-            ->assertDontSee('Horas de servicio técnico');
+            ->assertSee('Mano de obra (fijada por el trabajo)');
     }
 
     /** Las fotos del equipo se ven tanto al EDITAR como en el DETALLE (staff). */

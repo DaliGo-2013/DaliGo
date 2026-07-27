@@ -51,7 +51,10 @@ class EnviarNotificacion implements ShouldQueue
             $notificacion->update([
                 'estado' => Notificacion::FALLIDA,
                 'intentos' => $intentos,
-                'ultimo_error' => mb_substr($e->getMessage(), 0, 1000),
+                // Integro para diagnosticar (micro-backlog M15-b: el corte viejo
+                // de 1000 se comia la cola de los errores SMTP). El cap es solo
+                // defensivo: 16k chars caben en TEXT (64KB) aun a 4 bytes/char.
+                'ultimo_error' => mb_substr($e->getMessage(), 0, 16000),
                 // Backoff configurable; si ya agoto el maximo, queda fallida
                 // terminal (sin proxima fecha) y el comando de reintentos la ignora.
                 'programada_para' => $intentos < (int) Configuracion::get('notif_reintentos_max', 3)

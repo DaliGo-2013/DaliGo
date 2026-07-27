@@ -6,12 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\LoteServicio;
 use App\Models\OrdenServicio;
-use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
 use App\Support\ImagenComprimida;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +46,8 @@ class IngresoTallerPublicoController extends Controller
             'tipos' => OrdenServicio::TIPOS,
             // Link firmado al ingreso por cantidad (varias máquinas de una vez).
             'urlLote' => URL::signedRoute('ingreso-taller.lote.create', ['sucursal' => $sucursal->id]),
+            // Link firmado a la solicitud de visita industrial (en terreno).
+            'urlVisita' => URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]),
         ]);
     }
 
@@ -66,6 +65,9 @@ class IngresoTallerPublicoController extends Controller
             'tipos' => OrdenServicio::TIPOS,
             'facturaciones' => OrdenServicio::FACTURACION,
             'garantiaDocTipos' => OrdenServicio::GARANTIA_DOC_TIPOS,
+            // Volver a la pantalla principal del QR (firmada) para elegir otro
+            // modo de ingreso (por unidad / visita industrial).
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]),
         ]);
     }
 
@@ -112,16 +114,16 @@ class IngresoTallerPublicoController extends Controller
         ]);
 
         // Validación por fila (patrón del lote del conductor): tipo hereda el
-        // default, serie obligatoria según el tipo efectivo, código OBLIGATORIO
-        // y falla/estado POR MÁQUINA (golpes, rayas, caja, piezas faltantes —
-        // el detalle de cada equipo importa; pedido del dueño).
+        // default, serie obligatoria según el tipo efectivo, equipo (marca/modelo)
+        // escrito a mano OBLIGATORIO y falla/estado POR MÁQUINA (golpes, rayas,
+        // caja, piezas faltantes — el detalle de cada equipo importa; pedido del dueño).
         $filas = [];
         $errores = [];
         foreach ((array) $request->input('maquinas', []) as $i => $m) {
             $tipo = trim((string) ($m['tipo'] ?? '')) ?: (string) $data['tipo_default'];
             $serie = trim((string) ($m['numero_serie'] ?? ''));
             $falla = trim((string) ($m['falla_reportada'] ?? ''));
-            $productoId = $m['producto_id'] ?? null;
+            $modelo = trim((string) ($m['modelo'] ?? '')) ?: null;
 
             if (! in_array($tipo, OrdenServicio::TIPOS, true)) {
                 $errores["maquinas.{$i}.tipo"] = 'Tipo de equipo inválido.';
@@ -129,8 +131,8 @@ class IngresoTallerPublicoController extends Controller
             if (in_array($tipo, OrdenServicio::SERIE_OBLIGATORIA_TIPOS, true) && mb_strlen($serie) < 3) {
                 $errores["maquinas.{$i}.numero_serie"] = 'El N° de serie es obligatorio (mín. 3) para este tipo.';
             }
-            if (! $productoId || ! Producto::whereKey($productoId)->exists()) {
-                $errores["maquinas.{$i}.producto_id"] = 'Elige el código del catálogo para esta máquina.';
+            if ($modelo === null) {
+                $errores["maquinas.{$i}.modelo"] = 'Escribe el nombre o modelo de esta máquina.';
             }
             if (mb_strlen($falla) < 3) {
                 $errores["maquinas.{$i}.falla_reportada"] = 'Describe la falla y el estado de esta máquina (mín. 3).';
@@ -140,7 +142,7 @@ class IngresoTallerPublicoController extends Controller
                 'tipo_equipo' => $tipo,
                 'numero_serie' => $serie !== '' ? $serie : null,
                 'falla_reportada' => $falla,
-                'producto_id' => $productoId,
+                'modelo' => $modelo,
             ];
         }
         if ($errores) {
@@ -148,7 +150,9 @@ class IngresoTallerPublicoController extends Controller
         }
 
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): un ingreso nocturno quedaba FECHADO mañana
+        // (fecha_ingreso y entrega estimada se persisten desde este valor).
+        $hoy = \App\Support\FechaNegocio::hoy();
         $fechaEntrega = $sucursal->fechaEntregaEstimada($hoy)->toDateString();
 
         $ordenesPorFila = [];
@@ -175,7 +179,7 @@ class IngresoTallerPublicoController extends Controller
                     'cliente_rut' => $data['cliente_rut'],
                     'cliente_email' => $data['cliente_email'],
                     'cliente_telefono' => $data['cliente_telefono'],
-                    'producto_id' => $fila['producto_id'],
+                    'modelo' => $fila['modelo'],
                     'sucursal_id' => $sucursal->id,
                     'tipo_equipo' => $fila['tipo_equipo'],
                     'numero_serie' => $fila['numero_serie'],
@@ -213,6 +217,15 @@ class IngresoTallerPublicoController extends Controller
             }
         }
 
+        // Aviso interno (M15): ventas + el técnico saben que entró un lote. UN
+        // solo aviso por lote (no por máquina). Secundario: un aviso que falle NO
+        // debe tumbar el ingreso público ya creado.
+        try {
+            $lote->notificarIngresoInterno();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return redirect()->to(URL::signedRoute('ingreso-taller.lote.gracias', ['lote' => $lote->id]));
     }
 
@@ -224,6 +237,8 @@ class IngresoTallerPublicoController extends Controller
     {
         return view('publico.taller.gracias-lote', [
             'lote' => $lote->load(['sucursal', 'ordenes']),
+            // Volver a la pantalla principal del QR (firmada) para ingresar otra.
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $lote->sucursal_id]),
         ]);
     }
 
@@ -266,7 +281,9 @@ class IngresoTallerPublicoController extends Controller
             'cliente_email' => ['required', 'email', 'max:191'],
             'cliente_telefono' => ['required', 'string', 'max:30'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
-            'producto_id' => ['nullable', 'integer', Rule::exists('productos', 'id')],
+            // El cliente escribe a mano el equipo (marca/modelo o código): sin
+            // catálogo (gerencia no quiere exponerle la variedad de productos).
+            'modelo' => ['nullable', 'string', 'max:191'],
             'tipo_equipo' => ['required', Rule::in(OrdenServicio::TIPOS)],
             'numero_serie' => [Rule::requiredIf($serieObligatoria), 'nullable', 'string', 'min:3', 'max:191'],
             // Condicion (garantia/reparacion): el cliente la indica; el mostrador
@@ -285,14 +302,16 @@ class IngresoTallerPublicoController extends Controller
         ]);
 
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): un ingreso nocturno quedaba FECHADO mañana
+        // (fecha_ingreso y entrega estimada se persisten desde este valor).
+        $hoy = \App\Support\FechaNegocio::hoy();
 
         $orden = OrdenServicio::create([
             'cliente_nombre' => $data['cliente_nombre'],
             'cliente_email' => $data['cliente_email'],
             'cliente_telefono' => $data['cliente_telefono'] ?? null,
             'cliente_rut' => $data['cliente_rut'] ?? null,
-            'producto_id' => $data['producto_id'] ?? null,
+            'modelo' => $data['modelo'] ?? null,
             'sucursal_id' => $sucursal->id,
             'tipo_equipo' => $data['tipo_equipo'],
             'numero_serie' => $data['numero_serie'] ?? null,
@@ -315,44 +334,17 @@ class IngresoTallerPublicoController extends Controller
             ]);
         }
 
+        // Aviso interno (M15): ventas + el técnico saben que entró un equipo.
+        // Secundario: un aviso que falle NO debe tumbar el ingreso público.
+        try {
+            $orden->notificarIngresoInterno();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         // El correo NO se manda aqui: sale cuando el encargado confirma la
         // recepcion (asi el cliente recibe datos ya verificados).
         return redirect()->to(URL::signedRoute('ingreso-taller.gracias', ['orden' => $orden->id]));
-    }
-
-    /**
-     * Autocompletado PUBLICO del producto Dali (codigo) por SKU o nombre, para
-     * que el cliente complete el codigo del equipo desde el catalogo. Mismo
-     * contrato JSON que Admin\ServicioTecnicoController::buscarProducto, pero sin
-     * auth (throttle propio en la ruta; solo lee SKU/nombre, minimo 2 caracteres,
-     * limite 15).
-     */
-    public function buscarProducto(Request $request): JsonResponse
-    {
-        $q = trim((string) $request->query('q', ''));
-
-        if (mb_strlen($q) < 2) {
-            return response()->json([]);
-        }
-
-        // Solo equipos de taller (dispensadores, lavadoras, bombas, herramientas):
-        // el cliente no debe ver accesorios/repuestos del catálogo. El buscador
-        // del mostrador (staff) NO aplica este filtro.
-        $productos = Producto::query()
-            ->equipoTaller()
-            ->where(fn (Builder $w) => $w
-                ->where('sku', 'like', "%{$q}%")
-                ->orWhere('nombre', 'like', "%{$q}%"))
-            ->orderBy('sku')
-            ->limit(15)
-            ->get(['id', 'sku', 'nombre']);
-
-        return response()->json($productos->map(fn (Producto $p) => [
-            'id' => $p->id,
-            'sku' => $p->sku,
-            'nombre' => $p->nombre,
-            'label' => $p->sku.' — '.$p->nombre,
-        ]));
     }
 
     /**
@@ -363,6 +355,8 @@ class IngresoTallerPublicoController extends Controller
     {
         return view('publico.taller.gracias', [
             'orden' => $orden->load('sucursal'),
+            // Volver a la pantalla principal del QR (firmada) para ingresar otra.
+            'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $orden->sucursal_id]),
         ]);
     }
 }

@@ -1,10 +1,11 @@
-<x-app-layout>
+<x-app-layout ancho="formulario">
     <x-slot name="header">
-        <x-page-header title="Nuevo despacho" subtitle="Elige el documento de venta y asigna zona y conductor. El documento se verifica contra Bsale al crear." />
+        <x-page-header title="Nuevo despacho" subtitle="Elige el documento de venta y asigna zona y conductor. El documento se verifica contra Bsale al crear."
+                       :back="route('admin.despachos.index')" backTitle="Volver a despachos" />
     </x-slot>
 
-    <div class="py-12">
-        <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+    <div class="py-8 sm:py-12">
+        <div>
             <form method="POST" action="{{ route('admin.despachos.store') }}"
                   class="space-y-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
                 @csrf
@@ -58,7 +59,7 @@
                     <x-input-error :messages="$errors->get('transportista')" class="mt-2" />
                 </div>
 
-                <x-form-footer :cancel="route('admin.despachos.index')">
+                <x-form-footer>
                     <x-primary-button>Crear despacho</x-primary-button>
                 </x-form-footer>
             </form>

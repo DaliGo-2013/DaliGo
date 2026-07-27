@@ -1,22 +1,46 @@
 name: Tests
+
+# Corre la suite (PHPUnit, SQLite en memoria) en cada push a main, en PRs y a
+# mano. El trigger de pull_request es la UNICA red antes de produccion: un push
+# a main dispara Tests y Deploy en paralelo y Deploy NO espera a Tests, asi que
+# si la suite recien se entera en main, el codigo roto ya se desplego.
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
   phpunit:
     runs-on: ubuntu-latest
     steps:
+      # SIN actions (ni siquiera actions/checkout): la org restringe Actions a un
+      # allowlist y cualquier `uses:` rompe el arranque del workflow (0 jobs,
+      # "workflow file issue"). Ver bitacora [2026-06-30] y commit 9262816.
+      #
+      # El fetch explicito de $REF NO es decorativo: en un pull_request,
+      # github.sha es el commit de MERGE que GitHub genera en refs/pull/N/merge,
+      # y un `git clone` normal solo baja refs/heads/* + tags, asi que ese objeto
+      # no existe en el clon y el checkout moriria con "reference is not a tree".
+      # Traer $REF (refs/pull/N/merge en PRs, refs/heads/main en push) deja el
+      # objeto disponible; el checkout sigue siendo por $SHA para fijar el commit
+      # exacto que disparo el run. Probar el MERGE y no la punta de la rama es lo
+      # correcto: una rama vieja pasa verde por su cuenta y rompe main igual.
       - name: Clonar el repo
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" src
           cd src
+          git fetch --no-tags origin "+${REF}:refs/ci/objetivo" || {
+            echo "::error::No se pudo traer ${REF}. En un PR esto casi siempre significa que tiene CONFLICTOS con la base: GitHub no genera refs/pull/N/merge hasta que se resuelvan."
+            exit 1
+          }
           git checkout "$SHA"
+          git log -1 --oneline
 
       - name: Suite
         working-directory: src

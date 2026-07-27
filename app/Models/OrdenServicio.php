@@ -113,6 +113,15 @@ class OrdenServicio extends Model implements AuditableContract
     // Duracion de la garantia desde la fecha de compra.
     public const GARANTIA_MESES = 6;
 
+    // Los precios del catálogo (repuestos, valor hora) se guardan CON IVA, así
+    // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
+    public const TASA_IVA = 0.19;
+
+    // Umbral de "reparación cara": si el costo supera este % del precio de venta
+    // del equipo, se advierte (como la pérdida total de los autos). No bloquea:
+    // avisa para consultar al cliente si conviene repararlo.
+    public const UMBRAL_REPARACION_ALTA = 0.40;
+
     // Descuentos permitidos sobre el total de una reparacion cobrable (%).
     public const DESCUENTOS_PCT = [10, 15, 20];
 
@@ -244,9 +253,11 @@ class OrdenServicio extends Model implements AuditableContract
      */
     public static function esMaquinaPropia(?string $nombre): bool
     {
-        $n = strtoupper(trim(preg_replace('/\s+/', ' ', str_replace('.', '', (string) $nombre))));
+        // Normaliza puntos y comas a espacios y colapsa: "IMP. DALI", "IMP DALI",
+        // "IMP.DALI", "IMP, DALI", "IMPORTADORA DALI" y "DALI" son la misma empresa.
+        $n = strtoupper(trim(preg_replace('/\s+/', ' ', str_replace(['.', ','], ' ', (string) $nombre))));
 
-        return in_array($n, ['IMP DALI', 'IMPORTADORA DALI'], true);
+        return in_array($n, ['IMP DALI', 'IMPORTADORA DALI', 'DALI'], true);
     }
 
     public function getEsPropiaAttribute(): bool
@@ -302,6 +313,21 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Neto del total a pagar. El total YA viene con IVA (precios del catálogo con
+     * IVA), así que el neto se obtiene dividiendo por (1 + IVA).
+     */
+    public function getCostoNetoAttribute(): int
+    {
+        return (int) round($this->costo_total / (1 + self::TASA_IVA));
+    }
+
+    /** IVA contenido en el total (total − neto): así neto + IVA == total exacto. */
+    public function getCostoIvaAttribute(): int
+    {
+        return $this->costo_total - $this->costo_neto;
+    }
+
+    /**
      * Etiqueta visible del motivo del descuento (null si no hay descuento).
      */
     public function getDescuentoMotivoLabelAttribute(): ?string
@@ -332,11 +358,72 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Cotizaciones enviadas al cliente (snapshots; la mas reciente manda).
+     *
+     * @return HasMany<OrdenServicioCotizacion>
+     */
+    public function cotizaciones(): HasMany
+    {
+        return $this->hasMany(OrdenServicioCotizacion::class, 'orden_servicio_id');
+    }
+
+    /** La cotizacion mas reciente (o null si nunca se ha enviado una). */
+    public function getUltimaCotizacionAttribute(): ?OrdenServicioCotizacion
+    {
+        return $this->cotizaciones()->latest('id')->first();
+    }
+
+    /**
      * @return BelongsTo<Cliente, $this>
      */
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    /**
+     * Acota la consulta a lo que un usuario PUEDE VER en Servicio Técnico
+     * (regla #2 del negocio: la gestión es por vendedor). Quien tiene el permiso
+     * 'ver todo servicio tecnico' (técnico, jefe de ventas, jefe de bodega,
+     * admin) ve todas las órdenes. El resto (vendedor / jefatura) solo ve las de
+     * SU cartera: órdenes cuyo cliente (por RUT) está asignado a él o a un
+     * vendedor a su cargo. El enlace es por `cliente_rut` porque `cliente_id` no
+     * se popula al ingresar (mostrador ni QR); ambos RUT están normalizados
+     * (Cliente::normalizarRut). Sin cartera asignada, no ve nada.
+     */
+    public function scopeVisiblePara(Builder $query, User $user): Builder
+    {
+        if ($user->can('ver todo servicio tecnico')) {
+            return $query;
+        }
+
+        $vendedorIds = $user->idsCarteraServicioTecnico();
+
+        return $query->whereIn('cliente_rut', function ($sub) use ($vendedorIds) {
+            $sub->select('rut')
+                ->from('clientes')
+                ->whereIn('vendedor_id', $vendedorIds)
+                ->whereNotNull('rut');
+        });
+    }
+
+    /**
+     * ¿Este usuario puede ver esta orden? Misma regla que scopeVisiblePara, para
+     * proteger las páginas de detalle por URL (show/foto/comprobante).
+     */
+    public function esVisiblePara(User $user): bool
+    {
+        if ($user->can('ver todo servicio tecnico')) {
+            return true;
+        }
+
+        if (blank($this->cliente_rut)) {
+            return false;
+        }
+
+        return Cliente::whereIn('vendedor_id', $user->idsCarteraServicioTecnico())
+            ->where('rut', $this->cliente_rut)
+            ->exists();
     }
 
     /**
@@ -355,6 +442,42 @@ class OrdenServicio extends Model implements AuditableContract
     public function sucursal(): BelongsTo
     {
         return $this->belongsTo(Sucursal::class);
+    }
+
+    /**
+     * Roles que reciben aviso cuando ENTRA un equipo al taller por QR (ingreso
+     * del cliente): el técnico que repara + ventas (para el paso a paso). El
+     * jefe de bodega NO va aquí: ya ve la cola "por confirmar" en la barra.
+     */
+    public const ROLES_AVISO_INGRESO = ['tecnico', 'jefe_ventas', 'vendedor', 'admin'];
+
+    /**
+     * Avisa por M15 (campanita + correo según preferencias) a ventas y al técnico
+     * que entró un equipo al taller (ingreso por QR, unidad). Secundario: el
+     * emisor (controlador público) lo envuelve en try/catch para no tumbar el
+     * ingreso si el aviso falla.
+     */
+    public function notificarIngresoInterno(): void
+    {
+        $equipo = collect([
+            $this->tipo_equipo_label,
+            $this->producto?->sku,
+            $this->numero_serie ? 'N° '.$this->numero_serie : null,
+        ])->filter()->implode(' · ');
+
+        $datos = [
+            'cliente' => $this->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
+            'maquinas' => '1 equipo',
+            'sucursal' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
+            'condicion' => $this->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación',
+            'url' => route('admin.servicio-tecnico.index'),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_INGRESO)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
     }
 
     /**

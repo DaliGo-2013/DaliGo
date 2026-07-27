@@ -30,7 +30,9 @@ class ProduccionController extends Controller
      */
     public function index(Request $request): View
     {
-        $hoy = now()->toDateString();
+        // Día de NEGOCIO (P-TZ-01): la cola/alertas/resumen del jefe viven en
+        // el día chileno, no en el UTC (que avanza a las 20/21h de Chile).
+        $hoy = \App\Support\FechaNegocio::hoy();
 
         // --- Cola de reportes de HOY (la superficie de trabajo del jefe) ---
         $reportes = ProduccionReporte::with('soplador')
@@ -69,7 +71,7 @@ class ProduccionController extends Controller
         $t = ProduccionReporte::delDia($hoy)
             ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
             ->first();
-        $hoyResumen = $this->armarResumen(
+        $hoyResumen = ProduccionReporte::armarResumen(
             (int) $t->p1, (int) $t->p2, (int) $t->mal, (int) $t->dan,
             (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
         );
@@ -99,28 +101,6 @@ class ProduccionController extends Controller
         ]);
     }
 
-    /**
-     * Arma un resumen de produccion (producido/merma/tasas/avance) a partir de
-     * las 4 cantidades y lo asignado. Fuente unica para hoy, cada dia y el total
-     * del rango, asi todos calculan igual.
-     */
-    private function armarResumen(int $p1, int $p2, int $mal, int $dan, int $asignadas): array
-    {
-        $producido = $p1 + $p2;
-        $merma = $mal + $dan;
-        $total = $producido + $merma;
-
-        return [
-            'asignadas' => $asignadas,
-            'producido' => $producido,
-            'merma' => $merma,
-            'total' => $total,
-            'merma_pct' => $total > 0 ? (int) round($merma / $total * 100) : 0,
-            'tasa1' => $total > 0 ? (int) round($p1 / $total * 100) : 0,
-            'avance' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0,
-        ];
-    }
-
     // ============================================================
     //  Drill-down: helpers de agregacion + vistas de detalle
     // ============================================================
@@ -136,7 +116,7 @@ class ProduccionController extends Controller
             'hasta' => ['nullable', 'date'],
         ]);
 
-        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : now()->toDateString();
+        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : \App\Support\FechaNegocio::hoy();
         $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->toDateString() : Carbon::parse($hasta)->subDays($ventana)->toDateString();
         if ($desde > $hasta) {
             $desde = $hasta;
@@ -149,15 +129,10 @@ class ProduccionController extends Controller
         return [$desde, $hasta, ! $request->filled('desde') && ! $request->filled('hasta')];
     }
 
-    /** Serie por dia desde los reportes (totales denormalizados), keyed por Y-m-d. */
+    /** Serie por dia desde los reportes — delega en el estatico compartido del modelo. */
     private function reportesPorDia(string $desde, string $hasta, ?int $sopladorId = null)
     {
-        return ProduccionReporte::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
-            ->when($sopladorId, fn ($q) => $q->where('soplador_id', $sopladorId))
-            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
-            ->groupBy('fecha')
-            ->get()
-            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
+        return ProduccionReporte::seriePorDia($desde, $hasta, $sopladorId);
     }
 
     /** Serie por dia desde las tandas (registros) filtradas por maquina/tipo, keyed por Y-m-d. */
@@ -173,14 +148,10 @@ class ProduccionController extends Controller
             ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
     }
 
-    /** Asignadas por dia (mapa Y-m-d => int) para el rango. */
+    /** Asignadas por dia — delega en el estatico compartido del modelo. */
     private function asignadasPorDia(string $desde, string $hasta)
     {
-        return ProduccionAsignacion::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
-            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
-            ->groupBy('fecha')
-            ->get()
-            ->mapWithKeys(fn ($r) => [Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
+        return ProduccionAsignacion::asignadasPorDia($desde, $hasta);
     }
 
     /**
@@ -201,7 +172,7 @@ class ProduccionController extends Controller
             $asig = (int) ($asignadasPorDia[$k] ?? 0);
             $rep = (int) ($r->reportes ?? 0);
 
-            $dias[] = $this->armarResumen($p1, $p2, $mal, $dan, $asig) + ['fecha' => $cursor->copy(), 'reportes' => $rep];
+            $dias[] = ProduccionReporte::armarResumen($p1, $p2, $mal, $dan, $asig) + ['fecha' => $cursor->copy(), 'reportes' => $rep];
             $sp1 += $p1;
             $sp2 += $p2;
             $smal += $mal;
@@ -213,7 +184,7 @@ class ProduccionController extends Controller
         return [
             // Mas reciente primero (arriba de la lista).
             'dias' => array_reverse($dias),
-            'totales' => $this->armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
+            'totales' => ProduccionReporte::armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
             'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
         ];
     }
@@ -227,7 +198,7 @@ class ProduccionController extends Controller
             ->groupBy('produccion_reportes.soplador_id', 'users.name')
             ->selectRaw('produccion_reportes.soplador_id AS id, users.name AS nombre, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
             ->get()
-            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre, 'reportes' => (int) $r->reportes]))
+            ->map(fn ($r) => (object) (ProduccionReporte::armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre, 'reportes' => (int) $r->reportes]))
             ->sortByDesc('producido')->values();
     }
 
@@ -245,7 +216,7 @@ class ProduccionController extends Controller
             ->groupBy("produccion_registros.$groupCol", "$joinTable.nombre")
             ->selectRaw("produccion_registros.$groupCol AS id, $joinTable.nombre AS nombre, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan")
             ->get()
-            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
+            ->map(fn ($r) => (object) (ProduccionReporte::armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
             ->sortByDesc('producido')->values();
     }
 
@@ -260,7 +231,7 @@ class ProduccionController extends Controller
             ->groupBy('produccion_reportes.soplador_id', 'users.name')
             ->selectRaw('produccion_reportes.soplador_id AS id, users.name AS nombre, COALESCE(SUM(produccion_registros.primera),0) p1, COALESCE(SUM(produccion_registros.segunda),0) p2, COALESCE(SUM(produccion_registros.malo),0) mal, COALESCE(SUM(produccion_registros.danada),0) dan')
             ->get()
-            ->map(fn ($r) => (object) ($this->armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
+            ->map(fn ($r) => (object) (ProduccionReporte::armarResumen((int) $r->p1, (int) $r->p2, (int) $r->mal, (int) $r->dan, 0) + ['id' => $r->id, 'nombre' => $r->nombre]))
             ->sortByDesc('producido')->values();
     }
 
@@ -285,7 +256,7 @@ class ProduccionController extends Controller
     public function diaDetalle(Request $request): View
     {
         $request->validate(['fecha' => ['nullable', 'date']]);
-        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : now()->toDateString();
+        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : \App\Support\FechaNegocio::hoy();
 
         $reportes = ProduccionReporte::with('soplador')->withCount('registros')
             ->whereDate('fecha', $fecha)
@@ -296,7 +267,7 @@ class ProduccionController extends Controller
         $t = ProduccionReporte::whereDate('fecha', $fecha)
             ->selectRaw('COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan')
             ->first();
-        $resumen = $this->armarResumen(
+        $resumen = ProduccionReporte::armarResumen(
             (int) $t->p1, (int) $t->p2, (int) $t->mal, (int) $t->dan,
             (int) ProduccionAsignacion::whereDate('fecha', $fecha)->sum('asignadas'),
         );
@@ -382,8 +353,8 @@ class ProduccionController extends Controller
      */
     public function sopladorHistorial(Request $request, User $soplador): View
     {
-        $desde = $request->date('desde') ?? now()->startOfMonth();
-        $hasta = $request->date('hasta') ?? now()->endOfMonth();
+        $desde = $request->date('desde') ?? \App\Support\FechaNegocio::ahora()->startOfMonth();
+        $hasta = $request->date('hasta') ?? \App\Support\FechaNegocio::ahora()->endOfMonth();
 
         // whereDate (no whereBetween): la columna casteada guarda "Y-m-d 00:00:00"
         // y el borde superior del between la deja fuera (bitacora 2026-07-01).
@@ -423,18 +394,22 @@ class ProduccionController extends Controller
             'sopladores' => User::permission('report production')->orderBy('name')->get(),
             'turnos' => self::TURNOS,
             'preformas' => $this->preformasParaSelector(),
+            'procedencias' => ProduccionAsignacion::PROCEDENCIAS,
         ]);
     }
 
     /**
      * Productos elegibles como preforma del turno: activos cuya categoria
-     * menciona "preforma". Fallback: todos los activos (para no bloquear si la
-     * categorizacion del catalogo aun no distingue preformas).
+     * menciona "preforma", excluyendo las preformas DANADAS (registran merma
+     * en el catalogo, no son material asignable a un turno). Fallback: todos
+     * los activos (para no bloquear si la categorizacion del catalogo aun no
+     * distingue preformas), con la misma exclusion.
      */
     private function preformasParaSelector()
     {
         $preformas = Producto::query()->where('activo', true)
             ->where('categoria', 'like', '%preforma%')
+            ->where($this->sinPreformasDanadas())
             ->orderBy('nombre')
             ->get(['id', 'sku', 'nombre']);
 
@@ -443,8 +418,23 @@ class ProduccionController extends Controller
         }
 
         return Producto::query()->where('activo', true)
+            ->where($this->sinPreformasDanadas())
             ->orderBy('nombre')
             ->get(['id', 'sku', 'nombre']);
+    }
+
+    /**
+     * Filtro reutilizable (selector y validacion comparten el universo): fuera
+     * los productos cuyo nombre contiene "dañada". Van las DOS variantes de
+     * caja porque el LIKE de SQLite solo case-foldea ASCII ('Ñ' != 'ñ'); en
+     * MySQL (collation ci) la segunda es redundante pero inofensiva.
+     */
+    private function sinPreformasDanadas(): \Closure
+    {
+        return function ($query) {
+            $query->where('nombre', 'not like', '%dañada%')
+                ->where('nombre', 'not like', '%DAÑADA%');
+        };
     }
 
     /**
@@ -465,9 +455,12 @@ class ProduccionController extends Controller
             'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
             // Preforma del turno (producto del catalogo). Opcional: si no se
             // elige, el consumo del kardex queda sin enlace a producto. Se
-            // restringe a productos ACTIVOS (mismo universo que el selector;
-            // un id inactivo o de otra categoria no debe entrar al kardex).
-            'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)],
+            // restringe a productos ACTIVOS y NO dañados (mismo universo que
+            // el selector; un id fuera de ese universo no debe entrar al kardex).
+            'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinPreformasDanadas())],
+            // Procedencia de la preforma (saco o caja). Opcional; el select
+            // no elegido llega '' y ConvertEmptyStringsToNull lo vuelve null.
+            'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::PROCEDENCIAS)],
         ], [
             'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
@@ -481,6 +474,7 @@ class ProduccionController extends Controller
                 'turno' => $validated['turno'],
                 'asignadas' => $validated['asignadas'],
                 'preforma_id' => $validated['preforma_id'] ?? null,
+                'procedencia' => $validated['procedencia'] ?? null,
                 'creado_por' => $request->user()->id,
             ]);
 

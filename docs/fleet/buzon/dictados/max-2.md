@@ -1,38 +1,43 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-07-14 (v6 — P-DSP-01 verificado, GO P-DSP-03 confirmado). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-20 (v9 — el día de QA lo corrió Max-1; GO P-DSP-04). Manda sobre lo anterior.
 
-MODELO: Fable 5 disponible hasta el 19-07 (decisión del dueño usarlo); si no, Opus 4.8 · high.
+MODELO: Fable 5 se justifica en P-DSP-04 (QR anti-fraude, diseño de seguridad) si el dueño lo fija; si no, Opus 4.8 · high.
 
-## ✅ P-DSP-01 VERIFICADO por el Director (spot-checks propios sobre `a3b5a39`)
-Migración con estados INT ✓ · `cliente_id` nullable tolerante a boletas ✓ · guard
-whereNotIn-vacío con doble condición (`$lineas !== [] && $vistos !== []`) ✓ · `hourlyAt(30)`
-en routes + fijado en ScheduleBsaleTest ✓ · los 4 ajustes del shape aplicados ✓. El watermark
-persistente con avance solo-sobre-tramo-completo y el tramo máximo de 30 días son diseño de
-primera — mejor que lo que pedía el plan. El hallazgo de los fakes que no honraban
-`emissiondaterange` es exactamente el tipo de bug-invisible que la review adversarial debe
-cazar: bien usada. P-DSP-00 [x] y P-DSP-01 [x] aceptados.
+## Contexto: el día de QA (v8) YA no es tuyo
+El QA guiado de M14/M15 (matriz A1-A8/B1-B7) lo corrió **Max-1** por directiva directa del
+dueño en su sesión — 15/15 flujos, **E2·M14 CERRADA**, acta archivada. No lo repitas. Tu foco
+vuelve a DESPACHOS.
 
-## 🟢 GO P-DSP-03 confirmado (entidad Despacho + escaneos + panel admin)
-Tal como propusiste. Recordatorios del plan + lo nuevo de tu propia review:
-1. **Requisito NUEVO (tuyo, ahora obligatorio):** `crearDesdeDocumento` re-verifica el doc
-   puntual contra Bsale ANTES de crear el despacho (cancellation_status local puede estar
-   stale >1 día — no despachar un DTE anulado). Con test.
-2. `$table = 'despachos'` fijado a mano (pluralizador) + código `DSP-` impredecible
-   (patrón `OrdenServicio::generarCodigoUnico`).
-3. `escaneos_despacho` append-only (sin updated_at); `validarRetiro` bajo `lockForUpdate`
-   con re-check (patrón bitácora [2026-06-30]).
-4. Superficie compartida (routes/nav/seeder/RoleMatrix/AuditController): bloques SIEMPRE al
-   final — M12 (Marcos) sigue empujando a main (hoy: recepción "en ruta" + rebuild de
-   bundle, verificado sin interferencia con dashboard). Refresca la rama con main antes de
-   tocar compartidos.
-5. Permisos nuevos `manage despachos` / `confirmar entrega`: aditivos en los 3 puntos +
-   RoleMatrixSeedTest.
-6. Panel admin responsive 375/768/1024; si tocas Blade/JS/CSS → npm install (qrcode) +
-   build + grep del bundle (incluye las 6 clases del dashboard M16 — ahora también son
-   críticas: `lg\:grid-cols-5`, `sm\:grid-cols-3`, `min-w-\[1.5rem\]`, `bg-white\/60` + las
-   `lg\:flex`/`lg\:hidden` de siempre).
+## ✅ DECISIÓN DEL DUEÑO 20-07: fecha de arranque del espejo = DEFAULT 7 días
+`documentos_sync_desde` queda SIN fijar → `DocumentSync` arranca el espejo virgen con los
+últimos 7 días al primer run (es tu `DIAS_DEFAULT`). **No requiere código ni seed** — ya es el
+comportamiento por defecto. Punto cerrado; no lo toques.
 
-Pendiente del dueño (no te bloquea): fecha de arranque del espejo (`documentos_sync_desde`).
-Default 7 días corre al primer run post-deploy.
+## 🟢 GO P-DSP-04 — QR anti-fraude de retiro (M07, el corazón de la unidad)
+Según PLAN-DESPACHOS-V1 §2, con estos énfasis (ya verificados como diseño en P-DSP-03):
+1. `validarRetiro` bajo `lockForUpdate` + re-check del estado con la fila bloqueada. TODO
+   escaneo deja fila en `escaneos_despacho` (valido / doble_retiro / estado_invalido). El 2º
+   escaneo dispara ALERTA visible y NO cambia estado. Tests del lock + de la carrera (doble-tap
+   del operador de bodega — patrón bitácora [2026-06-30]).
+2. QR firmado `URL::signedRoute` sobre el `codigo DSP-` (no el id — no enumerable), reusa el
+   patrón M12 (`dibujarQrsMostrador`, chunk qrcode ya en bundle) + página imprimible.
+3. Superficie de escaneo: si es puesto de bodega autenticado → `manage despachos`; si semi-
+   pública → `signed` + throttle. Decide por el flujo real y documéntalo.
+4. Cola "McDonald's": polling JSON liviano patrón `porConfirmarConteo()` de ST; pantalla apta
+   para monitor de bodega (texto grande, estados por relleno — paleta de 4, rojo solo
+   destructivo, YA confirmado por el dueño).
+5. Entrega total/parcial: parcial marca `entrega_parcial` y el saldo queda visible.
+6. Recordatorio del requisito que salió de tu propia review P-DSP-03: `crearDesdeDocumento`
+   re-verifica el doc contra Bsale antes de despachar (el `cancellation_status` local puede
+   estar stale >1 día). Ese guard ya está; P-DSP-04 se apoya en él, no lo dupliques.
+
+Recordatorios duros de flota (lecciones frescas):
+- Suite COMPLETA verde por commit — corre `composer test` ENTERO, no un subset (lección del
+  "verde engañoso": un assert puede pasar por la razón equivocada).
+- Blade/JS → merge de main FRESCO ANTES + `npm run build` + grep del bundle superset. Main se
+  mueve rápido (M12 empuja seguido: seguimiento, instalaciones, informes ST); tu rama
+  `feature/despachos-v1` acumula P-DSP-00..03 sin mergear — refréscala seguido para que el
+  merge final (P-DSP-07) no sea un choque de bundles.
+- Asertar por RUTA/marcador estable, nunca por forma pegada del HTML.
 
 CIERRE por paso: parte a docs/fleet/buzon/partes/ + push.

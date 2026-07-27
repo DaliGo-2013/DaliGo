@@ -10,12 +10,17 @@ class ProduccionAsignacion extends Model
 {
     protected $table = 'produccion_asignaciones';
 
+    // En qué formato llegó la preforma del turno. Fuente única para el
+    // selector del form de asignar y su validación (Rule::in).
+    public const PROCEDENCIAS = ['saco', 'caja'];
+
     protected $fillable = [
         'soplador_id',
         'fecha',
         'turno',
         'asignadas',
         'preforma_id',
+        'procedencia',
         'creado_por',
     ];
 
@@ -49,5 +54,18 @@ class ProduccionAsignacion extends Model
     public function reporte(): HasOne
     {
         return $this->hasOne(ProduccionReporte::class, 'asignacion_id');
+    }
+
+    /**
+     * Asignadas por dia (mapa Y-m-d => int) para el rango. Una query agregada;
+     * la comparten el panel del jefe y el pulso del Inicio (M16-v1).
+     */
+    public static function asignadasPorDia(string $desde, string $hasta)
+    {
+        return static::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
+            ->groupBy('fecha')
+            ->get()
+            ->mapWithKeys(fn ($r) => [\Illuminate\Support\Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
     }
 }

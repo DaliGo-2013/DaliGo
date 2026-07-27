@@ -3,7 +3,7 @@
 Aplicación web desarrollada con Laravel 12 sobre PHP 8.3, preparada para desplegarse en un hosting compartido (HostGator). Incluye autenticación de usuarios (registro, inicio de sesión y recuperación de contraseña) mediante Laravel Breeze.
 
 > 📋 **Antes de trabajar en el proyecto, leer en este orden:**
-> 1. [`PROYECTO_DALIGO.md`](PROYECTO_DALIGO.md) — la **biblia**: *qué* construir y *por qué* (16 módulos M01–M16, reglas de negocio, Gantt).
+> 1. [`PROYECTO_DALIGO.md`](PROYECTO_DALIGO.md) — la **biblia**: *qué* construir y *por qué* (17 módulos M01–M17, reglas de negocio, Gantt).
 > 2. [`docs/RUTA-MAESTRA.md`](docs/RUTA-MAESTRA.md) — **dónde estamos y qué sigue**: el tablero vivo del proyecto (paso a paso E0–E13, avance, bloqueos). El estado vive SOLO aquí.
 > 3. [`HANDOFF.md`](HANDOFF.md) — el manual técnico: *cómo está hecho* lo construido y *cómo se despliega*.
 > 4. [`CLAUDE.md`](CLAUDE.md) — guía viva con las *formas correctas de hacer las cosas* y la **bitácora de errores y soluciones**. Si tienes una dificultad o un error y lo resuelves, **regístralo ahí antes de cerrar tu tarea** (aplica a todos los colaboradores, humanos e IA).

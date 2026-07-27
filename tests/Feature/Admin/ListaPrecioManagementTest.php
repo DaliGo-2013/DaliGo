@@ -42,8 +42,10 @@ class ListaPrecioManagementTest extends TestCase
         $member->assignRole('member');
         $lista = ListaPrecio::factory()->create();
 
-        $this->actingAs($member)->get('/admin/listas-precios')->assertForbidden();
-        $this->actingAs($member)->get("/admin/listas-precios/{$lista->id}")->assertForbidden();
+        $this->actingAs($member)->get('/admin/listas-precios')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get("/admin/listas-precios/{$lista->id}")->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->put("/admin/listas-precios/{$lista->id}", ['canal' => 'web'])->assertForbidden();
     }
 

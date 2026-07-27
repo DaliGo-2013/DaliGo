@@ -59,6 +59,16 @@
                     Varias máquinas de una vez: escribes tus datos una sola vez y agregas cada equipo.
                 </span>
             </a>
+
+            {{-- Opción D: visita/revisión INDUSTRIAL en terreno (lavadoras,
+                 llenadoras, plantas de osmosis): el técnico va donde el cliente. --}}
+            <a href="{{ $urlVisita }}"
+                class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
+                <span class="font-semibold text-neutral-900">Visita / revisión industrial</span>
+                <span class="mt-1 block text-sm text-neutral-500">
+                    Para lavadoras, llenadoras y plantas de osmosis: el técnico va a tu planta. Dejas tus datos y te llamamos para coordinar.
+                </span>
+            </a>
         </div>
 
         {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}
@@ -67,7 +77,7 @@
                 Completa los datos de tu equipo. Cuando termines, muéstrale la pantalla al encargado del mostrador.
             </p>
 
-            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('ingreso-taller.store') }}" class="space-y-5" enctype="multipart/form-data" data-una-vez>
                 @csrf
                 <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
 
@@ -121,15 +131,16 @@
                     <x-input-error :messages="$errors->get('tipo_equipo')" class="mt-1.5" />
                 </div>
 
-                {{-- Código del producto Dali: autocompletado contra el catálogo (SKU o
-                     nombre). Opcional; escribe el código que trae el equipo. --}}
-                <x-buscador-remoto
-                    name="producto_id"
-                    label="Código del equipo (producto Dali)"
-                    chip="Producto"
-                    :endpoint="route('ingreso-taller.buscar-producto')"
-                    placeholder="Escribe el código (SKU) o el nombre…"
-                    hint="Opcional. Búscalo por el código que trae el equipo (ej. LB-07)." />
+                {{-- Equipo: el cliente escribe A MANO la marca/modelo (o el código
+                     que trae el equipo). Sin catálogo: gerencia no quiere exponerle
+                     al cliente la variedad de productos. Opcional. --}}
+                <div>
+                    <x-input-label for="modelo" value="Equipo (marca y modelo)" />
+                    <x-text-input id="modelo" name="modelo" type="text" class="mt-1.5 block w-full"
+                                  :value="old('modelo')" maxlength="191" placeholder="Ej. Dispensador LB-16 blanco" />
+                    <x-input-hint>Escríbelo como lo conozcas: marca, modelo o color (opcional).</x-input-hint>
+                    <x-input-error :messages="$errors->get('modelo')" class="mt-1.5" />
+                </div>
 
                 {{-- N° de serie: obligatorio solo para dispensador/lavadora (serie
                      unica); opcional para bombas/herramientas. El asterisco y el
@@ -157,7 +168,7 @@
                     <x-input-label for="fecha_ingreso" value="Fecha de ingreso" />
                     <x-text-input id="fecha_ingreso" type="date"
                                   class="mt-1.5 block w-full pointer-events-none bg-neutral-50 text-neutral-500"
-                                  :value="now()->format('Y-m-d')" readonly tabindex="-1" />
+                                  :value="\App\Support\FechaNegocio::hoy()" readonly tabindex="-1" />
                     <x-input-hint>Es la fecha de hoy.</x-input-hint>
                 </div>
 
@@ -250,8 +261,13 @@
                 </x-primary-button>
             </form>
 
+            {{-- Volver al menú principal (mismo botón formal que en los otros
+                 formularios del QR). Aquí basta con volver al chooser de la misma
+                 página (modo = null), no hace falta navegar. --}}
             <button type="button" @click="modo = null"
-                class="mt-4 block w-full text-center text-sm text-neutral-400 underline hover:text-neutral-600">&larr; Elegir otra forma</button>
+                class="mt-4 block w-full rounded-xl border border-neutral-300 bg-white px-5 py-3 text-center text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                Volver al inicio
+            </button>
         </div>
 
     </div>

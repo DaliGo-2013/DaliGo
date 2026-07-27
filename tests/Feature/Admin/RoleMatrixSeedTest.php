@@ -28,16 +28,18 @@ class RoleMatrixSeedTest extends TestCase
                 'view users', 'create users', 'edit users', 'delete users',
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
-                'view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio',
-                'view notificaciones', 'aprobar solicitudes', 'view aprobaciones',
+                'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio',
+                'agendar servicio terreno', 'ver agenda terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
+                'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
             ],
             'member' => [],
-            'vendedor' => ['manage clientes', 'view servicio tecnico'],
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'aprobar solicitudes'],
-            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos'],
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion'],
+            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos'],
             'conductor' => ['crear lote servicio', 'confirmar entrega'],
-            'tecnico' => ['view servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio'],
+            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion'],
+            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones'],
             'soplador' => ['report production'],
         ];
     }
@@ -55,9 +57,10 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_ocho_roles(): void
+    public function test_seeder_deja_exactamente_nueve_roles(): void
     {
-        $this->assertSame(8, Role::count());
+        // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14).
+        $this->assertSame(9, Role::count());
     }
 
     public function test_reseed_es_idempotente_y_no_borra_permisos_de_la_ui(): void
@@ -76,7 +79,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(8, Role::count());
+        $this->assertSame(9, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

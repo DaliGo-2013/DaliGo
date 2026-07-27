@@ -43,8 +43,10 @@ class SucursalManagementTest extends TestCase
         $member = User::factory()->create();
         $member->assignRole('member');
 
-        $this->actingAs($member)->get('/admin/sucursales')->assertForbidden();
-        $this->actingAs($member)->get('/admin/sucursales/create')->assertForbidden();
+        $this->actingAs($member)->get('/admin/sucursales')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+        $this->actingAs($member)->get('/admin/sucursales/create')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
         $this->actingAs($member)->post('/admin/sucursales', ['nombre' => 'X', 'codigo' => 'X'])->assertForbidden();
     }
 
@@ -150,6 +152,8 @@ class SucursalManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put("/admin/users/{$user->id}", [
                 'role' => 'member',
+                'name' => $user->name,
+                'email' => $user->email,
                 'sucursal_id' => $sucursal->id,
             ])
             ->assertRedirect(route('admin.users.index'));

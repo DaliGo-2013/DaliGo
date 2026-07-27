@@ -86,17 +86,53 @@ class CampanitaTest extends TestCase
         $this->inApp($user);
         $this->inApp($user);
 
-        // El nav renderiza la campanita con el badge del conteo real (3).
+        // El nav renderiza la campanita con el badge del conteo real (3), el
+        // CONTENIDO del dropdown (título de la notificación) y sus acciones —
+        // no solo el conteo (micro-backlog M15-c: endurecer el test de humo).
+        // El conteo se asserta por su marcador ACCESIBLE ("N sin leer" del
+        // sr-only/aria-label), no por markup pegado '>3<' — doctrina del
+        // verde-engañoso (bitácora 2026-07-20).
+        $ultima = Notificacion::campanitaDe($user->id)->latest('id')->first();
+
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Notificaciones', false)
-            ->assertSee('>3<', false);
+            ->assertSee('Notificaciones (3 sin leer)', false)
+            ->assertSee($ultima->titulo)
+            ->assertSee('Marcar todas')
+            ->assertSee('Ver todas');
 
         // Marcar todas → el badge desaparece (conteo 0).
         $this->actingAs($user)->post(route('notificaciones.leer-todas'));
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSee('>3<', false);
+            ->assertDontSee('(3 sin leer)', false)
+            ->assertSee('Notificaciones (0 sin leer)', false);
+    }
+
+    public function test_campana_movil_siempre_visible_con_badge_y_destino(): void
+    {
+        // Hallazgo QA de celular 14-07: la campanita vivía solo al fondo del
+        // hamburguesa y nadie la descubría. La cabecera móvil lleva ahora una
+        // campana SIEMPRE visible (aria-label distintivo) con el conteo y link
+        // directo a la bandeja personal.
+        $user = User::factory()->create();
+        $this->inApp($user);
+        $this->inApp($user);
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('aria-label="Notificaciones (2 sin leer)"', false)
+            ->assertSee(route('notificaciones.index'), false);
+
+        // Sin no-leídas: la campana queda (aria-label sin conteo), el badge no.
+        // Ojo: el sr-only del partial desktop siempre dice "(0 sin leer)", así
+        // que se asserta el aria-label EXACTO de la campana móvil, no el texto suelto.
+        $this->actingAs($user)->post(route('notificaciones.leer-todas'));
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('aria-label="Notificaciones"', false)
+            ->assertDontSee('aria-label="Notificaciones (2 sin leer)"', false);
     }
 
     public function test_pagina_personal_lista_solo_lo_propio(): void

@@ -19,15 +19,32 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_reintentos_max',
         'notif_backoff_minutos',
         'notif_remitente_nombre',
+        // Taller · aviso de ingreso por QR (ventas + técnico)
+        'notif_plantilla_taller_ingresado',
+        // P-M12-02 · Cotización del taller (avisos internos)
+        'notif_plantilla_cotizacion_enviada',
+        'notif_plantilla_cotizacion_respondida',
+        'notif_plantilla_cotizacion_autorizada',
+        // Agenda de terreno · solicitud por coordinar + confirmación del cliente
+        'notif_plantilla_terreno_solicitada',
+        'notif_plantilla_terreno_confirmada',
+        'notif_plantilla_terreno_rechazada',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void
     {
         $this->seed(ConfiguracionSeeder::class);
+        // Conteo DERIVADO de la 1ª corrida, no hardcodeado: el catalogo crece
+        // cuando un modulo suma plantillas (M14 agrego las suyas el 2026-07-20)
+        // y fijar el numero rompia con cada alta — mismo patron ya aplicado en
+        // PreferenciasCanalTest (bitacora 2026-07-13). La intencion del test es
+        // la IDEMPOTENCIA, no el tamaño del catalogo.
+        $antes = Configuracion::where('grupo', 'notificaciones')->count();
+
         $this->seed(ConfiguracionSeeder::class); // 2ª corrida: no duplica
 
         $this->assertSame(
-            4,
+            $antes,
             Configuracion::where('grupo', 'notificaciones')->count(),
             'La 2ª corrida del seeder no debe duplicar las claves notif_*.'
         );
@@ -77,5 +94,25 @@ class NotificacionConfigSeedTest extends TestCase
         $this->assertStringContainsString('Hola Mauricio:', $notificacion->cuerpo);
         $this->assertStringContainsString('Enviada el 2026-07-04.', $notificacion->cuerpo);
         $this->assertSame(Notificacion::PENDIENTE, $notificacion->estado);
+    }
+
+    public function test_plantillas_internas_usan_los_campos_enriquecidos(): void
+    {
+        $this->seed(ConfiguracionSeeder::class);
+
+        $solicitada = Configuracion::get('notif_plantilla_terreno_solicitada')['cuerpo'];
+        foreach (['{servicio}', '{direccion}', '{descripcion}'] as $ph) {
+            $this->assertStringContainsString($ph, $solicitada, "terreno.solicitada debe usar {$ph}");
+        }
+
+        $rechazada = Configuracion::get('notif_plantilla_terreno_rechazada')['cuerpo'];
+        foreach (['{rechazado_por}', '{telefono}', '{preferida}'] as $ph) {
+            $this->assertStringContainsString($ph, $rechazada, "terreno.rechazada debe usar {$ph}");
+        }
+
+        foreach (['enviada', 'respondida', 'autorizada'] as $evento) {
+            $cuerpo = Configuracion::get("notif_plantilla_cotizacion_{$evento}")['cuerpo'];
+            $this->assertStringContainsString('{equipo}', $cuerpo, "cotizacion.{$evento} debe usar {equipo}");
+        }
     }
 }

@@ -188,7 +188,8 @@ class ProduccionKardexTest extends TestCase
 
     public function test_kardex_requiere_permiso(): void
     {
-        $this->actingAs($this->soplador())->get(route('admin.produccion.movimientos'))->assertForbidden();
+        $this->actingAs($this->soplador())->get(route('admin.produccion.movimientos'))->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     public function test_kardex_filtra_por_tipo(): void
@@ -262,5 +263,54 @@ class ProduccionKardexTest extends TestCase
         $this->assertDatabaseHas('produccion_asignaciones', [
             'soplador_id' => $soplador->id, 'preforma_id' => $activa->id,
         ]);
+    }
+
+    public function test_selector_de_preformas_excluye_las_danadas(): void
+    {
+        $sana = Producto::create(['sku' => 'PREF-SANA', 'nombre' => 'PREFORMA AZUL 700 GR', 'categoria' => 'Preformas', 'activo' => true]);
+        $danada = Producto::create(['sku' => 'PREF-DAN', 'nombre' => 'PREFORMA DAÑADA AZUL 10 LT', 'categoria' => 'Preformas', 'activo' => true]);
+        $danadaMinuscula = Producto::create(['sku' => 'PREF-DAN-MIN', 'nombre' => 'Preforma dañada lila', 'categoria' => 'Preformas', 'activo' => true]);
+
+        $ids = $this->actingAs($this->jefe())
+            ->get(route('admin.produccion.asignar'))
+            ->assertOk()
+            ->viewData('preformas')
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($sana->id));
+        $this->assertFalse($ids->contains($danada->id), 'La preforma DAÑADA (mayúsculas) no debe ofrecerse en el selector.');
+        $this->assertFalse($ids->contains($danadaMinuscula->id), 'La preforma dañada (minúsculas) no debe ofrecerse en el selector.');
+    }
+
+    public function test_selector_fallback_sin_categoria_preforma_tambien_excluye_danadas(): void
+    {
+        // Sin ningún producto de categoría "preforma" rige el fallback (todos
+        // los activos): las dañadas también deben quedar fuera ahí.
+        $normal = Producto::create(['sku' => 'GEN-1', 'nombre' => 'PRODUCTO GENERICO', 'categoria' => 'Otros', 'activo' => true]);
+        $danada = Producto::create(['sku' => 'GEN-DAN', 'nombre' => 'PREFORMA DAÑADA VERDE', 'categoria' => 'Otros', 'activo' => true]);
+
+        $ids = $this->actingAs($this->jefe())
+            ->get(route('admin.produccion.asignar'))
+            ->assertOk()
+            ->viewData('preformas')
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($normal->id));
+        $this->assertFalse($ids->contains($danada->id), 'El fallback del selector tampoco debe ofrecer preformas dañadas.');
+    }
+
+    public function test_asignar_rechaza_preforma_danada(): void
+    {
+        // Mismo universo que el selector: un id de preforma dañada posteado a
+        // mano no debe entrar al kardex.
+        $soplador = $this->soplador();
+        $base = ['soplador_id' => $soplador->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+
+        $danada = Producto::create(['sku' => 'PREF-DAN-POST', 'nombre' => 'PREFORMA DAÑADA AZUL 20 L 750 GR', 'categoria' => 'Preformas', 'activo' => true]);
+
+        $this->actingAs($this->jefe())
+            ->post(route('admin.produccion.asignar.store'), $base + ['preforma_id' => $danada->id])
+            ->assertSessionHasErrors('preforma_id');
+        $this->assertDatabaseMissing('produccion_asignaciones', ['soplador_id' => $soplador->id]);
     }
 }

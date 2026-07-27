@@ -2,11 +2,9 @@
 
 namespace App\Providers;
 
-use App\Models\OrdenServicio;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +22,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // P-TZ-02 (capa render): pasa un instante UTC del storage a hora
+        // chilena SOLO para mostrarlo. Únicamente sobre timestamps con hora
+        // (created_at, enviada_at, resuelta_at); JAMÁS sobre casts `date`
+        // puros — su medianoche UTC retrocedería al día anterior. Los
+        // diffForHumans no lo necesitan (un delta no depende del tz de render).
+        Carbon::macro('enChile', function () {
+            return $this->copy()->tz(config('daligo.tz_negocio'));
+        });
+
         // MySQL 5.7 + utf8mb4: limita la longitud por defecto de las columnas
         // string (191*4 = 764 < 767 bytes) para no exceder el limite de
         // longitud de indice de InnoDB en MySQL 5.7.
@@ -35,17 +42,9 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Contador de la barra: cuantas ordenes tiene "en mano" el tecnico
-        // (recibidas + en cotizacion). Solo se calcula para quien ve servicio
-        // tecnico; un COUNT liviano sobre la columna indexada `estado`.
-        View::composer('layouts.navigation', function ($view) {
-            $user = Auth::user();
-            $view->with(
-                'pendientesServicioTecnico',
-                ($user && $user->canAny(['view servicio tecnico', 'manage servicio tecnico']))
-                    ? OrdenServicio::pendientesTecnico()->count()
-                    : 0
-            );
-        });
+        // El contador de Servicio Técnico de la barra vive ahora en
+        // App\Support\MenuPrincipal::badges() (fuente única del menú V4):
+        // los componentes x-layout.sidebar / x-layout.topbar traen sus datos,
+        // sin View::composer atado a un nombre de vista.
     }
 }

@@ -37,9 +37,13 @@ class BsaleSyncClients extends Command
         }
 
         $this->table(
-            ['Creados', 'Actualizados', 'Adoptados', 'Omitidos', 'Errores'],
-            [[$stats['creados'], $stats['actualizados'], $stats['adoptados'], $stats['omitidos'], count($stats['errores'])]],
+            ['Creados', 'Actualizados', 'Adoptados', 'Duplicados RUT', 'Errores'],
+            [[$stats['creados'], $stats['actualizados'], $stats['adoptados'], $stats['duplicados'], count($stats['errores'])]],
         );
+
+        if ($stats['duplicados'] > 0) {
+            $this->line("  {$stats['duplicados']} cliente(s) omitido(s) por RUT ya existente en otra ficha — esperado (Bsale trae varios registros por RUT), no es error.");
+        }
 
         foreach (array_slice($stats['errores'], 0, 20) as $err) {
             $this->warn("  · cliente {$err['client_id']} / rut {$err['rut']}: {$err['error']}");

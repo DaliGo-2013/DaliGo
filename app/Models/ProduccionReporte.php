@@ -28,6 +28,15 @@ class ProduccionReporte extends Model implements AuditableContract
     // valor del radio; el controlador lo resuelve al texto libre de motivo_otro).
     public const MOTIVO_OTRO = '__otro__';
 
+    // Ventana por defecto del historial del soplador (pedido del dueno): los
+    // ultimos 45 dias DISTINTOS, hoy incluido. Fuente unica del controlador y de
+    // las dos vistas (el enlace de mis-producciones tambien lo rotula).
+    public const HISTORIAL_DIAS = 45;
+
+    // Tope duro de la ventana que se puede pedir por query string: protege la
+    // query y la pantalla de un rango absurdo (?desde=2015-01-01).
+    public const HISTORIAL_DIAS_MAX = 180;
+
     // Motivos por los que lo producido no cuadra con lo asignado. Lista abierta:
     // se ofrecen como chips tocables y, si ninguno aplica, el operario escribe en
     // "Otro" (por eso 'motivo' no se restringe con Rule::in). Fuente unica para
@@ -213,6 +222,43 @@ class ProduccionReporte extends Model implements AuditableContract
         return $this->estado === self::ENVIADO;
     }
 
+    /**
+     * Arma un resumen de produccion (producido/merma/tasas/avance) a partir de
+     * las 4 cantidades y lo asignado. Fuente unica de las formulas para el
+     * panel del jefe y el tablero del Inicio, asi todos calculan igual.
+     */
+    public static function armarResumen(int $p1, int $p2, int $mal, int $dan, int $asignadas): array
+    {
+        $producido = $p1 + $p2;
+        $merma = $mal + $dan;
+        $total = $producido + $merma;
+
+        return [
+            'asignadas' => $asignadas,
+            'producido' => $producido,
+            'merma' => $merma,
+            'total' => $total,
+            'merma_pct' => $total > 0 ? (int) round($merma / $total * 100) : 0,
+            'tasa1' => $total > 0 ? (int) round($p1 / $total * 100) : 0,
+            'avance' => $asignadas > 0 ? (int) round($producido / $asignadas * 100) : 0,
+        ];
+    }
+
+    /**
+     * Serie por dia desde los reportes (totales denormalizados), keyed por
+     * Y-m-d. Una sola query agregada (whereDate + groupBy, 5.7-safe); la
+     * comparten el panel del jefe y el pulso del Inicio (M16-v1).
+     */
+    public static function seriePorDia(string $desde, string $hasta, ?int $sopladorId = null)
+    {
+        return static::whereDate('fecha', '>=', $desde)->whereDate('fecha', '<=', $hasta)
+            ->when($sopladorId, fn ($q) => $q->where('soplador_id', $sopladorId))
+            ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COUNT(*) reportes')
+            ->groupBy('fecha')
+            ->get()
+            ->keyBy(fn ($r) => \Illuminate\Support\Carbon::parse($r->fecha)->toDateString());
+    }
+
     // --- Scopes ---
 
     public function scopePendientes(Builder $query): Builder
@@ -220,8 +266,21 @@ class ProduccionReporte extends Model implements AuditableContract
         return $query->where('estado', self::ENVIADO);
     }
 
+    /**
+     * Devueltos de UN soplador (señal de "te toca corregir"): alimenta el
+     * badge de Mi producción en el menú. Sin filtro de fecha a propósito —
+     * un devuelto viejo sigue pendiente de acción.
+     */
+    public function scopeDevueltosDe(Builder $query, int $sopladorId): Builder
+    {
+        return $query->where('soplador_id', $sopladorId)
+            ->where('estado', self::DEVUELTO);
+    }
+
     public function scopeDelDia(Builder $query, $fecha = null): Builder
     {
-        return $query->whereDate('fecha', $fecha ?? now()->toDateString());
+        // Fallback en día de NEGOCIO (P-TZ-01): aunque hoy todos los callers
+        // pasan $fecha, un caller futuro sin argumento no debe caer al día UTC.
+        return $query->whereDate('fecha', $fecha ?? \App\Support\FechaNegocio::hoy());
     }
 }

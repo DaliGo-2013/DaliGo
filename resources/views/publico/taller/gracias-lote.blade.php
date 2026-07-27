@@ -40,5 +40,12 @@
         <p class="mt-5 text-sm text-neutral-500">
             Muéstrale esta pantalla al encargado del mostrador. Te llegará un correo con el detalle cuando confirmen la recepción de cada equipo.
         </p>
+
+        @if (! empty($urlInicio))
+            <a href="{{ $urlInicio }}"
+               class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
+                Volver al inicio
+            </a>
+        @endif
     </div>
 </x-guest-layout>
