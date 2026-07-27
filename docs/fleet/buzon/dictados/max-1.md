@@ -48,13 +48,31 @@ Los 4 puntos, en resumen:
    `NotificacionEspecificaTest:71/:82/:98-100` assertan ese redirect: sus fixtures
    probablemente necesiten el permiso del evento.
 
+## ⚠️ Los 3 que te van a morder (2ª ronda del workflow, PARTE 2 del anexo)
+- **`manifest.json` TAMBIÉN conflictúa** (son 5 conflictos, no 4): si queda un marcador de
+  merge dentro del JSON, **Vite revienta en runtime**. Manifest de main + borrar tu
+  `app-DLrdfNJe.css` huérfano + `npm run build` al final.
+- **Un candado nuevo de main pone la suite ROJA**: `AnchoDePaginaTest:80-107` tiene el regex
+  `/class="mx-auto max-w-[0-9a-z]+ px-/` y tu versión de `notificaciones/index.blade.php:5`
+  lo matchea. Es otra razón para tomar main completo ahí. (Tus otras 2 vistas NO lo trippean:
+  el `space-y-4` intercalado rompe la adyacencia — verificado.)
+- **NO edites `campanita.blade.php` ni `ConfiguracionSeeder.php` a mano**: automergean y el
+  resultado ya es el correcto. Aplicar la receta encima DUPLICA el input `ir` y el span del
+  cuerpo. Solo verifica el resultado.
+
+Y el ajuste de tests con una corrección: el caso espejo del usuario sin permiso **debe crear
+su propia notificación** (`leer()` tiene `abort_unless($notificacion->user_id === ...)`, así
+que reusar la del jefe da 403, no `back()`). Para el caso feliz, `assignRole('jefe_bodega')`.
+
 ## Gates de este lote (dos son nuevos y NO los cubre PHPUnit)
 - **Gate del ancla**: tras resolver, `git grep -c 'id="aprobacion-' resources/views` debe dar
   2. Si da 0, el ancla se perdió en silencio y la suite igual queda verde.
-- **Gate de CSS nuevo**: `target:` es la PRIMERA vez que el proyecto usa ese variant (cero
-  ocurrencias en main). Ningún test detecta una clase que no compiló → `npm run build` y
-  luego grep de `:target` en el CSS de `public/build`. Las clases tienen que vivir en los
-  `.blade` (`app.css:5` enraíza el `@source` en `resources/`).
+- **Gate de CSS, con matiz importante**: `target:` es la primera vez que el proyecto lo usa en
+  `resources/`, PERO el bundle comiteado de main ya trae esas clases — se filtraron por el
+  `@source '../../storage/framework/views/*.php'` de `app.css:4`, o sea desde un caché de
+  blades compilados de un árbol que tenía tu lote. **Un grep verde NO prueba que compilaron
+  desde tus `.blade`**: corre `npm run build` igual y luego grep de `:target` en
+  `public/build`, para que se regeneren legítimamente. Riesgo de clase faltante: nulo hoy.
 - Cobertura que falta y te pido agregar: **nadie asserta el `whitespace-pre-line`** (0 hits en
   tests de ambas ramas) — un `assertSee('whitespace-pre-line', false)` sobre
   `route('notificaciones.index')` cierra el hueco.
