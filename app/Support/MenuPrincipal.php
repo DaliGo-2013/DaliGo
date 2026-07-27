@@ -64,6 +64,10 @@ class MenuPrincipal
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
                 'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Despachos (M07, unidad DESPACHOS-v1): el aporte que el nav
+                // legacy tenía en el dropdown Operación, trasladado a la fuente
+                // única al retirarse navigation.blade.php (merge 27-07).
+                'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
             ],
         ],
         'administracion' => [

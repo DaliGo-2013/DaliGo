@@ -7,6 +7,8 @@ use App\Models\Aprobacion;
 use App\Models\Bodega;
 use App\Models\Cliente;
 use App\Models\Configuracion;
+use App\Models\Despacho;
+use App\Models\DocumentoVenta;
 use App\Models\ListaPrecio;
 use App\Models\Maquina;
 use App\Models\PreferenciaCanal;
@@ -16,6 +18,7 @@ use App\Models\ReglaAprobacion;
 use App\Models\Sucursal;
 use App\Models\TipoBotellon;
 use App\Models\User;
+use App\Models\Zona;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use OwenIt\Auditing\Models\Audit;
@@ -39,6 +42,9 @@ class AuditController extends Controller
         PreferenciaCanal::class => 'Preferencia de canal',
         Aprobacion::class => 'Aprobación',
         ReglaAprobacion::class => 'Regla de aprobación',
+        Zona::class => 'Zona',
+        DocumentoVenta::class => 'Documento de venta',
+        Despacho::class => 'Despacho',
     ];
 
     /**

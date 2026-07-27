@@ -39,6 +39,7 @@ class Cliente extends Model implements AuditableContract
         'notas',
         'vendedor_id',
         'vendedor_nombre',
+        'zona_id',
         'bsale_client_id',
     ];
 
@@ -57,6 +58,34 @@ class Cliente extends Model implements AuditableContract
     public function vendedor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'vendedor_id');
+    }
+
+    /**
+     * Zona EXPLICITA del cliente (override). Opcional; si esta seteada gana
+     * sobre la heredada del vendedor (ver zonaEfectiva).
+     *
+     * @return BelongsTo<Zona, $this>
+     */
+    public function zona(): BelongsTo
+    {
+        return $this->belongsTo(Zona::class, 'zona_id');
+    }
+
+    /**
+     * Zona EFECTIVA del cliente, con la regla de precedencia (D-006 + ajuste
+     * del dueno 2026-07-13): (1) si el cliente tiene una zona explicita
+     * (`zona_id`), esa GANA; (2) si no, hereda la zona de su vendedor
+     * (`vendedor->zona`); (3) si tampoco hay vendedor o el vendedor no tiene
+     * zona, null. "Siempre hay excepciones": el override del cliente existe
+     * justo para esos casos donde el cliente se atiende en otra zona.
+     */
+    public function zonaEfectiva(): ?Zona
+    {
+        if ($this->zona_id !== null) {
+            return $this->zona;
+        }
+
+        return $this->vendedor?->zona;
     }
 
     /**
