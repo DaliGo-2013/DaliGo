@@ -1,77 +1,81 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-22 (v24 — fin del standby: LOTE NOTIF-ESPECÍFICAS, directiva directa del dueño). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-27 (v25 — RESCATE del lote NOTIF-1: quedó rancio 5 días sin merge). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## Contexto — directiva del dueño 22-07
-«Enfoque en cosas tangibles que podamos mirar siempre: que las notificaciones sean más
-específicas en todos los apartados con relación a lo que están notificando, no algo genérico.»
+## Qué pasó con tu lote (no es culpa tuya)
+Entregaste NOTIF-1 el 22-07 (`e6fbcc6`, 772 verdes, gate R-31 con sus 2 confirmados
+resueltos) y **nadie le dio la doble llave**: el Director no tuvo sesión en 5 días. En ese
+hueco main avanzó **122 commits** (menú V4 E-NAV, `x-volver` unificado, ancho único, panel
+anclado, colores del Inicio, errores amables, M17 en producción) y dos de ellos te pasaron
+por encima:
+- **`aprobaciones-categorias` (`6069354`, 26-07)** reescribió `aprobaciones/index.blade.php`
+  y `mias.blade.php` — las 2 vistas donde pones tus anclas — agrupando por categoría.
+- **main evolucionó el modelo**: nació `urlDestinoPara(?User)` (gate de permisos, por un 403
+  REAL de vendedores con cartera ajena) + brazo `taller.ingresado` en el mismo `match` que
+  tú tocas, y la bandeja ahora enlaza por `href` directo en vez de tu `?ir=1`.
 
-Auditoría del Director (workflow 4 lentes + síntesis, evidencia archivo:línea): los textos
-seed ya interpolan folio/cliente/monto — el déficit real está en (1) la CAMPANITA, superficie
-de uso diario: muestra solo el título truncado en 320px, SIN cuerpo, y el click NO navega
-(`NotificacionUsuarioController.php:32-42` marca leída + back()); (2) el payload de
-APROBACIONES: el aprobador decide a ciegas — ni el objeto (`aprobable_type/id`) ni el cambio
-(`datos[anterior→nuevo]`) viajan (`Aprobaciones.php:308-322`); (3) `urlDestino()` de
-aprobaciones aterriza en la lista, no en el ítem, pese a existir `notificable_id`
-(`Notificacion.php:126-127`); (4) el fallback sin plantilla = título de catálogo + cuerpo
-VACÍO (`NotificacionDispatcher.php:116-119`).
+Resultado: 4 conflictos. **El 92 % de tu lote automerge intacto** (dispatcher, Aprobaciones,
+migración, seeder, mail, campanita, tus 286 líneas de tests).
 
-## 🟢 LOTE NOTIF-1 — rama nueva `feature/notif-especificas` desde main fresco (M)
-Territorio: motor M15 + aprobaciones M14 + superficies de notificación. **NO toques los
-productores de Marcos** (`OrdenServicioCotizacion.php`, `AgendaTrabajo.php`,
-`AgendaTrabajoController.php`, `ServicioTecnicoController.php`) — ese sublote va por canal
-directo del dueño (paquete aparte).
+## 🟢 TAREA — rama NUEVA `feature/notif-especificas-v2` desde main fresco (S/M)
+NO intentes rescatar la rama vieja con un merge: los dos caminos obvios fallan (ver anexo).
+Trae tus archivos limpios y re-injerta los 4 puntos de choque.
 
-### D. Superficies (el mayor impacto visible — hazlo PRIMERO)
-1. **Campanita navegable y con sustancia** (`campanita.blade.php`): bajo el título, línea
-   secundaria con el cuerpo (clamp a 2 líneas está bien); la fila navega a `urlDestino()`
-   además de marcar leída (mismo patrón fila-como-link del lote S2 en la bandeja). Sin
-   destino → comportamiento actual.
-2. **Bandeja**: `whitespace-pre-line` al cuerpo (`notificaciones/index.blade.php:37`) y no
-   imprimir la línea «...aquí: {url}» cruda — la fila YA navega (recorta el sufijo de URL
-   en las plantillas, ver sublote A).
-3. **`urlDestino()` puntual para aprobaciones**: `aprobacion.solicitada/escalada` →
-   bandeja anclada al ítem (`aprobaciones.index` + fragmento/param con `notificable_id` si
-   la vista lo soporta; si no, agrega el ancla `#aprobacion-{id}` a la vista de bandeja —
-   es tuya). `aprobacion.resuelta` ídem sobre «Mis solicitudes».
-4. **Fallback nunca-mudo** (`NotificacionDispatcher.php:116-119`): sin plantilla, el cuerpo
-   interpola los escalares del payload como «clave: valor» en líneas — que un evento futuro
-   sin plantilla degrade a legible, no a vacío.
+**Paquete completo, verificado y refutado, en
+[`docs/fleet/buzon/anexo-reaplicacion-notif1.md`](../anexo-reaplicacion-notif1.md)** —
+tiene los snippets exactos, la indentación medida (24 espacios en la tarjeta de index, 32 en
+el `<li>` de mias, 32 en el span del cuerpo de la bandeja) y el porqué de cada decisión.
+Léelo antes de editar; te ahorra el re-descubrimiento completo.
 
-### B. Payload de aprobaciones (`Aprobaciones.php` — territorio flota)
-`datosNotificacion()` suma: `objeto` (morph `aprobable()` legible — p.ej. «Reporte de
-producción 21-07 · Sucursal Mirador»), `cambio` (datos `anterior → nuevo` PRE-FORMATEADO a
-string — renderizar() filtra no-escalares), `resuelto_por` (`resueltoPor->name`),
-`rol_anterior` + `pendiente_desde` + `minutos` para escalada (regla + created_at +
-`aprobacion_escala_minutos`). TODO placeholder nuevo con default ('—') — sin dato queda
-literal `{x}` en el texto.
+Los 4 puntos, en resumen:
+1. **`Notificacion.php`**: injerta tu `$ancla` DENTRO del `urlDestino()` de main
+   (`:159-176`), concatenado en los 3 brazos `aprobacion.*`. **PRESERVA el brazo
+   `taller.ingresado`** que tú no tienes. NO toques `urlDestinoPara()` — verifiqué que es
+   wrapper puro y tu ancla fluye intacta por transitividad.
+2. **Las 2 vistas de aprobaciones**: toma el lado main COMPLETO del hunk (secciones por
+   categoría) y re-aplica solo `id="aprobacion-{{ $aprobacion->id }}"` / `$solicitud->id`
+   + `scroll-mt-6` + `target:ring-*`. Ojo con los nombres de variable: main itera
+   `$delTipo as $aprobacion` / `as $solicitud`.
+3. **Bandeja** (`notificaciones/index.blade.php`): reemplaza el archivo por la versión de
+   main y re-agrega SOLO tu `whitespace-pre-line` al span del cuerpo. **Conserva el
+   `urlDestinoPara(auth()->user())` de main** y no reintroduzcas el wrapper
+   `mx-auto max-w-xl` (main unificó anchos por layout).
+4. **Controlador**: conserva el `->with('notificable')` de main (evita el N+1 que
+   `urlDestinoPara` provocaría) **y cambia tu redirect `?ir=1` a
+   `urlDestinoPara($request->user())`** con caída a `back()` — si lo dejas en `urlDestino()`,
+   la campanita navega SIN el gate y cae en el 403 que la bandeja sí evita. Tus tests
+   `NotificacionEspecificaTest:71/:82/:98-100` assertan ese redirect: sus fixtures
+   probablemente necesiten el permiso del evento.
 
-### A. Plantillas (seeder + entrega a prod)
-- `aprobacion.solicitada`: título «Aprobación pendiente: {descripcion} ({magnitud})»;
-  cuerpo con {objeto} y {cambio}.
-- `aprobacion.escalada`: cuerpo «Escaló a tu rol desde {rol_anterior} tras {minutos} min
-  sin respuesta. … Pendiente desde: {pendiente_desde}».
-- `aprobacion.resuelta`: título «{resultado}: {descripcion} — {magnitud}»; cuerpo
-  «…quedó: {resultado} por {resuelto_por}. Monto: {magnitud}…».
-- **Entrega a prod (riesgo #1 de la auditoría):** `firstOrCreate` NO pisa las claves ya
-  sembradas → las plantillas nuevas jamás llegarían. Mecanismo: **migración de datos
-  one-shot que actualiza SOLO si el valor actual == texto del seed anterior** (edición
-  manual de UI se respeta). Documenta el patrón en el seeder para los próximos.
+## Gates de este lote (dos son nuevos y NO los cubre PHPUnit)
+- **Gate del ancla**: tras resolver, `git grep -c 'id="aprobacion-' resources/views` debe dar
+  2. Si da 0, el ancla se perdió en silencio y la suite igual queda verde.
+- **Gate de CSS nuevo**: `target:` es la PRIMERA vez que el proyecto usa ese variant (cero
+  ocurrencias en main). Ningún test detecta una clase que no compiló → `npm run build` y
+  luego grep de `:target` en el CSS de `public/build`. Las clases tienen que vivir en los
+  `.blade` (`app.css:5` enraíza el `@source` en `resources/`).
+- Cobertura que falta y te pido agregar: **nadie asserta el `whitespace-pre-line`** (0 hits en
+  tests de ambas ramas) — un `assertSee('whitespace-pre-line', false)` sobre
+  `route('notificaciones.index')` cierra el hueco.
+- Suite COMPLETA: **la baseline de main hoy es 920 verdes / 4.418 aserciones** (la verifiqué
+  en worktree limpio). Tu lote debe sumar sobre eso, no sobre las 772 de tu árbol viejo.
+- Filtro útil mientras iteras: `--filter='NotificacionEspecificaTest|AprobacionCategoriaTest|AprobacionBandejaTest|AprobacionHistorialTest|AprobacionAccionableTest|CampanitaTest|NotificacionPanelTest'`.
 
-### Verificación (reglas de la casa + específicas)
-- Tests: campanita muestra cuerpo y navega (marcador accesible, no markup pegado);
-  urlDestino puntual por evento; fallback interpola escalares; payload nuevo con defaults;
-  migración one-shot respeta una plantilla editada (test que la edita y migra).
-- OJO conteos: campos nuevos de payload NO crean notificaciones (los asserts de conteo no
-  deben moverse); tests que asserten cuerpos exactos van a romper — actualízalos por
-  marcador, no por string pegada.
-- Suite COMPLETA por commit; Blade tocado → main fresco + build + grep superset (Marcos
-  sigue activo); parte al buzón → doble llave.
+## Cierra la rama vieja
+Borra `feature/notif-especificas` del remoto cuando la v2 esté mergeada (no antes). La
+migración one-shot viaja tal cual: verifiqué que su premisa sigue en pie (las plantillas de
+aprobación no cambiaron y la one-shot de Marcos toca claves disjuntas).
+
+## Aviso de entorno (te va a pasar)
+El clon `C:\Users\maatr\Documents\DaliGo` lo está usando OTRA sesión (rediseño de menú, rama
+`design/menu-talana` + worktree con cambios sin commitear). Si trabajas ahí, **worktree
+propio con su `composer install`**: montar el `vendor` del clon por junction hace que PSR-4
+resuelva `App\` al OTRO clon y correrías la suite contra el árbol equivocado (me pasó hoy;
+síntoma: `Invalid route action: [DashboardColoresController]`).
 
 ## Pendientes que NO son tuyos
-- Sublote C (payload cotización/terreno, productores de Marcos): paquete por canal directo
-  del dueño — el Director lo redacta.
-- P-TZ-03 QA de borde + #6 chips: dueño/Director.
+- P-TZ-03 QA de borde · #6 chips · decisión de producto del ciclo de la factura: dueño.
+- DESPACHOS (P-DSP-04): Max-2, asiento congelado 13 días.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
