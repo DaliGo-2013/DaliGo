@@ -195,7 +195,11 @@ class ConfiguracionSeeder extends Seeder
                 'valor' => null,
                 'tipo' => Configuracion::TIPO_STRING,
                 'grupo' => 'despachos',
-                'descripcion' => 'Fecha de arranque (Y-m-d) del espejo de documentos de venta: la sync nunca retrocede más atrás. Vacío = últimos 7 días en el primer run. La define el dueño; un piso antiguo se pone al día por tramos de 30 días (backfill de los ~676k históricos PROHIBIDO de un tirón).',
+                // OJO: `descripcion` es varchar(255) — texto largo revienta en MySQL
+                // (SQLite no valida longitudes, así que la suite NO lo caza). Ver
+                // ConfiguracionSeedLongitudTest, que fija ese límite. Detalle extenso
+                // del backfill por tramos: docs/planes/PLAN-DESPACHOS-V1.md.
+                'descripcion' => 'Fecha de arranque (Y-m-d) del espejo de documentos: la sync nunca retrocede más atrás. Vacío = últimos 7 días en el primer run. Un piso antiguo se pone al día por tramos de 30 días (backfill masivo prohibido).',
             ],
             [
                 'clave' => 'documentos_sync_watermark',
