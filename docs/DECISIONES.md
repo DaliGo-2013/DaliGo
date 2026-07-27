@@ -41,10 +41,13 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 | D-010 | Computadores nuevos para devs | 🟢 CERRADA (PCs obtenidos) | Mauricio (2026-07-08) | — | — |
 | D-011 | URL oficial (`daligo.impdali.cl`) y estrategia de entornos | 🟢 TOMADA | Mauricio (2026-07-02) | — | — |
 | D-012 | Visibilidad del repo GitHub: queda PÚBLICO | 🟢 TOMADA | Mauricio (2026-07-08) | — | — |
+| D-014 | Qué ve el usuario cuando cae en un 403 o un 404 | 🟢 TOMADA | Mauricio (2026-07-24) | — | — |
 | D-013 | Excepción de paleta: pasteles opt-in en squircles del Inicio | 🟢 TOMADA | Mauricio (2026-07-22) | — | — |
 | D-000 | [retroactiva] Roles reconciliados a 8 ASCII | 🟢 TOMADA | equipo (2026-06) | — | — |
 
-**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026**.
+> D-014 se agregó al semáforo el 2026-07-26: tenía su ficha completa en §4 desde el 24-07 pero faltaba en esta tabla, que es la que se revisa. Una decisión que no aparece acá, para el ritual del viernes no existe.
+
+**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026** — quedan **5 abiertas** (D-003, D-004, D-005, D-006, D-008) y faltan menos de 5 días.
 
 ---
 

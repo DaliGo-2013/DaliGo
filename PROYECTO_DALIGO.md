@@ -2,7 +2,7 @@
 
 > Documento maestro consolidado para asistentes de IA de programación.
 > Fuentes: especificación modular v2.0 (correcciones de Luis Lazcano, mayo 2026), respuesta técnica de arquitectura y hosting (junio 2026), carta Gantt (9 meses), y levantamientos de procesos de las 3 sucursales (Abate Molina, Coquimbo, Mirador).
-> Última consolidación: junio 2026.
+> Última consolidación: **julio 2026** (re-consolidada el 2026-07-26: entra M17 Servicio en terreno, que se había construido fuera de la spec; se explicitan los cortes de M16).
 
 ---
 
@@ -110,10 +110,14 @@ Decisiones tomadas en la reunión del 11–12 de mayo de 2026 que condicionan TO
 
 ---
 
-## 4. Catálogo de módulos (16)
+## 4. Catálogo de módulos (17)
 
 Notación de esfuerzo (2 devs full-time): S 1–3 sem · M 3–6 · L 6–10 · XL 10+.
-Estados: VALIDADO / CON AJUSTES / NUEVO / YA EN BSALE / STANDBY.
+Estados: VALIDADO / CON AJUSTES / NUEVO / YA EN BSALE / STANDBY / CONSTRUIDO.
+
+> **Esta sección es el alcance completo del producto.** Si una pantalla de la app
+> no cae bajo ninguno de estos módulos, o falta el módulo o sobra la pantalla.
+> El *estado de avance* no vive acá: vive en `docs/RUTA-MAESTRA.md`.
 
 ### Bloque A · Transversales (las 3 sucursales, desde el día 1)
 
@@ -133,6 +137,7 @@ Motor digital que reemplaza WhatsApp y aprobaciones verbales. Reglas configurabl
 Motor centralizado. SMTP saliente + IMAP para confirmaciones de lectura. WhatsApp Business API (**migración pendiente — confirmar con Marco**). Plantillas por tipo de evento, triggers desde otros módulos, reintentos automáticos. **El cliente elige canal (WhatsApp/correo/ambos) al registrarse.** Opt-out por canal.
 
 **M16 · Reportes y BI** — CON AJUSTES · L (6–8 sem, iterativo) · dep: todos los transaccionales
+> **Se entrega por CORTES, no de una vez** (así se ejecutó): *v0* tablero de Inicio de solo lectura (14-07-2026) · *v1* «Pulso del día» — excepciones, pulso de producción y taller, zócalo de accesos (14-07-2026) · *v1.2* accesos con ícono y color por usuario (23-07-2026). **Lo entregado es el TABLERO; lo pendiente es el BI**: reportes de ventas/márgenes/descuentos por vendedor, export Excel/PDF y la matriz de visibilidad por perfil. Esos cortes dependen de M05, así que no pueden adelantarse.
 Tablero ejecutivo: ventas por sucursal, márgenes, stock crítico, descuentos. Reportes: descuentos por vendedor con margen resultante (detección de patrones), transferencias con quién aprobó, producción (% mermas por soplador, productividad), devoluciones por causa/canal, despachos en curso, bodegaje próximo a vencer. Export Excel/PDF. **Vista filtrada por perfil: cada cargo ve solo lo suyo** (ej. técnico ve producción y ST, no contabilidad). Matriz por definir en Sprint 0. Sustituye los Excel del cierre administrativo.
 
 ### Bloque B · Operación común (las 3 sucursales, desde el día 1)
@@ -168,6 +173,11 @@ Formulario online de pre-ingreso con QR que el cliente llena antes de llegar. Fo
 **M13 · Devoluciones** — VALIDADO · M (3–4 sem) · dep: M01, M04, M05, M14, M15 · ADELANTADO a Fase 2 del plan
 **Formulario estándar que llena el CLIENTE** (no operador interno). Fotos obligatorias al recibir en bodega. Categorización: daño transporte / defecto fábrica / otro. Reglas automáticas según tipo de daño y origen. Vinculación al transportista si hay reclamo de transporte. Reembolso (consume M14 si requiere aprobación por monto). **Reingreso automático a stock si está en buen estado.** Reportes por causa y marketplace. Hoy todo lo concentra una sola persona sin apoyo.
 
+**M17 · Servicio en terreno (técnico industrial)** — CONSTRUIDO · M (4–5 sem) · dep: M01, M03, M15 · **agregado a la biblia el 2026-07-26, después de construirse**
+Atención industrial que ocurre en las instalaciones del cliente, no en el taller. Catálogo de servicios con **tarifa en UF**. Solicitud de visita desde formulario público. Agenda con **calendario mensual y franjas de 2 horas**, técnico por defecto, y bloqueo por ocupación. Trabajos **multi-día / viajes** (una visita puede ocupar varios días). Estado **"por coordinar"** cuando la solicitud entra sin fecha, con aviso a ventas. **Confirmación del cliente por link con token**: agendar, reprogramar o anular, con motivo de rechazo. Repuestos usados por visita. Registro de **instalaciones** (reemplaza el Excel). **Conductores** administrables para el retiro de equipos en ruta (comparte flujo con M12: `lotes_servicio`).
+
+> ⚠️ **Cómo llegó acá:** este módulo se construyó entre el 14 y el 24 de julio de 2026 (~27 rutas, en producción) **sin estar en la especificación**. Se documentó únicamente en `docs/BITACORA-SESIONES.md`, entrada por entrada, así que durante ~6 semanas la biblia describía una app que ya no era la real. Se incorpora aquí para cerrar ese hueco. La regla que lo evita hacia adelante está en la sección 9.
+
 ### Mapa de dependencias
 
 | Módulo | Depende de |
@@ -188,6 +198,7 @@ Formulario online de pre-ingreso con QR que el cliente llena antes de llegar. Fo
 | M10 eCommerce | M01, M02, M04, M05, M08 |
 | M06 POS (standby) | M01–M05 |
 | M16 Reportes | todos los transaccionales |
+| M17 Servicio en terreno | M01, M03, M15 |
 
 ---
 
@@ -413,5 +424,6 @@ Vende por canales mixtos: presencial, Mercado Libre, Falabella y web propia (Wor
 - **Trazabilidad y auditoría en todo:** el proyecto existe porque hoy nada queda registrado. Cada acción relevante necesita quién/qué/cuándo.
 - **Prototipar temprano la PWA offline** (M08/M11): es el mayor riesgo técnico.
 - Los flujos de la sección 8 son el AS-IS: el TO-BE es digitalizarlos según los módulos de la sección 4.
+- **Un módulo nuevo se agrega a la sección 4 ANTES de construirse, no después.** Esta regla existe porque se rompió: el servicio en terreno (M17) se construyó completo y se puso en producción entre el 14 y el 24 de julio de 2026 quedando descrito sólo en `docs/BITACORA-SESIONES.md`. Durante ~6 semanas la biblia describía una app que ya no era la real, y la pregunta "¿qué hace el sistema?" no se podía responder con un solo documento. Si lo que vas a construir no cae bajo un módulo existente, **primero escribe el módulo acá** (formato: estado · esfuerzo · dependencias, en lenguaje de negocio) y recién después abre el paso en `docs/RUTA-MAESTRA.md`.
 
 

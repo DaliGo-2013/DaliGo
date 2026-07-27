@@ -14,7 +14,7 @@
 
 ## 0. Cómo usar este documento
 
-1. Lee `PROYECTO_DALIGO.md` (la biblia: 16 módulos M01–M16, reglas de negocio, Gantt).
+1. Lee `PROYECTO_DALIGO.md` (la biblia: 17 módulos M01–M17, reglas de negocio, Gantt).
 2. Lee `docs/RUTA-MAESTRA.md` (**dónde estamos y qué sigue** — el estado vivo del proyecto).
 3. Lee este `HANDOFF.md` (stack, infra, deploy, convenciones, cómo quedó implementado lo construido).
 4. Lee `CLAUDE.md` del repo (reglas de diseño + **bitácora de errores resueltos** — no repitas esos errores).
@@ -28,7 +28,7 @@ Sistema de gestión interno (ERP-lite) para **Importadora DALI / DALI Cargos-Tra
 **Objetivo central:** matar el papel en el ciclo de la factura y dar trazabilidad (quién/qué/cuándo/dónde).
 **No reemplaza a Bsale** (el ERP/facturación actual): lo **complementa**. 4 bodegas/sucursales:
 **Mirador** (central), **Coquimbo**, **Abate Molina**, **Buzeta**. Debe funcionar como **PWA con modo offline**
-(es el mayor riesgo técnico del proyecto). Ver la biblia para el detalle de los 16 módulos y las
+(es el mayor riesgo técnico del proyecto). Ver la biblia para el detalle de los 17 módulos y las
 18 correcciones de negocio de "Luis".
 
 ---
