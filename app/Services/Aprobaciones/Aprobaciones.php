@@ -4,6 +4,7 @@ namespace App\Services\Aprobaciones;
 
 use App\Models\Aprobacion;
 use App\Models\Configuracion;
+use App\Models\ProduccionReporte;
 use App\Models\ReglaAprobacion;
 use App\Models\User;
 use App\Services\Aprobaciones\Acciones\AjusteReporteProduccion;
@@ -318,6 +319,54 @@ class Aprobaciones
             // Siempre string: el render de plantillas filtra los no-escalares y
             // un null dejaria el placeholder {magnitud} sin reemplazar.
             'magnitud' => $aprobacion->monto !== null ? number_format($aprobacion->monto, 0, ',', '.') : '—',
+            // Contexto para decidir sin entrar a la app (lote NOTIF-1, directiva
+            // del dueño 22-07). TODO placeholder nuevo con default '—'.
+            'objeto' => $this->describirObjeto($aprobacion),
+            'cambio' => $this->describirCambio($aprobacion),
+            'resuelto_por' => $aprobacion->resueltoPor?->name ?? '—',
+            // Para la escalada: la REGLA conserva el rol original (tras escalar,
+            // rol_aprobador de la solicitud ya es el rol nuevo).
+            'rol_anterior' => $aprobacion->regla?->rol_aprobador ?? '—',
+            // Timestamp absoluto con hora → enChile() (doctrina P-TZ-02).
+            'pendiente_desde' => $aprobacion->created_at?->enChile()->format('d-m-Y H:i') ?? '—',
+            'minutos' => (string) (int) Configuracion::get('aprobacion_escala_minutos', 30),
         ];
+    }
+
+    /** El objeto sobre el que se pide la acción, legible para un humano. */
+    private function describirObjeto(Aprobacion $aprobacion): string
+    {
+        $objeto = $aprobacion->aprobable;
+
+        // Los consumidores futuros (M04/M05) agregan su rama aquí al integrarse.
+        return match (true) {
+            $objeto instanceof ProduccionReporte => sprintf(
+                'Reporte de producción %s · turno %s · %s',
+                $objeto->fecha?->format('d-m-Y') ?? '—',
+                $objeto->turno ?? '—',
+                $objeto->soplador?->name ?? '—',
+            ),
+            $objeto !== null => class_basename($objeto).' #'.$objeto->getKey(),
+            default => '—',
+        };
+    }
+
+    /** El cambio pedido, pre-formateado ("campo: antes → después · …"). */
+    private function describirCambio(Aprobacion $aprobacion): string
+    {
+        $anterior = $aprobacion->datos['anterior'] ?? [];
+        $nuevo = $aprobacion->datos['nuevo'] ?? [];
+        $anterior = is_array($anterior) ? $anterior : [];
+        $nuevo = is_array($nuevo) ? $nuevo : [];
+
+        // Solo lo que difiere, comparando como STRING: '500' y 500 son el
+        // mismo valor, pero un 0 nuevo SIN valor anterior sí es un cambio
+        // (con != laxo, null != 0 es false y se perdía — gate R-31).
+        $aStr = fn ($x) => is_scalar($x) ? (string) $x : '';
+        $cambios = collect($nuevo)
+            ->filter(fn ($v, $campo) => is_scalar($v) && $aStr($anterior[$campo] ?? null) !== (string) $v)
+            ->map(fn ($v, $campo) => ucfirst((string) $campo).': '.(is_scalar($anterior[$campo] ?? null) ? $anterior[$campo] : '—').' → '.$v);
+
+        return $cambios->isNotEmpty() ? $cambios->implode(' · ') : '—';
     }
 }

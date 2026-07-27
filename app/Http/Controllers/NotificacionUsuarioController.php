@@ -42,6 +42,16 @@ class NotificacionUsuarioController extends Controller
 
         $notificacion->marcarLeida();
 
+        // Con ir=1 (la fila de la campanita) además se NAVEGA al destino del
+        // evento — leer y llegar a donde se actúa en un solo tap (lote
+        // NOTIF-1). El botón "Leída" de la bandeja no manda ir: back().
+        // urlDestinoPara (no urlDestino): la campanita debe respetar el MISMO
+        // gate de permisos que la bandeja, o navegaría a un 403 con la
+        // notificación ya marcada leída — sin destino permitido, back().
+        if ($request->boolean('ir') && ($url = $notificacion->urlDestinoPara($request->user()))) {
+            return redirect($url);
+        }
+
         return back();
     }
 

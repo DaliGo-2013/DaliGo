@@ -20,6 +20,17 @@
                         <td style="padding:24px 28px;">
                             <h1 style="margin:0 0 12px; font-size:18px; color:#1c1917;">{{ $titulo }}</h1>
                             <p style="margin:0; font-size:14px; line-height:1.6; color:#44403c; white-space:pre-line;">{{ $cuerpo }}</p>
+                            @if (filled($url ?? null))
+                                {{-- Acceso rápido (hallazgo #8): botón estructural desde el
+                                     payload — la plantilla ya no imprime la URL cruda. --}}
+                                <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:20px;">
+                                    <tr>
+                                        <td style="border-radius:8px; background-color:#ea580c;">
+                                            <a href="{{ $url }}" style="display:inline-block; padding:10px 20px; font-size:14px; font-weight:bold; color:#ffffff; text-decoration:none;">Abrir en DaliGo</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endif
                         </td>
                     </tr>
                     <tr>
