@@ -30,11 +30,17 @@ class NotificacionMail extends Mailable
 
     public function content(): Content
     {
+        // Link de acceso rápido (hallazgo #8 del QA 15-07) como BOTÓN
+        // estructural: desde el lote NOTIF-1 las plantillas ya no imprimen la
+        // {url} cruda en el cuerpo (en la campanita/bandeja la fila navega).
+        $url = $this->notificacion->payload['url'] ?? null;
+
         return new Content(
             view: 'emails.notificacion',
             with: [
                 'titulo' => $this->notificacion->titulo,
                 'cuerpo' => $this->notificacion->cuerpo,
+                'url' => is_string($url) && str_starts_with($url, 'http') ? $url : null,
             ],
         );
     }
