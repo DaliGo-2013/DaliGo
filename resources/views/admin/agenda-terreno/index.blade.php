@@ -221,8 +221,16 @@
                             {{-- Cerrar el trabajo: solo cuando está agendado (el controlador
                                  exige esa transición para quien no puede agendar). --}}
                             @if ($t->estado === 'agendado')
+                                {{-- El nombre va por Js::from y NO por {{ }} dentro del string:
+                                     `e()` convierte el apóstrofo en `&#039;`, el parser de HTML lo
+                                     devuelve a `'` dentro del atributo y el JS queda
+                                     `confirm('… D'Angelo?')` = SyntaxError. El onsubmit muere y el
+                                     formulario se envía SIN preguntar — justo la confirmación que
+                                     evita cerrar un trabajo con un toque accidental. Y este nombre
+                                     lo escribe el cliente en el formulario público del QR, así que
+                                     el apóstrofo llega solo ("Comercial D'Angelo"). --}}
                                 <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}" class="mt-4"
-                                      onsubmit="return confirm('¿Marcar como realizado el trabajo de {{ $t->cliente_nombre }}?');">
+                                      onsubmit="return confirm({{ Illuminate\Support\Js::from('¿Marcar como realizado el trabajo de '.$t->cliente_nombre.'?') }});">
                                     @csrf
                                     @method('PATCH')
                                     <input type="hidden" name="estado" value="realizado">

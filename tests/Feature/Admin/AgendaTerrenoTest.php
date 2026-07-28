@@ -372,6 +372,31 @@ class AgendaTerrenoTest extends TestCase
         $this->assertStringContainsString(urlencode('Los Nogales 1234, Curicó'), $html);
     }
 
+    public function test_un_apostrofo_en_el_nombre_no_rompe_la_confirmacion(): void
+    {
+        // El nombre lo escribe el CLIENTE en el formulario público del QR, así que
+        // un apóstrofo llega solo. Con `{{ }}` el `'` sale como `&#039;`, el parser
+        // de HTML lo devuelve a `'` dentro del atributo y el JS queda
+        // confirm('… D'Angelo?') = SyntaxError: el onsubmit muere y el formulario
+        // se envía SIN preguntar, que es exactamente lo que la confirmación evita.
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado',
+            'fecha' => '2026-07-20',
+            'cliente_nombre' => "Comercial D'Angelo",
+        ]);
+
+        $html = $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-20')
+            ->assertOk()
+            ->getContent();
+
+        // El apóstrofo viaja escapado para JS ('), no como entidad HTML.
+        // chr(92) = la barra invertida del literal \u0027 que emite Js::from
+        // (escribirla a mano acá se presta justo al enredo de comillas que este test cuida).
+        $this->assertStringContainsString('D'.chr(92).'u0027Angelo', $html);
+        $this->assertStringNotContainsString("confirm('¿Marcar", $html);
+    }
+
     public function test_un_trabajo_ya_realizado_no_vuelve_a_ofrecer_cerrarse(): void
     {
         AgendaTrabajo::factory()->create([
