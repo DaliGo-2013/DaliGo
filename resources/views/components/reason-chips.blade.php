@@ -21,7 +21,11 @@
     $known = $selectedStr !== '' && in_array($selectedStr, $options, true);
     $isOther = $allowOther && $selectedStr !== '' && ! $known;
     $initialSel = $isOther ? $otro : ($known ? $selectedStr : '');
-    $initialOther = $isOther ? $selectedStr : '';
+    // Si el `selected` ES el centinela (el caso de un old() tras validación
+    // fallida: el usuario eligió «Otro» y su texto no pasó), el chip queda
+    // marcado pero el campo libre va VACÍO — precargar '__otro__' como si
+    // fuera el motivo escrito sería peor que no precargar nada.
+    $initialOther = $isOther && $selectedStr !== $otro ? $selectedStr : '';
     $gridClass = (int) $cols === 3
         ? 'grid grid-cols-2 gap-2 sm:grid-cols-3'
         : 'grid grid-cols-2 gap-2';

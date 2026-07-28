@@ -85,10 +85,40 @@ class MotivoAjusteChipsTest extends TestCase
             'asignadas' => 110, 'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
             'motivo_ajuste' => ProduccionReporte::MOTIVO_OTRO,
             'motivo_ajuste_otro' => '   ',
-        ])->assertSessionHasErrors('motivo_ajuste');
+        ])->assertSessionHasErrors(['motivo_ajuste' => 'Escribe el motivo del cambio.']);
 
         $this->assertSame(100, $reporte->fresh()->asignadas);
         $this->assertSame(0, Aprobacion::count());
+        // El centinela NUNCA se guarda como motivo real (lo veta el notIn).
+        $this->assertNull($reporte->fresh()->motivo_ajuste);
+    }
+
+    public function test_tras_el_rechazo_el_chip_otro_sigue_marcado_y_su_campo_vacio(): void
+    {
+        // Hallazgo del gate propio: con el centinela reescrito a null, el old()
+        // perdía la selección y el usuario tenía que volver a tocar «Otro»;
+        // dejándolo, el chip sobrevive — pero el campo libre NO debe precargar
+        // el literal '__otro__'.
+        [$jefe, $reporte] = $this->escenario();
+
+        $html = $this->actingAs($jefe)
+            ->from(route('admin.produccion.reporte.show', $reporte))
+            ->followingRedirects()
+            ->post(route('admin.produccion.reporte.ajustar', $reporte), [
+                'asignadas' => 110, 'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
+                'motivo_ajuste' => ProduccionReporte::MOTIVO_OTRO,
+                'motivo_ajuste_otro' => '',
+            ])->assertOk()->getContent();
+
+        // El radio del centinela vuelve marcado…
+        $this->assertSame(1, preg_match(
+            '/<input[^>]*value="'.preg_quote(ProduccionReporte::MOTIVO_OTRO, '/').'"[^>]*checked/',
+            $html,
+        ), 'El chip «Otro» debe seguir marcado tras el rechazo.');
+
+        // …y su campo de texto NO trae el centinela como si fuera el motivo.
+        $this->assertSame(1, preg_match('/<input[^>]*name="motivo_ajuste_otro"[^>]*>/', $html, $campo));
+        $this->assertStringNotContainsString(ProduccionReporte::MOTIVO_OTRO, $campo[0]);
     }
 
     public function test_el_cambio_de_la_notificacion_no_duplica_el_motivo(): void
