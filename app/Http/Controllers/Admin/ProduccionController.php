@@ -672,6 +672,15 @@ class ProduccionController extends Controller
      */
     public function ajustar(Request $request, ProduccionReporte $reporte): RedirectResponse
     {
+        // El motivo llega de <x-reason-chips> (#6 del QA 15-07): el chip «Otro»
+        // manda el centinela y el texto libre viaja en motivo_ajuste_otro — se
+        // resuelve ANTES de validar (mismo idioma que MiProduccionController;
+        // blank → null para que el required lo rechace con su mensaje).
+        if ($request->input('motivo_ajuste') === ProduccionReporte::MOTIVO_OTRO) {
+            $otro = trim((string) $request->input('motivo_ajuste_otro'));
+            $request->merge(['motivo_ajuste' => $otro !== '' ? $otro : null]);
+        }
+
         $validated = $request->validate([
             'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
             'primera' => ['required', 'integer', 'min:0', 'max:100000'],

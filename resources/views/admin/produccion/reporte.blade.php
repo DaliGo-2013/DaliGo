@@ -266,11 +266,20 @@
                     <x-input-error :messages="$errors->get('segunda')" class="mt-1" />
                     <x-input-error :messages="$errors->get('malo')" class="mt-1" />
                     <x-input-error :messages="$errors->get('danada')" class="mt-1" />
-                    <div>
-                        <x-input-label for="motivo_ajuste" value="Motivo del cambio" />
-                        <x-textarea id="motivo_ajuste" name="motivo_ajuste" rows="2" class="mt-1.5" required>{{ old('motivo_ajuste') }}</x-textarea>
-                        <x-input-error :messages="$errors->get('motivo_ajuste')" class="mt-2" />
-                    </div>
+                    @php
+                        // Motivos como chips (#6 del QA 15-07): lenguaje común entre
+                        // solicitante y aprobador. La lista vive en Configuración
+                        // (editable por UI); el saneo is_string tolera una edición
+                        // manual rota sin reventar el form — quedaría solo «Otro»,
+                        // que es la salida de escape de siempre.
+                        $motivosAjuste = array_values(array_filter(
+                            (array) \App\Models\Configuracion::get('motivos_ajuste_produccion', []),
+                            'is_string',
+                        ));
+                    @endphp
+                    <x-reason-chips name="motivo_ajuste" label="Motivo del cambio"
+                                    :options="$motivosAjuste" :selected="old('motivo_ajuste')"
+                                    :allowOther="true" />
                     <div class="flex justify-end">
                         <x-primary-button>Guardar cambios</x-primary-button>
                     </div>
