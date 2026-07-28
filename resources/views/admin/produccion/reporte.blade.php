@@ -234,7 +234,7 @@
 
             @if ($reporte->esPendienteDeRevision())
                 {{-- Rechazar (devolver al soplador; ruta y campo conservan el nombre "devolver") --}}
-                <div x-show="panel === 'devolver'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <div x-show="panel === 'devolver'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                     <form method="POST" action="{{ route('admin.produccion.reporte.devolver', $reporte) }}" class="space-y-4">
                         @csrf
                         <div>
@@ -251,7 +251,7 @@
             @endif
 
             {{-- Editar reporte (asignadas + cantidades), cualquier estado --}}
-            <div x-show="panel === 'editar'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div x-show="panel === 'editar'" x-cloak class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <form method="POST" action="{{ route('admin.produccion.reporte.ajustar', $reporte) }}" class="space-y-4">
                     @csrf
                     <div>

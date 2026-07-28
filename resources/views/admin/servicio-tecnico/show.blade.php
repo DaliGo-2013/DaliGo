@@ -58,14 +58,14 @@
         @endcan
 
         {{-- Estado + condicion --}}
-        <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
             <span class="text-sm text-neutral-500">Estado actual:</span>
             <x-badge :variant="$orden->estado_variante">{{ \Illuminate\Support\Str::headline($orden->estado) }}</x-badge>
             <x-badge variant="neutral">{{ $esGarantia ? 'Garantía' : 'Reparación' }}</x-badge>
         </div>
 
         {{-- Cliente --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
             <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Cliente</h3>
             <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                 <div><dt class="text-xs text-neutral-400">Nombre</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_nombre }}</dd></div>
@@ -75,7 +75,7 @@
         </div>
 
         {{-- Equipo --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
             <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Equipo</h3>
             <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                 <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ $orden->tipo_equipo_label }}</dd></div>
@@ -113,7 +113,7 @@
 
         {{-- Garantia (solo si esta vigente; si vencio se trata como reparacion) --}}
         @if ($esGarantia)
-            <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
                 <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Documento de garantía</h3>
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
                     <div><dt class="text-xs text-neutral-400">Documento</dt><dd class="text-sm text-neutral-900">{{ $orden->garantia_doc_tipo ? ucfirst($orden->garantia_doc_tipo) : '—' }}</dd></div>
@@ -124,7 +124,7 @@
         @endif
 
         {{-- Reparacion (taller) --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
             <div class="mb-3 flex items-center justify-between">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Reparación (taller)</h3>
                 @can('manage servicio tecnico')
@@ -216,7 +216,7 @@
             $dgAceptada = $dgCotizaciones->firstWhere('estado', 'aceptada');
         @endphp
         @if ($dgCotizaciones->isNotEmpty())
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cotizaciones al cliente</h3>
                 <ul class="mt-3 space-y-2">
                     @foreach ($dgCotizaciones as $c)

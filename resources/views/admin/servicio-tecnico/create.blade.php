@@ -9,7 +9,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
             <form id="orden-servicio-form" method="POST" action="{{ route('admin.servicio-tecnico.store') }}" class="space-y-6" data-una-vez>
                 @csrf
                 @include('admin.servicio-tecnico._form', ['orden' => null])

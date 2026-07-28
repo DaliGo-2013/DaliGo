@@ -13,7 +13,7 @@
 
         {{-- Filtro por rango de fechas (default: mes actual). --}}
         <form method="GET" action="{{ route('admin.produccion.soplador', $soplador) }}"
-              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">
             <div class="flex-1">
                 <x-input-label for="desde" value="Desde" />
                 <x-text-input id="desde" name="desde" type="date" class="mt-1.5" :value="$desde" />
@@ -39,7 +39,7 @@
                 ];
             @endphp
             @foreach ($cards as [$label, $valor])
-                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ $valor }}</p>
                 </div>

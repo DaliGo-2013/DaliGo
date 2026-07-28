@@ -13,7 +13,7 @@
             <div class="dg-enter grid grid-cols-2 gap-3 sm:grid-cols-4">
                 @foreach ($tallerCards as $c)
                     <a href="{{ $c['href'] }}"
-                       class="group flex flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition duration-150 hover:shadow-md active:scale-[0.98]
+                       class="group flex flex-col justify-between rounded-2xl border bg-white p-3 shadow-sm sm:p-4 transition duration-150 hover:shadow-md active:scale-[0.98]
                               {{ $c['destacado'] ? 'border-brand-200 bg-brand-50' : 'border-neutral-200' }}">
                         <span class="text-3xl font-semibold tabular-nums {{ $c['destacado'] ? 'text-brand-700' : 'text-neutral-900' }}">{{ number_format($c['cantidad'], 0, ',', '.') }}</span>
                         <span class="mt-1 flex items-center justify-between gap-1">
@@ -72,7 +72,7 @@
         @if ($pulsoProduccion || $pulsoTaller)
             <div class="grid gap-6 {{ $pulsoProduccion && $pulsoTaller ? 'lg:grid-cols-2' : '' }}">
                 @if ($pulsoProduccion)
-                    <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <div class="flex items-center justify-between gap-4">
                             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción · hoy</h3>
                             <a href="{{ $pulsoProduccion['href'] }}" class="text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600">Ver panel</a>
@@ -102,7 +102,7 @@
                 @endif
 
                 @if ($pulsoTaller)
-                    <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <div class="flex items-center justify-between gap-4">
                             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Taller · equipos activos</h3>
                             <a href="{{ $pulsoTaller['href'] }}" class="text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600">Ver taller</a>

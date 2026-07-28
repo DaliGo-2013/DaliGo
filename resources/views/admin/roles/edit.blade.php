@@ -9,7 +9,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
             <form id="role-form" method="POST" action="{{ route('admin.roles.update', $role) }}" class="space-y-6">
                 @csrf
                 @method('PUT')

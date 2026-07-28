@@ -7,7 +7,7 @@
     <div class="py-8 sm:py-12">
         <div>
             <form method="POST" action="{{ route('admin.despachos.store') }}"
-                  class="space-y-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  class="space-y-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 @csrf
 
                 <div>

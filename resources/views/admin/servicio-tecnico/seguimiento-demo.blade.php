@@ -38,7 +38,7 @@
         </div>
 
         {{-- Tarjeta con el look del futuro cliente (mobile-first) --}}
-        <div class="mx-auto max-w-sm rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="mx-auto max-w-sm rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
             <div class="mb-5 border-b border-neutral-100 pb-4">
                 <h2 class="text-lg font-bold tracking-tight text-neutral-900">Seguimiento de tu equipo</h2>
                 <p class="mt-1 font-mono text-sm font-semibold text-brand-600">ST-YQUW6P4E</p>

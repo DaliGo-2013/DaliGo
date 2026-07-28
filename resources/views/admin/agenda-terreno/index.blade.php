@@ -130,7 +130,7 @@
         <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
             {{-- ---- Calendario del mes (izquierda, pegajoso al hacer scroll) ---- --}}
             <div class="lg:col-span-5">
-                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-6">
+                <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-5 lg:sticky lg:top-6">
                     <div class="mb-3 flex items-center justify-between">
                         <a href="{{ route('admin.agenda-terreno.index', $anterior) }}"
                            class="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100" title="Mes anterior">&larr;</a>
@@ -201,7 +201,7 @@
                          ninguna vista la exponía, así que el técnico no tenía forma de
                          cerrar un trabajo desde la app. --}}
                     @forelse ($trabajosDia as $t)
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                             <div class="flex flex-wrap items-center gap-2">
                                 <x-badge :variant="$t->estado_variante">{{ ucfirst($t->estado) }}</x-badge>
                                 <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $t->tipo_label }}</span>
@@ -248,7 +248,7 @@
                 @else
                     {{-- Trabajos existentes del día: cada uno como formulario editable. --}}
                     @foreach ($trabajosDia as $t)
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6"
                              x-data="agendaTerrenoForm({
                                 endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
                                 servicios: @js($serviciosJs),
@@ -287,7 +287,7 @@
                             <x-icon.plus class="h-4 w-4" /> Agregar trabajo el {{ $diaSel->translatedFormat('d \d\e F') }}
                         </button>
                         <div x-show="abierto" x-cloak
-                             class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"
+                             class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6"
                              x-data="agendaTerrenoForm({
                                 endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
                                 servicios: @js($serviciosJs),

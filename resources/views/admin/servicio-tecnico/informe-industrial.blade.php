@@ -44,12 +44,12 @@
              hay detrás del número (lo hecho / lo por hacer) sin salir del informe. --}}
         <div x-data="{ abierto: null }" class="dg-enter space-y-4">
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Trabajos en el período</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($total, 0, ',', '.') }}</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos con fecha en el período (agendados o realizados; no cuenta cancelados ni solicitudes por coordinar).</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border bg-white p-4 shadow-sm transition"
+                <div class="relative rounded-2xl border bg-white p-3 shadow-sm sm:p-4 transition"
                      :class="abierto === 'realizados' ? 'border-green-400 ring-1 ring-green-200' : 'border-neutral-200'">
                     <button type="button" class="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300 focus-visible:ring-offset-2 rounded-lg"
                             @click="abierto = abierto === 'realizados' ? null : 'realizados'"
@@ -64,7 +64,7 @@
                     </button>
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos ya realizados y su porcentaje sobre el total del período (cumplimiento). Clic en el número para ver la lista.</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border bg-white p-4 shadow-sm transition"
+                <div class="relative rounded-2xl border bg-white p-3 shadow-sm sm:p-4 transition"
                      :class="abierto === 'pendientes' ? 'border-brand-400 ring-1 ring-brand-200' : 'border-neutral-200'">
                     <button type="button" class="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2 rounded-lg"
                             @click="abierto = abierto === 'pendientes' ? null : 'pendientes'"
@@ -79,19 +79,19 @@
                     </button>
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos agendados en el período que aún no se marcan como realizados, y su % del total. Clic en el número para ver la lista.</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Visitas técnicas</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($visitas, 0, ',', '.') }}</p>
                     <p class="text-xs text-neutral-400">{{ $pctVisitas }}% del período · {{ $visitasRealizadas }} realizadas</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Visitas técnicas (diagnóstico + cotización) del período y su % del total. La conversión visita → trabajo derivado se medirá cuando enlacemos ambos.</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos usados</p>
                     <p class="mt-1 text-2xl font-semibold text-brand-600">{{ number_format($totalUnidadesRepuestos, 0, ',', '.') }}</p>
                     <p class="text-xs text-neutral-400">unidades</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Unidades totales de repuestos que el técnico registró al cerrar los trabajos del período.</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos distintos</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($totalNombresRepuestos, 0, ',', '.') }}</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Cantidad de repuestos distintos usados en el período.</x-info-tip></span>

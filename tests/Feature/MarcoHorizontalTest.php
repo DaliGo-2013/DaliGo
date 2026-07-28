@@ -53,6 +53,40 @@ class MarcoHorizontalTest extends TestCase
         }
     }
 
+    public function test_ninguna_tarjeta_cobra_su_padding_de_escritorio_en_movil(): void
+    {
+        // El barrido del 28-07: 78 tarjetas declaraban un padding único (p-4 a
+        // p-8) que el celular pagaba igual que el monitor. Ahora TODAS declaran
+        // el valor de móvil y el de escritorio detrás de sm:. Este candado
+        // impide que una vista nueva vuelva al padding único — es el defecto que
+        // nadie nota revisando en pantalla grande.
+        $sinVariante = [];
+
+        foreach (File::allFiles(resource_path('views')) as $archivo) {
+            if (! str_ends_with($archivo->getFilename(), '.blade.php')) {
+                continue;
+            }
+            // Los correos van con tablas y padding fijo a propósito: los
+            // clientes de correo no entienden media queries.
+            if (str_contains($archivo->getPathname(), '/emails/')) {
+                continue;
+            }
+
+            $lineas = explode("\n", File::get($archivo->getPathname()));
+            foreach ($lineas as $n => $linea) {
+                // Tarjeta = fondo blanco + padding parejo de 4 o más, sin sm:.
+                if (preg_match('/bg-white p-[4-8] shadow-sm(?! sm:p-)/', $linea)) {
+                    $sinVariante[] = str_replace(resource_path('views').'/', '', $archivo->getPathname()).':'.($n + 1);
+                }
+            }
+        }
+
+        $this->assertSame([], $sinVariante,
+            "Estas tarjetas cobran en móvil el padding pensado para escritorio. Declaralo mobile-first ".
+            "(p-3/p-4 y el valor grande detrás de sm:) — ver «Marco horizontal» en CLAUDE.md:\n  ".
+            implode("\n  ", $sinVariante));
+    }
+
     public function test_la_seccion_no_dibuja_marco_en_movil_y_lo_recupera_en_escritorio(): void
     {
         $seccion = File::get(resource_path('views/components/seccion.blade.php'));

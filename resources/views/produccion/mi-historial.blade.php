@@ -83,7 +83,7 @@
                             : 'l d \d\e F Y';
                     @endphp
                     <a href="{{ route('produccion.mi.show', $reporte) }}"
-                       class="block rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:bg-neutral-50 active:scale-[0.99] sm:p-5">
+                       class="block rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 transition duration-150 hover:bg-neutral-50 active:scale-[0.99] sm:p-5">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-neutral-900">
