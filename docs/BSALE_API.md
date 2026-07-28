@@ -23,7 +23,19 @@ Obtención en **producción**, dos vías: (1) solicitarlo por correo a ayuda@bsa
 
 > **Scopes y expiración del token:** no documentados. ❓ [NO ENCONTRADO]
 
-**Límites (rate limit).** **3.000 requests / 300 segundos**; al excederlo → HTTP **429**. ✅ [CONFIRMADO] — https://docs.bsale.dev/faq
+**Límites (rate limit).** ⚠️ **DOS CIFRAS QUE NO COINCIDEN.** Su FAQ público dice **3.000 requests / 300
+segundos**; su soporte, por correo (28-jul-2026, consulta de Dali), dice **2.400 solicitudes cada 5
+minutos**. Al excederlo → HTTP **429**, y —dato NUEVO que el FAQ no menciona— **bloqueo temporal de 5
+minutos**, después del cual se puede seguir con normalidad. **Diseñar contra 2.400** (la más estricta) y
+asumir la penalización de 300 s. ✅ [CONFIRMADO ambas, fuentes distintas] — https://docs.bsale.dev/faq +
+respuesta de soporte
+
+> **Por qué `BsaleClient` NO espera los 5 minutos (decisión, 28-jul-2026).** El backoff del cliente topa
+> en 30 s con 3 intentos, así que un bloqueo de 300 s agota los reintentos y la sync muere con
+> `BsaleApiException`. **Es lo correcto y no hay que "arreglarlo" subiendo el tope:** dormir 5 minutos
+> dentro de un cron del hosting compartido es peor (límite de ejecución de LiteSpeed/PHP). Las syncs
+> corren cada 15 min y `DocumentSync` no avanza su watermark cuando falla → el tramo se re-barre en la
+> corrida siguiente. La penalización se sobrevive **con el próximo cron, no durmiendo**.
 
 **Paginación.** limit (default **25**, **máx 50**) y offset (default 0). Sobre de respuesta: { "href", "count", "limit", "offset", "items": [...], "next": "...url..." }. ✅ [CONFIRMADO] — https://docs.bsale.dev/productos-y-servicios · https://docs.bsale.dev/clientes
 
@@ -142,6 +154,23 @@ GET https://api.bsale.io/v1/stocks.json?code=629&officeid=1
 
 **Emisión de DTE por API: SÍ.** POST /v1/documents.json. Envío: documentTypeId o codeSii, officeId, priceListId, emissionDate, expirationDate, declareSii (1=declarar SII), client/clientId, details[] (variantId/code/barCode, netUnitValue, quantity, taxId/taxes[], discount, comment), payments[], references[], dynamicAttributes[], salesId (id externo idempotente), dispatch (rebaja stock), sendEmail. ✅ [CONFIRMADO] — https://docs.bsale.dev/documentos
 
+**Folios: NO se pueden reservar ni consultar por anticipado** (soporte Bsale, 28-jul-2026, textual): *"al
+emitir documentos mediante la API, Bsale asigna automáticamente el folio disponible según el tipo de
+documento y **la sucursal configurada para la emisión**"*, y *"no existe un método para reservar un folio
+ni para consultar cuál será el siguiente folio antes de emitir"*. ⚠️ Consecuencia para M05: el aviso
+preventivo de folios (B7) puede no ser construible por API — **repreguntar** si existe el *stock
+restante* / vencimiento del CAF, que es una pregunta distinta de "el próximo folio". El
+`document_types/caf.json` que usa `BsaleEmisor::foliosDisponibles()` sigue **sin verificar**. ✅
+[CONFIRMADO la limitación] — respuesta de soporte
+
+**Caja / cierre de caja: contradicción entre su soporte y su documentación.** Soporte (28-jul-2026) dice
+que para que el documento cuadre en el cierre hay que asociar *"la sucursal, la caja y la forma de pago"*
+— pero el body de `documents.json` **no expone ningún campo de caja**: solo `officeId`, `payments[]` y el
+resto (verificado en https://docs.bsale.dev/documentos, 28-jul-2026). Hipótesis a confirmar: la caja se
+deriva de la sucursal, o los documentos por API caen en una caja por defecto. ⚠️ **Aclarar ANTES de la
+primera emisión real**: un documento en la caja equivocada aparece como descuadre al cierre del día.
+❓ [CONTRADICCIÓN ABIERTA]
+
 **El documento devuelto trae:** id, number (**folio**), totalAmount, netAmount, taxAmount, state, informedSii (0=correcto/1=enviado/2=rechazado), ted, urlXml, **PDF**: urlPdf, urlPublicView, urlPdfOriginal, token; nodos client, office, details, references, document_taxes, sellers. ✅
 
 | Método + ruta | Auth | Notas |
@@ -221,7 +250,7 @@ Detección de cambios: **webhooks** (product, variant, price, stock, document; r
 | ¿Stock por bodega? | **Sí** (lectura; escritura vía recepción/consumo; con reservas) | stocks, sucursales |
 | ¿Emisión DTE + PDF por API? | **Sí** (POST /documents, devuelve folio, urlPdf, urlXml) | documentos |
 | ¿Webhooks (eventos)? | **Sí**: document, product, variant, price, stock, doc. pagado (+ tienda online). Activación por email | webhooks, productos-y-servicios/webhooks |
-| ¿Rate limits? | **3.000 req / 300 s (429)** | faq |
+| ¿Rate limits? | **2.400 req / 300 s** (soporte) vs 3.000 (faq) → 429 + **bloqueo de 5 min** | faq + soporte |
 | ¿Paginación máx? | **limit máx 50** (default 25) | productos-y-servicios |
 | ¿Scopes / expiración de token? | **Desconocido** | — |
 

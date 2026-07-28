@@ -180,11 +180,32 @@ centro de ayuda) sobre este cambio normativo.
 Como referencia: cuando en 2022 el SII cambió un anexo técnico, **Bsale sí lo anunció públicamente**.
 El silencio actual, a tres meses del plazo, es llamativo.
 
-### Acción tomada
+### Respuesta de Bsale (28 de julio de 2026) — sin fecha
 
-Ya se envió una consulta formal a Bsale preguntando **qué campos incorporará y en qué fecha**.
-**Esta es la respuesta más importante que estamos esperando**, y conviene que Gerencia haga seguimiento
-por la vía comercial si no llega pronto.
+Se consultó formalmente. Bsale respondió, textualmente, que *"realizará las adecuaciones necesarias para
+cumplir con la normativa vigente dentro de los plazos establecidos por el SII"* y que si el nuevo anexo
+técnico requiere campos nuevos en la API, *"dichos cambios serán informados oportunamente a través de
+nuestra documentación oficial para que puedan ser implementados por quienes integran sus sistemas"*.
+
+**Qué significa, sin adornos:**
+
+| Lo que preguntamos | Lo que respondieron |
+|---|---|
+| ¿Qué campos de transporte incorporará la integración? | No lo dicen |
+| ¿En qué fecha? | No lo dicen |
+| ¿Cómo nos vamos a enterar? | Publicándolo en su documentación. **Hay que ir a mirarla** |
+
+No es una negativa: es un compromiso general de cumplir, sin fecha. Y la última frase traslada trabajo
+a Dali: cuando Bsale publique los campos nuevos, **alguien tiene que implementarlos de este lado**, con
+el plazo del 1 de noviembre ya encima.
+
+**Consecuencias prácticas:**
+
+1. **La guía de despacho de garantía (§7.4) no se construye todavía.** Sería construirla dos veces.
+2. **Hay que vigilar la documentación de Bsale**, no esperar un aviso. Si publican en octubre, quedan
+   semanas para implementar.
+3. **Conviene que Gerencia insista por la vía comercial** pidiendo una fecha. Una consulta técnica ya se
+   hizo y dio esto; el ejecutivo comercial es otro canal.
 
 *(Nota: la factura y la guía impresas de Dali ya traen los campos "Nombre del conductor / RUT / Patente
 del vehículo" en blanco — es exactamente esa información la que pasa a ser obligatoria.)*
@@ -352,6 +373,22 @@ Se propone que la primera emisión real **no ocurra** hasta que:
 textualmente que tiene todas las características *"(no electrónicas)"*). Es decir: **la primera vez
 que veremos un documento realmente timbrado será en producción.** Por eso la Fase 4 merece ceremonia.
 
+### ✅ Bsale confirmó esto por escrito, y recomienda exactamente este plan
+
+En su respuesta del **28 de julio de 2026**, Bsale confirmó las dos cosas y además **recomendó el mismo
+procedimiento** que se propone acá:
+
+> *"El ambiente de pruebas de la API corresponde a un entorno no electrónico, por lo que los documentos
+> emitidos en dicho ambiente no son timbrados ni enviados al SII."*
+>
+> *"Al no existir un ambiente de certificación con envío al SII, la recomendación es realizar la primera
+> emisión directamente en producción utilizando un documento de bajo monto. En caso de ser necesario,
+> posteriormente puede anularse mediante la correspondiente Nota de Crédito."*
+
+Es decir: **monto bajo + nota de crédito lista** no es una cautela nuestra, es el procedimiento que
+recomienda el proveedor que hoy emite los documentos de la empresa. Eso no elimina el riesgo de la Fase
+4, pero sí significa que no estamos improvisando un atajo.
+
 ---
 
 ## 9. Riesgos y cómo se controlan
@@ -360,11 +397,11 @@ que veremos un documento realmente timbrado será en producción.** Por eso la F
 |---|---|
 | **Emitir un documento por error o dos veces** | Cada documento lleva una clave única derivada de su origen; la base de datos **impide** físicamente crear dos para el mismo origen. Un doble clic no puede duplicar. |
 | **Emitir contra producción creyendo que es prueba.** En Bsale el ambiente **lo define solo la credencial** (las direcciones son idénticas) | Bloqueo automático: el sistema no arranca con credenciales de producción fuera del servidor de producción. |
-| **Quedarse sin folios** o usar folios vencidos (el SII rechaza) | Aviso automático preventivo por cantidad restante y por fecha de vencimiento. |
+| **Quedarse sin folios** o usar folios vencidos (el SII rechaza) | ⚠️ **Control DEGRADADO.** Se había previsto un aviso automático por cantidad restante y vencimiento. Bsale respondió (28-jul) que **no existe método para reservar un folio ni para saber cuál será el siguiente**, así que ese aviso puede no ser construible. Queda una repregunta pendiente: consultar el *stock restante* es distinto de saber *el próximo folio*. Si no hay forma, el control pasa a ser **manual** (revisar folios en Bsale). |
 | **Documento rechazado por el SII** | Queda registrado y visible con su motivo; se corrige con nota de crédito. |
-| **Perder el cierre de caja de Bsale** | Verificado: los documentos emitidos por integración **sí quedan asociados a la caja del día**. Falta confirmar con Bsale a qué caja/usuario se atribuyen. |
+| **Perder el cierre de caja de Bsale** | ⚠️ **Sin resolver.** Bsale respondió que para que el documento cuadre en el cierre hay que asociar *"la sucursal, la caja y la forma de pago"*. Sucursal y forma de pago sí se pueden asociar (ya está hecho), pero **su propia documentación de la API no expone ningún campo de caja** — solo sucursal. Es una contradicción entre su respuesta y su documentación, y hay que aclararla **antes** de la primera emisión: si el documento cae en una caja equivocada, el descuadre lo descubre alguien al cierre del día. |
 | **Depender de Bsale a futuro** | El sistema se diseñó para que cambiar de emisor sea reemplazar una pieza, sin rehacer el módulo. |
-| **Cambio normativo del 1-nov-2026** | Consulta enviada a Bsale. **Pendiente.** |
+| **Cambio normativo del 1-nov-2026** | Respondido sin fecha (ver §6). **Riesgo abierto:** hay que vigilar su documentación e insistir por la vía comercial. |
 
 ---
 
@@ -391,10 +428,11 @@ a julio de 2026 eran:
 
 | # | Pregunta | A quién | Estado |
 |---|---|---|---|
-| 1 | ¿Qué campos de transporte tendrá la integración y cuándo? (plazo 1-nov-2026) | Bsale | 🔴 **Enviada, esperando** |
-| 2 | ¿A qué caja/usuario se atribuyen los documentos emitidos por integración? | Bsale | Enviada |
-| 3 | ¿Los documentos por integración consumen el mismo cupo del plan? | Bsale | Enviada |
-| 4 | ¿Se puede emitir un documento de prueba que sí llegue al SII? | Bsale | Enviada (la documentación sugiere que no) |
+| 1 | ¿Qué campos de transporte tendrá la integración y cuándo? (plazo 1-nov-2026) | Bsale | 🔴 **Respondida SIN FECHA** (§6). Riesgo abierto: vigilar su documentación + insistir por la vía comercial |
+| 2 | ¿A qué caja se atribuyen los documentos emitidos por integración? | Bsale | 🔴 **Respuesta contradictoria:** dicen que hay que asociar la caja, pero su API no tiene ese campo. **Repreguntar** |
+| 3 | ¿Los documentos por integración consumen el mismo cupo del plan? | Bsale → **ejecutivo comercial** | Derivada al área comercial: depende del plan de cada razón social |
+| 4 | ¿Se puede emitir un documento de prueba que sí llegue al SII? | Bsale | ✅ **NO.** Confirmado por escrito: el ambiente de pruebas es no electrónico |
+| 4b | ¿Existe forma de consultar el **stock restante** de folios y el vencimiento del CAF (aunque no se pueda reservar)? | Bsale | ⬜ **Repreguntar** (afecta el control de la §9) |
 | 5 | Reglas contables 1 a 8 de la §7 | Contabilidad | ✅ **Respondidas 28-jul-2026** |
 | 6 | Validar que el RCOF está derogado y que el RCV reemplaza los libros | Contabilidad | ⬜ Pendiente |
 | 7 | Configuración de cierre de caja en Bsale: ¿"por emisor" o "por sucursal"? | Interno | ⬜ Pendiente |
@@ -452,6 +490,11 @@ Todo lo afirmado se verificó en fuentes primarias.
       staging termina como DTE real en el sandbox de Bsale"*, y eso es **inalcanzable** porque el
       ambiente de prueba de Bsale no emite documentos electrónicos.
 - [ ] Cerrar la decisión **D-005** con las respuestas de Bsale.
+- [ ] **Repreguntar a Bsale dos cosas concretas** (ver §11): cómo se asocia la **caja** si la API no
+      tiene ese campo, y si existe forma de consultar el **stock restante** de folios / vencimiento del
+      CAF. Las dos afectan controles de la §9.
+- [ ] **Vigilar la documentación de Bsale** por los campos de transporte del 1-nov-2026: no van a avisar,
+      lo publican y hay que ir a mirar.
 - [ ] Revisar si el flujo de guías de despacho de DaliGo necesita capturar chofer, patente y horarios
       antes del 1-nov-2026. **Subió de prioridad:** la respuesta 4 de la §7 convierte la guía de
       despacho en alcance obligatorio (devolución de equipos en garantía), y es justamente el documento

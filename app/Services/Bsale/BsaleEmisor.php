@@ -104,7 +104,18 @@ class BsaleEmisor implements EmisorDte
     /**
      * Folios disponibles para un tipo de DTE.
      *
-     * ⚠️ Shape NO verificado contra la API real (ver la nota de la clase).
+     * ⚠️ Shape NO verificado contra la API real (ver la nota de la clase), y con
+     * una duda de fondo que va más allá del shape: el soporte de Bsale respondió
+     * el 28-jul-2026 que *"no existe un método para reservar un folio ni para
+     * consultar cuál será el siguiente folio antes de emitir"*, porque la
+     * asignación ocurre al generar el DTE.
+     *
+     * Eso NO responde exactamente lo que este método necesita —el *stock
+     * restante* y el vencimiento del CAF son otra pregunta que "cuál es el
+     * próximo folio"— pero deja el endpoint en duda. Hay una repregunta pendiente
+     * (ver `docs/BSALE_API.md` §Documentos y §11 del informe). Si resulta que no
+     * hay forma por API, el aviso preventivo de folios pasa a ser control MANUAL
+     * y este método debe eliminarse en vez de devolver números inventados.
      */
     public function foliosDisponibles(int $tipoDte): FoliosDisponibles
     {
