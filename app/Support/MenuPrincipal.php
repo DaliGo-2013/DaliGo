@@ -158,6 +158,26 @@ class MenuPrincipal
     ];
 
     /**
+     * Prioridad de ítems POR ROL dentro de un módulo (pedido del dueño
+     * 2026-07-28). NO cambia la VISIBILIDAD —eso se sigue derivando del permiso,
+     * doctrina de este archivo— solo el ORDEN: para un perfil cuyo trabajo diario
+     * no es el taller, sus ítems flotan al tope de su módulo y el resto queda
+     * debajo como secundario, conservando su orden relativo.
+     *
+     * Hoy solo el técnico industrial (Carlos Tablante): su día es la agenda de
+     * terreno y las instalaciones; Listado / Ingreso por lote los usa recién
+     * cuando cubre a alguien por enfermedad o vacaciones, no como entrada.
+     *
+     * Estructura: rol => [ moduloKey => [ keys de ítem en orden prioritario ] ].
+     * Un usuario con varios roles acumula las prioridades de todos (sin duplicar).
+     */
+    public const PRIORIDAD_POR_ROL = [
+        'tecnico_industrial' => [
+            'servicio-tecnico' => ['agenda-terreno', 'instalaciones'],
+        ],
+    ];
+
+    /**
      * Árbol podado por permisos para el usuario: módulos con al menos un ítem
      * visible (o links directos permitidos). La visibilidad del módulo se
      * deriva — no existe una lista @canany aparte que pueda driftear.
@@ -178,6 +198,7 @@ class MenuPrincipal
                     fn (array $item) => self::puedeVer($user, $item['permiso'])
                 );
                 if ($items !== []) {
+                    $items = self::priorizarPorRol($user, $key, $items);
                     $arbol[$key] = array_merge($modulo, ['items' => $items]);
                 }
             } elseif (self::puedeVer($user, $modulo['permiso'])) {
@@ -358,5 +379,44 @@ class MenuPrincipal
     private static function puedeVer(User $user, ?string $permiso): bool
     {
         return $permiso === null || $user->canAny(explode('|', $permiso));
+    }
+
+    /**
+     * Reordena los ítems YA PODADOS de un módulo según PRIORIDAD_POR_ROL: los
+     * prioritarios del/los rol(es) del usuario suben al tope (en el orden
+     * declarado, sin duplicar entre roles), y el resto queda debajo con su
+     * orden original. Estable: si el usuario no tiene prioridades para este
+     * módulo, devuelve los ítems tal cual. Solo mueve ítems que estén visibles
+     * (los prioritarios que el permiso ocultó se ignoran).
+     *
+     * @param  array<string, array<string, mixed>>  $items
+     * @return array<string, array<string, mixed>>
+     */
+    private static function priorizarPorRol(User $user, string $moduloKey, array $items): array
+    {
+        $orden = [];
+        foreach (self::PRIORIDAD_POR_ROL as $rol => $modulos) {
+            if (isset($modulos[$moduloKey]) && $user->hasRole($rol)) {
+                foreach ($modulos[$moduloKey] as $itemKey) {
+                    if (! in_array($itemKey, $orden, true)) {
+                        $orden[] = $itemKey;
+                    }
+                }
+            }
+        }
+
+        if ($orden === []) {
+            return $items;
+        }
+
+        $arriba = [];
+        foreach ($orden as $itemKey) {
+            if (isset($items[$itemKey])) {
+                $arriba[$itemKey] = $items[$itemKey];
+            }
+        }
+
+        // $arriba primero (prioridad), luego el resto en su orden original.
+        return $arriba + array_diff_key($items, $arriba);
     }
 }
