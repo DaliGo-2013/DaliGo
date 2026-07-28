@@ -149,6 +149,113 @@ class InstalacionManagementTest extends TestCase
         $this->assertSame('Carlos Toledo', $ins->fresh()->vendedor);
     }
 
+    // --- Historial por período (cards Año → Mes) ---
+
+    public function test_el_historial_agrupa_por_anio_con_desglose_por_categoria(): void
+    {
+        Instalacion::factory()->create(['fecha' => '2026-07-13', 'categoria' => 'lavadora']);
+        Instalacion::factory()->create(['fecha' => '2026-06-25', 'categoria' => 'lavadora']);
+        Instalacion::factory()->create(['fecha' => '2026-06-13', 'categoria' => 'planta']);
+        Instalacion::factory()->create(['fecha' => '2025-04-02', 'categoria' => 'llenadora']);
+
+        $historial = $this->actingAs($this->tecnicoIndustrial())
+            ->get(route('admin.instalaciones.index'))
+            ->assertOk()
+            ->viewData('historial');
+
+        // Años más recientes primero.
+        $this->assertSame([2026, 2025], array_keys($historial['anios']->all()));
+        $this->assertSame(3, $historial['anios'][2026]['total']);
+        $this->assertSame(['lavadora' => 2, 'planta' => 1], $historial['anios'][2026]['categorias']);
+        // Sin año elegido no se calculan los meses (una consulta menos).
+        $this->assertNull($historial['meses']);
+    }
+
+    public function test_las_categorias_sin_registros_no_aparecen_en_la_card(): void
+    {
+        Instalacion::factory()->create(['fecha' => '2026-07-13', 'categoria' => 'lavadora']);
+
+        $historial = $this->actingAs($this->tecnicoIndustrial())
+            ->get(route('admin.instalaciones.index'))
+            ->viewData('historial');
+
+        // Una card que dijera "0 planta · 0 llenadora" es ruido.
+        $this->assertSame(['lavadora' => 1], $historial['anios'][2026]['categorias']);
+    }
+
+    public function test_al_elegir_un_anio_aparecen_sus_doce_meses_con_conteo(): void
+    {
+        Instalacion::factory()->create(['fecha' => '2026-07-13']);
+        Instalacion::factory()->create(['fecha' => '2026-06-25']);
+        Instalacion::factory()->create(['fecha' => '2026-06-13']);
+        Instalacion::factory()->create(['fecha' => '2025-06-01']); // otro año: no cuenta
+
+        $historial = $this->actingAs($this->tecnicoIndustrial())
+            ->get(route('admin.instalaciones.index', ['anio' => 2026]))
+            ->assertOk()
+            ->viewData('historial');
+
+        $this->assertCount(12, $historial['meses'], 'Van los 12 meses, con 0 los vacíos.');
+        $this->assertSame(2, $historial['meses'][6]);
+        $this->assertSame(1, $historial['meses'][7]);
+        $this->assertSame(0, $historial['meses'][1]);
+    }
+
+    public function test_el_listado_obedece_el_periodo_elegido(): void
+    {
+        Instalacion::factory()->create(['fecha' => '2026-07-13', 'cliente_nombre' => 'Canto del Agua']);
+        Instalacion::factory()->create(['fecha' => '2026-06-25', 'cliente_nombre' => 'Aguas del Norte']);
+        Instalacion::factory()->create(['fecha' => '2025-04-02', 'cliente_nombre' => 'Vida Sana']);
+
+        $tecnico = $this->tecnicoIndustrial();
+
+        // Año completo.
+        $anio = $this->actingAs($tecnico)->get(route('admin.instalaciones.index', ['anio' => 2026]))
+            ->assertOk()->viewData('instalaciones');
+        $this->assertSame(2, $anio->total());
+        $this->assertFalse($anio->pluck('cliente_nombre')->contains('Vida Sana'));
+
+        // Un mes puntual dentro del año.
+        $mes = $this->actingAs($tecnico)->get(route('admin.instalaciones.index', ['anio' => 2026, 'mes' => 6]))
+            ->assertOk()->viewData('instalaciones');
+        $this->assertSame(1, $mes->total());
+        $this->assertSame('Aguas del Norte', $mes->first()->cliente_nombre);
+    }
+
+    public function test_el_periodo_convive_con_los_otros_filtros(): void
+    {
+        Instalacion::factory()->create(['fecha' => '2026-06-25', 'categoria' => 'lavadora']);
+        Instalacion::factory()->create(['fecha' => '2026-06-13', 'categoria' => 'planta']);
+
+        $listado = $this->actingAs($this->tecnicoIndustrial())
+            ->get(route('admin.instalaciones.index', ['anio' => 2026, 'mes' => 6, 'categoria' => 'planta']))
+            ->assertOk()
+            ->viewData('instalaciones');
+
+        $this->assertSame(1, $listado->total());
+        $this->assertSame('planta', $listado->first()->categoria);
+    }
+
+    public function test_un_periodo_invalido_se_rechaza(): void
+    {
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get(route('admin.instalaciones.index', ['mes' => 13]))
+            ->assertSessionHasErrors('mes');
+    }
+
+    public function test_el_desplegable_de_anio_ya_no_existe(): void
+    {
+        Instalacion::factory()->create(['fecha' => '2026-07-13']);
+
+        // Las cards del historial lo reemplazaron: dos formas de filtrar el mismo
+        // parámetro se contradicen entre sí.
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get(route('admin.instalaciones.index'))
+            ->assertOk()
+            ->assertDontSee('<select id="anio"', false)
+            ->assertSee('Historial');
+    }
+
     public function test_elimina_una_instalacion(): void
     {
         $ins = Instalacion::factory()->create();
