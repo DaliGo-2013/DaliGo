@@ -142,7 +142,7 @@
 
             <div>
                 <x-input-label for="garantia_doc_numero" value="N° de documento" />
-                <x-text-input id="garantia_doc_numero" class="mt-1.5" type="text" name="garantia_doc_numero"
+                <x-text-input id="garantia_doc_numero" class="mt-1.5" type="text" inputmode="numeric" name="garantia_doc_numero"
                     :value="old('garantia_doc_numero', $o?->garantia_doc_numero)" maxlength="191"
                     x-bind:required="cond === 'garantia'" />
                 <x-input-error :messages="$errors->get('garantia_doc_numero')" class="mt-2" />

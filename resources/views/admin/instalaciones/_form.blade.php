@@ -34,7 +34,7 @@
                 x-on:keydown.escape="abierto = false"
                 x-on:click.outside="abierto = false" />
             <div x-show="abierto && (buscando || resultados.length)" x-cloak
-                 class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                 x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                 <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
                     <template x-for="r in resultados" :key="r.id">
                         <li>

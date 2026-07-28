@@ -10,7 +10,7 @@
         </x-page-header>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-4 sm:py-12">
         {{-- Etapas de la orden: recepción · cotización · parte del técnico. --}}
         @include('admin.servicio-tecnico._tabs', ['activa' => 'recepcion'])
 

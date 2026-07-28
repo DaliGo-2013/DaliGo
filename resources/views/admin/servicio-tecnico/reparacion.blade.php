@@ -21,7 +21,7 @@
                        :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado" />
     </x-slot>
 
-    <div class="py-12" x-data="{ editando: {{ $errors->any() ? 'true' : 'false' }} }">
+    <div class="py-4 sm:py-12" x-data="{ editando: {{ $errors->any() ? 'true' : 'false' }} }">
         @include('admin.servicio-tecnico._tabs', ['activa' => 'tecnico'])
 
         <x-status-alert :status="session('status')" />
@@ -210,10 +210,7 @@
                 <div>
                     <div class="flex items-center justify-between">
                         <x-input-label value="Repuestos usados" />
-                        <button type="button" x-on:click="agregar()"
-                            class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                            <x-icon.plus class="h-4 w-4" /> Agregar repuesto
-                        </button>
+                        <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
                     </div>
 
                     <div class="mt-2 space-y-2">
@@ -231,7 +228,7 @@
                                         class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
 
                                     <div x-show="filaActiva === i && (buscandoRepuesto || sugerencias.length)" x-cloak
-                                        class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                        x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                                         <template x-if="buscandoRepuesto && sugerencias.length === 0">
                                             <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
                                         </template>
@@ -255,13 +252,13 @@
                                 <div class="flex items-start gap-2">
                                     <div class="w-20 sm:w-16">
                                         <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
-                                        <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                        <input type="number" min="1" inputmode="numeric" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     </div>
-                                    <button type="button" x-on:click="quitar(i)"
-                                        class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
+                                    <x-icon-button variant="danger" class="shrink-0 self-end sm:self-start"
+                                        x-on:click="quitar(i)" title="Quitar" label="Quitar repuesto">
                                         <x-icon.trash class="h-5 w-5" />
-                                    </button>
+                                    </x-icon-button>
                                 </div>
                             </div>
                         </template>
@@ -290,10 +287,13 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 border-t border-neutral-100 pt-5">
+                {{-- gap-3 y min-h-11: "Cancelar" descarta TODA la edición y estaba a 8px
+                     de "Guardar", con 34px de alto. En celular van apilados y Guardar
+                     primero, para que el pulgar no llegue antes al destructivo. --}}
+                <div class="flex flex-col-reverse gap-3 border-t border-neutral-100 pt-5 sm:flex-row sm:items-center sm:justify-end">
                     <button type="button" x-on:click="editando = false"
-                        class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
-                    <x-primary-button>
+                        class="inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
+                    <x-primary-button class="h-12 w-full sm:h-auto sm:w-auto">
                         <x-icon.check class="h-4 w-4" /> Guardar
                     </x-primary-button>
                 </div>

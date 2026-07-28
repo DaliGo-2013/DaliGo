@@ -163,7 +163,18 @@ Alpine.directive('dg-anclar', (el, {}, { cleanup }) => {
         const arriba = base.top + offsetY;
 
         const vpAncho = document.documentElement.clientWidth;
-        const vpAlto = document.documentElement.clientHeight;
+
+        // El alto se mide con visualViewport, NO con clientHeight: en celular
+        // clientHeight ignora el teclado y la directiva concluye que el panel
+        // "cabe abajo" cuando en realidad queda tapado. visualViewport sí lo
+        // refleja (iOS Safari incluido), y ese es justo el caso de los
+        // autocompletados de repuesto/producto, que viven al fondo de
+        // formularios largos. En horizontal la diferencia decide todo: 393px de
+        // alto menos ~216px de teclado deja 177px para un panel de 240px.
+        const vv = window.visualViewport;
+        const vpTop = vv ? vv.offsetTop : 0;
+        const vpAlto = vv ? vv.height : document.documentElement.clientHeight;
+        const vpFondo = vpTop + vpAlto;
 
         // Horizontal: el panel nace hacia el lado con MAS espacio libre. Esta
         // sola regla reproduce todas las elecciones que hoy estan a mano —un ⓘ
@@ -187,9 +198,9 @@ Alpine.directive('dg-anclar', (el, {}, { cleanup }) => {
         // Vertical: si no cabe donde esta, probar el otro lado del disparador
         // (solo si alla cabe entero; si no, mejor quedarse y scrollear).
         let dy = 0;
-        if (arriba + alto > vpAlto - MARGEN && base.top - MARGEN >= alto) {
+        if (arriba + alto > vpFondo - MARGEN && base.top - MARGEN - vpTop >= alto) {
             dy = base.top - MARGEN - alto - arriba; // voltea ARRIBA
-        } else if (arriba < MARGEN && vpAlto - MARGEN - base.bottom >= alto) {
+        } else if (arriba < vpTop + MARGEN && vpFondo - MARGEN - base.bottom >= alto) {
             dy = base.bottom + MARGEN - arriba; // voltea ABAJO
         }
 
@@ -209,7 +220,7 @@ Alpine.directive('dg-anclar', (el, {}, { cleanup }) => {
 
         // Ultimo recurso: no cabe entero por ningun lado -> scroll adentro, que
         // es preferible a que la mitad quede fuera de la pantalla.
-        const disponible = vpAlto - MARGEN - (arriba + dy);
+        const disponible = vpFondo - MARGEN - (arriba + dy);
         if (alto > disponible) {
             el.style.maxHeight = `${Math.max(Math.round(disponible), ALTO_MINIMO)}px`;
             el.style.overflowY = 'auto';
@@ -238,10 +249,18 @@ Alpine.directive('dg-anclar', (el, {}, { cleanup }) => {
     window.addEventListener('resize', alMoverse);
     window.addEventListener('scroll', alMoverse, { passive: true, capture: true });
 
+    // Abrir/cerrar el teclado NO dispara `resize` de window en iOS Safari, solo
+    // el de visualViewport. Sin estos dos, un panel que se abrió con el teclado
+    // ya arriba nunca se recalcularía al ocultarse (y viceversa).
+    window.visualViewport?.addEventListener('resize', alMoverse);
+    window.visualViewport?.addEventListener('scroll', alMoverse);
+
     cleanup(() => {
         observador.disconnect();
         window.removeEventListener('resize', alMoverse);
         window.removeEventListener('scroll', alMoverse, { capture: true });
+        window.visualViewport?.removeEventListener('resize', alMoverse);
+        window.visualViewport?.removeEventListener('scroll', alMoverse);
     });
 });
 
@@ -656,9 +675,15 @@ Alpine.data('cierreTerrenoForm', () => ({
  * (comprimida en el navegador con optimizarFotoInput). La empresa y los
  * defaults del lote se eligen una vez fuera de este componente.
  */
-Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente, tipoDefault, tiposSerie }) => ({
+Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente, tipoDefault, tiposSerie, inicial }) => ({
     endpointProducto: endpointProducto || '',
     endpointCliente: endpointCliente || '',
+
+    // Filas con las que arranca el formulario. En un re-render por error de
+    // validación llegan desde old('maquinas'): sin esto el cliente que cargó
+    // cinco máquinas las perdía TODAS y quedaba mirando un banner de errores
+    // que apuntaba a campos que ya no existían en la página.
+    inicial: Array.isArray(inicial) ? inicial : [],
 
     // Tipo por defecto del lote (reactivo: el select de arriba lo actualiza) y
     // tipos cuyo N° de serie es obligatorio — para marcar la serie por fila.
@@ -686,6 +711,12 @@ Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente, tipoDefaul
     buscando: false,
 
     init() {
+        // Repoblar lo que el cliente ya había escrito antes del error. Las fotos
+        // no se pueden restaurar (el navegador no deja re-poblar un input file):
+        // la vista avisa de eso aparte.
+        if (this.inicial.length) {
+            this.maquinas = this.inicial.map((m) => ({ ...this.filaVacia(), ...m }));
+        }
         if (this.maquinas.length === 0) this.agregar();
     },
 
@@ -717,8 +748,11 @@ Alpine.data('loteServicioForm', ({ endpointProducto, endpointCliente, tipoDefaul
         this.empresaResultados = [];
     },
 
+    // `tipo` y `falla_reportada` los usa el formulario público (create-lote);
+    // el de admin no los pinta. Van en la fila base igual, para que Alpine no
+    // tenga que crearlos al vuelo y para que filaIncompleta() los vea.
     filaVacia() {
-        return { producto_id: '', producto_label: '', numero_serie: '', modelo: '', foto_nombre: '' };
+        return { producto_id: '', producto_label: '', numero_serie: '', modelo: '', foto_nombre: '', tipo: '', falla_reportada: '' };
     },
 
     agregar() {
@@ -963,12 +997,53 @@ async function comprimirImagenCliente(file) {
     }
 }
 
+/**
+ * Estado visible de la compresión de una foto.
+ *
+ * Comprimir una foto de 12MP toma segundos y hasta ahora no se veía NADA: ni
+ * spinner, ni miniatura, ni "listo". El cliente del QR quedaba mirando un input
+ * que decía "ningún archivo seleccionado" y podía apretar Enviar en medio del
+ * proceso. El aviso se inyecta desde acá y no desde cada vista porque son cinco
+ * inputs repartidos en tres formularios (taller por unidad, por cantidad y lote
+ * del conductor), y así también lo hereda cualquiera que se agregue después.
+ */
+function avisoFoto(input, texto, tono) {
+    let p = input.nextElementSibling;
+    if (!p || !p.classList.contains('dg-foto-estado')) {
+        p = document.createElement('p');
+        p.className = 'dg-foto-estado mt-1 text-xs';
+        input.insertAdjacentElement('afterend', p);
+    }
+    p.textContent = texto;
+    p.classList.toggle('text-neutral-500', tono !== 'listo');
+    p.classList.toggle('text-green-600', tono === 'listo');
+    p.hidden = !texto;
+}
+
+// Mientras haya fotos comprimiéndose, el submit del formulario queda
+// deshabilitado: si no, un envío a destiempo manda el archivo original (o un
+// FileList a medio reemplazar) sin que nadie se entere.
+function bloquearEnvio(form, ocupado) {
+    if (!form) return;
+    form.dataset.fotosPendientes = Math.max(0, (+form.dataset.fotosPendientes || 0) + (ocupado ? 1 : -1));
+    const pendientes = +form.dataset.fotosPendientes > 0;
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((b) => { b.disabled = pendientes; });
+    // El submit de <x-form-actions> vive FUERA del <form> y se asocia por form=.
+    if (form.id) {
+        document.querySelectorAll(`[form="${form.id}"]`).forEach((b) => { b.disabled = pendientes; });
+    }
+}
+
 // Reemplaza el archivo del input por su versión liviana. Se llama desde el
 // onchange de los inputs de foto del formulario del QR. No deshabilita el input
 // (para no perder el archivo si el usuario envía justo durante el proceso).
 window.optimizarFotoInput = async function (input) {
     const file = input.files && input.files[0];
     if (!file || !file.type.startsWith('image/')) return; // no-imagen (o vacío): dejar al servidor
+
+    const form = input.form;
+    avisoFoto(input, 'Preparando la foto…');
+    bloquearEnvio(form, true);
 
     try {
         const liviana = await comprimirImagenCliente(file);
@@ -977,7 +1052,11 @@ window.optimizarFotoInput = async function (input) {
             dt.items.add(liviana);
             input.files = dt.files;
         }
+        avisoFoto(input, '✓ Foto lista', 'listo');
     } catch (e) {
         // Si falla, se sube el original; el servidor comprime igual (con más memoria).
+        avisoFoto(input, '✓ Foto lista', 'listo');
+    } finally {
+        bloquearEnvio(form, false);
     }
 };

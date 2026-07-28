@@ -8,6 +8,28 @@
 /* Alpine: ocultar elementos con x-cloak hasta que Alpine inicializa (evita parpadeo). */
 [x-cloak] { display: none !important; }
 
+/* Safari iOS hace zoom automático al enfocar un control con fuente < 16px, y el
+   zoom no se revierte solo: la pantalla queda corrida. Los componentes x-text-input
+   / x-select / x-textarea ya usan `text-base sm:text-sm`, pero hay formularios que
+   escriben el <input> a mano (servicio técnico, taller público, filtros). Este piso
+   los cubre a todos —incluidos los que se escriban después— y solo aplica bajo el
+   breakpoint sm, así que el desktop conserva sus 14px. */
+@media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    /* La barra de acción fija de <x-form-actions> tapa el final del formulario.
+       El aire se da acá con :has() —la barra se pinta dentro del <header> y el
+       cuerpo es el <main> hermano— en vez de pedirle un `pb-` a mano a cada
+       vista que use el componente. */
+    header:has(.dg-barra-accion) ~ main {
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+}
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';

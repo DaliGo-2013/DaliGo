@@ -8,7 +8,7 @@
         <x-page-header title="Informes · Servicio Técnico" subtitle="Elige qué estadísticas quieres ver." />
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-4 sm:py-12">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {{-- Dispensadores (taller) --}}
             <a href="{{ route('admin.servicio-tecnico.informe.dispensadores') }}"

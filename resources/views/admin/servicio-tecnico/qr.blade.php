@@ -15,7 +15,7 @@
         </x-page-header>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-4 sm:py-12">
         <p class="mb-6 text-sm text-neutral-500 print:hidden">
             Cada código lleva embebida su sucursal. El cliente lo escanea con su celular, llena el
             formulario y tú confirmas la recepción desde el listado de Servicio Técnico.

@@ -91,7 +91,9 @@
          avatar de iniciales a propósito (pedido del dueño: "es ruido, no
          aporta") — el chevron es la señal de "esto abre un menú". En móvil
          este mismo pie va al fondo del drawer. --}}
-    <div class="shrink-0 border-t border-neutral-100 p-3" data-menu-usuario>
+    {{-- pb con safe-area: en el drawer móvil este pie queda al ras del borde
+         inferior y la barra flotante de Safari iOS lo tapa. --}}
+    <div class="shrink-0 border-t border-neutral-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pb-3" data-menu-usuario>
         <div class="flex items-center gap-1">
             <x-dropdown align="left" width="w-48" direction="up">
                 <x-slot name="trigger">

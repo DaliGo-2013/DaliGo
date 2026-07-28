@@ -36,7 +36,7 @@
             @click.outside="abierto = false" />
 
         <div x-show="abierto" x-cloak
-             class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+             x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
             <template x-if="cargando">
                 <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
             </template>
@@ -59,7 +59,9 @@
     {{-- El input ya conserva el texto elegido (term = label), asi que aqui solo
          ofrecemos "cambiar" para limpiar y volver a buscar. --}}
     <div x-show="seleccionId" x-cloak class="mt-1.5 text-sm">
-        <button type="button" @click="limpiar()" class="text-xs text-neutral-400 underline hover:text-neutral-600">cambiar</button>
+        {{-- -m-2 p-2: crece el área de toque a 44px sin mover el texto de sitio. --}}
+        <button type="button" @click="limpiar()"
+            class="-m-2 inline-flex min-h-11 items-center p-2 text-xs text-neutral-400 underline hover:text-neutral-600 sm:m-0 sm:min-h-0 sm:p-0">cambiar</button>
     </div>
 
     @if ($hint)

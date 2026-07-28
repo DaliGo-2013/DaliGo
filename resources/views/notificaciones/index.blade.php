@@ -46,7 +46,7 @@
                         @if ($noLeida)
                             <form method="POST" action="{{ route('notificaciones.leer', $n) }}" class="shrink-0">
                                 @csrf
-                                <button type="submit" class="rounded-lg px-3 py-2 text-sm font-medium text-brand-600 transition hover:bg-neutral-100" title="Marcar como leída">
+                                <button type="submit" class="rounded-lg px-3.5 min-h-11 text-sm font-medium text-brand-600 transition hover:bg-neutral-100" title="Marcar como leída">
                                     Leída
                                 </button>
                             </form>

@@ -19,11 +19,18 @@
     @if ($errors->any())
         <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             Revisa los datos: hay {{ $errors->count() }} campo(s) con problemas más abajo.
+            {{-- El navegador no permite repoblar un <input type=file>: los datos escritos
+                 vuelven (old('maquinas')), las fotos no. Decirlo aquí evita que el cliente
+                 envíe creyendo que las fotos siguen adjuntas. --}}
+            @if (old('maquinas'))
+                <span class="mt-1 block font-medium">Tus datos siguen abajo, pero tienes que volver a adjuntar las fotos.</span>
+            @endif
         </div>
     @endif
 
-    <form method="POST" action="{{ route('ingreso-taller.lote.store') }}" enctype="multipart/form-data" class="space-y-5"
-          x-data="loteServicioForm({ tipoDefault: @js(old('tipo_default', 'dispensador')), tiposSerie: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS) })">
+    {{-- `inicial` repuebla las tarjetas de máquina tras un error de validación. --}}
+    <form method="POST" action="{{ route('ingreso-taller.lote.store') }}" enctype="multipart/form-data" class="space-y-5" data-una-vez
+          x-data="loteServicioForm({ tipoDefault: @js(old('tipo_default', 'dispensador')), tiposSerie: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS), inicial: @js(array_values(old('maquinas', []))) })">
         @csrf
         <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
         {{-- Honeypot anti-bot (un humano no lo ve ni lo llena). --}}
@@ -42,7 +49,10 @@
             </div>
             <div>
                 <x-input-label for="cliente_rut">RUT <span class="text-red-500">*</span></x-input-label>
-                <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full" required
+                {{-- inputmode numeric (no type=tel): el teclado telefónico de iOS trae
+                     + * # pero NO el guión que lleva todo RUT. --}}
+                <x-text-input id="cliente_rut" name="cliente_rut" type="text" inputmode="numeric"
+                    autocomplete="off" class="mt-1.5 w-full" required
                     maxlength="20" placeholder="Ej. 12.345.678-9" :value="old('cliente_rut')" />
                 <x-input-error :messages="$errors->get('cliente_rut')" class="mt-2" />
             </div>
@@ -101,7 +111,8 @@
                 </div>
                 <div>
                     <x-input-label for="garantia_doc_numero">N° del documento <span class="text-red-500">*</span></x-input-label>
-                    <x-text-input id="garantia_doc_numero" name="garantia_doc_numero" type="text" class="mt-1.5 w-full"
+                    <x-text-input id="garantia_doc_numero" name="garantia_doc_numero" type="text" inputmode="numeric"
+                        class="mt-1.5 w-full"
                         maxlength="191" :value="old('garantia_doc_numero')" x-bind:required="cond === 'garantia'" />
                     <x-input-error :messages="$errors->get('garantia_doc_numero')" class="mt-2" />
                 </div>
@@ -121,10 +132,7 @@
                 <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                     Máquinas (<span x-text="maquinas.length"></span>)
                 </h2>
-                <button type="button" x-on:click="agregar()"
-                    class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                    <x-icon.plus class="h-4 w-4" /> Agregar máquina
-                </button>
+                <x-agregar-fila-button x-on:click="agregar()">Agregar máquina</x-agregar-fila-button>
             </div>
 
             <div class="space-y-3">
@@ -132,12 +140,19 @@
                     <div class="rounded-xl border border-neutral-200 p-3">
                         <div class="mb-2 flex items-center justify-between">
                             <span class="text-xs font-semibold text-neutral-500">Máquina <span x-text="i + 1"></span></span>
-                            <button type="button" x-on:click="quitar(i)" class="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
+                            {{-- 28px sin confirmación era la peor relación tamaño/consecuencia
+                                 del sistema: un toque al azar borraba la máquina entera con sus
+                                 dos fotos ya tomadas. x-icon-button da 44px en móvil. --}}
+                            <x-icon-button variant="danger" title="Quitar" label="Quitar esta máquina"
+                                x-on:click="confirm('¿Quitar esta máquina? Vas a perder sus fotos.') && quitar(i)">
                                 <x-icon.trash class="h-4 w-4" />
-                            </button>
+                            </x-icon-button>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2">
+                        {{-- 1 columna en celular: a 375px este grid dejaba 105px por campo
+                             y el <select> mostraba "Igual que a…" — el cliente no alcanzaba
+                             a leer qué tipo eligió, ni el N° de serie que estaba tecleando. --}}
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Tipo</label>
                                 <select x-model="m.tipo" :name="`maquinas[${i}][tipo]`"
@@ -170,7 +185,9 @@
                         {{-- Falla y estado de ESTA máquina (golpes, rayas, caja, piezas). --}}
                         <div class="mt-2">
                             <label class="mb-0.5 block text-xs text-neutral-500">Falla y estado del equipo <span class="text-red-500">*</span></label>
-                            <textarea :name="`maquinas[${i}][falla_reportada]`" x-model="m.falla_reportada" rows="2" required
+                            {{-- rows=3: con 2 el placeholder de ejemplo se cortaba a media
+                                 línea y se veía como texto roto en celular. --}}
+                            <textarea :name="`maquinas[${i}][falla_reportada]`" x-model="m.falla_reportada" rows="3" required
                                 placeholder="Ej. No enfría. Golpeada en tapa lateral, sin caja, le falta la llave roja."
                                 class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"></textarea>
                         </div>
@@ -179,13 +196,13 @@
                         <div class="mt-2 grid grid-cols-1 gap-2">
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto 1 del equipo <span class="text-red-500">*</span></label>
-                                <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
+                                <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" required
                                     onchange="optimizarFotoInput(this)"
                                     class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
                             </div>
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto 2 del equipo <span class="text-red-500">*</span></label>
-                                <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
+                                <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" required
                                     onchange="optimizarFotoInput(this)"
                                     class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
                             </div>

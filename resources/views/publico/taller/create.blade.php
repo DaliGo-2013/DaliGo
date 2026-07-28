@@ -90,14 +90,16 @@
                 {{-- Datos del cliente --}}
                 <div>
                     <x-input-label for="cliente_nombre" value="Nombre y apellido *" />
-                    <x-text-input id="cliente_nombre" name="cliente_nombre" type="text" class="mt-1.5 block w-full"
+                    <x-text-input id="cliente_nombre" name="cliente_nombre" type="text" autocomplete="name"
+                                  class="mt-1.5 block w-full"
                                   :value="old('cliente_nombre')" required placeholder="Tu nombre" />
                     <x-input-error :messages="$errors->get('cliente_nombre')" class="mt-1.5" />
                 </div>
 
                 <div>
                     <x-input-label for="cliente_email" value="Correo *" />
-                    <x-text-input id="cliente_email" name="cliente_email" type="email" class="mt-1.5 block w-full"
+                    <x-text-input id="cliente_email" name="cliente_email" type="email" autocomplete="email"
+                                  class="mt-1.5 block w-full"
                                   :value="old('cliente_email')" required placeholder="tu@correo.cl" />
                     <x-input-hint>Te llegará el detalle con el número de folio de tu ingreso.</x-input-hint>
                     <x-input-error :messages="$errors->get('cliente_email')" class="mt-1.5" />
@@ -105,7 +107,8 @@
 
                 <div>
                     <x-input-label for="cliente_telefono" value="Teléfono *" />
-                    <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 block w-full"
+                    <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" autocomplete="tel"
+                                  class="mt-1.5 block w-full"
                                   :value="old('cliente_telefono')" required placeholder="Ej. +56 9 1234 5678" />
                     <x-input-hint>Para avisarte cuando tu equipo esté listo.</x-input-hint>
                     <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-1.5" />
@@ -113,7 +116,10 @@
 
                 <div>
                     <x-input-label for="cliente_rut" value="RUT *" />
-                    <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 block w-full"
+                    {{-- inputmode numeric (no type=tel): el teclado telefónico de iOS trae
+                         + * # pero NO el guión que lleva todo RUT. --}}
+                    <x-text-input id="cliente_rut" name="cliente_rut" type="text" inputmode="numeric"
+                                  autocomplete="off" class="mt-1.5 block w-full"
                                   :value="old('cliente_rut')" required placeholder="Ej. 12.345.678-9" />
                     <x-input-error :messages="$errors->get('cliente_rut')" class="mt-1.5" />
                 </div>
@@ -156,7 +162,10 @@
                         },
                      }">
                     <x-input-label for="numero_serie">N° de serie <span x-show="serieObl" class="text-red-500">*</span></x-input-label>
+                    {{-- Las series son códigos tipo EST20260100251: sin esto iOS las
+                         autocorrige y capitaliza, y el cliente no nota el cambio. --}}
                     <x-text-input id="numero_serie" name="numero_serie" type="text" class="mt-1.5 block w-full"
+                                  autocapitalize="characters" autocorrect="off" spellcheck="false"
                                   :value="old('numero_serie')" required x-bind:required="serieObl" placeholder="El número que trae el equipo" />
                     {{-- Botón "Ver ejemplo del N° de serie" (foto de la etiqueta trasera), justo debajo del campo. --}}
                     <x-ayuda-serie />
@@ -177,7 +186,7 @@
                      mostrador). El cliente los indica; el mostrador los verifica. --}}
                 <div x-data="{ cond: @js(old('facturacion', '')) }">
                     <x-input-label for="facturacion" value="Condición *" />
-                    <x-select id="facturacion" name="facturacion" class="mt-1.5 block w-full" x-model="cond">
+                    <x-select id="facturacion" name="facturacion" required class="mt-1.5 block w-full" x-model="cond">
                         <option value="" disabled>— Selecciona —</option>
                         @foreach (\App\Models\OrdenServicio::FACTURACION as $f)
                             <option value="{{ $f }}">{{ ucfirst($f) }}</option>
@@ -206,7 +215,8 @@
                             </div>
                             <div>
                                 <x-input-label for="garantia_doc_numero" value="N° de documento" />
-                                <x-text-input id="garantia_doc_numero" name="garantia_doc_numero" type="text" class="mt-1.5 block w-full"
+                                <x-text-input id="garantia_doc_numero" name="garantia_doc_numero" type="text" inputmode="numeric"
+                                    class="mt-1.5 block w-full"
                                     :value="old('garantia_doc_numero')" maxlength="191"
                                     x-bind:required="cond === 'garantia'" />
                                 <x-input-error :messages="$errors->get('garantia_doc_numero')" class="mt-1.5" />
@@ -242,13 +252,13 @@
                     <div class="mt-3 space-y-3">
                         <div>
                             <label for="foto_1" class="mb-1 block text-sm font-medium text-neutral-700">Foto 1</label>
-                            <input id="foto_1" name="fotos[]" type="file" accept="image/*" capture="environment" required onchange="optimizarFotoInput(this)"
+                            <input id="foto_1" name="fotos[]" type="file" accept="image/*" required onchange="optimizarFotoInput(this)"
                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
                             <x-input-error :messages="$errors->get('fotos.0')" class="mt-1.5" />
                         </div>
                         <div>
                             <label for="foto_2" class="mb-1 block text-sm font-medium text-neutral-700">Foto 2</label>
-                            <input id="foto_2" name="fotos[]" type="file" accept="image/*" capture="environment" required onchange="optimizarFotoInput(this)"
+                            <input id="foto_2" name="fotos[]" type="file" accept="image/*" required onchange="optimizarFotoInput(this)"
                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100">
                             <x-input-error :messages="$errors->get('fotos.1')" class="mt-1.5" />
                         </div>
@@ -256,7 +266,9 @@
                     <x-input-error :messages="$errors->get('fotos')" class="mt-1.5" />
                 </div>
 
-                <x-primary-button class="w-full justify-center">
+                {{-- py-3 text-base como en create-lote y create-visita: sin esto el
+                     submit queda MÁS CHICO que el "Volver al inicio" de abajo. --}}
+                <x-primary-button class="w-full justify-center py-3 text-base">
                     Enviar ingreso
                 </x-primary-button>
             </form>

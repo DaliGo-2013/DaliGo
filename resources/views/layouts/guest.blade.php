@@ -18,7 +18,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="min-h-full font-sans text-neutral-900 antialiased bg-neutral-50">
-        <div class="min-h-screen flex flex-col justify-center items-center px-6 py-12">
+        <div class="min-h-screen min-h-[100dvh] flex flex-col justify-center items-center px-6 py-12">
             <a href="/" class="group flex flex-col items-center gap-3">
                 <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-black text-white shadow-sm transition duration-200 group-hover:bg-brand-700">D</span>
                 <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>

@@ -44,7 +44,7 @@
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Lo que reportaste</h3>
                     <x-produccion.estado-badge :estado="$reporte->estado" />
                 </div>
-                <dl class="grid grid-cols-2 gap-x-6 gap-y-4 p-4 sm:p-6">
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 p-4 sm:p-6">
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Asignadas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->asignadas }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Total</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->total }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Primera</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->primera }}</dd></div>
@@ -66,7 +66,7 @@
                                     $partes = array_filter([$registro->tipoBotellon?->nombre, $registro->maquina?->nombre]);
                                 @endphp
                                 <li class="px-4 py-3 sm:px-6">
-                                    <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
+                                    <p class="line-clamp-2 text-sm font-medium text-neutral-900 sm:truncate">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
                                     <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->enChile()->format('H:i') }}</p>
                                     @php
                                         $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])
@@ -269,7 +269,7 @@
                                 @endphp
                                 <li class="flex items-center gap-3 px-4 py-3 sm:px-6">
                                     <div class="min-w-0 flex-1">
-                                        <p class="truncate text-sm font-medium text-neutral-900">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
+                                        <p class="line-clamp-2 text-sm font-medium text-neutral-900 sm:truncate">{{ $partes ? implode(' · ', $partes) : 'Registro inicial' }}</p>
                                         <p class="text-xs text-neutral-500">1ª {{ $registro->primera }} · 2ª {{ $registro->segunda }} · malos {{ $registro->malo }} · dañadas {{ $registro->danada }} · {{ $registro->created_at->enChile()->format('H:i') }}</p>
                                     @php
                                         $motivosTanda = collect(['2ª' => $registro->motivo_segunda, 'Malas' => $registro->motivo_malo])

@@ -25,7 +25,9 @@
         <div>
             <x-input-label for="cliente_rut">RUT <span class="text-red-500" x-show="!esPropia">*</span></x-input-label>
             <div class="relative mt-1.5">
-                <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="w-full" autocomplete="off"
+                {{-- inputmode numeric (no type=tel): el teclado telefónico de iOS trae
+                     + * # pero NO el guión que lleva todo RUT. --}}
+                <x-text-input id="cliente_rut" name="cliente_rut" type="text" inputmode="numeric" class="w-full" autocomplete="off"
                     x-bind:required="!esPropia"
                     x-ref="input" placeholder="Ej. 12.345.678-9"
                     x-model="rut"
@@ -35,7 +37,7 @@
                     @click.outside="abierto = false" />
 
                 <div x-show="abierto" x-cloak
-                     class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                     x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                     <template x-if="cargando">
                         <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
                     </template>

@@ -22,7 +22,8 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('visita-industrial.store') }}" class="space-y-5"
+    {{-- data-una-vez: sin esto un segundo toque con señal lenta crea la solicitud dos veces. --}}
+    <form method="POST" action="{{ route('visita-industrial.store') }}" class="space-y-5" data-una-vez
           x-data="{ servicioId: @js(old('servicio_terreno_id', '')) }">
         @csrf
         <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
@@ -92,7 +93,10 @@
             </div>
             <div>
                 <x-input-label for="cliente_rut">RUT <span class="text-red-500">*</span></x-input-label>
-                <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full" required
+                {{-- inputmode numeric (no type=tel): el teclado telefónico de iOS trae
+                     + * # pero NO el guión que lleva todo RUT. --}}
+                <x-text-input id="cliente_rut" name="cliente_rut" type="text" inputmode="numeric"
+                    autocomplete="off" class="mt-1.5 w-full" required
                     maxlength="20" placeholder="Ej. 76.123.456-7" :value="old('cliente_rut')" />
                 <x-input-error :messages="$errors->get('cliente_rut')" class="mt-2" />
             </div>

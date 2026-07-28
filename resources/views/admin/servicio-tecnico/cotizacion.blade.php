@@ -22,7 +22,7 @@
                        :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado" />
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-4 sm:py-12">
         @include('admin.servicio-tecnico._tabs', ['activa' => 'cotizacion'])
 
         <x-status-alert :status="session('status')" />
@@ -104,10 +104,7 @@
                 <div>
                     <div class="flex items-center justify-between">
                         <x-input-label value="Repuestos" />
-                        <button type="button" x-on:click="agregar()"
-                            class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                            <x-icon.plus class="h-4 w-4" /> Agregar repuesto
-                        </button>
+                        <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
                     </div>
 
                     <div class="mt-2 space-y-2">
@@ -122,7 +119,7 @@
                                         class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
 
                                     <div x-show="filaActiva === i && (buscandoRepuesto || sugerencias.length)" x-cloak
-                                        class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                        x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                                         <template x-if="buscandoRepuesto && sugerencias.length === 0">
                                             <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
                                         </template>
@@ -143,27 +140,33 @@
                                     </div>
                                 </div>
 
-                                {{-- Cantidad, precio, subtotal y quitar. --}}
-                                <div class="flex items-start gap-2">
-                                    <div class="w-20 sm:w-16">
+                                {{-- Cantidad, precio, subtotal y quitar.
+                                     flex-wrap + min-w en el precio: sin eso, subtotal (w-24) y
+                                     el basurero son shrink-0 y el precio —el único flex-1— se
+                                     comía todo el colapso: 39px de ancho a 375px, o sea el
+                                     técnico no veía el monto que estaba tecleando. Ahora en
+                                     celular subtotal y quitar bajan a una segunda línea; desde
+                                     sm: los anchos fijos vuelven y la fila queda igual que antes. --}}
+                                <div class="flex flex-wrap items-start gap-2">
+                                    <div class="w-20 shrink-0 sm:w-16">
                                         <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
-                                        <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                        <input type="number" min="1" inputmode="numeric" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     </div>
-                                    <div class="flex-1 sm:w-28 sm:flex-none">
+                                    <div class="min-w-[8rem] flex-1 sm:w-28 sm:min-w-0 sm:flex-none">
                                         <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Precio c/u</label>
-                                        <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
+                                        <input type="number" min="0" step="1" inputmode="numeric" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
                                             placeholder="Precio"
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     </div>
-                                    <div class="w-24 shrink-0 text-right text-sm text-neutral-600">
+                                    <div class="ms-auto w-24 shrink-0 text-right text-sm text-neutral-600 sm:ms-0">
                                         <span class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Subtotal</span>
                                         <span class="block sm:pt-2" x-text="clp(subtotal(r))"></span>
                                     </div>
-                                    <button type="button" x-on:click="quitar(i)"
-                                        class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
+                                    <x-icon-button variant="danger" class="shrink-0 self-end sm:self-start"
+                                        x-on:click="quitar(i)" title="Quitar" label="Quitar repuesto">
                                         <x-icon.trash class="h-5 w-5" />
-                                    </button>
+                                    </x-icon-button>
                                 </div>
                             </div>
                         </template>
@@ -212,7 +215,9 @@
                              (permiso 'aplicar descuento servicio tecnico') lo edita. El
                              técnico lo ve en solo lectura (el total ya lo refleja). --}}
                         @can('aplicar descuento servicio tecnico')
-                            <div class="grid grid-cols-2 gap-3">
+                            {{-- 1 columna en celular: a 375px daba pistas de 141px y
+                                 "Negociación con el cliente" necesita 191px. --}}
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div>
                                     <x-input-label for="descuento_pct" value="Descuento" />
                                     <x-select id="descuento_pct" name="descuento_pct" class="mt-1.5" x-model.number="descuentoPct">

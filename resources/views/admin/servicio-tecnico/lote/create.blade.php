@@ -24,7 +24,9 @@
         @endif
 
         <form method="POST" action="{{ route('admin.servicio-tecnico.lote.store') }}" enctype="multipart/form-data"
-              x-data="loteServicioForm({ endpointProducto: '{{ route('admin.servicio-tecnico.lote.buscar-producto') }}', endpointCliente: '{{ route('admin.servicio-tecnico.lote.buscar-cliente') }}' })"
+              {{-- `inicial` repuebla las máquinas tras un error de validación: el
+                   conductor no vuelve a tipear el lote entero de pie en el cliente. --}}
+              x-data="loteServicioForm({ endpointProducto: '{{ route('admin.servicio-tecnico.lote.buscar-producto') }}', endpointCliente: '{{ route('admin.servicio-tecnico.lote.buscar-cliente') }}', inicial: @js(array_values(old('maquinas', []))) })"
               class="space-y-5" data-una-vez>
             @csrf
 
@@ -36,13 +38,15 @@
                     {{-- RUT (buscador) --}}
                     <div class="relative">
                         <x-input-label for="cliente_rut">RUT de la empresa <span class="text-red-500">*</span></x-input-label>
-                        <x-text-input id="cliente_rut" name="cliente_rut" type="text" class="mt-1.5 w-full" autocomplete="off" required
+                        {{-- inputmode numeric (no type=tel): el teclado telefónico de iOS trae
+                             + * # pero NO el guión que lleva todo RUT. --}}
+                        <x-text-input id="cliente_rut" name="cliente_rut" type="text" inputmode="numeric" class="mt-1.5 w-full" autocomplete="off" required
                             placeholder="Ej. 76.123.456-7" x-model="rut"
                             x-on:input.debounce.300ms="buscarEmpresa()"
                             x-on:keydown.escape="empresaAbierto = false"
                             x-on:click.outside="empresaAbierto = false" />
                         <div x-show="empresaAbierto && (empresaBuscando || empresaResultados.length)" x-cloak
-                             class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                             x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                             <template x-if="empresaBuscando && empresaResultados.length === 0">
                                 <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
                             </template>
@@ -123,7 +127,8 @@
                         <x-input-hint>
                             Quién retira las máquinas en ruta.
                             @can('manage servicio tecnico')
-                                · <a href="{{ route('admin.conductores.index') }}" class="text-brand-600 hover:underline">Administrar</a>
+                                · <a href="{{ route('admin.conductores.index') }}"
+                                     class="-m-2 inline-flex min-h-11 items-center p-2 text-brand-600 hover:underline sm:m-0 sm:min-h-0 sm:p-0">Administrar</a>
                             @endcan
                         </x-input-hint>
                         <x-input-error :messages="$errors->get('conductor')" class="mt-2" />
@@ -165,10 +170,7 @@
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                         Máquinas (<span x-text="maquinas.length"></span>)
                     </h3>
-                    <button type="button" x-on:click="agregar()"
-                        class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                        <x-icon.plus class="h-4 w-4" /> Agregar máquina
-                    </button>
+                    <x-agregar-fila-button x-on:click="agregar()">Agregar máquina</x-agregar-fila-button>
                 </div>
 
                 <div class="space-y-3">
@@ -176,9 +178,12 @@
                         <div class="rounded-xl border border-neutral-200 p-3">
                             <div class="mb-2 flex items-center justify-between">
                                 <span class="text-xs font-semibold text-neutral-500">Máquina <span x-text="i + 1"></span></span>
-                                <button type="button" x-on:click="quitar(i)" class="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
+                                {{-- 28px sin confirmación: un toque al azar borraba la máquina
+                                     entera con su foto. x-icon-button da 44px en móvil. --}}
+                                <x-icon-button variant="danger" title="Quitar" label="Quitar esta máquina"
+                                    x-on:click="confirm('¿Quitar esta máquina? Vas a perder su foto.') && quitar(i)">
                                     <x-icon.trash class="h-4 w-4" />
-                                </button>
+                                </x-icon-button>
                             </div>
 
                             {{-- Código Dali (obligatorio, autocompletado) --}}
@@ -192,7 +197,7 @@
                                     class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                                     :class="filaIncompleta(m) ? 'border-red-300' : ''">
                                 <div x-show="filaActiva === i && (buscando || sugerencias.length)" x-cloak
-                                    class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                    x-dg-anclar class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                                     <template x-if="buscando && sugerencias.length === 0">
                                         <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
                                     </template>
@@ -211,7 +216,9 @@
                                 <p x-show="filaIncompleta(m)" x-cloak class="mt-1 text-xs text-red-500">Elige el código del catálogo.</p>
                             </div>
 
-                            <div class="mt-2 grid grid-cols-2 gap-2">
+                            {{-- 1 columna en celular: a 375px daba 138px por campo y una
+                                 serie tipo EST-2024-0198337 no se alcanza a leer al tipearla. --}}
+                            <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
                                 <div>
                                     <label class="mb-0.5 block text-xs text-neutral-500">N° de serie <span class="text-red-500">*</span></label>
                                     <input type="text" x-model="m.numero_serie" :name="`maquinas[${i}][numero_serie]`" maxlength="191" required
@@ -227,10 +234,13 @@
                             {{-- Foto de respaldo OBLIGATORIA (se comprime en el navegador) --}}
                             <div class="mt-2">
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto de respaldo <span class="text-red-500">*</span></label>
-                                <input type="file" :name="`maquinas[${i}][foto]`" accept="image/*" capture="environment" required
+                                <input type="file" :name="`maquinas[${i}][foto]`" accept="image/*" required
                                     x-on:change="fotoInput(i, $event.target)"
                                     class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
-                                <p x-show="m.foto_nombre" x-cloak class="mt-1 text-xs text-green-600" x-text="'✓ ' + m.foto_nombre"></p>
+                                {{-- El "Preparando la foto… / ✓ Foto lista" lo inyecta
+                                     optimizarFotoInput (app.js) justo después del input, igual
+                                     que en los formularios públicos. Antes esto era el único
+                                     lugar del sistema con confirmación, y solo al terminar. --}}
                             </div>
                         </div>
                     </template>
