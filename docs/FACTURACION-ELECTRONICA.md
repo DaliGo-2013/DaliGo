@@ -38,7 +38,9 @@ Si Gerencia decide no avanzar, se elimina y no queda ningún efecto.
 
 ### Lo que necesitamos de ustedes
 
-1. **Contabilidad:** responder las 8 preguntas de la §7. Tres son imprescindibles.
+1. **Contabilidad:** ✅ **respondido el 28-jul-2026** — las 8 reglas contables están definidas (§7).
+   Quedan **tres datos menores** por confirmar: el SKU de mano de obra, la lista de precios de servicio
+   técnico y el RUT del emisor.
 2. **Gerencia:** aprobar (o no) el plan de la §8, y en particular autorizar por escrito **el único
    paso irreversible**, que está marcado en rojo.
 
@@ -184,59 +186,115 @@ del vehículo" en blanco — es exactamente esa información la que pasa a ser o
 
 ---
 
-## 7. Preguntas para Contabilidad
+## 7. Reglas contables — preguntas y respuestas
 
-Estas respuestas definen cómo se programa el sistema. **Las tres primeras son imprescindibles**; sin
-ellas cualquier cosa que se construya habría que rehacerla.
+> **✅ RESPONDIDAS por Contabilidad el 28 de julio de 2026.** Estas respuestas son las que definen cómo
+> se programa el sistema. Quedan registradas aquí para que, si más adelante algo se comporta distinto a
+> lo esperado, se pueda revisar contra lo acordado.
 
-### 🔴 1. Precios y redondeo (la más importante)
+### ✅ 1. Precios y redondeo (la más importante)
 
 DaliGo guarda los precios **con IVA incluido**, pero el documento tributario exige el precio **neto**
 por línea con el IVA desglosado aparte. Al convertir aparecen diferencias de $1 por redondeo.
 
-**¿Qué cifra debe cuadrar exacto: el TOTAL que paga el cliente, o el NETO de cada línea?**
+**Pregunta:** ¿qué cifra debe cuadrar exacto, el TOTAL que paga el cliente o el NETO de cada línea?
 
-### 🔴 2. Qué documento se emite en cada caso
+> **Respuesta:** **el total que paga el cliente.**
 
-- Reparación a una empresa con RUT → ¿factura?
-- Reparación a una persona natural → ¿boleta?
-- ¿Lo decide el sistema automáticamente según el cliente, o la persona que atiende?
-- ¿Existen ventas exentas de IVA en servicio técnico?
+**Qué implica en el sistema:** nada que rehacer — esa ya es la convención del código actual (el total
+es el dato guardado; el neto se calcula como `total ÷ 1,19` y el IVA es la diferencia, de modo que
+neto + IVA = total **exacto**, siempre). Lo único que se agrega es que, al partir la reparación en
+varias líneas, **el ajuste de redondeo se carga a la línea de mano de obra**, para que la suma de las
+líneas siga dando el total que el cliente pagó.
 
-### 🔴 3. Cómo se desglosa una reparación
+### ✅ 2. Qué documento se emite en cada caso
 
-Una reparación tiene mano de obra + repuestos.
-- ¿Líneas separadas (una por repuesto + una de mano de obra) o una sola línea de "servicio de reparación"?
-- Los repuestos: ¿con su código del catálogo o como texto libre?
-- La mano de obra: ¿con qué código o glosa debe aparecer?
+> **Respuesta:** **boleta o factura lo decide el cliente.** No hay ventas exentas de IVA en servicio
+> técnico. La única excepción en la empresa es la **venta de artículos del activo fijo con más de 36
+> meses** (que no es servicio técnico).
 
-*(Recordar la Res. 36/2024: la descripción debe ser el producto real, sin abreviaturas ni códigos internos.)*
+**Qué implica en el sistema:**
+- Al emitir, la persona que atiende **elige** boleta o factura; el sistema no lo decide solo.
+- Si elige **factura**, el sistema exige RUT, giro y dirección del cliente (el documento no es válido
+  sin ellos). Si elige **boleta**, puede emitirse sin RUT del cliente.
+- Todo va **afecto a IVA**. La factura exenta queda prevista en el código pero **fuera de alcance** de
+  este proyecto (correspondería a la venta de activo fijo, que es otro flujo y otra área).
 
-### 4. Equipos en garantía
+### ✅ 3. Cómo se desglosa una reparación
 
-Una reparación en garantía no se cobra. **¿Se emite algún documento tributario igual** (por ejemplo
-una guía de despacho al devolver el equipo) **o no se emite nada?**
+> **Respuesta:** **una línea por repuesto + una línea de mano de obra.** Los repuestos se facturan
+> **con su código del catálogo**. La mano de obra **tiene un SKU**.
 
-### 5. Qué razón social factura
+**Qué implica en el sistema:** es lo que la orden de servicio ya guarda (repuestos enlazados al
+catálogo + un monto de mano de obra), así que el desglose sale directo, sin pedirle nada extra al
+técnico. Por la **Res. 36/2024**, el código va en el campo de código y la **descripción visible** debe
+ser el nombre real del repuesto, sin abreviaturas.
 
-Hay dos: **Importadora y Exportadora Dali** (76.301.506-8) y **Plásticos Dali** (76.754.504-5).
-¿El servicio técnico se factura por cuál? *(Confirmar el segundo RUT.)*
+**⬜ Falta un dato para programarlo:** **cuál es el SKU de mano de obra** (y si es uno solo o hay
+varios según el tipo de servicio).
 
-### 6. Sucursal y lista de precios
+### ✅ 4. Equipos en garantía
 
-- Si el equipo se recibe en Coquimbo o Abate Molina pero se repara en Mirador, **¿desde qué sucursal
-  se emite?**
-- ¿Qué lista de precios corresponde para servicio técnico?
+**Pregunta:** una reparación en garantía no se cobra. ¿Se emite algún documento igual (por ejemplo una
+guía de despacho al devolver el equipo) o no se emite nada?
 
-### 7. Forma de pago
+> **Respuesta:** **hoy no se emite nada; en DaliGo deberá emitirse.**
 
-Al emitir, ¿se registra el pago en el momento (efectivo, transferencia, tarjeta) o el documento queda
-a crédito y el pago se registra después?
+**Qué implica en el sistema:** es un **alcance nuevo**, no previsto en el plan original: la devolución
+de un equipo reparado en garantía debe ir amparada por una **guía de despacho por traslado que no
+constituye venta** (sin cobro). Además de automatizar, esto **cierra un vacío que existe hoy**: el
+traslado de mercadería debe ir documentado aunque no haya venta.
 
-### 8. Anulaciones
+> 🔴 **Ojo, esta respuesta se cruza con la §6.** La guía de despacho es **justamente** el documento al
+> que el SII le exige datos nuevos de transporte desde el **1 de noviembre de 2026**, y hoy la
+> integración de Bsale **no tiene dónde registrarlos**. Es decir: este punto no se puede construir
+> completo hasta que Bsale responda. **Se propone dejar la guía de garantía para después de esa
+> respuesta**, y avanzar primero con boleta y factura, que no tienen ese problema.
 
-Un documento mal emitido se corrige con **nota de crédito** (los documentos electrónicos no se borran).
-**¿Quién debe estar autorizado a emitirla? ¿Requiere visto bueno de Contabilidad?**
+### ✅ 5. Qué razón social factura
+
+> **Respuesta:** **Importadora y Exportadora Dali, solo esa.**
+
+**Qué implica en el sistema:** simplifica bastante — **un solo emisor**, una sola credencial, una sola
+serie de folios. **Plásticos Dali queda fuera de alcance.** El RUT que se usará es **76.301.506-8**
+(tomado del catastro de empresas de la cuenta Bsale registrado en `docs/BSALE_API.md`); **se pide a
+Contabilidad confirmarlo de una vez**, porque va impreso en cada documento.
+
+*(Consecuencia sobre el plan: la §8 proponía hacer la primera emisión real "en el RUT menos crítico".
+Ya no existe un segundo RUT donde probar → esa condición se reemplaza por monto bajo + nota de crédito
+preparada de antemano.)*
+
+### ✅ 6. Sucursal y lista de precios
+
+> **Respuesta:** se emite **desde donde se repara** (no desde donde se recibió el equipo).
+
+**Qué implica en el sistema:** el documento se emite con la sucursal donde se hizo la reparación —
+típicamente **Mirador**, aunque el equipo haya entrado por Coquimbo o Abate Molina. Esto importa porque
+en Bsale los folios y la caja pueden estar organizados **por sucursal** (ver pregunta abierta 7).
+
+**⬜ Quedó sin responder:** **qué lista de precios corresponde usar** al facturar servicio técnico.
+
+### ✅ 7. Forma de pago
+
+> **Respuesta:** **se registra el pago en el momento.**
+
+**Qué implica en el sistema:** el documento se emite junto con su pago, así que al emitir hay que
+indicar **el medio de pago** (efectivo, transferencia, tarjeta). Consecuencia práctica: **la caja del
+día en Bsale tiene que estar abierta**; si está cerrada, Bsale rechaza la emisión. El sistema mostrará
+un aviso claro ("la caja del día está cerrada en Bsale") en lugar de un error técnico.
+
+### ✅ 8. Anulaciones
+
+**Pregunta:** un documento mal emitido se corrige con **nota de crédito** (los documentos electrónicos
+no se borran). ¿Quién debe estar autorizado a emitirla?
+
+> **Respuesta:** el gerente **Luis Lazcano**, el jefe de ventas **Héctor Martínez**, y los jefes de
+> sucursal **Luis Figueroa** (Coquimbo) y **Gonzalo Martínez** (Abate Molina).
+
+**Qué implica en el sistema:** se crea un **permiso nuevo** para emitir notas de crédito, y como hoy
+DaliGo **no tiene el rol "jefe de sucursal"**, hay que crearlo. Nadie más podrá anular, ni siquiera
+quien emitió el documento. Contabilidad **no pidió** su visto bueno previo, así que la nota de crédito
+la pueden emitir esas cuatro personas directamente; queda registrado quién la emitió y por qué.
 
 ---
 
@@ -255,10 +313,12 @@ Un documento mal emitido se corrige con **nota de crédito** (los documentos ele
 
 Se propone que la primera emisión real **no ocurra** hasta que:
 
-1. Contabilidad haya respondido las preguntas 1, 2 y 3.
+1. ✅ Contabilidad haya respondido las reglas contables. **Cumplido el 28-jul-2026** (§7).
 2. Gerencia lo autorice **por escrito**.
-3. Se haga con: **monto bajo**, en el **RUT menos crítico**, con **Contabilidad enterada** y con la
-   **nota de crédito preparada** de antemano.
+3. Se haga con: **monto bajo**, con **Contabilidad enterada** y con la **nota de crédito preparada** de
+   antemano. *(La versión anterior de esta condición decía "en el RUT menos crítico"; ya no aplica:
+   Contabilidad definió que se factura solo por Importadora y Exportadora Dali, así que no hay una
+   razón social secundaria donde ensayar.)*
 4. Quede registrada en este documento (fecha, folio, resultado).
 
 **Nota:** el ambiente de prueba de Bsale **no emite documentos electrónicos** (su documentación dice
@@ -308,9 +368,12 @@ a julio de 2026 eran:
 | 2 | ¿A qué caja/usuario se atribuyen los documentos emitidos por integración? | Bsale | Enviada |
 | 3 | ¿Los documentos por integración consumen el mismo cupo del plan? | Bsale | Enviada |
 | 4 | ¿Se puede emitir un documento de prueba que sí llegue al SII? | Bsale | Enviada (la documentación sugiere que no) |
-| 5 | Preguntas 1 a 8 de la §7 | Contabilidad | ⬜ Pendiente |
+| 5 | Reglas contables 1 a 8 de la §7 | Contabilidad | ✅ **Respondidas 28-jul-2026** |
 | 6 | Validar que el RCOF está derogado y que el RCV reemplaza los libros | Contabilidad | ⬜ Pendiente |
 | 7 | Configuración de cierre de caja en Bsale: ¿"por emisor" o "por sucursal"? | Interno | ⬜ Pendiente |
+| 8 | **¿Cuál es el SKU de mano de obra?** ¿Uno solo o varios según el servicio? | Contabilidad / Ventas | ⬜ **Bloquea el desglose** |
+| 9 | ¿Qué lista de precios se usa al facturar servicio técnico? | Contabilidad / Ventas | ⬜ Pendiente |
+| 10 | Confirmar el RUT del emisor: **76.301.506-8** (Importadora y Exportadora Dali) | Contabilidad | ⬜ Pendiente |
 
 ---
 
@@ -349,7 +412,8 @@ Todo lo afirmado se verificó en fuentes primarias.
 | Fecha | Decisión | Quién |
 |---|---|---|
 | | Aprobar / rechazar el plan de la §8 | Gerencia |
-| | Respuestas a las preguntas de la §7 | Contabilidad |
+| **28-jul-2026** | ✅ Reglas contables de la §7 definidas | Contabilidad |
+| | Emitir guía de despacho al devolver equipos en garantía *(alcance nuevo, §7.4)* | Gerencia |
 | | **Autorización de la Fase 4 (primera emisión real)** | Gerencia |
 | | Registro de la primera emisión (folio, monto, resultado) | Desarrollo |
 
@@ -362,4 +426,8 @@ Todo lo afirmado se verificó en fuentes primarias.
       ambiente de prueba de Bsale no emite documentos electrónicos.
 - [ ] Cerrar la decisión **D-005** con las respuestas de Bsale.
 - [ ] Revisar si el flujo de guías de despacho de DaliGo necesita capturar chofer, patente y horarios
-      antes del 1-nov-2026.
+      antes del 1-nov-2026. **Subió de prioridad:** la respuesta 4 de la §7 convierte la guía de
+      despacho en alcance obligatorio (devolución de equipos en garantía), y es justamente el documento
+      afectado por el plazo.
+- [ ] Crear el rol **`jefe_sucursal`** y el permiso de emisión de notas de crédito (respuesta 8 de la §7).
+- [ ] Preguntar por el **SKU de mano de obra** y la **lista de precios** de servicio técnico.
