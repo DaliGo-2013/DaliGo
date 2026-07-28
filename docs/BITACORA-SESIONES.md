@@ -21,6 +21,25 @@
 
 ## Sesiones
 
+### [2026-07-28] Stream responsive móvil del dueño: el QR se maneja con una mano, el técnico cierra su trabajo desde el celular
+- **Quién:** Mauricio + Claude (Opus 5) — stream propio, en paralelo a la flota (los 38 commits del 27-07 son de la otra cuenta y no se tocaron)
+- **Objetivo declarado:** P-MOB-01 — brief de diseño del dueño sobre formato responsive móvil, probado en el simulador de iPhone de su Mac. Regla del dueño: *lo que ya está bien no se toca*.
+- **Qué se hizo:** (rama `feature/mobile-qr`, 8 commits, mergeada con doble llave)
+  - **Formularios del QR** (lo más importante del brief: cliente externo, de pie en el mostrador, con una mano): barra de envío **fija al pie en móvil** con `env(safe-area-inset-bottom)` (`fd0e18e`, componente `<x-barra-envio-movil>`); **acordeón por máquina** en el ingreso por cantidad con cabecera «Máquina 2 de 3» y resumen al plegar `✓ Máquina 1 · SN-1234` (`5e171a4`).
+  - **Anti-zoom de iOS** (`0bde059` + `6a71e7d`): `text-input`, `select`, `textarea` y `password-input` estaban en `text-sm` = 14px, y Safari hace zoom bajo 16px al enfocar. Pasan a `text-base sm:text-sm`: 16px en móvil, los 14px de siempre en escritorio.
+  - **Terreno** (`750c029`): teléfono `tel:` y dirección a Google Maps tocables (`<x-tel-link>`, `<x-maps-link>`) + botón grande **Marcar realizado**. **Hallazgo:** el backend de `agenda-terreno.estado` existía desde el principio, con su permiso ya pensado y con tests, pero **ninguna vista lo exponía** — el técnico no tenía forma de cerrar un trabajo desde la app.
+  - **Campanita** (`0a981fa`): casi todo el ancho en móvil vía `anchoMovil` opt-in en `<x-dropdown>` + sus 7 filas a 44px. La POSICIÓN y el ALTO siguen en manos de `x-dg-anclar` (P-NAV-10), que no se tocó.
+  - **Pantalla sin conexión** (`59bc69a`): ahora dice qué SÍ funciona (las tandas de Mi producción están en IndexedDB y se envían solas con el evento `online`) y ofrece «Volver a lo que estaba» — un enlace a Mi producción habría hecho bucle, porque el SW sirve las navegaciones por red y solo precachea `/offline`. Cumplida la regla de invalidación: `CACHE` v1→v2 en `sw.js`.
+  - **Barrido táctil** (`6a71e7d`): `<x-icon-button size="sm">` de 36px→44px en móvil (son los Editar/Eliminar de cada fila en TODA la app, van pegados y uno borra), safe-area en `<x-modal>` y en el pie del drawer, y el «cambiar» del buscador remoto a 44px con `-m-2 p-2`.
+  - **Permisos:** 3 que existían en el seeder y en las rutas no tenían etiqueta en `config/permissions.php`, así que la pantalla de Roles los mostraba con su nombre técnico crudo — etiquetados `crear lote servicio`, `agendar servicio terreno` y `ver agenda terreno`.
+- **Lo que se midió y se decidió NO cambiar** (la regla del dueño en acción): las tablas de repuestos de los informes **no desbordan** a 375px (contenedor 341px, tabla 341px, exceso 0) y son 3 columnas numéricas: apilarlas en tarjetas las haría más altas y menos comparables; el listado de órdenes **ya son tarjetas** (`x-list-row`), no una tabla; y las tablas de los correos son correctas así.
+- **`inputmode="numeric"` en el RUT: descartado, es un bug.** `Cliente::dvRut()` devuelve **'K'** cuando el resto es 10 y el validador exige el DV correcto, pero el teclado numérico de iOS no tiene la K: ~1 de cada 11 personas no podría escribir su RUT. **La rama `feature/responsive-tactil-forms` lo tiene puesto** — no mergear ese pedazo.
+- **Gotchas nuevos (los 3 en la bitácora de `CLAUDE.md`):** interpolar texto libre con `{{ }}` dentro de un `confirm()` lo revienta con un apóstrofo (hallazgo del propio gate R-31, `5a01c59`); un campo `required` escondido por `x-show` aborta el envío **en silencio** porque el navegador no lo puede enfocar; y el candado para eso no puede ser un `queueMicrotask`, porque al volver de cada listener la pila queda vacía y el navegador drena los microtasks.
+- **Pasos marcados:** ninguno (pedido del dueño fuera del plan, como el lote de errores amables).
+- **Decisiones:** ninguna nueva.
+- **Delegaciones:** ninguna. Gate R-31 corrido sobre el propio lote (con el conflicto de interés declarado: lo auditó la cuenta que escribió el código) → **APROBADO**, tras cazar y blindar el apóstrofo.
+- **Próximo paso:** QA del dueño en el simulador sobre producción; y si aparece otra pantalla con cola offline, nombrarla en `offline.blade.php` (subiendo `CACHE`).
+
 ### [2026-07-24] Se cierra la familia de páginas de error (500 con código de incidente, 429, 503, comodines) y se VERIFICA el APP_DEBUG de producción
 - **Quién:** Mauricio + Claude (Opus 5)
 - **Objetivo declarado:** «arregla el 500 también» — el hueco que quedó del lote de 403/404.
