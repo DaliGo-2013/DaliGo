@@ -7,21 +7,6 @@
 
     <div class="space-y-6 py-8 sm:py-12">
 
-        {{-- Saludo --}}
-        <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-            <div class="p-6 text-neutral-600">
-                <p>{{ __("You're logged in!") }} Bienvenido {{ explode(' ', auth()->user()->name)[0] }}</p>
-                <div class="mt-3 flex flex-wrap items-center gap-2">
-                    <span class="text-sm text-neutral-500">Tu rol:</span>
-                    @forelse (auth()->user()->roles as $role)
-                        <x-badge>{{ \Illuminate\Support\Str::headline($role->name) }}</x-badge>
-                    @empty
-                        <span class="text-xs text-neutral-400">sin rol</span>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-
         {{-- Taller por estado: acceso rápido al listado filtrado. Cada tarjeta
              abre el listado ya filtrado por ese estado (o por el mes). --}}
         @if ($tallerCards)
@@ -193,6 +178,24 @@
                         </div>
                     @endforeach
                 </div>
+            </div>
+        @endif
+
+        {{-- Estado vacío: usuario sin permisos ni accesos (p. ej. rol member
+             recién creado). Antes había un saludo de relleno; hoy, si no hay
+             NADA que mostrar, un mensaje neutral evita la pantalla en blanco. --}}
+        @php
+            $sinContenido = ! $tallerCards
+                && ! auth()->user()->can('report production')
+                && ! $puedeVerExcepciones
+                && ! $pulsoProduccion
+                && ! $pulsoTaller
+                && count($accesos) === 0;
+        @endphp
+        @if ($sinContenido)
+            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+                <p class="text-sm text-neutral-600">Tu cuenta aún no tiene accesos asignados.</p>
+                <p class="mt-1 text-xs text-neutral-400">Pídele a un administrador que te asigne un rol.</p>
             </div>
         @endif
 
