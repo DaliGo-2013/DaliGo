@@ -19,8 +19,8 @@
  * subir la version de CACHE aqui (el update del SW es byte-diff de ESTE archivo;
  * cambiar el Blade no lo gatilla). Comentario espejo en offline.blade.php.
  */
-const CACHE = 'daligo-v1';
-const RUNTIME = 'daligo-runtime-v1';
+const CACHE = 'daligo-v2';
+const RUNTIME = 'daligo-runtime-v2';
 const OFFLINE_URL = '/offline';
 const MAX_RUNTIME_ENTRIES = 30;
 
