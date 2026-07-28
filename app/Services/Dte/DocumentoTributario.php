@@ -2,6 +2,7 @@
 
 namespace App\Services\Dte;
 
+use App\Models\OrdenServicio;
 use App\Support\FechaNegocio;
 
 /**
@@ -46,6 +47,10 @@ class DocumentoTributario
      * @param  string  $salesId  Clave de idempotencia derivada del origen. Obligatoria.
      * @param  list<LineaDocumento>  $lineas
      * @param  string|null  $receptorRut  Normalizado (12345678-9). Null en boleta a consumidor final.
+     * @param  string|null  $formaPago  Constante de FormaPago. Contabilidad definió que el pago
+     *                                  se registra al emitir, así que va en el documento.
+     * @param  int|null  $totalConIva  El total que paga el cliente. Es la cifra AUTORITATIVA
+     *                                 (regla de Contabilidad); ver totalEfectivo().
      * @param  bool  $declararAlSii  false solo para documentos internos que NO son tributarios.
      * @param  bool  $rebajaStock  Si el emisor debe descontar stock (Bsale: `dispatch`).
      * @param  bool  $enviarCorreoAlCliente  Si el emisor manda el documento por correo.
@@ -64,6 +69,8 @@ class DocumentoTributario
         public ?string $receptorEmail = null,
         public ?string $fechaEmision = null,
         public ?string $observacion = null,
+        public ?string $formaPago = null,
+        public ?int $totalConIva = null,
         public bool $declararAlSii = true,
         public bool $rebajaStock = false,
         public bool $enviarCorreoAlCliente = false,
@@ -89,6 +96,34 @@ class DocumentoTributario
         }
 
         return $total;
+    }
+
+    /**
+     * Total CON IVA del documento: lo que el cliente paga.
+     *
+     * Si viene dado, MANDA — es la regla de Contabilidad (28-jul-2026: «el total
+     * que paga el cliente») y el número que DesgloseNeto usó para repartir los
+     * netos de las líneas. Recalcularlo desde la suma de los netos volvería a
+     * introducir el peso de diferencia que ese reparto existe para evitar.
+     *
+     * Solo se deduce cuando nadie lo declaró (documentos armados a mano en
+     * pruebas), y ahí sí se acepta el redondeo.
+     */
+    public function totalEfectivo(): int
+    {
+        if ($this->totalConIva !== null) {
+            return $this->totalConIva;
+        }
+
+        $neto = $this->neto();
+
+        return $neto + (int) round($neto * OrdenServicio::TASA_IVA);
+    }
+
+    /** IVA del documento: la DIFERENCIA contra el total, nunca un cálculo aparte. */
+    public function iva(): int
+    {
+        return $this->totalEfectivo() - $this->neto();
     }
 
     /** ¿Es una boleta? Cambia el tratamiento del receptor y del envío al SII. */

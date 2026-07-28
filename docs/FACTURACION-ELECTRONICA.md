@@ -30,9 +30,14 @@ la responsabilidad tributaria.
 | Construido hasta hoy | Riesgo tributario |
 |---|---|
 | Una tabla vacía en la base de datos | Ninguno |
-| Código interno de preparación (sin uso todavía) | Ninguno |
+| Código interno de preparación y de traducción a Bsale (sin uso todavía) | Ninguno |
 | **Documentos emitidos: 0** | — |
 | **Contacto con el SII: ninguno** | — |
+
+> El sistema **todavía no puede** emitir aunque alguien lo intente: los identificadores que Bsale usa
+> para saber a qué sucursal y a qué medio de pago corresponde cada documento están **deliberadamente
+> vacíos**, y sin ellos el código se detiene con un aviso en lugar de adivinar. Llenarlos es un paso
+> aparte y explícito (el B6 del plan técnico).
 
 Si Gerencia decide no avanzar, se elimina y no queda ningún efecto.
 
@@ -325,7 +330,7 @@ la pueden emitir esas cuatro personas directamente; queda registrado quién la e
 | Fase | Qué pasa | Reversible |
 |---|---|---|
 | **1. Preparación interna** ✅ *(hecho)* | Tabla y código base. Nada emite. | ✅ Total |
-| **2. Traducción a Bsale** | El código que arma el documento en el formato de Bsale. | ✅ Total |
+| **2. Traducción a Bsale** ✅ *(hecho 28-jul-2026)* | El código que arma el documento en el formato de Bsale, con las 8 reglas de Contabilidad ya aplicadas. **Sigue sin emitir nada:** los identificadores de Bsale están vacíos a propósito y sin ellos el sistema se niega a emitir. | ✅ Total |
 | **3. Pruebas en ambiente de prueba de Bsale** | Se emiten documentos de prueba. **No son electrónicos: no se timbran ni llegan al SII.** | ✅ Total |
 | 🔴 **4. PRIMERA EMISIÓN REAL** | **PUNTO DE NO RETORNO.** Se crea un documento tributario verdadero, con folio real, que queda en los registros del SII. Solo se deshace con nota de crédito. | ❌ **No** |
 | **5. Uso normal** | DaliGo emite en la operación diaria. | Parcial |
