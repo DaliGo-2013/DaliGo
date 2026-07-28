@@ -49,6 +49,47 @@ class SidebarTest extends TestCase
         );
     }
 
+    /**
+     * Unicidad del ítem activo, DERIVADA de MenuPrincipal (el candado que
+     * faltaba, gate 28-07): en la página de un ítem debe haber EXACTAMENTE un
+     * `aria-current="page"`. Falla en los dos sentidos —dos ítems resaltados a
+     * la vez (un patrón comodín que se come la ruta de un hermano, como pasó al
+     * entrar el Kardex bajo `admin.produccion.*`) o ninguno (una ruta del menú
+     * que ningún patrón cubre)— y cubre sola cada ítem que se agregue mañana.
+     */
+    public function test_cada_ruta_del_menu_resalta_exactamente_un_item(): void
+    {
+        $usuario = User::factory()->create();
+        $usuario->givePermissionTo(\Spatie\Permission\Models\Permission::all());
+
+        $revisados = 0;
+
+        foreach (\App\Support\MenuPrincipal::items() as $key => $item) {
+            // Los `cuenta.*` (Configuración) viven en el dropdown del PIE, no en
+            // el árbol de navegación: `items()` los incluye para los candados de
+            // route/permiso, pero no los renderiza `x-sidebar-item`, así que no
+            // emiten aria-current por diseño.
+            if (str_starts_with($key, 'cuenta.')) {
+                continue;
+            }
+
+            // Los ítems con parámetros en la URL no se pueden pedir sin fixtures.
+            $ruta = \Illuminate\Support\Facades\Route::getRoutes()->getByName($item['route']);
+            if ($ruta === null || $ruta->parameterNames() !== []) {
+                continue;
+            }
+
+            $html = $this->actingAs($usuario)->get(route($item['route']))->assertOk()->getContent();
+            $revisados++;
+
+            $this->assertSame(1, substr_count($html, 'aria-current="page"'),
+                "En [{$item['route']}] (ítem [{$key}]) debe haber EXACTAMENTE un ítem del menú resaltado: "
+                .'0 = ningún patrón cubre la ruta; 2+ = un patrón comodín se come la ruta de un hermano.');
+        }
+
+        $this->assertGreaterThan(10, $revisados, 'Se revisaron muy pocos ítems del menú.');
+    }
+
     public function test_link_directo_activo_lleva_aria_current(): void
     {
         $this->actingAs($this->usuarioCon('admin'))
