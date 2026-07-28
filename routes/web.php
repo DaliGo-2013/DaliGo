@@ -443,3 +443,12 @@ Route::middleware('throttle:6,1')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// TEMP local-only auto-login for iPhone simulator responsive testing. Remove before deploy.
+if (app()->environment('local')) {
+    Route::get('/_dev/login/{id}', function ($id) {
+        \Illuminate\Support\Facades\Auth::loginUsingId((int) $id);
+        return redirect('/dashboard');
+    });
+}
+
