@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Services\Bsale\BsaleEmisor;
+use App\Services\Dte\EmisorDte;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,7 +17,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Puerto de emisión de DTE → implementación concreta (M05). El resto de
+        // la app pide EmisorDte y nunca BsaleEmisor: cambiar de emisor es
+        // cambiar esta línea. El match es explícito para que un valor
+        // desconocido en config reviente al arrancar y no al emitir.
+        $this->app->bind(EmisorDte::class, fn () => match (config('dte.emisor')) {
+            'bsale' => $this->app->make(BsaleEmisor::class),
+            default => throw new InvalidArgumentException(
+                'Emisor de DTE desconocido en config dte.emisor: '.var_export(config('dte.emisor'), true)
+            ),
+        });
     }
 
     /**
