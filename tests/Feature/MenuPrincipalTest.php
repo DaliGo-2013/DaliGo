@@ -221,6 +221,58 @@ class MenuPrincipalTest extends TestCase
         $this->assertSame([], MenuPrincipal::para(null));
     }
 
+    public function test_tecnico_industrial_lidera_con_agenda_e_instalaciones(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        // Carlos: técnico industrial que, además, cubre el taller (view/manage
+        // ST + lote) cuando reemplaza a alguien. Su prioridad diaria igual es
+        // terreno: agenda e instalaciones deben ir PRIMERO, el resto debajo.
+        $carlos = tap(\App\Models\User::factory()->create())->assignRole('tecnico_industrial');
+        $carlos->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio']);
+
+        $items = array_keys(MenuPrincipal::para($carlos)['servicio-tecnico']['items']);
+
+        // Los dos prioritarios encabezan, en ese orden.
+        $this->assertSame(['agenda-terreno', 'instalaciones'], array_slice($items, 0, 2));
+        // Y el Listado —que en la declaración va primero— queda por debajo.
+        $this->assertGreaterThan(
+            array_search('instalaciones', $items, true),
+            array_search('listado', $items, true),
+            'El Listado debe quedar por debajo de agenda/instalaciones para el técnico industrial.'
+        );
+    }
+
+    public function test_prioridad_por_rol_reordena_sin_cambiar_visibilidad(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $carlos = tap(\App\Models\User::factory()->create())->assignRole('tecnico_industrial');
+        $carlos->givePermissionTo(['view servicio tecnico', 'manage servicio tecnico', 'crear lote servicio']);
+
+        // La reordenación no agrega ni quita ítems: mismo conjunto que el que
+        // el permiso deja ver (la visibilidad se sigue derivando del permiso).
+        $visiblePorPermiso = array_keys(array_filter(
+            MenuPrincipal::MODULOS['servicio-tecnico']['items'],
+            fn (array $item) => $carlos->canAny(explode('|', $item['permiso']))
+        ));
+        $enElArbol = array_keys(MenuPrincipal::para($carlos)['servicio-tecnico']['items']);
+
+        $this->assertEqualsCanonicalizing($visiblePorPermiso, $enElArbol);
+    }
+
+    public function test_prioridad_por_rol_no_altera_a_roles_sin_prioridad(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        // El admin no tiene prioridad declarada: conserva el orden de la
+        // declaración (Listado primero), igual que siempre.
+        $admin = tap(\App\Models\User::factory()->create())->assignRole('admin');
+        $items = array_keys(MenuPrincipal::para($admin)['servicio-tecnico']['items']);
+
+        $this->assertSame('listado', $items[0]);
+    }
+
     public function test_cuenta_se_poda_por_permiso_y_no_vive_en_administracion(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);
