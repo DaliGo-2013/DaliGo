@@ -68,6 +68,43 @@ class RetiroQrTest extends TestCase
 
     // --- El retiro y su evidencia ------------------------------------------
 
+    /**
+     * EL CABLEADO de la evidencia, por HTTP. Sin este test, cambiar el
+     * controlador a `validarRetiro($despacho, null)` deja la suite verde y la
+     * evidencia del anti-fraude sin responsable: nadie sabría QUIÉN autorizó el
+     * retiro (hallazgo 3 del gate del Director, 28-07 — el test de abajo llama al
+     * service directo y le pasa el operador a mano, así que no cubre esto).
+     */
+    public function test_el_escaneo_por_http_registra_al_operador_que_lo_hizo(): void
+    {
+        $despacho = $this->despacho();
+        $operador = $this->jefe();
+
+        $this->actingAs($operador)
+            ->post(route('admin.despachos.retiro', $despacho->codigo))
+            ->assertRedirect($despacho->urlFicha());
+
+        $escaneo = $despacho->escaneos()->sole();
+        $this->assertSame($operador->id, $escaneo->user_id,
+            'El user_id del escaneo es la evidencia de quién autorizó el retiro: el controlador debe pasar el operador.');
+        $this->assertSame(EscaneoDespacho::VALIDO, $escaneo->resultado);
+    }
+
+    /** También el rechazado queda a nombre de quien lo intentó. */
+    public function test_el_doble_retiro_por_http_tambien_registra_al_operador(): void
+    {
+        $despacho = $this->despacho(['estado' => Despacho::RETIRADO, 'retirado_at' => now()->subHour()]);
+        $operador = $this->jefe();
+
+        $this->actingAs($operador)
+            ->post(route('admin.despachos.retiro', $despacho->codigo))
+            ->assertSessionHas('escaneo', EscaneoDespacho::DOBLE_RETIRO);
+
+        $escaneo = $despacho->escaneos()->sole();
+        $this->assertSame($operador->id, $escaneo->user_id);
+        $this->assertSame(EscaneoDespacho::DOBLE_RETIRO, $escaneo->resultado);
+    }
+
     public function test_primer_escaneo_autoriza_el_retiro_y_deja_evidencia(): void
     {
         $despacho = $this->despacho();
@@ -165,15 +202,81 @@ class RetiroQrTest extends TestCase
         $this->actingAs($jefe)->get($despacho->urlFicha())->assertOk();
     }
 
-    public function test_una_firma_de_otro_codigo_no_sirve_para_este_despacho(): void
+    /**
+     * La firma está atada AL CÓDIGO. Se usa el código REAL de otro despacho (que
+     * sí existe en la BD) con la firma de este: si se quitara el middleware
+     * `signed`, la petición entraría con 200 y este test se pondría rojo.
+     *
+     * La versión anterior usaba `DSP-FALSIFIC`, inexistente → probaba el 404 y
+     * sobrevivía a que se quitara la firma (hallazgo menor del gate, 28-07).
+     */
+    public function test_la_firma_de_un_despacho_no_sirve_para_otro(): void
     {
-        $otro = $this->despacho();
-        // Firma emitida para OTRO código: alterar el código invalida la firma.
-        $urlAjena = str_replace($otro->codigo, 'DSP-FALSIFIC', $otro->urlFicha());
+        $esteDespacho = $this->despacho();
+        $otroDespacho = $this->despacho();
 
-        $this->actingAs($this->jefe())->get($urlAjena)
+        // Firma emitida para $esteDespacho, código de $otroDespacho.
+        $urlCruzada = str_replace($esteDespacho->codigo, $otroDespacho->codigo, $esteDespacho->urlFicha());
+
+        $this->actingAs($this->jefe())->get($urlCruzada)
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('aviso');
+    }
+
+    // --- La pantalla: los veredictos que el operador tiene que LEER ---------
+
+    /**
+     * Los 3 bloques de veredicto son el píxel para el que existe P-DSP-04 y no
+     * los renderizaba ningún test: borrándolos la suite quedaba verde (hallazgo
+     * menor del gate, 28-07). Se asertan por su TEXTO visible, que es el contrato
+     * con el operador — no por clases de Tailwind.
+     */
+    public function test_la_pantalla_grita_el_retiro_autorizado(): void
+    {
+        $despacho = $this->despacho();
+
+        $this->actingAs($this->jefe())
+            ->post(route('admin.despachos.retiro', $despacho->codigo));
+
+        $this->actingAs($this->jefe())
+            ->withSession(['escaneo' => EscaneoDespacho::VALIDO])
+            ->get($despacho->urlFicha())
+            ->assertOk()
+            ->assertSee('Retiro autorizado');
+    }
+
+    public function test_la_pantalla_grita_no_entregues_ante_doble_retiro(): void
+    {
+        $despacho = $this->despacho(['estado' => Despacho::RETIRADO, 'retirado_at' => now()->subHour()]);
+
+        $this->actingAs($this->jefe())
+            ->withSession(['escaneo' => EscaneoDespacho::DOBLE_RETIRO])
+            ->get($despacho->urlFicha())
+            ->assertOk()
+            ->assertSee('NO entregues')
+            ->assertSee('doble retiro');
+    }
+
+    public function test_la_pantalla_avisa_cuando_el_despacho_ya_cerro(): void
+    {
+        $despacho = $this->despacho(['estado' => Despacho::ENTREGADO]);
+
+        $this->actingAs($this->jefe())
+            ->withSession(['escaneo' => EscaneoDespacho::ESTADO_INVALIDO])
+            ->get($despacho->urlFicha())
+            ->assertOk()
+            ->assertSee('ya está cerrado');
+    }
+
+    /** Sin veredicto en sesión no se pinta ninguna banda (una visita normal). */
+    public function test_sin_veredicto_la_pantalla_no_grita_nada(): void
+    {
+        $despacho = $this->despacho();
+
+        $this->actingAs($this->jefe())->get($despacho->urlFicha())
+            ->assertOk()
+            ->assertDontSee('Retiro autorizado')
+            ->assertDontSee('NO entregues');
     }
 
     public function test_el_qr_apunta_al_codigo_no_al_id(): void
@@ -216,7 +319,9 @@ class RetiroQrTest extends TestCase
 
         $this->actingAs($this->jefe())
             ->post(route('admin.despachos.retiro', $despacho->codigo))
-            ->assertRedirect()
+            // Con DESTINO: un assertRedirect() pelado dejaba que el POST dejara de
+            // volver a la ficha sin que nadie se enterara (hallazgo menor del gate).
+            ->assertRedirect($despacho->urlFicha())
             ->assertSessionHas('escaneo', EscaneoDespacho::VALIDO);
 
         $this->assertSame(Despacho::RETIRADO, $despacho->fresh()->estado);
@@ -270,7 +375,45 @@ class RetiroQrTest extends TestCase
         $this->actingAs($this->jefe())
             ->getJson(route('admin.despachos.cola.conteo'))
             ->assertOk()
-            ->assertExactJson(['total' => 1]);
+            ->assertJsonStructure(['total', 'firma'])
+            ->assertJsonPath('total', 1);
+    }
+
+    /**
+     * EL caso que el poll por-total no detectaba: entra una carga y sale otra en
+     * la misma ventana → total idéntico, contenido distinto. Con el total pelado
+     * el monitor no recargaba y seguía mostrando una carga YA RETIRADA como
+     * «Esperando», con el número correcto (parecía fresco). Hallazgo 4 del gate.
+     */
+    public function test_la_firma_de_la_cola_cambia_aunque_el_total_no(): void
+    {
+        $sale = $this->despacho();
+        $jefe = $this->jefe();
+
+        $antes = $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->json();
+
+        // Sale una y entra otra: el total vuelve a 1.
+        $this->service()->validarRetiro($sale, $jefe);
+        $entra = $this->despacho();
+
+        $despues = $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->json();
+
+        $this->assertSame($antes['total'], $despues['total'], 'El total no cambia: es justo el caso ciego.');
+        $this->assertNotSame($antes['firma'], $despues['firma'],
+            'La firma DEBE cambiar con el contenido, o el monitor muestra una carga ya retirada.');
+        $this->assertNotSame($sale->codigo, $entra->codigo);
+    }
+
+    /** La firma que imprime la pantalla y la del JSON deben coincidir, o el monitor recarga en loop. */
+    public function test_la_pantalla_y_el_json_comparten_la_misma_firma(): void
+    {
+        $this->despacho();
+        $jefe = $this->jefe();
+
+        $firmaVista = $this->actingAs($jefe)->get(route('admin.despachos.cola'))->viewData('firma');
+        $firmaJson = $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->json('firma');
+
+        $this->assertSame($firmaJson, $firmaVista);
     }
 
     public function test_la_cola_baja_cuando_se_retira(): void
@@ -278,9 +421,9 @@ class RetiroQrTest extends TestCase
         $despacho = $this->despacho();
         $jefe = $this->jefe();
 
-        $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->assertExactJson(['total' => 1]);
+        $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->assertJsonPath('total', 1);
         $this->service()->validarRetiro($despacho, $jefe);
-        $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->assertExactJson(['total' => 0]);
+        $this->actingAs($jefe)->getJson(route('admin.despachos.cola.conteo'))->assertJsonPath('total', 0);
     }
 
     // --- Entrega total / parcial ------------------------------------------
@@ -325,6 +468,61 @@ class RetiroQrTest extends TestCase
             ->get(route('admin.despachos.index'))
             ->assertOk()
             ->assertSee('Faltaron 4 botellones de 20L');
+    }
+
+    /**
+     * EL HALLAZGO GRAVE del gate (nº 2, 28-07): sin JS, una entrega PARCIAL se
+     * grababa como ENTREGADO **con el saldo adentro** — perdía dato de negocio en
+     * silencio. Causa: el flag viajaba solo en un hidden con `:value` de Alpine y
+     * el checkbox no tenía `name`.
+     *
+     * Este test simula el envío del HTML SIN JS: el navegador manda el hidden
+     * (`0`) y, si el operador marcó el checkbox, también su `1` — que gana por ir
+     * después. Se envían AMBOS valores en ese orden, como lo haría el navegador.
+     */
+    public function test_sin_js_una_entrega_parcial_se_graba_como_parcial(): void
+    {
+        $despacho = $this->despacho(['estado' => Despacho::RETIRADO]);
+
+        // Lo que manda el form real con el checkbox marcado y Alpine ausente.
+        $this->actingAs($this->jefe())->post(
+            route('admin.despachos.entrega', $despacho),
+            ['parcial' => ['0', '1'][1], 'entrega_observacion' => 'Faltaron 6 bidones']
+        )->assertRedirect(route('admin.despachos.index'));
+
+        $fresco = $despacho->fresh();
+        $this->assertSame(Despacho::ENTREGA_PARCIAL, $fresco->estado,
+            'Sin JS el parcial DEBE seguir siendo parcial: si cae a ENTREGADO se pierde el saldo.');
+        $this->assertSame('Faltaron 6 bidones', $fresco->entrega_observacion);
+    }
+
+    /** Y el checkbox sin marcar (solo el hidden) cierra como entrega total. */
+    public function test_sin_js_y_sin_marcar_el_checkbox_es_entrega_total(): void
+    {
+        $despacho = $this->despacho(['estado' => Despacho::RETIRADO]);
+
+        $this->actingAs($this->jefe())
+            ->post(route('admin.despachos.entrega', $despacho), ['parcial' => '0'])
+            ->assertRedirect(route('admin.despachos.index'));
+
+        $this->assertSame(Despacho::ENTREGADO, $despacho->fresh()->estado);
+    }
+
+    /**
+     * El HTML del formulario tiene que sostener lo anterior: el `name` va en el
+     * CHECKBOX (no solo en un hidden con binding de Alpine) y hay un hidden con
+     * el `0` estático de base. Sin este assert, alguien vuelve al patrón viejo.
+     */
+    public function test_el_formulario_de_entrega_funciona_sin_alpine(): void
+    {
+        $despacho = $this->despacho(['estado' => Despacho::RETIRADO]);
+
+        $html = $this->actingAs($this->jefe())->get($despacho->urlFicha())->assertOk()->getContent();
+
+        $this->assertStringContainsString('type="hidden" name="parcial" value="0"', $html,
+            'Falta el hidden con el 0 estático: sin él el flag no viaja si Alpine no corre.');
+        $this->assertMatchesRegularExpression('/type="checkbox" name="parcial" value="1"/', $html,
+            'El name debe estar en el CHECKBOX, no solo en un hidden con :value de Alpine.');
     }
 
     public function test_no_se_entrega_lo_que_no_salio_de_bodega(): void

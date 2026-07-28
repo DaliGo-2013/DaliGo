@@ -90,22 +90,37 @@
              El parcial EXIGE saldo: un parcial sin saldo no se puede reclamar. --}}
         @if ($despacho->admiteEntrega())
             <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
-                 x-data="{ parcial: {{ $errors->has('entrega_observacion') ? 'true' : 'false' }} }">
+                 x-data="{ parcial: {{ old('parcial') || $errors->has('entrega_observacion') ? 'true' : 'false' }} }">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cerrar el despacho</h3>
 
                 <form method="POST" action="{{ route('admin.despachos.entrega', $despacho) }}" class="mt-4 space-y-4" data-una-vez>
                     @csrf
-                    <input type="hidden" name="parcial" :value="parcial ? 1 : 0">
+                    {{-- Patrón checkbox+hidden, y el NAME va en el CHECKBOX.
+                         Antes el único portador del flag era un hidden con solo
+                         `:value` de Alpine y el checkbox no tenía name: si Alpine
+                         no corría, una entrega PARCIAL se grababa como ENTREGADO
+                         con el saldo adentro — perdía dato de negocio en silencio
+                         (hallazgo 2 del gate del Director, 28-07). Ahora el HTML
+                         solo ya es correcto: el hidden manda 0 y el checkbox
+                         marcado lo pisa con 1 por ir después. --}}
+                    <input type="hidden" name="parcial" value="0">
 
                     <label class="flex items-start gap-3">
-                        <input type="checkbox" x-model="parcial"
+                        <input type="checkbox" name="parcial" value="1" x-model="parcial"
+                               @checked(old('parcial'))
                                class="mt-0.5 h-5 w-5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500/30">
                         <span class="text-sm text-neutral-700">
                             Entrega PARCIAL (quedó saldo pendiente)
                         </span>
                     </label>
 
-                    <div x-show="parcial" x-cloak>
+                    {{-- SIN x-cloak a propósito: `[x-cloak]{display:none!important}`
+                         dejaría el campo oculto PARA SIEMPRE si Alpine no corre, y
+                         el servidor exige el saldo igual → el operador no podría
+                         completarlo. Con Alpine hay un flash de un campo de texto
+                         que se oculta al inicializar; se prefiere el flash a perder
+                         la función. --}}
+                    <div x-show="parcial">
                         <x-input-label for="entrega_observacion" value="Qué quedó pendiente *" />
                         <x-text-input id="entrega_observacion" name="entrega_observacion" type="text"
                                       class="mt-1.5 block w-full" :value="old('entrega_observacion')"

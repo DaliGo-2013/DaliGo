@@ -25,12 +25,20 @@ use Illuminate\View\View;
  * una de las dos:
  * - Solo firmada (semi-pública) sería un agujero: quien le saque una foto al QR
  *   —el propio cliente, alguien en la fila— marcaría el retiro desde su celular
- *   sin pasar por bodega. Eso ES el fraude que M07 viene a cerrar.
+ *   sin pasar por bodega.
  * - Solo autenticada perdería la integridad del link: la firma es lo que impide
  *   editar el código en la barra de direcciones para apuntar a otro despacho.
- * Con las dos: el QR identifica la carga sin ser adivinable, y el retiro queda
- * a nombre de un operador real (su `user_id` viaja a `escaneos_despacho`, que es
- * la evidencia si aparece un doble retiro).
+ *
+ * QUÉ CIERRA ESTO Y QUÉ NO (precisado tras el gate del 28-07; la versión previa
+ * de esta nota daba a entender más de lo que el código aplica):
+ * - **SÍ cierra: «una carga no sale dos veces».** El 2º escaneo del mismo QR no
+ *   cambia el estado y deja fila `doble_retiro` con su responsable.
+ * - **NO cierra: «retirar una carga que no te corresponde».** El propio panel le
+ *   entrega la URL firmada de CUALQUIER despacho a quien tenga `manage
+ *   despachos`, así que entre operadores autorizados la firma no acota nada — no
+ *   hay control por zona ni exigencia de tener el QR físico delante. Es alcance
+ *   aceptado para v1; cerrarlo (cross-zona / posesión del QR) sería un paso
+ *   propio y lo dicta el dueño.
  */
 class DespachoController extends Controller
 {
@@ -160,7 +168,10 @@ class DespachoController extends Controller
      */
     public function cola(): View
     {
+        // La firma sale del MISMO helper que la del JSON: si se calcularan por
+        // separado podrían divergir y el monitor recargaría en loop (o nunca).
         return view('admin.despachos.cola', [
+            'firma' => $this->firmaDeLaCola(),
             'despachos' => Despacho::with(['documento.cliente', 'zona'])
                 ->pendienteDeRetiro()
                 ->oldest('id')   // el que espera hace más rato, primero
@@ -178,7 +189,24 @@ class DespachoController extends Controller
      */
     public function colaConteo(): JsonResponse
     {
-        return response()->json(['total' => Despacho::pendienteDeRetiro()->count()]);
+        return response()->json([
+            'total' => Despacho::pendienteDeRetiro()->count(),
+            'firma' => $this->firmaDeLaCola(),
+        ]);
+    }
+
+    /**
+     * Huella del CONTENIDO de la cola, no solo su tamaño.
+     *
+     * Con el total pelado, si en la misma ventana del poll entra una carga y sale
+     * otra, el número no cambia → el monitor no recarga y sigue mostrando una
+     * carga YA RETIRADA como «Esperando»… con el número correcto, así que parece
+     * fresco. En bodega eso es peor que un monitor congelado (hallazgo 4 del gate
+     * del Director, 28-07).
+     */
+    private function firmaDeLaCola(): string
+    {
+        return md5(Despacho::pendienteDeRetiro()->orderBy('id')->pluck('codigo')->implode('|'));
     }
 
     /** Cierra el despacho: entrega total, o PARCIAL con el saldo pendiente. */

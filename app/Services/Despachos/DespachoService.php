@@ -91,8 +91,21 @@ class DespachoService
      * operador, o dos personas retirando la misma mercadería en dos puestos—
      * leerían ambos `preparado` y ambos marcarían el retiro como válido, que es
      * el fraude que este paso existe para impedir (patrón bitácora 2026-06-30:
-     * check-then-act sin lock sobre la fila ancla). Mutación verificada: al
-     * quitar este lock, RetiroQrTest se pone rojo en el test de la carrera.
+     * check-then-act sin lock sobre la fila ancla).
+     *
+     * QUÉ CUBRE LA SUITE Y QUÉ NO (corregido tras el gate del 28-07 — la versión
+     * anterior de este comentario afirmaba de más):
+     * - `RetiroQrTest` cubre la **RE-LECTURA**: con una instancia stale, el 2º
+     *   intento se rechaza. Quitando la re-lectura, ese test se pone rojo.
+     * - **El lock NO es asertable en esta suite.** `SQLiteGrammar::compileLock()`
+     *   devuelve `''` de forma incondicional, así que bajo SQLite
+     *   `->lockForUpdate()` emite SQL byte-idéntico a omitirlo: ningún test de
+     *   feature puede distinguirlo, y un assert de `DB::listen` buscando
+     *   "for update" saldría rojo sobre código correcto. La cobertura honesta del
+     *   lock es a nivel de grammar: ver `tests/Unit/LockParaMySqlTest.php`, que
+     *   compila el mismo builder con `MySqlGrammar` y exige el sufijo.
+     * - En producción (MySQL 5.7) el lock SÍ se emite; es la mitad que protege
+     *   contra dos procesos PHP concurrentes, donde la re-lectura sola no basta.
      *
      * Los 3 resultados posibles del intento:
      * - `valido`          → estaba `preparado`: pasa a `retirado`, sella hora.
@@ -148,8 +161,11 @@ class DespachoService
      *
      * Parcial ⇒ estado `entrega_parcial` y la observación es OBLIGATORIA: es el
      * saldo, y un parcial sin saldo visible no se puede reclamar después.
-     * Mismo lock que el retiro: cerrar dos veces el mismo despacho desde dos
-     * pestañas no debe pisar la hora ni el saldo del primero.
+     * Mismo patrón que el retiro: cerrar dos veces el mismo despacho desde dos
+     * pestañas no debe pisar la hora ni el saldo del primero. Igual que allá, lo
+     * que la suite cubre es la **re-lectura** con la fila tomada; el
+     * `lockForUpdate` en sí no es asertable bajo SQLite (ver la nota extendida en
+     * `validarRetiro` y `tests/Unit/LockParaMySqlTest.php`).
      *
      * @throws ValidationException si el despacho no salió de bodega o falta el saldo.
      */

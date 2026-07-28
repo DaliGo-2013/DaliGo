@@ -71,16 +71,17 @@
          que el poll del listado de Servicio Técnico). --}}
     <script>
         (function () {
-            var base = {{ $total }};
+            // Se compara la FIRMA del contenido, no el total: un total igual no
+            // significa la misma cola (entra una carga, sale otra) y el monitor
+            // se quedaría mostrando una carga ya retirada como «Esperando».
+            var base = '{{ $firma }}';
             var url = '{{ route('admin.despachos.cola.conteo') }}';
             setInterval(function () {
                 if (document.visibilityState !== 'visible') return;
                 fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                     .then(function (r) { return r.ok ? r.json() : null; })
                     .then(function (d) {
-                        // Solo recarga si el número cambió (entró o salió una
-                        // carga): así el monitor no parpadea sin motivo.
-                        if (d && d.total !== base) window.location.reload();
+                        if (d && d.firma !== base) window.location.reload();
                     })
                     .catch(function () {});
             }, 20000);
