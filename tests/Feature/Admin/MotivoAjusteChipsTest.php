@@ -121,6 +121,39 @@ class MotivoAjusteChipsTest extends TestCase
         $this->assertStringNotContainsString(ProduccionReporte::MOTIVO_OTRO, $campo[0]);
     }
 
+    public function test_tras_el_rechazo_el_panel_de_edicion_vuelve_abierto(): void
+    {
+        // Hallazgo del gate: los <x-input-error> del ajuste viven DENTRO del
+        // x-show del panel. Con el panel cerrado el error quedaba en
+        // display:none y el jefe veía la ficha idéntica, sin saber por qué su
+        // ajuste no se aplicó. Alcanzable con un clic desde que el motivo son
+        // chips (perdió el `required` del navegador que tenía el textarea).
+        [$jefe, $reporte] = $this->escenario();
+
+        $html = $this->actingAs($jefe)
+            ->from(route('admin.produccion.reporte.show', $reporte))
+            ->followingRedirects()
+            ->post(route('admin.produccion.reporte.ajustar', $reporte), [
+                'asignadas' => 110, 'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
+                // Sin motivo: el rechazo del servidor es el único feedback.
+            ])->assertOk()->getContent();
+
+        $this->assertStringContainsString("x-data=\"{ panel: 'editar' }\"", $html,
+            'El panel de edición debe volver ABIERTO cuando su propio submit fue rechazado.');
+    }
+
+    public function test_una_pantalla_sin_errores_abre_con_los_paneles_cerrados(): void
+    {
+        // Contracara del anterior: la auto-apertura NO debe dispararse en una
+        // visita normal (si no, el jefe encuentra el formulario de edición
+        // desplegado cada vez que abre una ficha).
+        [$jefe, $reporte] = $this->escenario();
+
+        $this->actingAs($jefe)->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            ->assertSee('x-data="{ panel: null }"', false);
+    }
+
     public function test_el_cambio_de_la_notificacion_no_duplica_el_motivo(): void
     {
         [$jefe, $reporte] = $this->escenario();
