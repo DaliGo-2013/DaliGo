@@ -504,21 +504,13 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Precio de venta (con IVA) del producto en el catálogo: prioriza una lista
-     * activa, si no cualquiera. Null si no hay producto o no tiene precio. Se usa
-     * para advertir cuando la reparación es cara respecto al valor del equipo.
+     * Precio de venta (con IVA) del producto en el catálogo, de la lista oficial
+     * de ventas. Null si no hay producto o no tiene precio ahí. Se usa para
+     * advertir cuando la reparación es cara respecto al valor del equipo.
      */
     private function precioVentaProducto(?Producto $producto): ?int
     {
-        if (! $producto) {
-            return null;
-        }
-
-        $producto->loadMissing('precios.lista');
-        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
-            ?? $producto->precios->first();
-
-        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
+        return $producto?->precioVentaConIva();
     }
 
     /**
@@ -690,9 +682,9 @@ class ServicioTecnicoController extends Controller
 
     /**
      * Valor hora de mano de obra: precio CON IVA del producto configurado como
-     * "hora de servicio tecnico" (config sku_hora_servicio). Prioriza una lista
-     * de precios activa; si no hay, cualquiera. Null si no existe o no tiene
-     * precio (mismo criterio de precio que buscarRepuesto).
+     * "hora de servicio tecnico" (config sku_hora_servicio), de la lista oficial
+     * de ventas. Null si el SKU no existe o no tiene precio ahí (mismo criterio
+     * que buscarRepuesto: Producto::precioVentaConIva).
      */
     private function precioHoraServicio(): ?int
     {
@@ -701,15 +693,7 @@ class ServicioTecnicoController extends Controller
             return null;
         }
 
-        $producto = Producto::where('sku', $sku)->with('precios.lista')->first();
-        if (! $producto) {
-            return null;
-        }
-
-        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa))
-            ?? $producto->precios->first();
-
-        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
+        return Producto::where('sku', $sku)->with('precios.lista')->first()?->precioVentaConIva();
     }
 
     /**
@@ -1059,16 +1043,12 @@ class ServicioTecnicoController extends Controller
             ->orderBy('sku')
             ->limit(10)
             ->get(['id', 'sku', 'nombre'])
-            ->map(function (Producto $p) {
-                // El precio de venta que encuentre: prioriza una lista activa; si no, cualquiera.
-                $pr = $p->precios->first(fn ($x) => (bool) ($x->lista?->activa)) ?? $p->precios->first();
-
-                return [
-                    'nombre' => $p->nombre,
-                    'sku' => $p->sku,
-                    'precio' => $pr ? (int) round((float) $pr->precio_con_iva) : null,
-                ];
-            });
+            ->map(fn (Producto $p) => [
+                'nombre' => $p->nombre,
+                'sku' => $p->sku,
+                // De la lista oficial de ventas; null si no está ahí (se escribe a mano).
+                'precio' => $p->precioVentaConIva(),
+            ]);
 
         // 2) Historial de reparaciones + repuestos comunes (solo nombres).
         $historial = OrdenServicioRepuesto::query()
