@@ -32,8 +32,7 @@
         </div>
 
         {{-- Tus datos (una sola vez) --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm space-y-4">
-            <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Tus datos (una sola vez)</h2>
+        <x-seccion titulo="Tus datos (una sola vez)">
             <div>
                 <x-input-label for="cliente_nombre">Nombre y apellido <span class="text-red-500">*</span></x-input-label>
                 <x-text-input id="cliente_nombre" name="cliente_nombre" type="text" class="mt-1.5 w-full" required
@@ -59,12 +58,11 @@
                     maxlength="30" placeholder="Ej. +56 9 1234 5678" :value="old('cliente_telefono')" />
                 <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-2" />
             </div>
-        </div>
+        </x-seccion>
 
         {{-- Datos comunes del lote --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm space-y-4"
+        <x-seccion titulo="Datos comunes (para todas las máquinas)"
              x-data="{ cond: @js(old('facturacion', '')) }">
-            <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Datos comunes (para todas las máquinas)</h2>
             <div>
                 <x-input-label for="tipo_default">Tipo de equipo <span class="text-red-500">*</span></x-input-label>
                 <x-select id="tipo_default" name="tipo_default" class="mt-1.5" required x-model="tipoDefault">
@@ -113,7 +111,7 @@
                 </div>
             </div>
 
-        </div>
+        </x-seccion>
 
         {{-- Máquinas --}}
         {{-- Acordeón por máquina: con 3 equipos la pantalla del celular se hacía
@@ -131,7 +129,7 @@
              el navegador aborta el envío sin decir nada. Al primer campo
              inválido abrimos su tarjeta y lo enfocamos. El evento `invalid` no
              burbujea: por eso se escucha en fase de captura. --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+        <div class="sm:rounded-2xl sm:border sm:border-neutral-200 sm:bg-white sm:p-4 sm:shadow-sm"
              x-data="{
                 abierta: 0,
                 completa(m) {
@@ -212,7 +210,7 @@
                             </button>
                         </div>
 
-                        <div x-show="abierta === i" x-cloak class="border-t border-neutral-100 p-3">
+                        <div x-show="abierta === i" x-cloak class="border-t border-neutral-100 p-2.5 sm:p-3">
 
                         <div class="grid grid-cols-2 gap-2">
                             <div>

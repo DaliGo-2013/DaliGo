@@ -32,8 +32,7 @@
         </div>
 
         {{-- Qué necesitas --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm space-y-4">
-            <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">¿Qué necesitas?</h2>
+        <x-seccion titulo="¿Qué necesitas?">
             <div>
                 <x-input-label for="tipo">Tipo de trabajo <span class="text-red-500">*</span></x-input-label>
                 <x-select id="tipo" name="tipo" class="mt-1.5" required>
@@ -79,11 +78,10 @@
                 <x-input-hint>Cuéntanos tus horarios o restricciones para que coordinemos la visita a tu medida.</x-input-hint>
                 <x-input-error :messages="$errors->get('disponibilidad')" class="mt-2" />
             </div>
-        </div>
+        </x-seccion>
 
         {{-- Tus datos --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm space-y-4">
-            <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Tus datos</h2>
+        <x-seccion titulo="Tus datos">
             <div>
                 <x-input-label for="cliente_nombre">Nombre / empresa <span class="text-red-500">*</span></x-input-label>
                 <x-text-input id="cliente_nombre" name="cliente_nombre" type="text" class="mt-1.5 w-full" required
@@ -123,7 +121,7 @@
                     maxlength="191" :value="old('ciudad')" />
                 <x-input-error :messages="$errors->get('ciudad')" class="mt-2" />
             </div>
-        </div>
+        </x-seccion>
 
         <x-barra-envio-movil>Enviar solicitud</x-barra-envio-movil>
         <p class="text-center text-xs text-neutral-400">Te contactaremos para coordinar el día y la hora de la visita.</p>
