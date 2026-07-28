@@ -39,8 +39,8 @@ Si Gerencia decide no avanzar, se elimina y no queda ningún efecto.
 ### Lo que necesitamos de ustedes
 
 1. **Contabilidad:** ✅ **respondido el 28-jul-2026** — las 8 reglas contables están definidas (§7).
-   Quedan **tres datos menores** por confirmar: el SKU de mano de obra, la lista de precios de servicio
-   técnico y el RUT del emisor.
+   Quedan **dos datos menores** por confirmar: la lista de precios de servicio técnico y el RUT del
+   emisor.
 2. **Gerencia:** aprobar (o no) el plan de la §8, y en particular autorizar por escrito **el único
    paso irreversible**, que está marcado en rojo.
 
@@ -230,8 +230,16 @@ catálogo + un monto de mano de obra), así que el desglose sale directo, sin pe
 técnico. Por la **Res. 36/2024**, el código va en el campo de código y la **descripción visible** debe
 ser el nombre real del repuesto, sin abreviaturas.
 
-**⬜ Falta un dato para programarlo:** **cuál es el SKU de mano de obra** (y si es uno solo o hay
-varios según el tipo de servicio).
+**✅ Los dos códigos ya están identificados** (verificado el 28-jul-2026):
+
+| Línea del documento | Código | Cómo aparece |
+|---|---|---|
+| **Repuestos** | SKU del catálogo, serie `1070xxx` (categoría *AGUA REPUESTOS*) | Nombre real del repuesto: "ADAPTADOR LLAVES VENTILADOR", "BASE TB-36", "BOMBA DE ALTA PRESION 1T"… |
+| **Mano de obra** | SKU **`9771001`** — *HORA SERVICIO TECNICO* (categoría *SERVICIOS*) | "Hora servicio técnico" |
+
+El SKU de mano de obra **ya está en uso** dentro de DaliGo: es el que alimenta el valor hora al cotizar
+una reparación (`config/servicio_tecnico.php`). O sea, el desglose que pide Contabilidad se puede armar
+con lo que el sistema ya tiene, sin pedirle nada nuevo al técnico.
 
 ### ✅ 4. Equipos en garantía
 
@@ -371,7 +379,7 @@ a julio de 2026 eran:
 | 5 | Reglas contables 1 a 8 de la §7 | Contabilidad | ✅ **Respondidas 28-jul-2026** |
 | 6 | Validar que el RCOF está derogado y que el RCV reemplaza los libros | Contabilidad | ⬜ Pendiente |
 | 7 | Configuración de cierre de caja en Bsale: ¿"por emisor" o "por sucursal"? | Interno | ⬜ Pendiente |
-| 8 | **¿Cuál es el SKU de mano de obra?** ¿Uno solo o varios según el servicio? | Contabilidad / Ventas | ⬜ **Bloquea el desglose** |
+| 8 | ¿Cuál es el SKU de mano de obra? | Contabilidad / Ventas | ✅ **`9771001` — HORA SERVICIO TECNICO** (ya en uso en DaliGo) |
 | 9 | ¿Qué lista de precios se usa al facturar servicio técnico? | Contabilidad / Ventas | ⬜ Pendiente |
 | 10 | Confirmar el RUT del emisor: **76.301.506-8** (Importadora y Exportadora Dali) | Contabilidad | ⬜ Pendiente |
 
@@ -430,4 +438,4 @@ Todo lo afirmado se verificó en fuentes primarias.
       despacho en alcance obligatorio (devolución de equipos en garantía), y es justamente el documento
       afectado por el plazo.
 - [ ] Crear el rol **`jefe_sucursal`** y el permiso de emisión de notas de crédito (respuesta 8 de la §7).
-- [ ] Preguntar por el **SKU de mano de obra** y la **lista de precios** de servicio técnico.
+- [ ] Preguntar qué **lista de precios** corresponde al facturar servicio técnico.
