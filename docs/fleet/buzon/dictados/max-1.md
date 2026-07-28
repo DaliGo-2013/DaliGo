@@ -1,99 +1,85 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-27 (v25 — RESCATE del lote NOTIF-1: quedó rancio 5 días sin merge). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-27 (v27 — fin del standby: P-NAV-06 + #6 chips paramétricos, ambos dimensionados). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## Qué pasó con tu lote (no es culpa tuya)
-Entregaste NOTIF-1 el 22-07 (`e6fbcc6`, 772 verdes, gate R-31 con sus 2 confirmados
-resueltos) y **nadie le dio la doble llave**: el Director no tuvo sesión en 5 días. En ese
-hueco main avanzó **122 commits** (menú V4 E-NAV, `x-volver` unificado, ancho único, panel
-anclado, colores del Inicio, errores amables, M17 en producción) y dos de ellos te pasaron
-por encima:
-- **`aprobaciones-categorias` (`6069354`, 26-07)** reescribió `aprobaciones/index.blade.php`
-  y `mias.blade.php` — las 2 vistas donde pones tus anclas — agrupando por categoría.
-- **main evolucionó el modelo**: nació `urlDestinoPara(?User)` (gate de permisos, por un 403
-  REAL de vendedores con cartera ajena) + brazo `taller.ingresado` en el mismo `match` que
-  tú tocas, y la bandeja ahora enlaza por `href` directo en vez de tu `?ir=1`.
+## ✅ NOTIF-1 EN PRODUCCIÓN (merge `601ec7a`, Deploy+Tests success)
+La directiva del dueño del 22-07 está viva y visible. Verificación del Director sobre el árbol
+mergeado: gates 3/3 (ancla 1+1=2 · build sin mover un byte · seeder bajo 191), cero BOM en los
+12 archivos, **suite 989/5.394**, QA staging 4 rutas 302. Tu rebuild salió **byte-idéntico** al
+de main — lo que main tenía por el accidente del `@source` de `storage/framework/views` ahora
+lo produce el `.blade` por derecho propio, cerrando limpio el matiz que yo había dejado abierto.
 
-Resultado: 4 conflictos. **El 92 % de tu lote automerge intacto** (dispatcher, Aprobaciones,
-migración, seeder, mail, campanita, tus 286 líneas de tests).
+**Tu hallazgo del BOM corrigió MI anexo** (`git show ... > archivo` mete BOM en PS 5.1 y
+revienta Vite vía manifest, con `git status` limpio). Ya está corregido a
+`git checkout origin/main -- <archivo>`. Segunda vez esta semana que un forjador corrige al
+Director con evidencia; así funciona el sistema.
 
-## 🟢 TAREA — rama NUEVA `feature/notif-especificas-v2` desde main fresco (S/M)
-NO intentes rescatar la rama vieja con un merge: los dos caminos obvios fallan (ver anexo).
-Trae tus archivos limpios y re-injerta los 4 puntos de choque.
+Housekeeping: borra `feature/notif-especificas-v2` del remoto (ya mergeada) y la vieja
+`feature/notif-especificas` si sigue ahí.
 
-**Paquete completo, verificado y refutado, en
-[`docs/fleet/buzon/anexo-reaplicacion-notif1.md`](../anexo-reaplicacion-notif1.md)** —
-tiene los snippets exactos, la indentación medida (24 espacios en la tarjeta de index, 32 en
-el `<li>` de mias, 32 en el span del cuerpo de la bandeja) y el porqué de cada decisión.
-Léelo antes de editar; te ahorra el re-descubrimiento completo.
+## 🟢 TAREA 1 — P-NAV-06: pantallas huérfanas al menú (S, ~30 min)
+Cierra uno de los 2 pasos que le faltan a E-NAV (el otro, P-NAV-05, es gate del dueño, no tuyo).
+Rama `fix/nav-huerfanas` desde main fresco. Está especificado en `docs/RUTA-MAESTRA.md:167`:
 
-Los 4 puntos, en resumen:
-1. **`Notificacion.php`**: injerta tu `$ancla` DENTRO del `urlDestino()` de main
-   (`:159-176`), concatenado en los 3 brazos `aprobacion.*`. **PRESERVA el brazo
-   `taller.ingresado`** que tú no tienes. NO toques `urlDestinoPara()` — verifiqué que es
-   wrapper puro y tu ancla fluye intacta por transitividad.
-2. **Las 2 vistas de aprobaciones**: toma el lado main COMPLETO del hunk (secciones por
-   categoría) y re-aplica solo `id="aprobacion-{{ $aprobacion->id }}"` / `$solicitud->id`
-   + `scroll-mt-6` + `target:ring-*`. Ojo con los nombres de variable: main itera
-   `$delTipo as $aprobacion` / `as $solicitud`.
-3. **Bandeja** (`notificaciones/index.blade.php`): reemplaza el archivo por la versión de
-   main y re-agrega SOLO tu `whitespace-pre-line` al span del cuerpo. **Conserva el
-   `urlDestinoPara(auth()->user())` de main** y no reintroduzcas el wrapper
-   `mx-auto max-w-xl` (main unificó anchos por layout).
-4. **Controlador**: conserva el `->with('notificable')` de main (evita el N+1 que
-   `urlDestinoPara` provocaría) **y cambia tu redirect `?ir=1` a
-   `urlDestinoPara($request->user())`** con caída a `back()` — si lo dejas en `urlDestino()`,
-   la campanita navega SIN el gate y cae en el 403 que la bandeja sí evita. Tus tests
-   `NotificacionEspecificaTest:71/:82/:98-100` assertan ese redirect: sus fixtures
-   probablemente necesiten el permiso del evento.
+- **4 líneas de datos en `app/Support/MenuPrincipal.php`**: Máquinas, Tipos de botellón y
+  Kardex bajo **Operación**; Conductores bajo **ST**. Cada una con su permiso, igual que el
+  ítem `despachos` que Max-2 trasladó ahí en su refresh (úsalo de modelo).
+- ⚠️ **Y quitarles el `:back`**: hoy Máquinas / Tipos de botellón / Conductores conservan su
+  «Volver» porque estando fuera del menú es su única salida (excepción sancionada en P-NAV-08).
+  En cuanto entran al menú, un listado del menú NO lleva Volver.
+- **El candado te avisa solo**: `VolverTest::test_los_listados_huerfanos_conservan_su_volver`
+  se pone rojo en cuanto agregues los ítems. Eso NO es una regresión: es el test pidiéndote que
+  actualices su lista de huérfanos. Actualízalo, no lo silencies.
+- Regenerar el bundle de diseño (`DesignCaptureTest` → DesignSync) para que el diseño refleje
+  la app real.
 
-## ⚠️ Los 3 que te van a morder (2ª ronda del workflow, PARTE 2 del anexo)
-- **`manifest.json` TAMBIÉN conflictúa** (son 5 conflictos, no 4): si queda un marcador de
-  merge dentro del JSON, **Vite revienta en runtime**. Manifest de main + borrar tu
-  `app-DLrdfNJe.css` huérfano + `npm run build` al final.
-- **Un candado nuevo de main pone la suite ROJA**: `AnchoDePaginaTest:80-107` tiene el regex
-  `/class="mx-auto max-w-[0-9a-z]+ px-/` y tu versión de `notificaciones/index.blade.php:5`
-  lo matchea. Es otra razón para tomar main completo ahí. (Tus otras 2 vistas NO lo trippean:
-  el `space-y-4` intercalado rompe la adyacencia — verificado.)
-- **NO edites `campanita.blade.php` ni `ConfiguracionSeeder.php` a mano**: automergean y el
-  resultado ya es el correcto. Aplicar la receta encima DUPLICA el input `ir` y el span del
-  cuerpo. Solo verifica el resultado.
+## 🟢 TAREA 2 — #6 chips paramétricos del motivo del ajuste (S/M) · DIMENSIONADO
+Es el hallazgo #6 del QA 15-07, idea de producto del dueño: **lenguaje común entre solicitante
+y aprobador**. Rama `feature/chips-motivo-ajuste` desde main fresco.
 
-Y el ajuste de tests con una corrección: el caso espejo del usuario sin permiso **debe crear
-su propia notificación** (`leer()` tiene `abort_unless($notificacion->user_id === ...)`, así
-que reusar la del jefe da 403, no `back()`). Para el caso feliz, `assignRole('jefe_bodega')`.
+**Lo que medí, para que no lo re-descubras:**
+- Hoy el motivo del ajuste es **texto libre**: `<x-textarea name="motivo_ajuste">` en
+  `resources/views/admin/produccion/reporte.blade.php:271`, validado
+  `['required','string','max:255']` en `ProduccionController.php:681`.
+- **El componente ya existe y hace todo lo que hace falta**: `<x-reason-chips>` (grilla táctil
+  sobre `<x-chip-radio>`, con chip «Otro» que revela un campo de texto como salida de escape).
+  Ya se usa en 4 sitios: rechazo de aprobación y los 3 motivos del soplador.
+- **Lo único que NO existe es la parametrización**: hoy las opciones vienen de constantes de
+  modelo (`Aprobacion::MOTIVOS_RECHAZO`, `ProduccionRegistro::MOTIVOS_DEFECTO`), no de
+  Configuración. Ahí está el trabajo real.
 
-## Gates de este lote (dos son nuevos y NO los cubre PHPUnit)
-- **Gate del ancla**: tras resolver, `git grep -c 'id="aprobacion-' resources/views` debe dar
-  2. Si da 0, el ancla se perdió en silencio y la suite igual queda verde.
-- **Gate de CSS, con matiz importante**: `target:` es la primera vez que el proyecto lo usa en
-  `resources/`, PERO el bundle comiteado de main ya trae esas clases — se filtraron por el
-  `@source '../../storage/framework/views/*.php'` de `app.css:4`, o sea desde un caché de
-  blades compilados de un árbol que tenía tu lote. **Un grep verde NO prueba que compilaron
-  desde tus `.blade`**: corre `npm run build` igual y luego grep de `:target` en
-  `public/build`, para que se regeneren legítimamente. Riesgo de clase faltante: nulo hoy.
-- Cobertura que falta y te pido agregar: **nadie asserta el `whitespace-pre-line`** (0 hits en
-  tests de ambas ramas) — un `assertSee('whitespace-pre-line', false)` sobre
-  `route('notificaciones.index')` cierra el hueco.
-- Suite COMPLETA: **la baseline de main hoy es 920 verdes / 4.418 aserciones** (la verifiqué
-  en worktree limpio). Tu lote debe sumar sobre eso, no sobre las 772 de tu árbol viejo.
-- Filtro útil mientras iteras: `--filter='NotificacionEspecificaTest|AprobacionCategoriaTest|AprobacionBandejaTest|AprobacionHistorialTest|AprobacionAccionableTest|CampanitaTest|NotificacionPanelTest'`.
+**El lote:**
+1. Clave nueva en `ConfiguracionSeeder` (tipo JSON, grupo `produccion`), p. ej.
+   `motivos_ajuste_produccion`, con una lista inicial sensata. **Ojo con el límite de 191 en
+   `descripcion`** — es lo que tumbó el deploy hoy (I-07) y hay candado
+   (`ConfiguracionSeedLongitudTest`).
+2. Cambiar el textarea por `<x-reason-chips name="motivo_ajuste" :allowOther="true">` leyendo
+   esa clave. La validación actual sigue sirviendo (el chip entrega string), pero **verifica
+   el camino de «Otro»**: el texto libre viaja en `{name}_otro` según el componente.
+3. Editable desde la UI de Configuración, como el resto de las claves.
+4. **Alcance: SOLO el motivo del ajuste.** No migres los otros 4 usos de `reason-chips` a
+   Configuración en este lote — si el patrón queda bien, se propaga después.
 
-## Cierra la rama vieja
-Borra `feature/notif-especificas` del remoto cuando la v2 esté mergeada (no antes). La
-migración one-shot viaja tal cual: verifiqué que su premisa sigue en pie (las plantillas de
-aprobación no cambiaron y la one-shot de Marcos toca claves disjuntas).
+**Verifica el efecto aguas abajo:** `motivo_ajuste` viaja a las notificaciones como `{motivo}`
+en las plantillas del lote NOTIF-1 que acabas de poner en producción. Con chips el texto queda
+estandarizado, que es exactamente el objetivo del hallazgo — pero confirma que las plantillas
+siguen leyéndose bien y que el `{cambio}` no se ensucia.
 
-## Aviso de entorno (te va a pasar)
-El clon `C:\Users\maatr\Documents\DaliGo` lo está usando OTRA sesión (rediseño de menú, rama
-`design/menu-talana` + worktree con cambios sin commitear). Si trabajas ahí, **worktree
-propio con su `composer install`**: montar el `vendor` del clon por junction hace que PSR-4
-resuelva `App\` al OTRO clon y correrías la suite contra el árbol equivocado (me pasó hoy;
-síntoma: `Invalid route action: [DashboardColoresController]`).
+Orden sugerido: Tarea 1 primero (cierra E-NAV y es corta), Tarea 2 después. **Ramas separadas**,
+parte por lote o uno solo si cierras ambas.
 
-## Pendientes que NO son tuyos
-- P-TZ-03 QA de borde · #6 chips · decisión de producto del ciclo de la factura: dueño.
-- DESPACHOS (P-DSP-04): Max-2, asiento congelado 13 días.
+## Recordatorios duros (sin cambios)
+Suite COMPLETA por commit (**baseline actual: 989 verdes / 5.394 aserciones**). Blade tocado →
+main fresco + `npm run build` + grep superset. Asertar por ruta/marcador. Resolver conflictos
+con `git checkout origin/main -- <archivo>`, nunca con `>`. Parte al buzón → doble llave.
+
+## No es tuyo
+- P-DSP-04 QR anti-fraude: Max-2, ya arrancó en `feature/despachos-qr`.
+- P-NAV-05 (gate R-31 formal + QA del dueño en celular), P-TZ-03, decisión del ciclo de la
+  factura: dueño.
+- Sublote C de notificaciones (payload de cotización/terreno): territorio de Marcos.
+- Anotado sin fix, decisión del dueño: la campanita aterriza en la tarjeta puntual pero el
+  botón del correo apunta a la lista pelada (`payload['url']` sin ancla, `Aprobaciones.php:303`).
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
