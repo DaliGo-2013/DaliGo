@@ -203,7 +203,23 @@
         {{-- Acciones del admin. La edición (asignadas + cantidades) está
              disponible en CUALQUIER estado; aprobar/devolver solo si está
              pendiente de revisión (enviado). --}}
-        <div x-data="{ panel: null }" class="space-y-4">
+        @php
+            // Panel que debe volver ABIERTO tras un rechazo del servidor: sus
+            // <x-input-error> viven DENTRO del x-show, así que con el panel
+            // cerrado el error queda en display:none y la acción se lee como un
+            // no-op silencioso — la pantalla idéntica, el ajuste sin aplicar y
+            // ninguna explicación (hallazgo del gate 28-07). Se volvió
+            // alcanzable con un clic: el motivo perdió el `required` de
+            // navegador al pasar de textarea a chips, y el notIn del centinela
+            // «Otro» agrega otra vía de rechazo. Mismo patrón de auto-apertura
+            // que los <x-collapsible> del soplador ante errores.
+            $panelConError = match (true) {
+                $errors->hasAny(['asignadas', 'primera', 'segunda', 'malo', 'danada', 'motivo_ajuste']) => 'editar',
+                $errors->has('devuelto_motivo') => 'devolver',
+                default => null,
+            };
+        @endphp
+        <div x-data="{ panel: @js($panelConError) }" class="space-y-4">
             <div class="flex flex-wrap gap-3">
                 @if ($reporte->esPendienteDeRevision())
                     <form method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"

@@ -63,12 +63,16 @@ class MenuPrincipal
             'icon' => 'building-office-2',
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Los patrones de Producción se ENUMERAN (no `admin.produccion.*`)
+                // porque el Kardex es ítem propio desde P-NAV-06: con el comodín,
+                // su página resaltaba DOS ítems a la vez (gate 28-07). Misma
+                // convención que el ítem `listado` de ST, que usa la ruta exacta
+                // para no comerse lote/qr/informe. Lo vigila
+                // SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item,
+                // que falla tanto si dos ítems colisionan como si una ruta queda sin dueño.
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
                 // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
-                // perdieron su «Volver» (doctrina P-NAV-08). El patrón del
-                // Kardex es EXACTO y ADEMÁS lo cubre el 'admin.produccion.*'
-                // de arriba: en esa página quedan resaltados Producción y
-                // Kardex a la vez — aceptado, el kardex ES parte de Producción.
+                // perdieron su «Volver» (doctrina P-NAV-08).
                 'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
                 'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
                 'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
