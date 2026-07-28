@@ -116,26 +116,103 @@
         </div>
 
         {{-- Máquinas --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        {{-- Acordeón por máquina: con 3 equipos la pantalla del celular se hacía
+             larguísima y el cliente perdía de vista dónde iba. Solo una tarjeta
+             abierta a la vez; las demás quedan como una línea de resumen
+             (✓ Máquina 1 · SN-1234).
+
+             El estado vive ACÁ y no en el componente `loteServicioForm` de
+             app.js porque ese componente lo comparte el formulario del conductor
+             (admin/servicio-tecnico/lote), que muestra sus filas siempre
+             abiertas y no debe cambiar.
+
+             `invalid.capture` es el candado: una tarjeta plegada esconde campos
+             `required`, y un campo required oculto NO se puede enfocar, así que
+             el navegador aborta el envío sin decir nada. Al primer campo
+             inválido abrimos su tarjeta y lo enfocamos. El evento `invalid` no
+             burbujea: por eso se escucha en fase de captura. --}}
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+             x-data="{
+                abierta: 0,
+                completa(m) {
+                    return !!((m.modelo || '').trim() && (m.falla_reportada || '').trim() && m.foto_1 && m.foto_2);
+                },
+                resumen(m) {
+                    return [m.numero_serie, m.modelo].map(v => (v || '').trim()).filter(Boolean).join(' · ');
+                },
+                {{-- El navegador dispara `invalid` en TODOS los campos inválidos de la
+                     pasada, en orden del documento — no solo en el primero. Quedarse con
+                     el último abría la ÚLTIMA máquina en vez del primer problema
+                     (verificado: con 3 máquinas vacías abría la 3). Así que se guarda el
+                     PRIMERO de la pasada y se actúa una sola vez, al final.
+
+                     El aplazamiento es `setTimeout` y no `queueMicrotask` a propósito: al
+                     volver de cada listener la pila de JS queda vacía y el navegador drena
+                     los microtasks, así que un candado en microtask se limpiaba entre
+                     evento y evento y no filtraba nada (probado). Un timeout corre en una
+                     tarea nueva, ya terminada toda la ráfaga. --}}
+                primerInvalido: null,
+                pasadaProgramada: false,
+                abrirPara(el) {
+                    if (! this.primerInvalido) this.primerInvalido = el;
+                    if (this.pasadaProgramada) return;
+                    this.pasadaProgramada = true;
+
+                    setTimeout(() => {
+                        const campo = this.primerInvalido;
+                        this.primerInvalido = null;
+                        this.pasadaProgramada = false;
+
+                        {{-- Si el primer campo con problemas está fuera de las tarjetas
+                             (los datos del cliente, arriba), no se toca el acordeón: ese
+                             campo está a la vista y el navegador ya lo enfoca solo. --}}
+                        const tarjeta = campo && campo.closest('[data-maquina]');
+                        if (! tarjeta) return;
+                        this.abierta = Number(tarjeta.dataset.maquina);
+                        this.$nextTick(() => campo.focus());
+                    }, 0);
+                },
+             }"
+             x-on:invalid.capture="abrirPara($event.target)">
             <div class="mb-3 flex items-center justify-between">
                 <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                     Máquinas (<span x-text="maquinas.length"></span>)
                 </h2>
-                <button type="button" x-on:click="agregar()"
-                    class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
+                <button type="button" x-on:click="agregar(); abierta = maquinas.length - 1"
+                    class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 sm:min-h-0 sm:px-2.5 sm:py-1.5">
                     <x-icon.plus class="h-4 w-4" /> Agregar máquina
                 </button>
             </div>
 
             <div class="space-y-3">
                 <template x-for="(m, i) in maquinas" :key="i">
-                    <div class="rounded-xl border border-neutral-200 p-3">
-                        <div class="mb-2 flex items-center justify-between">
-                            <span class="text-xs font-semibold text-neutral-500">Máquina <span x-text="i + 1"></span></span>
-                            <button type="button" x-on:click="quitar(i)" class="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
+                    <div :data-maquina="i" class="rounded-xl border"
+                         :class="abierta === i ? 'border-brand-300 bg-white' : 'border-neutral-200 bg-neutral-50'">
+                        {{-- Cabecera tocable: abre/cierra esta máquina. min-h-11 = 44px,
+                             el mínimo táctil, porque es el control que gobierna la tarjeta. --}}
+                        <div class="flex items-center gap-1 px-3">
+                            <button type="button" x-on:click="abierta = (abierta === i ? null : i)"
+                                :aria-expanded="abierta === i ? 'true' : 'false'"
+                                class="flex min-h-11 min-w-0 flex-1 items-center gap-2 py-2 text-left">
+                                <x-icon.chevron-right class="h-4 w-4 shrink-0 text-neutral-400 transition-transform duration-150"
+                                    x-bind:class="abierta === i ? 'rotate-90' : ''" />
+                                <span class="shrink-0 text-xs font-semibold text-neutral-500">
+                                    Máquina <span x-text="i + 1"></span> de <span x-text="maquinas.length"></span>
+                                </span>
+                                {{-- ✓ solo cuando de verdad no falta nada de ESTA máquina
+                                     (la serie cuenta únicamente si su tipo la exige). --}}
+                                <x-icon.check class="h-4 w-4 shrink-0 text-green-600"
+                                    x-show="completa(m) && (! serieObligatoria(m) || (m.numero_serie || '').trim())" x-cloak />
+                                <span x-show="abierta !== i" x-text="resumen(m)"
+                                      class="truncate text-xs text-neutral-500"></span>
+                            </button>
+                            <button type="button" x-on:click="quitar(i); abierta = Math.min(i, maquinas.length - 1)"
+                                class="shrink-0 rounded-lg p-2.5 text-neutral-400 hover:bg-red-50 hover:text-red-600" title="Quitar">
                                 <x-icon.trash class="h-4 w-4" />
                             </button>
                         </div>
+
+                        <div x-show="abierta === i" x-cloak class="border-t border-neutral-100 p-3">
 
                         <div class="grid grid-cols-2 gap-2">
                             <div>
@@ -179,16 +256,21 @@
                         <div class="mt-2 grid grid-cols-1 gap-2">
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto 1 del equipo <span class="text-red-500">*</span></label>
+                                {{-- El x-on:change solo anota que la foto ya está elegida (para el ✓
+                                     del resumen); la compresión sigue en el onchange de siempre. --}}
                                 <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
                                     onchange="optimizarFotoInput(this)"
+                                    x-on:change="m.foto_1 = $event.target.files.length > 0"
                                     class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
                             </div>
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto 2 del equipo <span class="text-red-500">*</span></label>
                                 <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
                                     onchange="optimizarFotoInput(this)"
+                                    x-on:change="m.foto_2 = $event.target.files.length > 0"
                                     class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
                             </div>
+                        </div>
                         </div>
                     </div>
                 </template>
