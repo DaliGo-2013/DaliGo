@@ -22,7 +22,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('visita-industrial.store') }}" class="space-y-5"
+    <form method="POST" action="{{ route('visita-industrial.store') }}" class="space-y-5 pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:pb-0"
           x-data="{ servicioId: @js(old('servicio_terreno_id', '')) }">
         @csrf
         <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
@@ -125,7 +125,7 @@
             </div>
         </div>
 
-        <x-primary-button class="w-full justify-center py-3 text-base">Enviar solicitud</x-primary-button>
+        <x-barra-envio-movil>Enviar solicitud</x-barra-envio-movil>
         <p class="text-center text-xs text-neutral-400">Te contactaremos para coordinar el día y la hora de la visita.</p>
 
         {{-- Volver a la pantalla principal (elegir por unidad / por cantidad).

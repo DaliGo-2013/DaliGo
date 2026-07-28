@@ -72,15 +72,15 @@ class PwaTest extends TestCase
         // byte-diff de sw.js, asi que cambiar offline.blade.php SIN subir la
         // version de CACHE dejaria la pagina offline vieja precacheada para
         // siempre en los celulares. Este test acopla ambos a proposito:
-        // si editaste offline.blade.php -> sube CACHE en public/sw.js (v1 -> v2)
+        // si editaste offline.blade.php -> sube CACHE en public/sw.js (v2 -> v3)
         // y actualiza AQUI el hash y la version esperada.
         $this->assertSame(
-            '7601b0bd240edd5dbe23ae0ca8fca787',
+            '54cc4a34c20c4c4c11827e66dd83dd88',
             md5_file(resource_path('views/offline.blade.php')),
             'Cambiaste offline.blade.php: sube la version de CACHE en public/sw.js y actualiza este hash.',
         );
         $this->assertStringContainsString(
-            "CACHE = 'daligo-v1'",
+            "CACHE = 'daligo-v2'",
             file_get_contents(public_path('sw.js')),
             'La version de CACHE no coincide con la esperada por este test: actualiza ambos juntos.',
         );

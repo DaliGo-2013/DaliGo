@@ -343,6 +343,73 @@ class AgendaTerrenoTest extends TestCase
             ->assertOk()->assertSee('Cliente Agosto')->assertDontSee('Cliente Julio');
     }
 
+    public function test_la_pantalla_del_tecnico_ofrece_llamar_llegar_y_cerrar(): void
+    {
+        // El backend de `estado` estaba probado desde el principio, pero NINGUNA
+        // vista lo exponía: el técnico no tenía forma de cerrar un trabajo desde
+        // la app. Y la dirección/teléfono eran texto plano, así que había que
+        // copiarlos a mano a Maps o al marcador. Este candado cubre las tres.
+        $trabajo = AgendaTrabajo::factory()->create([
+            'estado' => 'agendado',
+            'fecha' => '2026-07-20',
+            'cliente_nombre' => 'Aguas JB',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'direccion' => 'Los Nogales 1234',
+            'ciudad' => 'Curicó',
+        ]);
+
+        $html = $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-20')
+            ->assertOk()
+            ->assertSee('Marcar realizado')
+            ->assertSee(route('admin.agenda-terreno.estado', $trabajo), false)
+            ->getContent();
+
+        // Teléfono: el href va sin espacios (el marcador de iOS los tolera mal),
+        // aunque en pantalla se muestre como lo escribió quien agendó.
+        $this->assertStringContainsString('href="tel:+56912345678"', $html);
+        // Dirección: búsqueda de Google Maps con calle + ciudad.
+        $this->assertStringContainsString(urlencode('Los Nogales 1234, Curicó'), $html);
+    }
+
+    public function test_un_apostrofo_en_el_nombre_no_rompe_la_confirmacion(): void
+    {
+        // El nombre lo escribe el CLIENTE en el formulario público del QR, así que
+        // un apóstrofo llega solo. Con `{{ }}` el `'` sale como `&#039;`, el parser
+        // de HTML lo devuelve a `'` dentro del atributo y el JS queda
+        // confirm('… D'Angelo?') = SyntaxError: el onsubmit muere y el formulario
+        // se envía SIN preguntar, que es exactamente lo que la confirmación evita.
+        AgendaTrabajo::factory()->create([
+            'estado' => 'agendado',
+            'fecha' => '2026-07-20',
+            'cliente_nombre' => "Comercial D'Angelo",
+        ]);
+
+        $html = $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-20')
+            ->assertOk()
+            ->getContent();
+
+        // El apóstrofo viaja escapado para JS ('), no como entidad HTML.
+        // chr(92) = la barra invertida del literal \u0027 que emite Js::from
+        // (escribirla a mano acá se presta justo al enredo de comillas que este test cuida).
+        $this->assertStringContainsString('D'.chr(92).'u0027Angelo', $html);
+        $this->assertStringNotContainsString("confirm('¿Marcar", $html);
+    }
+
+    public function test_un_trabajo_ya_realizado_no_vuelve_a_ofrecer_cerrarse(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'estado' => 'realizado',
+            'fecha' => '2026-07-20',
+        ]);
+
+        $this->actingAs($this->tecnicoIndustrial())
+            ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-20')
+            ->assertOk()
+            ->assertDontSee('Marcar realizado');
+    }
+
     public function test_tecnico_marca_un_trabajo_como_realizado(): void
     {
         $trabajo = AgendaTrabajo::factory()->create(['estado' => 'agendado']);

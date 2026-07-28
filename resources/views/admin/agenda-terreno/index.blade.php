@@ -70,12 +70,16 @@
                                     @if ($s->disponibilidad)
                                         <p class="text-sm text-neutral-500"><span class="font-medium text-neutral-600">Disponibilidad:</span> {{ $s->disponibilidad }}</p>
                                     @endif
-                                    <p class="text-xs text-neutral-400">
-                                        {{ collect([
-                                            $s->cliente_telefono,
-                                            $s->fecha_preferida ? 'Prefiere: '.$s->fecha_preferida->format('d-m-Y') : null,
-                                        ])->filter()->implode(' · ') }}
-                                    </p>
+                                    {{-- El teléfono es tocable: quien coordina llama desde acá. --}}
+                                    <div class="flex flex-wrap items-center gap-x-3">
+                                        {{-- Sin `text-xs` a propósito: el tamaño del componente
+                                             (text-sm) gana igual por orden de Tailwind, y para un
+                                             blanco táctil es el tamaño que corresponde. --}}
+                                        <x-tel-link :telefono="$s->cliente_telefono" />
+                                        @if ($s->fecha_preferida)
+                                            <span class="text-xs text-neutral-400">Prefiere: {{ $s->fecha_preferida->format('d-m-Y') }}</span>
+                                        @endif
+                                    </div>
                                 </div>
                                 <div class="shrink-0" x-data="{ rechazar: false }">
                                     <div class="flex flex-wrap items-center gap-2">
@@ -182,7 +186,20 @@
                 </div>
 
                 @unless ($puedeAgendar)
-                    {{-- Solo lectura (sin permiso de agendar): resumen del día. --}}
+                    {{-- Solo lectura (sin permiso de agendar) = la pantalla del TÉCNICO en
+                         terreno. Está de pie en la planta del cliente, con una mano y con
+                         guantes, así que la tarjeta prioriza las tres cosas que necesita:
+                         llamar, llegar y cerrar el trabajo.
+
+                         La dirección y el teléfono eran texto plano dentro de un blob
+                         separado por puntos: había que copiarlos a mano a Maps o al
+                         marcador. Ahora son enlaces tocables de 44px.
+
+                         El botón "Marcar realizado" usa la ruta `agenda-terreno.estado`,
+                         que YA existía con su permiso (`ver agenda terreno` alcanza para
+                         cerrar un trabajo agendado; el controlador lo valida) — pero
+                         ninguna vista la exponía, así que el técnico no tenía forma de
+                         cerrar un trabajo desde la app. --}}
                     @forelse ($trabajosDia as $t)
                         <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                             <div class="flex flex-wrap items-center gap-2">
@@ -190,9 +207,40 @@
                                 <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $t->tipo_label }}</span>
                                 <span class="font-medium text-neutral-900">{{ $t->cliente_nombre }}</span>
                             </div>
-                            <p class="mt-1 text-sm text-neutral-600">{{ collect([$t->rango_horas_label ? $t->rango_horas_label.' hs' : null, $t->servicio?->nombre, $t->direccion, $t->ciudad])->filter()->implode(' · ') }}</p>
+                            <p class="mt-1 text-sm text-neutral-600">{{ collect([$t->rango_horas_label ? $t->rango_horas_label.' hs' : null, $t->servicio?->nombre])->filter()->implode(' · ') }}</p>
+
+                            {{-- Llegar y llamar: lo primero que se toca al bajarse de la camioneta. --}}
+                            <div class="mt-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+                                <x-maps-link :direccion="$t->direccion" :ciudad="$t->ciudad" />
+                                <x-tel-link :telefono="$t->cliente_telefono" />
+                            </div>
+
                             @if ($t->descripcion)<p class="mt-1 text-sm text-neutral-500">{{ $t->descripcion }}</p>@endif
                             @if ($t->disponibilidad)<p class="mt-1 text-sm text-neutral-500"><span class="font-medium text-neutral-600">Disponibilidad:</span> {{ $t->disponibilidad }}</p>@endif
+
+                            {{-- Cerrar el trabajo: solo cuando está agendado (el controlador
+                                 exige esa transición para quien no puede agendar). --}}
+                            @if ($t->estado === 'agendado')
+                                {{-- El nombre va por Js::from y NO por {{ }} dentro del string:
+                                     `e()` convierte el apóstrofo en `&#039;`, el parser de HTML lo
+                                     devuelve a `'` dentro del atributo y el JS queda
+                                     `confirm('… D'Angelo?')` = SyntaxError. El onsubmit muere y el
+                                     formulario se envía SIN preguntar — justo la confirmación que
+                                     evita cerrar un trabajo con un toque accidental. Y este nombre
+                                     lo escribe el cliente en el formulario público del QR, así que
+                                     el apóstrofo llega solo ("Comercial D'Angelo"). --}}
+                                <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}" class="mt-4"
+                                      onsubmit="return confirm({{ Illuminate\Support\Js::from('¿Marcar como realizado el trabajo de '.$t->cliente_nombre.'?') }});">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="estado" value="realizado">
+                                    <button type="submit"
+                                        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99] sm:w-auto">
+                                        <x-icon.check class="h-5 w-5" />
+                                        Marcar realizado
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     @empty
                         <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">Sin trabajo por realizar este día.</div>
