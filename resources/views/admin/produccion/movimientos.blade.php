@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
+        {{-- Ítem del menú desde P-NAV-06: sin Volver (doctrina P-NAV-08). --}}
         <x-page-header title="Kardex de producción"
-                       subtitle="Movimientos generados al aprobar reportes. Ledger local; no toca el stock de Bsale."
-                       :back="route('admin.produccion.index')" />
+                       subtitle="Movimientos generados al aprobar reportes. Ledger local; no toca el stock de Bsale." />
     </x-slot>
 
     <div class="space-y-6 py-12">

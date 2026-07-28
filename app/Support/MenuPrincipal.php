@@ -64,6 +64,14 @@ class MenuPrincipal
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
                 'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
+                // perdieron su «Volver» (doctrina P-NAV-08). El patrón del
+                // Kardex es EXACTO y ADEMÁS lo cubre el 'admin.produccion.*'
+                // de arriba: en esa página quedan resaltados Producción y
+                // Kardex a la vez — aceptado, el kardex ES parte de Producción.
+                'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
+                'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
+                'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
                 // Despachos (M07, unidad DESPACHOS-v1): el aporte que el nav
                 // legacy tenía en el dropdown Operación, trasladado a la fuente
                 // única al retirarse navigation.blade.php (merge 27-07).
@@ -125,6 +133,9 @@ class MenuPrincipal
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
+                // Ex-huérfana (P-NAV-06): choferes de ruta, mismo permiso que
+                // su grupo de rutas en routes/web.php.
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
             ],
         ],
     ];
