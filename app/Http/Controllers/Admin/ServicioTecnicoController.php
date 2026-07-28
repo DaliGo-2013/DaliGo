@@ -101,11 +101,23 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Landing de informes: dos "carpetas" para elegir — Dispensadores (taller) e
-     * Industrial (servicio en terreno). Cada una entra a su propio informe.
+     * Landing de informes: dos "carpetas" — Dispensadores (taller) e Industrial
+     * (terreno). Cada rol ve solo la(s) que puede: si tiene una sola, va directo
+     * a ella; si tiene ambas, elige en el landing.
      */
-    public function informes(): View
+    public function informes(Request $request): View|RedirectResponse
     {
+        $user = $request->user();
+        $dispensadores = $user->can('ver informe dispensadores');
+        $industrial = $user->can('ver informe industrial');
+
+        if ($dispensadores && ! $industrial) {
+            return redirect()->route('admin.servicio-tecnico.informe.dispensadores');
+        }
+        if ($industrial && ! $dispensadores) {
+            return redirect()->route('admin.servicio-tecnico.informe.industrial');
+        }
+
         return view('admin.servicio-tecnico.informes');
     }
 
