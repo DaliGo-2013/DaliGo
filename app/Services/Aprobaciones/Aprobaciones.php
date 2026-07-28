@@ -362,8 +362,11 @@ class Aprobaciones
         // Solo lo que difiere, comparando como STRING: '500' y 500 son el
         // mismo valor, pero un 0 nuevo SIN valor anterior sí es un cambio
         // (con != laxo, null != 0 es false y se perdía — gate R-31).
+        // motivo_ajuste se excluye: ya viaja como {motivo} en la plantilla y
+        // dentro de {cambio} saldría duplicado (#6: con chips se nota más).
         $aStr = fn ($x) => is_scalar($x) ? (string) $x : '';
         $cambios = collect($nuevo)
+            ->except('motivo_ajuste')
             ->filter(fn ($v, $campo) => is_scalar($v) && $aStr($anterior[$campo] ?? null) !== (string) $v)
             ->map(fn ($v, $campo) => ucfirst((string) $campo).': '.(is_scalar($anterior[$campo] ?? null) ? $anterior[$campo] : '—').' → '.$v);
 
