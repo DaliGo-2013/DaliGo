@@ -1,4 +1,4 @@
-@props(['align' => 'right', 'width' => 'w-48', 'contentClasses' => 'py-1 bg-white', 'direction' => 'down'])
+@props(['align' => 'right', 'width' => 'w-48', 'contentClasses' => 'py-1 bg-white', 'direction' => 'down', 'anchoMovil' => false])
 
 @php
 /**
@@ -38,6 +38,27 @@ if (! in_array($width, $anchos, true)) {
         "Ancho de menú desconocido [{$width}]. Válidos: ".implode(' · ', $anchos).'.'
     );
 }
+
+/**
+ * anchoMovil: el panel ocupa casi toda la pantalla en el celular y recupera su
+ * ancho fijo desde sm:. Es para paneles con CONTENIDO, como la campanita, donde
+ * 320px obligaban a leer los títulos en columna angosta; un menú de 4 opciones
+ * no lo necesita, así que es opt-in y los otros dos usos siguen igual.
+ *
+ * Las dos clases se escriben LITERALES acá (no `'sm:'.$width`) porque Tailwind
+ * v4 escanea el .blade y no ve una concatenación. Un ancho sin equivalente
+ * móvil simplemente se queda con el suyo, sin reventar: esto es presentación,
+ * no un contrato como la lista de arriba.
+ *
+ * El ALTO no se toca: `x-dg-anclar` ya mide el espacio libre y le pone
+ * max-height + scroll al abrir (app.js).
+ */
+$anchosMovil = [
+    'w-80' => 'w-[calc(100vw-1rem)] sm:w-80',
+    'w-56' => 'w-[calc(100vw-1rem)] sm:w-56',
+];
+
+$claseAncho = $anchoMovil ? ($anchosMovil[$width] ?? $width) : $width;
 @endphp
 
 <div class="relative" x-data="{ open: false }"
@@ -60,7 +81,7 @@ if (! in_array($width, $anchos, true)) {
             x-transition:leave="transition ease-in duration-75"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="absolute z-50 {{ $directionClasses }} {{ $width }} max-w-[calc(100vw-1rem)] rounded-md shadow-lg {{ $alignmentClasses }}"
+            class="absolute z-50 {{ $directionClasses }} {{ $claseAncho }} max-w-[calc(100vw-1rem)] rounded-md shadow-lg {{ $alignmentClasses }}"
             style="display: none;"
             @click="open = false">
         <div class="rounded-md ring-1 ring-neutral-200 {{ $contentClasses }}">
