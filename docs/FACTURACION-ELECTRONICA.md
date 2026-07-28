@@ -280,7 +280,19 @@ preparada de antemano.)*
 típicamente **Mirador**, aunque el equipo haya entrado por Coquimbo o Abate Molina. Esto importa porque
 en Bsale los folios y la caja pueden estar organizados **por sucursal** (ver pregunta abierta 7).
 
-**⬜ Quedó sin responder:** **qué lista de precios corresponde usar** al facturar servicio técnico.
+**Sobre la lista de precios** (quedó sin responder por Contabilidad): **para la etapa de pruebas se usan
+los precios ya espejados desde Bsale**, aunque no estén al día — sirven para probar el mecanismo, y se
+actualizan solos cuando corre la sincronización. Decisión operativa del 28-jul-2026.
+
+Dos precisiones que conviene dejar por escrito:
+
+1. **El precio queda congelado en el documento.** Al emitir, el precio se copia al documento tributario;
+   si después el precio de lista cambia, **los documentos ya emitidos no cambian** (como debe ser).
+2. **Antes de la primera emisión real hay que confirmar la lista definitiva.** Hoy la empresa tiene
+   **5 listas activas con precios** (COQUIMBO-1, CSTS, EXTERIOR 1, EXTERIOR 2, GENERAL) y el sistema
+   toma *"la primera activa que encuentre"*, lo que no es determinista. Se propone fijarla por
+   configuración con **GENERAL** por defecto. ⚠️ **Esto ya afecta lo que se cotiza hoy**, aun sin
+   facturación electrónica.
 
 ### ✅ 7. Forma de pago
 
@@ -380,7 +392,7 @@ a julio de 2026 eran:
 | 6 | Validar que el RCOF está derogado y que el RCV reemplaza los libros | Contabilidad | ⬜ Pendiente |
 | 7 | Configuración de cierre de caja en Bsale: ¿"por emisor" o "por sucursal"? | Interno | ⬜ Pendiente |
 | 8 | ¿Cuál es el SKU de mano de obra? | Contabilidad / Ventas | ✅ **`9771001` — HORA SERVICIO TECNICO** (ya en uso en DaliGo) |
-| 9 | ¿Qué lista de precios se usa al facturar servicio técnico? | Contabilidad / Ventas | ⬜ Pendiente |
+| 9 | ¿Qué lista de precios se usa al facturar servicio técnico? | Contabilidad / Ventas | 🟡 **Para pruebas: el espejo de Bsale (GENERAL).** La definitiva se confirma antes de la Fase 4 |
 | 10 | Confirmar el RUT del emisor: **76.301.506-8** (Importadora y Exportadora Dali) | Contabilidad | ⬜ Pendiente |
 
 ---
@@ -438,4 +450,7 @@ Todo lo afirmado se verificó en fuentes primarias.
       despacho en alcance obligatorio (devolución de equipos en garantía), y es justamente el documento
       afectado por el plazo.
 - [ ] Crear el rol **`jefe_sucursal`** y el permiso de emisión de notas de crédito (respuesta 8 de la §7).
-- [ ] Preguntar qué **lista de precios** corresponde al facturar servicio técnico.
+- [ ] **Fijar la lista de precios por configuración** (`GENERAL` por defecto). Hoy
+      `ServicioTecnicoController::precioHoraServicio()` toma *"la primera lista activa"* y hay **5
+      activas con precios**, así que el valor hora y los repuestos salen de una lista arbitraria. Afecta
+      las cotizaciones actuales, no solo la facturación futura.
