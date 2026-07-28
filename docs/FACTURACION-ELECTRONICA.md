@@ -288,11 +288,13 @@ Dos precisiones que conviene dejar por escrito:
 
 1. **El precio queda congelado en el documento.** Al emitir, el precio se copia al documento tributario;
    si después el precio de lista cambia, **los documentos ya emitidos no cambian** (como debe ser).
-2. **Antes de la primera emisión real hay que confirmar la lista definitiva.** Hoy la empresa tiene
-   **5 listas activas con precios** (COQUIMBO-1, CSTS, EXTERIOR 1, EXTERIOR 2, GENERAL) y el sistema
-   toma *"la primera activa que encuentre"*, lo que no es determinista. Se propone fijarla por
-   configuración con **GENERAL** por defecto. ⚠️ **Esto ya afecta lo que se cotiza hoy**, aun sin
-   facturación electrónica.
+2. **La lista quedó fija en GENERAL** ✅ *(hecho el 28-jul-2026)*. La empresa tiene **5 listas activas
+   con precios** (COQUIMBO-1, CSTS, EXTERIOR 1, EXTERIOR 2, GENERAL) y el sistema tomaba *"la primera
+   activa que encontrara"* — o sea una cualquiera, sin que nada lo delatara en pantalla. El dueño eligió
+   **GENERAL** porque el origen de las otras no está claro. ⚠️ Esto **ya afectaba las cotizaciones de
+   hoy**, aun sin facturación electrónica: era un error de precios, no un pendiente del proyecto.
+   Si un repuesto no tiene precio en GENERAL, el sistema ahora **no muestra precio** (se escribe a mano)
+   en vez de sacarlo de una lista de origen incierto.
 
 ### ✅ 7. Forma de pago
 
@@ -450,7 +452,8 @@ Todo lo afirmado se verificó en fuentes primarias.
       despacho en alcance obligatorio (devolución de equipos en garantía), y es justamente el documento
       afectado por el plazo.
 - [ ] Crear el rol **`jefe_sucursal`** y el permiso de emisión de notas de crédito (respuesta 8 de la §7).
-- [ ] **Fijar la lista de precios por configuración** (`GENERAL` por defecto). Hoy
-      `ServicioTecnicoController::precioHoraServicio()` toma *"la primera lista activa"* y hay **5
-      activas con precios**, así que el valor hora y los repuestos salen de una lista arbitraria. Afecta
-      las cotizaciones actuales, no solo la facturación futura.
+- [x] ✅ **Lista de precios fija por configuración** (`daligo.lista_precios_ventas` = `GENERAL`) y una
+      sola fuente (`Producto::precioVentaConIva()`) en lugar de la misma consulta copiada en 4 lugares.
+      Commit `1fbf554`, 8 candados en `PrecioListaOficialTest`, suite 1033 verde.
+- [ ] **Verificar que el SKU `9771001` tenga precio en GENERAL** (Comercial → Precios → GENERAL). Si no
+      lo tiene, el valor hora queda vacío y la mano de obra vuelve a ser manual.
