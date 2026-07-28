@@ -8,7 +8,7 @@
 
         {{-- Resultado de una importación previa --}}
         @if ($resultado = session('importResult'))
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Resultado de la importación</h3>
                 <div class="mt-3 flex flex-wrap gap-2">
                     <x-badge>{{ $resultado['creados'] }} creados</x-badge>
@@ -49,7 +49,7 @@
         @endif
 
         {{-- Formulario de carga --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
             <form method="POST" action="{{ route('admin.productos.import') }}" enctype="multipart/form-data" class="space-y-5">
                 @csrf
                 <div>
@@ -66,7 +66,7 @@
         </div>
 
         {{-- Ayuda de formato --}}
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Formato esperado</h3>
             <p class="mt-2 text-sm text-neutral-600">
                 Columnas importables (la cabecera define el orden; solo <strong>sku</strong> es obligatoria;

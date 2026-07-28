@@ -11,7 +11,7 @@
     </x-slot>
 
     <div class="py-8 sm:py-12">
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8"
              x-data="instalacionForm({
                 endpointCliente: '{{ route('admin.instalaciones.buscar-cliente') }}',
                 clienteId: {{ (int) old('cliente_id', 0) }},

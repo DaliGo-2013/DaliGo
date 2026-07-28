@@ -9,7 +9,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
             <p class="mb-6 text-sm text-neutral-500">
                 Solo se permiten correos del dominio <span class="font-medium text-neutral-700">@impdali.cl</span>.
                 Comparte la contraseña inicial con la persona; podrá cambiarla luego.

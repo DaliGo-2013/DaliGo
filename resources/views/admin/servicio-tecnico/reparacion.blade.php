@@ -26,7 +26,7 @@
 
         <x-status-alert :status="session('status')" />
 
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
             {{-- Resumen de la recepcion (solo lectura, para contexto del tecnico). --}}
             <div class="mb-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm">
                 <p class="font-medium text-neutral-900">{{ $orden->cliente_nombre }} · {{ $orden->cliente_rut }}@if ($orden->cliente_telefono) · {{ $orden->cliente_telefono }}@endif</p>

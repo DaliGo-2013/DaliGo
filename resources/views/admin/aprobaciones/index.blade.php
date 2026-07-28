@@ -7,7 +7,7 @@
 
         {{-- Filtros (responsive: apilan en móvil, grilla en pantallas anchas) --}}
         <form method="GET" action="{{ route('admin.aprobaciones.index') }}"
-              class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                     <x-input-label for="estado" value="Estado" />
@@ -64,7 +64,7 @@
 
         {{-- Resumen (respeta los filtros): por estado + por tipo + por aprobador/solicitante --}}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                 <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por estado</p>
                 <div class="mt-3 flex flex-wrap gap-2">
                     @forelse ($estados as $e)
@@ -84,7 +84,7 @@
 
             {{-- Por tipo (categoría de la solicitud). Future-proof: hoy un solo
                  tipo; al integrarse M04/M05/M07/M13 aparecen sus categorías. --}}
-            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                 <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo</p>
                 <ul class="mt-3 space-y-1.5">
                     @forelse ($porTipo as $tipoAccion => $c)
@@ -98,7 +98,7 @@
                 </ul>
             </div>
 
-            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                 <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por solicitante</p>
                 <ul class="mt-3 space-y-1.5">
                     @forelse ($porSolicitante->take(5) as $fila)
@@ -112,7 +112,7 @@
                 </ul>
             </div>
 
-            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                 <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por aprobador</p>
                 <ul class="mt-3 space-y-1.5">
                     @forelse ($porAprobador->take(5) as $fila)

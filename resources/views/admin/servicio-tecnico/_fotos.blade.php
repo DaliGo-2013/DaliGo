@@ -3,7 +3,7 @@
      una miniatura se abre un visor (lightbox) dentro de la app, con X / Esc /
      clic-afuera para cerrar. Solo aparece si la orden tiene fotos. Requiere $orden. --}}
 @if ($orden->fotos->isNotEmpty())
-    <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm" x-data="{ abierta: null }">
+    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5" x-data="{ abierta: null }">
         <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Fotos del equipo (recepción)</h3>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
             @foreach ($orden->fotos as $foto)

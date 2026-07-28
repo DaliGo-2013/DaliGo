@@ -36,7 +36,7 @@
                     blank($orden->trabajo_realizado) ? 'registra el trabajo realizado en «Parte del técnico»' : null,
                 ])->filter();
             @endphp
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="mb-3 flex items-center justify-between">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del trabajo (garantía)</h3>
                     <x-badge variant="neutral">Garantía</x-badge>
@@ -89,7 +89,7 @@
         @else
             {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
-                  class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8" data-una-vez
+                  class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8" data-una-vez
                   x-data="reparacionForm({ repuestos: @js($repInit), manoObra: {{ (int) old('mano_obra', $orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
                 @csrf
                 @method('PUT')
@@ -293,7 +293,7 @@
             {{-- ===== Envío al cliente + historial (P-M12-02) =====
                  Usa lo GUARDADO (snapshot), no lo que esté a medio editar. --}}
             @php $ultima = $cotizaciones->first(); @endphp
-            <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold text-neutral-900">Cotización al cliente</h3>
                     @if ($ultima)

@@ -15,7 +15,7 @@
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.instalaciones.index') }}"
-              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">
             <div class="flex-1">
                 <x-input-label for="q" value="Buscar (cliente, RUT, producto, factura, vendedor)" />
                 <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. Agua purificada, 76.543.210-9, LAVADORA…" />
@@ -71,7 +71,7 @@
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                         @foreach ($historial['anios'] as $a => $r)
                             <a href="{{ route('admin.instalaciones.index', array_merge($qsBase, ['anio' => $a])) }}"
-                               class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition duration-150 hover:border-brand-300 hover:shadow">
+                               class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 transition duration-150 hover:border-brand-300 hover:shadow">
                                 <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Año</p>
                                 <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ $a }}</p>
                                 <p class="mt-1 text-sm text-neutral-600">{{ $r['total'] }} {{ $r['total'] === 1 ? 'instalación' : 'instalaciones' }}</p>
