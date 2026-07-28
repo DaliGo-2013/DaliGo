@@ -141,7 +141,7 @@
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Tipo</label>
                                 <select x-model="m.tipo" :name="`maquinas[${i}][tipo]`"
-                                    class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                    class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     <option value="">Igual que arriba</option>
                                     @foreach ($tipos as $t)
                                         <option value="{{ $t }}">{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
@@ -154,7 +154,7 @@
                                 </label>
                                 <input type="text" x-model="m.numero_serie" :name="`maquinas[${i}][numero_serie]`" maxlength="191"
                                     x-bind:required="serieObligatoria(m)"
-                                    class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                    class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                             </div>
                         </div>
 
@@ -164,7 +164,7 @@
                             <label class="mb-0.5 block text-xs text-neutral-500">Equipo (marca y modelo) <span class="text-red-500">*</span></label>
                             <input type="text" x-model="m.modelo" :name="`maquinas[${i}][modelo]`" maxlength="191" required
                                 placeholder="Ej. Dispensador LB-16 blanco"
-                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                         </div>
 
                         {{-- Falla y estado de ESTA máquina (golpes, rayas, caja, piezas). --}}
@@ -172,7 +172,7 @@
                             <label class="mb-0.5 block text-xs text-neutral-500">Falla y estado del equipo <span class="text-red-500">*</span></label>
                             <textarea :name="`maquinas[${i}][falla_reportada]`" x-model="m.falla_reportada" rows="2" required
                                 placeholder="Ej. No enfría. Golpeada en tapa lateral, sin caja, le falta la llave roja."
-                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"></textarea>
+                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"></textarea>
                         </div>
 
                         {{-- 2 fotos de respaldo (obligatorias, como el ingreso por unidad) --}}
