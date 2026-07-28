@@ -22,7 +22,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('ingreso-taller.lote.store') }}" enctype="multipart/form-data" class="space-y-5"
+    <form method="POST" action="{{ route('ingreso-taller.lote.store') }}" enctype="multipart/form-data" class="space-y-5 pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:pb-0"
           x-data="loteServicioForm({ tipoDefault: @js(old('tipo_default', 'dispensador')), tiposSerie: @js(\App\Models\OrdenServicio::SERIE_OBLIGATORIA_TIPOS) })">
         @csrf
         <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
@@ -195,7 +195,7 @@
             </div>
         </div>
 
-        <x-primary-button class="w-full justify-center py-3 text-base">Enviar ingreso</x-primary-button>
+        <x-barra-envio-movil>Enviar ingreso</x-barra-envio-movil>
         <p class="text-center text-xs text-neutral-400">Al enviar, muéstrale la pantalla al encargado del mostrador.</p>
 
         {{-- Volver a la pantalla principal (elegir por unidad / visita industrial).
