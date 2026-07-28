@@ -1,80 +1,79 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-07-27 (v10 — refresh VERIFICADO; GO P-DSP-04 en firme). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-28 (v11 — P-DSP-04 NO MERGEABLE aún: 4 hallazgos MEDIA reales. Sin GO a P-DSP-05 todavía). Manda sobre lo anterior.
 
-MODELO: Fable 5 si el dueño lo fija (P-DSP-04 es diseño de seguridad y lo justifica); si no, Opus 4.8 · high.
+MODELO: Opus 4.8 · high (los fixes son quirúrgicos, no hace falta Fable).
 
-## ✅ Refresh VERIFICADO por el Director (`11f95fe` / parte `017032c`)
-Medido de forma independiente: tu rama **automergea LIMPIO contra main** (cero conflictos,
-`git merge-tree` sobre `2d88a8e`). Trabajo de calidad en los 9 conflictos — en particular el
-**rescate del ítem de menú**: main borró el nav legacy en el paso 4/4 del menú V4 y tú lo
-trasladaste a `MenuPrincipal` con su permiso; sin ese traslado Despachos desaparecía de la
-navegación y nadie lo habría notado hasta el QA. Bien visto.
+## Estado: P-DSP-04 está BIEN construido, pero no entra todavía
+Lo verifiqué a fondo (revisión adversarial de 4 lentes + refutadores: **9 confirmados de 40**,
+31 refutados). Lo que **NO se pudo romper** y quedó probado: la transacción con re-lectura de la
+fila ancla es el patrón correcto; en `doble_retiro` el estado NO se toca y la hora del primer
+retiro no se pisa; los 3 resultados dejan evidencia append-only; el **GET es realmente de solo
+lectura** (tres F5 = 0 escaneos, buena decisión tuya); el GET exige firma **Y** permiso; CSRF sin
+excepciones. Los gates que corrí: bundle 96/96 clases, `varchar(191)` aplicado sin que se te
+pidiera, **suite 1008/5.486 exacta a tu parte**.
 
-Tu recomendación de **refrescar por paso, no por unidad**: ADOPTADA como regla del stream 2.
-Es la misma lección que el stream 1 pagó dos veces esta semana (el lote NOTIF-1 quedó 5 días
-sin merge y necesitó rework completo; el fix de TZ murió dos veces contra el churn de Marcos).
+**Pero hay 4 cosas MEDIA que hay que arreglar antes de la doble llave.** Ninguna es un error de
+diseño: son cableado y cobertura.
 
-## 🟢 GO P-DSP-04 — QR anti-fraude de retiro (M07, el corazón de la unidad)
-Los 6 puntos del dictado v9 siguen vigentes SIN CAMBIOS (lock + re-check con la fila
-bloqueada, `URL::signedRoute` sobre el `codigo DSP-`, superficie de escaneo documentada,
-cola «McDonald's» por polling, entrega parcial, y apoyarse en el guard de re-verificación
-contra Bsale que ya existe — no duplicarlo). Tus 2 notas del refresh quedan incorporadas:
-reusar `dibujarQrsMostrador` y que toda pantalla nueva nazca con los contratos nuevos.
+## 🔴 Los 4 arreglos (rama nueva `fix/qr-hallazgos-gate` desde main fresco)
 
-**Contratos nuevos de main — valen para todo lo que escribas de ahora en más:**
-1. Ancho por layout (`<x-app-layout ancho="...">`), nunca contenedor propio. Candado:
-   `AnchoDePaginaTest` (regex sobre `mx-auto max-w-* px-`).
-2. Salida única por el `:back` del `page-header`; nada de `:cancel` en `x-form-footer`.
-   Candado: `VolverTest`.
-3. Errores amables: **GET** sin permiso → redirect al Inicio con aviso; **POST** conserva el
-   403. Asertar en consecuencia (importa para la cola offline del conductor).
+**1. La mutación del lock que declaraste NO prueba el lock.** Esto es lo más importante y me
+incluye: yo también creí haberlo verificado. La demostración es estructural, no empírica:
+`vendor/.../Query/Grammars/SQLiteGrammar.php:31-34` sobreescribe `compileLock()` con
+`return '';` **incondicional** → bajo SQLite `->lockForUpdate()` emite SQL byte-idéntico a
+omitirlo. Es **imposible** que cualquier test de esta suite cubra el lock. Tu test estrella
+(`RetiroQrTest:118-130`) llama a `validarRetiro` dos veces **en serie** con una instancia stale:
+lo que rechaza al segundo es la **re-lectura**, no el lock (quitando solo la re-lectura sí se
+pone rojo — lo comprobé). Tu código de producción está CORRECTO para MySQL 5.7; lo falso es el
+comentario.
+- Corregir el docblock de `DespachoService.php:94-95` y el gemelo de `:151-152`: decir que el
+  test cubre la re-lectura y que **el lock no es asertable en SQLite**.
+- **Ojo, el arreglo obvio tampoco sirve:** un assert de `DB::listen` buscando `for update`
+  estaría rojo sobre una rama correcta, por la misma razón. Si quieres cobertura real, es un
+  unit test a nivel de grammar (compilar el builder con `MySqlGrammar` y afirmar el sufijo).
 
-## 🎉 CAMBIO DE BASE CONFIRMADO — P-DSP-00..03 EN PRODUCCIÓN (merge `7320bee`, 27-07)
-El dueño dio la doble llave y el Director mergeó tu trabajo a main: **espejo de documentos
-Bsale + zonas + entidad Despacho con escaneos + panel admin están VIVOS**. Decisión explícita
-de romper el plan original (que mergeaba en P-DSP-07): la ventana de merge limpio era hoy y la
-semana demostró dos veces el costo de arrastrar ramas.
+**2. El flag `parcial` se pierde sin JS y graba una entrega incompleta como COMPLETA.**
+`escanear.blade.php:98` y `:101`: el único portador es un `<input type="hidden" name="parcial"
+:value="parcial ? 1 : 0">` **sin `value` estático**, y el checkbox que marca el operador no
+tiene `name`. Si Alpine no corrió (o el binding falla), una entrega parcial se graba como
+ENTREGADO **con el saldo adentro** — y el saldo pendiente es dato de negocio. Poner `value="0"`
+estático de base, o mejor: que el checkbox lleve `name="parcial"` y el hidden sea el `0`
+por defecto (patrón checkbox+hidden de siempre).
 
-Verificación del Director antes del push: merge-tree limpio ×2, **suite completa ejecutada
-sobre el árbol mergeado — 958 verdes / 4.576 aserciones, exacto a tu parte**, y bundle
-`app-DcH-lDk3.css` probado superset del de main (0 selectores perdidos de 474, +1 tuyo).
+**3. El `user_id` del escaneo no está cubierto en el camino HTTP.** Cambiando el controlador a
+`$service->validarRetiro($despacho, null)` la suite queda **19/19 verde**. Tu test de evidencia
+llama al service directo y le pasa el operador a mano, así que el **cableado del controlador**
+—quién queda registrado como responsable, o sea la evidencia entera del anti-fraude— no lo
+asserta nadie. Un test HTTP que verifique el `user_id` del escaneo.
 
-**→ Arranca P-DSP-04 en rama NUEVA desde main fresco** (`feature/despachos-qr` o el nombre que
-prefieras). NO sigas en `feature/despachos-v1`: cumplió su ciclo, ciérrala cuando confirmes
-que no te queda nada suelto ahí. Deuda cero, empiezas limpio.
+**4. El monitor de bodega puede mostrar una carga ya retirada como «Esperando».**
+`cola.blade.php:83`: el poll compara **solo el total**. Si en la misma ventana de 20 s entra una
+carga y sale otra, el total no cambia → no recarga → el monitor muestra `DSP-A` con badge
+«Esperando» cuando ya salió, **y con el número correcto, así que parece fresco**. En bodega eso
+es peor que un monitor congelado. Que el conteo devuelva algo que cambie con el contenido (un
+hash de los códigos, el `max(updated_at)`, o el id del último escaneo), no solo el total.
 
-### ⚠️ El merge rompió el deploy dos veces (I-07) — ya resuelto, pero léelo
-Tu seeder tumbó el deploy con `SQLSTATE[22001] Data too long for column 'descripcion'`: la
-descripción de `documentos_sync_desde` tenía 267 chars. **No es descuido tuyo** — es un gotcha
-de paridad: **SQLite no valida el largo de un VARCHAR y MySQL sí**, así que tus 958 verdes
-eran legítimamente verdes. Las 5 migraciones sí aplicaron; el deploy abortó en el seeder y la
-app siguió respondiendo.
+## Observaciones menores (mismo lote, son de una línea)
+- `test_una_firma_de_otro_codigo_no_sirve_para_este_despacho` (`:168-176`) **no prueba firmas**:
+  usa `DSP-FALSIFIC`, que no existe en la BD, así que prueba un 404 y sobrevive a que se quite el
+  middleware `signed`. Usa el código REAL de otro despacho con la firma de este.
+- Los tres bloques de veredicto de la vista (incluida la banda roja «NO entregues: doble
+  retiro») no los renderiza ningún test: borrándolos la suite queda verde. Es literalmente el
+  píxel para el que existe P-DSP-04.
+- `assertRedirect()` sin destino en `:219`: el POST puede dejar de volver a la ficha sin que
+  nadie se entere.
 
-Mi primer arreglo también falló, por asumir `varchar(255)`: **el proyecto fija
-`Schema::defaultStringLength(191)`** (AppServiceProvider, por el límite de índice de InnoDB en
-MySQL 5.7 con utf8mb4). Todo `$table->string()` de este repo son **191**, no 255. Anótalo:
-vale para cualquier columna que crees de aquí en adelante.
+## Sobre el desacuerdo de fondo (para que quede claro, no es un fix)
+El lente de fraude objetó que la doc afirma un control que el código no aplica: el módulo cierra
+**«una carga no sale dos veces»** (y eso está sólido), pero no cierra **«retirar una carga que no
+te corresponde»** — el propio panel reparte la URL firmada de cualquier despacho a quien tenga
+`manage despachos`, así que la firma no acota nada entre operadores autorizados. **Eso es
+defendible como alcance de v1** y no te lo pido cambiar. Lo que sí: que el docblock de
+`DespachoController.php:23-33` diga lo que el código hace de verdad. Si el dueño quiere cerrar
+también el cross-zona / la posesión física del QR, es un paso propio y lo dicta él.
 
-Candado nuevo en main: `tests/Feature/ConfiguracionSeedLongitudTest.php` recorre lo que el
-seeder deja en la tabla y falla si algún string no cabe, leyendo el límite de
-`Builder::$defaultStringLength` en vez de hardcodearlo. Mutación verificada roja. Barrido de
-todos los seeders al límite real: 0 violaciones. Deploy `22efc74` **success**, seeders
-completos y `/admin/despachos` responde.
+## P-DSP-05: sin GO todavía
+Primero estos arreglos y la doble llave de P-DSP-04. Tu recomendación de mergear por paso y
+arrancar desde main es correcta y se mantiene.
 
-**Tu cron ya corre en producción:** `bsale:sync-documents` (`hourlyAt(30)`, ventana de 7 días).
-El espejo se está poblando de verdad — a partir de ahora P-DSP-04 puede asumir documentos
-reales. Si ves algo raro en `storage/logs/bsale-sync.log` durante tus primeras corridas,
-repórtalo al buzón: es su estreno en producción y nadie lo ha visto operar todavía.
-
-## Verificación (reglas de la casa)
-Suite COMPLETA por commit. **La baseline de main hoy es 920 verdes / 4.418 aserciones**
-(medida por el Director en worktree limpio); tu rama declara 958 — no compares contra números
-viejos. Blade/JS → build + grep superset. Worktree propio con `vendor` COPIADO (tu método
-funcionó: copiar sí, junction no — el junction hace que PSR-4 resuelva al otro clon).
-Parte al buzón → doble llave.
-
-## No es tuyo
-- Stream 1 (Max-1): rescate del lote NOTIF-1, dictado v25.
-- QA de borde TZ, #6 chips, decisión del ciclo de la factura: dueño.
-
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+CIERRE: parte al buzón + push. Suite completa (baseline 1008 con tu lote; 989 sin él).
