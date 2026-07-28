@@ -203,7 +203,23 @@
         {{-- Acciones del admin. La edición (asignadas + cantidades) está
              disponible en CUALQUIER estado; aprobar/devolver solo si está
              pendiente de revisión (enviado). --}}
-        <div x-data="{ panel: null }" class="space-y-4">
+        @php
+            // Panel que debe volver ABIERTO tras un rechazo del servidor: sus
+            // <x-input-error> viven DENTRO del x-show, así que con el panel
+            // cerrado el error queda en display:none y la acción se lee como un
+            // no-op silencioso — la pantalla idéntica, el ajuste sin aplicar y
+            // ninguna explicación (hallazgo del gate 28-07). Se volvió
+            // alcanzable con un clic: el motivo perdió el `required` de
+            // navegador al pasar de textarea a chips, y el notIn del centinela
+            // «Otro» agrega otra vía de rechazo. Mismo patrón de auto-apertura
+            // que los <x-collapsible> del soplador ante errores.
+            $panelConError = match (true) {
+                $errors->hasAny(['asignadas', 'primera', 'segunda', 'malo', 'danada', 'motivo_ajuste']) => 'editar',
+                $errors->has('devuelto_motivo') => 'devolver',
+                default => null,
+            };
+        @endphp
+        <div x-data="{ panel: @js($panelConError) }" class="space-y-4">
             <div class="flex flex-wrap gap-3">
                 @if ($reporte->esPendienteDeRevision())
                     <form method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"
@@ -266,11 +282,20 @@
                     <x-input-error :messages="$errors->get('segunda')" class="mt-1" />
                     <x-input-error :messages="$errors->get('malo')" class="mt-1" />
                     <x-input-error :messages="$errors->get('danada')" class="mt-1" />
-                    <div>
-                        <x-input-label for="motivo_ajuste" value="Motivo del cambio" />
-                        <x-textarea id="motivo_ajuste" name="motivo_ajuste" rows="2" class="mt-1.5" required>{{ old('motivo_ajuste') }}</x-textarea>
-                        <x-input-error :messages="$errors->get('motivo_ajuste')" class="mt-2" />
-                    </div>
+                    @php
+                        // Motivos como chips (#6 del QA 15-07): lenguaje común entre
+                        // solicitante y aprobador. La lista vive en Configuración
+                        // (editable por UI); el saneo is_string tolera una edición
+                        // manual rota sin reventar el form — quedaría solo «Otro»,
+                        // que es la salida de escape de siempre.
+                        $motivosAjuste = array_values(array_filter(
+                            (array) \App\Models\Configuracion::get('motivos_ajuste_produccion', []),
+                            'is_string',
+                        ));
+                    @endphp
+                    <x-reason-chips name="motivo_ajuste" label="Motivo del cambio"
+                                    :options="$motivosAjuste" :selected="old('motivo_ajuste')"
+                                    :allowOther="true" />
                     <div class="flex justify-end">
                         <x-primary-button>Guardar cambios</x-primary-button>
                     </div>

@@ -121,6 +121,35 @@ class Producto extends Model implements AuditableContract
         return $this->hasMany(Precio::class, 'producto_id');
     }
 
+    /**
+     * Precio de venta CON IVA, tomado de la lista OFICIAL de ventas
+     * (`config('daligo.lista_precios_ventas')`, hoy GENERAL). Null si el
+     * producto no tiene precio ahí.
+     *
+     * Fuente única: antes esta misma consulta estaba copiada en 4 lugares
+     * (valor hora, buscador de repuestos, precio del equipo, tiempos de
+     * reparación) y todas decían «la primera lista activa que aparezca». Con
+     * 5 listas activas espejadas de Bsale eso devolvía una lista arbitraria.
+     * El null NO es un fallback: es la respuesta correcta cuando el producto
+     * no está en la lista oficial (quien atiende escribe el precio a mano),
+     * porque tomarlo de otra lista sería mostrar un precio de origen incierto.
+     */
+    public function precioVentaConIva(): ?int
+    {
+        $this->loadMissing('precios.lista');
+
+        $oficial = config('daligo.lista_precios_ventas');
+
+        $precio = $oficial
+            ? $this->precios->first(fn (Precio $p) => $p->lista
+                && mb_strtoupper(trim((string) $p->lista->nombre)) === mb_strtoupper(trim((string) $oficial)))
+            // Sin lista oficial configurada se vuelve al criterio antiguo (solo
+            // entornos de prueba sin catálogo espejado).
+            : $this->precios->first(fn (Precio $p) => (bool) $p->lista?->activa) ?? $this->precios->first();
+
+        return $precio ? (int) round((float) $precio->precio_con_iva) : null;
+    }
+
     /** @return HasMany<Stock, $this> */
     public function stocks(): HasMany
     {

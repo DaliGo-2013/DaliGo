@@ -53,11 +53,19 @@ class ServicioTecnicoInformeTest extends TestCase
             ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
-    public function test_view_permission_puede_ver_el_informe(): void
+    public function test_permiso_de_informe_dispensadores_puede_verlo(): void
     {
-        // Los jefes (solo lectura) ven el informe sin permisos de gestion.
-        $this->actingAs($this->userWith(['view servicio tecnico']))
+        // Basta el permiso granular del informe de dispensadores.
+        $this->actingAs($this->userWith(['ver informe dispensadores']))
             ->get('/admin/servicio-tecnico/informe/dispensadores')->assertOk();
+    }
+
+    public function test_solo_industrial_no_ve_dispensadores(): void
+    {
+        // Quien solo tiene el informe industrial NO entra al de dispensadores.
+        $this->actingAs($this->userWith(['ver informe industrial']))
+            ->get('/admin/servicio-tecnico/informe/dispensadores')->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
     }
 
     // --- KPIs y período ---

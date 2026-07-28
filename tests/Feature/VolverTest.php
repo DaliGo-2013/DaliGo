@@ -46,7 +46,9 @@ class VolverTest extends TestCase
      */
     public function test_pantalla_hija_tiene_exactamente_un_volver(): void
     {
-        foreach (['admin.produccion.dia', 'admin.produccion.movimientos'] as $ruta) {
+        // El Kardex (admin.produccion.movimientos) salió de esta lista en
+        // P-NAV-06: pasó a ítem del menú y perdió su Volver.
+        foreach (['admin.produccion.dia'] as $ruta) {
             $html = $this->actingAs($this->admin())->get(route($ruta))->assertOk()->getContent();
 
             $this->assertSame(1, $this->cuantosVolver($html),
@@ -157,32 +159,27 @@ class VolverTest extends TestCase
     }
 
     /**
-     * Excepción obligatoria: Máquinas, Tipos de botellón y Conductores NO están
-     * en el menú (huérfanas, P-NAV-06 pendiente), así que su Volver es la ÚNICA
-     * salida. Este candado documenta la excepción y avisa en los dos sentidos:
-     * si alguien les quita el Volver, el usuario queda atrapado; si alguien las
-     * agrega al menú, hay que quitárselo.
+     * P-NAV-06 CERRADO (2026-07-27): las ex-huérfanas (Máquinas, Tipos de
+     * botellón, Kardex, Conductores) ya SON ítems del menú — su antiguo Volver
+     * (que era la única salida) se les quitó, y ahora las cubre
+     * test_ningun_item_del_menu_lleva_volver como a cualquier ítem. Este
+     * candado conserva la historia y avisa al revés: si alguien las SACA del
+     * menú, vuelven a quedar huérfanas y necesitan su Volver de vuelta.
      */
-    public function test_los_listados_huerfanos_conservan_su_volver(): void
+    public function test_las_ex_huerfanas_estan_en_el_menu(): void
     {
-        $huerfanos = [
-            'admin.maquinas.index' => 'admin.produccion.index',
-            'admin.tipos-botellon.index' => 'admin.produccion.index',
-            'admin.conductores.index' => 'admin.servicio-tecnico.index',
+        $exHuerfanas = [
+            'admin.maquinas.index',
+            'admin.tipos-botellon.index',
+            'admin.produccion.movimientos',
+            'admin.conductores.index',
         ];
 
         $enElMenu = array_column(MenuPrincipal::items(), 'route');
 
-        foreach ($huerfanos as $ruta => $padre) {
-            $this->assertNotContains($ruta, $enElMenu,
-                "[{$ruta}] ya está en el menú: quítale el Volver y sácala de esta lista.");
-
-            $html = $this->actingAs($this->admin())->get(route($ruta))->assertOk()->getContent();
-
-            $this->assertSame(1, $this->cuantosVolver($html),
-                "[{$ruta}] es huérfana (no está en el menú): su Volver es la única salida.");
-            $this->assertStringContainsString('href="'.route($padre).'" data-dg-volver', $html,
-                "[{$ruta}] debe volver a [{$padre}].");
+        foreach ($exHuerfanas as $ruta) {
+            $this->assertContains($ruta, $enElMenu,
+                "[{$ruta}] salió del menú: sin ítem propio queda huérfana y necesita su Volver de vuelta (ver P-NAV-06/P-NAV-08).");
         }
     }
 

@@ -63,7 +63,19 @@ class MenuPrincipal
             'icon' => 'building-office-2',
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Los patrones de Producción se ENUMERAN (no `admin.produccion.*`)
+                // porque el Kardex es ítem propio desde P-NAV-06: con el comodín,
+                // su página resaltaba DOS ítems a la vez (gate 28-07). Misma
+                // convención que el ítem `listado` de ST, que usa la ruta exacta
+                // para no comerse lote/qr/informe. Lo vigila
+                // SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item,
+                // que falla tanto si dos ítems colisionan como si una ruta queda sin dueño.
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
+                // perdieron su «Volver» (doctrina P-NAV-08).
+                'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
+                'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
+                'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
                 // Despachos (M07, unidad DESPACHOS-v1): el aporte que el nav
                 // legacy tenía en el dropdown Operación, trasladado a la fuente
                 // única al retirarse navigation.blade.php (merge 27-07).
@@ -119,12 +131,15 @@ class MenuPrincipal
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
                 'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
-                'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
+                'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 'seguimiento' => ['label' => 'Seguimiento (boceto)', 'route' => 'admin.servicio-tecnico.seguimiento-demo', 'activo' => ['admin.servicio-tecnico.seguimiento-demo'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
                 'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
+                // Ex-huérfana (P-NAV-06): choferes de ruta, mismo permiso que
+                // su grupo de rutas en routes/web.php.
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
             ],
         ],
     ];

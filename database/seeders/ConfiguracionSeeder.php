@@ -198,6 +198,22 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'aprobaciones',
                 'descripcion' => 'Minutos sin respuesta antes de escalar una solicitud pendiente al siguiente rol (granularidad efectiva 15 min por la grilla */15 del scheduler: escala en el siguiente slot tras vencer).',
             ],
+            // --- M11 · Producción: motivos del ajuste (hallazgo #6 del QA
+            // 15-07, idea del dueño: lenguaje COMÚN entre quien pide el ajuste
+            // y quien lo aprueba). Los lee el form de ajustar como chips
+            // (<x-reason-chips>); «Otro» con texto libre sigue disponible.
+            [
+                'clave' => 'motivos_ajuste_produccion',
+                'valor' => json_encode([
+                    'Error de digitación del soplador',
+                    'Conteo corregido en bodega',
+                    'Se contó producción de otro turno',
+                    'Merma mal clasificada',
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Motivos frecuentes del ajuste de un reporte de producción (chips del form de ajustar). Lista JSON de textos; «Otro» permite texto libre siempre.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',

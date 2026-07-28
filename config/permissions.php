@@ -28,6 +28,8 @@ return [
         'view servicio tecnico' => 'Ver servicio técnico',
         'ver todo servicio tecnico' => 'Ver TODO el servicio técnico (no solo la cartera propia)',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
+        'ver informe dispensadores' => 'Ver informe de dispensadores (taller)',
+        'ver informe industrial' => 'Ver informe industrial (terreno)',
         'editar recepcion servicio tecnico' => 'Editar recepción / eliminar orden (servicio técnico)',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
         'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
@@ -60,7 +62,7 @@ return [
     |
     */
     'grupos' => [
-        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento'],
+        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento', 'informe'],
         'Terreno' => ['servicio terreno', 'agenda terreno', 'instalaciones'],
         'Producción' => ['production'],
         // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
