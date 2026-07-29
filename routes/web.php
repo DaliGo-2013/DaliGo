@@ -255,6 +255,16 @@ Route::middleware('auth')
 
         // "Costos generales de reparación": catálogo de tiempos estándar por
         // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
+        // Modulo Facturacion (M05). Existe antes de poder emitir: `index` muestra
+        // lo emitido y de donde se puede emitir; `estado` es el checklist de lo que
+        // falta, que es la informacion util mientras no se emite.
+        Route::middleware('permission:emitir documentos tributarios')->group(function () {
+            Route::get('documentos-tributarios', [\App\Http\Controllers\Admin\DteController::class, 'index'])
+                ->name('dte.index');
+            Route::get('documentos-tributarios/estado', [\App\Http\Controllers\Admin\DteController::class, 'estado'])
+                ->name('dte.estado');
+        });
+
         Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
             Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
                 ->parameters(['tiempos-reparacion' => 'tiempo'])
