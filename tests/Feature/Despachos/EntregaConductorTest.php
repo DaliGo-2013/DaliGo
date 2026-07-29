@@ -352,6 +352,26 @@ class EntregaConductorTest extends TestCase
     }
 
     /**
+     * Smoke de la UI: los ganchos de la cola offline están en la hoja. Sin esto,
+     * quitar el x-data del form o la sección de rechazadas dejaría la suite
+     * verde con la PWA muda (lección de los veredictos de P-DSP-04).
+     */
+    public function test_la_hoja_renderiza_los_ganchos_de_la_cola(): void
+    {
+        $conductor = $this->conductor();
+        $despacho = $this->despacho($conductor);
+
+        $this->actingAs($conductor)->get(route('entregas.index'))
+            ->assertOk()
+            ->assertSee('entregaForm', false)                                    // el form Alpine por tarjeta
+            ->assertSee(route('entregas.confirmar', $despacho), false)           // apunta al endpoint real
+            ->assertSee('data-firma-pad', false)                                 // el pad de firma
+            ->assertSee('data-rechazadas', false)                                // la sección de rechazadas
+            ->assertSee('No se pudieron enviar')
+            ->assertSee('se envía sola al volver la señal');                     // el mensaje de encolada
+    }
+
+    /**
      * Estructural (patrón RutConKTest): la validación de la foto va por
      * `mimetypes` y NUNCA por la regla `image` — el HEIC de iPhone rompe
      * `image` y es el formato por defecto de las fotos de media flota de
