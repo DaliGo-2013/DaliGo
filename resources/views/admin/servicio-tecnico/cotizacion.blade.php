@@ -107,10 +107,7 @@
                 <div>
                     <div class="flex items-center justify-between">
                         <x-input-label value="Repuestos" />
-                        <button type="button" x-on:click="agregar()"
-                            class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                            <x-icon.plus class="h-4 w-4" /> Agregar repuesto
-                        </button>
+                        <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
                     </div>
 
                     <div class="mt-2 space-y-2">
