@@ -1,11 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Excepción sancionada a "un listado del menú no lleva Volver": esta
-             pantalla NO está en MenuPrincipal (huérfana, P-NAV-06 pendiente), así
-             que su Volver es la ÚNICA salida. Quitarlo dejaría al usuario
-             atrapado. Cuando P-NAV-06 la agregue al menú, se le quita. --}}
-        <x-page-header title="Conductores" subtitle="Choferes que retiran en ruta (ingreso por lote)."
-                       :back="route('admin.servicio-tecnico.index')" backTitle="Volver a Servicio Técnico">
+        {{-- Ítem del menú desde P-NAV-06: sin Volver (doctrina P-NAV-08). --}}
+        <x-page-header title="Conductores" subtitle="Choferes que retiran en ruta (ingreso por lote).">
             <x-slot name="action">
                 <x-button-link :href="route('admin.conductores.create')">
                     <x-icon.plus class="h-4 w-4" />

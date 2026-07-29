@@ -348,6 +348,19 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Documentos tributarios emitidos a partir de esta orden (M05).
+     *
+     * Es HasMany y no HasOne aunque lo normal sea uno: una orden puede terminar
+     * con una boleta y despues su nota de credito, y los DTE no se borran.
+     *
+     * @return HasMany<DteEmitido, $this>
+     */
+    public function dtesEmitidos(): HasMany
+    {
+        return $this->hasMany(DteEmitido::class, 'orden_servicio_id');
+    }
+
+    /**
      * Fotos de respaldo del estado fisico del equipo al ingresarlo.
      *
      * @return HasMany<OrdenServicioFoto>

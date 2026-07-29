@@ -72,7 +72,9 @@
         </div>
 
         {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}
-        <div x-show="modo === 'manual'" x-cloak>
+        {{-- pb-* en móvil: clearance para que "Volver al inicio" no quede
+             detrás de la barra de envío fija (<x-barra-envio-movil>). --}}
+        <div x-show="modo === 'manual'" x-cloak class="pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:pb-0">
             <p class="mb-5 text-center text-sm text-neutral-500">
                 Completa los datos de tu equipo. Cuando termines, muéstrale la pantalla al encargado del mostrador.
             </p>
@@ -256,9 +258,7 @@
                     <x-input-error :messages="$errors->get('fotos')" class="mt-1.5" />
                 </div>
 
-                <x-primary-button class="w-full justify-center">
-                    Enviar ingreso
-                </x-primary-button>
+                <x-barra-envio-movil>Enviar ingreso</x-barra-envio-movil>
             </form>
 
             {{-- Volver al menú principal (mismo botón formal que en los otros

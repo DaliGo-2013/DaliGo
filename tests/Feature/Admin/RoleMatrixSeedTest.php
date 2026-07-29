@@ -30,16 +30,21 @@ class RoleMatrixSeedTest extends TestCase
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio',
                 'agendar servicio terreno', 'ver agenda terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
+                'ver informe dispensadores', 'ver informe industrial',
                 'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
+                'emitir documentos tributarios', 'emitir nota de credito',
             ],
             'member' => [],
-            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion'],
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion'],
-            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos'],
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito'],
+            // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
+            // (quiénes pueden anular con nota de crédito). Ver el seeder.
+            'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito'],
+            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial'],
             'conductor' => ['crear lote servicio', 'confirmar entrega'],
-            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion'],
-            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones'],
+            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion', 'ver informe dispensadores'],
+            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
             'soplador' => ['report production'],
         ];
     }
@@ -57,10 +62,31 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_nueve_roles(): void
+    public function test_seeder_deja_exactamente_diez_roles(): void
     {
-        // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14).
-        $this->assertSame(9, Role::count());
+        // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14)
+        // + jefe_sucursal (notas de crédito, 2026-07-28).
+        $this->assertSame(10, Role::count());
+    }
+
+    public function test_solo_la_jefatura_puede_anular_con_nota_de_credito(): void
+    {
+        // Regla 9 de Contabilidad (28-jul-2026): anular es del gerente (admin),
+        // el jefe de ventas y los jefes de sucursal. Nadie más — ni el técnico,
+        // ni el vendedor, ni quien emitió el documento.
+        foreach (['admin', 'jefe_ventas', 'jefe_sucursal'] as $rol) {
+            $this->assertTrue(
+                Role::findByName($rol)->hasPermissionTo('emitir nota de credito'),
+                "El rol '{$rol}' debería poder anular con nota de crédito.",
+            );
+        }
+
+        foreach (['vendedor', 'tecnico', 'tecnico_industrial', 'jefe_bodega', 'conductor', 'soplador', 'member'] as $rol) {
+            $this->assertFalse(
+                Role::findByName($rol)->hasPermissionTo('emitir nota de credito'),
+                "El rol '{$rol}' NO debería poder anular un documento tributario.",
+            );
+        }
     }
 
     public function test_reseed_es_idempotente_y_no_borra_permisos_de_la_ui(): void
@@ -79,7 +105,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(9, Role::count());
+        $this->assertSame(10, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

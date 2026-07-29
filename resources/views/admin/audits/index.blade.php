@@ -7,7 +7,7 @@
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.audits.index') }}"
-              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">
             <div class="flex-1">
                 <x-input-label for="user_id" value="Usuario" />
                 <x-select id="user_id" name="user_id" class="mt-1.5">

@@ -70,7 +70,10 @@ class TiempoReparacionController extends Controller
         return $data;
     }
 
-    /** Valor hora vigente (para mostrar la mano de obra que implica cada tiempo). */
+    /**
+     * Valor hora vigente (para mostrar la mano de obra que implica cada tiempo),
+     * de la lista oficial de ventas. Ver Producto::precioVentaConIva.
+     */
     private function valorHora(): ?int
     {
         $sku = config('servicio_tecnico.sku_hora_servicio');
@@ -78,13 +81,6 @@ class TiempoReparacionController extends Controller
             return null;
         }
 
-        $producto = \App\Models\Producto::where('sku', $sku)->with('precios.lista')->first();
-        if (! $producto) {
-            return null;
-        }
-
-        $pr = $producto->precios->first(fn ($x) => (bool) ($x->lista?->activa)) ?? $producto->precios->first();
-
-        return $pr ? (int) round((float) $pr->precio_con_iva) : null;
+        return \App\Models\Producto::where('sku', $sku)->with('precios.lista')->first()?->precioVentaConIva();
     }
 }

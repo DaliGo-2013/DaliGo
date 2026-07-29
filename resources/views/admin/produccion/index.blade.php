@@ -69,7 +69,7 @@
             @endphp
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
                 @foreach ($chipsHoy as [$label, $valor, $tono, $info])
-                    <div class="relative rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                    <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                         <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
                         <p class="mt-1 text-2xl font-semibold {{ $tono === 'brand' ? 'text-brand-600' : ($tono === 'muted' ? 'text-neutral-500' : 'text-neutral-900') }}">{{ $valor }}</p>
                         <span class="absolute right-2 top-2"><x-info-tip>{{ $info }}</x-info-tip></span>

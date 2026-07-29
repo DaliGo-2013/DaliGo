@@ -49,6 +49,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'ver agenda terreno',         // tecnico industrial: ver la agenda y marcar lo realizado
             'gestionar instalaciones',    // tecnico industrial / jefes: registro de instalaciones (Excel de terreno)
             'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
+            // Informes de Servicio Tecnico (por dominio): el tecnico de taller ve
+            // solo Dispensadores; el tecnico industrial solo Industrial; jefes/admin ambos.
+            'ver informe dispensadores', // informe del taller (dispensadores)
+            'ver informe industrial',    // informe del servicio en terreno (industrial)
             // Modulo Notificaciones (M15).
             'view notificaciones',        // ver el panel de todas las notificaciones del sistema
             'gestionar notificaciones',   // editar las preferencias de canal (correo/WhatsApp) del perfil — SOLO Luis + TI (pedido del jefe); distinto de 'view notificaciones' (panel de solo lectura)
@@ -58,6 +62,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Unidad DESPACHOS-v1 (M05 parcial + M07 + M08 MVP).
             'manage despachos',           // jefe de bodega: crea despachos y valida retiros (QR)
             'confirmar entrega',          // conductor: confirma la entrega con firma+foto (PWA)
+            // Facturacion electronica (M05 · DTE). Ver PROYECTO_DALIGO.md §10.
+            'emitir documentos tributarios', // emitir boleta/factura desde DaliGo
+            'emitir nota de credito',        // ANULAR un documento ya emitido (el unico camino: los DTE no se borran)
         ];
 
         foreach ($permissions as $name) {
@@ -81,7 +88,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // servicio tecnico', asi que el listado y las fichas se filtran a los
         // clientes que tiene asignados (+ los de su equipo si es jefatura).
         Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web'])
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion']);
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial']);
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
@@ -90,12 +97,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
@@ -103,7 +110,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
         // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion']);
+            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion', 'ver informe dispensadores']);
         // El tecnico INDUSTRIAL trabaja en terreno (plantas de osmosis,
         // llenadoras, lavadoras en el cliente): gestiona su agenda (agenda,
         // edita y marca lo realizado desde el calendario) e instalaciones. Es un
@@ -113,8 +120,29 @@ class RolesAndPermissionsSeeder extends Seeder
         // Mantiene su registro de Instalaciones (su planilla). Si gerencia quiere
         // habilitarle agendar, lo activa en Administracion -> Roles.
         Role::firstOrCreate(['name' => 'tecnico_industrial', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones']);
+            ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
+        // JEFE DE SUCURSAL (2026-07-28). Nace por la regla 9 de Contabilidad: la
+        // nota de credito —el unico modo de anular un documento tributario— la
+        // pueden emitir el gerente, el jefe de ventas y los JEFES DE SUCURSAL
+        // (Luis Figueroa en Coquimbo, Gonzalo Martinez en Abate Molina). Ese rol
+        // no existia en DaliGo, asi que se crea ahora y no el dia de la primera
+        // emision: el permiso tiene que estar antes que la funcionalidad.
+        // Alcance deliberadamente ACOTADO a lo tributario + lo que ya se les
+        // reconoce operativamente (ver el taller de su sucursal y aprobar). NO
+        // lleva 'emitir documentos tributarios' todavia: emitir es del mostrador,
+        // anular es de la jefatura.
+        Role::firstOrCreate(['name' => 'jefe_sucursal', 'guard_name' => 'web'])
+            ->givePermissionTo([
+                'view users', 'manage clientes',
+                'view servicio tecnico', 'ver todo servicio tecnico',
+                'aprobar solicitudes',
+                'ver informe dispensadores', 'ver informe industrial',
+                'emitir nota de credito',
+            ]);
+        // El gerente y el jefe de ventas tambien anulan (regla 9). El gerente usa
+        // el rol admin, que ya recibe TODOS los permisos mas arriba.
+        Role::findByName('jefe_ventas')->givePermissionTo('emitir nota de credito');
     }
 }

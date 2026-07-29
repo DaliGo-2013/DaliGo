@@ -2,7 +2,9 @@
 
 > Documento maestro consolidado para asistentes de IA de programación.
 > Fuentes: especificación modular v2.0 (correcciones de Luis Lazcano, mayo 2026), respuesta técnica de arquitectura y hosting (junio 2026), carta Gantt (9 meses), y levantamientos de procesos de las 3 sucursales (Abate Molina, Coquimbo, Mirador).
-> Última consolidación: **julio 2026** (re-consolidada el 2026-07-26: entra M17 Servicio en terreno, que se había construido fuera de la spec; se explicitan los cortes de M16).
+> Última consolidación: **julio 2026** (re-consolidada el 2026-07-26: entra M17 Servicio en terreno, que se había construido fuera de la spec; se explicitan los cortes de M16. Re-consolidada el 2026-07-28: entra la **sección 10 · Facturación electrónica (DTE)** con las reglas cerradas de Contabilidad, los límites reales de la API de Bsale y el plazo del 1-nov-2026).
+>
+> ⚠️ **Si vas a tocar facturación, boletas, notas de crédito, guías de despacho o precios de venta: la sección 10 es lectura obligatoria previa.** Son reglas cuyo incumplimiento emite un documento tributario mal hecho, y eso no se borra.
 
 ---
 
@@ -146,6 +148,7 @@ Tablero ejecutivo: ventas por sucursal, márgenes, stock crítico, descuentos. R
 Stock **por vendedor** (no solo por sucursal). Bodegas físicas: Mirador, Coquimbo, Abate Molina, Buzeta. **Replantear las ~25 bodegas virtuales hacia algo más simple.** Movimientos: ingreso, salida, ajuste, traspaso, recepción proveedor. Reservas con dueño (vendedor) y vencimiento configurable. Punto de reorden por SKU con sugerencia según rotación histórica. Alertas: stock bajo mínimo, reservas vencidas, **producto sin movimiento 10 días → alerta al vendedor que lo compró**. Vista cruzada según perfil. Solicitud de transferencia entre sucursales (consume M14). Algoritmo configurable de distribución por % histórico de ventas (Mirador ~75%, Abate ~25% como referencia actual).
 
 **M05 · Cotización + ciclo de factura (con Bsale)** — CON AJUSTES · L (6–8 sem) · dep: M01–M04, M14
+> 🔴 **Antes de construir acá: leer la sección 10 (reglas cerradas de DTE).** Ya está construido el puerto de emisión, la tabla `dte_emitidos`, el reparto neto/IVA y el traductor a Bsale (28-jul-2026). **Documentos emitidos: 0** — falta el candado de entorno, llenar los ids de `config/dte.php` con el token de prueba, y la autorización escrita de Gerencia para la primera emisión real.
 Cotización con vencimiento configurable (5 días) — ya en Bsale. Descuentos por rango autorizado — ya en Bsale. **NUEVO: validación automática de stock asignado antes de emitir.** Emisión boleta/factura vía Bsale API. **Estados explícitos por documento: emitida → cargada → en ruta → entregada → cobrada → cerrada.** Asignación a vendedor, stock reservado, cliente, transportista. Envío automático por correo según preferencia — ya en Bsale. Generación de QR (entrada a M07). Cierre administrativo con conciliación de pagos. **Cálculo automático de bono al conductor por destino/kilometraje** (rutas fuera de Santiago). Aprobación de Héctor reducida a 1–2 pasos. Soporte a boleta rápida.
 
 **M07 · Validación de retiro anti-fraude (QR)** — VALIDADO (caso real de fraude) · M (3–4 sem) · dep: M01, M05, M14
@@ -417,6 +420,9 @@ Vende por canales mixtos: presencial, Mercado Libre, Falabella y web propia (Wor
 
 ## 9. Cómo usar este documento al programar
 
+> Índice rápido: **§2** restricciones de hosting · **§3** las 18 correcciones de Luis · **§4** alcance por módulo · **§5** modelo de datos · **§8** procesos AS-IS · **§10** 🔴 reglas cerradas de facturación electrónica.
+
+
 - **Empezar por el Bloque A en el orden del Gantt:** M01 → M02/M03 → M15 → M14 → (M16 iterativo). Respetar el mapa de dependencias de la sección 4.
 - **Antes de construir cualquier funcionalidad**, revisar la corrección #18: si ya está en Bsale, integrarse, no duplicar.
 - **Toda decisión de esquema** debe pasar el filtro MySQL 5.7 (sección 5) y las restricciones de hosting (sección 2).
@@ -425,5 +431,113 @@ Vende por canales mixtos: presencial, Mercado Libre, Falabella y web propia (Wor
 - **Prototipar temprano la PWA offline** (M08/M11): es el mayor riesgo técnico.
 - Los flujos de la sección 8 son el AS-IS: el TO-BE es digitalizarlos según los módulos de la sección 4.
 - **Un módulo nuevo se agrega a la sección 4 ANTES de construirse, no después.** Esta regla existe porque se rompió: el servicio en terreno (M17) se construyó completo y se puso en producción entre el 14 y el 24 de julio de 2026 quedando descrito sólo en `docs/BITACORA-SESIONES.md`. Durante ~6 semanas la biblia describía una app que ya no era la real, y la pregunta "¿qué hace el sistema?" no se podía responder con un solo documento. Si lo que vas a construir no cae bajo un módulo existente, **primero escribe el módulo acá** (formato: estado · esfuerzo · dependencias, en lenguaje de negocio) y recién después abre el paso en `docs/RUTA-MAESTRA.md`.
+- **Antes de tocar CUALQUIER cosa de facturación, boletas, notas de crédito, guías de despacho o precios de venta: leer la sección 10 completa.** No es documentación de apoyo: son reglas cerradas cuyo incumplimiento produce un documento tributario mal emitido, y eso no se borra — se corrige con nota de crédito ante el SII.
+
+---
+
+## 10. Facturación electrónica (DTE) — REGLAS CERRADAS
+
+> **Lectura obligatoria antes de tocar M05, M03 (boleta rápida), M07 (QR por documento), M08 (guías de
+> despacho) o cualquier precio de venta.** Consolidado el **28 de julio de 2026** a partir de: investigación
+> en fuentes primarias del SII, respuestas de Contabilidad de Dali (28-jul-2026), respuesta oficial del
+> soporte de Bsale (28-jul-2026) y verificación contra la API real.
+>
+> Detalle extenso y trazable en **`docs/FACTURACION-ELECTRONICA.md`** (informe para Gerencia y
+> Contabilidad, con fuentes citadas) y **`docs/BSALE_API.md`** (shapes y límites de la API).
+
+### 10.1 La regla de oro: DaliGo NO emite, TRADUCE
+
+**Bsale es el emisor electrónico ante el SII y sigue siéndolo.** Conserva la certificación, el certificado
+digital, los folios (CAF), el timbrado y el envío al SII. DaliGo **arma el documento y lo pasa a Bsale**;
+nada más.
+
+**Prohibido construir el timbre electrónico propio.** No es una preferencia de diseño, es una decisión
+cerrada con números: son **45–70 días-persona** (3–5 meses) más mantención normativa permanente — el SII
+movió el formato del DTE cuatro veces en 12 meses — contra **5–12 días** integrando un emisor. Quien
+quiera reabrirlo tiene que leer la §4 del informe primero.
+
+Dato importante para el futuro: el documento legal es el **XML**, no el PDF. El PDF es "representación
+impresa". Si algún día se corta con Bsale, lo que hay que tener guardado son los XML (obligación de
+conservación: **6 años**). Por eso `dte_emitidos` guarda `url_xml`.
+
+### 10.2 Las 8 reglas contables (Contabilidad de Dali, 28-jul-2026)
+
+Están implementadas en el código; cambiarlas requiere volver a preguntar, no decidirlo en una sesión.
+
+| # | Regla | Dónde vive |
+|---|---|---|
+| 1 | **El total que paga el cliente MANDA.** DaliGo guarda precios CON IVA; el DTE exige neto por línea. El neto del total es la cifra autoritativa y el residuo de redondeo se carga a la línea mayor (la mano de obra) | `App\Services\Dte\DesgloseNeto` |
+| 2 | **Boleta o factura lo elige quien atiende**, no el sistema. Factura exige RUT + giro (falla sin ellos); boleta a consumidor final va **sin** nodo cliente | `BsaleEmisor::armarCliente()` |
+| 3 | **Nada exento en servicio técnico.** Única excepción de la empresa: venta de activo fijo con +36 meses (Art. 8 m) DL 825), que es otro flujo | Factura exenta (34) prevista pero **fuera de alcance** |
+| 4 | **Una línea por repuesto + una de mano de obra.** Repuestos con SKU de catálogo (serie `1070xxx`); mano de obra = SKU **`9771001`** «HORA SERVICIO TECNICO». La glosa impresa es el nombre real, sin abreviaturas (Res. SII 36/2024) | `BsaleEmisor::armarLinea()` + `config/servicio_tecnico.php` |
+| 5 | **Garantía:** hoy no se emite nada; **debe** emitirse guía de despacho por traslado que no constituye venta. ⚠️ **No construir todavía** — ver 10.6 | pendiente |
+| 6 | **Emisor único: Importadora y Exportadora Dali, RUT 76.301.506-8.** Plásticos Dali (76.754.504-5) queda fuera de alcance | `config/dte.php` |
+| 7 | **Se emite desde la sucursal donde se REPARA**, no donde se recibió el equipo | `BsaleEmisor::oficinaDe()` |
+| 8 | **El pago se registra al emitir** (no queda a crédito). Sin medio de pago mapeado, **no emite** | `BsaleEmisor::armarPagos()` + `FormaPago` |
+| 9 | **Notas de crédito:** solo gerente (Luis Lazcano), jefe de ventas (Héctor Martínez) y jefes de sucursal (Luis Figueroa · Coquimbo, Gonzalo Martínez · Abate Molina). **Falta crear el rol `jefe_sucursal`** — no existe | pendiente |
+
+**Lista de precios de venta: `GENERAL`** (`config('daligo.lista_precios_ventas')`). La empresa tiene 5
+listas activas espejadas de Bsale y el origen de las otras 4 no está claro. Si un producto no tiene precio
+en GENERAL, `Producto::precioVentaConIva()` devuelve **null a propósito** (se escribe a mano): mejor sin
+precio que con uno de origen incierto. **No reintroducir el criterio «la primera lista activa que
+aparezca»** — ver la bitácora de `CLAUDE.md` [2026-07-28].
+
+### 10.3 Arquitectura ya construida (no rehacerla)
+
+| Pieza | Qué es |
+|---|---|
+| `App\Services\Dte\EmisorDte` | **El puerto.** La app depende SOLO de esta interfaz, nunca de Bsale. Es la ruta de salida: cambiar de emisor = escribir otra implementación |
+| `App\Services\Bsale\BsaleEmisor` | La implementación contra Bsale. Traductor puro: no toca la BD |
+| `App\Services\Dte\EmisionDte` | Reserva la fila en `dte_emitidos` **ANTES** de emitir. El índice único de `sales_id` es la barrera física contra el doble clic |
+| `dte_emitidos` | Registro local de lo emitido (folio, estado SII, XML, PDF, quién y cuándo) |
+| `EstadoSii` | Traduce el `informedSii` de Bsale, **cuya escala está invertida: 0 = ACEPTADO**, 1 = enviado, 2 = rechazado |
+| `config/dte.php` | Los 3 mapas de ids de Bsale. **Arrancan VACÍOS a propósito** |
+
+Dos reglas de esa arquitectura que parecen detalles y no lo son:
+
+1. **`BsaleClient::post()` NO lleva reintentos automáticos.** Reintentar un POST que quizá se procesó emite
+   un **segundo documento con folio real**. La protección es el `salesId` + el índice único, no el reintento.
+2. **Un mapa de `config/dte.php` sin llenar hace fallar la emisión con el nombre de la clave que falta.**
+   Es deliberado: emitir desde la oficina equivocada es un documento mal atribuido. **No poner defaults.**
+
+### 10.4 Límites REALES de la API de Bsale (verificados, con lo que aún no lo está)
+
+| Hecho | Estado |
+|---|---|
+| **El ambiente lo define ÚNICAMENTE el token.** Las URLs de prueba y producción son idénticas (`api.bsale.io/v1`) | ✅ Verificado. **Es el riesgo #1 del módulo**: un token de producción en un `.env` de desarrollo emite documentos reales |
+| **El sandbox NO es electrónico:** no timbra ni llega al SII | ✅ Confirmado por Bsale por escrito. Consecuencia: **la primera vez que se vea un timbre real será en producción** |
+| **Bsale recomienda la 1ª emisión en producción** con monto bajo + nota de crédito si hace falta | ✅ Por escrito (28-jul-2026) |
+| **Folios: no se pueden reservar ni conocer por anticipado.** Se asignan al generar el DTE, por tipo + sucursal | ✅ Confirmado. ⚠️ El aviso preventivo de folios puede no ser construible por API |
+| **No existe campo de CAJA** en `documents.json` (solo `officeId`), pero su soporte dice que hay que asociar la caja para que cuadre el cierre | ❓ **Contradicción abierta de Bsale.** Aclarar ANTES de la primera emisión real |
+| **Rate limit:** 2.400 req/5 min (soporte) vs 3.000/300 s (su FAQ) → diseñar contra 2.400, con **bloqueo de 5 min** al excederlo | ✅ Ambas fuentes. La penalización se sobrevive **con el próximo cron, no durmiendo** |
+| Shapes de **notas de crédito** (`returns.json`) y **CAF** | ⚠️ **NO verificados.** Marcados en el código. Se confirman con el token de prueba |
+
+### 10.5 Seguridad: el repositorio de DaliGo es PÚBLICO
+
+**Jamás versionar:** el token de Bsale, un certificado digital (`.p12`), ni un archivo **CAF** (contiene la
+llave privada con la que se timbra: quien la tiene puede emitir documentos a nombre de la empresa). Van en
+`.env` (ya ignorado) o fuera del repo. `.env.example` lleva las claves **sin valor**.
+
+### 10.6 El punto de no retorno
+
+Emitir el primer documento real **no se deshace**: queda en los registros del SII y solo se corrige con
+nota de crédito. Condiciones acordadas antes de ese paso: reglas contables respondidas (✅ hecho),
+**autorización escrita de Gerencia**, monto bajo, Contabilidad enterada, nota de crédito preparada y el
+resultado registrado en el informe. **Ningún asistente ni desarrollador emite el primero por iniciativa
+propia.**
+
+### 10.7 Plazo con fecha: 1 de noviembre de 2026 (guías de despacho)
+
+Desde esa fecha el SII exige en las **guías de despacho** (Res. 154/2025 + Res. 52/2026): patente del
+vehículo y del remolque, RUT del transportista, nombre y cédula del chofer, fecha y hora de salida,
+direcciones de origen y destino efectivo; y **una guía por traslado y por vehículo**.
+
+**La API de Bsale no tiene hoy dónde registrar esos datos**, y consultado formalmente Bsale respondió que
+cumplirá "dentro de los plazos" **sin dar fecha**, y que los campos nuevos "serán informados a través de
+nuestra documentación oficial para que puedan ser implementados por quienes integran sus sistemas" — o sea
+**el trabajo cae de este lado y hay que ir a mirar su documentación, no esperar aviso**.
+
+Esto afecta a Dali **aunque el módulo de facturación no se construya**, porque hoy ya mueve mercadería. Por
+eso la guía de garantía de la regla 5 queda en espera: construirla ahora es construirla dos veces.
 
 

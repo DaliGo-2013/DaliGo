@@ -119,12 +119,13 @@ class DashboardTest extends TestCase
             ->assertDontSee('Personalizar'); // sin accesos no hay modo de color
     }
 
-    public function test_member_sees_only_greeting(): void
+    public function test_member_sin_permisos_ve_estado_vacio(): void
     {
         $res = $this->actingAs($this->userWithRole('member'))->get('/dashboard');
 
         $res->assertOk()
-            ->assertSee('Bienvenido')
+            ->assertSee('Tu cuenta aún no tiene accesos asignados')
+            ->assertDontSee('Bienvenido')       // el saludo se retiró (nadie lo quería)
             ->assertDontSee('Tu reporte de producción')
             ->assertDontSee('Requiere tu atención')
             ->assertDontSee('Operación al día')

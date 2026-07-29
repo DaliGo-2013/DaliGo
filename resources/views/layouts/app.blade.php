@@ -70,5 +70,10 @@
                 </main>
             </div>
         </div>
+
+        {{-- Muleta táctil para los listados largos: va ACÁ, una sola vez, y así
+             sirve en las 69 pantallas sin que ninguna vista tenga que acordarse.
+             Solo se muestra en móvil y recién pasados 600px de scroll. --}}
+        <x-volver-arriba />
     </body>
 </html>

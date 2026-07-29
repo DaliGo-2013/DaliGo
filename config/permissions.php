@@ -28,6 +28,8 @@ return [
         'view servicio tecnico' => 'Ver servicio técnico',
         'ver todo servicio tecnico' => 'Ver TODO el servicio técnico (no solo la cartera propia)',
         'manage servicio tecnico' => 'Gestionar servicio técnico',
+        'ver informe dispensadores' => 'Ver informe de dispensadores (taller)',
+        'ver informe industrial' => 'Ver informe industrial (terreno)',
         'editar recepcion servicio tecnico' => 'Editar recepción / eliminar orden (servicio técnico)',
         'confirmar servicio tecnico' => 'Confirmar recepción (servicio técnico)',
         'autorizar reparacion' => 'Autorizar reparación (pago de la cotización)',
@@ -36,10 +38,15 @@ return [
         'gestionar notificaciones' => 'Gestionar canales de notificación (correo/WhatsApp del perfil)',
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
+        'crear lote servicio' => 'Ingresar lote de máquinas (conductor en ruta)',
+        'agendar servicio terreno' => 'Agendar trabajos en terreno + catálogo de servicios',
+        'ver agenda terreno' => 'Ver la agenda de terreno y marcar trabajos realizados',
         'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
         'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
         'manage despachos' => 'Gestionar despachos',
         'confirmar entrega' => 'Confirmar entrega (conductor)',
+        'emitir documentos tributarios' => 'Emitir boletas y facturas',
+        'emitir nota de credito' => 'Emitir notas de crédito (anular un documento)',
     ],
 
     /*
@@ -57,7 +64,7 @@ return [
     |
     */
     'grupos' => [
-        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento'],
+        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento', 'informe'],
         'Terreno' => ['servicio terreno', 'agenda terreno', 'instalaciones'],
         'Producción' => ['production'],
         // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con

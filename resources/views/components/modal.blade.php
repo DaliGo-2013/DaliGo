@@ -46,7 +46,9 @@ $maxWidth = [
     x-on:keydown.tab.prevent="$event.shiftKey || nextFocusable().focus()"
     x-on:keydown.shift.tab.prevent="prevFocusable().focus()"
     x-show="show"
-    class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50"
+    {{-- pb con safe-area: los botones al pie del modal caían debajo de la barra
+         de gestos del iPhone y no se podían tocar. --}}
+    class="fixed inset-0 overflow-y-auto px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-0 z-50"
     style="display: {{ $show ? 'block' : 'none' }};"
 >
     <div

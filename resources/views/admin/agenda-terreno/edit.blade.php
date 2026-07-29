@@ -17,7 +17,7 @@
     </x-slot>
 
     <div class="space-y-5 py-8 sm:py-12">
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8"
              x-data="agendaTerrenoForm({
                 endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
                 servicios: @js($serviciosJs),

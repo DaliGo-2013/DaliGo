@@ -63,12 +63,39 @@ class MenuPrincipal
             'icon' => 'building-office-2',
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Los patrones de Producción se ENUMERAN (no `admin.produccion.*`)
+                // porque el Kardex es ítem propio desde P-NAV-06: con el comodín,
+                // su página resaltaba DOS ítems a la vez (gate 28-07). Misma
+                // convención que el ítem `listado` de ST, que usa la ruta exacta
+                // para no comerse lote/qr/informe. Lo vigila
+                // SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item,
+                // que falla tanto si dos ítems colisionan como si una ruta queda sin dueño.
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
+                // perdieron su «Volver» (doctrina P-NAV-08).
+                'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
+                'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
+                'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
                 // Despachos (M07, unidad DESPACHOS-v1): el aporte que el nav
                 // legacy tenía en el dropdown Operación, trasladado a la fuente
                 // única al retirarse navigation.blade.php (merge 27-07).
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
             ],
+        ],
+        // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
+        // propósito: hoy muestra lo emitido (cero) y, sobre todo, QUÉ FALTA para
+        // emitir — que es la información útil mientras no se emite. Ver
+        // PROYECTO_DALIGO.md §10.
+        'facturacion' => [
+            'label' => 'Facturación',
+            'icon' => 'document-text',
+            'items' => [
+                'documentos' => ['label' => 'Documentos', 'route' => 'admin.dte.index', 'activo' => ['admin.dte.index'], 'permiso' => 'emitir documentos tributarios'],
+                'estado-facturacion' => ['label' => 'Estado', 'route' => 'admin.dte.estado', 'activo' => ['admin.dte.estado'], 'permiso' => 'emitir documentos tributarios'],
+            ],
+            // La pantalla del documento de una orden cuelga de Servicio Técnico por
+            // ruta, pero conceptualmente es de acá: abre este acordeón.
+            'activo_extra' => ['admin.servicio-tecnico.documento'],
         ],
         'administracion' => [
             'label' => 'Administración',
@@ -119,12 +146,15 @@ class MenuPrincipal
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
                 'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
-                'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
+                'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 'seguimiento' => ['label' => 'Seguimiento (boceto)', 'route' => 'admin.servicio-tecnico.seguimiento-demo', 'activo' => ['admin.servicio-tecnico.seguimiento-demo'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
                 'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
+                // Ex-huérfana (P-NAV-06): choferes de ruta, mismo permiso que
+                // su grupo de rutas en routes/web.php.
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
             ],
         ],
     ];
@@ -140,6 +170,26 @@ class MenuPrincipal
      */
     public const CUENTA = [
         'configuracion' => ['label' => 'Configuración', 'route' => 'admin.configuracion.index', 'activo' => ['admin.configuracion.*'], 'permiso' => 'manage settings'],
+    ];
+
+    /**
+     * Prioridad de ítems POR ROL dentro de un módulo (pedido del dueño
+     * 2026-07-28). NO cambia la VISIBILIDAD —eso se sigue derivando del permiso,
+     * doctrina de este archivo— solo el ORDEN: para un perfil cuyo trabajo diario
+     * no es el taller, sus ítems flotan al tope de su módulo y el resto queda
+     * debajo como secundario, conservando su orden relativo.
+     *
+     * Hoy solo el técnico industrial (Carlos Tablante): su día es la agenda de
+     * terreno y las instalaciones; Listado / Ingreso por lote los usa recién
+     * cuando cubre a alguien por enfermedad o vacaciones, no como entrada.
+     *
+     * Estructura: rol => [ moduloKey => [ keys de ítem en orden prioritario ] ].
+     * Un usuario con varios roles acumula las prioridades de todos (sin duplicar).
+     */
+    public const PRIORIDAD_POR_ROL = [
+        'tecnico_industrial' => [
+            'servicio-tecnico' => ['agenda-terreno', 'instalaciones'],
+        ],
     ];
 
     /**
@@ -163,6 +213,7 @@ class MenuPrincipal
                     fn (array $item) => self::puedeVer($user, $item['permiso'])
                 );
                 if ($items !== []) {
+                    $items = self::priorizarPorRol($user, $key, $items);
                     $arbol[$key] = array_merge($modulo, ['items' => $items]);
                 }
             } elseif (self::puedeVer($user, $modulo['permiso'])) {
@@ -343,5 +394,44 @@ class MenuPrincipal
     private static function puedeVer(User $user, ?string $permiso): bool
     {
         return $permiso === null || $user->canAny(explode('|', $permiso));
+    }
+
+    /**
+     * Reordena los ítems YA PODADOS de un módulo según PRIORIDAD_POR_ROL: los
+     * prioritarios del/los rol(es) del usuario suben al tope (en el orden
+     * declarado, sin duplicar entre roles), y el resto queda debajo con su
+     * orden original. Estable: si el usuario no tiene prioridades para este
+     * módulo, devuelve los ítems tal cual. Solo mueve ítems que estén visibles
+     * (los prioritarios que el permiso ocultó se ignoran).
+     *
+     * @param  array<string, array<string, mixed>>  $items
+     * @return array<string, array<string, mixed>>
+     */
+    private static function priorizarPorRol(User $user, string $moduloKey, array $items): array
+    {
+        $orden = [];
+        foreach (self::PRIORIDAD_POR_ROL as $rol => $modulos) {
+            if (isset($modulos[$moduloKey]) && $user->hasRole($rol)) {
+                foreach ($modulos[$moduloKey] as $itemKey) {
+                    if (! in_array($itemKey, $orden, true)) {
+                        $orden[] = $itemKey;
+                    }
+                }
+            }
+        }
+
+        if ($orden === []) {
+            return $items;
+        }
+
+        $arriba = [];
+        foreach ($orden as $itemKey) {
+            if (isset($items[$itemKey])) {
+                $arriba[$itemKey] = $items[$itemKey];
+            }
+        }
+
+        // $arriba primero (prioridad), luego el resto en su orden original.
+        return $arriba + array_diff_key($items, $arriba);
     }
 }

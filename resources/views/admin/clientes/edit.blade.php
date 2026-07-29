@@ -9,7 +9,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
             @if ($cliente->bsale_client_id)
                 <p class="mb-6 text-sm text-neutral-500">
                     Cliente enlazado a Bsale (id {{ $cliente->bsale_client_id }}). Los datos de la ficha

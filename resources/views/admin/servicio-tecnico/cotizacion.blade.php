@@ -12,6 +12,9 @@
         // Repuestos que dejó el técnico (nombre + cantidad): aquí se les pone precio.
         $repInit = $orden->repuestos->map(fn ($r) => [
             'nombre' => $r->nombre,
+            // El SKU viaja para no perderlo al re-guardar (el documento tributario
+            // se factura con el código de catálogo, regla 4 de Contabilidad).
+            'sku' => $r->sku,
             'cantidad' => $r->cantidad,
             'precio_unitario' => $r->precio_unitario,
         ])->values();
@@ -36,7 +39,7 @@
                     blank($orden->trabajo_realizado) ? 'registra el trabajo realizado en «Parte del técnico»' : null,
                 ])->filter();
             @endphp
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="mb-3 flex items-center justify-between">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del trabajo (garantía)</h3>
                     <x-badge variant="neutral">Garantía</x-badge>
@@ -89,7 +92,7 @@
         @else
             {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
-                  class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8" data-una-vez
+                  class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8" data-una-vez
                   x-data="reparacionForm({ repuestos: @js($repInit), manoObra: {{ (int) old('mano_obra', $orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
                 @csrf
                 @method('PUT')
@@ -104,15 +107,15 @@
                 <div>
                     <div class="flex items-center justify-between">
                         <x-input-label value="Repuestos" />
-                        <button type="button" x-on:click="agregar()"
-                            class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                            <x-icon.plus class="h-4 w-4" /> Agregar repuesto
-                        </button>
+                        <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
                     </div>
 
                     <div class="mt-2 space-y-2">
                         <template x-for="(r, i) in repuestos" :key="i">
                             <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
+                                {{-- SKU del catálogo (oculto): lo pone el buscador al elegir, y se
+                                     conserva al re-guardar. Vacío si se escribió a mano. --}}
+                                <input type="hidden" :name="`repuestos[${i}][sku]`" :value="r.sku ?? ''">
                                 <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
                                     <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
                                         placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
@@ -293,7 +296,7 @@
             {{-- ===== Envío al cliente + historial (P-M12-02) =====
                  Usa lo GUARDADO (snapshot), no lo que esté a medio editar. --}}
             @php $ultima = $cotizaciones->first(); @endphp
-            <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold text-neutral-900">Cotización al cliente</h3>
                     @if ($ultima)

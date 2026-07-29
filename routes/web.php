@@ -167,14 +167,6 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
-            // Informes: landing con dos "carpetas" (Dispensadores / Industrial),
-            // y el informe de cada uno por periodo (año o mes) para los jefes.
-            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informes'])
-                ->name('servicio-tecnico.informe');
-            Route::get('servicio-tecnico/informe/dispensadores', [ServicioTecnicoController::class, 'informeDispensadores'])
-                ->name('servicio-tecnico.informe.dispensadores');
-            Route::get('servicio-tecnico/informe/industrial', [ServicioTecnicoController::class, 'informeIndustrial'])
-                ->name('servicio-tecnico.informe.industrial');
             // BOCETO interno: vista de seguimiento (estilo Blue Express) del estado
             // de un equipo. Sin conexion a datos; solo un adelanto del diseño.
             Route::get('servicio-tecnico/seguimiento-demo', [ServicioTecnicoController::class, 'seguimientoDemo'])
@@ -189,6 +181,23 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.cotizacion.comprobante');
             Route::get('servicio-tecnico/{orden}', [ServicioTecnicoController::class, 'show'])
                 ->whereNumber('orden')->name('servicio-tecnico.show');
+        });
+
+        // Informes de Servicio Técnico con permiso POR DOMINIO: el técnico de
+        // taller ve solo Dispensadores; el técnico industrial solo Industrial;
+        // jefes/admin ambos. El landing entra si tiene al menos uno (y redirige
+        // al único informe si solo tiene ese).
+        Route::middleware('permission:ver informe dispensadores|ver informe industrial')->group(function () {
+            Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informes'])
+                ->name('servicio-tecnico.informe');
+        });
+        Route::middleware('permission:ver informe dispensadores')->group(function () {
+            Route::get('servicio-tecnico/informe/dispensadores', [ServicioTecnicoController::class, 'informeDispensadores'])
+                ->name('servicio-tecnico.informe.dispensadores');
+        });
+        Route::middleware('permission:ver informe industrial')->group(function () {
+            Route::get('servicio-tecnico/informe/industrial', [ServicioTecnicoController::class, 'informeIndustrial'])
+                ->name('servicio-tecnico.informe.industrial');
         });
 
         // Autorizar la reparación tras coordinar el pago: vendedor/jefe_ventas/
@@ -246,6 +255,16 @@ Route::middleware('auth')
 
         // "Costos generales de reparación": catálogo de tiempos estándar por
         // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
+        // Modulo Facturacion (M05). Existe antes de poder emitir: `index` muestra
+        // lo emitido y de donde se puede emitir; `estado` es el checklist de lo que
+        // falta, que es la informacion util mientras no se emite.
+        Route::middleware('permission:emitir documentos tributarios')->group(function () {
+            Route::get('documentos-tributarios', [\App\Http\Controllers\Admin\DteController::class, 'index'])
+                ->name('dte.index');
+            Route::get('documentos-tributarios/estado', [\App\Http\Controllers\Admin\DteController::class, 'estado'])
+                ->name('dte.estado');
+        });
+
         Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
             Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
                 ->parameters(['tiempos-reparacion' => 'tiempo'])
@@ -289,6 +308,14 @@ Route::middleware('auth')
             // QR por sucursal (link firmado imprimible para el mostrador).
             Route::get('servicio-tecnico/qr', [ServicioTecnicoController::class, 'qr'])
                 ->name('servicio-tecnico.qr');
+
+            // Documento tributario de la orden (M05 · B8). Hoy es un ENSAYO EN SECO:
+            // arma el documento y lo muestra, pero el candado impide emitir. Gateada
+            // por el permiso de emision aunque todavia no emita, para no tener que
+            // acordarse de gatearla despues.
+            Route::get('servicio-tecnico/{orden}/documento', [\App\Http\Controllers\Admin\DocumentoTributarioController::class, 'show'])
+                ->middleware('permission:emitir documentos tributarios')
+                ->whereNumber('orden')->name('servicio-tecnico.documento');
 
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])

@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
+        {{-- Ítem del menú desde P-NAV-06: sin Volver (doctrina P-NAV-08). --}}
         <x-page-header title="Kardex de producción"
-                       subtitle="Movimientos generados al aprobar reportes. Ledger local; no toca el stock de Bsale."
-                       :back="route('admin.produccion.index')" />
+                       subtitle="Movimientos generados al aprobar reportes. Ledger local; no toca el stock de Bsale." />
     </x-slot>
 
     <div class="space-y-6 py-12">
@@ -19,7 +19,7 @@
                 ];
             @endphp
             @foreach ($chips as [$label, $valor])
-                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $label }}</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($valor, 0, ',', '.') }}</p>
                 </div>
@@ -28,7 +28,7 @@
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.produccion.movimientos') }}"
-              class="dg-enter grid grid-cols-1 gap-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+              class="dg-enter grid grid-cols-1 gap-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
                 <x-input-label for="q" value="Producto (nombre o SKU)" />
                 <x-text-input id="q" class="mt-1.5 w-full" type="search" name="q" :value="$filtros['q'] ?? ''" placeholder="Buscar…" />

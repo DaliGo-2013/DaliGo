@@ -32,7 +32,7 @@
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.productos.index') }}"
-              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+              class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">
             <div class="flex-1">
                 <x-input-label for="q" value="Buscar (SKU o nombre)" />
                 <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$filtros['q'] ?? ''" placeholder="ej. botellón" />

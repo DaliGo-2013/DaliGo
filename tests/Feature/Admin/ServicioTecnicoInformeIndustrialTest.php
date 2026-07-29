@@ -55,6 +55,40 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
             ->assertSee(route('admin.servicio-tecnico.informe.industrial'), false);
     }
 
+    // --- Permisos por rol ---
+
+    public function test_tecnico_de_taller_solo_ve_dispensadores(): void
+    {
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+
+        // El landing lo manda directo a SU informe (dispensadores).
+        $this->actingAs($tecnico)->get('/admin/servicio-tecnico/informe')
+            ->assertRedirect(route('admin.servicio-tecnico.informe.dispensadores'));
+
+        $this->actingAs($tecnico)->get('/admin/servicio-tecnico/informe/dispensadores')->assertOk();
+
+        // NO puede entrar al informe industrial.
+        $this->actingAs($tecnico)->get('/admin/servicio-tecnico/informe/industrial')
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+    }
+
+    public function test_tecnico_industrial_solo_ve_industrial(): void
+    {
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico_industrial');
+
+        // El landing lo manda directo a SU informe (industrial).
+        $this->actingAs($tecnico)->get('/admin/servicio-tecnico/informe')
+            ->assertRedirect(route('admin.servicio-tecnico.informe.industrial'));
+
+        $this->actingAs($tecnico)->get('/admin/servicio-tecnico/informe/industrial')->assertOk();
+
+        // NO puede entrar al informe de dispensadores.
+        $this->actingAs($tecnico)->get('/admin/servicio-tecnico/informe/dispensadores')
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+    }
+
     // --- Informe industrial ---
 
     public function test_industrial_cuenta_por_tipo_y_servicios_del_periodo(): void
