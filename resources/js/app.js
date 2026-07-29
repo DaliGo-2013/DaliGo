@@ -1,11 +1,18 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
-import { encolar, pendientes, iniciarColaOffline } from './offline-queue';
+import {
+    encolar, pendientes, iniciarColaOffline,
+    encolarEntrega, todasEntregas, pendientesEntregas, borrarEntrega,
+} from './offline-queue';
 
 // Cola offline de tandas (spike P-SPK-02). Se expone en window porque el x-data
 // del form del soplador es inline en el Blade y no puede importar el modulo.
 window.dgCola = { encolar, pendientes };
+
+// Cola offline de ENTREGAS del conductor (P-DSP-05): multipart con firma+foto
+// como Blobs. Mismo motivo para exponerla en window.
+window.dgColaEntregas = { encolarEntrega, todasEntregas, pendientesEntregas, borrarEntrega };
 
 /**
  * "Señalar en vez de narrar": ante una acción bloqueada por una precondición, en
@@ -984,5 +991,19 @@ window.optimizarFotoInput = async function (input) {
         }
     } catch (e) {
         // Si falla, se sube el original; el servidor comprime igual (con más memoria).
+    }
+};
+
+// Versión que DEVUELVE el archivo comprimido sin tocar ningún input (P-DSP-05:
+// la cola de entregas guarda el Blob en IndexedDB, no hay input que mutar).
+// Si la compresión falla o no achica, devuelve el original — el servidor
+// comprime igual como respaldo.
+window.dgComprimirFoto = async function (file) {
+    if (!file || !file.type.startsWith('image/')) return file;
+    try {
+        const liviana = await comprimirImagenCliente(file);
+        return liviana && liviana.size < file.size ? liviana : file;
+    } catch (e) {
+        return file;
     }
 };
