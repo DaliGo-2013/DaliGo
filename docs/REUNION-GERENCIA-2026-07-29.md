@@ -216,6 +216,54 @@ patente). Es exactamente esa información la que pasa a ser obligatoria.
 
 ---
 
+## 9bis. «¿Y si DaliGo se cae?» — la pregunta que va a salir
+
+Es la preocupación real de Gerencia y hay que tomarla en serio, porque la observación de fondo es
+**correcta**: Bsale no se cae, y eso es un valor que hoy la empresa ya tiene.
+
+### La respuesta corta, y es fuerte
+
+> **«Si DaliGo se cae, se factura en Bsale como siempre. No se detiene la venta.»**
+
+Con el diseño actual **a nadie se le quita nada**: Bsale sigue siendo el que emite, con su certificación y
+sus folios. DaliGo solo le pasa los datos. La red de seguridad sigue puesta, y eso es a propósito.
+
+### Y la parte honesta, para no prometer de más
+
+DaliGo **hoy no está al nivel de disponibilidad de Bsale**, y no por el código: por dónde está alojado.
+
+| Situación actual | Qué significa |
+|---|---|
+| Hosting **compartido** | El servidor se comparte con otros sitios; el consumo de un vecino afecta |
+| Sin procesos permanentes | Las tareas automáticas corren cada 15 minutos, no al instante |
+| Base de datos MySQL 5.7 | Versión antigua, fuera de soporte |
+| **Nadie vigila si está arriba** | Existe una dirección de chequeo, pero no hay nada consultándola: una caída de fin de semana se descubre el lunes |
+| Sin respaldos definidos ni probados | Un respaldo que nunca se restauró no es un respaldo |
+
+**Esto está bien para lo que DaliGo es hoy** — un panel de gestión interno: si se cae 20 minutos, alguien
+espera 20 minutos. **No está bien para un sistema que emite facturas**, porque ahí caerse significa no
+poder vender.
+
+### Lo que costaría llegar a ese nivel (ninguna es de programación)
+
+Hosting dedicado · monitoreo con aviso · respaldos automáticos y probados · **plan de contingencia para el
+mostrador** (qué hace la persona que tiene un cliente adelante y la pantalla no carga) · y custodia del
+certificado digital y los folios, que pasa a ser responsabilidad legal de la empresa.
+
+Bsale no se cae porque alguien paga por que no se caiga. Es un costo real, y hoy está incluido en lo que
+la empresa ya paga.
+
+### Cómo cerrarlo con el gerente
+
+> «Hoy DaliGo no reemplaza a Bsale, lo alimenta. Y eso es a propósito: si algo falla, Bsale sigue estando.
+> El día que se quiera reemplazar, lo que hay que discutir no es el software: es cuánto cuesta un servidor
+> que no se caiga. Es un proyecto aparte, con presupuesto propio.»
+
+Esto además **justifica el orden** que estamos siguiendo: primero alimentar a Bsale (reversible, con red),
+y recién después de meses sin incidentes se puede *pensar* en reemplazarlo.
+
+---
+
 ## 10. Lo que NO conviene prometer
 
 Esto es para protegerte a vos en la reunión.
@@ -228,6 +276,8 @@ Esto es para protegerte a vos en la reunión.
 - **No te comprometas con la guía de despacho de garantía.** Es la que choca con el plazo de noviembre.
 - **Si no sabés algo, decilo y anotalo.** Es mejor que improvisar: en este tema una respuesta inventada se
   transforma en un documento tributario mal emitido.
+- **No digas que DaliGo va a ser tan estable como Bsale.** Hoy no lo es (§9bis) y eso se resuelve con
+  infraestructura, no con código. Prometerlo es la forma más rápida de quedar mal en seis meses.
 
 ---
 
