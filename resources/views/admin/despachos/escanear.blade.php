@@ -89,7 +89,7 @@
              su PWA (P-DSP-05); esto es la contraparte de bodega para cerrar hoy.
              El parcial EXIGE saldo: un parcial sin saldo no se puede reclamar. --}}
         @if ($despacho->admiteEntrega())
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6"
                  x-data="{ parcial: {{ old('parcial') || $errors->has('entrega_observacion') ? 'true' : 'false' }} }">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cerrar el despacho</h3>
 
@@ -137,7 +137,7 @@
                 </form>
             </div>
         @elseif ($despacho->entrega_observacion)
-            <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Saldo pendiente</h3>
                 <p class="mt-2 text-sm text-neutral-900">{{ $despacho->entrega_observacion }}</p>
                 <p class="mt-1 text-xs text-neutral-500">

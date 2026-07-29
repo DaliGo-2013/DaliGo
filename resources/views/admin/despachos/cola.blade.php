@@ -35,7 +35,11 @@
         @else
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 @foreach ($despachos as $despacho)
-                    <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    {{-- p-4 sm:p-6: mobile-first (candado MarcoHorizontalTest).
+                         El monitor es pantalla grande, pero el operador puede
+                         abrir la cola en el celular y ahí no paga el padding
+                         de escritorio. --}}
+                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <div class="flex items-start justify-between gap-4">
                             <div class="min-w-0">
                                 <p class="text-3xl font-semibold tracking-tight text-neutral-900">{{ $despacho->codigo }}</p>
