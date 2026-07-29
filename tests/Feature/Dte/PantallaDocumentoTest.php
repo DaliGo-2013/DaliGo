@@ -66,6 +66,11 @@ class PantallaDocumentoTest extends TestCase
 
     public function test_no_ofrece_emitir_y_explica_por_que(): void
     {
+        // Con la credencial declarada de prueba, el motivo del bloqueo es el
+        // interruptor. Se declara explícito porque el default es 'produccion' y en
+        // ese caso el aviso hablaría del ambiente, que es el otro candado (ver
+        // CandadoDeEmisionTest).
+        config(['dte.ambiente' => 'prueba']);
         $orden = $this->ordenCobrable();
 
         $this->actingAs($this->admin())
@@ -181,6 +186,19 @@ class PantallaDocumentoTest extends TestCase
         $this->actingAs($tecnico)
             ->get(route('admin.servicio-tecnico.documento', $this->ordenCobrable()))
             ->assertRedirect(route('dashboard'));
+    }
+
+    public function test_sin_declarar_el_ambiente_el_aviso_habla_de_la_credencial(): void
+    {
+        // El default: nadie declaró qué es la credencial, así que se asume la
+        // peligrosa y el aviso lo dice con esas palabras.
+        $orden = $this->ordenCobrable();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.documento', $orden))
+            ->assertOk()
+            ->assertSee('PRODUCCIÓN')
+            ->assertSee('documento tributario real');
     }
 
     public function test_el_volver_regresa_a_documentos_y_no_a_la_orden(): void

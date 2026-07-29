@@ -31,8 +31,15 @@ return [
     | `ambiente` declara qué ES la credencial que está en el .env: 'prueba' o
     | 'produccion'. Hay que declararlo a mano porque la API de Bsale NO lo dice:
     | la URL es idéntica en los dos casos y el ambiente lo define únicamente el
-    | token. Un valor desconocido se trata como 'produccion' (ante la duda, el
-    | lado que no emite).
+    | token.
+    |
+    | El default es 'produccion' A PROPÓSITO, y es lo contrario de lo cómodo: un
+    | valor desconocido O AUSENTE se trata como producción, o sea que el sistema
+    | asume la credencial más peligrosa mientras nadie declare lo contrario. Con el
+    | default en 'prueba', una credencial de producción copiada a un computador sin
+    | etiquetar quedaba sin la protección del candado — y el servidor de producción
+    | SÍ tiene una credencial real (de ahí se leen catálogo, precios y clientes).
+    | Para emitir en pruebas hay que declararlo: BSALE_AMBIENTE=prueba.
     |
     | `emision_habilitada` es el interruptor de la emisión REAL y arranca
     | APAGADO. Representa la autorización de Gerencia: mientras esté en false, el
@@ -44,7 +51,7 @@ return [
     |
     */
 
-    'ambiente' => env('BSALE_AMBIENTE', 'prueba'),
+    'ambiente' => env('BSALE_AMBIENTE', 'produccion'),
 
     'emision_habilitada' => env('DTE_EMISION_HABILITADA', false),
 
