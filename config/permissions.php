@@ -45,6 +45,8 @@ return [
         'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
         'manage despachos' => 'Gestionar despachos',
         'confirmar entrega' => 'Confirmar entrega (conductor)',
+        'emitir documentos tributarios' => 'Emitir boletas y facturas',
+        'emitir nota de credito' => 'Emitir notas de crédito (anular un documento)',
     ],
 
     /*

@@ -62,6 +62,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Unidad DESPACHOS-v1 (M05 parcial + M07 + M08 MVP).
             'manage despachos',           // jefe de bodega: crea despachos y valida retiros (QR)
             'confirmar entrega',          // conductor: confirma la entrega con firma+foto (PWA)
+            // Facturacion electronica (M05 · DTE). Ver PROYECTO_DALIGO.md §10.
+            'emitir documentos tributarios', // emitir boleta/factura desde DaliGo
+            'emitir nota de credito',        // ANULAR un documento ya emitido (el unico camino: los DTE no se borran)
         ];
 
         foreach ($permissions as $name) {
@@ -120,5 +123,26 @@ class RolesAndPermissionsSeeder extends Seeder
             ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
+        // JEFE DE SUCURSAL (2026-07-28). Nace por la regla 9 de Contabilidad: la
+        // nota de credito —el unico modo de anular un documento tributario— la
+        // pueden emitir el gerente, el jefe de ventas y los JEFES DE SUCURSAL
+        // (Luis Figueroa en Coquimbo, Gonzalo Martinez en Abate Molina). Ese rol
+        // no existia en DaliGo, asi que se crea ahora y no el dia de la primera
+        // emision: el permiso tiene que estar antes que la funcionalidad.
+        // Alcance deliberadamente ACOTADO a lo tributario + lo que ya se les
+        // reconoce operativamente (ver el taller de su sucursal y aprobar). NO
+        // lleva 'emitir documentos tributarios' todavia: emitir es del mostrador,
+        // anular es de la jefatura.
+        Role::firstOrCreate(['name' => 'jefe_sucursal', 'guard_name' => 'web'])
+            ->givePermissionTo([
+                'view users', 'manage clientes',
+                'view servicio tecnico', 'ver todo servicio tecnico',
+                'aprobar solicitudes',
+                'ver informe dispensadores', 'ver informe industrial',
+                'emitir nota de credito',
+            ]);
+        // El gerente y el jefe de ventas tambien anulan (regla 9). El gerente usa
+        // el rol admin, que ya recibe TODOS los permisos mas arriba.
+        Role::findByName('jefe_ventas')->givePermissionTo('emitir nota de credito');
     }
 }

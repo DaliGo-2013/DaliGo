@@ -4,6 +4,7 @@ namespace App\Services\Bsale;
 
 use App\Models\Sucursal;
 use App\Services\Dte\CajaCerradaException;
+use App\Services\Dte\CandadoDeEmision;
 use App\Services\Dte\DocumentoTributario;
 use App\Services\Dte\EmisionException;
 use App\Services\Dte\EmisorDte;
@@ -47,6 +48,10 @@ class BsaleEmisor implements EmisorDte
 
     public function emitir(DocumentoTributario $documento): ResultadoEmision
     {
+        // El candado va PRIMERO, antes de armar cualquier cosa: si este proceso no
+        // puede emitir, ni se toca la red. Ver CandadoDeEmision.
+        CandadoDeEmision::verificar();
+
         $payload = $this->armarPayload($documento);
 
         try {
@@ -82,6 +87,9 @@ class BsaleEmisor implements EmisorDte
         string $motivo,
         string $salesId,
     ): ResultadoEmision {
+        // Una nota de crédito también es un documento tributario que se emite.
+        CandadoDeEmision::verificar();
+
         $payload = [
             'documentId' => (int) $documentoExternoId,
             'type' => 1,
