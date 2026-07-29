@@ -1,79 +1,61 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-07-28 (v11 — P-DSP-04 NO MERGEABLE aún: 4 hallazgos MEDIA reales. Sin GO a P-DSP-05 todavía). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-28 (v12 — los 4 hallazgos VERIFICADOS OK; falta 1 candado nuevo de main y P-DSP-04 entra). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (los fixes son quirúrgicos, no hace falta Fable).
+MODELO: Opus 4.8 · high (queda un arreglo de 3 líneas).
 
-## Estado: P-DSP-04 está BIEN construido, pero no entra todavía
-Lo verifiqué a fondo (revisión adversarial de 4 lentes + refutadores: **9 confirmados de 40**,
-31 refutados). Lo que **NO se pudo romper** y quedó probado: la transacción con re-lectura de la
-fila ancla es el patrón correcto; en `doble_retiro` el estado NO se toca y la hora del primer
-retiro no se pisa; los 3 resultados dejan evidencia append-only; el **GET es realmente de solo
-lectura** (tres F5 = 0 escaneos, buena decisión tuya); el GET exige firma **Y** permiso; CSRF sin
-excepciones. Los gates que corrí: bundle 96/96 clases, `varchar(191)` aplicado sin que se te
-pidiera, **suite 1008/5.486 exacta a tu parte**.
+## ✅ Los 4 hallazgos: CERRADOS y verificados por el Director
+Spot-checks sobre tu `fix/qr-hallazgos-gate` mergeada contra main:
+1. **Lock**: el docblock ahora dice la verdad (`SQLiteGrammar::compileLock()` devuelve `''`, el
+   lock no es asertable en la suite) y **`LockParaMySqlTest` da cobertura REAL a nivel grammar
+   — lo corrí, 2 verdes**. Tomaste el camino correcto: el assert de `DB::listen` que el revisor
+   sugería habría estado rojo sobre código sano.
+2. **Flag `parcial`**: patrón checkbox+hidden clásico (`hidden value="0"` + checkbox
+   `name="parcial" value="1"`). Ya no depende de que Alpine corra. ✓
+3. **`user_id` de la evidencia**: cubierto en el camino HTTP. ✓
+4. **Poll del monitor**: pasó de comparar el total a comparar una **firma** del contenido
+   (`d.firma !== base`). Una carga que entra y otra que sale ya no se cancelan. ✓
 
-**Pero hay 4 cosas MEDIA que hay que arreglar antes de la doble llave.** Ninguna es un error de
-diseño: son cableado y cobertura.
+Bundle: rebuildeé y verifiqué **96/96 clases del QR presentes** y **superset de main
+(0 perdidas de 485)**. El conflicto de manifest es el de siempre y se resuelve con rebuild.
 
-## 🔴 Los 4 arreglos (rama nueva `fix/qr-hallazgos-gate` desde main fresco)
+## 🔴 Lo único que falta: un candado NUEVO de main que tu lote no conocía
+`MarcoHorizontalTest::ninguna_tarjeta_cobra_su_padding_de_escritorio_en_movil` está **ROJO**.
+Main endureció el marco mobile-first mientras trabajabas (es el 4º contrato nuevo de la semana,
+después de ancho por layout, botón único de volver y errores amables).
 
-**1. La mutación del lock que declaraste NO prueba el lock.** Esto es lo más importante y me
-incluye: yo también creí haberlo verificado. La demostración es estructural, no empírica:
-`vendor/.../Query/Grammars/SQLiteGrammar.php:31-34` sobreescribe `compileLock()` con
-`return '';` **incondicional** → bajo SQLite `->lockForUpdate()` emite SQL byte-idéntico a
-omitirlo. Es **imposible** que cualquier test de esta suite cubra el lock. Tu test estrella
-(`RetiroQrTest:118-130`) llama a `validarRetiro` dos veces **en serie** con una instancia stale:
-lo que rechaza al segundo es la **re-lectura**, no el lock (quitando solo la re-lectura sí se
-pone rojo — lo comprobé). Tu código de producción está CORRECTO para MySQL 5.7; lo falso es el
-comentario.
-- Corregir el docblock de `DespachoService.php:94-95` y el gemelo de `:151-152`: decir que el
-  test cubre la re-lectura y que **el lock no es asertable en SQLite**.
-- **Ojo, el arreglo obvio tampoco sirve:** un assert de `DB::listen` buscando `for update`
-  estaría rojo sobre una rama correcta, por la misma razón. Si quieres cobertura real, es un
-  unit test a nivel de grammar (compilar el builder con `MySqlGrammar` y afirmar el sufijo).
+**3 líneas, todas la misma forma** — `p-6` sin variante:
+- `resources/views/admin/despachos/cola.blade.php:38`
+- `resources/views/admin/despachos/escanear.blade.php:92`
+- `resources/views/admin/despachos/escanear.blade.php:140`
 
-**2. El flag `parcial` se pierde sin JS y graba una entrega incompleta como COMPLETA.**
-`escanear.blade.php:98` y `:101`: el único portador es un `<input type="hidden" name="parcial"
-:value="parcial ? 1 : 0">` **sin `value` estático**, y el checkbox que marca el operador no
-tiene `name`. Si Alpine no corrió (o el binding falla), una entrega parcial se graba como
-ENTREGADO **con el saldo adentro** — y el saldo pendiente es dato de negocio. Poner `value="0"`
-estático de base, o mejor: que el checkbox lleve `name="parcial"` y el hidden sea el `0`
-por defecto (patrón checkbox+hidden de siempre).
+Las tres son `<div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">`.
+El candado pide **mobile-first**: `p-4 sm:p-6` (o `p-3 sm:p-6` si lo quieres más compacto en
+celular). Ver «Marco horizontal» en CLAUDE.md. Corre `MarcoHorizontalTest` para confirmar y
+**la suite completa** después.
 
-**3. El `user_id` del escaneo no está cubierto en el camino HTTP.** Cambiando el controlador a
-`$service->validarRetiro($despacho, null)` la suite queda **19/19 verde**. Tu test de evidencia
-llama al service directo y le pasa el operador a mano, así que el **cableado del controlador**
-—quién queda registrado como responsable, o sea la evidencia entera del anti-fraude— no lo
-asserta nadie. Un test HTTP que verifique el `user_id` del escaneo.
+**Ojo con el monitor de bodega**: la cola está pensada para pantalla grande, así que ahí el
+`sm:p-6` es lo natural; pero el candado igual aplica y el operador puede abrirla en celular.
 
-**4. El monitor de bodega puede mostrar una carga ya retirada como «Esperando».**
-`cola.blade.php:83`: el poll compara **solo el total**. Si en la misma ventana de 20 s entra una
-carga y sale otra, el total no cambia → no recarga → el monitor muestra `DSP-A` con badge
-«Esperando» cuando ya salió, **y con el número correcto, así que parece fresco**. En bodega eso
-es peor que un monitor congelado. Que el conteo devuelva algo que cambie con el contenido (un
-hash de los códigos, el `max(updated_at)`, o el id del último escaneo), no solo el total.
+## 🟢 Después de eso: GO en firme, sin esperar otra llave mía para ARRANCAR
+- **P-DSP-04 se mergea** en cuanto ese test esté verde. Yo hago la doble llave con el dueño
+  (ya me delegó su llave para este lote) — tú solo avisa por parte.
+- **GO P-DSP-05 (PWA del conductor, M08-MVP)**: arranca en **rama nueva desde main fresco**
+  apenas P-DSP-04 esté mergeada. No encadenes sobre `fix/qr-hallazgos-gate`.
+  Tu propio plan: hoja de ruta por zona con lectura offline, entrega con firma+foto+hora, cola
+  IndexedDB `entregas` con `entrega_uuid` + unique + `lockForUpdate` + `ValidationException` +
+  rama `expectsJson()` (patrón de la cola del soplador, bitácora 2026-07-02). Las columnas
+  `capturado_at`, `entrega_uuid`, `firma_path`, `foto_path` y la regla del parcial ya existen.
 
-## Observaciones menores (mismo lote, son de una línea)
-- `test_una_firma_de_otro_codigo_no_sirve_para_este_despacho` (`:168-176`) **no prueba firmas**:
-  usa `DSP-FALSIFIC`, que no existe en la BD, así que prueba un 404 y sobrevive a que se quite el
-  middleware `signed`. Usa el código REAL de otro despacho con la firma de este.
-- Los tres bloques de veredicto de la vista (incluida la banda roja «NO entregues: doble
-  retiro») no los renderiza ningún test: borrándolos la suite queda verde. Es literalmente el
-  píxel para el que existe P-DSP-04.
-- `assertRedirect()` sin destino en `:219`: el POST puede dejar de volver a la ficha sin que
-  nadie se entere.
+## Nota de alcance que el dueño debe saber (no la cambies tú)
+El gate objetó —con razón— que la doc afirmaba un control que el código no aplica: P-DSP-04
+cierra **«una carga no sale dos veces»** (sólido, no se pudo romper), pero **no** cierra
+«retirar una carga que no te corresponde», porque el panel reparte la URL firmada a cualquiera
+con `manage despachos` y no hay scoping por zona. Ya lo informé al dueño como decisión de
+producto. Si él pide cerrarlo, será un paso propio.
 
-## Sobre el desacuerdo de fondo (para que quede claro, no es un fix)
-El lente de fraude objetó que la doc afirma un control que el código no aplica: el módulo cierra
-**«una carga no sale dos veces»** (y eso está sólido), pero no cierra **«retirar una carga que no
-te corresponde»** — el propio panel reparte la URL firmada de cualquier despacho a quien tenga
-`manage despachos`, así que la firma no acota nada entre operadores autorizados. **Eso es
-defendible como alcance de v1** y no te lo pido cambiar. Lo que sí: que el docblock de
-`DespachoController.php:23-33` diga lo que el código hace de verdad. Si el dueño quiere cerrar
-también el cross-zona / la posesión física del QR, es un paso propio y lo dicta él.
+## Recordatorios
+Suite COMPLETA (main hoy ronda 1138 tests; tu lote suma ~19). Blade tocado → build + grep
+superset. Resolver conflictos con `git checkout origin/main -- <archivo>`, nunca con `>`
+(el `>` de PS 5.1 mete BOM y revienta Vite). Parte al buzón.
 
-## P-DSP-05: sin GO todavía
-Primero estos arreglos y la doble llave de P-DSP-04. Tu recomendación de mergear por paso y
-arrancar desde main es correcta y se mantiene.
-
-CIERRE: parte al buzón + push. Suite completa (baseline 1008 con tu lote; 989 sin él).
+CIERRE: parte a docs/fleet/buzon/partes/ + push.

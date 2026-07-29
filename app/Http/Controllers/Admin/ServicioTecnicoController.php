@@ -613,6 +613,7 @@ class ServicioTecnicoController extends Controller
             'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
             'repuestos' => ['array'],
             'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.sku' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
@@ -660,8 +661,8 @@ class ServicioTecnicoController extends Controller
             'descuento_motivo' => $descuentoMotivo,
         ]);
 
-        // Reemplazo de repuestos ya con precio. Nombre y cantidad vienen del parte
-        // del técnico como campos ocultos (aquí son de solo lectura).
+        // Reemplazo de repuestos ya con precio. Nombre, SKU y cantidad vienen del
+        // parte del técnico como campos ocultos (aquí son de solo lectura).
         $orden->repuestos()->delete();
         foreach ($data['repuestos'] ?? [] as $r) {
             if (empty($r['nombre'])) {
@@ -669,6 +670,7 @@ class ServicioTecnicoController extends Controller
             }
             $orden->repuestos()->create([
                 'nombre' => $r['nombre'],
+                'sku' => $r['sku'] ?? null,
                 'cantidad' => $r['cantidad'] ?? 1,
                 'precio_unitario' => $r['precio_unitario'] ?? 0,
             ]);
@@ -728,6 +730,7 @@ class ServicioTecnicoController extends Controller
             'fecha_retiro' => ['nullable', 'date'],
             'repuestos' => ['array'],
             'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.sku' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
@@ -780,6 +783,10 @@ class ServicioTecnicoController extends Controller
             }
             $orden->repuestos()->create([
                 'nombre' => $r['nombre'],
+                // SKU del catálogo si el técnico lo eligió del buscador; null si lo
+                // escribió a mano. La línea del documento tributario lo necesita
+                // (regla 4 de Contabilidad: repuestos con su código de catálogo).
+                'sku' => $r['sku'] ?? null,
                 'cantidad' => $r['cantidad'] ?? 1,
                 'precio_unitario' => $r['precio_unitario'] ?? 0,
             ]);

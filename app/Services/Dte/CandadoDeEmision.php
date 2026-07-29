@@ -92,8 +92,13 @@ final class CandadoDeEmision
     }
 
     /**
-     * Ambiente declarado de la credencial. Un valor desconocido se trata como
-     * PRODUCCIÓN a propósito: ante la duda, el lado seguro es el que no emite.
+     * Ambiente declarado de la credencial.
+     *
+     * Un valor desconocido, vacío o AUSENTE se trata como PRODUCCIÓN. No es
+     * paranoia: el default del config también es 'produccion', así que hay que
+     * declarar `BSALE_AMBIENTE=prueba` para poder emitir en pruebas. Ante la duda,
+     * el sistema asume la credencial más peligrosa — el lado seguro es el que no
+     * emite, y una credencial sin etiquetar es exactamente el caso dudoso.
      */
     public static function ambiente(): string
     {

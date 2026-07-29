@@ -98,6 +98,36 @@ class CandadoDeEmisionTest extends TestCase
         $this->assertFalse(CandadoDeEmision::permitido());
     }
 
+    public function test_una_credencial_SIN_etiquetar_se_trata_como_produccion(): void
+    {
+        // El caso real y peligroso: alguien copia el token de la empresa a su
+        // computador y no declara nada. Con el default en 'prueba' esa credencial
+        // quedaba SIN la proteccion de este candado. El default es 'produccion':
+        // hay que declarar la prueba, no la produccion.
+        config(['dte.emision_habilitada' => true, 'dte.ambiente' => null]);
+
+        $this->assertSame(CandadoDeEmision::AMBIENTE_PRODUCCION, CandadoDeEmision::ambiente());
+        $this->assertFalse(CandadoDeEmision::permitido());
+        $this->assertStringContainsString('PRODUCCIÓN', (string) CandadoDeEmision::motivoDelBloqueo());
+    }
+
+    public function test_el_default_del_config_es_produccion(): void
+    {
+        // Candado sobre el ARCHIVO de config y no sobre el valor resuelto: el valor
+        // depende del .env de cada entorno (CI copia .env.example, que declara
+        // 'prueba'), así que assertSame(config(...)) medía el entorno y no el
+        // default — pasaba local y fallaba en CI.
+        //
+        // Lo que hay que proteger es el default escrito en el archivo: si alguien lo
+        // cambia a 'prueba' "para que sea más fácil probar", este test se cae y lo
+        // obliga a leer el porqué.
+        $this->assertStringContainsString(
+            "env('BSALE_AMBIENTE', 'produccion')",
+            (string) file_get_contents(config_path('dte.php')),
+            'El default del ambiente tiene que ser produccion: una credencial sin etiquetar es el caso peligroso.',
+        );
+    }
+
     public function test_en_prueba_con_el_interruptor_encendido_si_emite(): void
     {
         config(['dte.emision_habilitada' => true, 'dte.ambiente' => 'prueba']);

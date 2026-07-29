@@ -255,6 +255,16 @@ Route::middleware('auth')
 
         // "Costos generales de reparación": catálogo de tiempos estándar por
         // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
+        // Modulo Facturacion (M05). Existe antes de poder emitir: `index` muestra
+        // lo emitido y de donde se puede emitir; `estado` es el checklist de lo que
+        // falta, que es la informacion util mientras no se emite.
+        Route::middleware('permission:emitir documentos tributarios')->group(function () {
+            Route::get('documentos-tributarios', [\App\Http\Controllers\Admin\DteController::class, 'index'])
+                ->name('dte.index');
+            Route::get('documentos-tributarios/estado', [\App\Http\Controllers\Admin\DteController::class, 'estado'])
+                ->name('dte.estado');
+        });
+
         Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
             Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
                 ->parameters(['tiempos-reparacion' => 'tiempo'])
@@ -298,6 +308,14 @@ Route::middleware('auth')
             // QR por sucursal (link firmado imprimible para el mostrador).
             Route::get('servicio-tecnico/qr', [ServicioTecnicoController::class, 'qr'])
                 ->name('servicio-tecnico.qr');
+
+            // Documento tributario de la orden (M05 · B8). Hoy es un ENSAYO EN SECO:
+            // arma el documento y lo muestra, pero el candado impide emitir. Gateada
+            // por el permiso de emision aunque todavia no emita, para no tener que
+            // acordarse de gatearla despues.
+            Route::get('servicio-tecnico/{orden}/documento', [\App\Http\Controllers\Admin\DocumentoTributarioController::class, 'show'])
+                ->middleware('permission:emitir documentos tributarios')
+                ->whereNumber('orden')->name('servicio-tecnico.documento');
 
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])
@@ -382,6 +400,35 @@ Route::middleware('auth')
             Route::get('despachos', [DespachoController::class, 'index'])->name('despachos.index');
             Route::get('despachos/nuevo', [DespachoController::class, 'create'])->name('despachos.create');
             Route::post('despachos', [DespachoController::class, 'store'])->name('despachos.store');
+
+            // Cola de bodega (monitor) + su conteo liviano para el poll. Van
+            // ANTES de las rutas con parámetro para que 'cola' no se coma como
+            // {despacho}.
+            Route::get('despachos/cola', [DespachoController::class, 'cola'])->name('despachos.cola');
+            Route::get('despachos/cola/conteo', [DespachoController::class, 'colaConteo'])
+                ->name('despachos.cola.conteo');
+
+            // QR imprimible del despacho (P-DSP-04).
+            Route::get('despachos/{despacho}/qr', [DespachoController::class, 'qr'])
+                ->whereNumber('despacho')->name('despachos.qr');
+
+            // Escaneo del QR en bodega. El GET exige FIRMA además del permiso
+            // (ver la nota de superficie en DespachoController): la firma da
+            // integridad al código del QR, el permiso da responsabilidad.
+            Route::middleware('signed')
+                ->get('despachos/escanear/{codigo}', [DespachoController::class, 'escanear'])
+                ->name('despachos.escanear');
+            // El POST no va firmado a propósito: nace del form de la pantalla
+            // anterior (que ya exigió firma + permiso) y lleva CSRF. Firmar un
+            // POST obligaría a incrustar la firma en el form sin ganar nada:
+            // quien tiene 'manage despachos' ve todos los códigos en el panel,
+            // así que la firma no es el control de acceso aquí.
+            Route::post('despachos/escanear/{codigo}', [DespachoController::class, 'retiro'])
+                ->name('despachos.retiro');
+
+            // Cierre del despacho: entrega total o parcial con saldo.
+            Route::post('despachos/{despacho}/entrega', [DespachoController::class, 'entrega'])
+                ->whereNumber('despacho')->name('despachos.entrega');
         });
     });
 

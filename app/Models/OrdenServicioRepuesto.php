@@ -16,6 +16,10 @@ class OrdenServicioRepuesto extends Model
     protected $fillable = [
         'orden_servicio_id',
         'nombre',
+        // SKU del catalogo cuando el repuesto se eligio del buscador. Null si se
+        // escribio a mano (caso legitimo). Lo exige la regla 4 de Contabilidad:
+        // los repuestos se facturan con su codigo de catalogo.
+        'sku',
         'cantidad',
         'precio_unitario',
     ];

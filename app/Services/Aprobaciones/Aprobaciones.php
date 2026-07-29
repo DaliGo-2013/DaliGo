@@ -4,6 +4,7 @@ namespace App\Services\Aprobaciones;
 
 use App\Models\Aprobacion;
 use App\Models\Configuracion;
+use App\Models\Notificacion;
 use App\Models\ProduccionReporte;
 use App\Models\ReglaAprobacion;
 use App\Models\User;
@@ -280,8 +281,12 @@ class Aprobaciones
     private function notificarRol(string $evento, Aprobacion $aprobacion, string $rol): void
     {
         $dispatcher = app(NotificacionDispatcher::class);
-        // El destinatario es un APROBADOR: su accion vive en la bandeja.
-        $datos = $this->datosNotificacion($aprobacion) + ['url' => route('aprobaciones.index')];
+        // El destinatario es un APROBADOR: su accion vive en la bandeja, y el
+        // link llega ANCLADO a la tarjeta (mismo aterrizaje puntual que la fila
+        // de la campanita — antes el boton del correo dejaba al aprobador
+        // buscando su solicitud a mano en una pagina agrupada por categorias).
+        $datos = $this->datosNotificacion($aprobacion)
+            + ['url' => route('aprobaciones.index').Notificacion::anclaAprobacion($aprobacion->getKey())];
 
         User::role($rol)->get()->each(function (User $user) use ($dispatcher, $evento, $aprobacion, $datos) {
             $dispatcher->despachar($evento, $aprobacion, $user, $datos);
@@ -300,8 +305,10 @@ class Aprobaciones
             $evento,
             $aprobacion,
             $solicitante,
-            // El destinatario es el SOLICITANTE: su superficie es "Mis solicitudes".
-            $this->datosNotificacion($aprobacion) + ['url' => route('aprobaciones.mias')],
+            // El destinatario es el SOLICITANTE: su superficie es "Mis
+            // solicitudes", tambien anclada a SU fila.
+            $this->datosNotificacion($aprobacion)
+                + ['url' => route('aprobaciones.mias').Notificacion::anclaAprobacion($aprobacion->getKey())],
         );
     }
 

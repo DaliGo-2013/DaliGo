@@ -8,6 +8,7 @@ use App\Services\Dte\CandadoDeEmision;
 use App\Services\Dte\DocumentoTributario;
 use App\Services\Dte\EmisionException;
 use App\Services\Dte\EmisorDte;
+use App\Services\Dte\EmisorPrevisualizable;
 use App\Services\Dte\EstadoSii;
 use App\Services\Dte\FoliosDisponibles;
 use App\Services\Dte\FormaPago;
@@ -37,13 +38,24 @@ use App\Services\Dte\ResultadoEmision;
  * borrador. Los tests cubren NUESTRA lógica (traducción, idempotencia, errores),
  * que es lo que se puede probar sin credencial.
  */
-class BsaleEmisor implements EmisorDte
+class BsaleEmisor implements EmisorDte, EmisorPrevisualizable
 {
     public function __construct(private BsaleClient $client) {}
 
     public function nombre(): string
     {
         return 'bsale';
+    }
+
+    /**
+     * El cuerpo exacto que se enviaría a `documents.json`, sin enviarlo.
+     *
+     * No pasa por el candado a propósito: previsualizar no crea nada, y es
+     * justamente lo que hay que poder hacer con la emisión deshabilitada.
+     */
+    public function previsualizar(DocumentoTributario $documento): array
+    {
+        return $this->armarPayload($documento);
     }
 
     public function emitir(DocumentoTributario $documento): ResultadoEmision

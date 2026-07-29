@@ -82,6 +82,21 @@ class MenuPrincipal
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
             ],
         ],
+        // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
+        // propósito: hoy muestra lo emitido (cero) y, sobre todo, QUÉ FALTA para
+        // emitir — que es la información útil mientras no se emite. Ver
+        // PROYECTO_DALIGO.md §10.
+        'facturacion' => [
+            'label' => 'Facturación',
+            'icon' => 'document-text',
+            'items' => [
+                'documentos' => ['label' => 'Documentos', 'route' => 'admin.dte.index', 'activo' => ['admin.dte.index'], 'permiso' => 'emitir documentos tributarios'],
+                'estado-facturacion' => ['label' => 'Estado', 'route' => 'admin.dte.estado', 'activo' => ['admin.dte.estado'], 'permiso' => 'emitir documentos tributarios'],
+            ],
+            // La pantalla del documento de una orden cuelga de Servicio Técnico por
+            // ruta, pero conceptualmente es de acá: abre este acordeón.
+            'activo_extra' => ['admin.servicio-tecnico.documento'],
+        ],
         'administracion' => [
             'label' => 'Administración',
             'icon' => 'shield-check',

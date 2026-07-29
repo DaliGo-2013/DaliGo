@@ -4,10 +4,13 @@ namespace App\Services\Despachos;
 
 use App\Models\Despacho;
 use App\Models\DocumentoVenta;
+use App\Models\EscaneoDespacho;
+use App\Models\User;
 use App\Services\Bsale\BsaleClient;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -72,6 +75,129 @@ class DespachoService
             }
             throw $e;
         }
+    }
+
+    /**
+     * ESCANEO DEL QR EN BODEGA (P-DSP-04, el anti-fraude de M07).
+     *
+     * Todo intento de retiro deja fila en `escaneos_despacho` — también los
+     * rechazados: la evidencia de que alguien presentó dos veces el mismo QR es
+     * justamente lo que hace útil la alerta. Devuelve el resultado para que la
+     * pantalla lo muestre; NO lanza excepción en el camino rechazado (no es un
+     * error del operador: es un hallazgo que hay que exhibirle).
+     *
+     * El estado se re-lee DENTRO de la transacción con la fila BLOQUEADA
+     * (`lockForUpdate`): sin eso, dos escaneos simultáneos —el doble-tap del
+     * operador, o dos personas retirando la misma mercadería en dos puestos—
+     * leerían ambos `preparado` y ambos marcarían el retiro como válido, que es
+     * el fraude que este paso existe para impedir (patrón bitácora 2026-06-30:
+     * check-then-act sin lock sobre la fila ancla).
+     *
+     * QUÉ CUBRE LA SUITE Y QUÉ NO (corregido tras el gate del 28-07 — la versión
+     * anterior de este comentario afirmaba de más):
+     * - `RetiroQrTest` cubre la **RE-LECTURA**: con una instancia stale, el 2º
+     *   intento se rechaza. Quitando la re-lectura, ese test se pone rojo.
+     * - **El lock NO es asertable en esta suite.** `SQLiteGrammar::compileLock()`
+     *   devuelve `''` de forma incondicional, así que bajo SQLite
+     *   `->lockForUpdate()` emite SQL byte-idéntico a omitirlo: ningún test de
+     *   feature puede distinguirlo, y un assert de `DB::listen` buscando
+     *   "for update" saldría rojo sobre código correcto. La cobertura honesta del
+     *   lock es a nivel de grammar: ver `tests/Unit/LockParaMySqlTest.php`, que
+     *   compila el mismo builder con `MySqlGrammar` y exige el sufijo.
+     * - En producción (MySQL 5.7) el lock SÍ se emite; es la mitad que protege
+     *   contra dos procesos PHP concurrentes, donde la re-lectura sola no basta.
+     *
+     * Los 3 resultados posibles del intento:
+     * - `valido`          → estaba `preparado`: pasa a `retirado`, sella hora.
+     * - `doble_retiro`    → ya había salido de bodega (`retirado`/`en_ruta`):
+     *                       ALERTA fuerte, el estado NO se toca.
+     * - `estado_invalido` → el ciclo ya cerró (`entregado`/`entrega_parcial`):
+     *                       tampoco se retira, pero no es el mismo hallazgo.
+     *
+     * @return array{resultado:string, despacho:Despacho, escaneo:EscaneoDespacho}
+     */
+    public function validarRetiro(Despacho $despacho, ?User $operador = null): array
+    {
+        return DB::transaction(function () use ($despacho, $operador) {
+            // Fila ancla bloqueada + re-lectura del estado con ella tomada.
+            $anclado = Despacho::whereKey($despacho->id)->lockForUpdate()->firstOrFail();
+
+            [$resultado, $detalle] = match (true) {
+                $anclado->estado === Despacho::PREPARADO => [EscaneoDespacho::VALIDO, null],
+                in_array($anclado->estado, [Despacho::RETIRADO, Despacho::EN_RUTA], true) => [
+                    EscaneoDespacho::DOBLE_RETIRO,
+                    'Ya retirado el '.($anclado->retirado_at?->enChile()->format('d-m-Y H:i') ?? 'sin fecha'),
+                ],
+                default => [
+                    EscaneoDespacho::ESTADO_INVALIDO,
+                    'El despacho ya está '.$anclado->estado,
+                ],
+            };
+
+            if ($resultado === EscaneoDespacho::VALIDO) {
+                $anclado->update([
+                    'estado' => Despacho::RETIRADO,
+                    'retirado_at' => now(),
+                ]);
+            }
+
+            $escaneo = EscaneoDespacho::create([
+                'despacho_id' => $anclado->id,
+                'user_id' => $operador?->id,
+                'resultado' => $resultado,
+                // 191 en BD: se recorta acá para no depender de la validación
+                // silenciosa de SQLite (I-07: MySQL sí rechaza el excedente).
+                'detalle' => $detalle === null ? null : Str::limit($detalle, 188),
+            ]);
+
+            return ['resultado' => $resultado, 'despacho' => $anclado, 'escaneo' => $escaneo];
+        });
+    }
+
+    /**
+     * ENTREGA registrada desde el panel (P-DSP-04). La entrega con firma+foto
+     * del conductor es P-DSP-05; esto es la contraparte de bodega para cerrar
+     * un despacho hoy.
+     *
+     * Parcial ⇒ estado `entrega_parcial` y la observación es OBLIGATORIA: es el
+     * saldo, y un parcial sin saldo visible no se puede reclamar después.
+     * Mismo patrón que el retiro: cerrar dos veces el mismo despacho desde dos
+     * pestañas no debe pisar la hora ni el saldo del primero. Igual que allá, lo
+     * que la suite cubre es la **re-lectura** con la fila tomada; el
+     * `lockForUpdate` en sí no es asertable bajo SQLite (ver la nota extendida en
+     * `validarRetiro` y `tests/Unit/LockParaMySqlTest.php`).
+     *
+     * @throws ValidationException si el despacho no salió de bodega o falta el saldo.
+     */
+    public function registrarEntrega(Despacho $despacho, bool $parcial, ?string $observacion = null): Despacho
+    {
+        if ($parcial && blank($observacion)) {
+            throw ValidationException::withMessages([
+                'entrega_observacion' => 'Indica qué quedó pendiente: una entrega parcial sin saldo no se puede reclamar después.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($despacho, $parcial, $observacion) {
+            $anclado = Despacho::whereKey($despacho->id)->lockForUpdate()->firstOrFail();
+
+            // Solo se entrega lo que SALIÓ de bodega (el retiro es el paso
+            // previo del ciclo) y solo una vez.
+            if (! in_array($anclado->estado, [Despacho::RETIRADO, Despacho::EN_RUTA], true)) {
+                throw ValidationException::withMessages([
+                    'estado' => $anclado->estado === Despacho::PREPARADO
+                        ? "El despacho {$anclado->codigo} todavía no se retiró de bodega."
+                        : "El despacho {$anclado->codigo} ya está {$anclado->estado}.",
+                ]);
+            }
+
+            $anclado->update([
+                'estado' => $parcial ? Despacho::ENTREGA_PARCIAL : Despacho::ENTREGADO,
+                'entregado_at' => now(),
+                'entrega_observacion' => blank($observacion) ? null : Str::limit($observacion, 188),
+            ]);
+
+            return $anclado;
+        });
     }
 
     private function exigirSinDespacho(DocumentoVenta $documento): void
