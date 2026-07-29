@@ -20,9 +20,15 @@
     @endphp
 
     <x-slot name="header">
+        {{-- El padre es DOCUMENTOS, no la orden: es de donde se entra a esta
+             pantalla, y es el módulo que la sidebar marca como activo (ver el
+             `activo_extra` de facturacion en MenuPrincipal). Apuntaba a la orden y
+             eso sacaba al usuario de Facturación sin haber pedido salir.
+             El enlace a la orden sigue disponible más abajo, como enlace y no como
+             Volver — el Volver tiene UN destino garantizado (doctrina P-NAV-08). --}}
         <x-page-header :title="'Documento tributario · '.$orden->folio"
                        :subtitle="$orden->cliente_nombre.($equipo ? ' · '.$equipo : '')"
-                       :back="route('admin.servicio-tecnico.show', $orden)" backTitle="Volver a la orden" />
+                       :back="route('admin.dte.index')" backTitle="Volver a Documentos" />
     </x-slot>
 
     <div class="space-y-5 py-8 sm:py-12">
@@ -76,7 +82,10 @@
                         Detalle del documento
                     </p>
                     <p class="text-xs text-neutral-400">
-                        Las líneas salen de la orden: repuestos y mano de obra. Para cambiarlas, se editan en
+                        Las líneas salen de
+                        <a href="{{ route('admin.servicio-tecnico.show', $orden) }}"
+                           class="font-medium text-brand-600 hover:text-brand-700">la orden {{ $orden->folio }}</a>:
+                        repuestos y mano de obra. Para cambiarlas, se editan en
                         <a href="{{ route('admin.servicio-tecnico.cotizacion', $orden) }}"
                            class="font-medium text-brand-600 hover:text-brand-700">Cotización</a>.
                     </p>

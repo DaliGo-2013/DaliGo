@@ -183,6 +183,22 @@ class PantallaDocumentoTest extends TestCase
             ->assertRedirect(route('dashboard'));
     }
 
+    public function test_el_volver_regresa_a_documentos_y_no_a_la_orden(): void
+    {
+        // Se entra desde Facturación → Documentos, así que el Volver tiene que
+        // devolver ahí. Apuntaba a la ficha de la orden y eso sacaba al usuario del
+        // módulo sin haberlo pedido (reportado por el dueño, 29-07-2026).
+        $orden = $this->ordenCobrable();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.documento', $orden))
+            ->assertOk()
+            ->assertSee('href="'.route('admin.dte.index').'" data-dg-volver', false)
+            // Y el camino a la orden sigue existiendo, pero como enlace y no como
+            // Volver: el Volver tiene UN destino garantizado.
+            ->assertSee(route('admin.servicio-tecnico.show', $orden), false);
+    }
+
     public function test_el_invitado_va_al_login(): void
     {
         $this->get(route('admin.servicio-tecnico.documento', $this->ordenCobrable()))
