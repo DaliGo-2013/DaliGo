@@ -81,12 +81,23 @@ class VisitaIndustrialTest extends TestCase
     public function test_el_cliente_no_ve_los_valores_uf_de_los_servicios(): void
     {
         $sucursal = $this->sucursal();
-        ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T', 'valor_uf' => 3]);
+        // Valor con decimales A PROPÓSITO: se asserta contra el NÚMERO y no contra
+        // las letras "UF".
+        //
+        // GOTCHA (2026-07-29): este test era INTERMITENTE — fallaba ~1 de cada 100
+        // corridas de CI. `assertDontSee('UF')` busca esas dos letras en TODO el
+        // HTML, y la página trae el token CSRF (40 caracteres al azar, dos veces:
+        // en el <meta> y en el @csrf del formulario). Un token de 40 caracteres
+        // contiene la secuencia "UF" el 1,07% de las veces (medido sobre 200.000).
+        // No se reproduce renderizando muchas veces en un mismo test, porque ahí el
+        // token es el mismo: lo aleatorio es cada CORRIDA.
+        ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T', 'valor_uf' => 7.75]);
 
         $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
             ->assertOk()
             ->assertSee('Full planta 1T')   // el servicio se ofrece…
-            ->assertDontSee('UF');          // …pero SIN su costo (es interno)
+            ->assertDontSee('7,75')         // …pero SIN su costo (es interno)
+            ->assertDontSee('7.75');        // (en cualquiera de los dos formatos)
     }
 
     // --- Solicitud del cliente ---

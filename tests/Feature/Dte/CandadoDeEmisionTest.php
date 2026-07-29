@@ -113,9 +113,19 @@ class CandadoDeEmisionTest extends TestCase
 
     public function test_el_default_del_config_es_produccion(): void
     {
-        // Candado sobre el config mismo: si alguien lo cambia a 'prueba' "para que
-        // sea mas facil probar", este test se cae y lo obliga a leer el porque.
-        $this->assertSame('produccion', config('dte.ambiente'));
+        // Candado sobre el ARCHIVO de config y no sobre el valor resuelto: el valor
+        // depende del .env de cada entorno (CI copia .env.example, que declara
+        // 'prueba'), así que assertSame(config(...)) medía el entorno y no el
+        // default — pasaba local y fallaba en CI.
+        //
+        // Lo que hay que proteger es el default escrito en el archivo: si alguien lo
+        // cambia a 'prueba' "para que sea más fácil probar", este test se cae y lo
+        // obliga a leer el porqué.
+        $this->assertStringContainsString(
+            "env('BSALE_AMBIENTE', 'produccion')",
+            (string) file_get_contents(config_path('dte.php')),
+            'El default del ambiente tiene que ser produccion: una credencial sin etiquetar es el caso peligroso.',
+        );
     }
 
     public function test_en_prueba_con_el_interruptor_encendido_si_emite(): void

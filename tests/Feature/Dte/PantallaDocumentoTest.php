@@ -190,8 +190,10 @@ class PantallaDocumentoTest extends TestCase
 
     public function test_sin_declarar_el_ambiente_el_aviso_habla_de_la_credencial(): void
     {
-        // El default: nadie declaró qué es la credencial, así que se asume la
-        // peligrosa y el aviso lo dice con esas palabras.
+        // Nadie declaró qué es la credencial, así que se asume la peligrosa y el
+        // aviso lo dice con esas palabras. Se fuerza a null en vez de confiar en el
+        // default del entorno: CI copia .env.example, que declara 'prueba'.
+        config(['dte.ambiente' => null]);
         $orden = $this->ordenCobrable();
 
         $this->actingAs($this->admin())
