@@ -457,7 +457,7 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
     buscandoRepuesto: false,
 
     agregar() {
-        this.repuestos.push({ nombre: '', cantidad: 1, precio_unitario: 0 });
+        this.repuestos.push({ nombre: '', sku: null, cantidad: 1, precio_unitario: 0 });
     },
 
     quitar(i) {
@@ -488,6 +488,11 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
     elegirRepuesto(i, s) {
         // `s` puede ser {nombre, sku, precio} del catalogo, o {nombre} del historial.
         this.repuestos[i].nombre = s.nombre;
+        // El SKU se GUARDA (antes solo se mostraba en la sugerencia y se perdia):
+        // la linea del documento tributario tiene que llevar el codigo de catalogo
+        // (regla 4 de Contabilidad). Del historial no viene sku -> queda null y esa
+        // linea ira como glosa libre.
+        this.repuestos[i].sku = s.sku ?? null;
         // Si el catalogo trae precio (con IVA), se pre-rellena como sugerencia.
         // OJO: el precio se edita en la pestaña Cotización y aquí (parte del
         // técnico) viaja oculto; NO lo pisamos si ya tiene un precio cotizado

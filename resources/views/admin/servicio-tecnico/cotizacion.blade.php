@@ -12,6 +12,9 @@
         // Repuestos que dejó el técnico (nombre + cantidad): aquí se les pone precio.
         $repInit = $orden->repuestos->map(fn ($r) => [
             'nombre' => $r->nombre,
+            // El SKU viaja para no perderlo al re-guardar (el documento tributario
+            // se factura con el código de catálogo, regla 4 de Contabilidad).
+            'sku' => $r->sku,
             'cantidad' => $r->cantidad,
             'precio_unitario' => $r->precio_unitario,
         ])->values();
@@ -113,6 +116,9 @@
                     <div class="mt-2 space-y-2">
                         <template x-for="(r, i) in repuestos" :key="i">
                             <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
+                                {{-- SKU del catálogo (oculto): lo pone el buscador al elegir, y se
+                                     conserva al re-guardar. Vacío si se escribió a mano. --}}
+                                <input type="hidden" :name="`repuestos[${i}][sku]`" :value="r.sku ?? ''">
                                 <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
                                     <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
                                         placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
