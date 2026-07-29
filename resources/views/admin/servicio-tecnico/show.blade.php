@@ -267,8 +267,9 @@
                                     </div>
                                     <div>
                                         <x-input-label for="comprobante" value="Comprobante (opcional)" />
-                                        <input id="comprobante" name="comprobante" type="file" accept="image/*"
-                                               class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 shadow-sm">
+                                        <x-archivo-input id="comprobante" name="comprobante" accept="image/*" class="mt-1.5"
+                                            texto="Elegir o fotografiar el comprobante"
+                                            vacio="Sin comprobante adjunto" />
                                         <x-input-hint>Imagen de la transferencia, si el cliente la envió.</x-input-hint>
                                         <x-input-error :messages="$errors->get('comprobante')" class="mt-2" />
                                     </div>
