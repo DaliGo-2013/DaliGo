@@ -339,10 +339,14 @@ no se borran). ¿Quién debe estar autorizado a emitirla?
 > **Respuesta:** el gerente **Luis Lazcano**, el jefe de ventas **Héctor Martínez**, y los jefes de
 > sucursal **Luis Figueroa** (Coquimbo) y **Gonzalo Martínez** (Abate Molina).
 
-**Qué implica en el sistema:** se crea un **permiso nuevo** para emitir notas de crédito, y como hoy
-DaliGo **no tiene el rol "jefe de sucursal"**, hay que crearlo. Nadie más podrá anular, ni siquiera
-quien emitió el documento. Contabilidad **no pidió** su visto bueno previo, así que la nota de crédito
-la pueden emitir esas cuatro personas directamente; queda registrado quién la emitió y por qué.
+**Qué implica en el sistema:** ✅ **hecho el 28-jul-2026.** Se creó el permiso *«Emitir notas de crédito
+(anular un documento)»* y el rol **Jefe de sucursal**, que no existía en DaliGo. Lo tienen el gerente, el
+jefe de ventas y los jefes de sucursal; **nadie más puede anular**, ni siquiera quien emitió el
+documento. Contabilidad **no pidió** su visto bueno previo, así que esas cuatro personas pueden emitir la
+nota de crédito directamente, y queda registrado quién la emitió y por qué.
+
+Falta lo administrativo, que es de Gerencia: **asignarle el rol a Luis Figueroa y Gonzalo Martínez** en
+Administración → Usuarios.
 
 ---
 
@@ -396,7 +400,7 @@ recomienda el proveedor que hoy emite los documentos de la empresa. Eso no elimi
 | Riesgo | Control |
 |---|---|
 | **Emitir un documento por error o dos veces** | Cada documento lleva una clave única derivada de su origen; la base de datos **impide** físicamente crear dos para el mismo origen. Un doble clic no puede duplicar. |
-| **Emitir contra producción creyendo que es prueba.** En Bsale el ambiente **lo define solo la credencial** (las direcciones son idénticas) | Bloqueo automático: el sistema no arranca con credenciales de producción fuera del servidor de producción. |
+| **Emitir contra producción creyendo que es prueba.** En Bsale el ambiente **lo define solo la credencial** (las direcciones son idénticas) | ✅ **Resuelto (28-jul-2026).** Se exigen **dos** condiciones para emitir: un interruptor que arranca apagado (representa la autorización de Gerencia) **y** que una credencial declarada de producción esté corriendo en el servidor de producción. Un token de producción en un computador de trabajo **no puede emitir**. *(Corrige la versión anterior de esta fila, que decía "el sistema no arranca": bloquear el arranque impediría **leer** los datos de Bsale, que es la etapa de preparación previa a la primera emisión. Leer nunca está bloqueado; crear documentos sí.)* |
 | **Quedarse sin folios** o usar folios vencidos (el SII rechaza) | ⚠️ **Control DEGRADADO.** Se había previsto un aviso automático por cantidad restante y vencimiento. Bsale respondió (28-jul) que **no existe método para reservar un folio ni para saber cuál será el siguiente**, así que ese aviso puede no ser construible. Queda una repregunta pendiente: consultar el *stock restante* es distinto de saber *el próximo folio*. Si no hay forma, el control pasa a ser **manual** (revisar folios en Bsale). |
 | **Documento rechazado por el SII** | Queda registrado y visible con su motivo; se corrige con nota de crédito. |
 | **Perder el cierre de caja de Bsale** | ⚠️ **Sin resolver.** Bsale respondió que para que el documento cuadre en el cierre hay que asociar *"la sucursal, la caja y la forma de pago"*. Sucursal y forma de pago sí se pueden asociar (ya está hecho), pero **su propia documentación de la API no expone ningún campo de caja** — solo sucursal. Es una contradicción entre su respuesta y su documentación, y hay que aclararla **antes** de la primera emisión: si el documento cae en una caja equivocada, el descuadre lo descubre alguien al cierre del día. |
