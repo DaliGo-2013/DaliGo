@@ -165,10 +165,7 @@
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                         Máquinas (<span x-text="maquinas.length"></span>)
                     </h3>
-                    <button type="button" x-on:click="agregar()"
-                        class="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50">
-                        <x-icon.plus class="h-4 w-4" /> Agregar máquina
-                    </button>
+                    <x-agregar-fila-button x-on:click="agregar()">Agregar máquina</x-agregar-fila-button>
                 </div>
 
                 <div class="space-y-3">
