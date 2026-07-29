@@ -156,15 +156,34 @@ class SidebarTest extends TestCase
             ->assertSee('max-lg:-translate-x-full max-lg:invisible', false);
     }
 
-    public function test_la_hamburguesa_declara_el_panel_que_controla(): void
+    public function test_los_dos_toggles_declaran_el_panel_que_controlan(): void
     {
         // aria-expanded sin aria-controls anuncia un estado sin decir de qué.
-        // El id del <aside> es el destino, y ambos toggles lo apuntan.
-        $this->actingAs($this->usuarioCon('admin'))
+        // El <aside> lleva el id y los DOS toggles lo apuntan: la hamburguesa
+        // de la topbar (abre) y la X de la cabecera del drawer (cierra).
+        //
+        // Se CUENTA, no se busca la cadena: la primera versión de este test
+        // hacía assertSee('aria-controls="dg-menu-lateral"') y pasaba en verde
+        // con el atributo quitado de la hamburguesa, porque la X del drawer
+        // seguía aportando esa misma cadena — verde-engañoso de manual
+        // (bitácora 2026-07-20), cazado al mutarlo. Contando, quitarlo de
+        // cualquiera de los dos baja a 1 y se pone rojo.
+        $html = $this->actingAs($this->usuarioCon('admin'))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('id="dg-menu-lateral"', false)
-            ->assertSee('aria-controls="dg-menu-lateral"', false);
+            ->getContent();
+
+        $this->assertSame(
+            1,
+            substr_count($html, 'id="dg-menu-lateral"'),
+            'El id del panel del menú debe existir UNA sola vez (es el destino de los aria-controls).'
+        );
+        $this->assertSame(
+            2,
+            substr_count($html, 'aria-controls="dg-menu-lateral"'),
+            'Los dos toggles del drawer (hamburguesa de la topbar y X del drawer) deben declarar '
+            .'aria-controls al panel que abren/cierran.'
+        );
     }
 
     public function test_hamburguesa_y_campana_movil_presentes_en_toda_pagina_autenticada(): void
