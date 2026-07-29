@@ -54,13 +54,41 @@ class DteController extends Controller
      */
     public function estado(): View
     {
+        $pasos = $this->faltantesDeConfiguracion();
+
         return view('admin.dte.estado', [
             'emisor' => $this->emisor->nombre(),
             'ambiente' => CandadoDeEmision::ambiente(),
             'bloqueo' => CandadoDeEmision::motivoDelBloqueo(),
-            'faltantes' => $this->faltantesDeConfiguracion(),
+            'faltantes' => $pasos,
             'emitidos' => DteEmitido::count(),
+            // Avance de la preparación. Se muestra como progreso y no como lista de
+            // carencias: es la misma información y es la lectura correcta — el
+            // módulo está avanzando, no fallando.
+            'listos' => count(array_filter($pasos, fn (array $p) => $p['listo'])),
+            'totalPasos' => count($pasos),
+            'construido' => $this->loConstruido(),
         ]);
+    }
+
+    /**
+     * Lo que YA está funcionando del módulo. Existe porque una pantalla que solo
+     * enumera pendientes se lee como un módulo roto, cuando el avance real es
+     * grande: sin esto, la parte hecha era invisible.
+     *
+     * @return list<string>
+     */
+    private function loConstruido(): array
+    {
+        return [
+            'Las 8 reglas contables definidas por Contabilidad, aplicadas en el sistema.',
+            'El documento completo de una reparación se arma solo: repuestos con su código de catálogo, '
+                .'mano de obra, y el IVA repartido de modo que el total sea exactamente el que paga el cliente.',
+            'Se puede revisar el documento antes de que exista, desde cualquier orden de servicio.',
+            'Registro local de lo emitido, con folio, estado ante el SII y respaldo del XML (obligatorio 6 años).',
+            'Candado que impide emitir por error con una credencial equivocada.',
+            'Permiso de nota de crédito acotado a Gerencia, jefatura de ventas y jefes de sucursal.',
+        ];
     }
 
     /**
@@ -84,7 +112,16 @@ class DteController extends Controller
 
     /**
      * Los orígenes de documento, al estilo del menú «Nuevo» de Bsale — pero cada
-     * uno con su estado REAL. El que no está disponible dice por qué.
+     * uno con su estado REAL.
+     *
+     * El que no está disponible se rotula **Próximamente** y dice cuándo/de qué
+     * depende, no "no disponible". El dato es el mismo; el tono importa porque esta
+     * pantalla la mira Gerencia: un módulo que lista lo que le falta parece roto,
+     * y uno que lista lo que viene parece en marcha — y lo segundo es lo cierto.
+     *
+     * Lo que NO se hace por mejorar el tono: ocultar de qué depende. Un
+     * "próximamente" sin motivo es una promesa vacía, y el plazo del 1-nov es un
+     * riesgo real que tiene que seguir leyéndose.
      *
      * @return list<array{titulo:string,detalle:string,disponible:bool,motivo:?string,url:?string}>
      */
@@ -102,22 +139,22 @@ class DteController extends Controller
                 'titulo' => 'Boleta de mostrador',
                 'detalle' => 'Venta rápida sin orden de servicio previa.',
                 'disponible' => false,
-                'motivo' => 'Necesita el punto de venta (módulo M06, hoy en Bsale y sin fecha).',
+                'motivo' => 'Llega con el punto de venta. Hoy esa parte se atiende en Bsale y sigue funcionando igual.',
                 'url' => null,
             ],
             [
                 'titulo' => 'Guía de despacho',
                 'detalle' => 'Traslado de mercadería, y la devolución de un equipo reparado en garantía.',
                 'disponible' => false,
-                'motivo' => 'En espera: desde el 1-nov-2026 el SII exige datos del transporte (chofer, patente, horarios) '
-                    .'y la integración de Bsale todavía no tiene dónde registrarlos. Construirla ahora sería hacerla dos veces.',
+                'motivo' => 'Se construye en cuanto Bsale publique los campos de transporte que el SII exige desde el '
+                    .'1-nov-2026 (chofer, patente, horarios). Hacerla antes sería hacerla dos veces.',
                 'url' => null,
             ],
             [
                 'titulo' => 'Nota de crédito',
                 'detalle' => 'Anula un documento ya emitido. Es el único modo: los documentos electrónicos no se borran.',
                 'disponible' => false,
-                'motivo' => 'Requiere un documento emitido para anular. Hoy no hay ninguno.',
+                'motivo' => 'Se habilita junto con la primera emisión: para anular hace falta un documento emitido.',
                 'url' => null,
             ],
         ];

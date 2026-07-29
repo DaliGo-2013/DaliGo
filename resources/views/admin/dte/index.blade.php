@@ -14,17 +14,23 @@
     <div class="space-y-5 py-8 sm:py-12">
         <x-status-alert :status="session('status')" />
 
-        {{-- Estado de la emisión. Arriba, porque explica todo lo demás. --}}
+        {{-- Estado del módulo. Arriba, porque explica todo lo demás — y redactado
+             como AVANCE y no como carencia: el módulo está en marcha, y mientras lo
+             esté, Bsale sigue funcionando igual que siempre. --}}
         @if ($bloqueo)
             <div class="rounded-2xl border border-brand-200 bg-brand-50 p-3 sm:p-4">
                 <div class="flex items-start gap-3">
                     <x-icon.information-circle class="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
                     <div class="min-w-0 text-sm">
-                        <p class="font-semibold text-brand-900">Todavía no se emite: el módulo está en preparación</p>
-                        <p class="mt-1 text-brand-800">{{ $bloqueo }}</p>
+                        <p class="font-semibold text-brand-900">Módulo en marcha · la emisión se habilita más adelante</p>
+                        <p class="mt-1 text-brand-800">
+                            El documento ya se arma completo y se puede revisar; lo que todavía no está habilitado es
+                            emitirlo de verdad, que es un paso que se autoriza a propósito. Mientras tanto la
+                            facturación sigue funcionando en Bsale igual que siempre.
+                        </p>
                         <p class="mt-2 text-xs">
                             <a href="{{ route('admin.dte.estado') }}" class="font-medium text-brand-700 underline hover:text-brand-800">
-                                Ver qué falta para poder emitir →
+                                Ver el avance de la preparación →
                             </a>
                         </p>
                     </div>
@@ -43,14 +49,16 @@
                                 {{ $origen['titulo'] }}
                             </p>
                             @if (! $origen['disponible'])
-                                <x-badge variant="neutral">Aún no</x-badge>
+                                {{-- «Próximamente» en naranjo de marca (en curso), no en
+                                     neutro apagado: lo que viene no está roto. --}}
+                                <x-badge variant="brand">Próximamente</x-badge>
                             @endif
                         </div>
-                        <p class="mt-1 text-sm {{ $origen['disponible'] ? 'text-neutral-600' : 'text-neutral-400' }}">
+                        <p class="mt-1 text-sm {{ $origen['disponible'] ? 'text-neutral-600' : 'text-neutral-500' }}">
                             {{ $origen['detalle'] }}
                         </p>
                         @if (! $origen['disponible'])
-                            <p class="mt-2 text-xs text-neutral-500"><span class="font-medium">Falta:</span> {{ $origen['motivo'] }}</p>
+                            <p class="mt-2 text-xs text-neutral-500"><span class="font-medium">Cuándo:</span> {{ $origen['motivo'] }}</p>
                         @endif
                     </div>
                 @endforeach
@@ -148,14 +156,14 @@
                 </x-list-row>
             @empty
                 <li class="px-6 py-10 text-center">
-                    <p class="text-sm font-medium text-neutral-900">Todavía no se ha emitido ningún documento</p>
+                    <p class="text-sm font-medium text-neutral-900">Acá van a aparecer los documentos emitidos</p>
                     <p class="mx-auto mt-1 max-w-md text-sm text-neutral-500">
-                        Cuando se emita el primero, va a aparecer acá con su folio, su estado ante el SII y los enlaces
-                        al PDF y al XML. El XML es el documento legal y hay que conservarlo 6 años.
+                        Cada uno con su folio, su estado ante el SII y los enlaces al PDF y al XML. El XML es el
+                        documento legal y hay que conservarlo 6 años: por eso queda respaldado acá y no solo en Bsale.
                     </p>
                     <p class="mt-3 text-xs">
                         <a href="{{ route('admin.dte.estado') }}" class="font-medium text-brand-600 hover:text-brand-700">
-                            Ver el estado de la preparación →
+                            Ver el avance de la preparación →
                         </a>
                     </p>
                 </li>

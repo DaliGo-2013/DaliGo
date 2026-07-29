@@ -16,6 +16,31 @@
 
     <div class="space-y-5 py-8 sm:py-12">
 
+        {{-- AVANCE primero. Una pantalla que arranca enumerando pendientes se lee
+             como un módulo roto; el avance real es grande y sin esto era invisible. --}}
+        <div class="rounded-2xl border border-brand-200 bg-brand-50 p-3 sm:p-4">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 class="text-xs font-medium uppercase tracking-wide text-brand-700">Avance del módulo</h3>
+                <p class="text-xs font-medium text-brand-700">{{ $listos }} de {{ $totalPasos }} pasos de configuración listos</p>
+            </div>
+            <p class="mt-2 text-sm text-brand-900">
+                Lo construido y funcionando hoy:
+            </p>
+            <ul class="mt-1.5 space-y-1 text-sm text-brand-800">
+                @foreach ($construido as $hecho)
+                    <li class="flex gap-2">
+                        <x-icon.check class="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                        <span>{{ $hecho }}</span>
+                    </li>
+                @endforeach
+            </ul>
+            <p class="mt-3 text-xs text-brand-700">
+                El módulo va a seguir sumando funciones (boleta de mostrador, guías, notas de crédito). Mientras tanto,
+                <span class="font-medium">la facturación sigue funcionando en Bsale igual que siempre</span>: nada de
+                esto quita algo que hoy exista.
+            </p>
+        </div>
+
         {{-- Resumen: quién emite y con qué credencial. --}}
         <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Conexión</h3>
@@ -56,9 +81,13 @@
             @endif
         </div>
 
-        {{-- El checklist. --}}
+        {{-- El checklist. Se titula «Preparación», no «lo que falta»: es una lista
+             de pasos que se van marcando, no un inventario de carencias. --}}
         <div>
-            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Lo que falta para emitir</h3>
+            <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Preparación para emitir</h3>
+                <p class="text-xs text-neutral-400">{{ $listos }} de {{ $totalPasos }} listos</p>
+            </div>
             <ul class="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 @foreach ($faltantes as $item)
                     <li class="flex items-start gap-3 px-4 py-3 sm:px-6">
@@ -104,13 +133,14 @@
             </ul>
         </div>
 
-        {{-- Lo que sí está resuelto, para que no parezca que falta todo. --}}
+        {{-- Las reglas contables, que son el trabajo menos visible y el más caro de
+             conseguir: definirlas requirió consultar a Contabilidad y al SII. --}}
         <div class="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:p-4">
-            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Ya resuelto</h3>
+            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Reglas contables, ya definidas</h3>
             <p class="mt-2 text-sm text-neutral-600">
-                Las 8 reglas contables están definidas por Contabilidad y aplicadas en el sistema: cómo se reparte el
-                IVA (manda el total que paga el cliente), quién elige entre boleta y factura, cómo se desglosa una
-                reparación, desde qué sucursal se emite, cuándo se registra el pago y quién puede anular.
+                Las 8 reglas están definidas por Contabilidad y aplicadas en el sistema: cómo se reparte el IVA (manda
+                el total que paga el cliente), quién elige entre boleta y factura, cómo se desglosa una reparación,
+                desde qué sucursal se emite, cuándo se registra el pago y quién puede anular.
             </p>
             <p class="mt-2 text-xs text-neutral-400">
                 El detalle completo, con las fuentes del SII, está en el informe de facturación electrónica.

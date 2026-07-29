@@ -69,14 +69,27 @@ class ModuloFacturacionTest extends TestCase
 
     // --- Documentos ---
 
-    public function test_el_listado_vacio_explica_que_no_se_emitio_nada(): void
+    public function test_el_listado_vacio_explica_que_va_a_aparecer_ahi(): void
     {
         $this->actingAs($this->admin())
             ->get(route('admin.dte.index'))
             ->assertOk()
-            ->assertSee('Todavía no se ha emitido ningún documento')
+            ->assertSee('Acá van a aparecer los documentos emitidos')
             // El XML es el documento legal: la pantalla lo dice.
             ->assertSee('6 años');
+    }
+
+    public function test_el_aviso_de_arriba_habla_de_avance_y_no_de_carencia(): void
+    {
+        // Lo mira Gerencia: un módulo que enumera lo que le falta parece roto, y el
+        // avance real es grande. Mismo dato, lectura correcta.
+        $this->actingAs($this->admin())
+            ->get(route('admin.dte.index'))
+            ->assertOk()
+            ->assertSee('Módulo en marcha')
+            // Y la tranquilidad que importa: no se le quita nada a nadie.
+            ->assertSee('sigue funcionando en Bsale igual que siempre')
+            ->assertDontSee('Todavía no se emite');
     }
 
     public function test_los_origenes_no_disponibles_dicen_que_les_falta(): void
@@ -88,10 +101,13 @@ class ModuloFacturacionTest extends TestCase
             ->assertSee('Boleta de mostrador')
             ->assertSee('Guía de despacho')
             ->assertSee('Nota de crédito')
-            // Cada uno con su motivo, no un "no disponible" pelado.
+            // Se rotulan «Próximamente», no «no disponible»: lo que viene no está roto.
+            ->assertSee('Próximamente')
+            // Pero SIEMPRE con el motivo. Un "próximamente" sin motivo es una
+            // promesa vacía, y el plazo del 1-nov tiene que seguir leyéndose.
             ->assertSee('punto de venta')
             ->assertSee('1-nov-2026')
-            ->assertSee('Requiere un documento emitido para anular');
+            ->assertSee('para anular hace falta un documento emitido');
 
         // Y ninguno ofrece un botón que no funcione.
         $origenes = $respuesta->viewData('origenes');
@@ -194,7 +210,7 @@ class ModuloFacturacionTest extends TestCase
         $vista = $this->actingAs($this->admin())
             ->get(route('admin.dte.estado'))
             ->assertOk()
-            ->assertSee('Lo que falta para emitir')
+            ->assertSee('Preparación para emitir')
             ->assertSee('Tipos de documento de Bsale')
             ->assertSee('Oficinas por sucursal')
             ->assertSee('Medios de pago')
@@ -250,7 +266,21 @@ class ModuloFacturacionTest extends TestCase
             ->assertSee('Autorización de Gerencia por escrito')
             ->assertSee('Dos respuestas de Bsale')
             // Y lo ya resuelto, para que no parezca que falta todo.
-            ->assertSee('Ya resuelto')
-            ->assertSee('8 reglas contables');
+            ->assertSee('Reglas contables, ya definidas')
+            ->assertSee('8 reglas');
+    }
+
+    public function test_el_estado_muestra_primero_el_avance_construido(): void
+    {
+        $vista = $this->actingAs($this->admin())
+            ->get(route('admin.dte.estado'))
+            ->assertOk()
+            ->assertSee('Avance del módulo')
+            ->assertSee('0 de 4 pasos de configuración listos')
+            ->assertSee('va a seguir sumando funciones');
+
+        $this->assertNotEmpty($vista->viewData('construido'), 'La parte hecha tiene que ser visible.');
+        $this->assertSame(4, $vista->viewData('totalPasos'));
+        $this->assertSame(0, $vista->viewData('listos'));
     }
 }
