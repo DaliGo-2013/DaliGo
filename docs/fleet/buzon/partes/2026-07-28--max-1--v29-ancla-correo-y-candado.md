@@ -55,8 +55,9 @@ candado falló nombrando la clave exacta con su explicación. La otra one-shot s
 - Batería focalizada **28/28** (`OneShotPlantillasCandadoTest` + `AprobacionAccionableTest`
   + `NotificacionEspecificaTest`).
 - Las 2 mutaciones, rojas donde debían y verdes donde no correspondía.
-- **Suite completa: corriendo al momento de subir este parte** (baseline main ~1138). La
-  reporto en cuanto termine; si algo saliera rojo, lo digo antes de pedir la llave.
+- **Suite completa: 1155 verdes / 7.575 aserciones, cero rojos** (declarada como «corriendo»
+  al subir este parte; cerrada al terminar, sin sorpresas — los +4 sobre la baseline son el
+  test E2E del correo y los 2 del candado, más el que ya traía la rama).
 
 ## Lo que queda de NOTIF-1
 
