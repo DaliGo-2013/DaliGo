@@ -253,17 +253,19 @@
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto 1 del equipo <span class="text-red-500">*</span></label>
                                 {{-- El x-on:change solo anota que la foto ya está elegida (para el ✓
                                      del resumen); la compresión sigue en el onchange de siempre. --}}
-                                <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
+                                <x-archivo-input ::name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
                                     onchange="optimizarFotoInput(this)"
                                     x-on:change="m.foto_1 = $event.target.files.length > 0"
-                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
+                                    texto="Tomar o elegir la foto"
+                                    vacio="Todavía no elegiste esta foto" />
                             </div>
                             <div>
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto 2 del equipo <span class="text-red-500">*</span></label>
-                                <input type="file" :name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
+                                <x-archivo-input ::name="`maquinas[${i}][fotos][]`" accept="image/*" capture="environment" required
                                     onchange="optimizarFotoInput(this)"
                                     x-on:change="m.foto_2 = $event.target.files.length > 0"
-                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
+                                    texto="Tomar o elegir la foto"
+                                    vacio="Todavía no elegiste esta foto" />
                             </div>
                         </div>
                         </div>

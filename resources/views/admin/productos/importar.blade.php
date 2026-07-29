@@ -54,8 +54,10 @@
                 @csrf
                 <div>
                     <x-input-label for="archivo" value="Archivo CSV" />
-                    <input id="archivo" name="archivo" type="file" accept=".csv,.txt" required
-                           class="mt-1.5 block w-full rounded-lg border border-neutral-300 bg-white text-sm text-neutral-700 shadow-sm file:mr-4 file:border-0 file:bg-neutral-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-neutral-700 hover:file:bg-neutral-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                    <x-archivo-input id="archivo" name="archivo" accept=".csv,.txt" required class="mt-1.5"
+                           icono="document-text"
+                           texto="Elegir el archivo CSV"
+                           vacio="Todavía no elegiste el archivo" />
                     <x-input-error :messages="$errors->get('archivo')" class="mt-2" />
                 </div>
 
