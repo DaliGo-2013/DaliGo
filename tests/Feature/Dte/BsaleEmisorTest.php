@@ -28,6 +28,17 @@ class BsaleEmisorTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Estos tests prueban la TRADUCCIÓN, no el candado (eso es
+        // CandadoDeEmisionTest), así que se emite en ambiente de prueba con el
+        // interruptor encendido. Sin esto fallarían los 21 — que es justamente la
+        // señal de que el candado está puesto donde corresponde.
+        config(['dte.emision_habilitada' => true, 'dte.ambiente' => 'prueba']);
+    }
+
     /** Respuesta típica de un documento emitido, con los campos que leemos. */
     private function documentoOk(array $extra = []): array
     {

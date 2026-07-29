@@ -23,6 +23,31 @@ return [
     /** Emisor activo. Debe coincidir con EmisorDte::nombre() y con `dte_emitidos.emisor`. */
     'emisor' => env('DTE_EMISOR', 'bsale'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Candado de emisión (B4) — ver App\Services\Dte\CandadoDeEmision
+    |--------------------------------------------------------------------------
+    |
+    | `ambiente` declara qué ES la credencial que está en el .env: 'prueba' o
+    | 'produccion'. Hay que declararlo a mano porque la API de Bsale NO lo dice:
+    | la URL es idéntica en los dos casos y el ambiente lo define únicamente el
+    | token. Un valor desconocido se trata como 'produccion' (ante la duda, el
+    | lado que no emite).
+    |
+    | `emision_habilitada` es el interruptor de la emisión REAL y arranca
+    | APAGADO. Representa la autorización de Gerencia: mientras esté en false, el
+    | sistema puede leer todo de Bsale pero no puede crear ni un documento.
+    |
+    | Leer NUNCA está bloqueado: el plan acordado es recabar los datos de la
+    | cuenta real (tipos de documento, oficinas, medios de pago, notas de crédito
+    | pasadas) antes de emitir, y eso son todas consultas.
+    |
+    */
+
+    'ambiente' => env('BSALE_AMBIENTE', 'prueba'),
+
+    'emision_habilitada' => env('DTE_EMISION_HABILITADA', false),
+
     'bsale' => [
 
         /*
