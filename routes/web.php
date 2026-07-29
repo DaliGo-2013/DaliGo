@@ -299,6 +299,14 @@ Route::middleware('auth')
             Route::get('servicio-tecnico/qr', [ServicioTecnicoController::class, 'qr'])
                 ->name('servicio-tecnico.qr');
 
+            // Documento tributario de la orden (M05 · B8). Hoy es un ENSAYO EN SECO:
+            // arma el documento y lo muestra, pero el candado impide emitir. Gateada
+            // por el permiso de emision aunque todavia no emita, para no tener que
+            // acordarse de gatearla despues.
+            Route::get('servicio-tecnico/{orden}/documento', [\App\Http\Controllers\Admin\DocumentoTributarioController::class, 'show'])
+                ->middleware('permission:emitir documentos tributarios')
+                ->whereNumber('orden')->name('servicio-tecnico.documento');
+
             // Etapa de taller (tecnico): registrar el arreglo, repuestos y fechas.
             Route::get('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'reparacion'])
                 ->name('servicio-tecnico.reparacion');

@@ -220,14 +220,18 @@ class DocumentoDesdeOrdenServicioTest extends TestCase
         $this->assertSame(FormaPago::TRANSFERENCIA, $doc->formaPago);
     }
 
-    public function test_el_sales_id_se_deriva_del_codigo_de_la_orden(): void
+    public function test_el_sales_id_es_el_codigo_de_la_orden_sin_prefijo_duplicado(): void
     {
         $orden = $this->orden([['precio' => 10000]]);
 
         $doc = $this->armador()->armar($orden, DocumentoTributario::BOLETA);
 
         // Es la clave anti-duplicado: dos veces la misma orden = el mismo salesId.
-        $this->assertSame("ST-{$orden->codigo}", $doc->salesId);
+        $this->assertSame($orden->codigo, $doc->salesId);
+        // El código ya empieza con ST-: agregarle otro daba ST-ST-XXXXXXXX, y ese
+        // identificador queda guardado en Bsale para siempre.
+        $this->assertStringStartsWith('ST-', $doc->salesId);
+        $this->assertStringNotContainsString('ST-ST-', $doc->salesId);
         $this->assertSame($doc->salesId, $this->armador()->armar($orden, DocumentoTributario::BOLETA)->salesId);
     }
 
@@ -251,5 +255,47 @@ class DocumentoDesdeOrdenServicioTest extends TestCase
         $this->assertSame(3, $doc->lineas[0]->cantidad);
         $this->assertSame(1000, $doc->lineas[0]->precioNetoUnitario);
         $this->assertSame(3570, $doc->totalEfectivo());
+    }
+
+    public function test_una_linea_de_varias_unidades_no_agrega_un_peso_al_total(): void
+    {
+        // El caso que se cazó mirando la pantalla: 2 unidades a $4.500 = $9.000 con
+        // IVA -> neto de línea 7.563, pero 7.563/2 = 3.781,5 -> 3.782 x 2 = 7.564.
+        // Ese peso extra lo cobraría el emisor sin que el cliente lo haya pagado.
+        $orden = $this->orden([
+            ['nombre' => 'Termostato', 'precio' => 12000],
+            ['nombre' => 'Llave de paso', 'precio' => 4500, 'cantidad' => 2],
+            ['nombre' => 'Manguera', 'precio' => 3000],
+        ], manoObra: 30000);
+
+        $doc = $this->armador()->armar($orden, DocumentoTributario::BOLETA);
+
+        // Lo que el emisor va a calcular: suma de (unitario x cantidad).
+        $netoSegunElEmisor = 0;
+        foreach ($doc->lineas as $linea) {
+            $netoSegunElEmisor += $linea->precioNetoUnitario * $linea->cantidad;
+        }
+
+        $this->assertSame(54000, $doc->totalEfectivo());
+        // El neto autoritativo de $54.000 es round(54000/1,19) = 45.378.
+        $this->assertSame(45378, $netoSegunElEmisor, 'El emisor tiene que llegar al mismo neto.');
+        $this->assertSame(45378, $doc->neto());
+        $this->assertSame(54000, $doc->neto() + $doc->iva());
+    }
+
+    public function test_sin_ninguna_linea_de_una_unidad_el_total_sigue_siendo_el_de_la_orden(): void
+    {
+        // Caso raro y sin escapatoria aritmética: todas las líneas de varias
+        // unidades. El neto puede quedar a unos pesos del ideal, pero el TOTAL que
+        // paga el cliente se respeta igual, porque el IVA es la diferencia.
+        $orden = $this->orden([
+            ['precio' => 4500, 'cantidad' => 2],
+            ['precio' => 3300, 'cantidad' => 3],
+        ]);
+
+        $doc = $this->armador()->armar($orden, DocumentoTributario::BOLETA);
+
+        $this->assertSame(18900, $doc->totalEfectivo());
+        $this->assertSame(18900, $doc->neto() + $doc->iva());
     }
 }

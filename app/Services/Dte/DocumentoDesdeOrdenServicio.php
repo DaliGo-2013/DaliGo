@@ -80,7 +80,7 @@ class DocumentoDesdeOrdenServicio
         return new DocumentoTributario(
             tipoDte: $tipoDte,
             salesId: $this->salesId($orden),
-            lineas: $this->lineasDelDocumento($lineas, $desglose['netos']),
+            lineas: $this->lineasDelDocumento($lineas, $desglose['netos'], $desglose['neto'], $indiceManoObra),
             receptorRut: $orden->cliente_rut,
             receptorNombre: $orden->cliente_nombre,
             receptorGiro: $cliente?->giro,
@@ -101,17 +101,20 @@ class DocumentoDesdeOrdenServicio
     }
 
     /**
-     * Clave de idempotencia. Se deriva del CÓDIGO de la orden (ST-XXXXXXXX), que
-     * es único y estable: así reintentar la emisión de la misma orden no puede
-     * producir dos documentos, ni acá ni en Bsale.
+     * Clave de idempotencia: el CÓDIGO de la orden, que ya viene con la forma
+     * ST-XXXXXXXX y es único y estable. Así reintentar la emisión de la misma
+     * orden no puede producir dos documentos, ni acá ni en Bsale.
      *
-     * Lleva el tipo de documento NO por capricho: una orden puede legítimamente
-     * terminar con una boleta y, más adelante, una nota de crédito. Lo que no
-     * puede es tener dos boletas.
+     * Sin prefijo extra: agregarle "ST-" daba `ST-ST-XXXXXXXX`, que además de feo
+     * es el identificador que queda guardado en Bsale para siempre.
+     *
+     * La nota de crédito de esta orden llevará su propia clave (`NC-{código}`):
+     * una orden puede terminar con una boleta y después su anulación, pero no con
+     * dos boletas.
      */
     public function salesId(OrdenServicio $orden): string
     {
-        return "ST-{$orden->codigo}";
+        return (string) $orden->codigo;
     }
 
     /**
@@ -208,32 +211,83 @@ class DocumentoDesdeOrdenServicio
     }
 
     /**
+     * Convierte los netos POR LÍNEA en precios netos POR UNIDAD, que es lo que el
+     * emisor espera (multiplica unitario × cantidad para rearmar la línea).
+     *
+     * ⚠️ ACÁ SE ESCONDÍA UN PESO, y es la razón por la que este método es más largo
+     * de lo que parece necesario. Dividir el neto de la línea por la cantidad y
+     * redondear **rompe el total**: una línea de 2 unidades con neto 7.563 da
+     * unitario 3.782 (3.781,5 redondeado hacia arriba) y al multiplicar vuelve
+     * 7.564. Un peso de más que el emisor va a cobrar y el cliente no pagó — el
+     * mismo descuadre que DesgloseNeto existe para evitar, reintroducido un paso
+     * después. Se cazó viendo la pantalla, no leyendo el código.
+     *
+     * La corrección: después de calcular los unitarios se recalcula cuánto suman
+     * DE VERDAD (unitario × cantidad) y la diferencia contra el neto autoritativo
+     * se absorbe en una línea de cantidad 1 — donde ajustar el unitario mueve el
+     * total exactamente en esa cifra. Se prefiere la de mano de obra, que es donde
+     * Contabilidad quiere el ajuste y que en una reparación casi siempre existe.
+     *
      * @param  list<array{bruto:int,descripcion:string,cantidad:int,sku:?string}>  $lineas
-     * @param  list<int>  $netos
+     * @param  list<int>  $netos  Neto por línea (ya cuadran contra el total).
+     * @param  int  $netoDocumento  Neto autoritativo del documento.
      * @return list<LineaDocumento>
      */
-    private function lineasDelDocumento(array $lineas, array $netos): array
+    private function lineasDelDocumento(array $lineas, array $netos, int $netoDocumento, ?int $indiceManoObra): array
     {
-        $documento = [];
-
+        $unitarios = [];
         foreach ($lineas as $i => $linea) {
-            $cantidad = $linea['cantidad'];
-            $netoLinea = $netos[$i] ?? 0;
+            $unitarios[$i] = (int) round(($netos[$i] ?? 0) / max(1, $linea['cantidad']));
+        }
 
-            // El emisor multiplica precio unitario x cantidad, así que el neto de
-            // la línea se divide por la cantidad. La división puede no ser exacta
-            // (3 unidades de un neto de 100 → 33,33): se manda el unitario con
-            // decimales para que el producto vuelva a dar el neto de la línea, en
-            // vez de perder pesos por el camino.
+        $sumaReal = 0;
+        foreach ($lineas as $i => $linea) {
+            $sumaReal += $unitarios[$i] * $linea['cantidad'];
+        }
+
+        $residuo = $netoDocumento - $sumaReal;
+        if ($residuo !== 0 && ($absorbe = $this->lineaQueAbsorbe($lineas, $indiceManoObra)) !== null) {
+            $unitarios[$absorbe] += $residuo;
+        }
+
+        $documento = [];
+        foreach ($lineas as $i => $linea) {
             $documento[] = new LineaDocumento(
                 descripcion: $linea['descripcion'],
-                cantidad: $cantidad,
-                precioNetoUnitario: (int) round($netoLinea / max(1, $cantidad)),
+                cantidad: $linea['cantidad'],
+                precioNetoUnitario: $unitarios[$i],
                 codigoProducto: $linea['sku'],
             );
         }
 
         return $documento;
+    }
+
+    /**
+     * Índice de la línea que puede absorber el residuo: tiene que ser de cantidad
+     * 1, porque en una de cantidad 3 un ajuste de $1 en el unitario mueve el total
+     * en $3. Se prefiere la de mano de obra.
+     *
+     * Null si ninguna línea tiene cantidad 1 (todas las líneas de varias unidades y
+     * sin mano de obra). En ese caso el neto del documento puede quedar a unos pesos
+     * del ideal; el total con IVA sigue siendo el que pagó el cliente, porque el IVA
+     * se calcula como la diferencia. Es un caso raro y explícito, no un silencio.
+     *
+     * @param  list<array{cantidad:int}>  $lineas
+     */
+    private function lineaQueAbsorbe(array $lineas, ?int $indiceManoObra): ?int
+    {
+        if ($indiceManoObra !== null && ($lineas[$indiceManoObra]['cantidad'] ?? 0) === 1) {
+            return $indiceManoObra;
+        }
+
+        foreach ($lineas as $i => $linea) {
+            if ($linea['cantidad'] === 1) {
+                return $i;
+            }
+        }
+
+        return null;
     }
 
     /**
