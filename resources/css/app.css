@@ -38,6 +38,29 @@
    (el bloque desaparecía hasta forzar un repaint con click). */
 .dg-enter { animation: dg-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 
+/* PISO DE 16px EN MÓVIL — anti-zoom de Safari iOS.
+
+   Safari hace zoom automático al enfocar un control con fuente menor a 16px, y
+   el zoom NO se revierte al salir del campo: la pantalla queda corrida y hay que
+   pellizcar para volver.
+
+   Los componentes (x-text-input, x-select, x-textarea, x-password-input) ya
+   declaran `text-base sm:text-sm`, pero eso NO alcanza: quedaban 15 controles
+   escritos a mano en 8 vistas —dos de ellas PÚBLICAS (el ingreso del QR y la
+   confirmación de visita)— más los filtros y las filas de repuestos. Este piso
+   los cubre todos de una vez, incluidos los que se escriban después: es un
+   mecanismo, no un arreglo por instancia.
+
+   Solo bajo el breakpoint sm, así que el escritorio conserva sus 14px. Se
+   exceptúan checkbox/radio/range, donde la fuente no participa del dibujo. */
+@media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
 /* Shake sutil para errores de validación (feedback funcional) */
 @keyframes dg-shake {
     0%, 100% { transform: translateX(0); }
