@@ -400,6 +400,35 @@ Route::middleware('auth')
             Route::get('despachos', [DespachoController::class, 'index'])->name('despachos.index');
             Route::get('despachos/nuevo', [DespachoController::class, 'create'])->name('despachos.create');
             Route::post('despachos', [DespachoController::class, 'store'])->name('despachos.store');
+
+            // Cola de bodega (monitor) + su conteo liviano para el poll. Van
+            // ANTES de las rutas con parámetro para que 'cola' no se coma como
+            // {despacho}.
+            Route::get('despachos/cola', [DespachoController::class, 'cola'])->name('despachos.cola');
+            Route::get('despachos/cola/conteo', [DespachoController::class, 'colaConteo'])
+                ->name('despachos.cola.conteo');
+
+            // QR imprimible del despacho (P-DSP-04).
+            Route::get('despachos/{despacho}/qr', [DespachoController::class, 'qr'])
+                ->whereNumber('despacho')->name('despachos.qr');
+
+            // Escaneo del QR en bodega. El GET exige FIRMA además del permiso
+            // (ver la nota de superficie en DespachoController): la firma da
+            // integridad al código del QR, el permiso da responsabilidad.
+            Route::middleware('signed')
+                ->get('despachos/escanear/{codigo}', [DespachoController::class, 'escanear'])
+                ->name('despachos.escanear');
+            // El POST no va firmado a propósito: nace del form de la pantalla
+            // anterior (que ya exigió firma + permiso) y lleva CSRF. Firmar un
+            // POST obligaría a incrustar la firma en el form sin ganar nada:
+            // quien tiene 'manage despachos' ve todos los códigos en el panel,
+            // así que la firma no es el control de acceso aquí.
+            Route::post('despachos/escanear/{codigo}', [DespachoController::class, 'retiro'])
+                ->name('despachos.retiro');
+
+            // Cierre del despacho: entrega total o parcial con saldo.
+            Route::post('despachos/{despacho}/entrega', [DespachoController::class, 'entrega'])
+                ->whereNumber('despacho')->name('despachos.entrega');
         });
     });
 

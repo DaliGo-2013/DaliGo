@@ -2,10 +2,13 @@
     <x-slot name="header">
         <x-page-header title="Despachos" subtitle="Retiros y entregas sobre los documentos de venta de Bsale.">
             <x-slot name="action">
-                <x-button-link :href="route('admin.despachos.create')">
-                    <x-icon.plus class="h-4 w-4" />
-                    Nuevo despacho
-                </x-button-link>
+                <div class="flex items-center gap-2">
+                    <x-secondary-link :href="route('admin.despachos.cola')">Cola de bodega</x-secondary-link>
+                    <x-button-link :href="route('admin.despachos.create')">
+                        <x-icon.plus class="h-4 w-4" />
+                        Nuevo despacho
+                    </x-button-link>
+                </div>
             </x-slot>
         </x-page-header>
     </x-slot>
@@ -52,11 +55,29 @@
                                 · {{ $despacho->conductor->name }}
                             @endif
                         </p>
+                        {{-- El saldo de un parcial se VE en la lista: un estado
+                             "entrega parcial" sin decir qué falta no sirve. --}}
+                        @if ($despacho->entrega_observacion)
+                            <p class="truncate text-xs text-red-700">Pendiente: {{ $despacho->entrega_observacion }}</p>
+                        @endif
 
                         <x-slot name="meta">
+                            {{-- enChile(): la hora que ve el usuario va en hora
+                                 chilena; el storage sigue en UTC (P-TZ-02). --}}
                             <div class="text-sm text-neutral-500 sm:w-40 sm:shrink-0 sm:text-right">
-                                {{ $despacho->created_at?->format('d-m-Y H:i') }}
+                                {{ $despacho->created_at?->enChile()->format('d-m-Y H:i') }}
                             </div>
+                        </x-slot>
+
+                        <x-slot name="actions">
+                            <x-icon-button :href="$despacho->urlFicha()" variant="default" size="lg"
+                                           label="Abrir ficha del despacho" title="Ficha / escaneo">
+                                <x-icon.eye class="h-5 w-5" />
+                            </x-icon-button>
+                            <x-icon-button :href="route('admin.despachos.qr', $despacho)" variant="default" size="lg"
+                                           label="Ver QR imprimible" title="QR para imprimir">
+                                <x-icon.qr-code class="h-5 w-5" />
+                            </x-icon-button>
                         </x-slot>
                     </x-list-row>
                 @empty

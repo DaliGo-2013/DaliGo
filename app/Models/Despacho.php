@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -46,6 +47,7 @@ class Despacho extends Model implements AuditableContract
         'conductor_id',
         'retirado_at',
         'entregado_at',
+        'entrega_observacion',
         'capturado_at',
         'entrega_uuid',
         'firma_path',
@@ -106,6 +108,23 @@ class Despacho extends Model implements AuditableContract
     public function escaneos(): HasMany
     {
         return $this->hasMany(EscaneoDespacho::class, 'despacho_id');
+    }
+
+    /**
+     * URL FIRMADA de la ficha operativa del despacho (pantalla de escaneo).
+     * Es la misma para los dos caminos de llegada: el QR pegado en la carga y el
+     * enlace del panel. Va firmada y con el CÓDIGO —no el id— para que no se
+     * pueda alterar ni enumerar (ver la nota de superficie en DespachoController).
+     */
+    public function urlFicha(): string
+    {
+        return URL::signedRoute('admin.despachos.escanear', ['codigo' => $this->codigo]);
+    }
+
+    /** ¿Salió de bodega y todavía no se cierra? (lo que admite entrega) */
+    public function admiteEntrega(): bool
+    {
+        return in_array($this->estado, [self::RETIRADO, self::EN_RUTA], true);
     }
 
     /** Aún no retirado de bodega (la cola "McDonald's" muestra estos). */
