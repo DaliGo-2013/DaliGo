@@ -1,62 +1,61 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-28 (v29 — fin del standby: cerrar NOTIF-1 del todo + higiene del candado one-shot). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-29 (v30 — NOTIF-1 cerrado y en producción; GO P-NAV-05: gate R-31 formal del menú V4 sobre main). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high.
+MODELO: Opus 4.8 · high (auditoría; sube a xhigh solo si un hallazgo se resiste).
 
-## ✅ Tus 2 lotes + sus 2 fixes de gate: TODOS EN PRODUCCIÓN
-`80ac3db` (P-NAV-06 + #6 chips) y `e9a8224` (los fixes de tu gate propio). Deploy success,
-**suite 1025 verdes**, ramas `fix/nav-huerfanas` y `feature/chips-motivo-ajuste` **ya borradas
-del remoto** por el Director (verificada ancestría completa antes).
+## ✅ Tu lote del v29 EN PRODUCCIÓN (merge `0e92076`, Deploy success)
+El botón del correo ya aterriza en la tarjeta puntual: **NOTIF-1 queda cerrado del todo**.
+Verificación del Director: punto único `anclaAprobacion()` reusado por `urlDestino()` y por los
+dos productores —sin duplicar, como se pidió—, bundle 98/98, y **suite con tu lote + el QR de
+Max-2 integrados: 1191 verdes / 7.715 aserciones**. Rama borrada tras confirmar ancestría.
 
-**Y algo que quiero que quede dicho:** cuando el dueño me pidió borrar tus ramas «ya
-mergeadas», el chequeo de ancestría dijo NO mergeadas — porque tú las habías refrescado con los
-dos fixes de tu gate. Si hubiera confiado en mi propio merge sin verificar, habría borrado el
-arreglo de un defecto **vivo en producción** (el ajuste rechazado que volvía con el panel
-cerrado y el error en `display:none`). Tu costumbre de correr un gate propio después de
-entregar salvó eso. Sigue haciéndolo.
+El candado `OneShotPlantillasCandadoTest` era la deuda que más me preocupaba de todo el
+territorio de notificaciones: sin él, cambiar un texto del seeder sin tocar la migración la
+volvía un **no-op silencioso** y las plantillas nunca llegaban a producción. Que cubra las DOS
+one-shot (la tuya y la de Marcos) es lo correcto.
 
-## 🟢 TAREA 1 — Cerrar NOTIF-1 del todo: la incoherencia campanita ↔ correo (S)
-Rama `fix/notif-url-ancla` desde main fresco. Es el último cabo suelto de tu propio lote.
+## 🟢 GO P-NAV-05 — gate R-31 formal del menú V4, sobre main (M)
+Rama `audit/nav-gate-r31` desde main fresco. **Es el único paso que le falta a E-NAV para
+cerrarse** (va 9 de 10) y hoy es lo de mayor valor que puedes tomar sin colisionar.
 
-**El síntoma:** la campanita aterriza en la tarjeta puntual (`#aprobacion-{id}`, tu ancla),
-pero el **botón del correo apunta a la lista pelada** — porque `payload['url']`
-(`Aprobaciones.php:303`, y el gemelo de `notificarRol`) sigue siendo `route('aprobaciones.index')`
-/ `route('aprobaciones.mias')` sin ancla. El usuario que llega por correo tiene que buscar su
-solicitud a mano en una página que ahora está agrupada por categorías, o sea más larga.
+**Por qué ahora y por qué tú:** la revisión pre-gate se corrió el 24-07 (13 confirmados,
+corregidos en `2557043`), pero **eso fue sobre la rama, no sobre main** — y desde entonces el
+menú recibió acordeón, badges, hub de funciones, campanita en cabecera, drawer móvil táctil,
+panel anclado, ancho único, botón único de volver, y las 4 ex-huérfanas que tú mismo agregaste.
+El R-31 formal sobre el árbol integrado nunca se corrió. Tus gates propios de esta semana
+(`fix/nav-huerfanas`, `#6 chips`) cazaron cosas reales que a mí se me pasaron; esto es lo mismo
+a escala de unidad.
 
-- Reusa la MISMA lógica del ancla que ya vive en `urlDestino()` — no la dupliques: extrae el
-  cálculo a un punto único si hace falta (el `notificable_id` es la Aprobación en ambos
-  caminos, lo verifiqué al integrar tu lote).
-- **Aviso que ya te di y sigue vigente**: esto toca los `assertSame` de `payload['url']` en
-  `AprobacionAccionableTest` (mergeado ~185 y ~198). Actualízalos, no los silencies.
-- Verifica el correo de verdad, no solo el payload: el botón del Blade se arma desde
-  `payload.url`, así que el ancla tiene que sobrevivir hasta el `<a href>`.
+**Qué audita el gate** (usa tu criterio, esto es guía no camisa de fuerza):
+- **Permisos ↔ visibilidad**: cada ítem del menú aparece solo para quien puede entrar a su
+  ruta. Un ítem visible que lleva a 403 es peor que no tenerlo. Cruza `MenuPrincipal` contra
+  los middleware reales de `routes/web.php`, no contra lo que digan los comentarios.
+- **Cobertura**: ¿queda alguna pantalla huérfana que no listamos? ¿Algún ítem apunta a una ruta
+  que ya no existe? El candado que dejaste (`test_cada_ruta_del_menu_resalta_exactamente_un_item`)
+  cubre el resaltado, no la existencia.
+- **Móvil**: el drawer, los objetivos táctiles, el panel anclado y la campanita en cabecera son
+  de otras manos y entraron por separado — verifica que juntos no se pisen.
+- **Accesibilidad**: `aria-current`, foco al abrir/cerrar el drawer, navegación por teclado en
+  el acordeón. Ya hubo un hallazgo de doble `aria-current`; puede haber hermanos.
+- **Los 4 contratos nuevos** de la semana aplicados al menú: ancho por layout, botón único de
+  volver, errores amables, marco mobile-first.
 
-## 🟢 TAREA 2 — Candado para las migraciones one-shot de plantillas (S)
-Deuda que anoté y no llegué a dictar. Rama aparte `test/candado-one-shot` o dentro de la
-Tarea 1 si te queda corto — tu llamada.
+**Entrega:** un parte con los hallazgos clasificados (alto/medio/bajo) **y los fixes de los que
+tú consideres seguros aplicados en la misma rama**. Los que impliquen decisión de producto,
+déjalos anotados sin tocar. Si el gate sale limpio, dilo — un gate sin hallazgos es un
+resultado válido y vale más que inventar observaciones.
 
-**El problema:** el patrón de entrega que tú mismo inventaste (one-shot que actualiza SOLO si
-el valor vigente es exactamente el texto del seed anterior) es correcto, pero **frágil por
-diseño**: si alguien edita esos textos en `ConfiguracionSeeder` sin actualizar el `$viejo` de
-la migración, la migración se vuelve un **no-op silencioso** — no falla, no avisa, simplemente
-no entrega nada a producción. Aplica a tu one-shot de aprobaciones **y a la de Marcos**
-(`2026_07_22_180000`).
+**Lo que NO cubre este paso:** el QA del dueño en celular real. Eso es suyo y cierra E-NAV
+después de tu gate.
 
-Un test que, para cada clave que ambas one-shot tocan, exija que el **`$nuevo` de la migración
-sea idéntico al valor que siembra el seeder hoy**. Si alguien cambia uno sin el otro, rojo.
-
-## Lo que NO es tuyo
-- P-DSP-04/05: Max-2 (le queda 1 candado de padding y arranca la PWA del conductor).
-- **P-NAV-05** (gate R-31 formal + QA en celular) y el **bundle de diseño**: del dueño.
-- Sublote C de notificaciones (cotización/terreno): territorio de Marcos.
-- Decisión del ciclo de la factura: del dueño. Dato para tu contexto: entró trabajo de **M05
-  DTE** (puerto emisor + documentos emitidos) por fuera de la flota — el ciclo se está moviendo.
+## Territorio: cuidado, hay dos manos activas cerca
+- **Marcos está construyendo M05 Facturación/DTE AHORA** (módulo Documentos + Estado, puerto
+  emisor, credenciales). No lo toques ni de refilón.
+- El **bundle de diseño** sigue bloqueado y en manos del dueño.
+- **Max-2** arranca P-DSP-05 (PWA del conductor) desde main.
 
 ## Recordatorios
-Suite COMPLETA (main hoy ~1138 tests). **Main endureció un candado nuevo esta semana:
-`MarcoHorizontalTest` exige padding mobile-first (`p-4 sm:p-6`, no `p-6` pelado)** — si tu lote
-toca tarjetas, nace cumpliéndolo. Conflictos con `git checkout origin/main -- <archivo>`,
-nunca con `>`. Parte al buzón → doble llave.
+Suite COMPLETA (baseline hoy **1191**). Si tocas Blade → build + grep superset. Conflictos con
+`git checkout origin/main -- <archivo>`, nunca con `>`. Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
