@@ -1,52 +1,62 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-28 (v28 — P-NAV-06 y #6 chips EN PRODUCCIÓN; standby). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-28 (v29 — fin del standby: cerrar NOTIF-1 del todo + higiene del candado one-shot). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ AMBOS LOTES EN PRODUCCIÓN (merge `80ac3db`, doble llave, Deploy success)
-- **P-NAV-06**: Kardex, Máquinas y Tipos de botellón bajo Operación; Conductores bajo ST.
-  QA del Director en staging: las 5 rutas responden 302 (incluido el kardex en
-  `/admin/produccion/movimientos` — ojo, no `/admin/produccion/kardex`, me confundí al
-  probar y quedó como nota).
-- **#6 chips del motivo del ajuste**: la idea de producto del dueño está viva.
-- **Suite verificada sobre el árbol final: 1019 verdes / 5.506 aserciones.** Cero archivos de
-  `public/build` tocados por ninguno de los dos lotes, como declaraste.
+## ✅ Tus 2 lotes + sus 2 fixes de gate: TODOS EN PRODUCCIÓN
+`80ac3db` (P-NAV-06 + #6 chips) y `e9a8224` (los fixes de tu gate propio). Deploy success,
+**suite 1025 verdes**, ramas `fix/nav-huerfanas` y `feature/chips-motivo-ajuste` **ya borradas
+del remoto** por el Director (verificada ancestría completa antes).
 
-**Dos cosas que hiciste bien y quedan como precedente:**
-1. **Quitaste 4 «Volver», no los 3 que dicté.** El Kardex también tenía `:back` y el candado lo
-   habría cazado. Encontraste lo que el dictado no listaba, en vez de ejecutar la lista al pie
-   de la letra.
-2. **Actualizaste el candado en vez de silenciarlo** — y lo giraste al sentido inverso
-   (`test_las_ex_huerfanas_estan_en_el_menu`: si algún día salen del menú, vuelven a necesitar
-   su Volver). Eso es mejor que lo que pedí.
+**Y algo que quiero que quede dicho:** cuando el dueño me pidió borrar tus ramas «ya
+mergeadas», el chequeo de ancestría dijo NO mergeadas — porque tú las habías refrescado con los
+dos fixes de tu gate. Si hubiera confiado en mi propio merge sin verificar, habría borrado el
+arreglo de un defecto **vivo en producción** (el ajuste rechazado que volvía con el panel
+cerrado y el error en `display:none`). Tu costumbre de correr un gate propio después de
+entregar salvó eso. Sigue haciéndolo.
 
-**Y el hallazgo aguas abajo:** que el `{cambio}` de las plantillas NOTIF-1 duplicara el motivo
-lo encontraste porque te pedí confirmar el efecto y fuiste a mirarlo de verdad. Fix con test
-positivo+negativo. Ese es el estándar.
+## 🟢 TAREA 1 — Cerrar NOTIF-1 del todo: la incoherencia campanita ↔ correo (S)
+Rama `fix/notif-url-ancla` desde main fresco. Es el último cabo suelto de tu propio lote.
 
-## 🟡 Sub-paso del bundle de diseño: NO es tu problema
-Hiciste lo correcto al NO inventar `DesignCaptureTest` desde cero: no existe en main y el
-mecanismo vive en la sesión de rediseño del dueño (`design/menu-talana`). Habría sido
-infraestructura no dictada con colisión probable. **Queda en manos del dueño** decidir si esa
-sesión regenera su bundle post-merge. No lo retomes por tu cuenta.
+**El síntoma:** la campanita aterriza en la tarjeta puntual (`#aprobacion-{id}`, tu ancla),
+pero el **botón del correo apunta a la lista pelada** — porque `payload['url']`
+(`Aprobaciones.php:303`, y el gemelo de `notificarRol`) sigue siendo `route('aprobaciones.index')`
+/ `route('aprobaciones.mias')` sin ancla. El usuario que llega por correo tiene que buscar su
+solicitud a mano en una página que ahora está agrupada por categorías, o sea más larga.
 
-## 🟡 STANDBY
-Sin rama nueva. El dueño está priorizando y hay que cuidar el presupuesto de sesiones. Al
-abrir, si el buzón sigue en v28: borra del remoto `fix/nav-huerfanas` y
-`feature/chips-motivo-ajuste` (ya mergeadas) y quédate disponible.
+- Reusa la MISMA lógica del ancla que ya vive en `urlDestino()` — no la dupliques: extrae el
+  cálculo a un punto único si hace falta (el `notificable_id` es la Aprobación en ambos
+  caminos, lo verifiqué al integrar tu lote).
+- **Aviso que ya te di y sigue vigente**: esto toca los `assertSame` de `payload['url']` en
+  `AprobacionAccionableTest` (mergeado ~185 y ~198). Actualízalos, no los silencies.
+- Verifica el correo de verdad, no solo el payload: el botón del Blade se arma desde
+  `payload.url`, así que el ancla tiene que sobrevivir hasta el `<a href>`.
 
-Cola posible cuando el dueño decida, en orden de valor que yo veo:
-1. **P-NAV-05** — gate R-31 formal de E-NAV. Es lo único que le falta a la unidad del menú
-   para cerrarse, pero el paso incluye QA del dueño en celular: es suyo, no tuyo.
-2. **La incoherencia campanita/correo** (`payload['url']` sin ancla, `Aprobaciones.php:303`):
-   la campanita aterriza en la tarjeta puntual y el botón del correo va a la lista pelada.
-   Chico, cierra NOTIF-1 del todo. Toca `assertSame` de `payload['url']` en
-   `AprobacionAccionableTest`.
-3. **Sublote C de notificaciones** (payload de cotización/terreno) — territorio de Marcos,
-   salvo que el dueño te lo pase.
+## 🟢 TAREA 2 — Candado para las migraciones one-shot de plantillas (S)
+Deuda que anoté y no llegué a dictar. Rama aparte `test/candado-one-shot` o dentro de la
+Tarea 1 si te queda corto — tu llamada.
 
-## No es tuyo
-- P-DSP-04: Max-2 tiene 4 hallazgos MEDIA por arreglar (dictado v11). No lo toques.
-- Decisión del ciclo de la factura, P-TZ-03, el bundle de diseño: dueño.
+**El problema:** el patrón de entrega que tú mismo inventaste (one-shot que actualiza SOLO si
+el valor vigente es exactamente el texto del seed anterior) es correcto, pero **frágil por
+diseño**: si alguien edita esos textos en `ConfiguracionSeeder` sin actualizar el `$viejo` de
+la migración, la migración se vuelve un **no-op silencioso** — no falla, no avisa, simplemente
+no entrega nada a producción. Aplica a tu one-shot de aprobaciones **y a la de Marcos**
+(`2026_07_22_180000`).
+
+Un test que, para cada clave que ambas one-shot tocan, exija que el **`$nuevo` de la migración
+sea idéntico al valor que siembra el seeder hoy**. Si alguien cambia uno sin el otro, rojo.
+
+## Lo que NO es tuyo
+- P-DSP-04/05: Max-2 (le queda 1 candado de padding y arranca la PWA del conductor).
+- **P-NAV-05** (gate R-31 formal + QA en celular) y el **bundle de diseño**: del dueño.
+- Sublote C de notificaciones (cotización/terreno): territorio de Marcos.
+- Decisión del ciclo de la factura: del dueño. Dato para tu contexto: entró trabajo de **M05
+  DTE** (puerto emisor + documentos emitidos) por fuera de la flota — el ciclo se está moviendo.
+
+## Recordatorios
+Suite COMPLETA (main hoy ~1138 tests). **Main endureció un candado nuevo esta semana:
+`MarcoHorizontalTest` exige padding mobile-first (`p-4 sm:p-6`, no `p-6` pelado)** — si tu lote
+toca tarjetas, nace cumpliéndolo. Conflictos con `git checkout origin/main -- <archivo>`,
+nunca con `>`. Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
