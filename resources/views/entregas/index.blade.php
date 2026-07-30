@@ -74,11 +74,16 @@
                                  x-on:firma-cambio="firmaLista = $event.detail.firmado">
 
                                 <div>
-                                    <p class="text-sm font-medium text-neutral-700">Foto de la entrega *</p>
+                                    <p class="mb-1.5 text-sm font-medium text-neutral-700">Foto de la entrega *</p>
                                     {{-- capture=environment: abre la cámara trasera directo. --}}
-                                    <input type="file" x-ref="foto" accept="image/*" capture="environment"
-                                           x-on:change="fotoLista = $refs.foto.files.length > 0"
-                                           class="mt-1.5 block w-full text-sm text-neutral-600 file:mr-3 file:h-12 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-4 file:text-sm file:font-semibold file:text-neutral-700">
+                                    {{-- data-foto y no x-ref: el componente trae su propio x-data,
+                                         así que un x-ref acá se registra en ese root anidado y el
+                                         $refs de entregaForm (root PADRE) no lo ve — $refs junta
+                                         refs de ancestros, no de hijos. Mismo idioma que
+                                         [data-firma-pad]. --}}
+                                    <x-archivo-input texto="Tomar foto" vacio="Todavía no hay foto"
+                                        data-foto accept="image/*" capture="environment"
+                                        x-on:change="fotoLista = $event.target.files.length > 0" />
                                 </div>
 
                                 <x-firma-pad />

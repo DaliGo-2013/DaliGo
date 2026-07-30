@@ -366,6 +366,7 @@ class EntregaConductorTest extends TestCase
             ->assertSee('entregaForm', false)                                    // el form Alpine por tarjeta
             ->assertSee(route('entregas.confirmar', $despacho), false)           // apunta al endpoint real
             ->assertSee('data-firma-pad', false)                                 // el pad de firma
+            ->assertSee('data-foto', false)                                      // el input de foto (via x-archivo-input; entregaForm lo busca por este marcador, no por $refs)
             ->assertSee('data-rechazadas', false)                                // la sección de rechazadas
             ->assertSee('No se pudieron enviar')
             ->assertSee('se envía sola al volver la señal');                     // el mensaje de encolada

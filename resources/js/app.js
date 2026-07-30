@@ -755,7 +755,9 @@ Alpine.data('entregaForm', ({ url, etiqueta }) => ({
         this.enviando = true;
 
         try {
-            const input = this.$refs.foto;
+            // querySelector y no $refs: el input vive dentro del x-data anidado
+            // de <x-archivo-input> y los refs de un hijo no suben al padre.
+            const input = this.$root.querySelector('[data-foto]');
             const original = input.files && input.files[0];
             const foto = await window.dgComprimirFoto(original);
             const firmaPad = Alpine.$data(this.$root.querySelector('[data-firma-pad]'));

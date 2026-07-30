@@ -17,7 +17,7 @@
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
-| **Avance global** | **≈ 37 %** sobre base 105 (tracker re-baselineado el 2026-07-26 en §10; el ≈21 % anterior subestimaba por no contar M14/M15/M16 cerradas). **Del ciclo de la factura —35 puntos, el objetivo central— hay 0 %** |
+| **Avance global** | **≈ 46 %** sobre base 105 (tracker actualizado el 2026-07-30 en §10: entran DESPACHOS y el andamiaje DTE — M05 30 %, M07 70 %, M08 30 %). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 31 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04) · **M15 Notificaciones (E1, cerrada 2026-07-08)**
 **En curso:** E0 (esta consolidación)
@@ -321,6 +321,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 > taller es hoy el módulo más grande de la app. La base sube de 100 a **105**
 > porque entra **M17 Servicio en terreno**, construido en julio y ahora sí en la
 > biblia. Cada % corregido lleva su fundamento en la columna de la derecha.
+>
+> **Actualización · 2026-07-30.** Entra el stream DESPACHOS y el andamiaje DTE:
+> M05 30 %, M07 70 %, M08 30 % — verificado contra `origin/main` (rutas, servicios
+> y migraciones citadas en el informe de avance del 30-jul). El ciclo de la
+> factura deja el 0 %: va en **≈ 31 %** (10.75 de 35 puntos).
 
 | Ítem | Peso | % | Aporta | Fundamento del % |
 |---|---|---|---|---|
@@ -328,9 +333,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M02 Catálogo+precios | 5 | 90 % | 4.5 | faltan webhooks y el enlace con M04 |
 | M03 Clientes | 4 | 70 % | 2.8 | boleta rápida es de M05; historial post-M05 |
 | M04 Inventario | 9 | 15 % (espejo) | 1.35 | solo el espejo read-only de Bsale |
-| M05 Ciclo factura | 10 | 0 % | 0 | — |
-| M07 QR retiro | 4 | 0 % | 0 | el QR que existe es el de ingreso al taller (M12), no este |
-| M08 Despacho+PWA | 12 | 0 % | 0 | la cola offline del spike es de M11 |
+| M05 Ciclo factura | 10 | **30 %** | 3.0 | **corregido desde 0 % (30-jul)**: andamiaje DTE completo y probado —puerto emisor Bsale, servicios, config, candados—, pero **NO EMITE**: `config/dte.php` con los 3 mapas vacíos, `emision_habilitada=false`, sin ruta de emisión ni comando `dte:emitir-prueba` (B6). Marcos activo aquí |
+| M07 QR retiro | 4 | **70 %** | 2.8 | **corregido desde 0 % (30-jul)**: P-DSP-00..04 **en producción** — QR firmado de retiro, validación en puesto de bodega, doble-retiro cerrado (lock + candado a nivel grammar). NO cierra «retirar carga ajena» (decisión de producto reportada) y falta QA de bodega con papel impreso |
+| M08 Despacho+PWA | 12 | **30 %** | 3.6 | **corregido desde 0 % (30-jul)**: lado bodega **en producción** (cola tipo McDonald's, escaneo, entrega con firma/foto/parcial). La PWA del conductor está **codificada entera en `feature/entregas-conductor` sin mergear** (mergearla y probarla en campo lo subiría a ~55-60 %); P-DSP-05 la rehace desde main |
 | M11 Producción | 6 | 75 % | 4.5 | faltan descuento de preforma, meta del día y GP |
 | M12 Servicio técnico | 8 | **60 %** | 4.8 | **corregido desde 25 %**: taller completo + portal QR + cotización al cliente con respuesta + lotes en ruta + informes (E9: 2 pasos en curso de 5; faltan alertas 3/6/12m, sugerencia de repuestos y cobro) |
 | M13 Devoluciones | 4 | 0 % | 0 | — |
@@ -341,14 +346,16 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | F3 Piloto (hardening/migración/capacitación) | 7 | 0 % | 0 | — |
 | F4 Rollout Abate | 5 | 0 % | 0 | — |
 | F5 Coquimbo + cierre | 3 | 0 % | 0 | — |
-| **TOTAL** | **105** | | **39.15** | **≈ 37 %** |
+| **TOTAL** | **105** | | **48.55** | **≈ 46 %** |
 
-> **Lo que el número no dice, y hay que decir:** de ese ~37 %, **el ciclo de la
-> factura está en cero**. M04 → M05 → M07 → M08 suman **35 de los 105 puntos** de
-> la base y no tienen una línea de código, pese a ser el objetivo central
-> declarado del proyecto ("eliminar el papel del ciclo completo de la factura",
-> biblia §1). Todo lo construido hasta hoy es la periferia: producción, taller,
-> terreno y los transversales. M04 es la dependencia de los otros tres.
+> **Lo que el número no dice, y hay que decir:** el ciclo de la factura
+> (M04 → M05 → M07 → M08, **35 de los 105 puntos**, el objetivo central del
+> proyecto) pasó de 0 a **≈ 31 %** con el stream DESPACHOS — pero el avance entró
+> **por los extremos** (retiro y despacho), no por el inicio: **M05 todavía no
+> puede emitir un documento tributario real** y M04 sigue en espejo read-only
+> esperando D-003. Hasta que exista la primera emisión de prueba (B6 + config +
+> autorización de Gerencia), "factura sin papel" sigue siendo un titular en
+> deuda, por muy verde que se vea el resto de la tabla.
 
 **Lectura ejecutiva (hitos):** H1' decisiones 31-jul · H2 ✅ · H3' transversales 9-oct · H4' núcleo 5-dic · **H5' Mirador sin papel 11-ene-2027** · H6' Abate 9-feb · H7' cierre fin feb-2027.
 
