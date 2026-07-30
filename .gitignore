@@ -26,3 +26,11 @@ Thumbs.db
 
 # Datos de prueba locales (se cargan a mano por phpMyAdmin; nunca al repo/deploy)
 *-demo-staging.sql
+
+# Worktrees de sesiones de Claude Code: checkouts COMPLETOS del repo dentro del
+# repo. Git ya los excluye de `git status` (los tiene registrados), pero Tailwind v4
+# barre el filesystem y SÍ los veía: las clases de copias VIEJAS de los Blades
+# entraban al bundle y `public/build` dejaba de ser reproducible (bitácora 30-07).
+# La autodetección de Tailwind respeta .gitignore, así que esta línea la corta.
+# NO ignorar `.claude/` completo: launch.json y skills/ van versionados.
+/.claude/worktrees/
