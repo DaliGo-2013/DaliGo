@@ -17,10 +17,6 @@
         <x-list-card title="Máquinas" :count="$maquinas->count()" :countLabel="\Illuminate\Support\Str::plural('máquina', $maquinas->count())">
             @forelse ($maquinas as $maquina)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($maquina->nombre, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $maquina->nombre }}</p>
                         @unless ($maquina->activa)

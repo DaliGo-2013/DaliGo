@@ -143,11 +143,8 @@
                 @forelse ($productos as $producto)
                     <x-list-row>
                         <x-slot name="leading">
-                            <div class="flex items-center gap-3">
-                                <input type="checkbox" value="{{ $producto->id }}" x-model="sel"
-                                       class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
-                                <x-avatar>{{ mb_substr($producto->nombre, 0, 1) }}</x-avatar>
-                            </div>
+                            <input type="checkbox" value="{{ $producto->id }}" x-model="sel"
+                                   class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
                         </x-slot>
 
                         <div class="flex flex-wrap items-center gap-2">

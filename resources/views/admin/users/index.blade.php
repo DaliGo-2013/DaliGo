@@ -18,10 +18,6 @@
         <x-list-card title="Cuentas" :count="$users->count()" :countLabel="\Illuminate\Support\Str::plural('cuenta', $users->count())">
             @foreach ($users as $user)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($user->name, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $user->name }}</p>
                         @if ($user->is(auth()->user()))

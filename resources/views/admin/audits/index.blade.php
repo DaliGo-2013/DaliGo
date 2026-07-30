@@ -37,10 +37,6 @@
         <x-list-card title="Eventos" :count="$audits->total()" :countLabel="\Illuminate\Support\Str::plural('evento', $audits->total())">
             @forelse ($audits as $audit)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($audit->user?->name ?? 'S', 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $audit->user?->name ?? 'Sistema' }}</p>
                         <span class="text-sm text-neutral-500">
