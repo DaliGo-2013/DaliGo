@@ -85,20 +85,18 @@ class AgendaTerrenoTest extends TestCase
             ->assertSee(route('admin.agenda-terreno.update', $t), false);        // form apunta a update
     }
 
-    public function test_dia_sin_trabajos_muestra_mensaje_y_form_para_agregar(): void
+    public function test_dia_sin_trabajos_muestra_mensaje_vacio(): void
     {
         // Un día del mes sin trabajos: mensaje claro de "nada agendado" (pedido del
-        // dueño 2026-07-30, antes el panel quedaba en blanco) + el form para agregar
-        // disponible con la fecha prellenada (el vendedor puede agendar). El form
-        // queda colapsado tras el botón, pero su HTML se renderiza igual (Alpine solo
-        // lo oculta en el cliente), así que las anclas del form siguen presentes.
+        // dueño 2026-07-30, antes el panel quedaba en blanco). Para agregar se usa el
+        // botón "Agendar trabajo" de la cabecera; ya NO hay un form inline por día
+        // (duplicaba ese CTA y la fecha del botón confundía — 2026-07-30).
         $this->actingAs($this->vendedor())
             ->get('/admin/agenda-terreno?anio=2026&mes=7&dia=2026-07-15')
             ->assertOk()
-            ->assertSee('No hay trabajos agendados este día')   // empty-state nuevo
-            ->assertSee('Nuevo trabajo')
-            ->assertSee('Agendar trabajo')
-            ->assertSee('value="2026-07-15"', false);   // fecha prellenada con el día elegido
+            ->assertSee('No hay trabajos agendados este día')   // empty-state
+            ->assertSee('Agendar trabajo')                       // CTA de la cabecera
+            ->assertDontSee('Agregar trabajo el');               // ya no está el botón/fecha duplicado
     }
 
     public function test_agendar_ofrece_las_franjas_de_hora(): void
