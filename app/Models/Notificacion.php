@@ -154,6 +154,21 @@ class Notificacion extends Model
     }
 
     /**
+     * Fragmento de aterrizaje PUNTUAL de una aprobacion (lote NOTIF-1): la
+     * bandeja y «Mis solicitudes» emiten `id="aprobacion-{id}"` por tarjeta/fila.
+     * Sin id → cadena vacia (la lista pelada, como antes).
+     *
+     * Punto UNICO a proposito: lo usan `urlDestino()` (la fila de la campanita)
+     * y el `payload['url']` que arma `Aprobaciones` para el boton del correo —
+     * duplicar el calculo fue justo lo que dejo al correo apuntando a la lista
+     * mientras la campanita ya aterrizaba en la tarjeta (deuda cerrada el 28-07).
+     */
+    public static function anclaAprobacion(?int $aprobacionId): string
+    {
+        return $aprobacionId ? '#aprobacion-'.$aprobacionId : '';
+    }
+
+    /**
      * Destino accionable de la notificacion segun su evento (hallazgo #5 del
      * QA 15-07: "toda alerta necesita superficie donde actuar"). Los eventos
      * de aprobacion llegan al APROBADOR (solicitada/escalada → su bandeja) o
@@ -161,10 +176,7 @@ class Notificacion extends Model
      */
     public function urlDestino(): ?string
     {
-        // Aterrizaje PUNTUAL (lote NOTIF-1): la bandeja y «Mis solicitudes»
-        // emiten el ancla #aprobacion-{id} por tarjeta/fila; notificable_id
-        // es la Aprobacion (el morph del despacho). Sin id → la lista.
-        $ancla = $this->notificable_id ? '#aprobacion-'.$this->notificable_id : '';
+        $ancla = self::anclaAprobacion($this->notificable_id);
 
         return match ($this->evento) {
             'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index').$ancla,

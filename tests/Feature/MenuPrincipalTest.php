@@ -93,6 +93,29 @@ class MenuPrincipalTest extends TestCase
         }
     }
 
+    public function test_todo_patron_activo_matchea_rutas_registradas(): void
+    {
+        // Hermano del candado de activo_extra, que faltaba (gate P-NAV-05): el
+        // test de arriba solo exige que ALGÚN patrón matchee su PROPIA route, así
+        // que los patrones RESTANTES quedaban sin validar — Producción declara 8
+        // y 7 no los miraba nadie. Un patrón muerto (ruta renombrada, typo) no
+        // rompe nada: simplemente deja de resaltar el ítem en esa pantalla, en
+        // silencio y sin rojo. Mismo criterio de fuente única del archivo.
+        $nombres = collect(Route::getRoutes()->getRoutes())
+            ->map(fn ($ruta) => $ruta->getName())
+            ->filter();
+
+        foreach (MenuPrincipal::items() as $key => $item) {
+            foreach ($item['activo'] as $patron) {
+                $this->assertTrue(
+                    $nombres->contains(fn (string $nombre) => Str::is($patron, $nombre)),
+                    "El patrón activo [{$patron}] del ítem [{$key}] no matchea ninguna ruta registrada: "
+                    .'ese ítem dejó de resaltarse en la pantalla que ese patrón cubría.'
+                );
+            }
+        }
+    }
+
     public function test_toda_key_de_badge_tiene_resolver(): void
     {
         $resueltas = array_keys(MenuPrincipal::badges(null));

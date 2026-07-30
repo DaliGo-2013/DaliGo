@@ -182,7 +182,12 @@ class AprobacionAccionableTest extends TestCase
         $this->assertStringContainsString('Aprobación pendiente: '.$aprobacion->descripcion, $notif->titulo);
         $this->assertStringContainsString('100', $notif->titulo);              // magnitud
         $this->assertStringContainsString('Conteo corregido', $notif->cuerpo); // motivo
-        $this->assertSame(route('aprobaciones.index'), $notif->payload['url']);
+        // La url del payload (el botón del correo) llega ANCLADA a la tarjeta,
+        // igual que la fila de la campanita (deuda de NOTIF-1 cerrada el 28-07).
+        $this->assertSame(
+            route('aprobaciones.index').'#aprobacion-'.$aprobacion->id,
+            $notif->payload['url'],
+        );
     }
 
     public function test_la_resolucion_distingue_el_titulo_por_resultado(): void
@@ -195,7 +200,10 @@ class AprobacionAccionableTest extends TestCase
         // El marcador es el PREFIJO con el resultado (lote NOTIF-1 sumó
         // «— {magnitud}» al final y movió la url al payload).
         $this->assertStringContainsString('Aprobada: '.$paraAprobar->descripcion, $notif->titulo);
-        $this->assertSame(route('aprobaciones.mias'), $notif->payload['url']);
+        $this->assertSame(
+            route('aprobaciones.mias').'#aprobacion-'.$paraAprobar->id,
+            $notif->payload['url'],
+        );
 
         [, , $paraRechazar] = $this->pendienteReal();
         app(Aprobaciones::class)->rechazar($paraRechazar, $admin, 'Los datos no cuadran');

@@ -199,9 +199,36 @@ class NotificacionEspecificaTest extends TestCase
         $this->assertSame('Aprobación pendiente: '.$aprobacion->descripcion.' (100)', $notif->titulo);
         $this->assertStringContainsString('Sobre: Reporte de producción '.$reporte->fecha->format('d-m-Y'), $notif->cuerpo);
         $this->assertStringContainsString('Cambio: Asignadas: 450 → 500', $notif->cuerpo);
-        // La URL ya no viaja cruda en el cuerpo; sigue en el payload (correo/fila).
+        // La URL ya no viaja cruda en el cuerpo; sigue en el payload (correo/fila)
+        // y desde el 28-07 llega ANCLADA a la tarjeta, igual que la campanita.
         $this->assertStringNotContainsString('http', $notif->cuerpo);
-        $this->assertSame(route('aprobaciones.index'), $notif->payload['url']);
+        $this->assertSame(
+            route('aprobaciones.index').'#aprobacion-'.$aprobacion->id,
+            $notif->payload['url'],
+        );
+    }
+
+    public function test_el_boton_del_correo_llega_anclado_a_la_tarjeta(): void
+    {
+        // Cierre de la incoherencia campanita ↔ correo (dictado v29): el ancla
+        // tiene que sobrevivir hasta el <a href> del correo, no solo estar en el
+        // payload. Se verifica sobre la fila MAIL real del despacho, renderizando
+        // el mailable como lo hace el job.
+        $this->seed(ConfiguracionSeeder::class);
+        $this->seed(ReglasAprobacionSeeder::class);
+        tap(User::factory()->create())->assignRole('admin');
+        [, , $aprobacion] = $this->pendienteReal();
+
+        $mail = Notificacion::where('evento', 'aprobacion.solicitada')
+            ->where('canal', Notificacion::CANAL_MAIL)->firstOrFail();
+
+        $html = (new NotificacionMail($mail))->render();
+        $destino = route('aprobaciones.index').'#aprobacion-'.$aprobacion->id;
+
+        $this->assertStringContainsString('href="'.$destino.'"', $html,
+            'El botón del correo debe apuntar a la tarjeta, no a la lista pelada.');
+        // Negativo: que no quede el href a la lista sin ancla (el defecto viejo).
+        $this->assertStringNotContainsString('href="'.route('aprobaciones.index').'"', $html);
     }
 
     public function test_la_resolucion_notifica_quien_resolvio_y_defaults_sin_dato(): void

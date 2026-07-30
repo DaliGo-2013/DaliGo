@@ -224,10 +224,12 @@
                             {{-- Foto de respaldo OBLIGATORIA (se comprime en el navegador) --}}
                             <div class="mt-2">
                                 <label class="mb-0.5 block text-xs text-neutral-500">Foto de respaldo <span class="text-red-500">*</span></label>
-                                <input type="file" :name="`maquinas[${i}][foto]`" accept="image/*" capture="environment" required
+                                {{-- El nombre del archivo ya lo muestra <x-archivo-input> debajo del botón,
+                                     así que se fue el <p> que lo repetía a mano. --}}
+                                <x-archivo-input ::name="`maquinas[${i}][foto]`" accept="image/*" capture="environment" required
                                     x-on:change="fotoInput(i, $event.target)"
-                                    class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700">
-                                <p x-show="m.foto_nombre" x-cloak class="mt-1 text-xs text-green-600" x-text="'✓ ' + m.foto_nombre"></p>
+                                    texto="Tomar o elegir la foto"
+                                    vacio="Todavía no elegiste la foto" />
                             </div>
                         </div>
                     </template>

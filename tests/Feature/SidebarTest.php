@@ -112,6 +112,80 @@ class SidebarTest extends TestCase
             ->assertSee('text-neutral-900">Servicio Técnico', false);
     }
 
+    public function test_el_documento_tributario_abre_facturacion_y_no_servicio_tecnico(): void
+    {
+        // Gate P-NAV-05. Esta pantalla la reclaman DOS módulos: facturacion la
+        // nombra en su activo_extra, y el comodín de servicio-tecnico
+        // ('admin.servicio-tecnico.*') también la matchea. moduloActivo()
+        // devuelve el PRIMER módulo que matchea, así que hoy gana Facturación
+        // solo porque está declarado antes en MODULOS.
+        //
+        // Es la misma clase de defecto que el comodín de Producción comiéndose
+        // al Kardex (bitácora 28-07), pero a nivel de MÓDULO: el candado
+        // test_cada_ruta_del_menu_resalta_exactamente_un_item itera ÍTEMS, y
+        // esta ruta no es ítem de nadie — así que nada la cubría. Sin este
+        // test, reordenar MODULOS cambia en silencio qué acordeón abre y qué
+        // título muestra la topbar.
+        $orden = OrdenServicio::factory()->create();
+
+        $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('admin.servicio-tecnico.documento', $orden))
+            ->assertOk()
+            ->assertSee('<details open data-modulo="facturacion"', false)
+            ->assertDontSee('<details open data-modulo="servicio-tecnico"', false)
+            ->assertSee('text-neutral-900">Facturación', false);
+    }
+
+    public function test_drawer_cerrado_no_queda_en_el_orden_de_tabulacion(): void
+    {
+        // Gate P-NAV-05, hallazgo ALTO. El <aside> es UNO solo (sidebar fija en
+        // lg:, drawer debajo) y es el PRIMER nodo del shell. Ocultarlo solo con
+        // max-lg:-translate-x-full lo saca de la vista pero NO del orden de
+        // tabulación ni del árbol de accesibilidad: en móvil, con el menú
+        // cerrado, un usuario de teclado o lector de pantalla recorría todo el
+        // menú invisible antes de llegar al contenido.
+        //
+        // max-lg:invisible (visibility:hidden) sí saca del tab order, y el
+        // prefijo max-lg: deja el escritorio intacto. Va CONTIGUO al translate
+        // para que el assert no pueda pasar por otra clase de la página
+        // (doctrina anti verde-engañoso) y para fijar que ambas viajan juntas:
+        // si una se va sin la otra, esto se pone rojo.
+        $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('max-lg:-translate-x-full max-lg:invisible', false);
+    }
+
+    public function test_los_dos_toggles_declaran_el_panel_que_controlan(): void
+    {
+        // aria-expanded sin aria-controls anuncia un estado sin decir de qué.
+        // El <aside> lleva el id y los DOS toggles lo apuntan: la hamburguesa
+        // de la topbar (abre) y la X de la cabecera del drawer (cierra).
+        //
+        // Se CUENTA, no se busca la cadena: la primera versión de este test
+        // hacía assertSee('aria-controls="dg-menu-lateral"') y pasaba en verde
+        // con el atributo quitado de la hamburguesa, porque la X del drawer
+        // seguía aportando esa misma cadena — verde-engañoso de manual
+        // (bitácora 2026-07-20), cazado al mutarlo. Contando, quitarlo de
+        // cualquiera de los dos baja a 1 y se pone rojo.
+        $html = $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(
+            1,
+            substr_count($html, 'id="dg-menu-lateral"'),
+            'El id del panel del menú debe existir UNA sola vez (es el destino de los aria-controls).'
+        );
+        $this->assertSame(
+            2,
+            substr_count($html, 'aria-controls="dg-menu-lateral"'),
+            'Los dos toggles del drawer (hamburguesa de la topbar y X del drawer) deben declarar '
+            .'aria-controls al panel que abren/cierran.'
+        );
+    }
+
     public function test_hamburguesa_y_campana_movil_presentes_en_toda_pagina_autenticada(): void
     {
         // Campana móvil SIEMPRE visible en la barra (hallazgo QA 14-07) y

@@ -1,62 +1,56 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-28 (v29 — fin del standby: cerrar NOTIF-1 del todo + higiene del candado one-shot). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-30 (v32 — GO M13 Devoluciones, prioridad ★ del dueño; arranque desde cero con plan sellado antes de la primera migración). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high.
+MODELO: Opus 4.8 · high (diseño de módulo nuevo; xhigh solo si el modelo de datos se resiste).
 
-## ✅ Tus 2 lotes + sus 2 fixes de gate: TODOS EN PRODUCCIÓN
-`80ac3db` (P-NAV-06 + #6 chips) y `e9a8224` (los fixes de tu gate propio). Deploy success,
-**suite 1025 verdes**, ramas `fix/nav-huerfanas` y `feature/chips-motivo-ajuste` **ya borradas
-del remoto** por el Director (verificada ancestría completa antes).
+## ✅ Contexto: tu gate R-31 está EN PRODUCCIÓN y E-NAV CERRADA (v31 sigue válido como historia)
+Merge `ba4944b`, Deploy+Tests verdes, QA celular del dueño OK, campanita = entrada a propósito.
 
-**Y algo que quiero que quede dicho:** cuando el dueño me pidió borrar tus ramas «ya
-mergeadas», el chequeo de ancestría dijo NO mergeadas — porque tú las habías refrescado con los
-dos fixes de tu gate. Si hubiera confiado en mi propio merge sin verificar, habría borrado el
-arreglo de un defecto **vivo en producción** (el ajuste rechazado que volvía con el panel
-cerrado y el error en `display:none`). Tu costumbre de correr un gate propio después de
-entregar salvó eso. Sigue haciéndolo.
+## 🟢 GO M13 — Devoluciones (E6), módulo desde CERO (L)
+**El dueño lo pidió como prioridad ★ y hoy está en 0 % — cero código.** No confundir con la
+acción `devolver` de M11 ni con el taller M12 (nota §5.6 de RUTA-MAESTRA: esa confusión ya
+pasó una vez). Fuente: RUTA-MAESTRA §E6 (P-M13-01..04) + biblia flujo A-12.
 
-## 🟢 TAREA 1 — Cerrar NOTIF-1 del todo: la incoherencia campanita ↔ correo (S)
-Rama `fix/notif-url-ancla` desde main fresco. Es el último cabo suelto de tu propio lote.
+**Rama:** `feature/m13-devoluciones` desde main FRESCO (baseline suite 1199).
 
-**El síntoma:** la campanita aterriza en la tarjeta puntual (`#aprobacion-{id}`, tu ancla),
-pero el **botón del correo apunta a la lista pelada** — porque `payload['url']`
-(`Aprobaciones.php:303`, y el gemelo de `notificarRol`) sigue siendo `route('aprobaciones.index')`
-/ `route('aprobaciones.mias')` sin ancla. El usuario que llega por correo tiene que buscar su
-solicitud a mano en una página que ahora está agrupada por categorías, o sea más larga.
+### Orden de trabajo
+1. **PRIMERO el plan, no el código:** `docs/planes/PLAN-M13.md` (1-2 páginas, patrón de
+   PLAN-M14/M15) con: modelo de datos propuesto, rutas (públicas y admin), estados de la
+   devolución, integración con M14 (reembolso) y M15 (avisos), y el recorte de alcance de
+   abajo. Parte al buzón con el plan → **VISTO BUENO del dueño antes de la PRIMERA
+   migración** (misma regla que M14). Mientras esperas puedes adelantar lo que no persiste:
+   esqueleto de rutas firmadas, form Blade, validaciones.
+2. Con el visto bueno: **P-M13-01** (formulario público del cliente: ruta SIN auth con token
+   firmado + fotos obligatorias) y **P-M13-02** (categorización transporte/fábrica/otro +
+   reglas automáticas por tipo y origen).
+3. **P-M13-03 entra RECORTADO:** el reembolso vía M14 si ≥ umbral SÍ (el motor existe;
+   cablear una acción nueva de aprobación es terreno conocido). El **reingreso automático a
+   stock NO se construye**: necesita movimientos propios de M04 y M04 es hoy un espejo
+   read-only bloqueado por D-003. Déjalo como estado terminal «apta para reingreso» +
+   notificación M15 a bodega, y el hook documentado para cuando M04 exista. Esta es la
+   parte que el plan de la ruta maestra suponía lista y no lo está — dilo explícito en
+   PLAN-M13.md para que el dueño lo apruebe con los ojos abiertos.
+4. **P-M13-04** (reportes por causa y canal) queda para un segundo lote — no lo metas en este.
 
-- Reusa la MISMA lógica del ancla que ya vive en `urlDestino()` — no la dupliques: extrae el
-  cálculo a un punto único si hace falta (el `notificable_id` es la Aprobación en ambos
-  caminos, lo verifiqué al integrar tu lote).
-- **Aviso que ya te di y sigue vigente**: esto toca los `assertSame` de `payload['url']` en
-  `AprobacionAccionableTest` (mergeado ~185 y ~198). Actualízalos, no los silencies.
-- Verifica el correo de verdad, no solo el payload: el botón del Blade se arma desde
-  `payload.url`, así que el ancla tiene que sobrevivir hasta el `<a href>`.
+### Seguridad — es una ruta PÚBLICA con upload, trátala como frontera hostil
+- Token firmado con expiración (patrón del QR de retiro y del portal M12); throttle por IP;
+  el link público NO revela datos del cliente más allá de lo imprescindible.
+- Fotos: validar mime/size en servidor, storage privado (no `public/`), nombres generados
+  (nunca el nombre original), y límites de upload de cPanel verificados ANTES de fijar los
+  del validador («hecho cuando» de E6 lo exige vía IA-cPanel — pídele el dato al dueño en
+  el parte del plan si no puedes verificarlo tú).
+- La asociación a documento de venta va como folio de referencia (texto validado) + cliente
+  del espejo M03: la emisión propia (M05) aún no existe y no debes depender de ella.
 
-## 🟢 TAREA 2 — Candado para las migraciones one-shot de plantillas (S)
-Deuda que anoté y no llegué a dictar. Rama aparte `test/candado-one-shot` o dentro de la
-Tarea 1 si te queda corto — tu llamada.
-
-**El problema:** el patrón de entrega que tú mismo inventaste (one-shot que actualiza SOLO si
-el valor vigente es exactamente el texto del seed anterior) es correcto, pero **frágil por
-diseño**: si alguien edita esos textos en `ConfiguracionSeeder` sin actualizar el `$viejo` de
-la migración, la migración se vuelve un **no-op silencioso** — no falla, no avisa, simplemente
-no entrega nada a producción. Aplica a tu one-shot de aprobaciones **y a la de Marcos**
-(`2026_07_22_180000`).
-
-Un test que, para cada clave que ambas one-shot tocan, exija que el **`$nuevo` de la migración
-sea idéntico al valor que siembra el seeder hoy**. Si alguien cambia uno sin el otro, rojo.
-
-## Lo que NO es tuyo
-- P-DSP-04/05: Max-2 (le queda 1 candado de padding y arranca la PWA del conductor).
-- **P-NAV-05** (gate R-31 formal + QA en celular) y el **bundle de diseño**: del dueño.
-- Sublote C de notificaciones (cotización/terreno): territorio de Marcos.
-- Decisión del ciclo de la factura: del dueño. Dato para tu contexto: entró trabajo de **M05
-  DTE** (puerto emisor + documentos emitidos) por fuera de la flota — el ciclo se está moviendo.
+### Territorio
+- **Marcos sigue construyendo M05 Facturación/DTE** — ni de refilón.
+- **Max-2** está en P-DSP-05 (PWA del conductor, despachos). M13 no comparte archivos con
+  despachos; si un cruce aparece (p. ej. notificaciones), gana el que llegó primero a main
+  y el otro rebasea.
 
 ## Recordatorios
-Suite COMPLETA (main hoy ~1138 tests). **Main endureció un candado nuevo esta semana:
-`MarcoHorizontalTest` exige padding mobile-first (`p-4 sm:p-6`, no `p-6` pelado)** — si tu lote
-toca tarjetas, nace cumpliéndolo. Conflictos con `git checkout origin/main -- <archivo>`,
-nunca con `>`. Parte al buzón → doble llave.
+Suite COMPLETA antes de cualquier push (baseline **1199**). Blade tocado → build + grep
+superset. Conflictos con `git checkout origin/main -- <archivo>`, nunca con `>` (el `>` de
+PS 5.1 mete BOM y revienta Vite). Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
