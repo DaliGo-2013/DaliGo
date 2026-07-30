@@ -122,7 +122,10 @@ class Notificacion extends Model
         $puede = match ($this->evento) {
             'aprobacion.solicitada', 'aprobacion.escalada' => $user->can('aprobar solicitudes'),
             'aprobacion.resuelta' => true, // "mis solicitudes": basta estar autenticado
-            'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico']),
+            // Si el destino es la ficha de una orden, además del permiso hay que
+            // respetar el scope de cartera del vendedor (igual que cotizacion.*).
+            'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
+                && (! $this->notificable instanceof OrdenServicio || $this->notificable->esVisiblePara($user)),
             // Detalle de una orden: permiso Y scope de cartera del vendedor.
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
@@ -166,9 +169,12 @@ class Notificacion extends Model
         return match ($this->evento) {
             'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index').$ancla,
             'aprobacion.resuelta' => route('aprobaciones.mias').$ancla,
-            // Ingreso por QR (por confirmar): la superficie para actuar es el
-            // listado de servicio técnico (ahí se confirma la recepción).
-            'taller.ingresado' => route('admin.servicio-tecnico.index'),
+            // Ingreso por confirmar. Si el origen es UNA orden, se aterriza en su
+            // ficha, que es donde está el botón «Confirmar recepción»; si es un LOTE
+            // (N órdenes, sin ficha propia), en el listado.
+            'taller.ingresado' => $this->notificable instanceof OrdenServicio && $this->notificable_id
+                ? route('admin.servicio-tecnico.show', $this->notificable_id)
+                : route('admin.servicio-tecnico.index'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)

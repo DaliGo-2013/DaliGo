@@ -2,14 +2,18 @@
     /** @var \App\Models\AgendaTrabajo $trabajo */
     $t = $trabajo;
     $cuando = $t->fecha?->translatedFormat('l d \d\e F');
+    // Sin "a las": es el VALOR de la fila «Horario» de una tabla, no una frase
+    // (quedaba "Horario: a las 10:30 hrs"). Igual que la página de confirmación.
     $hora = $t->hora_corta ? ($t->hora_fin_corta && $t->hora_fin_corta !== $t->hora_corta
-        ? $t->hora_corta.' a '.$t->hora_fin_corta.' hrs' : 'a las '.$t->hora_corta.' hrs') : null;
+        ? $t->hora_corta.' a '.$t->hora_fin_corta.' hrs' : $t->hora_corta.' hrs') : null;
     // Sin link de confirmar = se agendó el día que el cliente pidió → informativo.
     $agendadaInformativa = $motivo === 'agendada' && ! $urlConfirmar;
     $titulos = [
         'agendada' => $agendadaInformativa ? 'Tu visita quedó agendada' : 'Confirmación de tu visita',
         'reprogramada' => 'Cambiamos la fecha de tu visita',
-        'anulada' => 'Tu visita fue cancelada',
+        // Una solicitud rechazada ANTES de tener fecha nunca fue una visita: decirle
+        // "tu visita fue cancelada" al cliente lo hace buscar una cita que no existió.
+        'anulada' => $t->fecha ? 'Tu visita fue cancelada' : 'No podremos realizar tu servicio',
     ];
 @endphp
 <!DOCTYPE html>
@@ -35,22 +39,24 @@
                             <h1 style="margin:0 0 8px; font-size:22px; color:#171717;">{{ $titulos[$motivo] ?? 'Tu visita' }}</h1>
                             <p style="margin:0 0 20px; font-size:15px; color:#525252; line-height:1.6;">
                                 Estimado(a) {{ $t->cliente_nombre }}:
+                                {{-- Cada rama arranca con mayúscula: van después de "Estimado(a) X:" y
+                                     los otros correos del flujo capitalizan ahí. --}}
                                 @if ($motivo === 'anulada')
                                     @if ($t->fecha)
-                                        lamentablemente tuvimos que <strong>cancelar</strong> la visita que teníamos coordinada.
+                                        Lamentablemente tuvimos que <strong>cancelar</strong> la visita que teníamos coordinada.
                                     @else
-                                        lamentablemente <strong>no podremos realizar</strong> el servicio que solicitaste ({{ mb_strtolower($t->tipo_label) }}).
+                                        Lamentablemente <strong>no podremos realizar</strong> el servicio que solicitaste ({{ mb_strtolower($t->tipo_label) }}).
                                     @endif
                                     @if (filled($t->motivo_cancelacion))
                                         <br><strong>Motivo:</strong> {{ $t->motivo_cancelacion }}.
                                     @endif
-                                    <br>Si tienes dudas o quieres revisar otra alternativa, contáctanos.
+                                    <br>Si quieres revisar otra alternativa, responde este correo.
                                 @elseif ($motivo === 'reprogramada')
-                                    tuvimos que <strong>cambiar la fecha</strong> de tu visita. Estos son los nuevos datos:
+                                    Tuvimos que <strong>cambiar la fecha</strong> de tu visita. Estos son los nuevos datos:
                                 @elseif ($agendadaInformativa)
-                                    agendamos tu {{ mb_strtolower($t->tipo_label) }} para el <strong>día que pediste</strong>. Estos son los datos:
+                                    Agendamos tu {{ mb_strtolower($t->tipo_label) }} para el <strong>día que pediste</strong>. Estos son los datos:
                                 @else
-                                    coordinamos tu {{ mb_strtolower($t->tipo_label) }}. Estos son los datos:
+                                    Coordinamos tu {{ mb_strtolower($t->tipo_label) }}. Estos son los datos:
                                 @endif
                             </p>
 
@@ -102,15 +108,17 @@
                             @endif
 
                             @if ($agendadaInformativa)
+                                {{-- Sin la invitación de contacto: ya la dice el pie del correo, y
+                                     salía dos veces en el mismo mensaje. --}}
                                 <p style="margin:0; font-size:14px; color:#525252; line-height:1.6;">
-                                    ¡Nos vemos ese día! Si necesitas cambiarlo, responde este correo o llámanos.
+                                    ¡Nos vemos ese día!
                                 </p>
                             @endif
                         </td>
                     </tr>
                     <tr>
                         <td style="background-color:#fafafa; padding:16px 32px; text-align:center; font-size:12px; color:#a3a3a3; border-top:1px solid #e5e5e5;">
-                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo o llámanos.
+                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo.
                         </td>
                     </tr>
                 </table>

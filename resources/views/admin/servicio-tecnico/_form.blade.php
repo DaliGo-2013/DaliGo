@@ -29,17 +29,32 @@
         :inicialEmail="$o?->cliente_email ?? ''"
         :inicialClienteId="$o?->cliente_id ?? 0" />
 
-    {{-- Codigo (producto Dali) + N° de serie en el mismo renglon. --}}
+    {{-- Lo que el CLIENTE escribió del equipo, si vino por QR o por lote. Va ARRIBA
+         del buscador porque es la pista para encontrar el producto en el catálogo:
+         antes este dato no se mostraba en ninguna parte y había que adivinar. --}}
+    @if (filled($o?->modelo))
+        <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+            <p class="text-xs text-neutral-400">Equipo según el cliente</p>
+            <p class="mt-0.5 font-medium text-neutral-900">{{ $o->modelo }}</p>
+        </div>
+    @endif
+
+    {{-- Codigo (producto Dali) + N° de serie en el mismo renglon.
+         Obligatorio al CREAR en el mostrador; al editar solo si la orden ya lo tenía
+         (las de QR y de ruta nacen sin producto — ver validateData). --}}
+    @php $productoObligatorio = ! $o || filled($o->producto_id); @endphp
     <x-buscador-remoto
         name="producto_id"
         label="Código (producto Dali)"
         chip="Producto"
-        :required="true"
+        :required="$productoObligatorio"
         :endpoint="route('admin.servicio-tecnico.buscar-producto')"
         :inicialId="$productoActual?->id ?? 0"
         :inicialLabel="$productoActualLabel"
         placeholder="Escribe el código (SKU) o el nombre…"
-        hint="Búscalo por el código (SKU) o el nombre en el catálogo." />
+        :hint="$productoObligatorio
+            ? 'Búscalo por el código (SKU) o el nombre en el catálogo.'
+            : 'Esta orden entró sin producto del catálogo (QR o retiro en ruta). Puedes clasificarla ahora o dejarlo para después.'" />
 
     {{-- N° de serie: obligatorio solo para dispensador/lavadora (serie unica);
          opcional para bombas/herramientas. El asterisco y el 'required' cambian

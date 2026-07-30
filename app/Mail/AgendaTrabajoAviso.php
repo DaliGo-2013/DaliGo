@@ -37,7 +37,12 @@ class AgendaTrabajoAviso extends Mailable
         $asuntos = [
             'agendada' => $pideConfirmar ? 'Confirmación de tu visita — DaliGo' : 'Tu visita quedó agendada — DaliGo',
             'reprogramada' => 'Cambio de fecha de tu visita — DaliGo',
-            'anulada' => 'Visita cancelada — DaliGo',
+            // Una solicitud rechazada ANTES de que se le fijara fecha nunca fue una
+            // visita: el asunto "Visita cancelada" manda al cliente a buscar una cita
+            // que no existió. Mismo criterio que el titulo de la vista.
+            'anulada' => $this->trabajo->fecha
+                ? 'Visita cancelada — DaliGo'
+                : 'Sobre tu solicitud de servicio — DaliGo',
         ];
 
         return new Envelope(subject: $asuntos[$this->motivo] ?? $asuntos['agendada']);

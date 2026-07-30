@@ -3,8 +3,10 @@
         $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
         $esGarantia = $orden->condicion_efectiva === 'garantia';
         $esReparacion = ! $esGarantia;
+        // tipo_equipo_label + el `modelo` que escribió el cliente (ver reparacion.blade.php).
         $equipo = collect([
-            ucfirst($orden->tipo_equipo),
+            $orden->tipo_equipo_label,
+            $orden->modelo,
             $orden->producto?->sku,
             $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
         ])->filter()->implode(' · ');

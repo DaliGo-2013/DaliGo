@@ -479,12 +479,17 @@ class OrdenServicio extends Model implements AuditableContract
         ])->filter()->implode(' · ');
 
         $datos = [
+            // El folio es el dato con el que se busca la orden: sin el, el aviso
+            // obligaba a buscar por nombre de cliente.
+            'folio' => $this->folio,
             'cliente' => $this->cliente_nombre,
             'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
             'maquinas' => '1 equipo',
             'sucursal' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
             'condicion' => $this->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación',
-            'url' => route('admin.servicio-tecnico.index'),
+            // La ficha de la orden, no el listado: este aviso es de UNA orden y su
+            // boton de confirmar esta en la ficha.
+            'url' => route('admin.servicio-tecnico.show', $this),
         ];
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);

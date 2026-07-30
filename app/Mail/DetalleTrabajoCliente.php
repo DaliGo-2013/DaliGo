@@ -24,7 +24,8 @@ class DetalleTrabajoCliente extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Detalle de su servicio (garantía) — Orden '.$this->orden->folio,
+            // Tuteo, como el resto de los correos al cliente (ver la vista).
+            subject: 'Detalle de tu servicio (garantía) — Orden '.$this->orden->folio,
         );
     }
 
