@@ -761,6 +761,12 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
+        // Estado ANTES de guardar: el aviso de «reparado» va en la TRANSICIÓN, no
+        // en cada guardado. El técnico re-guarda el parte varias veces (agrega un
+        // repuesto, corrige el trabajo) y sin esto ventas recibiría un aviso por
+        // cada vez.
+        $estadoAnterior = $orden->estado;
+
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
@@ -791,6 +797,17 @@ class ServicioTecnicoController extends Controller
                 'cantidad' => $r['cantidad'] ?? 1,
                 'precio_unitario' => $r['precio_unitario'] ?? 0,
             ]);
+        }
+
+        // Aviso interno a ventas: el equipo quedó listo y hay que llamar al cliente
+        // para que lo retire. Acción SECUNDARIA (try/catch): un aviso que falle no
+        // puede hacer perder el parte del técnico, que es el dato real.
+        if ($data['estado'] === 'reparado' && $estadoAnterior !== 'reparado') {
+            try {
+                $orden->notificarReparado($request->user());
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así

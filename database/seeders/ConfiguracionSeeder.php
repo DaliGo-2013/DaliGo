@@ -121,6 +121,22 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno (ventas + técnico) cuando un cliente ingresa un equipo por QR (unidad o lote).',
             ],
+            // El técnico marcó la orden como REPARADA → ventas llama al cliente para
+            // que la retire. Clave nueva → el firstOrCreate del seeder la crea en el
+            // deploy; no requiere migración one-shot.
+            [
+                'clave' => 'notif_plantilla_taller_reparado',
+                'valor' => json_encode([
+                    'asunto' => 'Equipo reparado — Orden {folio} ({cliente})',
+                    // El teléfono va EN EL CUERPO a propósito: el destinatario tiene
+                    // que llamar, y sin él el aviso obliga a abrir la ficha para
+                    // conseguir el dato con el que se actúa.
+                    'cuerpo' => "{tecnico} marcó como reparada la orden {folio} de {cliente}.\nEquipo: {equipo}\nTrabajo: {trabajo}\nRetiro en: {retiro}\nFalta avisarle al cliente que puede retirarlo ({telefono}).",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas cuando el técnico marca un equipo como reparado (jefatura recibe todas; cada vendedor, las de su cartera).',
+            ],
             // Cotización del taller al cliente (P-M12-02, fase correo). Aviso
             // INTERNO a los roles del taller/ventas; la carta al cliente es un
             // Mailable dedicado (CotizacionCliente), no pasa por plantilla.
