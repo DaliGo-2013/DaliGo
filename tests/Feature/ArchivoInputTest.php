@@ -27,7 +27,17 @@ class ArchivoInputTest extends TestCase
                 continue;
             }
 
-            $ruta = str_replace(resource_path('views').'/', '', $archivo->getPathname());
+            // getRelativePathname() + normalizar a '/': la forma anterior era
+            // str_replace(resource_path('views').'/', '', getPathname()), y en
+            // WINDOWS los dos caminos vienen con '\', así que el '/' concatenado
+            // no matcheaba nunca → $ruta se quedaba con la ruta ABSOLUTA y las
+            // dos guardas de abajo no se aplicaban jamás. Resultado: el test
+            // fallaba en cualquier máquina Windows acusando al propio componente
+            // y a errors/429, mientras en la CI (Linux) pasaba. Un candado que
+            // no aplica su propia lista de excepciones en la plataforma donde se
+            // desarrolla es un rojo falso permanente. Detectado en el gate
+            // P-NAV-05 al correr la suite completa.
+            $ruta = str_replace('\\', '/', $archivo->getRelativePathname());
 
             // El componente ES el que lleva el input nativo, y las vistas de error
             // solo lo mencionan en un comentario.
