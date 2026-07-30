@@ -4,7 +4,11 @@
      la sidebar. La campana móvil va SIEMPRE visible en la barra (hallazgo QA
      14-07; su aria-label exacto es contrato de CampanitaTest). --}}
 <header class="flex h-12 shrink-0 items-center gap-2 border-b border-neutral-200 bg-white px-3 lg:hidden">
+    {{-- aria-controls: el aria-expanded solo dice "abierto/cerrado"; sin decir
+         DE QUÉ, un lector de pantalla anuncia un estado huérfano. Apunta al id
+         del <aside> (gate P-NAV-05). --}}
     <button type="button" @click="menuAbierto = true" :aria-expanded="menuAbierto"
+            aria-controls="dg-menu-lateral"
             class="-ms-1 inline-flex h-11 w-11 items-center justify-center rounded-lg text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
         <x-icon.bars-3 class="h-6 w-6" />
         <span class="sr-only">Abrir menú</span>
