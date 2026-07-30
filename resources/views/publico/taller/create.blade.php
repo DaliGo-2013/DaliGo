@@ -179,10 +179,13 @@
                      mostrador). El cliente los indica; el mostrador los verifica. --}}
                 <div x-data="{ cond: @js(old('facturacion', '')) }">
                     <x-input-label for="facturacion" value="Condición *" />
-                    <x-select id="facturacion" name="facturacion" class="mt-1.5 block w-full" x-model="cond">
+                    {{-- `required` explícito: sin él, el navegador dejaba enviar con la
+                         condición en blanco y el rechazo llegaba recién del servidor, con
+                         el formulario entero recargado (el ingreso por cantidad sí lo tenía). --}}
+                    <x-select id="facturacion" name="facturacion" class="mt-1.5 block w-full" required x-model="cond">
                         <option value="" disabled>— Selecciona —</option>
                         @foreach (\App\Models\OrdenServicio::FACTURACION as $f)
-                            <option value="{{ $f }}">{{ ucfirst($f) }}</option>
+                            <option value="{{ $f }}" @selected(old('facturacion') === $f)>{{ \App\Models\OrdenServicio::etiquetaFacturacion($f) }}</option>
                         @endforeach
                     </x-select>
                     <x-input-hint>Garantía: equipo con garantía vigente (trae la boleta o factura). Reparación: fuera de garantía (tiene costo).</x-input-hint>
@@ -196,7 +199,10 @@
                         </p>
                         <div class="space-y-4">
                             <div>
-                                <x-input-label for="garantia_doc_tipo" value="Documento" />
+                                {{-- Con asterisco: los tres campos son `x-bind:required` cuando la
+                                     condición es garantía, así que el navegador bloqueaba el envío
+                                     por un campo que se veía opcional. --}}
+                                <x-input-label for="garantia_doc_tipo" value="Documento *" />
                                 <x-select id="garantia_doc_tipo" name="garantia_doc_tipo" class="mt-1.5 block w-full"
                                     x-bind:required="cond === 'garantia'">
                                     <option value="">— Selecciona —</option>
@@ -207,14 +213,14 @@
                                 <x-input-error :messages="$errors->get('garantia_doc_tipo')" class="mt-1.5" />
                             </div>
                             <div>
-                                <x-input-label for="garantia_doc_numero" value="N° de documento" />
+                                <x-input-label for="garantia_doc_numero" value="N° del documento *" />
                                 <x-text-input id="garantia_doc_numero" name="garantia_doc_numero" type="text" class="mt-1.5 block w-full"
                                     :value="old('garantia_doc_numero')" maxlength="191"
                                     x-bind:required="cond === 'garantia'" />
                                 <x-input-error :messages="$errors->get('garantia_doc_numero')" class="mt-1.5" />
                             </div>
                             <div>
-                                <x-input-label for="garantia_doc_fecha" value="Fecha de compra" />
+                                <x-input-label for="garantia_doc_fecha" value="Fecha de compra *" />
                                 <x-text-input id="garantia_doc_fecha" name="garantia_doc_fecha" type="date" class="mt-1.5 block w-full"
                                     :value="old('garantia_doc_fecha')"
                                     x-bind:required="cond === 'garantia'" />
@@ -224,10 +230,15 @@
                     </div>
                 </div>
 
+                {{-- Falla Y ESTADO, igual que el ingreso por cantidad (pedido del dueño):
+                     lo que le falta al equipo —caja, llave, una pieza— es lo que después se
+                     discute en la entrega, y las 2 fotos solas no lo dicen. Con la misma
+                     pregunta en los dos formularios el taller recibe el mismo dato. --}}
                 <div>
-                    <x-input-label for="falla_reportada" value="¿Qué le pasa al equipo? *" />
+                    <x-input-label for="falla_reportada" value="Falla y estado del equipo *" />
                     <x-textarea id="falla_reportada" name="falla_reportada" rows="4" class="mt-1.5 block w-full"
-                                required placeholder="Cuéntanos la falla que notaste">{{ old('falla_reportada') }}</x-textarea>
+                                required placeholder="Ej. No enfría. Golpeada en tapa lateral, sin caja, le falta la llave roja.">{{ old('falla_reportada') }}</x-textarea>
+                    <x-input-hint>Cuéntanos la falla que notaste y cómo viene el equipo (golpes, piezas que falten).</x-input-hint>
                     <x-input-error :messages="$errors->get('falla_reportada')" class="mt-1.5" />
                 </div>
 

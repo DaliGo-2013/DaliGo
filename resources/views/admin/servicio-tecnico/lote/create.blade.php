@@ -145,7 +145,7 @@
                             <x-input-label for="facturacion_default" value="Condición" />
                             <x-select id="facturacion_default" name="facturacion_default" class="mt-1.5">
                                 @foreach ($facturaciones as $f)
-                                    <option value="{{ $f }}" @selected(old('facturacion_default', 'reparacion') === $f)>{{ ucfirst($f) }}</option>
+                                    <option value="{{ $f }}" @selected(old('facturacion_default', 'reparacion') === $f)>{{ \App\Models\OrdenServicio::etiquetaFacturacion($f) }}</option>
                                 @endforeach
                             </x-select>
                         </div>

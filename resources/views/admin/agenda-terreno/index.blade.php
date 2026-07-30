@@ -243,7 +243,7 @@
                             @endif
                         </div>
                     @empty
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">Sin trabajo por realizar este día.</div>
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">No hay trabajos agendados este día.</div>
                     @endforelse
                 @else
                     {{-- Trabajos existentes del día: cada uno como formulario editable. --}}
@@ -279,33 +279,45 @@
                         </div>
                     @endforeach
 
+                    {{-- Día sin trabajos: mensaje claro de "nada agendado" en vez de
+                         dejar el panel en blanco (pedido del dueño 2026-07-30). El
+                         formulario para agregar queda colapsado abajo (ver más abajo). --}}
+                    @if ($trabajosDia->isEmpty())
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">No hay trabajos agendados este día.</div>
+                    @endif
+
                     {{-- Agregar un trabajo para este día (formulario prellenado con la fecha).
-                         Si el día ya tiene trabajos, viene colapsado tras un botón. --}}
-                    <div x-data="{ abierto: {{ $trabajosDia->isEmpty() ? 'true' : 'false' }} }">
-                        <button type="button" x-show="! abierto" x-on:click="abierto = true"
+                         Viene SIEMPRE colapsado tras un botón: en un día vacío se ve el
+                         mensaje de arriba + este botón, y el formulario se abre al tocarlo. --}}
+                    <div x-data="{ mostrarNuevo: false }">
+                        <button type="button" x-show="! mostrarNuevo" x-on:click="mostrarNuevo = true"
                                 class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-brand-300 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100">
                             <x-icon.plus class="h-4 w-4" /> Agregar trabajo el {{ $diaSel->translatedFormat('d \d\e F') }}
                         </button>
-                        <div x-show="abierto" x-cloak
-                             class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6"
-                             x-data="agendaTerrenoForm({
-                                endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
-                                servicios: @js($serviciosJs),
-                                clienteId: 0,
-                                servicioId: '',
-                             })">
-                            <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Nuevo trabajo</p>
-                            <form method="POST" action="{{ route('admin.agenda-terreno.store') }}">
-                                @csrf
-                                @include('admin.agenda-terreno._form', ['trabajo' => null, 'fechaDefault' => $isoSel, 'clienteCatalogo' => null])
-                                <div class="mt-6 flex items-center gap-3">
-                                    <x-primary-button>Agendar trabajo</x-primary-button>
-                                    @unless ($trabajosDia->isEmpty())
-                                        <button type="button" x-on:click="abierto = false"
+                        {{-- El colapso usa `mostrarNuevo`, NO `abierto`: agendaTerrenoForm ya
+                             define `abierto` para su dropdown de búsqueda de cliente (_form.blade)
+                             y con el mismo nombre colisionaban — ni el botón ni Cancelar movían
+                             el colapso (gotcha 2026-07-30). El x-show va en un div PLANO, fuera
+                             del x-data del componente, para leer este scope sin ambigüedad. --}}
+                        <div x-show="mostrarNuevo" x-cloak>
+                            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6"
+                                 x-data="agendaTerrenoForm({
+                                    endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
+                                    servicios: @js($serviciosJs),
+                                    clienteId: 0,
+                                    servicioId: '',
+                                 })">
+                                <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Nuevo trabajo</p>
+                                <form method="POST" action="{{ route('admin.agenda-terreno.store') }}">
+                                    @csrf
+                                    @include('admin.agenda-terreno._form', ['trabajo' => null, 'fechaDefault' => $isoSel, 'clienteCatalogo' => null])
+                                    <div class="mt-6 flex items-center gap-3">
+                                        <x-primary-button>Agendar trabajo</x-primary-button>
+                                        <button type="button" x-on:click="mostrarNuevo = false"
                                                 class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
-                                    @endunless
-                                </div>
-                            </form>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 @endunless
