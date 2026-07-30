@@ -11,10 +11,6 @@
             @forelse ($sopladores as $soplador)
                 @php $st = $stats->get($soplador->id); @endphp
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($soplador->name, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <p class="truncate font-medium text-neutral-900">{{ $soplador->name }}</p>
                     <p class="truncate text-sm text-neutral-500">
                         @if ($st)

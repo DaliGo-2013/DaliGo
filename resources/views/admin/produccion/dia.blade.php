@@ -67,10 +67,6 @@
         <x-list-card title="Reportes del día" :count="$reportes->count()" :countLabel="\Illuminate\Support\Str::plural('reporte', $reportes->count())">
             @forelse ($reportes as $reporte)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($reporte->soplador->name, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <a href="{{ route('admin.produccion.soplador', $reporte->soplador) }}"
                        class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $reporte->soplador->name }}</a>
                     <p class="truncate text-sm text-neutral-500">
