@@ -50,6 +50,9 @@ class Notificacion extends Model
         // Taller · un cliente ingresó un equipo por QR (unidad o cantidad):
         // aviso a ventas + al técnico para que sepan que entró una máquina.
         'taller.ingresado' => 'Ingreso de equipo al taller (QR)',
+        // Taller · el técnico marcó la orden como REPARADA: ventas tiene que
+        // llamar al cliente para que lo retire (decision del dueño 30-07).
+        'taller.reparado' => 'Equipo reparado (avisar al cliente)',
         // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
@@ -127,6 +130,7 @@ class Notificacion extends Model
             'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && (! $this->notificable instanceof OrdenServicio || $this->notificable->esVisiblePara($user)),
             // Detalle de una orden: permiso Y scope de cartera del vendedor.
+            'taller.reparado',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
@@ -188,6 +192,7 @@ class Notificacion extends Model
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : route('admin.servicio-tecnico.index'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
+            'taller.reparado',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,

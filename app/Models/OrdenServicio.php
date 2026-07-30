@@ -523,6 +523,67 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
+     * Roles candidatos al aviso de «equipo reparado»: es VENTAS quien llama al
+     * cliente para que lo retire (y quien despues anota la fecha de aviso).
+     *
+     * El tecnico NO va aca: es quien marca el estado, y avisarle de su propia
+     * accion es ruido (mismo criterio que el resto del modulo). Quien de estos
+     * roles recibe cada orden lo decide `notificarReparado()`, no esta lista.
+     */
+    public const ROLES_AVISO_REPARADO = ['jefe_ventas', 'vendedor', 'admin'];
+
+    /**
+     * Avisa por M15 (campanita + correo segun preferencias) que el equipo quedo
+     * REPARADO, para que ventas le diga al cliente que puede retirarlo.
+     *
+     * El reparto lo define `esVisiblePara()`, el MISMO filtro que gobierna el
+     * listado y la ficha, y de ahi salen solas las dos mitades de la regla del
+     * dueño (30-07): el jefe de ventas tiene 'ver todo servicio tecnico', asi que
+     * recibe TODAS las ordenes —las de todos sus vendedores—; un vendedor no lo
+     * tiene, asi que recibe solo las de SU cartera (`clientes.vendedor_id`, mas la
+     * de su equipo via `users.jefe_id`).
+     *
+     * Consecuencia a tener presente HOY: mientras no haya carteras asignadas,
+     * `esVisiblePara` es false para todo vendedor, asi que el aviso llega solo a
+     * jefatura. El dia que se asignen, cada vendedor empieza a recibir lo suyo
+     * SIN tocar este codigo — que es justo lo que se pidio.
+     *
+     * Notificar a alguien que despues no puede ABRIR la orden seria el defecto que
+     * ya se corrigio en la campanita (`Notificacion::urlDestinoPara`): un aviso que
+     * termina en 403.
+     *
+     * @param  User|null  $actor  quien marco la orden como reparada (no se autonotifica)
+     */
+    public function notificarReparado(?User $actor = null): void
+    {
+        $equipo = collect([
+            $this->tipo_equipo_label,
+            $this->modelo,
+            $this->numero_serie ? 'N° '.$this->numero_serie : null,
+        ])->filter()->implode(' · ');
+
+        $datos = [
+            'folio' => $this->folio,
+            'cliente' => $this->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
+            // Los tres se rellenan siempre: un placeholder sin dato queda CRUDO en
+            // el texto ({trabajo} literal en la campanita).
+            'trabajo' => filled($this->trabajo_realizado) ? $this->trabajo_realizado : 'Sin detalle',
+            'tecnico' => $actor?->name ?: 'El técnico',
+            'retiro' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
+            'telefono' => filled($this->cliente_telefono) ? $this->cliente_telefono : 'sin teléfono registrado',
+            'url' => route('admin.servicio-tecnico.show', $this),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_REPARADO)->get()->unique('id')
+            ->reject(fn (User $u) => $actor && $u->id === $actor->id)
+            ->filter(fn (User $u) => $this->esVisiblePara($u))
+            ->each(fn (User $u) => $dispatcher->despachar('taller.reparado', $this, $u, $datos));
+    }
+
+    /**
      * Folio visible = codigo unico impredecible (ST-XXXXXXXX). Se reemplazo el
      * correlativo #000123 porque era enumerable (un cliente podia espiar ordenes
      * ajenas). El fallback al id con ceros es solo defensivo por si alguna fila
