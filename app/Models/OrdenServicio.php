@@ -107,6 +107,17 @@ class OrdenServicio extends Model implements AuditableContract
     // Reparacion: se cobra al cliente.
     public const FACTURACION = ['garantia', 'reparacion'];
 
+    // Etiqueta visible de la condicion. Existe porque las cuatro pantallas que
+    // ofrecen este selector (QR por unidad, QR por cantidad, mostrador y lote del
+    // conductor) rotulaban con `ucfirst($f)` -> el CLIENTE leia "Garantia" y
+    // "Reparacion" SIN TILDE. La clave guardada sigue sin tildes (es el valor de
+    // la columna); la tilde vive solo aca, en el rotulo. Mismo patron que
+    // TIPO_ETIQUETAS: fuente unica para que el rotulo no se escriba a mano.
+    public const FACTURACION_ETIQUETAS = [
+        'garantia' => 'Garantía',
+        'reparacion' => 'Reparación',
+    ];
+
     // Documento de compra que respalda la garantia.
     public const GARANTIA_DOC_TIPOS = ['factura', 'boleta'];
 
@@ -243,6 +254,19 @@ class OrdenServicio extends Model implements AuditableContract
     public function getTipoEquipoLabelAttribute(): string
     {
         return self::etiquetaTipo($this->tipo_equipo);
+    }
+
+    /**
+     * Etiqueta visible de la condicion ('garantia' -> "Garantía"), con tilde.
+     * Fallback a ucfirst por si aparece una condicion historica fuera del mapa.
+     */
+    public static function etiquetaFacturacion(?string $facturacion): string
+    {
+        if ($facturacion === null || $facturacion === '') {
+            return '';
+        }
+
+        return self::FACTURACION_ETIQUETAS[$facturacion] ?? ucfirst($facturacion);
     }
 
     /**

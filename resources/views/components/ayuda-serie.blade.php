@@ -5,15 +5,22 @@
     (public/img/ejemplo-serie.jpg) muestra una ilustracion de respaldo, asi nunca
     queda una imagen rota.
 
-    Solo aparece cuando el "Tipo de equipo" (#tipo_equipo) es "dispensador" —
+    Solo aparece cuando el "Tipo de equipo" es "dispensador" —
     bombas/herramientas no tienen serie unica. FAIL-OPEN: el boton se ve por
     defecto (sin x-cloak); si el equipo no es dispensador, Alpine lo oculta.
+
+    `tipoSelector` = id del <select> del tipo que gobierna la visibilidad. Por
+    defecto #tipo_equipo (ingreso por unidad y mostrador); el ingreso por CANTIDAD
+    llama a su selector #tipo_default, y de ahi la prop: la ayuda le faltaba justo
+    al cliente que trae 10 maquinas, que es el que mas la necesita.
 --}}
+@props(['tipoSelector' => 'tipo_equipo'])
+
 <div x-data="{
         abierto: false,
         esDispensador: true,
         init() {
-            const sel = document.getElementById('tipo_equipo');
+            const sel = document.getElementById(@js($tipoSelector));
             const actualizar = () => {
                 this.esDispensador = !sel || sel.value === 'dispensador';
                 if (!this.esDispensador) this.abierto = false;

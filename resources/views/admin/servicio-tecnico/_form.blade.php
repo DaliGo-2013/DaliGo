@@ -128,7 +128,7 @@
         <x-select id="facturacion" name="facturacion" class="mt-1.5" required x-model="cond">
             <option value="" disabled @selected(old('facturacion', $o?->facturacion ?? '') === '')>— Selecciona —</option>
             @foreach ($facturaciones as $f)
-                <option value="{{ $f }}" @selected(old('facturacion', $o?->facturacion) === $f)>{{ ucfirst($f) }}</option>
+                <option value="{{ $f }}" @selected(old('facturacion', $o?->facturacion) === $f)>{{ \App\Models\OrdenServicio::etiquetaFacturacion($f) }}</option>
             @endforeach
         </x-select>
         <x-input-hint>Garantía: no se cobra (si está vigente). Reparación: se cobra al cliente.</x-input-hint>
