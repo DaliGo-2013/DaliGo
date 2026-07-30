@@ -78,6 +78,28 @@ catch del unique (patrón LoteServicio calcado).
 
 /usage INICIO → FIN: sesión heredada del hilo del dueño, no comparable con un asiento limpio.
 
+## Adenda 30-07 — refresh por-paso contra el gate NAV (commit `067ab0d`)
+
+Main avanzó 15 commits mientras el parte esperaba (gate R-31 del menú V4 mergeado y EN
+PRODUCCIÓN). Refresqué la rama ANTES de pedirte el merge, para que la doble llave no herede
+conflictos:
+
+- **Merge de main**: conflicto solo en `manifest.json` → `git checkout origin/main --` +
+  rebuild limpio (`view:clear` + build). **Superset 0 perdidas de 660 clases**; manifest
+  JSON válido sin BOM.
+- **1 candado nuevo de main me barrió** (`ArchivoInputTest`, prohíbe `<input type="file">`
+  crudo): el input de foto migró a `<x-archivo-input texto="Tomar foto">`. La mina que
+  cazó la migración: el componente trae su **propio `x-data`**, así que mi `x-ref="foto"`
+  quedaba en ese root anidado y el `$refs` de `entregaForm` (root padre) **no lo veía** —
+  la foto habría dejado de adjuntarse EN SILENCIO. Fix: gancho `[data-foto]` +
+  `querySelector` desde `$root` (mismo idioma que `[data-firma-pad]`) + assert en el smoke.
+- **Verificado en browser** (banco estático, borrado): foto sintética cruza el x-data
+  anidado (`fotoLista` true en el padre, nombre completo mostrado), firma por pointer, y el
+  FormData del envío lleva **foto + firma.png (blob real del canvas) + uuid + capturado_at**.
+  375px sin scroll; botón del selector 44px, texto entero.
+- **Suite 1216 verdes / 7942 aserciones** (main sumó tests con el gate NAV; mi lote sigue
+  aportando 19). Rama quedó **0 detrás / 6 adelante** de main (`b57c672`).
+
 ## SIGUIENTE
 
 **Doble llave de `feature/entregas-conductor`.** Con eso DESPACHOS-v1 queda P-DSP-00..05 en main
