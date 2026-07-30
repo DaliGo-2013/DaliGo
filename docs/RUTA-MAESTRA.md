@@ -178,6 +178,10 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-TZ-02c** · Batería de frontera de agenda (nocturna + mes + redirect del hallazgo), rama SOLO-tests gated que **nació verde** sobre el fix de Marcos — merge doble llave `6e40051`, suite 704/2259 (2026-07-21)
 - [ ] **P-TZ-03** · QA de borde del dueño (~21:30 Chile: día correcto en toda la app, agenda abre en HOY, historiales en hora chilena) — único pendiente; no es código
 
+### E-PLAN · Página «Plan del proyecto» (/plan) — carta Gantt transicional (rama `feature/plan-proyecto`)
+> Pedido del dueño 30-07: carta Gantt consultable por los participantes y modificable — 3 colores de estado, medidor de % global, apartado de «trabajos extras en paralelo», y actualización automática desde el repo al commitear. Decisiones del dueño (AskUserQuestion 30-07): plan oficial se LEE del repo + extras editables en UI · visibilidad por permiso nuevo asignable · Gantt clásico por módulo · incluye countdown de hitos, semáforo de decisiones y última actualización + enlaces.
+- [x] **P-PLAN-01** · Fuente única `App\Support\PlanProyecto`: **parsea el tracker §10 de ESTE archivo** (doctrina de estado único — push a main = deploy = página al día, nadie mantiene una segunda copia) + fechas de barras e hitos como const del repo; parser del semáforo §2 de `DECISIONES.md`; página `/plan` (gantt por módulo con ventana+relleno, medidor global, hitos con countdown por `FechaNegocio`, decisiones abiertas, extras CRUD en BD `plan_extras`); permisos nuevos `ver plan proyecto` / `gestionar plan proyecto` (aditivos; se asignan por rol desde la UI de Roles); ítem de menú en Administración (1 línea en `MenuPrincipal`). Candados en `PlanProyectoTest` (12): parser contra el archivo REAL con invariantes auto-consistentes (Σpesos == TOTAL, **mutado**: peso alterado → rojo), biyección MODULOS↔tracker (un ítem nuevo en el tracker exige su línea de fechas en el mismo push), permisos, CRUD y validación de extras (rama `feature/plan-proyecto`, 2026-07-30)
+
 ---
 
 ## 5. F2 · Núcleo operativo

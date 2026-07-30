@@ -34,6 +34,7 @@ class RoleMatrixSeedTest extends TestCase
                 'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
                 'emitir documentos tributarios', 'emitir nota de credito',
+                'ver plan proyecto', 'gestionar plan proyecto',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial'],

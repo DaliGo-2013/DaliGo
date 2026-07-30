@@ -47,6 +47,8 @@ return [
         'confirmar entrega' => 'Confirmar entrega (conductor)',
         'emitir documentos tributarios' => 'Emitir boletas y facturas',
         'emitir nota de credito' => 'Emitir notas de crédito (anular un documento)',
+        'ver plan proyecto' => 'Ver el plan del proyecto (carta Gantt)',
+        'gestionar plan proyecto' => 'Gestionar los trabajos extras del plan del proyecto',
     ],
 
     /*
@@ -74,6 +76,6 @@ return [
         'Usuarios y accesos' => ['users', 'roles'],
         'Aprobaciones' => ['aprobaciones', 'solicitudes'],
         'Notificaciones' => ['notificaciones'],
-        'Sistema' => ['settings', 'sucursales', 'audit'],
+        'Sistema' => ['settings', 'sucursales', 'audit', 'plan proyecto'],
     ],
 ];
