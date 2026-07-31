@@ -325,7 +325,9 @@ class DashboardTest extends TestCase
         OrdenServicio::factory()->create(['estado' => 'reparado']);
         // Entregadas: solo las retiradas ESTE mes cuentan en la tarjeta.
         OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
-        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]); // mes pasado → no
+        // Último día del mes ANTERIOR — no subMonth(): un día 31 desborda («31
+        // de junio» → 1 de julio, el MISMO mes) y este fixture contaría de más.
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->startOfMonth()->subDay()->toDateString()]); // mes pasado → no
         OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => null]);                              // histórica → no
 
         $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
