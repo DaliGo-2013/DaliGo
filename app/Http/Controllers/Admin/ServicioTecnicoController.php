@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\CotizacionCliente;
 use App\Mail\DetalleTrabajoCliente;
+use App\Mail\SinSolucionCliente;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\AgendaTrabajo;
 use App\Models\AgendaTrabajoRepuesto;
@@ -799,10 +800,13 @@ class ServicioTecnicoController extends Controller
             ]);
         }
 
-        // Aviso interno a ventas: el equipo quedó listo y hay que llamar al cliente
-        // para que lo retire. Acción SECUNDARIA (try/catch): un aviso que falle no
-        // puede hacer perder el parte del técnico, que es el dato real.
-        if ($data['estado'] === 'reparado' && $estadoAnterior !== 'reparado') {
+        // Avisos de CIERRE de la orden. Van en la TRANSICIÓN y son acción
+        // SECUNDARIA (try/catch): un aviso que falle no puede hacer perder el parte
+        // del técnico, que es el dato real.
+        $cerroAhora = fn (string $estado) => $data['estado'] === $estado && $estadoAnterior !== $estado;
+
+        // Reparado: el equipo quedó listo y ventas tiene que llamar al cliente.
+        if ($cerroAhora('reparado')) {
             try {
                 $orden->notificarReparado($request->user());
             } catch (\Throwable $e) {
@@ -810,11 +814,43 @@ class ServicioTecnicoController extends Controller
             }
         }
 
+        // Sin solución: al CLIENTE por correo + a ventas (decisión del dueño 30-07).
+        // El correo va PRIMERO porque su resultado entra en el aviso interno: si no
+        // salió, el aviso pide llamarlo en vez de dar por hecho que ya sabe.
+        $avisadoAlCliente = null;
+
+        if ($cerroAhora('sin_solucion')) {
+            if (filled($orden->cliente_email)) {
+                try {
+                    Mail::to($orden->cliente_email)->send(new SinSolucionCliente($orden));
+                    $avisadoAlCliente = true;
+                } catch (\Throwable $e) {
+                    report($e);
+                    $avisadoAlCliente = false;
+                }
+            }
+
+            try {
+                $orden->notificarSinSolucion($request->user(), $avisadoAlCliente);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        // Al técnico se le dice qué pasó con el correo al cliente, no solo que
+        // guardó: es la única pantalla donde se entera de que el aviso salió (o de
+        // que hay que llamar al cliente porque no salió).
+        $aviso = match ($avisadoAlCliente) {
+            true => " Se le avisó a {$orden->cliente_email}.",
+            false => ' No se pudo enviar el correo al cliente: hay que llamarlo.',
+            null => $cerroAhora('sin_solucion') ? ' La orden no tiene correo del cliente: hay que llamarlo.' : '',
+        };
+
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
         // el técnico puede enviar la cotización enseguida —"guarda antes de
         // enviar"— sin perder la página y con los datos ya guardados a la vista.
         return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
-            ->with('status', "Reparación de la orden {$orden->folio} actualizada.");
+            ->with('status', "Reparación de la orden {$orden->folio} actualizada.".$aviso);
     }
 
     /**
