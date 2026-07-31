@@ -111,38 +111,7 @@
                 <p class="mt-3 text-xs text-neutral-500"><span class="font-medium text-neutral-600">Fundamento del %:</span> {{ $fila['fundamento'] }}</p>
             @endif
 
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                    <h4 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Completado</h4>
-                    @if ($fila['hecho'] === [])
-                        <p class="mt-2 text-sm text-neutral-400">— nada aún</p>
-                    @else
-                        <ul class="mt-2 space-y-1.5">
-                            @foreach ($fila['hecho'] as $item)
-                                <li class="flex gap-2 text-sm text-neutral-700">
-                                    <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-800" aria-hidden="true"></span>
-                                    {{ $item }}
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
-                <div>
-                    <h4 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por completar</h4>
-                    @if ($fila['falta'] === [])
-                        <p class="mt-2 text-sm text-neutral-400">— nada pendiente</p>
-                    @else
-                        <ul class="mt-2 space-y-1.5">
-                            @foreach ($fila['falta'] as $item)
-                                <li class="flex gap-2 text-sm text-neutral-700">
-                                    <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" aria-hidden="true"></span>
-                                    {{ $item }}
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
-            </div>
+            @include('plan.partials._columnas-detalle', ['hecho' => $fila['hecho'], 'falta' => $fila['falta']])
 
             <p class="mt-4 text-xs">
                 <a href="https://github.com/DaliGo-2013/DaliGo/blob/main/docs/RUTA-MAESTRA.md" target="_blank" rel="noopener"

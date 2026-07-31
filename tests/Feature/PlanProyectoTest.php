@@ -132,6 +132,46 @@ class PlanProyectoTest extends TestCase
         $response->assertSee('Descuento de preforma contra el stock real');
     }
 
+    public function test_bloques_extra_parsea_las_unidades_con_guion_del_archivo_real(): void
+    {
+        $bloques = PlanProyecto::bloquesExtra();
+
+        $this->assertGreaterThanOrEqual(3, count($bloques), 'Deben aparecer al menos E-NAV, E-TZ y E-PLAN.');
+        $this->assertArrayHasKey('E-NAV', $bloques);
+        $this->assertArrayHasKey('E-PLAN', $bloques);
+        // La guarda del guión discrimina: las unidades OFICIALES (numeradas,
+        // mapean a módulos que ya están en el Gantt) no pueden colarse.
+        $this->assertArrayNotHasKey('E1', $bloques);
+        $this->assertArrayNotHasKey('E2', $bloques);
+        $this->assertArrayNotHasKey('E10', $bloques);
+
+        foreach ($bloques as $key => $bloque) {
+            $this->assertStringStartsWith('E-', $key);
+            $this->assertGreaterThan(0, $bloque['total'], "El bloque [{$key}] quedó sin pasos.");
+            $this->assertLessThanOrEqual($bloque['total'], $bloque['hechos']);
+            $this->assertNotSame('', trim($bloque['titulo']), "El bloque [{$key}] quedó sin título.");
+            foreach (array_merge($bloque['pasos_hechos'], $bloque['pasos_pendientes']) as $paso) {
+                $this->assertNotSame('', trim($paso), "Un paso de [{$key}] quedó vacío.");
+            }
+        }
+    }
+
+    public function test_bloques_extra_se_renderizan_en_la_pagina(): void
+    {
+        $response = $this->actingAs($this->usuarioQueVe())->get(route('plan.index'));
+
+        $response->assertOk();
+        foreach (array_keys(PlanProyecto::bloquesExtra()) as $key) {
+            // Ancla del panel = marcador estable, apuntada por el
+            // aria-controls del botón del bloque.
+            $response->assertSee('id="plan-detalle-extra-'.$key.'"', false);
+        }
+
+        // Un paso real estable (P-PLAN-01 quedó [x] para siempre en E-PLAN).
+        $response->assertSee('P-PLAN-01');
+        $response->assertSee('Del repo (automático)');
+    }
+
     public function test_estado_se_deriva_del_porcentaje(): void
     {
         $this->assertSame('no_iniciada', PlanProyecto::estadoDe(0));

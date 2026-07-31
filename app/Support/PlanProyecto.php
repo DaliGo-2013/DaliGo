@@ -151,6 +151,27 @@ class PlanProyecto
     }
 
     /**
+     * Los BLOQUES EXTRA del repo: unidades de RUTA-MAESTRA con nombre CON
+     * GUIÓN (E-NAV, E-TZ, E-PLAN…) — trabajo fuera del plan oficial que ya
+     * viaja agrupado «en bloques con sentido» y con pasos [x]/[ ] marcados
+     * en cada push. Las unidades oficiales son numeradas (E1…E13) y mapean
+     * a módulos que ya están en el Gantt, así que quedan fuera. Pedido del
+     * dueño 31-07: auto-ingresar estos bloques al apartado de extras.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function bloquesExtra(): array
+    {
+        $ruta = base_path('docs/RUTA-MAESTRA.md');
+
+        return Cache::remember(
+            'dg.plan.bloques.'.filemtime($ruta),
+            self::TTL_PARSE,
+            fn () => self::parsearBloquesExtra((string) file_get_contents($ruta))
+        );
+    }
+
+    /**
      * El semáforo de decisiones (§2 de docs/DECISIONES.md), parseado.
      *
      * @return array<int, array<string, string>>
@@ -313,6 +334,97 @@ class PlanProyecto
                 ? (int) round($total['aporta'] / $total['peso'] * 100)
                 : 0,
         ];
+    }
+
+    /**
+     * Parser de los bloques extra. Un bloque = sección `### E-XXX · Título`
+     * cuyo key lleva GUIÓN y que contiene al menos un paso `- [x]`/`- [ ]`
+     * a columna 0 (los sub-bullets indentados no son pasos). Doble guarda:
+     * las R-00N de §11 no tienen pasos, y `E1 · M15` no lleva guión;
+     * cinturón: un título con token M\d\d se descarta igual.
+     */
+    private static function parsearBloquesExtra(string $md): array
+    {
+        $bloques = [];
+        // Particionar por encabezados ###: el chunk 2k+1 es el título, el
+        // 2k+2 su cuerpo hasta el próximo encabezado (## o ###).
+        $partes = preg_split('/^### (.+)$/m', $md, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        for ($i = 1; $i < count($partes); $i += 2) {
+            $encabezado = $partes[$i];
+            $cuerpo = $partes[$i + 1] ?? '';
+            // El cuerpo termina donde arranca la próxima sección ## (el split
+            // solo corta en ###).
+            if (($fin = strpos($cuerpo, "\n## ")) !== false) {
+                $cuerpo = substr($cuerpo, 0, $fin);
+            }
+
+            if (! preg_match('/^(E-[A-Z0-9]+) · (.+)$/u', $encabezado, $m)) {
+                continue;
+            }
+            if (preg_match('/\bM\d{2}\b/', $encabezado)) {
+                continue; // cinturón: un E-xx que nombre un módulo oficial no es extra
+            }
+
+            [$hechos, $pendientes] = [[], []];
+            foreach (preg_split('/\R/', $cuerpo) as $linea) {
+                if (! preg_match('/^- \[( |x)\] (.+)$/u', $linea, $p)) {
+                    continue;
+                }
+                $texto = self::resumirPaso($p[2]);
+                $p[1] === 'x' ? $hechos[] = $texto : $pendientes[] = $texto;
+            }
+
+            if ($hechos === [] && $pendientes === []) {
+                continue; // sección sin pasos (ej. R-00N si algún día llevara E-)
+            }
+
+            $total = count($hechos) + count($pendientes);
+            $bloques[$m[1]] = [
+                'key' => $m[1],
+                'titulo' => self::limpiarTituloBloque($m[2]),
+                'pasos_hechos' => $hechos,
+                'pasos_pendientes' => $pendientes,
+                'hechos' => count($hechos),
+                'total' => $total,
+                'pct' => (int) round(count($hechos) / $total * 100),
+                // Estado desde los CONTEOS, no del pct (un 99.6% redondea a
+                // 100 sin estar terminado).
+                'estado' => $pendientes === [] ? 'finalizada'
+                    : ($hechos === [] ? 'no_iniciada' : 'en_curso'),
+            ];
+        }
+
+        return $bloques;
+    }
+
+    /** Título del bloque legible: sin backticks, cortado antes del ruido operativo. */
+    private static function limpiarTituloBloque(string $titulo): string
+    {
+        $titulo = str_replace('`', '', $titulo);
+        foreach (['(rama', '(plan:', '— ✅'] as $corte) {
+            if (($pos = strpos($titulo, $corte)) !== false) {
+                $titulo = substr($titulo, 0, $pos);
+            }
+        }
+
+        return rtrim(trim($titulo), '—- ');
+    }
+
+    /** Resumen de un paso para el panel: etiqueta P-XXX-nn + arranque del texto. */
+    private static function resumirPaso(string $paso): string
+    {
+        $paso = str_replace(['**', '`'], '', $paso);
+        if (mb_strlen($paso) > 140) {
+            $corte = mb_substr($paso, 0, 140);
+            // Retroceder al último espacio para no partir una palabra.
+            if (($esp = mb_strrpos($corte, ' ')) !== false && $esp > 80) {
+                $corte = mb_substr($corte, 0, $esp);
+            }
+            $paso = rtrim($corte, ' ·,;:').'…';
+        }
+
+        return $paso;
     }
 
     /** Parser del índice/semáforo §2 (| ID | Título | Estado | Decisor | Bloquea | Límite |). */
