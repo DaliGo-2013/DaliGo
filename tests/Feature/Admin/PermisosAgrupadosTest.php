@@ -67,9 +67,15 @@ class PermisosAgrupadosTest extends TestCase
     /**
      * Candado del POST: las áreas arrancan CERRADAS y solo se ocultan en el
      * cliente (`x-show`), así que el HTML tiene que traer las casillas de TODAS
-     * ellas. Si alguien cambiara `x-show` por `x-if` o por un `@if` de Blade,
-     * guardar el rol con un área cerrada BORRARÍA sus permisos sin avisar: el
-     * navegador no envía lo que no existe. Este test es el que caza eso.
+     * ellas. Si el panel pasara a renderizarse condicionalmente EN EL SERVIDOR
+     * —un `@if` de Blade alrededor del panel, o un `<template x-if>`— guardar el
+     * rol con un área cerrada BORRARÍA sus permisos sin avisar: el navegador no
+     * envía lo que no existe en el DOM.
+     *
+     * Mutación verificada (31-jul-2026): envolver el panel en `@if ($loop->first)`
+     * pone este test ROJO. Ojo con la mutación que NO sirve: cambiar `x-show` por
+     * `x-if` sobre el `<div>` es INERTE —Alpine solo honra `x-if` en `<template>`—
+     * así que el HTML del servidor no cambia y el test sigue verde con razón.
      */
     public function test_la_edicion_renderiza_las_casillas_de_todas_las_areas(): void
     {
