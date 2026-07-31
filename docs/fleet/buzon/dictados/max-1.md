@@ -1,61 +1,56 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-07-29 (v30 — NOTIF-1 cerrado y en producción; GO P-NAV-05: gate R-31 formal del menú V4 sobre main). Manda sobre lo anterior.
+> Emitido por el Director el 2026-07-30 (v32 — GO M13 Devoluciones, prioridad ★ del dueño; arranque desde cero con plan sellado antes de la primera migración). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (auditoría; sube a xhigh solo si un hallazgo se resiste).
+MODELO: Opus 4.8 · high (diseño de módulo nuevo; xhigh solo si el modelo de datos se resiste).
 
-## ✅ Tu lote del v29 EN PRODUCCIÓN (merge `0e92076`, Deploy success)
-El botón del correo ya aterriza en la tarjeta puntual: **NOTIF-1 queda cerrado del todo**.
-Verificación del Director: punto único `anclaAprobacion()` reusado por `urlDestino()` y por los
-dos productores —sin duplicar, como se pidió—, bundle 98/98, y **suite con tu lote + el QR de
-Max-2 integrados: 1191 verdes / 7.715 aserciones**. Rama borrada tras confirmar ancestría.
+## ✅ Contexto: tu gate R-31 está EN PRODUCCIÓN y E-NAV CERRADA (v31 sigue válido como historia)
+Merge `ba4944b`, Deploy+Tests verdes, QA celular del dueño OK, campanita = entrada a propósito.
 
-El candado `OneShotPlantillasCandadoTest` era la deuda que más me preocupaba de todo el
-territorio de notificaciones: sin él, cambiar un texto del seeder sin tocar la migración la
-volvía un **no-op silencioso** y las plantillas nunca llegaban a producción. Que cubra las DOS
-one-shot (la tuya y la de Marcos) es lo correcto.
+## 🟢 GO M13 — Devoluciones (E6), módulo desde CERO (L)
+**El dueño lo pidió como prioridad ★ y hoy está en 0 % — cero código.** No confundir con la
+acción `devolver` de M11 ni con el taller M12 (nota §5.6 de RUTA-MAESTRA: esa confusión ya
+pasó una vez). Fuente: RUTA-MAESTRA §E6 (P-M13-01..04) + biblia flujo A-12.
 
-## 🟢 GO P-NAV-05 — gate R-31 formal del menú V4, sobre main (M)
-Rama `audit/nav-gate-r31` desde main fresco. **Es el único paso que le falta a E-NAV para
-cerrarse** (va 9 de 10) y hoy es lo de mayor valor que puedes tomar sin colisionar.
+**Rama:** `feature/m13-devoluciones` desde main FRESCO (baseline suite 1199).
 
-**Por qué ahora y por qué tú:** la revisión pre-gate se corrió el 24-07 (13 confirmados,
-corregidos en `2557043`), pero **eso fue sobre la rama, no sobre main** — y desde entonces el
-menú recibió acordeón, badges, hub de funciones, campanita en cabecera, drawer móvil táctil,
-panel anclado, ancho único, botón único de volver, y las 4 ex-huérfanas que tú mismo agregaste.
-El R-31 formal sobre el árbol integrado nunca se corrió. Tus gates propios de esta semana
-(`fix/nav-huerfanas`, `#6 chips`) cazaron cosas reales que a mí se me pasaron; esto es lo mismo
-a escala de unidad.
+### Orden de trabajo
+1. **PRIMERO el plan, no el código:** `docs/planes/PLAN-M13.md` (1-2 páginas, patrón de
+   PLAN-M14/M15) con: modelo de datos propuesto, rutas (públicas y admin), estados de la
+   devolución, integración con M14 (reembolso) y M15 (avisos), y el recorte de alcance de
+   abajo. Parte al buzón con el plan → **VISTO BUENO del dueño antes de la PRIMERA
+   migración** (misma regla que M14). Mientras esperas puedes adelantar lo que no persiste:
+   esqueleto de rutas firmadas, form Blade, validaciones.
+2. Con el visto bueno: **P-M13-01** (formulario público del cliente: ruta SIN auth con token
+   firmado + fotos obligatorias) y **P-M13-02** (categorización transporte/fábrica/otro +
+   reglas automáticas por tipo y origen).
+3. **P-M13-03 entra RECORTADO:** el reembolso vía M14 si ≥ umbral SÍ (el motor existe;
+   cablear una acción nueva de aprobación es terreno conocido). El **reingreso automático a
+   stock NO se construye**: necesita movimientos propios de M04 y M04 es hoy un espejo
+   read-only bloqueado por D-003. Déjalo como estado terminal «apta para reingreso» +
+   notificación M15 a bodega, y el hook documentado para cuando M04 exista. Esta es la
+   parte que el plan de la ruta maestra suponía lista y no lo está — dilo explícito en
+   PLAN-M13.md para que el dueño lo apruebe con los ojos abiertos.
+4. **P-M13-04** (reportes por causa y canal) queda para un segundo lote — no lo metas en este.
 
-**Qué audita el gate** (usa tu criterio, esto es guía no camisa de fuerza):
-- **Permisos ↔ visibilidad**: cada ítem del menú aparece solo para quien puede entrar a su
-  ruta. Un ítem visible que lleva a 403 es peor que no tenerlo. Cruza `MenuPrincipal` contra
-  los middleware reales de `routes/web.php`, no contra lo que digan los comentarios.
-- **Cobertura**: ¿queda alguna pantalla huérfana que no listamos? ¿Algún ítem apunta a una ruta
-  que ya no existe? El candado que dejaste (`test_cada_ruta_del_menu_resalta_exactamente_un_item`)
-  cubre el resaltado, no la existencia.
-- **Móvil**: el drawer, los objetivos táctiles, el panel anclado y la campanita en cabecera son
-  de otras manos y entraron por separado — verifica que juntos no se pisen.
-- **Accesibilidad**: `aria-current`, foco al abrir/cerrar el drawer, navegación por teclado en
-  el acordeón. Ya hubo un hallazgo de doble `aria-current`; puede haber hermanos.
-- **Los 4 contratos nuevos** de la semana aplicados al menú: ancho por layout, botón único de
-  volver, errores amables, marco mobile-first.
+### Seguridad — es una ruta PÚBLICA con upload, trátala como frontera hostil
+- Token firmado con expiración (patrón del QR de retiro y del portal M12); throttle por IP;
+  el link público NO revela datos del cliente más allá de lo imprescindible.
+- Fotos: validar mime/size en servidor, storage privado (no `public/`), nombres generados
+  (nunca el nombre original), y límites de upload de cPanel verificados ANTES de fijar los
+  del validador («hecho cuando» de E6 lo exige vía IA-cPanel — pídele el dato al dueño en
+  el parte del plan si no puedes verificarlo tú).
+- La asociación a documento de venta va como folio de referencia (texto validado) + cliente
+  del espejo M03: la emisión propia (M05) aún no existe y no debes depender de ella.
 
-**Entrega:** un parte con los hallazgos clasificados (alto/medio/bajo) **y los fixes de los que
-tú consideres seguros aplicados en la misma rama**. Los que impliquen decisión de producto,
-déjalos anotados sin tocar. Si el gate sale limpio, dilo — un gate sin hallazgos es un
-resultado válido y vale más que inventar observaciones.
-
-**Lo que NO cubre este paso:** el QA del dueño en celular real. Eso es suyo y cierra E-NAV
-después de tu gate.
-
-## Territorio: cuidado, hay dos manos activas cerca
-- **Marcos está construyendo M05 Facturación/DTE AHORA** (módulo Documentos + Estado, puerto
-  emisor, credenciales). No lo toques ni de refilón.
-- El **bundle de diseño** sigue bloqueado y en manos del dueño.
-- **Max-2** arranca P-DSP-05 (PWA del conductor) desde main.
+### Territorio
+- **Marcos sigue construyendo M05 Facturación/DTE** — ni de refilón.
+- **Max-2** está en P-DSP-05 (PWA del conductor, despachos). M13 no comparte archivos con
+  despachos; si un cruce aparece (p. ej. notificaciones), gana el que llegó primero a main
+  y el otro rebasea.
 
 ## Recordatorios
-Suite COMPLETA (baseline hoy **1191**). Si tocas Blade → build + grep superset. Conflictos con
-`git checkout origin/main -- <archivo>`, nunca con `>`. Parte al buzón → doble llave.
+Suite COMPLETA antes de cualquier push (baseline **1199**). Blade tocado → build + grep
+superset. Conflictos con `git checkout origin/main -- <archivo>`, nunca con `>` (el `>` de
+PS 5.1 mete BOM y revienta Vite). Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.

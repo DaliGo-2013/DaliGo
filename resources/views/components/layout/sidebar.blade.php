@@ -5,6 +5,16 @@
      (layouts/app.blade.php). Anti-flash pre-Alpine: la clase estática
      max-lg:-translate-x-full oculta el drawer desde el primer paint; Alpine
      solo la RETIRA al abrir (nunca hay dos utilidades translate en pugna).
+     max-lg:invisible viaja PEGADA al translate y por la misma vía: un
+     translate saca de la vista pero NO del orden de tabulación ni del árbol de
+     accesibilidad, así que con el menú cerrado un usuario de teclado o lector
+     de pantalla recorría todo el menú invisible antes de llegar al contenido
+     (este <aside> es el primer nodo del shell). visibility:hidden sí saca del
+     tab order, y el prefijo max-lg: deja el escritorio intacto. La transición
+     incluye `visibility` a propósito: con solo `translate` el drawer
+     desaparecería de golpe al cerrar en vez de deslizarse — visibility se
+     interpola de forma discreta, así que espera los 150ms y recién ahí oculta.
+     Candado: SidebarTest::test_drawer_cerrado_no_queda_en_el_orden_de_tabulacion.
      flex-col: el nav crece y el PIE (usuario) queda abajo — en desktop NO
      hay topbar (el espacio vertical es área de trabajo, pedido del dueño
      24-07). La campanita vive en la CABECERA (desktop): pedido del dueño
@@ -19,8 +29,9 @@
      autocompletados, las cabeceras pegajosas de ST). Los z-50 legítimos
      —modal, lightbox de fotos, ayuda-serie— siguen ganando, que es correcto. --}}
 <aside
-    class="fixed inset-y-0 left-0 z-40 flex w-[300px] max-lg:-translate-x-full flex-col border-r border-neutral-200 bg-white max-lg:transition-transform max-lg:duration-150 lg:sticky lg:top-0 lg:h-screen lg:w-[264px] lg:shrink-0"
-    :class="{ 'max-lg:-translate-x-full': ! menuAbierto }">
+    id="dg-menu-lateral"
+    class="fixed inset-y-0 left-0 z-40 flex w-[300px] max-lg:-translate-x-full max-lg:invisible flex-col border-r border-neutral-200 bg-white max-lg:transition-[translate,visibility] max-lg:duration-150 lg:sticky lg:top-0 lg:h-screen lg:w-[264px] lg:shrink-0"
+    :class="{ 'max-lg:-translate-x-full': ! menuAbierto, 'max-lg:invisible': ! menuAbierto }">
 
     <div class="flex shrink-0 items-center justify-between border-b border-neutral-100 px-4 py-4">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
@@ -36,6 +47,7 @@
         </div>
 
         <button type="button" @click="menuAbierto = false"
+                aria-controls="dg-menu-lateral" :aria-expanded="menuAbierto"
                 class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none lg:hidden">
             <x-icon.x-mark class="h-5 w-5" />
             <span class="sr-only">Cerrar menú</span>

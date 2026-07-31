@@ -20,10 +20,6 @@
         <x-list-card title="Roles" :count="$roles->count()" :countLabel="\Illuminate\Support\Str::plural('rol', $roles->count())">
             @foreach ($roles as $role)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($role->name, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ \Illuminate\Support\Str::headline($role->name) }}</p>
                         @if (in_array($role->name, $baseRoles, true))

@@ -107,6 +107,17 @@ class OrdenServicio extends Model implements AuditableContract
     // Reparacion: se cobra al cliente.
     public const FACTURACION = ['garantia', 'reparacion'];
 
+    // Etiqueta visible de la condicion. Existe porque las cuatro pantallas que
+    // ofrecen este selector (QR por unidad, QR por cantidad, mostrador y lote del
+    // conductor) rotulaban con `ucfirst($f)` -> el CLIENTE leia "Garantia" y
+    // "Reparacion" SIN TILDE. La clave guardada sigue sin tildes (es el valor de
+    // la columna); la tilde vive solo aca, en el rotulo. Mismo patron que
+    // TIPO_ETIQUETAS: fuente unica para que el rotulo no se escriba a mano.
+    public const FACTURACION_ETIQUETAS = [
+        'garantia' => 'Garantía',
+        'reparacion' => 'Reparación',
+    ];
+
     // Documento de compra que respalda la garantia.
     public const GARANTIA_DOC_TIPOS = ['factura', 'boleta'];
 
@@ -243,6 +254,19 @@ class OrdenServicio extends Model implements AuditableContract
     public function getTipoEquipoLabelAttribute(): string
     {
         return self::etiquetaTipo($this->tipo_equipo);
+    }
+
+    /**
+     * Etiqueta visible de la condicion ('garantia' -> "Garantía"), con tilde.
+     * Fallback a ucfirst por si aparece una condicion historica fuera del mapa.
+     */
+    public static function etiquetaFacturacion(?string $facturacion): string
+    {
+        if ($facturacion === null || $facturacion === '') {
+            return '';
+        }
+
+        return self::FACTURACION_ETIQUETAS[$facturacion] ?? ucfirst($facturacion);
     }
 
     /**
@@ -479,18 +503,84 @@ class OrdenServicio extends Model implements AuditableContract
         ])->filter()->implode(' · ');
 
         $datos = [
+            // El folio es el dato con el que se busca la orden: sin el, el aviso
+            // obligaba a buscar por nombre de cliente.
+            'folio' => $this->folio,
             'cliente' => $this->cliente_nombre,
             'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
             'maquinas' => '1 equipo',
             'sucursal' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
             'condicion' => $this->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación',
-            'url' => route('admin.servicio-tecnico.index'),
+            // La ficha de la orden, no el listado: este aviso es de UNA orden y su
+            // boton de confirmar esta en la ficha.
+            'url' => route('admin.servicio-tecnico.show', $this),
         ];
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_INGRESO)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
+    }
+
+    /**
+     * Roles candidatos al aviso de «equipo reparado»: es VENTAS quien llama al
+     * cliente para que lo retire (y quien despues anota la fecha de aviso).
+     *
+     * El tecnico NO va aca: es quien marca el estado, y avisarle de su propia
+     * accion es ruido (mismo criterio que el resto del modulo). Quien de estos
+     * roles recibe cada orden lo decide `notificarReparado()`, no esta lista.
+     */
+    public const ROLES_AVISO_REPARADO = ['jefe_ventas', 'vendedor', 'admin'];
+
+    /**
+     * Avisa por M15 (campanita + correo segun preferencias) que el equipo quedo
+     * REPARADO, para que ventas le diga al cliente que puede retirarlo.
+     *
+     * El reparto lo define `esVisiblePara()`, el MISMO filtro que gobierna el
+     * listado y la ficha, y de ahi salen solas las dos mitades de la regla del
+     * dueño (30-07): el jefe de ventas tiene 'ver todo servicio tecnico', asi que
+     * recibe TODAS las ordenes —las de todos sus vendedores—; un vendedor no lo
+     * tiene, asi que recibe solo las de SU cartera (`clientes.vendedor_id`, mas la
+     * de su equipo via `users.jefe_id`).
+     *
+     * Consecuencia a tener presente HOY: mientras no haya carteras asignadas,
+     * `esVisiblePara` es false para todo vendedor, asi que el aviso llega solo a
+     * jefatura. El dia que se asignen, cada vendedor empieza a recibir lo suyo
+     * SIN tocar este codigo — que es justo lo que se pidio.
+     *
+     * Notificar a alguien que despues no puede ABRIR la orden seria el defecto que
+     * ya se corrigio en la campanita (`Notificacion::urlDestinoPara`): un aviso que
+     * termina en 403.
+     *
+     * @param  User|null  $actor  quien marco la orden como reparada (no se autonotifica)
+     */
+    public function notificarReparado(?User $actor = null): void
+    {
+        $equipo = collect([
+            $this->tipo_equipo_label,
+            $this->modelo,
+            $this->numero_serie ? 'N° '.$this->numero_serie : null,
+        ])->filter()->implode(' · ');
+
+        $datos = [
+            'folio' => $this->folio,
+            'cliente' => $this->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
+            // Los tres se rellenan siempre: un placeholder sin dato queda CRUDO en
+            // el texto ({trabajo} literal en la campanita).
+            'trabajo' => filled($this->trabajo_realizado) ? $this->trabajo_realizado : 'Sin detalle',
+            'tecnico' => $actor?->name ?: 'El técnico',
+            'retiro' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
+            'telefono' => filled($this->cliente_telefono) ? $this->cliente_telefono : 'sin teléfono registrado',
+            'url' => route('admin.servicio-tecnico.show', $this),
+        ];
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_REPARADO)->get()->unique('id')
+            ->reject(fn (User $u) => $actor && $u->id === $actor->id)
+            ->filter(fn (User $u) => $this->esVisiblePara($u))
+            ->each(fn (User $u) => $dispatcher->despachar('taller.reparado', $this, $u, $datos));
     }
 
     /**

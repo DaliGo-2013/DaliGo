@@ -16,10 +16,6 @@
         <x-list-card title="Sucursales" :count="$sucursales->count()" :countLabel="\Illuminate\Support\Str::plural('sucursal', $sucursales->count())">
             @forelse ($sucursales as $sucursal)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($sucursal->nombre, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $sucursal->nombre }}</p>
                         @if ($sucursal->es_central)

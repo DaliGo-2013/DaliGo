@@ -57,10 +57,6 @@
         <x-list-card title="Clientes" :count="$clientes->total()" :countLabel="\Illuminate\Support\Str::plural('cliente', $clientes->total())">
             @forelse ($clientes as $cliente)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($cliente->razon_social, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $cliente->razon_social }}</p>
                         @if ($cliente->segmento)

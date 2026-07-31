@@ -338,7 +338,7 @@ class AgendaTrabajo extends Model implements AuditableContract
      * qué (misma tribu que el resto del flujo de terreno). Se despacha después de
      * registrar el rechazo; el emisor lo envuelve en try/catch (secundario).
      */
-    public function avisarRechazoInterno(?string $rechazadoPor = null): void
+    public function avisarRechazoInterno(?string $rechazadoPor = null, ?bool $avisadoAlCliente = null): void
     {
         $datos = [
             'cliente' => $this->cliente_nombre,
@@ -348,6 +348,15 @@ class AgendaTrabajo extends Model implements AuditableContract
             'rechazado_por' => $rechazadoPor ?: '—',
             'telefono' => $this->cliente_telefono ?: '—',
             'preferida' => $this->fecha_preferida?->format('d-m-Y') ?: '—',
+            // Si al cliente se le avisó DE VERDAD lo sabe el caller (el envío puede
+            // fallar o no haber correo). La plantilla decía siempre "Se avisó al
+            // cliente por correo", que es justo lo que hace que nadie lo llame
+            // cuando el correo no salió.
+            'aviso_cliente' => match ($avisadoAlCliente) {
+                true => 'Se le avisó al cliente por correo.',
+                false => 'NO se pudo avisar al cliente por correo: contáctalo por teléfono.',
+                null => '',
+            },
             'url' => route('admin.agenda-terreno.index'),
         ];
 

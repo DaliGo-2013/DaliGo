@@ -32,7 +32,9 @@
                                 Estimado(a) {{ $orden->cliente_nombre }}:<br>
                                 Revisamos tu {{ mb_strtolower($orden->tipo_equipo_label) }}
                                 @if ($orden->numero_serie) (N° de serie {{ $orden->numero_serie }}) @endif
-                                y te presentamos el detalle del trabajo necesario para dejarlo funcionando.
+                                {{-- "dejarlo" no concordaba: el tipo puede ser femenino (lavadora,
+                                     bomba de agua, herramienta). --}}
+                                y te presentamos el detalle del trabajo necesario para que vuelva a funcionar.
                             </p>
 
                             {{-- Por qué: la falla encontrada --}}
@@ -128,7 +130,10 @@
                     {{-- Pie --}}
                     <tr>
                         <td style="background-color:#fafafa; padding:16px 32px; text-align:center; font-size:12px; color:#a3a3a3; border-top:1px solid #e5e5e5;">
-                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo o llámanos.
+                            {{-- Decía "o llámanos" y ningún correo trae teléfono: se promete un canal
+                                 que el cliente no puede usar. Cuando exista el teléfono en Configuración
+                                 se agrega acá. --}}
+                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo.
                         </td>
                     </tr>
                 </table>

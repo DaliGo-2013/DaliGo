@@ -494,7 +494,8 @@ class ServicioTecnicoController extends Controller
         // cartera propia (quien tiene 'ver todo servicio tecnico' pasa siempre).
         abort_unless($orden->esVisiblePara(auth()->user()), 403);
 
-        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos']);
+        // `lote` para el bloque «Retiro en ruta» (conductor y ciudad de origen).
+        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos', 'lote']);
 
         return view('admin.servicio-tecnico.show', [
             'orden' => $orden,
@@ -537,7 +538,7 @@ class ServicioTecnicoController extends Controller
 
     public function update(Request $request, OrdenServicio $orden): RedirectResponse
     {
-        $orden->update($this->validateData($request));
+        $orden->update($this->validateData($request, orden: $orden));
 
         return redirect()->route('admin.servicio-tecnico.index')
             ->with('status', "Orden {$orden->folio} actualizada.");
@@ -760,6 +761,12 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
+        // Estado ANTES de guardar: el aviso de «reparado» va en la TRANSICIÓN, no
+        // en cada guardado. El técnico re-guarda el parte varias veces (agrega un
+        // repuesto, corrige el trabajo) y sin esto ventas recibiría un aviso por
+        // cada vez.
+        $estadoAnterior = $orden->estado;
+
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
@@ -790,6 +797,17 @@ class ServicioTecnicoController extends Controller
                 'cantidad' => $r['cantidad'] ?? 1,
                 'precio_unitario' => $r['precio_unitario'] ?? 0,
             ]);
+        }
+
+        // Aviso interno a ventas: el equipo quedó listo y hay que llamar al cliente
+        // para que lo retire. Acción SECUNDARIA (try/catch): un aviso que falle no
+        // puede hacer perder el parte del técnico, que es el dato real.
+        if ($data['estado'] === 'reparado' && $estadoAnterior !== 'reparado') {
+            try {
+                $orden->notificarReparado($request->user());
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
@@ -1270,7 +1288,12 @@ class ServicioTecnicoController extends Controller
         return array_reverse(range(min($primero, $ultimo), $ultimo));
     }
 
-    private function validateData(Request $request, bool $creando = false): array
+    /**
+     * @param  OrdenServicio|null  $orden  La orden que se edita (null al crear). Se
+     *                                     usa para no exigir datos que la orden nunca
+     *                                     tuvo — ver la regla de producto_id.
+     */
+    private function validateData(Request $request, bool $creando = false, ?OrdenServicio $orden = null): array
     {
         // Normalizar el RUT antes de validar (forma canonica 12345678-9), igual que
         // en Clientes; si no se puede normalizar, dejar el valor original para que
@@ -1313,7 +1336,17 @@ class ServicioTecnicoController extends Controller
             // Obligatorio en el mostrador: toda orden se vincula a un producto del
             // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
             // lo maneja aparte (alli sigue opcional).
-            'producto_id' => ['required', 'integer', Rule::exists('productos', 'id')],
+            //
+            // Al EDITAR solo se exige si la orden ya lo tenia: las ordenes que nacen
+            // por QR o por lote en ruta no traen producto, y exigirlo obligaba a
+            // clasificar el equipo en el catalogo para poder corregir cualquier otro
+            // dato (un telefono mal escrito, por ejemplo). Quien quiera clasificarla
+            // lo puede hacer igual; lo que ya no se puede es quitarle el producto a
+            // una orden que si lo tenia.
+            'producto_id' => [
+                Rule::requiredIf($creando || filled($orden?->producto_id)),
+                'nullable', 'integer', Rule::exists('productos', 'id'),
+            ],
             'sucursal_id' => [Rule::requiredIf(! $esRuta), 'nullable', 'integer', Rule::exists('sucursales', 'id')],
             // Ciudad/localidad cuando se recibe en ruta (obligatoria en ese caso).
             'ruta' => [Rule::requiredIf($esRuta), 'nullable', 'string', 'max:120'],

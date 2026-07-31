@@ -112,11 +112,30 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_taller_ingresado',
                 'valor' => json_encode([
                     'asunto' => 'Ingreso al taller: {cliente} ({condicion})',
-                    'cuerpo' => "{cliente} ingresó {maquinas} en {sucursal} ({condicion}).\nDetalle: {equipo}\n\nRevísalo y confírmalo en el listado: {url}",
+                    // Sin la {url} cruda (el correo ya trae el boton «Abrir en DaliGo»
+                    // con el mismo enlace) y sin el imperativo «confirmalo», que le
+                    // llega tambien a vendedores que NO tienen ese permiso.
+                    'cuerpo' => "Orden {folio} · {cliente} ingresó {maquinas} en {sucursal} ({condicion}).\nDetalle: {equipo}\nFalta confirmar la recepción.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno (ventas + técnico) cuando un cliente ingresa un equipo por QR (unidad o lote).',
+            ],
+            // El técnico marcó la orden como REPARADA → ventas llama al cliente para
+            // que la retire. Clave nueva → el firstOrCreate del seeder la crea en el
+            // deploy; no requiere migración one-shot.
+            [
+                'clave' => 'notif_plantilla_taller_reparado',
+                'valor' => json_encode([
+                    'asunto' => 'Equipo reparado — Orden {folio} ({cliente})',
+                    // El teléfono va EN EL CUERPO a propósito: el destinatario tiene
+                    // que llamar, y sin él el aviso obliga a abrir la ficha para
+                    // conseguir el dato con el que se actúa.
+                    'cuerpo' => "{tecnico} marcó como reparada la orden {folio} de {cliente}.\nEquipo: {equipo}\nTrabajo: {trabajo}\nRetiro en: {retiro}\nFalta avisarle al cliente que puede retirarlo ({telefono}).",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas cuando el técnico marca un equipo como reparado (jefatura recibe todas; cada vendedor, las de su cartera).',
             ],
             // Cotización del taller al cliente (P-M12-02, fase correo). Aviso
             // INTERNO a los roles del taller/ventas; la carta al cliente es un
@@ -125,7 +144,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_enviada',
                 'valor' => json_encode([
                     'asunto' => 'Cotización enviada — Orden {folio} ({cliente})',
-                    'cuerpo' => "Se envió la cotización de la orden {folio} a {cliente} por {total}.\nEquipo: {equipo}\nEnviada por: {enviada_por}.\n\nVer la orden: {url}",
+                    'cuerpo' => "Se envió la cotización de la orden {folio} a {cliente} por {total}.\nEquipo: {equipo}\nEnviada por: {enviada_por}.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -135,7 +154,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_respondida',
                 'valor' => json_encode([
                     'asunto' => 'Cotización {respuesta} — Orden {folio} ({cliente})',
-                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nEquipo: {equipo} · Monto: {total}.\n\nVer la orden: {url}",
+                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nEquipo: {equipo} · Monto: {total}.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -145,7 +164,11 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_autorizada',
                 'valor' => json_encode([
                     'asunto' => 'Reparación autorizada — Orden {folio} ({cliente})',
-                    'cuerpo' => "Ventas autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nEquipo: {equipo}\nPago: {pago} · autorizó: {autorizada_por}.\nTécnico: puedes proceder con la reparación.\n\nVer la orden: {url}",
+                    // Decia «Ventas autorizó» en duro, pero el permiso 'autorizar
+                    // reparacion' lo tienen tambien el tecnico y el vendedor, asi que
+                    // atribuia mal la decision. Y «Técnico: puedes proceder» era una
+                    // segunda persona dirigida a UNO de los cuatro destinatarios.
+                    'cuerpo' => "{autorizada_por} autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nEquipo: {equipo}\nPago: {pago}.\nEl técnico ya puede proceder con la reparación.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -157,7 +180,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_solicitada',
                 'valor' => json_encode([
                     'asunto' => 'Nueva solicitud por coordinar: {cliente} ({tipo})',
-                    'cuerpo' => "{cliente} pidió {tipo} en {ciudad}.\nServicio: {servicio} · Dirección: {direccion}\nTeléfono: {telefono} · Prefiere: {preferida}\nDetalle del cliente: {descripcion}\n\nCoordínala en la agenda de terreno: {url}",
+                    'cuerpo' => "{cliente} pidió {tipo} en {ciudad}.\nServicio: {servicio} · Dirección: {direccion}\nTeléfono: {telefono} · Prefiere: {preferida}\nDetalle del cliente: {descripcion}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -167,7 +190,7 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_confirmada',
                 'valor' => json_encode([
                     'asunto' => 'Cliente {respuesta}: {cliente} ({tipo})',
-                    'cuerpo' => "{cliente} respondió a su visita del {fecha}: {respuesta}.\nComentario del cliente: {nota}\n\nVer en la agenda: {url}",
+                    'cuerpo' => "{cliente} respondió a su visita del {fecha}: {respuesta}.\nComentario del cliente: {nota}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -177,7 +200,11 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_rechazada',
                 'valor' => json_encode([
                     'asunto' => 'Solicitud rechazada: {cliente} ({tipo})',
-                    'cuerpo' => "Se rechazó la solicitud de {cliente} ({tipo}).\nMotivo: {motivo}\nRechazó: {rechazado_por} · Teléfono: {telefono} · Prefería: {preferida}\nSe avisó al cliente por correo.\n\nVer en la agenda: {url}",
+                    // {aviso_cliente} en vez de afirmar «Se avisó al cliente por
+                    // correo» a ciegas: el envio puede fallar, y en ese caso hay que
+                    // llamarlo. Lo rellena AgendaTrabajo::avisarRechazoInterno con lo
+                    // que paso DE VERDAD.
+                    'cuerpo' => "Se rechazó la solicitud de {cliente} ({tipo}).\nMotivo: {motivo}\nRechazó: {rechazado_por} · Teléfono: {telefono} · Prefería: {preferida}\n{aviso_cliente}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',

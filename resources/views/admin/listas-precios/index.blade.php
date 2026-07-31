@@ -9,10 +9,6 @@
         <x-list-card title="Listas" :count="$listas->count()" :countLabel="\Illuminate\Support\Str::plural('lista', $listas->count())">
             @forelse ($listas as $lista)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($lista->nombre, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $lista->nombre }}</p>
                         @if ($lista->bsale_coin_id === \App\Models\ListaPrecio::COIN_CLP)

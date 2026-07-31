@@ -9,10 +9,6 @@
         <x-list-card title="Bodegas" :count="$bodegas->count()" :countLabel="\Illuminate\Support\Str::plural('bodega', $bodegas->count())">
             @forelse ($bodegas as $bodega)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($bodega->nombre, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $bodega->nombre }}</p>
                         @if ($bodega->es_virtual)
