@@ -38,31 +38,69 @@ class PlanProyecto
     public const FIN_PROYECTO = '2027-02-28';
 
     /**
-     * Fechas de las barras del Gantt, por ítem del tracker §10. `inicio` =
-     * cuándo partió (real) o cuándo debería partir (estimado); `fin` = cuándo
-     * debería estar al 100 % (los cerrados llevan su fecha real). Semillas
-     * derivadas de la biblia §6 remapeada a los hitos re-baselinados de RUTA
-     * §2 + las fechas reales de cierre de RUTA §4; el dueño las ajusta
-     * editando este array.
+     * Datos curados por ítem del tracker §10 — como las fechas de los hitos:
+     * viven en el repo, editar = commit = deploy.
+     * - `inicio`/`fin`: la ventana de la barra del Gantt (cuándo partió o
+     *   debería partir; cuándo debería estar al 100 % — los cerrados llevan
+     *   su fecha real). Semillas de la biblia §6 remapeada a los hitos
+     *   re-baselinados de RUTA §2 + fechas reales de cierre de RUTA §4.
+     * - `hecho`/`falta`: los bullets del panel de detalle (click en la fila).
+     *   Son la capa NARRATIVA que el tracker no tiene; el % y el fundamento
+     *   siguen saliendo AUTO del tracker. Al cerrar o abrir un frente de un
+     *   módulo, actualizar sus bullets en el mismo push que el tracker.
      */
     public const MODULOS = [
-        'M01' => ['fase' => 'F1', 'label' => 'M01 Core', 'inicio' => '2026-06-01', 'fin' => '2026-06-10'],
-        'M02' => ['fase' => 'F1', 'label' => 'M02 Catálogo+precios', 'inicio' => '2026-06-08', 'fin' => '2026-10-09'],
-        'M03' => ['fase' => 'F1', 'label' => 'M03 Clientes', 'inicio' => '2026-06-15', 'fin' => '2026-12-05'],
-        'M04' => ['fase' => 'F2', 'label' => 'M04 Inventario', 'inicio' => '2026-09-01', 'fin' => '2026-10-15'],
-        'M05' => ['fase' => 'F2', 'label' => 'M05 Ciclo factura', 'inicio' => '2026-07-14', 'fin' => '2026-11-30'],
-        'M07' => ['fase' => 'F2', 'label' => 'M07 QR retiro', 'inicio' => '2026-07-14', 'fin' => '2026-09-30'],
-        'M08' => ['fase' => 'F2', 'label' => 'M08 Despacho+PWA', 'inicio' => '2026-07-14', 'fin' => '2026-12-05'],
-        'M11' => ['fase' => 'F2', 'label' => 'M11 Producción', 'inicio' => '2026-06-20', 'fin' => '2026-12-05'],
-        'M12' => ['fase' => 'F2', 'label' => 'M12 Servicio técnico', 'inicio' => '2026-06-10', 'fin' => '2026-11-15'],
-        'M13' => ['fase' => 'F2', 'label' => 'M13 Devoluciones', 'inicio' => '2026-10-01', 'fin' => '2026-10-25'],
-        'M14' => ['fase' => 'F1', 'label' => 'M14 Aprobaciones', 'inicio' => '2026-07-02', 'fin' => '2026-07-17'],
-        'M15' => ['fase' => 'F1', 'label' => 'M15 Notificaciones', 'inicio' => '2026-07-02', 'fin' => '2026-07-08'],
-        'M16' => ['fase' => 'F1', 'label' => 'M16 BI', 'inicio' => '2026-07-09', 'fin' => '2026-12-15'],
-        'M17' => ['fase' => 'F2', 'label' => 'M17 Servicio en terreno', 'inicio' => '2026-07-15', 'fin' => '2026-07-24'],
-        'F3' => ['fase' => 'F3', 'label' => 'F3 Piloto Mirador', 'inicio' => '2026-12-07', 'fin' => '2027-01-11'],
-        'F4' => ['fase' => 'F4', 'label' => 'F4 Rollout Abate', 'inicio' => '2027-01-12', 'fin' => '2027-02-09'],
-        'F5' => ['fase' => 'F5', 'label' => 'F5 Coquimbo + cierre', 'inicio' => '2027-02-10', 'fin' => '2027-02-28'],
+        'M01' => ['fase' => 'F1', 'label' => 'M01 Core', 'inicio' => '2026-06-01', 'fin' => '2026-06-10',
+            'hecho' => ['Autenticación completa (dominio @impdali.cl, sin registro público)', 'Usuarios y roles con permisos editables desde la UI', 'Sucursales (multi-sucursal, 4 sembradas)', 'Configuración del sistema', 'Auditoría de cambios (quién/qué/cuándo)'],
+            'falta' => []],
+        'M02' => ['fase' => 'F1', 'label' => 'M02 Catálogo+precios', 'inicio' => '2026-06-08', 'fin' => '2026-10-09',
+            'hecho' => ['Sync de catálogo desde Bsale (~2.850 productos, cron horario)', 'Sync de listas de precios (lista oficial GENERAL como fuente única)', 'Import/export CSV de peso y dimensiones'],
+            'falta' => ['Webhooks de Bsale (hoy solo polling horario)', 'Enlace con el módulo de inventario (M04)']],
+        'M03' => ['fase' => 'F1', 'label' => 'M03 Clientes', 'inicio' => '2026-06-15', 'fin' => '2026-12-05',
+            'hecho' => ['CRUD de clientes + sync de ~47.800 desde Bsale', 'Vendedor por cartera (gestión por vendedor)'],
+            'falta' => ['Boleta rápida (es parte de M05)', 'Historial de compras (post-M05)']],
+        'M04' => ['fase' => 'F2', 'label' => 'M04 Inventario', 'inicio' => '2026-09-01', 'fin' => '2026-10-15',
+            'hecho' => ['Espejo de bodegas y stock desde Bsale (solo lectura, sync horaria)'],
+            'falta' => ['Módulo real: mapping bodega↔sucursal (espera la decisión D-003)', 'Reservas por vendedor', 'Transferencias entre bodegas']],
+        'M05' => ['fase' => 'F2', 'label' => 'M05 Ciclo factura', 'inicio' => '2026-07-14', 'fin' => '2026-11-30',
+            'hecho' => ['Andamiaje DTE completo y probado: puerto emisor Bsale, servicios, candados anti-duplicado'],
+            'falta' => ['Emitir un documento real: mapas de configuración vacíos, emisión deshabilitada, sin ruta de emisión ni comando de prueba', 'Boleta rápida', 'Autorización de Gerencia para la primera emisión']],
+        'M07' => ['fase' => 'F2', 'label' => 'M07 QR retiro', 'inicio' => '2026-07-14', 'fin' => '2026-09-30',
+            'hecho' => ['QR firmado de retiro en producción', 'Validación en el puesto de bodega', 'Doble-retiro cerrado (lock + candado)'],
+            'falta' => ['Caso «retirar carga ajena» (decisión de producto pendiente)', 'QA de bodega con papel impreso']],
+        'M08' => ['fase' => 'F2', 'label' => 'M08 Despacho+PWA', 'inicio' => '2026-07-14', 'fin' => '2026-12-05',
+            'hecho' => ['Lado bodega en producción: cola de despacho, escaneo, entrega con firma/foto/parcial'],
+            'falta' => ['PWA del conductor (codificada en rama sin mergear; se rehace desde main)', 'Prueba en campo con un conductor real']],
+        'M11' => ['fase' => 'F2', 'label' => 'M11 Producción', 'inicio' => '2026-06-20', 'fin' => '2026-12-05',
+            'hecho' => ['Ciclo completo: asignar → tandas del soplador → enviar → aprobar', 'Kardex local al aprobar (consumo de preforma + producción + merma)', 'Cola offline del soplador (PWA, sin señal en planta)', 'Panel del jefe con drill-downs e historial'],
+            'falta' => ['Descuento de preforma contra el stock real', 'Meta del día', 'Gráficos de productividad (GP)']],
+        'M12' => ['fase' => 'F2', 'label' => 'M12 Servicio técnico', 'inicio' => '2026-06-10', 'fin' => '2026-11-15',
+            'hecho' => ['Taller completo (recepción → diagnóstico → cotización → reparación → entrega)', 'Portal público QR para que el cliente ingrese su equipo', 'Cotización al cliente por correo con respuesta ACEPTO/NO ACEPTO', 'Ingreso por lote del conductor en ruta', 'Informes de dispensadores e industrial', 'Aviso al cliente y a ventas al cerrar sin solución'],
+            'falta' => ['Alertas de mantención 3/6/12 meses', 'Sugerencia automática de repuestos', 'Cobro (depende de M05)']],
+        'M13' => ['fase' => 'F2', 'label' => 'M13 Devoluciones', 'inicio' => '2026-10-01', 'fin' => '2026-10-25',
+            'hecho' => [],
+            'falta' => ['Todo el módulo (especificado en la biblia, sin código)']],
+        'M14' => ['fase' => 'F1', 'label' => 'M14 Aprobaciones', 'inicio' => '2026-07-02', 'fin' => '2026-07-17',
+            'hecho' => ['Motor polimórfico de aprobaciones (auto-aprueba si ninguna regla matchea)', 'Bandeja móvil del aprobador + escalamiento automático', 'Historial admin con filtros', 'QA del dueño 8/8 en producción'],
+            'falta' => ['Cablear más acciones al motor (hoy solo el ajuste de producción)']],
+        'M15' => ['fase' => 'F1', 'label' => 'M15 Notificaciones', 'inicio' => '2026-07-02', 'fin' => '2026-07-08',
+            'hecho' => ['Motor multi-canal con plantillas editables y reintentos', 'Correo operativo con entregabilidad verificada (SPF/DKIM/DMARC)', 'Campanita in-app + bandeja personal + preferencias por usuario', 'Panel admin de notificaciones'],
+            'falta' => ['Canal WhatsApp real (hoy es un stub; decisión D-007 aplazada)']],
+        'M16' => ['fase' => 'F1', 'label' => 'M16 BI', 'inicio' => '2026-07-09', 'fin' => '2026-12-15',
+            'hecho' => ['Tablero «Pulso del día»: excepciones + producción + taller', 'Accesos personalizables por usuario (íconos y colores)', 'Esta página /plan'],
+            'falta' => ['BI de reportes de venta/facturación (depende de M05)']],
+        'M17' => ['fase' => 'F2', 'label' => 'M17 Servicio en terreno', 'inicio' => '2026-07-15', 'fin' => '2026-07-24',
+            'hecho' => ['Agenda de terreno (calendario + lista, multi-día, franjas de 2h)', 'Confirmación del cliente a la cita por correo', 'Registro de instalaciones', 'Conductores y servicios de terreno'],
+            'falta' => ['Cierre fino del ciclo en terreno (cobro y reportes, con M05)']],
+        'F3' => ['fase' => 'F3', 'label' => 'F3 Piloto Mirador', 'inicio' => '2026-12-07', 'fin' => '2027-01-11',
+            'hecho' => [],
+            'falta' => ['Hardening (carga, seguridad, respaldos)', 'Migración de datos + peso/dimensiones por SKU', 'Capacitación (Pedro, Ricardo, sopladores)', 'Marcha blanca de diciembre']],
+        'F4' => ['fase' => 'F4', 'label' => 'F4 Rollout Abate', 'inicio' => '2027-01-12', 'fin' => '2027-02-09',
+            'hecho' => [],
+            'falta' => ['Configuración y migración de Abate Molina', 'Capacitación y go-live']],
+        'F5' => ['fase' => 'F5', 'label' => 'F5 Coquimbo + cierre', 'inicio' => '2027-02-10', 'fin' => '2027-02-28',
+            'hecho' => [],
+            'falta' => ['Configuración de Coquimbo (producción de botellones)', 'Deuda técnica y documentación final', 'Traspaso a soporte + retrospectiva']],
     ];
 
     /**
@@ -157,6 +195,10 @@ class PlanProyecto
                 'pct' => $pct,
                 'estado' => self::estadoDe($pct),
                 'fundamento' => $fila['fundamento'] ?? '',
+                'hecho' => $modulo['hecho'] ?? [],
+                'falta' => $modulo['falta'] ?? [],
+                'desde' => $desde,
+                'hasta' => $hasta,
                 'left' => round((int) $inicio->diffInDays($desde) / $dias * 100, 2),
                 // Piso de 1.5% para que una unidad corta (M15: 6 días) no
                 // desaparezca del dibujo.

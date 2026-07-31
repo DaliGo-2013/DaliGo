@@ -101,6 +101,37 @@ class PlanProyectoTest extends TestCase
         }
     }
 
+    public function test_todo_modulo_trae_sus_bullets_de_detalle(): void
+    {
+        // El panel de detalle (click en la fila) vive de estos arrays curados;
+        // un módulo sin ninguno mostraría un panel vacío en silencio.
+        foreach (PlanProyecto::MODULOS as $key => $modulo) {
+            $this->assertIsArray($modulo['hecho'] ?? null, "A [{$key}] le falta el array 'hecho'.");
+            $this->assertIsArray($modulo['falta'] ?? null, "A [{$key}] le falta el array 'falta'.");
+            $this->assertNotEmpty(
+                array_merge($modulo['hecho'], $modulo['falta']),
+                "El panel de detalle de [{$key}] quedaría vacío: 'hecho' y 'falta' están ambos vacíos."
+            );
+        }
+    }
+
+    public function test_el_detalle_de_cada_modulo_se_renderiza_en_la_pagina(): void
+    {
+        $response = $this->actingAs($this->usuarioQueVe())->get(route('plan.index'));
+
+        $response->assertOk();
+        foreach (array_keys(PlanProyecto::MODULOS) as $key) {
+            // El ancla del panel es el marcador estable (doctrina anti
+            // verde-engañoso): existe una por módulo, apuntada por el
+            // aria-controls del botón de su fila.
+            $response->assertSee('id="plan-detalle-'.$key.'"', false);
+        }
+
+        // Un bullet real de cada columna (texto único de esta página).
+        $response->assertSee('Kardex local al aprobar (consumo de preforma + producción + merma)');
+        $response->assertSee('Descuento de preforma contra el stock real');
+    }
+
     public function test_estado_se_deriva_del_porcentaje(): void
     {
         $this->assertSame('no_iniciada', PlanProyecto::estadoDe(0));
