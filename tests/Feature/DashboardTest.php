@@ -324,16 +324,10 @@ class DashboardTest extends TestCase
         OrdenServicio::factory()->create(['estado' => 'cotizacion']);
         OrdenServicio::factory()->create(['estado' => 'reparado']);
         // Entregadas: solo las retiradas ESTE mes cuentan en la tarjeta.
-        //
-        // `subMonthNoOverflow()` y no `subMonth()`: un DÍA 31, restar un mes cae en
-        // un día que no existe (31 de junio) y Carbon DESBORDA al 1 del mes
-        // siguiente — o sea al mes actual, y "el mes pasado" quedaba contando como
-        // de este mes. El test se ponía rojo solo los días 31 (verificado el 31-07);
-        // los otros 11 meses del año pasaba. Y el "hoy" sale de FechaNegocio, no de
-        // now(): a las 21:00 de Chile now() ya es mañana en UTC.
-        $hoy = \App\Support\FechaNegocio::ahora();
-        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => $hoy->toDateString()]);
-        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => $hoy->copy()->subMonthNoOverflow()->toDateString()]); // mes pasado → no
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
+        // Último día del mes ANTERIOR — no subMonth(): un día 31 desborda («31
+        // de junio» → 1 de julio, el MISMO mes) y este fixture contaría de más.
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->startOfMonth()->subDay()->toDateString()]); // mes pasado → no
         OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => null]);                              // histórica → no
 
         $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
