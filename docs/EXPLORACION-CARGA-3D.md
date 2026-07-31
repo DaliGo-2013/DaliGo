@@ -234,6 +234,78 @@ capacitación. Si se pareciera a un plano de ingeniería, no.
 
 ---
 
+## 2quater. Las máquinas: lo que muestran las fotos (31-jul-2026)
+
+Segunda tanda de fotos de Marcos: plantas de osmosis, sopladora y lavadora
+cargadas. Acá aparecen restricciones que ninguna descripción había dado, y **dos
+son bloqueantes para el modelo**.
+
+### Lo que se ve
+
+| Observación | Consecuencia para el modelo |
+|---|---|
+| **Las máquinas viajan dentro de jaulas o cajones de madera** hechos a medida, envueltas en film | 🔴 **El bulto a medir es la JAULA, no la máquina.** La jaula es bastante más grande, y medir la máquina subestimaría el espacio |
+| **Van sobre pallet**, y en las cajas grandes también | 🔴 El pallet **levanta el bulto 12-15 cm**: es alto perdido para el apilado y espacio muerto abajo. Hay que sumarlo a la altura del bulto |
+| **Las máquinas largas van a lo largo, pegadas a un costado**, amarradas a la pared con eslingas | La orientación de las máquinas **también es fija**, igual que las bolsas: a lo largo. Otra búsqueda que el algoritmo no tiene que hacer |
+| **Queda un pasillo de paso** en el medio (en una foto se ve a alguien caminando adentro) | El pasillo **no es espacio disponible**: se necesita para cargar. Hay que descontarlo o el cálculo promete carga que en la práctica no se puede meter |
+| **Una caja grande trae impreso: *"Keep off · Don't walk or stand on box · Box lid may collapse"*** más los íconos de frágil y de no apilar | ✅ Confirma la regla de la fase 1, **y no es folclore de bodega: viene impreso en el envase**. La regla se puede tomar del rotulado |
+| Las máquinas conviven con el muro de bolsas: máquina a un costado, botellones al frente y al otro lado | Refina el modelo de zonas del §2ter: no son dos zonas, son **tres** |
+
+### El modelo de zonas corregido
+
+```
+      ┌─────────────────────────────────────────┐
+      │  MURO DE BOLSAS      │  MÁQUINAS en     │
+cabina│  (acostadas,         │  jaula, a lo     │ → puerta
+      │   apiladas)          │  largo, al costado│
+      │──────────────────────┴──────────────────│
+      │        CAJAS  ·  y pasillo de paso      │
+      └─────────────────────────────────────────┘
+```
+
+### 🔴 Hallazgo que sale del alcance del simulador: mercancía peligrosa
+
+En una de las fotos, dos cajones de madera están rotulados:
+
+> **POWER WALL LiFePO₄ BATTERY · UN3480**, con marca de embalaje homologado
+> (`4D/Y200/S/24`) e instrucción de embalaje `PI 005`.
+
+**UN3480 son baterías de litio, mercancía peligrosa clase 9.** Eso no es un
+problema de espacio, es de **cumplimiento**: el transporte de mercancías
+peligrosas tiene reglas propias de rotulado, documentación, segregación respecto de
+otras cargas y cantidades máximas por vehículo.
+
+**Dos consecuencias, y conviene separarlas:**
+
+1. **Para este simulador:** las baterías quedan **fuera de alcance**, y la pantalla
+   debe decirlo. Es inaceptable que una herramienta de "¿me cabe?" sugiera rellenar
+   con botellones el espacio alrededor de un pallet de baterías de litio, porque la
+   respuesta puede ser *"cabe pero no se puede"*.
+2. **Independiente del simulador:** vale la pena verificar que los despachos con
+   estos cajones estén cumpliendo la normativa de transporte de mercancías
+   peligrosas. **No lo sé y no lo estoy afirmando** — solo señalo que el rotulado
+   `UN3480` en una foto de carga habitual es motivo suficiente para preguntarle a
+   quien corresponda. Es el mismo tipo de hallazgo lateral que apareció con el
+   plazo del 1-nov-2026 en las guías de despacho: no era el objetivo, y afecta a la
+   empresa igual.
+
+### Lo que cambia en la fase 0
+
+Medir las máquinas se vuelve más incómodo de lo previsto, y hay que decirlo:
+
+- Se mide **la jaula armada, con el pallet incluido** — no la máquina desnuda ni la
+  ficha del proveedor.
+- **Cada modelo es un bulto distinto:** osmosis 500, osmosis 1 tera, lavadora,
+  sopladora, llenadora 100 y llenadora 200 no comparten medidas.
+- Si las jaulas se arman a medida cada vez y varían de tamaño, hay que registrar una
+  **medida típica más una tolerancia**, y que la pantalla lo advierta.
+
+*(Nota: no distingo con certeza en las fotos cuál máquina es la sopladora, cuál la
+lavadora y cuál la planta de osmosis. Da igual para el modelo —cada una es una fila
+con sus medidas— pero al medir hay que rotular bien cada fila.)*
+
+---
+
 ## 3. Catálogo real de Dali (verificado en el sitio oficial, 31-jul-2026)
 
 Consultado `importadoradali.cl`. Líneas publicadas: **Agua, Ferretería, Fitness,
@@ -299,13 +371,13 @@ Cada fase queda funcionando sola. Unidad: una persona a tiempo parcial (5-6 h/d�
 
 | Paso | Qué se hace | Capa |
 |---|---|---|
-| **P-CARGA-01** | Tabla `tipos_bulto`: nombre, medidas, peso, **unidades por bulto** (5 para la bolsa de botellones), **si es apilable y cuántos de alto**, si soporta peso encima, y **orientación fija** cuando la tiene. Las 15-20 filas del §3 | Migración + Modelo |
-| **P-CARGA-02** | Medir y pesar. Para los botellones se mide **la bolsa de 5 armada y acostada** (§2bis), no el botellón. **Las máquinas son las que más importan** y las más incómodas: hay que tomar el bulto real, con patas y salientes, no el del folleto | Operación + Seeder |
-| **P-CARGA-03** | Tabla `vehiculos`: **medidas útiles interiores** y carga máxima en kg, **una fila por cada camión de la flota** — Marcos confirma que entra distinta cantidad según el camión, y eso es justamente lo que la herramienta viene a resolver. La medida útil no es la del folleto: hay que medir cada camión por dentro | Migración + Modelo + CRUD |
+| **P-CARGA-01** | Tabla `tipos_bulto`: nombre, medidas, peso, **unidades por bulto** (5 para la bolsa de botellones), **si es apilable y cuántos de alto**, si soporta peso encima, **orientación fija** cuando la tiene, **si va sobre pallet** (y su alto) y **si es mercancía peligrosa** (§2quater). Las 15-20 filas del §3 | Migración + Modelo |
+| **P-CARGA-02** | Medir y pesar. Botellones: **la bolsa de 5 armada y acostada** (§2bis). Máquinas: **la jaula de madera con el pallet incluido** (§2quater), no la máquina desnuda ni la ficha del proveedor. Es la parte más incómoda y la que más cambia el resultado | Operación + Seeder |
+| **P-CARGA-03** | Tabla `vehiculos`: **medidas útiles interiores**, carga máxima en kg y **cuánto pasillo hay que reservar** para poder cargar. Una fila por cada camión de la flota — Marcos confirma que entra distinta cantidad según el camión, y eso es lo que la herramienta viene a resolver. La medida útil no es la del folleto: hay que medir cada camión por dentro | Migración + Modelo + CRUD |
 
-> **Medir la bolsa armada, no calcularla.** Cómo van los 5 botellones dentro (en
-> fila, en cruz) no importa si se mide el bulto terminado en la posición en que
-> viaja: acostado, pico a la puerta.
+> **Medir el bulto armado, no calcularlo.** Cómo van los 5 botellones dentro de la
+> bolsa (en fila, en cruz) da igual si se mide el bulto terminado en la posición en
+> que viaja. Lo mismo con las máquinas: se mide la jaula, en la posición en que va.
 
 ### Fase 1 — El simulador que responde (2 a 3 semanas)
 
@@ -314,14 +386,15 @@ Cada fase queda funcionando sola. Unidad: una persona a tiempo parcial (5-6 h/d�
 | **P-CARGA-04** | Servicio `App\Services\Carga\CalculoDeCarga`: recibe líneas (tipo + cantidad) y un vehículo. Devuelve **volumen, peso y piso ocupados**, y cuál se agotó primero | Servicio |
 | **P-CARGA-05** | **Reglas de apilado** (movido desde la fase 3 por el §2): las máquinas van al piso y no llevan nada encima; los botellones se apilan hasta su límite. Es lo que decide si el camión rinde 60% o 95% | Servicio |
 | **P-CARGA-06** | **Rejilla por división entera** para los bultos de orientación fija (§2bis): `floor(ancho/ancho) × floor(alto/alto) × floor(largo/largo)`. Es **exacto**, no estimativo, porque reproduce el patrón real de carga. Y no sobreestima como la división de volúmenes | Servicio |
-| **P-CARGA-07** | **Acomodo por ZONAS**, como en las fotos (§2ter): muro de bolsas al fondo contra la cabina, cajas y máquinas hacia la puerta, con límite de apilado propio por tipo. Reproduce el patrón real y evita el empaque 3D genérico | Servicio |
-| **P-CARGA-08** | **El máximo alcanzable**: *"con esa llenadora adentro te caben 28 bolsas (140 botellones), no 40"* — el dato con el que el vendedor negocia. Y **por camión**, que es la pregunta que hoy se responde de memoria | Servicio |
-| **P-CARGA-09** | Pantalla: elegir camión, agregar líneas, veredicto con **factor limitante** y tres barras (volumen / peso / piso) | Controlador + Vista |
-| **P-CARGA-10** | **Escenarios guardados** (*"carga típica Coquimbo"*) para no rearmar cada vez | Migración + Controlador |
-| **P-CARGA-11** | Resumen imprimible o PDF para adjuntar a la cotización | Vista |
-| **P-CARGA-12** | **Calibrar contra una carga real** (§2ter): contar lo que entró de verdad en un camión ya cargado y ajustar el factor de aprovechamiento hasta que el cálculo lo reproduzca. Es el paso que hace que bodega le crea, y no cuesta desarrollo — cuesta una visita al patio | Operación + Servicio |
-| **P-CARGA-13** | Tests: que una máquina no acepte carga encima, que el volumen mande sobre el peso, que un bulto más alto que la caja no entre, que el muro respete su límite de filas, y los bordes (cantidad 0, tipo sin medidas, camión sin carga máxima) | Tests |
-| **P-CARGA-14** | Permiso nuevo en `config/permissions.php` — en `labels` **y** en `grupos`, o cae en "Generales" | config + Seeder |
+| **P-CARGA-07** | **Acomodo por ZONAS**, como en las fotos (§2ter y §2quater): máquinas en jaula a lo largo de un costado, muro de bolsas al fondo contra la cabina, cajas en el resto, y **pasillo de paso reservado**. Con límite de apilado propio por tipo. Reproduce el patrón real y evita el empaque 3D genérico | Servicio |
+| **P-CARGA-08** | **Aviso de mercancía peligrosa** (§2quater): si la carga incluye un bulto marcado como peligroso (los cajones `UN3480` de baterías de litio), la pantalla lo señala y **no ofrece rellenar el espacio alrededor**. Una herramienta de "¿me cabe?" no puede insinuar que algo se puede cargar cuando la respuesta es *"cabe pero no se permite"* | Servicio + Vista |
+| **P-CARGA-09** | **El máximo alcanzable**: *"con esa llenadora adentro te caben 28 bolsas (140 botellones), no 40"* — el dato con el que el vendedor negocia. Y **por camión**, que es la pregunta que hoy se responde de memoria | Servicio |
+| **P-CARGA-10** | Pantalla: elegir camión, agregar líneas, veredicto con **factor limitante** y tres barras (volumen / peso / piso) | Controlador + Vista |
+| **P-CARGA-11** | **Escenarios guardados** (*"carga típica Coquimbo"*) para no rearmar cada vez | Migración + Controlador |
+| **P-CARGA-12** | Resumen imprimible o PDF para adjuntar a la cotización | Vista |
+| **P-CARGA-13** | **Calibrar contra una carga real** (§2ter): contar lo que entró de verdad en un camión ya cargado y ajustar el factor de aprovechamiento hasta que el cálculo lo reproduzca. Es el paso que hace que bodega le crea, y no cuesta desarrollo — cuesta una visita al patio | Operación + Servicio |
+| **P-CARGA-14** | Tests: que una máquina no acepte carga encima, que el volumen mande sobre el peso, que un bulto más alto que la caja no entre, que el muro respete su límite de filas, y los bordes (cantidad 0, tipo sin medidas, camión sin carga máxima) | Tests |
+| **P-CARGA-15** | Permiso nuevo en `config/permissions.php` — en `labels` **y** en `grupos`, o cae en "Generales" | config + Seeder |
 
 **Al terminar la fase 1 la herramienta ya responde la pregunta del pedido.**
 
@@ -334,20 +407,20 @@ por qué no cabe más.
 
 | Paso | Qué se hace | Capa |
 |---|---|---|
-| **P-CARGA-15** | Librería 3D por **import dinámico**, copiando `qrcode` en `app.js:912-929`: chunk aparte, solo en esta pantalla. `npm run build` y **commitear `public/build/`** (el servidor no tiene Node) | JS + build |
-| **P-CARGA-16** | Escena: caja del camión en alambre, un prisma por bulto, rotar y zoom con el mouse. `InstancedMesh` para los cientos de botellones | JS |
-| **P-CARGA-17** | Color por **tipo de bulto** con leyenda. Dentro del lienzo los colores son datos, no decoración — conviene sancionarlo como excepción de la paleta de 4, igual que la D-013 de los squircles del Inicio | JS |
-| **P-CARGA-18** | Captura de la escena para pegar en la cotización | JS |
-| **P-CARGA-19** | Aviso en pantalla angosta: *"esta vista es de escritorio"* | Vista |
+| **P-CARGA-16** | Librería 3D por **import dinámico**, copiando `qrcode` en `app.js:912-929`: chunk aparte, solo en esta pantalla. `npm run build` y **commitear `public/build/`** (el servidor no tiene Node) | JS + build |
+| **P-CARGA-17** | Escena: caja del camión en alambre, un prisma por bulto, rotar y zoom con el mouse. `InstancedMesh` para los cientos de botellones | JS |
+| **P-CARGA-18** | Color por **tipo de bulto** con leyenda. Dentro del lienzo los colores son datos, no decoración — conviene sancionarlo como excepción de la paleta de 4, igual que la D-013 de los squircles del Inicio | JS |
+| **P-CARGA-19** | Captura de la escena para pegar en la cotización | JS |
+| **P-CARGA-20** | Aviso en pantalla angosta: *"esta vista es de escritorio"* | Vista |
 
 ### Fase 3 — Refinamientos (3 a 6 semanas, opcional)
 
 | Paso | Qué se hace |
 |---|---|
-| **P-CARGA-20** | **Varios camiones / cuántos viajes**: *"entran en 2 viajes"* |
-| **P-CARGA-21** | Orientaciones permitidas y "este lado arriba" |
-| **P-CARGA-22** | Distribución de peso por eje — solo si se usa para carga real, no para cotizar |
-| **P-CARGA-23** | Traer cantidades desde una cotización existente. **Único paso que conecta con el resto de DaliGo**, y a propósito va al final |
+| **P-CARGA-21** | **Varios camiones / cuántos viajes**: *"entran en 2 viajes"* |
+| **P-CARGA-22** | Orientaciones permitidas y "este lado arriba" |
+| **P-CARGA-23** | Distribución de peso por eje — solo si se usa para carga real, no para cotizar |
+| **P-CARGA-24** | Traer cantidades desde una cotización existente. **Único paso que conecta con el resto de DaliGo**, y a propósito va al final |
 
 **Hasta responder la pregunta del pedido: 3 a 4 semanas.** Con 3D: **6 a 8
 semanas.** El resto es opcional.
