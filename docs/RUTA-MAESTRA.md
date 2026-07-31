@@ -224,13 +224,15 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 ### E6 · M13 Devoluciones (~2.5 sem)
 > ⚠️ **Nota de corrección (2026-07-01):** M13 NO tiene código. No confundir con la acción `devolver` de los reportes de producción (M11) ni con el taller (M12). Esta nota existe porque una versión anterior del HANDOFF daba a entender lo contrario.
 
-**Rama:** `feature/m13-devoluciones` · **Depende de:** E4, E5-F1, M14/M15.
-**Hecho cuando:** flujo A-12 completo en staging desde el link público del cliente hasta el reingreso a stock; límites de upload verificados por IA-cPanel.
+> ⚠️ **Enmienda del criterio de «hecho» (2026-07-30, decisión del dueño sobre el parte v32 de Max-1):** el «Hecho cuando» exigía *«…hasta el reingreso a stock»*, que **no se puede cumplir** — el stock es un espejo read-only de Bsale y escribirlo espera a M04/D-005, así que E6 no habría podido cerrarse nunca. Se sella el patrón ya sancionado en M11: el reingreso se registra en un **kardex LOCAL** (`produccion_movimientos` «NUNCA toca `stocks`/`bodegas`», `HANDOFF.md:376`). De paso se corrigen las dos líneas que la misma decisión falsificaba: las dependencias y el texto de P-M13-03. Fundamento en `docs/planes/PLAN-M13.md` §4.
+
+**Rama:** `feature/m13-devoluciones` · **Depende de:** **M14/M15** (las dos cerradas). **NO depende de E4/M04 ni de E5/M05** — D-005 lo dice textual: *«Mientras tanto: M05-F1, **M13**, diseño de M07 no dependen; el espejo read-only ya funciona»* (`docs/DECISIONES.md:144`). El reingreso va a un kardex local y M13 **no emite** nota de crédito.
+**Hecho cuando:** flujo A-12 completo en staging desde el link público del cliente hasta el **CIERRE de la devolución** —reembolso aprobado vía M14 **o** movimiento de reingreso registrado en el kardex local—; límites de upload verificados por IA-cPanel.
 
 - [ ] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias
 - [ ] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen
-- [ ] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso automático a stock (movimiento M04) si buen estado
-- [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular)
+- [ ] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005
+- [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular) — **segundo lote** (recorte del dictado v32)
 
 ### E7 · M07 QR anti-fraude en retiro (~2 sem)
 **Contexto:** caso real de intento de retiro con factura adulterada (biblia §4/M07). Mayor ROI político del proyecto.
