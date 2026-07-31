@@ -53,6 +53,9 @@ class Notificacion extends Model
         // Taller · el técnico marcó la orden como REPARADA: ventas tiene que
         // llamar al cliente para que lo retire (decision del dueño 30-07).
         'taller.reparado' => 'Equipo reparado (avisar al cliente)',
+        // Taller · no tuvo arreglo. Mismo destinatario que 'reparado', pero la
+        // conversacion es otra: reemplazo, o garantia si fue falla de fabrica.
+        'taller.sin_solucion' => 'Equipo sin solución (avisar al cliente)',
         // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
@@ -130,7 +133,7 @@ class Notificacion extends Model
             'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && (! $this->notificable instanceof OrdenServicio || $this->notificable->esVisiblePara($user)),
             // Detalle de una orden: permiso Y scope de cartera del vendedor.
-            'taller.reparado',
+            'taller.reparado', 'taller.sin_solucion',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
@@ -192,7 +195,7 @@ class Notificacion extends Model
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : route('admin.servicio-tecnico.index'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
-            'taller.reparado',
+            'taller.reparado', 'taller.sin_solucion',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,
