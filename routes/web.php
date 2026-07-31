@@ -25,6 +25,7 @@ use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
+use App\Http\Controllers\PlanProyectoController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
@@ -64,6 +65,18 @@ Route::middleware('auth')->group(function () {
     // Mis solicitudes de aprobacion (M14): el solicitante ve LO SUYO (patron
     // /notificaciones). Literal ANTES del grupo {aprobacion} de abajo.
     Route::get('/aprobaciones/mias', [AprobacionController::class, 'mias'])->name('aprobaciones.mias');
+
+    // Plan del proyecto (carta Gantt transicional): el plan oficial se LEE de
+    // docs/RUTA-MAESTRA.md (push a main = deploy = pagina al dia); solo los
+    // "trabajos extras en paralelo" se editan aqui, con su permiso propio.
+    Route::get('/plan', [PlanProyectoController::class, 'index'])
+        ->middleware('permission:ver plan proyecto')->name('plan.index');
+    Route::post('/plan/extras', [PlanProyectoController::class, 'extraStore'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.extras.store');
+    Route::patch('/plan/extras/{extra}', [PlanProyectoController::class, 'extraUpdate'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.extras.update');
+    Route::delete('/plan/extras/{extra}', [PlanProyectoController::class, 'extraDestroy'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.extras.destroy');
 });
 
 // Bandeja movil del aprobador (M14): pendientes del rol vigente, resolver

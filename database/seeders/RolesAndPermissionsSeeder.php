@@ -65,6 +65,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Facturacion electronica (M05 · DTE). Ver PROYECTO_DALIGO.md §10.
             'emitir documentos tributarios', // emitir boleta/factura desde DaliGo
             'emitir nota de credito',        // ANULAR un documento ya emitido (el unico camino: los DTE no se borran)
+            // Plan del proyecto (/plan, carta Gantt transicional).
+            'ver plan proyecto',       // consultar la pagina (gantt + tracker + hitos + extras)
+            'gestionar plan proyecto', // crear/editar/eliminar los "trabajos extras en paralelo"
         ];
 
         foreach ($permissions as $name) {
