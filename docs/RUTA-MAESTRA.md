@@ -178,6 +178,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-TZ-02c** · Batería de frontera de agenda (nocturna + mes + redirect del hallazgo), rama SOLO-tests gated que **nació verde** sobre el fix de Marcos — merge doble llave `6e40051`, suite 704/2259 (2026-07-21)
 - [ ] **P-TZ-03** · QA de borde del dueño (~21:30 Chile: día correcto en toda la app, agenda abre en HOY, historiales en hora chilena) — único pendiente; no es código
 
+### E-PLAN · Página «Plan del proyecto» (/plan) — carta Gantt transicional (rama `feature/plan-proyecto`)
+> Pedido del dueño 30-07: carta Gantt consultable por los participantes y modificable — 3 colores de estado, medidor de % global, apartado de «trabajos extras en paralelo», y actualización automática desde el repo al commitear. Decisiones del dueño (AskUserQuestion 30-07): plan oficial se LEE del repo + extras editables en UI · visibilidad por permiso nuevo asignable · Gantt clásico por módulo · incluye countdown de hitos, semáforo de decisiones y última actualización + enlaces.
+- [x] **P-PLAN-01** · Fuente única `App\Support\PlanProyecto`: **parsea el tracker §10 de ESTE archivo** (doctrina de estado único — push a main = deploy = página al día, nadie mantiene una segunda copia) + fechas de barras e hitos como const del repo; parser del semáforo §2 de `DECISIONES.md`; página `/plan` (gantt por módulo con ventana+relleno, medidor global, hitos con countdown por `FechaNegocio`, decisiones abiertas, extras CRUD en BD `plan_extras`); permisos nuevos `ver plan proyecto` / `gestionar plan proyecto` (aditivos; se asignan por rol desde la UI de Roles); ítem de menú en Administración (1 línea en `MenuPrincipal`). Candados en `PlanProyectoTest` (12): parser contra el archivo REAL con invariantes auto-consistentes (Σpesos == TOTAL, **mutado**: peso alterado → rojo), biyección MODULOS↔tracker (un ítem nuevo en el tracker exige su línea de fechas en el mismo push), permisos, CRUD y validación de extras (rama `feature/plan-proyecto`, 2026-07-30; **en producción 31-07** con Deploy+Tests verdes — de paso el push destapó y se corrigió el flaky de calendario de los días 29/30/31, ver bitácora [2026-07-31])
+- [x] **P-PLAN-02** · **Gantt clickeable con detalle por módulo** (feedback del dueño 31-07: el hover con `title` no le funcionó — estaba en el NOMBRE del módulo, no en la barra, y el tooltip nativo ni existe en táctil → se reemplazó por click, no se "arregló"). Cada fila del Gantt es ahora un botón (`aria-expanded`/`aria-controls`) que abre un panel de detalle **debajo del dibujo, fuera del `overflow-x-auto`** (en móvil usa el ancho completo del card, no los 640px del dibujo): estado + % + peso + ventana de fechas + **fundamento del % del tracker** + dos columnas curadas **«Completado» / «Por completar»** (arrays `hecho`/`falta` nuevos en `PlanProyecto::MODULOS` — capa narrativa del repo, editar = commit = deploy; el % sigue AUTO). Single-open por `sel` único, sin `x-transition` (gotcha [2026-07-22]). +2 candados (todo módulo trae sus bullets; el ancla `plan-detalle-{key}` se renderiza por módulo + un bullet real de cada columna). Verificado en preview: click abre/cambia/cierra, 375px sin scroll horizontal de página y panel entero en viewport (este mismo push, 2026-07-31)
+
 ---
 
 ## 5. F2 · Núcleo operativo
@@ -220,13 +225,15 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 ### E6 · M13 Devoluciones (~2.5 sem)
 > ⚠️ **Nota de corrección (2026-07-01):** M13 NO tiene código. No confundir con la acción `devolver` de los reportes de producción (M11) ni con el taller (M12). Esta nota existe porque una versión anterior del HANDOFF daba a entender lo contrario.
 
-**Rama:** `feature/m13-devoluciones` · **Depende de:** E4, E5-F1, M14/M15.
-**Hecho cuando:** flujo A-12 completo en staging desde el link público del cliente hasta el reingreso a stock; límites de upload verificados por IA-cPanel.
+> ⚠️ **Enmienda del criterio de «hecho» (2026-07-30, decisión del dueño sobre el parte v32 de Max-1):** el «Hecho cuando» exigía *«…hasta el reingreso a stock»*, que **no se puede cumplir** — el stock es un espejo read-only de Bsale y escribirlo espera a M04/D-005, así que E6 no habría podido cerrarse nunca. Se sella el patrón ya sancionado en M11: el reingreso se registra en un **kardex LOCAL** (`produccion_movimientos` «NUNCA toca `stocks`/`bodegas`», `HANDOFF.md:376`). De paso se corrigen las dos líneas que la misma decisión falsificaba: las dependencias y el texto de P-M13-03. Fundamento en `docs/planes/PLAN-M13.md` §4.
+
+**Rama:** `feature/m13-devoluciones` · **Depende de:** **M14/M15** (las dos cerradas). **NO depende de E4/M04 ni de E5/M05** — D-005 lo dice textual: *«Mientras tanto: M05-F1, **M13**, diseño de M07 no dependen; el espejo read-only ya funciona»* (`docs/DECISIONES.md:144`). El reingreso va a un kardex local y M13 **no emite** nota de crédito.
+**Hecho cuando:** flujo A-12 completo en staging desde el link público del cliente hasta el **CIERRE de la devolución** —reembolso aprobado vía M14 **o** movimiento de reingreso registrado en el kardex local—; límites de upload verificados por IA-cPanel.
 
 - [ ] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias
 - [ ] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen
-- [ ] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso automático a stock (movimiento M04) si buen estado
-- [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular)
+- [ ] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005
+- [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular) — **segundo lote** (recorte del dictado v32)
 
 ### E7 · M07 QR anti-fraude en retiro (~2 sem)
 **Contexto:** caso real de intento de retiro con factura adulterada (biblia §4/M07). Mayor ROI político del proyecto.

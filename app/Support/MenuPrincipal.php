@@ -111,6 +111,9 @@ class MenuPrincipal
                 // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
                 // igual que la bandeja confunde (hallazgo #1 del acta).
                 'historial-aprobaciones' => ['label' => 'Historial de aprobaciones', 'route' => 'admin.aprobaciones.index', 'activo' => ['admin.aprobaciones.*'], 'permiso' => 'view aprobaciones'],
+                // Carta Gantt transicional mientras la app se construye: el
+                // avance oficial se lee del repo (App\Support\PlanProyecto).
+                'plan' => ['label' => 'Plan del proyecto', 'route' => 'plan.index', 'activo' => ['plan.*'], 'permiso' => 'ver plan proyecto'],
             ],
         ],
         'mi-produccion' => [

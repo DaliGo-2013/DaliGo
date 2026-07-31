@@ -523,18 +523,21 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
-     * Roles candidatos al aviso de «equipo reparado»: es VENTAS quien llama al
-     * cliente para que lo retire (y quien despues anota la fecha de aviso).
+     * Roles candidatos a los avisos de CIERRE de una orden (reparado / sin
+     * solucion): es VENTAS quien llama al cliente (y quien despues anota la fecha
+     * de aviso).
      *
      * El tecnico NO va aca: es quien marca el estado, y avisarle de su propia
      * accion es ruido (mismo criterio que el resto del modulo). Quien de estos
-     * roles recibe cada orden lo decide `notificarReparado()`, no esta lista.
+     * roles recibe cada orden lo decide `avisarACartera()`, no esta lista.
      */
     public const ROLES_AVISO_REPARADO = ['jefe_ventas', 'vendedor', 'admin'];
 
     /**
-     * Avisa por M15 (campanita + correo segun preferencias) que el equipo quedo
-     * REPARADO, para que ventas le diga al cliente que puede retirarlo.
+     * Avisa a VENTAS por M15 (campanita + correo segun preferencias) que la orden
+     * se cerro. Punto UNICO de los dos cierres —`taller.reparado` y
+     * `taller.sin_solucion`— porque comparten destinatarios, datos y regla de
+     * reparto: duplicarla era garantizar que un dia divergieran.
      *
      * El reparto lo define `esVisiblePara()`, el MISMO filtro que gobierna el
      * listado y la ficha, y de ahi salen solas las dos mitades de la regla del
@@ -552,9 +555,10 @@ class OrdenServicio extends Model implements AuditableContract
      * ya se corrigio en la campanita (`Notificacion::urlDestinoPara`): un aviso que
      * termina en 403.
      *
-     * @param  User|null  $actor  quien marco la orden como reparada (no se autonotifica)
+     * @param  User|null  $actor  quien cerro la orden (no se autonotifica)
+     * @param  array<string, mixed>  $extra  placeholders propios del evento
      */
-    public function notificarReparado(?User $actor = null): void
+    private function avisarACartera(string $evento, ?User $actor, array $extra = []): void
     {
         $equipo = collect([
             $this->tipo_equipo_label,
@@ -562,25 +566,58 @@ class OrdenServicio extends Model implements AuditableContract
             $this->numero_serie ? 'N° '.$this->numero_serie : null,
         ])->filter()->implode(' · ');
 
-        $datos = [
+        $datos = array_merge([
             'folio' => $this->folio,
             'cliente' => $this->cliente_nombre,
             'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
-            // Los tres se rellenan siempre: un placeholder sin dato queda CRUDO en
-            // el texto ({trabajo} literal en la campanita).
+            // Se rellenan SIEMPRE: un placeholder sin dato queda CRUDO en el texto
+            // ({trabajo} literal en la campanita).
             'trabajo' => filled($this->trabajo_realizado) ? $this->trabajo_realizado : 'Sin detalle',
+            'diagnostico' => filled($this->causa_falla) ? $this->causa_falla_label : 'Sin determinar',
             'tecnico' => $actor?->name ?: 'El técnico',
             'retiro' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
             'telefono' => filled($this->cliente_telefono) ? $this->cliente_telefono : 'sin teléfono registrado',
             'url' => route('admin.servicio-tecnico.show', $this),
-        ];
+        ], $extra);
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_REPARADO)->get()->unique('id')
             ->reject(fn (User $u) => $actor && $u->id === $actor->id)
             ->filter(fn (User $u) => $this->esVisiblePara($u))
-            ->each(fn (User $u) => $dispatcher->despachar('taller.reparado', $this, $u, $datos));
+            ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /** El equipo quedo listo: ventas le dice al cliente que puede retirarlo. */
+    public function notificarReparado(?User $actor = null): void
+    {
+        $this->avisarACartera('taller.reparado', $actor);
+    }
+
+    /**
+     * No tuvo arreglo. Ventas necesita el aviso igual que en «reparado» —el
+     * equipo hay que retirarlo—, pero la conversacion es otra: presupuesto de
+     * reemplazo, o garantia si la causa fue falla de fabrica. Por eso el aviso
+     * interno SI lleva el diagnostico del tecnico, y el correo al cliente no
+     * (ver `SinSolucionCliente`).
+     *
+     * @param  bool|null  $avisadoAlCliente  ¿salio el correo al cliente? true/false
+     *   se reflejan TAL CUAL en el aviso interno. Nunca se afirma a ciegas que al
+     *   cliente se le aviso: sin correo en la ficha, o con el SMTP caido, el aviso
+     *   diria «ya se le aviso» y NADIE lo llamaria (mismo defecto que se corrigio
+     *   en el rechazo de terreno el 30-07). null = no se intento.
+     */
+    public function notificarSinSolucion(?User $actor = null, ?bool $avisadoAlCliente = null): void
+    {
+        $telefono = filled($this->cliente_telefono) ? $this->cliente_telefono : 'sin teléfono registrado';
+
+        $this->avisarACartera('taller.sin_solucion', $actor, [
+            'aviso_cliente' => match ($avisadoAlCliente) {
+                true => "Al cliente ya se le avisó por correo. Falta coordinar el retiro y, si corresponde, el reemplazo ({$telefono}).",
+                false => "NO se pudo avisar al cliente por correo: hay que llamarlo ({$telefono}).",
+                null => "Falta avisarle al cliente ({$telefono}).",
+            },
+        ]);
     }
 
     /**

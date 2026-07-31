@@ -137,6 +137,21 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando el técnico marca un equipo como reparado (jefatura recibe todas; cada vendedor, las de su cartera).',
             ],
+            // No tuvo arreglo. Mismos destinatarios que «reparado», pero este SÍ
+            // lleva el diagnóstico: de él depende la conversación que sigue
+            // (reemplazo, o garantía si fue falla de fábrica).
+            [
+                'clave' => 'notif_plantilla_taller_sin_solucion',
+                'valor' => json_encode([
+                    'asunto' => 'Sin solución — Orden {folio} ({cliente})',
+                    // {aviso_cliente} dice si el correo al cliente SALIÓ de verdad: nunca
+                    // se afirma a ciegas (si falla, el aviso pide llamarlo).
+                    'cuerpo' => "{tecnico} cerró SIN SOLUCIÓN la orden {folio} de {cliente}.\nEquipo: {equipo}\nDiagnóstico: {diagnostico}\nRetiro en: {retiro}\n{aviso_cliente}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas cuando el técnico cierra una orden sin solución (jefatura recibe todas; cada vendedor, las de su cartera).',
+            ],
             // Cotización del taller al cliente (P-M12-02, fase correo). Aviso
             // INTERNO a los roles del taller/ventas; la carta al cliente es un
             // Mailable dedicado (CotizacionCliente), no pasa por plantilla.
