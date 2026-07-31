@@ -987,11 +987,16 @@ class ServicioTecnicoManagementTest extends TestCase
 
     public function test_index_periodo_por_fecha_de_retiro(): void
     {
-        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Este Mes', 'estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
-        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Mes Pasado', 'estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]);
+        // `subMonthNoOverflow()` y el "hoy" de FechaNegocio, no `now()->subMonth()`:
+        // un día 31, restar un mes cae en un día inexistente (31 de junio) y Carbon
+        // DESBORDA al mes actual, así que "Retiro Mes Pasado" aparecía en el listado
+        // del mes y el assertDontSee fallaba. Rojo solo los días 31 (visto el 31-07).
+        $hoy = \App\Support\FechaNegocio::ahora();
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Este Mes', 'estado' => 'entregado', 'fecha_retiro' => $hoy->toDateString()]);
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Mes Pasado', 'estado' => 'entregado', 'fecha_retiro' => $hoy->copy()->subMonthNoOverflow()->toDateString()]);
 
         $this->actingAs($this->admin())
-            ->get('/admin/servicio-tecnico?estado=entregado&anio='.now()->year.'&mes='.now()->month.'&por=retiro')
+            ->get('/admin/servicio-tecnico?estado=entregado&anio='.$hoy->year.'&mes='.$hoy->month.'&por=retiro')
             ->assertOk()
             ->assertSee('Retiro Este Mes')
             ->assertDontSee('Retiro Mes Pasado');
