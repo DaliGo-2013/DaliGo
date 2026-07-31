@@ -60,7 +60,55 @@ class PermisosAgrupadosTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.roles.edit', $role))
             ->assertOk()
-            ->assertSee('Servicio técnico')   // encabezado de categoría
+            ->assertSee('Servicio técnico')   // nombre del área en su tarjeta
             ->assertSee('Producción');
+    }
+
+    /**
+     * Candado del POST: las áreas arrancan CERRADAS y solo se ocultan en el
+     * cliente (`x-show`), así que el HTML tiene que traer las casillas de TODAS
+     * ellas. Si alguien cambiara `x-show` por `x-if` o por un `@if` de Blade,
+     * guardar el rol con un área cerrada BORRARÍA sus permisos sin avisar: el
+     * navegador no envía lo que no existe. Este test es el que caza eso.
+     */
+    public function test_la_edicion_renderiza_las_casillas_de_todas_las_areas(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $admin = tap(User::factory()->create())->assignRole('admin');
+        $role = Role::findByName('tecnico');
+
+        $respuesta = $this->actingAs($admin)
+            ->get(route('admin.roles.edit', $role))
+            ->assertOk();
+
+        $grupos = PermisosAgrupados::agrupar(Permission::all());
+        // Más de un área: si no, el test pasaría sin probar nada.
+        $this->assertGreaterThan(1, count($grupos));
+
+        foreach (Permission::all() as $permiso) {
+            $respuesta->assertSee('value="'.$permiso->name.'"', false);
+        }
+    }
+
+    /**
+     * Las áreas se eligen en una rejilla de tarjetas que ENVUELVE. La fila de
+     * pestañas anterior necesitaba scroll horizontal y escondía áreas enteras
+     * sin avisar (feedback del dueño, 31-jul-2026): un contenedor de permisos
+     * con scroll lateral es la regresión que no queremos de vuelta.
+     */
+    public function test_las_areas_no_se_eligen_en_una_franja_con_scroll_lateral(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $admin = tap(User::factory()->create())->assignRole('admin');
+
+        $html = $this->actingAs($admin)
+            ->get(route('admin.roles.edit', Role::findByName('tecnico')))
+            ->assertOk()
+            ->assertSee('Seleccionar todo en esta área')
+            ->getContent();
+
+        $bloque = substr($html, (int) strpos($html, 'Áreas'));
+        $this->assertStringNotContainsString('overflow-x-auto', $bloque);
+        $this->assertStringContainsString('grid-cols-2', $bloque);
     }
 }
