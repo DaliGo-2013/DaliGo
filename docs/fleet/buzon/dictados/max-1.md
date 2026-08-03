@@ -46,11 +46,15 @@ Orden del propio plan: primera migración recién tras el re-sellado.
   AHORA, no te cruces con eso).
 - **P-M13-04** (reportes) sigue fuera de este lote.
 
-### El dato de cPanel (límites de upload)
-El dueño despachará la delegación de tu §5 a IA-cPanel. **No te bloquea**: construye con
-validador conservador (el menor de los valores conocidos: 12M por archivo, y fija
-`max_file_uploads` asumido en el validador con N explícito) y deja UN punto de configuración
-para ajustar cuando llegue el dato. Si llega antes del cierre del lote, ajusta y dilo.
+### El dato de cPanel — LLEGÓ el mismo 03-ago (evidencia: `docs/qa/INFRA/2026-08-03--INFRA--limites-upload-user-ini-litespeed.md`)
+**LiteSpeed SÍ honra el `.user.ini`.** Valores WEB efectivos verificados por phpinfo en el
+dominio (Server API LiteSpeed V8.3): `upload_max_filesize` **12M** · `post_max_size` **30M** ·
+`memory_limit` **256M** · `max_file_uploads` **20** (default real, no fijado). Los cuatro
+idénticos a lo esperado; el contraste CLI (512M/516M) confirma que la diferencia viene del
+archivo. **Fija el validador con certeza, ya no como asunción**: 12M por archivo comprimido
+(la compresión en navegador sigue obligatoria), el request completo con holgura bajo 30M, y
+tope duro de fotos muy por debajo de 20. El punto único de configuración queda igual — ahora
+con el techo real documentado al lado.
 
 ## Territorio
 - **Marcos en M05** — ni de refilón. El MEDIO de «Ver documento» sigue en canal directo del dueño.
