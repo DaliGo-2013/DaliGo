@@ -237,6 +237,17 @@ class PlanProyectoTest extends TestCase
         }
     }
 
+    public function test_el_item_del_menu_es_link_directo_fuera_de_administracion(): void
+    {
+        // Pedido del dueño 03-08: primer nivel, no dentro del acordeón de
+        // Administración. El candado evita que un merge lo devuelva adentro.
+        $modulos = \App\Support\MenuPrincipal::MODULOS;
+
+        $this->assertArrayNotHasKey('plan', $modulos['administracion']['items']);
+        $this->assertArrayHasKey('plan', $modulos);
+        $this->assertArrayNotHasKey('items', $modulos['plan'], 'plan debe ser link directo, no acordeón.');
+    }
+
     public function test_el_menu_muestra_el_item_solo_con_permiso(): void
     {
         // Por RUTA, no por texto pegado (doctrina anti verde-engañoso).

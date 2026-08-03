@@ -111,9 +111,6 @@ class MenuPrincipal
                 // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
                 // igual que la bandeja confunde (hallazgo #1 del acta).
                 'historial-aprobaciones' => ['label' => 'Historial de aprobaciones', 'route' => 'admin.aprobaciones.index', 'activo' => ['admin.aprobaciones.*'], 'permiso' => 'view aprobaciones'],
-                // Carta Gantt transicional mientras la app se construye: el
-                // avance oficial se lee del repo (App\Support\PlanProyecto).
-                'plan' => ['label' => 'Plan del proyecto', 'route' => 'plan.index', 'activo' => ['plan.*'], 'permiso' => 'ver plan proyecto'],
             ],
         ],
         'mi-produccion' => [
@@ -159,6 +156,17 @@ class MenuPrincipal
                 // su grupo de rutas en routes/web.php.
                 'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
             ],
+        ],
+        // Carta Gantt transicional mientras la app se construye: link directo
+        // de primer nivel AL FINAL del menú (pedido del dueño 03-08 — antes
+        // vivía dentro de Administración). El avance oficial se lee del repo
+        // (App\Support\PlanProyecto).
+        'plan' => [
+            'label' => 'Plan del proyecto',
+            'icon' => 'presentation-chart-bar',
+            'route' => 'plan.index',
+            'activo' => ['plan.*'],
+            'permiso' => 'ver plan proyecto',
         ],
     ];
 
