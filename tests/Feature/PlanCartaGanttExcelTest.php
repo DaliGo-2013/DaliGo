@@ -80,7 +80,7 @@ class PlanCartaGanttExcelTest extends TestCase
     {
         [$zip, $tmp] = $this->descargar();
 
-        foreach (['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml', 'xl/worksheets/sheet1.xml'] as $parte) {
+        foreach (['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml', 'xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml'] as $parte) {
             $this->assertNotFalse($zip->locateName($parte), "Falta la parte $parte del xlsx.");
         }
         $zip->close();
@@ -142,6 +142,29 @@ class PlanCartaGanttExcelTest extends TestCase
         foreach (['Realizada', 'En curso', 'Atrasada', 'No iniciada'] as $etiqueta) {
             $this->assertStringContainsString($etiqueta, $hoja);
         }
+
+        // La forma del Excel de referencia: secciones por fase y el titulo DALI.
+        $this->assertStringContainsString('DALI Cargos-Transporte', $hoja);
+        $this->assertStringContainsString('FASE 1 ·', $hoja);
+        $this->assertStringContainsString('FASE 2 ·', $hoja);
+        $zip->close();
+        @unlink($tmp);
+    }
+
+    /** La hoja 2 lleva el POR QUÉ de cada % (el fundamento del tracker). */
+    public function test_la_hoja_de_avance_trae_los_fundamentos(): void
+    {
+        [$zip, $tmp] = $this->descargar();
+        $hoja2 = (string) $zip->getFromName('xl/worksheets/sheet2.xml');
+
+        $this->assertStringContainsString('Avance por m', $hoja2);
+        // Un fundamento real del tracker (el de M04) viaja en la hoja.
+        $fundamento = PlanProyecto::tracker()['filas']['M04']['fundamento'] ?? '';
+        $this->assertNotSame('', $fundamento, 'El tracker ya no tiene fundamento para M04: ajustar el test.');
+        $this->assertStringContainsString(
+            htmlspecialchars(mb_substr($fundamento, 0, 30), ENT_XML1 | ENT_QUOTES, 'UTF-8'),
+            $hoja2,
+        );
         $zip->close();
         @unlink($tmp);
     }

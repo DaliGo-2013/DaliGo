@@ -78,6 +78,7 @@ class CartaGanttExcel
         $zip->addFromString('xl/_rels/workbook.xml.rels', $this->relsWorkbook());
         $zip->addFromString('xl/styles.xml', $this->estilos());
         $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
+        $zip->addFromString('xl/worksheets/sheet2.xml', $this->hojaAvance($tracker));
         $zip->close();
 
         $binario = (string) file_get_contents($tmp);
@@ -134,7 +135,7 @@ class CartaGanttExcel
         $peso = $tracker['total']['peso'] ?? 0;
         $aporta = $tracker['total']['aporta'] ?? 0;
 
-        $this->filaCeldas([[1, 'DaliGo · Carta Gantt del proyecto', 'titulo']]);
+        $this->filaCeldas([[1, 'DALI Cargos-Transporte · Carta Gantt — Sistema de gestión (App DALI)', 'titulo']]);
         $this->filaCeldas([[1, 'Generada el '.$this->hoy->format('d-m-Y').' desde el tracker del repositorio (RUTA-MAESTRA §10) — la misma fuente que la página /plan. Cada descarga sale al día.', 'sub']]);
         $this->filaCeldas([[1, "AVANCE GLOBAL: {$pct}%   ({$aporta} de {$peso} puntos ponderados por esfuerzo)", 'banner']]);
         $this->filaVacia();
@@ -167,8 +168,35 @@ class CartaGanttExcel
         }
         $this->filaCeldas($cab);
 
-        // --- Modulos ------------------------------------------------------
+        // --- Fase 0 · Discovery -------------------------------------------
+        // El tracker no lleva las sub-tareas del discovery (cerraron en junio);
+        // mantener esa lista aca seria una segunda copia que driftea. Una fila
+        // resumen, realizada, y listo.
+        $this->filaCeldas([[1, 'FASE 0 · Discovery y planificación  (May–Jun) — cerrada', 'seccion']]);
+        $barraF0 = [];
+        for ($k = 1; $k <= $this->semana(Carbon::parse('2026-06-30')); $k++) {
+            $barraF0[] = [$colGrid + $k - 1, null, 'barra_realizada'];
+        }
+        $this->filaCeldas(array_merge([
+            [1, 'F0', 'negrita'], [2, 'Discovery: requerimientos, entrevistas, arquitectura, presupuesto', 'texto'],
+            [5, 1.0, 'pct'], [6, self::ETIQUETAS['realizada'], 'chip_realizada'],
+            [7, '01-05-2026', 'texto'], [8, '30-06-2026', 'texto'],
+        ], $barraF0));
+
+        // --- Modulos, agrupados por fase (la forma del Excel de referencia) ---
+        $secciones = [
+            'F1' => 'FASE 1 · Fundación + módulos transversales  (para las 3 sucursales)',
+            'F2' => 'FASE 2 · Núcleo operativo Mirador + prioridades',
+            'F3' => 'FASE 3 · Piloto MVP en Mirador 150',
+            'F4' => 'FASE 4 · Rollout Abate Molina',
+            'F5' => 'FASE 5 · Inicio Coquimbo + cierre',
+        ];
+        $faseAbierta = null;
         foreach (PlanProyecto::MODULOS as $key => $modulo) {
+            if ($modulo['fase'] !== $faseAbierta) {
+                $faseAbierta = $modulo['fase'];
+                $this->filaCeldas([[1, $secciones[$faseAbierta] ?? $faseAbierta, 'seccion']]);
+            }
             $filaTracker = $tracker['filas'][$key] ?? null;
             $pctItem = (int) ($filaTracker['pct'] ?? 0);
             $estado = $this->semaforo($pctItem, $modulo['fin'], $modulo['inicio']);
@@ -259,6 +287,56 @@ class CartaGanttExcel
             .'</worksheet>';
     }
 
+    /**
+     * Hoja 2 «Avance por módulo»: el POR QUÉ de cada porcentaje (el fundamento
+     * que el tracker anota junto al número). Es la hoja que Carlos lee cuando un
+     * % le llama la atención; en el Excel manual existía y acá viaja sola.
+     */
+    private function hojaAvance(array $tracker): string
+    {
+        // Buffer propio: la hoja 1 ya consumió $this->filas/$this->fila.
+        $this->filas = [];
+        $this->fila = 0;
+
+        $this->filaCeldas([[1, 'Avance por módulo — por qué cada uno está en ese porcentaje', 'titulo']]);
+        $this->filaCeldas([[1, 'Fuente: tracker RUTA-MAESTRA §10 del repositorio, al '.$this->hoy->format('d-m-Y').'. La misma que alimenta la página /plan.', 'sub']]);
+        $this->filaVacia();
+        $this->filaCeldas([
+            [1, 'Cód.', 'cab'], [2, 'Módulo / Fase', 'cab'], [3, 'Fase', 'cab'], [4, 'Peso', 'cab'],
+            [5, '% Avance', 'cab'], [6, 'Estado', 'cab'], [7, 'Por qué ese % (fundamento del tracker)', 'cab'],
+        ]);
+
+        foreach (PlanProyecto::MODULOS as $key => $modulo) {
+            $filaTracker = $tracker['filas'][$key] ?? null;
+            $pctItem = (int) ($filaTracker['pct'] ?? 0);
+            $estado = $this->semaforo($pctItem, $modulo['fin'], $modulo['inicio']);
+            $this->filaCeldas([
+                [1, $key, 'negrita'],
+                [2, $filaTracker['item'] ?? $modulo['label'], 'texto'],
+                [3, $modulo['fase'], 'texto'],
+                [4, $filaTracker['peso'] ?? null, 'numero'],
+                [5, $pctItem / 100, 'pct'],
+                [6, self::ETIQUETAS[$estado], 'chip_'.$estado],
+                [7, ($filaTracker['fundamento'] ?? '') ?: '—', 'ajustado'],
+            ]);
+        }
+
+        $cols = '<cols>'
+            .'<col min="1" max="1" width="6" customWidth="1"/>'
+            .'<col min="2" max="2" width="42" customWidth="1"/>'
+            .'<col min="3" max="4" width="6" customWidth="1"/>'
+            .'<col min="5" max="6" width="11" customWidth="1"/>'
+            .'<col min="7" max="7" width="95" customWidth="1"/>'
+            .'</cols>';
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            .$cols
+            .'<sheetData>'.implode('', $this->filas).'</sheetData>'
+            .'</worksheet>';
+    }
+
     // ------------------------------------------------------------------
     // Primitivas de escritura
     // ------------------------------------------------------------------
@@ -336,6 +414,7 @@ class CartaGanttExcel
         'barra_realizada' => 15, 'barra_en_curso' => 16, 'barra_atrasada' => 17, 'barra_no_iniciada' => 18,
         'barrap_realizada' => 19, 'barrap_en_curso' => 20, 'barrap_atrasada' => 21, 'barrap_no_iniciada' => 22,
         'hito_realizada' => 23, 'hito_atrasada' => 24, 'hito_no_iniciada' => 25,
+        'seccion' => 26, 'ajustado' => 27,
     ];
 
     private function estilos(): string
@@ -354,7 +433,7 @@ class CartaGanttExcel
 
         // fills: 0 y 1 obligatorios (none, gray125); despues los del semaforo.
         $solidos = fn (string $rgb) => "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF$rgb\"/></patternFill></fill>";
-        $fills = '<fills count="13">'
+        $fills = '<fills count="14">'
             .'<fill><patternFill patternType="none"/></fill>'
             .'<fill><patternFill patternType="gray125"/></fill>'
             .$solidos('2B2B2B')                                   // 2 cabecera
@@ -368,20 +447,22 @@ class CartaGanttExcel
             .$solidos(self::COLORES['no_iniciada']['pale'])       // 10
             .$solidos('FFF7ED')                                   // 11 banner
             .$solidos('EA580C')                                   // 12 HOY
+            .$solidos('455A64')                                   // 13 seccion de fase
             .'</fills>';
 
         // cellXfs en el MISMO orden que el mapa ESTILOS. Dos variantes: normal y
         // con el contenido centrado (chips, barras, cabecera de semanas).
-        $xf = fn (int $font, int $fill, int $numFmt = 0) => '<xf numFmtId="'.$numFmt.'" fontId="'.$font.'" fillId="'.$fill.'" borderId="0" xfId="0"'
+        $xf = fn (int $font, int $fill, int $numFmt = 0, bool $wrap = false) => '<xf numFmtId="'.$numFmt.'" fontId="'.$font.'" fillId="'.$fill.'" borderId="0" xfId="0"'
             .($numFmt ? ' applyNumberFormat="1"' : '')
             .($fill ? ' applyFill="1"' : '')
-            .' applyFont="1"/>';
+            .' applyFont="1"'
+            .($wrap ? ' applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' : '/>');
 
         $xfC = fn (int $font, int $fill, int $numFmt = 0) => '<xf numFmtId="'.$numFmt.'" fontId="'.$font.'" fillId="'.$fill.'" borderId="0" xfId="0"'
             .($numFmt ? ' applyNumberFormat="1"' : '').($fill ? ' applyFill="1"' : '')
             .' applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>';
 
-        $cellXfs = '<cellXfs count="26">'
+        $cellXfs = '<cellXfs count="28">'
             .$xf(0, 0)                    // 0 texto
             .$xf(1, 0)                    // 1 negrita
             .$xf(2, 0)                    // 2 titulo
@@ -408,6 +489,8 @@ class CartaGanttExcel
             .$xfC(4, 3)                   // 23 hito_realizada
             .$xfC(4, 7)                   // 24 hito_atrasada
             .$xfC(4, 9)                   // 25 hito_no_iniciada
+            .$xf(4, 13)                   // 26 seccion de fase
+            .$xf(0, 0, 0, true)           // 27 ajustado (wrap para el fundamento)
             .'</cellXfs>';
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -427,6 +510,7 @@ class CartaGanttExcel
             .'<Default Extension="xml" ContentType="application/xml"/>'
             .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            .'<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
             .'</Types>';
     }
@@ -443,7 +527,7 @@ class CartaGanttExcel
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            .'<sheets><sheet name="Carta Gantt" sheetId="1" r:id="rId1"/></sheets>'
+            .'<sheets><sheet name="Carta Gantt" sheetId="1" r:id="rId1"/><sheet name="Avance por modulo" sheetId="2" r:id="rId3"/></sheets>'
             .'</workbook>';
     }
 
@@ -453,6 +537,7 @@ class CartaGanttExcel
             .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
             .'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            .'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
             .'</Relationships>';
     }
 }
