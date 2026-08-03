@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -34,6 +35,35 @@ class OrdenServicio extends Model implements AuditableContract
                 $orden->codigo = self::generarCodigoUnico();
             }
         });
+
+        // Cualquier alta/baja/cambio invalida los conteos cacheados del historial
+        // (§ver versionHistorial). Es un contador, no un borrado por clave: no hay
+        // que saber QUE claves existen, y con el driver `database` un increment es
+        // una sola escritura por llave primaria.
+        static::saved(fn () => self::invalidarHistorial());
+        static::deleted(fn () => self::invalidarHistorial());
+    }
+
+    /** Clave de version de los conteos del historial (año/mes) del listado. */
+    private const CACHE_VERSION_HISTORIAL = 'dg.st.historial.v';
+
+    /**
+     * Version actual de los conteos del historial. Se usa DENTRO de la clave de
+     * cache, asi que al subirla las entradas viejas quedan huerfanas y expiran
+     * solas — no hace falta enumerarlas para borrarlas.
+     */
+    public static function versionHistorial(): int
+    {
+        return (int) Cache::get(self::CACHE_VERSION_HISTORIAL, 1);
+    }
+
+    /** Sube la version: el proximo listado recalcula los conteos. */
+    public static function invalidarHistorial(): void
+    {
+        // `increment` de un valor ausente no hace nada en varios drivers, asi que
+        // se siembra antes. add() es atomico: si otro proceso ya lo creo, no pisa.
+        Cache::add(self::CACHE_VERSION_HISTORIAL, 1);
+        Cache::increment(self::CACHE_VERSION_HISTORIAL);
     }
 
     /** Codigo unico e impredecible para el folio (ej. ST-K7QM2X9P). Reintenta ante colision. */
