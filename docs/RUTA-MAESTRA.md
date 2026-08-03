@@ -254,7 +254,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 **Hecho cuando:** un pedido de staging se entrega con el teléfono en modo avión y sincroniza al volver (firma y foto persistidas); ciclo M-03/M-04/M-05 de Mirador sin papel punta a punta.
 
 - [ ] **P-M08-01** · Guía de despacho al emitir/cargar + estados de ruta (asignada→cargada→en ruta)
-- [ ] [B:D-006] **P-M08-02** · Hoja de ruta por zona con vendedor asignado
+- [ ] **P-M08-02** · Hoja de ruta por zona *(enmienda 03-ago: D-006 RESUELTA — por zona, vendedor NO fijo; diseño en `docs/planes/PLAN-DESPACHOS-V2.md`, paso P-DSP-08)*
 - [ ] **P-M08-03** · PWA conductor: ruta del día + confirmación offline-first (arquitectura del memo `docs/SPIKE-PWA.md`)
 - [ ] **P-M08-04** · Cierre de ruta → cierre administrativo + bono conductor
 - [ ] **P-M08-05** · Cotizador transportistas (Chilexpress/Starken/Cruz del Sur) — si hay API keys; si no → F4
