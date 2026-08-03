@@ -101,6 +101,89 @@ class PlanProyectoTest extends TestCase
         }
     }
 
+    public function test_todo_modulo_trae_sus_bullets_de_detalle(): void
+    {
+        // El panel de detalle (click en la fila) vive de estos arrays curados;
+        // un módulo sin ninguno mostraría un panel vacío en silencio.
+        foreach (PlanProyecto::MODULOS as $key => $modulo) {
+            $this->assertIsArray($modulo['hecho'] ?? null, "A [{$key}] le falta el array 'hecho'.");
+            $this->assertIsArray($modulo['falta'] ?? null, "A [{$key}] le falta el array 'falta'.");
+            $this->assertNotEmpty(
+                array_merge($modulo['hecho'], $modulo['falta']),
+                "El panel de detalle de [{$key}] quedaría vacío: 'hecho' y 'falta' están ambos vacíos."
+            );
+        }
+    }
+
+    public function test_el_detalle_de_cada_modulo_se_renderiza_en_la_pagina(): void
+    {
+        $response = $this->actingAs($this->usuarioQueVe())->get(route('plan.index'));
+
+        $response->assertOk();
+        foreach (array_keys(PlanProyecto::MODULOS) as $key) {
+            // El ancla del panel es el marcador estable (doctrina anti
+            // verde-engañoso): existe una por módulo, apuntada por el
+            // aria-controls del botón de su fila.
+            $response->assertSee('id="plan-detalle-'.$key.'"', false);
+        }
+
+        // Un bullet real de cada columna (texto único de esta página).
+        $response->assertSee('Kardex local al aprobar (consumo de preforma + producción + merma)');
+        $response->assertSee('Descuento de preforma contra el stock real');
+    }
+
+    public function test_bloques_extra_parsea_las_unidades_con_guion_del_archivo_real(): void
+    {
+        $bloques = PlanProyecto::bloquesExtra();
+
+        $this->assertGreaterThanOrEqual(3, count($bloques), 'Deben aparecer al menos E-NAV, E-TZ y E-PLAN.');
+        $this->assertArrayHasKey('E-NAV', $bloques);
+        $this->assertArrayHasKey('E-PLAN', $bloques);
+        // La guarda del guión discrimina: las unidades OFICIALES (numeradas,
+        // mapean a módulos que ya están en el Gantt) no pueden colarse.
+        $this->assertArrayNotHasKey('E1', $bloques);
+        $this->assertArrayNotHasKey('E2', $bloques);
+        $this->assertArrayNotHasKey('E10', $bloques);
+
+        foreach ($bloques as $key => $bloque) {
+            $this->assertStringStartsWith('E-', $key);
+            $this->assertGreaterThan(0, $bloque['total'], "El bloque [{$key}] quedó sin pasos.");
+            $this->assertLessThanOrEqual($bloque['total'], $bloque['hechos']);
+            $this->assertNotSame('', trim($bloque['titulo']), "El bloque [{$key}] quedó sin título.");
+            foreach (array_merge($bloque['pasos_hechos'], $bloque['pasos_pendientes']) as $paso) {
+                $this->assertNotSame('', trim($paso), "Un paso de [{$key}] quedó vacío.");
+            }
+        }
+    }
+
+    public function test_bloques_extra_se_renderizan_en_la_pagina(): void
+    {
+        $response = $this->actingAs($this->usuarioQueVe())->get(route('plan.index'));
+
+        $response->assertOk();
+        foreach (array_keys(PlanProyecto::bloquesExtra()) as $key) {
+            // Ancla del panel = marcador estable, apuntada por el
+            // aria-controls del botón del bloque.
+            $response->assertSee('id="plan-detalle-extra-'.$key.'"', false);
+        }
+
+        // Un paso real estable (P-PLAN-01 quedó [x] para siempre en E-PLAN).
+        $response->assertSee('P-PLAN-01');
+        $response->assertSee('Del repo (automático)');
+    }
+
+    public function test_el_gantt_marca_el_dia_de_hoy_con_su_fecha(): void
+    {
+        // Computada con FechaNegocio (día de negocio chileno), no hardcodeada:
+        // el test es determinista cualquier día que corra.
+        $hoy = Carbon::parse(\App\Support\FechaNegocio::hoy());
+
+        $this->actingAs($this->usuarioQueVe())->get(route('plan.index'))
+            ->assertOk()
+            ->assertSee('Hoy: '.$hoy->format('d-m-Y'))
+            ->assertSee('Hoy · '.$hoy->day.' ');
+    }
+
     public function test_estado_se_deriva_del_porcentaje(): void
     {
         $this->assertSame('no_iniciada', PlanProyecto::estadoDe(0));

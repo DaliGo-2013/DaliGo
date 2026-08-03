@@ -16,11 +16,48 @@
     $errorEnAlta = $hayErrores && old('_extra_id') === null;
 @endphp
 
-<div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
+<div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm" x-data="{ selExtra: null }">
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-neutral-100 px-6 py-3">
         <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Trabajos extras en paralelo</h2>
-        <span class="text-xs text-neutral-400">Fuera de la planificación oficial · se editan aquí</span>
+        <span class="text-xs text-neutral-400">Fuera de la planificación oficial</span>
     </div>
+
+    {{-- Bloques AUTOMÁTICOS del repo: las unidades E-xx (con guión) de
+         RUTA-MAESTRA — trabajo extra ya agrupado «en bloques con sentido»
+         cuyos pasos [x]/[ ] se marcan en cada push. Aparecen y avanzan solos
+         con cada deploy (pedido del dueño 31-07). Mismo idioma clickeable
+         del Gantt: fila-botón → panel; sin x-transition (gotcha 22-07). --}}
+    <div class="border-b border-neutral-100">
+        <p class="px-4 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-400 sm:px-6">Del repo (automático)</p>
+        <div class="space-y-0.5 px-2 py-2 sm:px-4">
+            @foreach ($bloquesExtra as $bloque)
+                <button type="button"
+                        @click="selExtra = selExtra === '{{ $bloque['key'] }}' ? null : '{{ $bloque['key'] }}'"
+                        :aria-expanded="selExtra === '{{ $bloque['key'] }}' ? 'true' : 'false'"
+                        aria-controls="plan-detalle-extra-{{ $bloque['key'] }}"
+                        :class="selExtra === '{{ $bloque['key'] }}' ? 'bg-brand-50' : 'hover:bg-neutral-50'"
+                        class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 text-left transition duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                    <span class="min-w-0 flex-1 truncate text-sm font-medium text-neutral-900">{{ $bloque['titulo'] }}</span>
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeExtra[$bloque['estado']] }}">{{ \App\Models\PlanExtra::LABELS[$bloque['estado']] }}</span>
+                    <span class="h-2 w-24 overflow-hidden rounded-full bg-neutral-100">
+                        <span class="block h-full rounded-full {{ $rellenoExtra[$bloque['estado']] }}" style="width: {{ $bloque['pct'] }}%"></span>
+                    </span>
+                    <span class="w-24 text-end text-xs tabular-nums text-neutral-600">{{ $bloque['hechos'] }}/{{ $bloque['total'] }} pasos · {{ $bloque['pct'] }}%</span>
+                </button>
+            @endforeach
+        </div>
+
+        @foreach ($bloquesExtra as $bloque)
+            <div id="plan-detalle-extra-{{ $bloque['key'] }}" x-show="selExtra === '{{ $bloque['key'] }}'" x-cloak
+                 class="border-t border-neutral-100 px-4 py-4 sm:px-6">
+                @include('plan.partials._columnas-detalle', ['hecho' => $bloque['pasos_hechos'], 'falta' => $bloque['pasos_pendientes']])
+            </div>
+        @endforeach
+
+        <p class="px-4 pb-3 pt-1 text-xs text-neutral-400 sm:px-6">Se alimenta solo de los bloques E-xx de RUTA-MAESTRA en cada deploy — toca uno para ver sus pasos.</p>
+    </div>
+
+    <p class="px-4 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-400 sm:px-6">Anotados a mano <span class="normal-case tracking-normal">· ideas que aún no son bloque del repo — se editan aquí</span></p>
 
     @can('gestionar plan proyecto')
         <div class="border-b border-neutral-100 px-6 py-4" x-data="{ paneles: { nuevo: {{ $errorEnAlta ? 'true' : 'false' }} } }">

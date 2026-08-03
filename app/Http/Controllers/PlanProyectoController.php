@@ -29,10 +29,12 @@ class PlanProyectoController extends Controller
             'gantt' => PlanProyecto::gantt(),
             'meses' => PlanProyecto::meses(),
             'hoyPct' => PlanProyecto::hoyPct(),
+            'hoyFecha' => PlanProyecto::hoyFecha(),
             'avanceGlobal' => $tracker['pct_global'],
             'totalPeso' => $tracker['total']['peso'] ?? null,
             'hitos' => PlanProyecto::hitos(),
             'decisiones' => PlanProyecto::decisiones(),
+            'bloquesExtra' => PlanProyecto::bloquesExtra(),
             'extras' => PlanExtra::orderByDesc('created_at')->get(),
             // filemtime = cuándo el deploy (git pull) refrescó el tracker en
             // este servidor. Es un timestamp con hora → enChile() al mostrar.
