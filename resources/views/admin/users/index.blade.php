@@ -17,15 +17,27 @@
 
         <x-list-card title="Cuentas" :count="$users->count()" :countLabel="\Illuminate\Support\Str::plural('cuenta', $users->count())">
             @foreach ($users as $user)
+                {{-- La fila abre la edicion (pedido del dueño 03-08: fuera el lapiz,
+                     la cuenta ES el boton) — pero SOLO para quien tiene 'edit users':
+                     la ruta de edicion esta gateada aparte del listado ('view users'),
+                     y enlazar a alguien sin el permiso es mandarlo a un 403 (la
+                     leccion de urlDestinoPara en la campanita). Para el resto, la
+                     fila queda como texto, igual que antes. --}}
                 <x-list-row>
-                    <div class="flex items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ $user->name }}</p>
-                        @if ($user->is(auth()->user()))
-                            <x-badge variant="neutral">tú</x-badge>
-                        @endif
-                    </div>
-                    <p class="truncate text-sm text-neutral-500">{{ $user->email }}</p>
-                    <p class="truncate text-xs text-neutral-400">{{ $user->sucursal?->nombre ?? 'Sin sucursal' }}</p>
+                    @can('edit users')
+                        <a href="{{ route('admin.users.edit', $user) }}" class="block">
+                    @endcan
+                        <div class="flex items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 @can('edit users') hover:text-brand-600 @endcan">{{ $user->name }}</p>
+                            @if ($user->is(auth()->user()))
+                                <x-badge variant="neutral">tú</x-badge>
+                            @endif
+                        </div>
+                        <p class="truncate text-sm text-neutral-500">{{ $user->email }}</p>
+                        <p class="truncate text-xs text-neutral-400">{{ $user->sucursal?->nombre ?? 'Sin sucursal' }}</p>
+                    @can('edit users')
+                        </a>
+                    @endcan
 
                     <x-slot name="meta">
                         <div class="flex flex-wrap items-center gap-1 sm:w-28 sm:shrink-0">
@@ -38,11 +50,6 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        @can('edit users')
-                            <x-icon-button :href="route('admin.users.edit', $user)" label="Editar" title="Editar">
-                                <x-icon.pencil class="h-5 w-5" />
-                            </x-icon-button>
-                        @endcan
                         @can('delete users')
                             @unless ($user->is(auth()->user()))
                                 <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('¿Eliminar la cuenta de {{ $user->email }}?');">

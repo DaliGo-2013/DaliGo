@@ -15,19 +15,25 @@
 
         <x-list-card title="Sucursales" :count="$sucursales->count()" :countLabel="\Illuminate\Support\Str::plural('sucursal', $sucursales->count())">
             @forelse ($sucursales as $sucursal)
+                {{-- La fila entera abre la edicion (pedido del dueño 03-08: fuera el
+                     lapiz, la sucursal ES el boton). Mismo patron que bodegas y ST.
+                     Sin @can: el resource completo esta detras de 'manage sucursales',
+                     asi que quien puede VER este listado puede editar. --}}
                 <x-list-row>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ $sucursal->nombre }}</p>
-                        @if ($sucursal->es_central)
-                            <x-badge variant="neutral">central</x-badge>
-                        @endif
-                        @unless ($sucursal->activa)
-                            <x-badge variant="neutral">inactiva</x-badge>
-                        @endunless
-                    </div>
-                    <p class="truncate text-sm text-neutral-500">
-                        {{ $sucursal->codigo }}@if ($sucursal->ciudad) · {{ $sucursal->ciudad }}@endif
-                    </p>
+                    <a href="{{ route('admin.sucursales.edit', $sucursal) }}" class="block">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $sucursal->nombre }}</p>
+                            @if ($sucursal->es_central)
+                                <x-badge variant="neutral">central</x-badge>
+                            @endif
+                            @unless ($sucursal->activa)
+                                <x-badge variant="neutral">inactiva</x-badge>
+                            @endunless
+                        </div>
+                        <p class="truncate text-sm text-neutral-500">
+                            {{ $sucursal->codigo }}@if ($sucursal->ciudad) · {{ $sucursal->ciudad }}@endif
+                        </p>
+                    </a>
 
                     <x-slot name="meta">
                         <div class="text-sm text-neutral-500 sm:w-28 sm:shrink-0 sm:text-right">
@@ -36,9 +42,6 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <x-icon-button :href="route('admin.sucursales.edit', $sucursal)" label="Editar" title="Editar">
-                            <x-icon.pencil class="h-5 w-5" />
-                        </x-icon-button>
                         <form method="POST" action="{{ route('admin.sucursales.destroy', $sucursal) }}" onsubmit="return confirm('¿Eliminar la sucursal {{ $sucursal->nombre }}?');">
                             @csrf
                             @method('DELETE')
