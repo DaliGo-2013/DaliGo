@@ -113,7 +113,14 @@
             );
         @endphp
         @if ($historial['anios']->isNotEmpty())
-            <div>
+            {{-- `cargando` = la tarjeta que se acaba de tocar. Cambiar de mes es una
+                 navegacion completa y en el celular eso son entre medio segundo y un
+                 segundo y medio en los que NO pasaba nada visible: se sentia como que
+                 la pantalla quedaba pegada. Marcar la tarjeta al instante no acelera
+                 el servidor, pero elimina la duda de si el toque se registro — que es
+                 lo que se reportaba. `pointer-events-none` sobre el bloque evita el
+                 doble toque, que disparaba dos navegaciones. --}}
+            <div x-data="{ cargando: null }" :class="cargando !== null && 'pointer-events-none'" :aria-busy="cargando !== null">
                 <div class="mb-2 flex items-baseline justify-between gap-3">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                         Historial{{ $anioActivo ? ' · '.$anioActivo : '' }}
@@ -140,9 +147,16 @@
                             @php $nombreMes = ucfirst(\Illuminate\Support\Carbon::create($anioActivo, $m, 1)->translatedFormat('F')); @endphp
                             @if ($conteo > 0)
                                 <a href="{{ route('admin.servicio-tecnico.index', array_merge($qsBase, ['anio' => $anioActivo, 'mes' => $m])) }}"
-                                   class="rounded-2xl border p-3 shadow-sm transition duration-150 {{ $mesActivo === $m ? 'border-brand-500 bg-brand-50' : 'border-neutral-200 bg-white hover:border-brand-300 hover:shadow' }}">
+                                   x-on:click="cargando = {{ $m }}"
+                                   class="relative rounded-2xl border p-3 shadow-sm transition duration-150 {{ $mesActivo === $m ? 'border-brand-500 bg-brand-50' : 'border-neutral-200 bg-white hover:border-brand-300 hover:shadow' }}"
+                                   :class="cargando === {{ $m }} && 'border-brand-500 bg-brand-50'">
                                     <p class="text-sm font-semibold {{ $mesActivo === $m ? 'text-brand-700' : 'text-neutral-900' }}">{{ $nombreMes }}</p>
-                                    <p class="text-xs {{ $mesActivo === $m ? 'text-brand-600' : 'text-neutral-500' }}">{{ $conteo }} {{ $conteo === 1 ? 'orden' : 'órdenes' }}</p>
+                                    <p class="text-xs {{ $mesActivo === $m ? 'text-brand-600' : 'text-neutral-500' }}"
+                                       x-show="cargando !== {{ $m }}">{{ $conteo }} {{ $conteo === 1 ? 'orden' : 'órdenes' }}</p>
+                                    <p class="flex items-center gap-1.5 text-xs font-medium text-brand-600" x-show="cargando === {{ $m }}" x-cloak>
+                                        <x-icon.spinner class="h-3 w-3 animate-spin" />
+                                        Cargando…
+                                    </p>
                                 </a>
                             @else
                                 <div class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-3">

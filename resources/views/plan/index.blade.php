@@ -26,6 +26,14 @@
                             <a href="https://github.com/DaliGo-2013/DaliGo/actions" target="_blank" rel="noopener"
                                class="font-medium text-brand-700 transition duration-150 hover:text-brand-600">Estado de la CI</a>
                         </p>
+                        {{-- El Excel se GENERA al momento desde la misma fuente que
+                             esta página: la carta que circula en las reuniones sale
+                             siempre al día, sin mantener el archivo a mano. --}}
+                        <a href="{{ route('plan.excel') }}"
+                           class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99]">
+                            <x-icon.document-text class="h-4 w-4" />
+                            Descargar Excel (al día)
+                        </a>
                     </div>
                 </div>
                 <div class="mt-4 h-3 w-full overflow-hidden rounded-full bg-neutral-100">

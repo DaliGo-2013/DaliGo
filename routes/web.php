@@ -71,6 +71,11 @@ Route::middleware('auth')->group(function () {
     // "trabajos extras en paralelo" se editan aqui, con su permiso propio.
     Route::get('/plan', [PlanProyectoController::class, 'index'])
         ->middleware('permission:ver plan proyecto')->name('plan.index');
+    // Descarga de la carta Gantt como Excel: se GENERA en el momento desde la
+    // misma fuente que la pagina, asi el archivo que circula en las reuniones
+    // sale siempre al dia (pedido del dueño 03-08).
+    Route::get('/plan/excel', [PlanProyectoController::class, 'excel'])
+        ->middleware('permission:ver plan proyecto')->name('plan.excel');
     Route::post('/plan/extras', [PlanProyectoController::class, 'extraStore'])
         ->middleware('permission:gestionar plan proyecto')->name('plan.extras.store');
     Route::patch('/plan/extras/{extra}', [PlanProyectoController::class, 'extraUpdate'])

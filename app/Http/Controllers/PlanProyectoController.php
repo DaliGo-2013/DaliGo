@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\PlanExtra;
+use App\Services\Plan\CartaGanttExcel;
 use App\Support\PlanProyecto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -37,6 +39,24 @@ class PlanProyectoController extends Controller
             'planActualizado' => Carbon::createFromTimestamp(
                 (int) filemtime(base_path('docs/RUTA-MAESTRA.md'))
             ),
+        ]);
+    }
+
+    /**
+     * Descarga la carta Gantt como .xlsx, GENERADA en el momento desde la misma
+     * fuente que la pagina (nada que mantener a mano: cada descarga sale al dia
+     * del repo). El semaforo del archivo es el de la reunion de avance
+     * (rojo/amarillo/verde/gris — ver CartaGanttExcel::semaforo).
+     */
+    public function excel(): Response
+    {
+        $excel = new CartaGanttExcel;
+
+        return response($excel->generar(), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.CartaGanttExcel::nombreArchivo().'"',
+            // Se genera fresco en cada descarga: que ningun proxy lo retenga.
+            'Cache-Control' => 'no-store',
         ]);
     }
 
