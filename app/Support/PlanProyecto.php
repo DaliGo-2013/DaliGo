@@ -252,6 +252,22 @@ class PlanProyecto
         return $meses;
     }
 
+    /**
+     * La fecha de HOY (día de negocio) lista para el marcador del Gantt:
+     * completa para la cabecera y corta para el chip sobre la línea.
+     *
+     * @return array{completa: string, corta: string}
+     */
+    public static function hoyFecha(): array
+    {
+        $hoy = Carbon::parse(FechaNegocio::hoy());
+
+        return [
+            'completa' => $hoy->format('d-m-Y'),
+            'corta' => $hoy->day.' '.self::MESES_CORTOS[$hoy->month],
+        ];
+    }
+
     /** Posición de "hoy" (día de NEGOCIO, jamás now() UTC) en % del span; null si quedó fuera. */
     public static function hoyPct(): ?float
     {

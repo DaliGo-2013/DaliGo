@@ -172,6 +172,18 @@ class PlanProyectoTest extends TestCase
         $response->assertSee('Del repo (automático)');
     }
 
+    public function test_el_gantt_marca_el_dia_de_hoy_con_su_fecha(): void
+    {
+        // Computada con FechaNegocio (día de negocio chileno), no hardcodeada:
+        // el test es determinista cualquier día que corra.
+        $hoy = Carbon::parse(\App\Support\FechaNegocio::hoy());
+
+        $this->actingAs($this->usuarioQueVe())->get(route('plan.index'))
+            ->assertOk()
+            ->assertSee('Hoy: '.$hoy->format('d-m-Y'))
+            ->assertSee('Hoy · '.$hoy->day.' ');
+    }
+
     public function test_estado_se_deriva_del_porcentaje(): void
     {
         $this->assertSame('no_iniciada', PlanProyecto::estadoDe(0));

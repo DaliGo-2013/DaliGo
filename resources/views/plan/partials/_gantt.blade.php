@@ -33,7 +33,7 @@
 
 <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm" x-data="{ sel: null }">
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-neutral-100 px-6 py-3">
-        <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Carta Gantt · may 2026 → feb 2027</h2>
+        <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Carta Gantt · may 2026 → feb 2027 · <span class="text-brand-700">Hoy: {{ $hoyFecha['completa'] }}</span></h2>
         <div class="flex items-center gap-4 text-xs text-neutral-600">
             <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-neutral-200 ring-1 ring-inset ring-neutral-300"></span>No iniciada</span>
             <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-brand-600"></span>En curso</span>
@@ -43,13 +43,22 @@
 
     <div class="overflow-x-auto px-3 py-4 sm:px-6">
         <div class="min-w-[640px]">
-            {{-- Eje de meses --}}
+            {{-- Eje de meses + chip de HOY sobre la línea. El chip se clampa
+                 (4–96%) para no recortarse en los bordes; la LÍNEA de las
+                 filas queda en el % exacto. El -translate-x-1/2 es una clase
+                 estática sin Alpine — el gotcha [2026-07-26] del translate
+                 aplica a estilos inline puestos por JS, no a esto. --}}
             <div class="flex items-center">
                 <div class="w-44 shrink-0 sm:w-52"></div>
-                <div class="relative h-4 flex-1">
+                {{-- h-9: el chip (arriba) y los meses (abajo) no se pisan. --}}
+                <div class="relative h-9 flex-1">
                     @foreach ($meses as $mes)
-                        <span class="absolute top-0 text-[10px] font-medium uppercase text-neutral-400" style="left: {{ $mes['left'] }}%">{{ $mes['label'] }}</span>
+                        <span class="absolute bottom-0 text-[10px] font-medium uppercase text-neutral-400" style="left: {{ $mes['left'] }}%">{{ $mes['label'] }}</span>
                     @endforeach
+                    @if (! is_null($hoyPct))
+                        <span class="absolute top-0 z-10 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-brand-600 px-1.5 text-[10px] font-semibold leading-4 text-white"
+                              style="left: {{ min(max($hoyPct, 4), 96) }}%">Hoy · {{ $hoyFecha['corta'] }}</span>
+                    @endif
                 </div>
                 <div class="w-12 shrink-0"></div>
             </div>
@@ -74,7 +83,7 @@
                             @endforeach
                             {{-- Marcador de hoy (día de negocio) --}}
                             @if (! is_null($hoyPct))
-                                <span class="absolute inset-y-0 z-10 border-s-2 border-brand-600/60" style="left: {{ $hoyPct }}%" aria-hidden="true"></span>
+                                <span class="absolute inset-y-0 z-10 border-s-2 border-brand-600" style="left: {{ $hoyPct }}%" aria-hidden="true"></span>
                             @endif
                             {{-- Barra: ventana planificada + relleno de avance --}}
                             <span class="absolute inset-y-0.5 block overflow-hidden rounded-full {{ $tinte[$fila['estado']] }}"

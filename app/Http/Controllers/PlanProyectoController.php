@@ -27,6 +27,7 @@ class PlanProyectoController extends Controller
             'gantt' => PlanProyecto::gantt(),
             'meses' => PlanProyecto::meses(),
             'hoyPct' => PlanProyecto::hoyPct(),
+            'hoyFecha' => PlanProyecto::hoyFecha(),
             'avanceGlobal' => $tracker['pct_global'],
             'totalPeso' => $tracker['total']['peso'] ?? null,
             'hitos' => PlanProyecto::hitos(),
