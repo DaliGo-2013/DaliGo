@@ -82,10 +82,7 @@ class MenuPrincipal
                 'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
                 'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
                 'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
-                // Despachos (M07, unidad DESPACHOS-v1): el aporte que el nav
-                // legacy tenía en el dropdown Operación, trasladado a la fuente
-                // única al retirarse navigation.blade.php (merge 27-07).
-                'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
+                // Despachos se fue a LOGÍSTICA el 05-08 (pedido del dueño).
                 // Devoluciones (M13, flujo A-12): el cliente declara por el
                 // link público; bodega recibe/categoriza/resuelve acá.
                 'devoluciones' => ['label' => 'Devoluciones', 'route' => 'admin.devoluciones.index', 'activo' => ['admin.devoluciones.*'], 'permiso' => 'view devoluciones|manage devoluciones', 'badge' => 'devoluciones_por_recibir', 'badge_title' => ':n devolución(es) por recibir'],
@@ -102,6 +99,16 @@ class MenuPrincipal
             'label' => 'Logística',
             'icon' => 'truck',
             'items' => [
+                // Despachos (M07) llegó desde Operación el 05-08 (pedido del
+                // dueño). Va PRIMERO porque es el principio del flujo: de los
+                // despachos salen los documentos con los que se arma la hoja de
+                // ruta, que después se asigna a un vehículo y a un conductor.
+                // El permiso es el MISMO que gatea su ruta en routes/web.php
+                // (D-014) y no se tocó: el traslado es de orden en el menú, NO
+                // de acceso — nadie gana ni pierde la pantalla. NO se duplica el
+                // ítem en Operación: dos ítems con la misma ruta rompen el
+                // candado de SidebarTest (una ruta resalta exactamente un ítem).
+                'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
                 // Hoja de ruta digital (P-DSP-08): la arma quien gestiona y la
                 // VEN además los tres autorizadores de la cadena R11 — mismo
                 // OR que gatea su ruta (D-014).

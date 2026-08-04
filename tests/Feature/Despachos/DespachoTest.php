@@ -7,6 +7,7 @@ use App\Models\Despacho;
 use App\Models\DocumentoVenta;
 use App\Models\User;
 use App\Models\Zona;
+use App\Support\MenuPrincipal;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -298,5 +299,45 @@ class DespachoTest extends TestCase
             ->assertSessionHasErrors('documento_venta_id');
 
         $this->assertSame(0, Despacho::count());
+    }
+
+    // --- Despachos dentro de Logística (pedido del dueño 05-08) -------------
+
+    public function test_despachos_vive_en_logistica_y_no_en_operacion(): void
+    {
+        $arbol = MenuPrincipal::para($this->jefe());
+
+        $this->assertArrayHasKey('despachos', $arbol['logistica']['items'] ?? []);
+        $this->assertArrayNotHasKey(
+            'despachos',
+            $arbol['operacion']['items'] ?? [],
+            'Despachos no puede quedar duplicado: dos ítems con la misma ruta rompen el resaltado del menú.',
+        );
+    }
+
+    public function test_despachos_abre_de_verdad_desde_su_nuevo_modulo(): void
+    {
+        // El par que importa (D-014): que el menú lo OFREZCA y que la ruta lo
+        // DEJE entrar. Mover el ítem sin mirar el gate es lo que deja el menú
+        // mostrando una pantalla que devuelve 403.
+        $this->actingAs($this->jefe())
+            ->get(route('admin.despachos.index'))
+            ->assertOk();
+    }
+
+    public function test_el_traslado_no_le_dio_ni_le_quito_la_pantalla_a_nadie(): void
+    {
+        // Es un cambio de ORDEN, no de acceso: el permiso del ítem no se tocó.
+        // Sin esto, «ordenar el menú» es una puerta de entrada silenciosa a
+        // ampliar permisos.
+        $sinPermiso = User::factory()->create();
+
+        $this->assertArrayNotHasKey(
+            'despachos',
+            MenuPrincipal::para($sinPermiso)['logistica']['items'] ?? [],
+        );
+        $this->actingAs($sinPermiso)
+            ->get(route('admin.despachos.index'))
+            ->assertRedirect(route('dashboard'));
     }
 }
