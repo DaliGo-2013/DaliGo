@@ -222,6 +222,45 @@ Dos reglas al mover un ítem de módulo:
 2. **No se duplica el ítem** en el módulo viejo: dos ítems con la misma ruta
    rompen el candado de `SidebarTest` (una ruta resalta exactamente un ítem).
 
+## 4ter. Descarga en Excel
+
+Botón **Descargar Excel** en el listado (pedido del dueño 04-08-2026): la planilla
+que circula sale **al día desde la app** y no se mantiene a mano.
+`App\Services\Logistica\FlotaExcel` arma el `.xlsx` sin librerías (un xlsx es un
+ZIP de XMLs y `ZipArchive` viene con PHP), igual que `CartaGanttExcel`.
+
+Espeja la forma de «Control vehiculos» —identificación · dimensiones ·
+documentos— y agrega las **dos columnas que la planilla a mano no puede tener**:
+*Estado documental* y *Qué vence*, con el plazo en palabras.
+
+Tres decisiones que lo hacen usable como planilla y no como volcado:
+
+1. **Las fechas van como fechas de Excel** (serial + formato `dd-mm-yyyy`), no
+   como texto: si viajaran como texto no se podría ordenar ni filtrar por
+   vencimiento, que es para lo que se descarga. Candado que lo fija:
+   `FlotaExcelTest::test_las_fechas_viajan_como_fechas_de_excel_y_no_como_texto`.
+2. **Autofiltro + cabecera congelada**: son 25 columnas; sin eso es inmanejable.
+   Así se usa la planilla original.
+3. **Respeta los filtros de la pantalla** («descargar lo que estoy viendo») **y
+   escribe adentro cuál se aplicó**. Sin esa línea, un Excel de 10 filas circula
+   por correo como si fuera la flota completa y nadie puede saberlo mirándolo. El
+   resumen del encabezado cuenta **lo que el archivo trae**, no la flota entera.
+
+El listado y la descarga filtran por el MISMO método privado
+(`VehiculoController::filtrada`). Si cada uno armara su query, la descarga
+empezaría a diferir de lo que se ve — el defecto clásico de este tipo de botón.
+
+**Colores:** acá sí se usa el semáforo rojo/ámbar/verde y no la paleta de 4 de la
+app. Es un archivo que se abre FUERA de DaliGo, donde el verde de «al día» es el
+idioma que la gente espera de una planilla; mismo criterio que el Excel de la
+carta Gantt.
+
+**Verificación que no se salta:** XML bien formado **no** garantiza que Excel
+abra el archivo (Excel exige además las celdas en orden de columna y sin refs
+repetidas, y rechaza el archivo entero sin decir por qué). Los candados cubren el
+XML; la prueba final es abrirlo con Excel de verdad — se hizo vía COM y abrió sin
+reparaciones, con las fechas como número y el autofiltro puesto.
+
 ## 5. Permisos
 
 | Permiso | Quién |

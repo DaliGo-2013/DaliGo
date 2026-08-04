@@ -499,6 +499,9 @@ Route::middleware('auth')
         });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
+            // La descarga va ANTES del show: 'excel' no es numérico, así que el
+            // whereNumber ya lo protege, pero el orden lo deja explícito.
+            Route::get('vehiculos/excel', [VehiculoController::class, 'excel'])->name('vehiculos.excel');
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
         });
@@ -522,6 +525,19 @@ Route::middleware(['auth', 'permission:report production'])
         Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->whereNumber('reporte')->name('mi.update');
         Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->whereNumber('reporte')->name('mi.registros.store');
         Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
+    });
+
+// Mis entregas (Conductor, P-DSP-05): SU hoja de ruta del dia y la confirmacion
+// de entrega con firma+foto+hora. Grupo de OPERARIO (patron produccion.mi.*),
+// fuera de /admin: el conductor no ve el panel del jefe. El POST es el destino
+// de la cola offline (multipart + entrega_uuid idempotente).
+Route::middleware(['auth', 'permission:confirmar entrega'])
+    ->prefix('entregas')
+    ->name('entregas.')
+    ->group(function () {
+        Route::get('', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'index'])->name('index');
+        Route::post('{despacho}/confirmar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'confirmar'])
+            ->whereNumber('despacho')->name('confirmar');
     });
 
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su

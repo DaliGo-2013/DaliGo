@@ -1,11 +1,18 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
-import { encolar, pendientes, iniciarColaOffline } from './offline-queue';
+import {
+    encolar, pendientes, iniciarColaOffline,
+    encolarEntrega, todasEntregas, pendientesEntregas, borrarEntrega,
+} from './offline-queue';
 
 // Cola offline de tandas (spike P-SPK-02). Se expone en window porque el x-data
 // del form del soplador es inline en el Blade y no puede importar el modulo.
 window.dgCola = { encolar, pendientes };
+
+// Cola offline de ENTREGAS del conductor (P-DSP-05): multipart con firma+foto
+// como Blobs. Mismo motivo para exponerla en window.
+window.dgColaEntregas = { encolarEntrega, todasEntregas, pendientesEntregas, borrarEntrega };
 
 /**
  * "Señalar en vez de narrar": ante una acción bloqueada por una precondición, en
@@ -655,6 +662,202 @@ Alpine.data('cierreTerrenoForm', () => ({
 }));
 
 /**
+ * Pad de firma manuscrita (P-DSP-05). Canvas vanilla: pointer events con
+ * setPointerCapture (el trazo no se corta al salir del canvas), fondo BLANCO
+ * pre-pintado (el server re-encoda a JPEG con GD: un PNG transparente
+ * quedaria negro), export a Blob PNG via blob(). Coordenadas escaladas del
+ * CSS al bitmap (el canvas es 600x300 pero se muestra w-full).
+ */
+Alpine.data('firmaPad', () => ({
+    firmado: false,
+    dibujando: false,
+
+    init() {
+        this.ctx = this.$refs.lienzo.getContext('2d');
+        this.limpiar();
+    },
+    punto(e) {
+        const r = this.$refs.lienzo.getBoundingClientRect();
+        return {
+            x: ((e.clientX - r.left) / r.width) * this.$refs.lienzo.width,
+            y: ((e.clientY - r.top) / r.height) * this.$refs.lienzo.height,
+        };
+    },
+    empezar(e) {
+        e.preventDefault();
+        this.$refs.lienzo.setPointerCapture(e.pointerId);
+        this.dibujando = true;
+        const p = this.punto(e);
+        this.ctx.beginPath();
+        this.ctx.moveTo(p.x, p.y);
+        // Un punto solo tambien es trazo (una inicial corta).
+        this.ctx.lineTo(p.x + 0.1, p.y + 0.1);
+        this.ctx.stroke();
+        this.marcarCambio(true);
+    },
+    trazar(e) {
+        if (!this.dibujando) return;
+        const p = this.punto(e);
+        this.ctx.lineTo(p.x, p.y);
+        this.ctx.stroke();
+    },
+    soltar(e) {
+        this.dibujando = false;
+    },
+    limpiar() {
+        const c = this.$refs.lienzo;
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, c.width, c.height);
+        this.ctx.strokeStyle = '#171717'; // neutral-900
+        this.ctx.lineWidth = 3;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.marcarCambio(false);
+    },
+    marcarCambio(valor) {
+        this.firmado = valor;
+        // El form padre escucha esto para habilitar el envio.
+        this.$dispatch('firma-cambio', { firmado: valor });
+    },
+    /** Blob PNG de la firma (lo pide el form padre al confirmar). */
+    blob() {
+        return new Promise((resolve) => this.$refs.lienzo.toBlob(resolve, 'image/png'));
+    },
+}));
+
+/**
+ * Confirmacion de entrega del conductor (P-DSP-05). UN solo camino para
+ * online y offline: fetch + FormData con Accept: application/json. Online se
+ * postea directo; sin senal (o si el fetch de red falla) se ENCOLA el mismo
+ * payload en IndexedDB y la tarjeta queda tachada (optimista) — drena solo al
+ * volver la senal, idempotente por entrega_uuid.
+ */
+Alpine.data('entregaForm', ({ url, etiqueta }) => ({
+    url,
+    etiqueta: etiqueta || '',
+    abierto: false,
+    enviando: false,
+    encolada: false,
+    parcial: false,
+    observacion: '',
+    fotoLista: false,
+    firmaLista: false,
+    error: '',
+
+    puedeEnviar() {
+        return this.fotoLista && this.firmaLista && (!this.parcial || this.observacion.trim() !== '')
+            && !this.enviando && !this.encolada;
+    },
+
+    async confirmar() {
+        this.error = '';
+        if (!this.puedeEnviar()) return;
+        this.enviando = true;
+
+        try {
+            // querySelector y no $refs: el input vive dentro del x-data anidado
+            // de <x-archivo-input> y los refs de un hijo no suben al padre.
+            const input = this.$root.querySelector('[data-foto]');
+            const original = input.files && input.files[0];
+            const foto = await window.dgComprimirFoto(original);
+            const firmaPad = Alpine.$data(this.$root.querySelector('[data-firma-pad]'));
+            const firma = await firmaPad.blob();
+
+            const campos = {
+                // Hora del DISPOSITIVO al confirmar (offline-safe): si esto
+                // drena horas despues, la hora real de la firma es ESTA.
+                capturado_at: new Date().toISOString(),
+                parcial: this.parcial ? 1 : 0,
+                entrega_observacion: this.parcial ? this.observacion.trim() : '',
+            };
+            const uuid = crypto.randomUUID ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+            if (this.$store.red && !this.$store.red.online) {
+                await this.encolar({ uuid, campos, firma, foto });
+                return;
+            }
+
+            const fd = new FormData();
+            Object.entries(campos).forEach(([k, v]) => fd.append(k, v));
+            fd.append('entrega_uuid', uuid);
+            fd.append('firma', firma, 'firma.png');
+            fd.append('foto', foto, 'entrega.jpg');
+
+            let resp;
+            try {
+                resp = await fetch(this.url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: fd,
+                });
+            } catch (e) {
+                // La red se cayo entre el check y el envio: a la cola igual.
+                await this.encolar({ uuid, campos, firma, foto });
+                return;
+            }
+
+            if (resp.ok) {
+                window.location.reload(); // reconciliar con la verdad del server
+                return;
+            }
+            const data = await resp.json().catch(() => null);
+            this.error = data?.message ?? 'No se pudo registrar la entrega. Revisa e intenta de nuevo.';
+        } finally {
+            this.enviando = false;
+        }
+    },
+
+    async encolar({ uuid, campos, firma, foto }) {
+        await window.dgColaEntregas.encolarEntrega({
+            uuid,
+            url: this.url,
+            etiqueta: this.etiqueta, // para nombrarla en la UI de rechazadas
+            campos,
+            blobs: { firma, foto },
+        });
+        this.encolada = true; // tacha la tarjeta (optimista) y bloquea reenvios
+        window.dispatchEvent(new CustomEvent('daligo:cola-cambio'));
+    },
+}));
+
+/**
+ * Entregas RECHAZADAS por el servidor al drenar (422/403 permanentes): la
+ * seccion "No se pudieron enviar" de la hoja del conductor. Sin esto, un
+ * rechazo viviria mudo en IndexedDB para siempre.
+ */
+Alpine.data('rechazadasEntregas', () => ({
+    items: [],
+
+    init() {
+        this.refrescar();
+        window.addEventListener('daligo:cola-cambio', () => this.refrescar());
+    },
+    async refrescar() {
+        const todas = await window.dgColaEntregas.todasEntregas();
+        this.items = todas
+            .filter((i) => i.error)
+            .map((i) => ({
+                uuid: i.uuid,
+                titulo: i.etiqueta || 'Entrega pendiente',
+                motivo: i.status === 403
+                    ? 'El servidor la rechazó: ya no te corresponde o ya estaba registrada.'
+                    : (i.status === 422
+                        ? 'El servidor rechazó los datos (puede que ya estuviera entregada).'
+                        : 'No se pudo enviar tras varios intentos.'),
+            }));
+    },
+    async descartar(uuid) {
+        await window.dgColaEntregas.borrarEntrega(uuid);
+        await this.refrescar();
+    },
+}));
+
+/**
  * Ingreso por LOTE de Servicio Tecnico (conductor en ruta). Tabla de maquinas
  * como filas livianas: cada fila lleva el codigo Dali (autocompletado por
  * fila, mismo patron que reparacionForm), serie/modelo y una foto de respaldo
@@ -984,5 +1187,19 @@ window.optimizarFotoInput = async function (input) {
         }
     } catch (e) {
         // Si falla, se sube el original; el servidor comprime igual (con más memoria).
+    }
+};
+
+// Versión que DEVUELVE el archivo comprimido sin tocar ningún input (P-DSP-05:
+// la cola de entregas guarda el Blob en IndexedDB, no hay input que mutar).
+// Si la compresión falla o no achica, devuelve el original — el servidor
+// comprime igual como respaldo.
+window.dgComprimirFoto = async function (file) {
+    if (!file || !file.type.startsWith('image/')) return file;
+    try {
+        const liviana = await comprimirImagenCliente(file);
+        return liviana && liviana.size < file.size ? liviana : file;
+    } catch (e) {
+        return file;
     }
 };

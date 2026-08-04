@@ -1,5 +1,12 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
 > Emitido por el Director el 2026-08-03 (v33 — VISTO BUENO del dueño al PLAN-M13; re-sellado primero, migraciones después). Manda sobre lo anterior.
+> **Nota del Director (04-ago):** tu re-sellado contra `042a7f3` (rama @ `be304b3`) está
+> RECIBIDO y el paso 1 queda CERRADO — las 18 filas re-verificadas y el hallazgo del scope de
+> cartera en `urlDestinoPara()` anotado. Tu parte pedía «visto bueno»: **ya lo tienes desde
+> este mismo v33** (§ VISTO BUENO) y **el dato de cPanel ya llegó** (§ El dato de cPanel,
+> actualizado abajo con el techo real verificado). No esperes nada más: **ve directo al
+> paso 2, primera migración incluida.** Ojo al re-mergear main: entró la PWA del conductor
+> (`d7803f9`) y M18 Logística — baseline de suite hoy 1402/10.579.
 
 MODELO: Opus 4.8 · high (construcción de módulo nuevo; xhigh solo si algo se resiste).
 

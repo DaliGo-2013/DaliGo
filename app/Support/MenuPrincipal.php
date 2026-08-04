@@ -145,6 +145,17 @@ class MenuPrincipal
             'badge' => 'mi_produccion_devueltos',
             'badge_title' => ':n reporte(s) devuelto(s)',
         ],
+        // Hoja de ruta del conductor (P-DSP-05): link directo por la misma
+        // doctrina que Mi producción — la pantalla del operario no se esconde
+        // tras un acordeón (y el conductor no tiene permisos de Operación, así
+        // que ahí quedaría como único ítem huérfano de contexto).
+        'mis-entregas' => [
+            'label' => 'Mis entregas',
+            'icon' => 'truck',
+            'route' => 'entregas.index',
+            'activo' => ['entregas.*'],
+            'permiso' => 'confirmar entrega',
+        ],
         'aprobaciones' => [
             'label' => 'Aprobaciones',
             'icon' => 'check-badge',

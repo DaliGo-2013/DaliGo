@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Vehiculo;
+use App\Services\Logistica\FlotaExcel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -33,41 +35,107 @@ class VehiculoController extends Controller
      */
     public function index(Request $request): View
     {
-        $estado = $request->string('estado')->toString();
-        $doc = $request->string('doc')->toString();
-        $base = $request->string('base')->toString();
-        $q = $request->string('q')->toString();
-
-        $vehiculos = Vehiculo::query()
-            ->buscar($q)
-            ->when(array_key_exists($estado, Vehiculo::ESTADOS), fn ($query) => $query->where('estado', $estado))
-            ->when($base !== '', fn ($query) => $query->where('base', $base))
-            ->orderBy('estado')            // activos primero ('activo' < 'baja' < 'vendido' alfabéticamente)
-            ->orderBy('ppu')
-            ->get();
+        [$vehiculos, $filtros] = $this->filtrada($request);
 
         // El resumen se calcula sobre la flota ACTIVA completa (sin los filtros
         // de pantalla): es el estado de la flota, no el de la vista. Si el
         // conteo cambiara al filtrar, dejaría de servir como tablero.
-        $activos = $estado === '' && $doc === '' && $base === '' && $q === ''
-            ? $vehiculos->where('estado', Vehiculo::ESTADO_ACTIVO)
-            : Vehiculo::activos()->get();
-
-        $resumen = $this->resumen($activos);
-
-        if (in_array($doc, [Vehiculo::DOC_VENCIDO, Vehiculo::DOC_POR_VENCER, Vehiculo::DOC_SIN_REGISTRO], true)) {
-            $vehiculos = $vehiculos->filter(fn (Vehiculo $v) => $v->estado_documental === $doc)->values();
-        }
+        $resumen = $this->resumen(Vehiculo::activos()->get());
 
         return view('admin.vehiculos.index', [
             'vehiculos' => $vehiculos,
             'resumen' => $resumen,
-            'estado' => $estado,
-            'doc' => $doc,
-            'base' => $base,
-            'q' => $q,
+            'estado' => $filtros['estado'],
+            'doc' => $filtros['doc'],
+            'base' => $filtros['base'],
+            'q' => $filtros['q'],
             'bases' => Vehiculo::query()->whereNotNull('base')->distinct()->orderBy('base')->pluck('base'),
         ]);
+    }
+
+    /**
+     * La flota como Excel (.xlsx), pedido del dueño 04-08-2026.
+     *
+     * Respeta los MISMOS filtros de la pantalla —es «descargar lo que estoy
+     * viendo»— y el archivo escribe adentro cuál filtro se aplicó, así que un
+     * Excel de 10 filas nunca se confunde con la flota entera.
+     */
+    public function excel(Request $request, FlotaExcel $excel): Response
+    {
+        [$vehiculos, $filtros] = $this->filtrada($request);
+
+        return response($excel->generar($vehiculos, $this->descripcionFiltros($filtros)), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.FlotaExcel::nombreArchivo().'"',
+            // El archivo se arma con los datos del momento: que no quede cacheado
+            // ni en el navegador ni en un proxy, o «al día» deja de ser cierto.
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    /**
+     * Los filtros de la pantalla aplicados. Punto ÚNICO: el listado y el Excel
+     * tienen que filtrar igual — si cada uno armara su query, la descarga
+     * empezaría a diferir de lo que se ve, que es el defecto clásico de este
+     * tipo de botón.
+     *
+     * El filtro por estado documental se resuelve EN PHP y no en SQL a
+     * propósito: "vencido" es el peor de 5 fechas con una regla por tipo de
+     * vehículo (el semirremolque no rinde emisiones), y expresar eso en un
+     * WHERE lo duplicaría fuera del modelo. La flota son decenas de filas
+     * —17 hoy—, así que traerlas todas cuesta una query y ~0 ms. Si algún día
+     * fueran miles, el orden correcto es mover el semáforo a columnas
+     * materializadas, no a un WHERE copiado.
+     *
+     * @return array{0: Collection<int, Vehiculo>, 1: array<string, string>}
+     */
+    private function filtrada(Request $request): array
+    {
+        $filtros = [
+            'estado' => $request->string('estado')->toString(),
+            'doc' => $request->string('doc')->toString(),
+            'base' => $request->string('base')->toString(),
+            'q' => $request->string('q')->toString(),
+        ];
+
+        $vehiculos = Vehiculo::query()
+            ->buscar($filtros['q'])
+            ->when(array_key_exists($filtros['estado'], Vehiculo::ESTADOS), fn ($query) => $query->where('estado', $filtros['estado']))
+            ->when($filtros['base'] !== '', fn ($query) => $query->where('base', $filtros['base']))
+            ->orderBy('estado')            // activos primero ('activo' < 'baja' < 'vendido' alfabéticamente)
+            ->orderBy('ppu')
+            ->get();
+
+        if (in_array($filtros['doc'], [Vehiculo::DOC_VENCIDO, Vehiculo::DOC_POR_VENCER, Vehiculo::DOC_SIN_REGISTRO], true)) {
+            $vehiculos = $vehiculos->filter(fn (Vehiculo $v) => $v->estado_documental === $filtros['doc'])->values();
+        }
+
+        return [$vehiculos, $filtros];
+    }
+
+    /**
+     * Los filtros en palabras, para escribirlos DENTRO del Excel.
+     *
+     * @param  array<string, string>  $filtros
+     */
+    private function descripcionFiltros(array $filtros): string
+    {
+        $partes = [];
+
+        if ($filtros['q'] !== '') {
+            $partes[] = 'búsqueda «'.$filtros['q'].'»';
+        }
+        if (isset(Vehiculo::ESTADOS[$filtros['estado']])) {
+            $partes[] = 'estado '.mb_strtolower(Vehiculo::ESTADOS[$filtros['estado']]);
+        }
+        if ($filtros['base'] !== '') {
+            $partes[] = 'base '.$filtros['base'];
+        }
+        if (in_array($filtros['doc'], [Vehiculo::DOC_VENCIDO, Vehiculo::DOC_POR_VENCER, Vehiculo::DOC_SIN_REGISTRO], true)) {
+            $partes[] = 'documentos: '.mb_strtolower(Vehiculo::estadoDocumentalLabel($filtros['doc']));
+        }
+
+        return implode(' · ', $partes);
     }
 
     public function show(Vehiculo $vehiculo): View
