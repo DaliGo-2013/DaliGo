@@ -499,6 +499,9 @@ Route::middleware('auth')
         });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
+            // La descarga va ANTES del show: 'excel' no es numérico, así que el
+            // whereNumber ya lo protege, pero el orden lo deja explícito.
+            Route::get('vehiculos/excel', [VehiculoController::class, 'excel'])->name('vehiculos.excel');
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
         });

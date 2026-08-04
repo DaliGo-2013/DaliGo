@@ -1,14 +1,29 @@
 <x-app-layout>
     <x-slot name="header">
         <x-page-header title="Vehículos" subtitle="Flota de la empresa: documentos, vencimientos y asignación.">
-            @can('manage vehiculos')
-                <x-slot name="action">
-                    <x-button-link :href="route('admin.vehiculos.create')">
-                        <x-icon.plus class="h-4 w-4" />
-                        Agregar vehículo
-                    </x-button-link>
-                </x-slot>
-            @endcan
+            <x-slot name="action">
+                <div class="flex flex-wrap items-center gap-2">
+                    {{-- El Excel se GENERA al momento con los datos de la app, así
+                         que la planilla que circula sale siempre al día. Lleva los
+                         filtros de la pantalla: se descarga lo que se está viendo,
+                         y el archivo escribe adentro qué filtro se aplicó. --}}
+                    <x-secondary-button-link
+                        :href="route('admin.vehiculos.excel', request()->only(['q', 'doc', 'base', 'estado']))"
+                        title="Descarga la flota en Excel, con los filtros aplicados">
+                        <x-icon.document-text class="h-4 w-4" />
+                        <span class="hidden sm:inline">Descargar Excel</span>
+                        <span class="sm:hidden">Excel</span>
+                    </x-secondary-button-link>
+
+                    @can('manage vehiculos')
+                        <x-button-link :href="route('admin.vehiculos.create')">
+                            <x-icon.plus class="h-4 w-4" />
+                            <span class="hidden sm:inline">Agregar vehículo</span>
+                            <span class="sm:hidden">Agregar</span>
+                        </x-button-link>
+                    @endcan
+                </div>
+            </x-slot>
         </x-page-header>
     </x-slot>
 

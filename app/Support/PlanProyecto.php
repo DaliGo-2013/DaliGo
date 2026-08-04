@@ -93,7 +93,7 @@ class PlanProyecto
             'hecho' => ['Agenda de terreno (calendario + lista, multi-día, franjas de 2h)', 'Confirmación del cliente a la cita por correo', 'Registro de instalaciones', 'Conductores y servicios de terreno'],
             'falta' => ['Cierre fino del ciclo en terreno (cobro y reportes, con M05)']],
         'M18' => ['fase' => 'F2', 'label' => 'M18 Logística', 'inicio' => '2026-08-04', 'fin' => '2026-08-31',
-            'hecho' => ['Flota de vehículos: ficha, documentos y asignación (reemplaza la planilla «Control vehiculos»)', 'Semáforo automático de vencimientos (revisión técnica, emisiones, permiso de circulación, SOAP, extintor)', 'Aviso por la app 30 días antes de vencer y el día que vence', 'Estado del vehículo separado del conductor: dar de baja exige decir por qué', 'Los 17 vehículos de la flota cargados en producción', 'Catálogo de conductores dentro de Logística (venía de Servicio Técnico)'],
+            'hecho' => ['Flota de vehículos: ficha, documentos y asignación (reemplaza la planilla «Control vehiculos»)', 'Semáforo automático de vencimientos (revisión técnica, emisiones, permiso de circulación, SOAP, extintor)', 'Aviso por la app 30 días antes de vencer y el día que vence', 'Estado del vehículo separado del conductor: dar de baja exige decir por qué', 'Los 17 vehículos de la flota cargados en producción', 'Catálogo de conductores dentro de Logística (venía de Servicio Técnico)', 'Descarga de la flota en Excel, al día y con el semáforo calculado'],
             'falta' => ['QA del dueño', 'Kilometraje y mantenciones (fuera de alcance por decisión del dueño 04-08)']],
         'F3' => ['fase' => 'F3', 'label' => 'F3 Piloto Mirador', 'inicio' => '2026-12-07', 'fin' => '2027-01-11',
             'hecho' => [],
