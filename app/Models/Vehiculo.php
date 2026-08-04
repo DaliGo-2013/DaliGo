@@ -60,7 +60,8 @@ class Vehiculo extends Model implements AuditableContract
      * Las TRES sucursales que operan (dato del dueño, 04-08-2026): Mirador,
      * Abate Molina y Coquimbo. **Concepción, Antofagasta y Viña del Mar
      * CERRARON** y salen de las sugerencias para no volver a asignarles un
-     * vehículo. Buzeta también sale: no está entre las tres.
+     * vehículo. Buzeta también sale, pero por otro motivo: es una **bodega de
+     * mercadería**, no una sucursal — ahí no se dejan vehículos.
      *
      * Damimed y Jefaturas SÍ se quedan, aunque no son sucursales: son grupos de
      * asignación con vehículos activos hoy (Damimed 1, Jefaturas 2). Si no

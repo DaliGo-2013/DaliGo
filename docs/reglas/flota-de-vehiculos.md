@@ -73,11 +73,22 @@ baja es **historia**, no un destino al que se pueda mandar algo.
 Los dos que se movieron de Concepción a Mirador: `PSJW47` «RAM MIRADOR» (Danika
 Toledo) y `RKHX29` «FVR (CHEVY 2)» (Axel Cárdenas).
 
-**Buzeta** está sembrada como sucursal en DaliGo (`SucursalSeeder`) pero no está
-entre las tres que operan y ningún vehículo la usa, así que tampoco se sugiere
-como base. **Ojo, deuda abierta:** las 4 sucursales de la tabla `sucursales`
-siguen `activa = true`, así que Servicio Técnico todavía puede recibir un equipo
-«en Buzeta». Eso es de otro módulo y no se tocó acá.
+**Buzeta es una BODEGA de mercadería, no una sucursal** (dato del dueño,
+04-08-2026): ahí se deja mercadería y **no se dejan vehículos**. Por eso no se
+sugiere como base. Está sembrada en la tabla `sucursales` (`SucursalSeeder`)
+porque es una ubicación del negocio, pero no opera como sucursal.
+
+> **Corrección de una afirmación anterior de este documento** (commit `be2b82f`,
+> corregido el mismo día): se dejó anotado como «deuda abierta» que Servicio
+> Técnico podía recibir un equipo en Buzeta. **Es falso** — la exclusión ya
+> existía desde antes de este módulo, y en tres capas:
+> `config/servicio_tecnico.php` → `sucursales_recepcion` lista solo
+> `MIRADOR`/`COQUIMBO`/`ABATE-MOLINA`; el scope `Sucursal::recepcionServicioTecnico()`
+> filtra por ahí y lo usan **tanto** la página de códigos QR **como** el
+> formulario interno de ingreso y el lote del conductor; y el formulario público
+> del QR va por **link firmado** con el `sucursal_id` embebido, así que la
+> sucursal no se puede cambiar por URL. La lección: antes de declarar una deuda,
+> hay que buscar el control — «no lo vi» no es «no existe».
 
 Ojo con los **alias**: `RVBD32` se llama «HD35 CONCE» y `PSJW47` «RAM MIRADOR»,
 y ninguno de los dos nombres describe su base. Son apodos de la operación y **se
