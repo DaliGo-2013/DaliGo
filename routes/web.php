@@ -19,7 +19,9 @@ use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\ServicioTerrenoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
+use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
@@ -71,6 +73,11 @@ Route::middleware('auth')->group(function () {
     // "trabajos extras en paralelo" se editan aqui, con su permiso propio.
     Route::get('/plan', [PlanProyectoController::class, 'index'])
         ->middleware('permission:ver plan proyecto')->name('plan.index');
+    // Descarga de la carta Gantt como Excel: se GENERA en el momento desde la
+    // misma fuente que la pagina, asi el archivo que circula en las reuniones
+    // sale siempre al dia (pedido del dueño 03-08).
+    Route::get('/plan/excel', [PlanProyectoController::class, 'excel'])
+        ->middleware('permission:ver plan proyecto')->name('plan.excel');
     Route::post('/plan/extras', [PlanProyectoController::class, 'extraStore'])
         ->middleware('permission:gestionar plan proyecto')->name('plan.extras.store');
     Route::patch('/plan/extras/{extra}', [PlanProyectoController::class, 'extraUpdate'])
@@ -310,6 +317,25 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.lote.buscar-producto');
         });
 
+        // TRASLADO de maquinas a reparar: sucursal -> casa matriz (decision del
+        // dueño 03-08-2026). Las dos puntas van con permisos DISTINTOS a proposito
+        // —despacha la sucursal, recibe el taller—: si una sola persona pudiera
+        // cerrar ambas, la cadena de custodia no probaria nada. Ver el listado con
+        // cualquiera de los dos.
+        Route::middleware('permission:despachar traslado servicio|recibir traslado servicio')->group(function () {
+            Route::get('traslados', [TrasladoServicioController::class, 'index'])->name('traslados.index');
+            Route::get('traslados/{traslado}', [TrasladoServicioController::class, 'show'])
+                ->whereNumber('traslado')->name('traslados.show');
+        });
+        Route::middleware('permission:despachar traslado servicio')->group(function () {
+            Route::get('traslados/nuevo', [TrasladoServicioController::class, 'create'])->name('traslados.create');
+            Route::post('traslados', [TrasladoServicioController::class, 'store'])->name('traslados.store');
+        });
+        Route::put('traslados/{traslado}/recibir', [TrasladoServicioController::class, 'recibir'])
+            ->whereNumber('traslado')
+            ->middleware('permission:recibir traslado servicio')
+            ->name('traslados.recibir');
+
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
                 ->name('servicio-tecnico.buscar-cliente');
@@ -442,6 +468,28 @@ Route::middleware('auth')
             // Cierre del despacho: entrega total o parcial con saldo.
             Route::post('despachos/{despacho}/entrega', [DespachoController::class, 'entrega'])
                 ->whereNumber('despacho')->name('despachos.entrega');
+        });
+
+        // LOGISTICA · flota de vehiculos (pedido del dueño 04-08-2026).
+        // Ver y editar van con permisos DISTINTOS: consultar los vencimientos es
+        // lo que mañana necesita cobranzas (paga permisos de circulacion y SOAP)
+        // sin poder cambiar una fecha. 'nuevo' se declara ANTES del show para que
+        // no se lo coma como {vehiculo} (el whereNumber ya lo evita; el orden lo
+        // deja explicito).
+        Route::middleware('permission:manage vehiculos')->group(function () {
+            Route::get('vehiculos/nuevo', [VehiculoController::class, 'create'])->name('vehiculos.create');
+            Route::post('vehiculos', [VehiculoController::class, 'store'])->name('vehiculos.store');
+            Route::get('vehiculos/{vehiculo}/editar', [VehiculoController::class, 'edit'])
+                ->whereNumber('vehiculo')->name('vehiculos.edit');
+            Route::put('vehiculos/{vehiculo}', [VehiculoController::class, 'update'])
+                ->whereNumber('vehiculo')->name('vehiculos.update');
+            Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
+                ->whereNumber('vehiculo')->name('vehiculos.destroy');
+        });
+        Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
+            Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
+            Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
+                ->whereNumber('vehiculo')->name('vehiculos.show');
         });
     });
 

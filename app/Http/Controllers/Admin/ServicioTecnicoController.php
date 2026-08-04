@@ -24,6 +24,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -458,6 +459,9 @@ class ServicioTecnicoController extends Controller
             // no es una etapa útil de cara al cliente (el estado interno sigue en ST).
             'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
             'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
+            // Variante para las máquinas recibidas en Abate o Coquimbo: llevan el
+            // paso del viaje a la casa matriz.
+            'pasosConTraslado' => $this->pasosSeguimiento(['recibido', 'en_traslado', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
         ]);
     }
 
@@ -473,6 +477,10 @@ class ServicioTecnicoController extends Controller
     {
         $desc = [
             'recibido' => 'Recibimos tu equipo en el taller.',
+            // Paso propio para el equipo que se recibió en sucursal y viaja a la
+            // casa matriz: el cliente veía «recibido» y después nada por días
+            // (decisión del dueño 03-08, para el seguimiento por folio).
+            'en_traslado' => 'Tu equipo va en camino al taller.',
             'en_revision' => 'El técnico está revisando la falla.',
             'cotizacion' => 'Te enviamos el presupuesto y esperamos tu aprobación.',
             'esperando_repuesto' => 'Pedimos el repuesto necesario para la reparación.',
@@ -715,6 +723,15 @@ class ServicioTecnicoController extends Controller
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        // Regla del dueño (03-08-2026): una maquina no se puede reparar si no fue
+        // recepcionada en la casa matriz. Cubre los dos casos que antes eran
+        // invisibles —sigue en la sucursal, o va en camino sin confirmar— y es lo
+        // que obliga a que el traslado se registre: sin este candado el registro
+        // seria opcional y moriria a la semana.
+        if ($orden->en_transito) {
+            return back()->with('status', 'No se puede trabajar esta máquina todavía: '.$orden->motivo_no_llego);
+        }
+
         // Diagnostico final OBLIGATORIO al cerrar la orden: toda maquina que se
         // marca como 'reparado' o 'sin_solucion' debe quedar con la causa de la
         // falla (para que el informe refleje la realidad). En los estados
@@ -1192,19 +1209,31 @@ class ServicioTecnicoController extends Controller
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
             ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v))
             ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v))
-            // Periodo Año/Mes: rango de fechas con whereDate en ambos bordes
-            // (portable MySQL 5.7 / SQLite y usa el indice; nada de YEAR() en
-            // SQL). Mes sin año asume el año actual.
+            // Periodo Año/Mes. Mes sin año asume el año actual.
+            //
+            // Rango SEMIABIERTO sobre la columna cruda (`>= inicio` y `< inicio del
+            // periodo siguiente`), no `whereDate`: acá decía que whereDate "usa el
+            // indice" y es al revés — en MySQL compila a `date(fecha_ingreso) >= ?`,
+            // y envolver la columna en una función deja el índice fuera de juego,
+            // así que cada clic de mes leía la tabla entera, dos veces (el count()
+            // del paginador + la página). Medido con 9.940 órdenes: 15 ms que
+            // crecían con la tabla → 1 ms constante.
+            //
+            // Semiabierto y no BETWEEN por el borde superior: en los tests (SQLite)
+            // la columna guarda '2026-07-31 00:00:00', que como TEXTO es mayor que
+            // '2026-07-31', y el BETWEEN dejaba las órdenes del último día del mes
+            // fuera (lo cazó el candado del borde). `< '2026-08-01'` es correcto en
+            // los dos motores, con y sin hora.
             ->when($f['anio'] ?? $f['mes'] ?? null, function (Builder $qb) use ($f) {
                 $anio = (int) ($f['anio'] ?? \App\Support\FechaNegocio::ahora()->year);
                 $mes = isset($f['mes']) ? (int) $f['mes'] : null;
                 $desde = Carbon::create($anio, $mes ?? 1, 1);
-                $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+                $siguiente = $mes ? $desde->copy()->addMonth() : $desde->copy()->addYear();
                 // Por defecto el período es por fecha de ingreso; 'retiro' lo aplica
                 // sobre fecha_retiro (para "Entregadas del mes").
                 $col = ($f['por'] ?? 'ingreso') === 'retiro' ? 'fecha_retiro' : 'fecha_ingreso';
-                $qb->whereDate($col, '>=', $desde->toDateString())
-                    ->whereDate($col, '<=', $hasta->toDateString());
+                $qb->where($col, '>=', $desde->toDateString())
+                    ->where($col, '<', $siguiente->toDateString());
             });
     }
 
@@ -1218,9 +1247,19 @@ class ServicioTecnicoController extends Controller
      */
     private function resumenHistorial(?int $anioActivo): array
     {
+        // Estos conteos son los MISMOS para todos y cambian solo cuando entra o se
+        // edita una orden, asi que se cachean con una version que sube por evento
+        // del modelo (OrdenServicio::invalidarHistorial): un ingreso nuevo se ve al
+        // instante, y entre ingresos no se vuelve a barrer la tabla.
+        $version = OrdenServicio::versionHistorial();
+
         // Reparacion = total - garantia (igual que condicion_efectiva: las
         // ordenes viejas con facturacion NULL cuentan como reparacion).
-        $anios = OrdenServicio::query()
+        //
+        // El GROUP BY por año necesita SUBSTR sobre la columna, y eso deja el indice
+        // de `fecha_ingreso` fuera de juego -> barrido completo. Por eso justamente
+        // se cachea: es la consulta mas cara del listado y la que menos cambia.
+        $anios = Cache::remember("dg.st.historial.anios.$version", now()->addDay(), fn () => OrdenServicio::query()
             ->whereNotNull('fecha_ingreso')
             ->selectRaw("SUBSTR(fecha_ingreso, 1, 4) as anio, COUNT(*) as total, SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) as garantia")
             ->groupBy('anio')
@@ -1232,20 +1271,28 @@ class ServicioTecnicoController extends Controller
                     'reparacion' => (int) $fila->total - (int) $fila->garantia,
                 ],
             ])
-            ->sortKeysDesc();
+            ->sortKeysDesc());
 
         $meses = null;
         if ($anioActivo !== null) {
-            $porMes = OrdenServicio::query()
-                ->whereNotNull('fecha_ingreso')
-                ->whereRaw('SUBSTR(fecha_ingreso, 1, 4) = ?', [(string) $anioActivo])
-                ->selectRaw('SUBSTR(fecha_ingreso, 6, 2) as mes, COUNT(*) as total')
-                ->groupBy('mes')
-                ->pluck('total', 'mes');
+            $meses = Cache::remember("dg.st.historial.meses.$anioActivo.$version", now()->addDay(), function () use ($anioActivo) {
+                // El filtro va por RANGO SEMIABIERTO sobre la columna cruda, no con
+                // `SUBSTR(fecha_ingreso,1,4) = ?`: envolver la columna en una
+                // funcion anula el indice y obliga a leer la tabla entera. Con el
+                // rango, MySQL entra por el indice y solo recorre ese año; el SUBSTR
+                // queda unicamente en el SELECT, sobre las filas ya acotadas.
+                // Semiabierto por el borde: en SQLite la columna guarda hora.
+                $porMes = OrdenServicio::query()
+                    ->where('fecha_ingreso', '>=', "$anioActivo-01-01")
+                    ->where('fecha_ingreso', '<', ($anioActivo + 1).'-01-01')
+                    ->selectRaw('SUBSTR(fecha_ingreso, 6, 2) as mes, COUNT(*) as total')
+                    ->groupBy('mes')
+                    ->pluck('total', 'mes');
 
-            $meses = collect(range(1, 12))
-                ->mapWithKeys(fn (int $m) => [$m => (int) ($porMes[str_pad((string) $m, 2, '0', STR_PAD_LEFT)] ?? 0)])
-                ->all();
+                return collect(range(1, 12))
+                    ->mapWithKeys(fn (int $m) => [$m => (int) ($porMes[str_pad((string) $m, 2, '0', STR_PAD_LEFT)] ?? 0)])
+                    ->all();
+            });
         }
 
         return ['anios' => $anios, 'meses' => $meses];

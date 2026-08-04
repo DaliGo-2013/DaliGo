@@ -8,22 +8,27 @@
 
         <x-list-card title="Listas" :count="$listas->count()" :countLabel="\Illuminate\Support\Str::plural('lista', $listas->count())">
             @forelse ($listas as $lista)
+                {{-- La fila entera abre la lista (patron bodegas/ST, pedido del dueño
+                     03-08: fuera el ojito). Sin @can: el resource entero esta detras
+                     de 'manage productos'. --}}
                 <x-list-row>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ $lista->nombre }}</p>
-                        @if ($lista->bsale_coin_id === \App\Models\ListaPrecio::COIN_CLP)
-                            <x-badge variant="neutral">CLP</x-badge>
+                    <a href="{{ route('admin.listas-precios.show', $lista) }}" class="block">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $lista->nombre }}</p>
+                            @if ($lista->bsale_coin_id === \App\Models\ListaPrecio::COIN_CLP)
+                                <x-badge variant="neutral">CLP</x-badge>
+                            @endif
+                            @if ($lista->canal)
+                                <x-badge>{{ $lista->canal }}</x-badge>
+                            @endif
+                            @unless ($lista->activa)
+                                <x-badge variant="neutral">inactiva</x-badge>
+                            @endunless
+                        </div>
+                        @if ($lista->descripcion)
+                            <p class="truncate text-sm text-neutral-500">{{ $lista->descripcion }}</p>
                         @endif
-                        @if ($lista->canal)
-                            <x-badge>{{ $lista->canal }}</x-badge>
-                        @endif
-                        @unless ($lista->activa)
-                            <x-badge variant="neutral">inactiva</x-badge>
-                        @endunless
-                    </div>
-                    @if ($lista->descripcion)
-                        <p class="truncate text-sm text-neutral-500">{{ $lista->descripcion }}</p>
-                    @endif
+                    </a>
 
                     <x-slot name="meta">
                         <div class="text-sm text-neutral-500 sm:w-32 sm:shrink-0 sm:text-right">
@@ -32,9 +37,7 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <x-icon-button :href="route('admin.listas-precios.show', $lista)" label="Ver precios" title="Ver precios">
-                            <x-icon.eye class="h-5 w-5" />
-                        </x-icon-button>
+                        <x-icon.chevron-right class="h-4 w-4 text-neutral-300" aria-hidden="true" />
                     </x-slot>
                 </x-list-row>
             @empty

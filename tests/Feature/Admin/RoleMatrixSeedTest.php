@@ -28,25 +28,35 @@ class RoleMatrixSeedTest extends TestCase
                 'view users', 'create users', 'edit users', 'delete users',
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
-                'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio',
+                'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio', 'despachar traslado servicio', 'recibir traslado servicio',
                 'agendar servicio terreno', 'ver agenda terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
                 'ver informe dispensadores', 'ver informe industrial',
                 'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
                 'emitir documentos tributarios', 'emitir nota de credito',
                 'ver plan proyecto', 'gestionar plan proyecto',
+                'ver vehiculos', 'manage vehiculos',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial'],
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
-            'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito'],
-            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial'],
+            // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su
+            // sucursal y llega al taller, que es quien confirma. Que una misma
+            // persona pudiera cerrar las dos puntas anularía la cadena de custodia.
+            'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'despachar traslado servicio'],
+            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio'],
             'conductor' => ['crear lote servicio', 'confirmar entrega'],
-            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion', 'ver informe dispensadores'],
+            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores'],
             'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
             'soplador' => ['report production'],
+            // Jefe de logística (2026-08-04): nace con el módulo LOGÍSTICA.
+            // Alcance ACOTADO a la flota a propósito — hoy logística es
+            // Vehículos. Cobranzas queda pendiente (no existe su perfil):
+            // el día que exista recibe 'ver vehiculos' desde la UI de Roles,
+            // sin tocar código.
+            'jefe_logistica' => ['ver vehiculos', 'manage vehiculos'],
         ];
     }
 
@@ -63,11 +73,12 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_diez_roles(): void
+    public function test_seeder_deja_exactamente_once_roles(): void
     {
         // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14)
-        // + jefe_sucursal (notas de crédito, 2026-07-28).
-        $this->assertSame(10, Role::count());
+        // + jefe_sucursal (notas de crédito, 2026-07-28)
+        // + jefe_logistica (flota de vehículos, 2026-08-04).
+        $this->assertSame(11, Role::count());
     }
 
     public function test_solo_la_jefatura_puede_anular_con_nota_de_credito(): void
@@ -106,7 +117,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(10, Role::count());
+        $this->assertSame(11, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

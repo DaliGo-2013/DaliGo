@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -34,6 +35,35 @@ class OrdenServicio extends Model implements AuditableContract
                 $orden->codigo = self::generarCodigoUnico();
             }
         });
+
+        // Cualquier alta/baja/cambio invalida los conteos cacheados del historial
+        // (§ver versionHistorial). Es un contador, no un borrado por clave: no hay
+        // que saber QUE claves existen, y con el driver `database` un increment es
+        // una sola escritura por llave primaria.
+        static::saved(fn () => self::invalidarHistorial());
+        static::deleted(fn () => self::invalidarHistorial());
+    }
+
+    /** Clave de version de los conteos del historial (año/mes) del listado. */
+    private const CACHE_VERSION_HISTORIAL = 'dg.st.historial.v';
+
+    /**
+     * Version actual de los conteos del historial. Se usa DENTRO de la clave de
+     * cache, asi que al subirla las entradas viejas quedan huerfanas y expiran
+     * solas — no hace falta enumerarlas para borrarlas.
+     */
+    public static function versionHistorial(): int
+    {
+        return (int) Cache::get(self::CACHE_VERSION_HISTORIAL, 1);
+    }
+
+    /** Sube la version: el proximo listado recalcula los conteos. */
+    public static function invalidarHistorial(): void
+    {
+        // `increment` de un valor ausente no hace nada en varios drivers, asi que
+        // se siembra antes. add() es atomico: si otro proceso ya lo creo, no pisa.
+        Cache::add(self::CACHE_VERSION_HISTORIAL, 1);
+        Cache::increment(self::CACHE_VERSION_HISTORIAL);
     }
 
     /** Codigo unico e impredecible para el folio (ej. ST-K7QM2X9P). Reintenta ante colision. */
@@ -157,6 +187,8 @@ class OrdenServicio extends Model implements AuditableContract
         'sucursal_id',
         'ruta',
         'lote_id',
+        'traslado_id',
+        'traslado_recibida_at',
         'fecha_ingreso',
         'tipo_equipo',
         'modelo',
@@ -193,6 +225,7 @@ class OrdenServicio extends Model implements AuditableContract
             'fecha_aviso' => 'date',
             'fecha_retiro' => 'date',
             'confirmada_at' => 'datetime',
+            'traslado_recibida_at' => 'datetime',
             'mano_obra' => 'integer',
             'descuento_pct' => 'integer',
         ];
@@ -618,6 +651,51 @@ class OrdenServicio extends Model implements AuditableContract
                 null => "Falta avisarle al cliente ({$telefono}).",
             },
         ]);
+    }
+
+    /**
+     * Traslado en el que esta maquina viajo a la casa matriz (null si se recibio
+     * directamente ahi, o si es anterior al registro de traslados).
+     */
+    public function traslado(): BelongsTo
+    {
+        return $this->belongsTo(TrasladoServicio::class, 'traslado_id');
+    }
+
+    /**
+     * ¿Esta maquina esta en una sucursal que NO repara? Es la que tiene que
+     * viajar: la casa matriz (es_central) es donde se repara; Abate y Coquimbo
+     * reciben pero no reparan.
+     */
+    public function getDebeViajarAttribute(): bool
+    {
+        return $this->sucursal !== null && ! $this->sucursal->es_central;
+    }
+
+    /**
+     * ¿Todavia NO esta en el taller? Regla del dueño (03-08-2026): una maquina no
+     * se puede reparar si no fue recepcionada en la matriz. Cubre los dos casos
+     * que antes eran invisibles: sigue en la sucursal (sin traslado) o va en
+     * camino (traslado sin confirmar).
+     *
+     * Las ordenes anteriores al registro llevan `traslado_recibida_at` sellado por
+     * la migracion one-shot, asi que NO quedan bloqueadas.
+     */
+    public function getEnTransitoAttribute(): bool
+    {
+        return $this->debe_viajar && $this->traslado_recibida_at === null;
+    }
+
+    /** Motivo legible del bloqueo, para decirle al tecnico QUE falta. */
+    public function getMotivoNoLlegoAttribute(): ?string
+    {
+        if (! $this->en_transito) {
+            return null;
+        }
+
+        return $this->traslado_id
+            ? 'Va en camino desde '.($this->sucursal?->nombre ?? 'la sucursal').' (traslado '.($this->traslado?->codigo ?? '').'): falta confirmar la recepción en el taller.'
+            : 'Sigue en '.($this->sucursal?->nombre ?? 'la sucursal').': todavía no se despachó al taller.';
     }
 
     /**

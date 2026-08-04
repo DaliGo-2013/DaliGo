@@ -152,6 +152,41 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando el técnico cierra una orden sin solución (jefatura recibe todas; cada vendedor, las de su cartera).',
             ],
+            // Traslado de máquinas sucursal → casa matriz (decisión del dueño 03-08).
+            // Claves nuevas → el firstOrCreate las crea en el deploy.
+            [
+                'clave' => 'notif_plantilla_traslado_despachado',
+                'valor' => json_encode([
+                    'asunto' => 'Vienen {total} máquinas desde {origen} — traslado {codigo}',
+                    'cuerpo' => "{emisor} despachó {total} máquina(s) desde {origen} hacia {destino}.\nTraslado: {codigo} · Conductor: {conductor}\nFalta confirmar la recepción en el taller. Hasta que no se confirme, esas máquinas NO se pueden reparar.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al taller (técnico, jefe de bodega, jefe de ventas) cuando una sucursal despacha máquinas a reparar.',
+            ],
+            [
+                'clave' => 'notif_plantilla_traslado_recibido',
+                'valor' => json_encode([
+                    'asunto' => 'Traslado {codigo} recibido en {destino}',
+                    'cuerpo' => "{receptor} confirmó la recepción del traslado {codigo} en {destino}.\nDespachado por {emisor} desde {origen}.\nLlegaron {recibidas} de {total} máquinas. Ya se pueden reparar.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso de vuelta a la sucursal que despachó, cuando el taller confirma que llegó completo.',
+            ],
+            [
+                'clave' => 'notif_plantilla_traslado_diferencias',
+                'valor' => json_encode([
+                    'asunto' => '⚠ Faltan {faltantes} máquinas — traslado {codigo}',
+                    // Los DOS nombres van en el cuerpo a propósito: es el punto del
+                    // registro. Sin emisor y receptor nombrados, la diferencia
+                    // vuelve a ser una discusión sin responsables.
+                    'cuerpo' => "El traslado {codigo} se recibió con DIFERENCIAS.\nSalieron {total} máquinas de {origen}, llegaron {recibidas} a {destino}: faltan {faltantes}.\nDespachó: {emisor} · Recibió: {receptor}\nMáquinas sin confirmar: {faltantes_detalle}\nObservación del receptor: {observacion}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a jefatura y a las dos sucursales cuando llegan menos máquinas de las despachadas, con emisor y receptor nombrados.',
+            ],
             // Cotización del taller al cliente (P-M12-02, fase correo). Aviso
             // INTERNO a los roles del taller/ventas; la carta al cliente es un
             // Mailable dedicado (CotizacionCliente), no pasa por plantilla.
@@ -224,6 +259,35 @@ class ConfiguracionSeeder extends Seeder
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando se rechaza una solicitud de terreno (con el motivo).',
+            ],
+            // Logística · vencimiento de documentos de la flota (decisión del
+            // dueño 04-08). Claves nuevas → el firstOrCreate del seeder las crea
+            // en el deploy; no requieren migración one-shot.
+            [
+                'clave' => 'notif_plantilla_vehiculo_documento_por_vencer',
+                'valor' => json_encode([
+                    'asunto' => 'Por vencer: {total} documento(s) de {patente}',
+                    // El detalle va EN EL CUERPO: el aviso tiene que decir QUÉ
+                    // documento y para cuándo, o obliga a abrir la ficha para
+                    // saber si hay que salir corriendo o no.
+                    'cuerpo' => "{vehiculo} ({base}) tiene {total} documento(s) por vencer:\n{documentos}\nConductor asignado: {conductor}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a gerencia y logística cuando a un documento de un vehículo le faltan 30 días o menos para vencer.',
+            ],
+            [
+                'clave' => 'notif_plantilla_vehiculo_documento_vencido',
+                'valor' => json_encode([
+                    'asunto' => '⚠ VENCIDO: {total} documento(s) de {patente}',
+                    // La última línea no es adorno: con el permiso de circulación
+                    // o el SOAP vencidos el vehículo no puede circular, y esa es
+                    // la consecuencia que ordena la prioridad de quien lee.
+                    'cuerpo' => "{vehiculo} ({base}) tiene {total} documento(s) VENCIDO(S):\n{documentos}\nConductor asignado: {conductor}\nCon el permiso de circulación o el SOAP vencidos el vehículo no puede circular.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a gerencia y logística cuando un documento de un vehículo venció (dentro de los últimos 30 días).',
             ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [

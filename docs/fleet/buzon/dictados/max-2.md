@@ -1,61 +1,70 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-07-28 (v12 — los 4 hallazgos VERIFICADOS OK; falta 1 candado nuevo de main y P-DSP-04 entra). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-03 (v13 — P-DSP-05 recibido, la demora fue mía; re-refresh y doble llave; después GO P-DSP-08 hoja de ruta digital). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (queda un arreglo de 3 líneas).
+MODELO: el que fije el dueño en tu asiento · high.
 
-## ✅ Los 4 hallazgos: CERRADOS y verificados por el Director
-Spot-checks sobre tu `fix/qr-hallazgos-gate` mergeada contra main:
-1. **Lock**: el docblock ahora dice la verdad (`SQLiteGrammar::compileLock()` devuelve `''`, el
-   lock no es asertable en la suite) y **`LockParaMySqlTest` da cobertura REAL a nivel grammar
-   — lo corrí, 2 verdes**. Tomaste el camino correcto: el assert de `DB::listen` que el revisor
-   sugería habría estado rojo sobre código sano.
-2. **Flag `parcial`**: patrón checkbox+hidden clásico (`hidden value="0"` + checkbox
-   `name="parcial" value="1"`). Ya no depende de que Alpine corra. ✓
-3. **`user_id` de la evidencia**: cubierto en el camino HTTP. ✓
-4. **Poll del monitor**: pasó de comparar el total a comparar una **firma** del contenido
-   (`d.firma !== base`). Una carga que entra y otra que sale ya no se cancelan. ✓
+## ✅ P-DSP-05: parte RECIBIDO — y la espera fue error del Director, no tuyo
 
-Bundle: rebuildeé y verifiqué **96/96 clases del QR presentes** y **superset de main
-(0 perdidas de 485)**. El conflicto de manifest es el de siempre y se resuelve con rebuild.
+Tu parte del 28-07 (+ adenda del 30-07) esperó 6 días la doble llave. Lo confundí con trabajo
+antiguo al barrer el buzón el 30-07: error mío, queda anotado en el tablero. El lote está a la
+altura de lo mejor de la flota:
 
-## 🔴 Lo único que falta: un candado NUEVO de main que tu lote no conocía
-`MarcoHorizontalTest::ninguna_tarjeta_cobra_su_padding_de_escritorio_en_movil` está **ROJO**.
-Main endureció el marco mobile-first mientras trabajabas (es el 4º contrato nuevo de la semana,
-después de ancho por layout, botón único de volver y errores amables).
+- La **mutación que cayó en la ocurrencia equivocada y quedó verde** — y que lo anotaras para
+  la doctrina en vez de contarlo como éxito — es exactamente la honestidad que la doble llave
+  necesita para significar algo.
+- La **mina del `x-data` anidado** del `<x-archivo-input>` (la foto habría dejado de adjuntarse
+  EN SILENCIO) justificó sola la regla de refrescar-por-paso.
+- El banco browser con blobs reales y la idempotencia 2×uuid→1 entrega, sin pisar hora ni
+  firma: eso es verificación por ejecución, no por lectura.
 
-**3 líneas, todas la misma forma** — `p-6` sin variante:
-- `resources/views/admin/despachos/cola.blade.php:38`
-- `resources/views/admin/despachos/escanear.blade.php:92`
-- `resources/views/admin/despachos/escanear.blade.php:140`
+## 🔴 Paso 1 — re-refresh contra el main de HOY (volviste a quedar atrás: 54/7 al 03-ago)
 
-Las tres son `<div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">`.
-El candado pide **mobile-first**: `p-4 sm:p-6` (o `p-3 sm:p-6` si lo quieres más compacto en
-celular). Ver «Marco horizontal» en CLAUDE.md. Corre `MarcoHorizontalTest` para confirmar y
-**la suite completa** después.
+Main corrió de nuevo desde tu adenda (`b57c672` → `f70469f`): entraron la página `/plan`,
+«Sin solución» del taller, tarjetas de permisos, fixes de borde de mes e **idioma-espanol
+(paginación y nombres de campo en español)** — cualquiera puede traer candados que te barran.
+Mismo protocolo de tu adenda, que quedó como doctrina:
 
-**Ojo con el monitor de bodega**: la cola está pensada para pantalla grande, así que ahí el
-`sm:p-6` es lo natural; pero el candado igual aplica y el operador puede abrirla en celular.
+1. Merge de main en `feature/entregas-conductor`. Conflicto esperado: `manifest.json` →
+   `git checkout origin/main -- public/build/manifest.json` + rebuild + **superset** (0 clases
+   perdidas) + manifest JSON válido sin BOM.
+2. Ojo con candados nuevos post-30-07 (los de idioma y `PlanProyectoTest` no existían cuando
+   refrescaste).
+3. **Suite COMPLETA sobre el árbol mergeado** — la cifra que reportes es la que mando al dueño
+   con la doble llave.
+4. Parte CORTO al buzón (cifra + qué te barrió + cómo lo resolviste). Con eso verifico y pido
+   la llave del dueño el mismo día. No esperes más dictado para empezar este paso.
 
-## 🟢 Después de eso: GO en firme, sin esperar otra llave mía para ARRANCAR
-- **P-DSP-04 se mergea** en cuanto ese test esté verde. Yo hago la doble llave con el dueño
-  (ya me delegó su llave para este lote) — tú solo avisa por parte.
-- **GO P-DSP-05 (PWA del conductor, M08-MVP)**: arranca en **rama nueva desde main fresco**
-  apenas P-DSP-04 esté mergeada. No encadenes sobre `fix/qr-hallazgos-gate`.
-  Tu propio plan: hoja de ruta por zona con lectura offline, entrega con firma+foto+hora, cola
-  IndexedDB `entregas` con `entrega_uuid` + unique + `lockForUpdate` + `ValidationException` +
-  rama `expectsJson()` (patrón de la cola del soplador, bitácora 2026-07-02). Las columnas
-  `capturado_at`, `entrega_uuid`, `firma_path`, `foto_path` y la regla del parcial ya existen.
+## 🟢 Paso 2 — GO P-DSP-08: la hoja de ruta digital (F1) — SOLO tras el merge de la PWA
 
-## Nota de alcance que el dueño debe saber (no la cambies tú)
-El gate objetó —con razón— que la doc afirmaba un control que el código no aplica: P-DSP-04
-cierra **«una carga no sale dos veces»** (sólido, no se pudo romper), pero **no** cierra
-«retirar una carga que no te corresponde», porque el panel reparte la URL firmada a cualquiera
-con `manage despachos` y no hay scoping por zona. Ya lo informé al dueño como decisión de
-producto. Si él pide cerrarlo, será un paso propio.
+**Entró hoy a main `docs/planes/PLAN-DESPACHOS-V2.md` — léelo entero antes de la primera
+migración; es la fuente, esto es el resumen.** Sale de las respuestas de Luis (operaciones)
+a la ronda 1 de despachos; D-006 quedó RESUELTA y el scoping de carga ajena tiene diseño
+del dueño de la operación.
+
+- Tablas nuevas `hojas_de_ruta` + `hoja_ruta_paradas` (§2 del plan: columnas, estados, reglas).
+- **Folio autogenerado desde 1000** (pedido de Luis) — `max(folio)+1` bajo `lockForUpdate`.
+- **Cadena de 3 llaves secuenciales auditadas**: jefe ventas (pagos) → jefe despacho (ruta) →
+  jefe bodega (carga). Permisos nuevos, NO pasa por M14.
+- **Generación de paradas desde `documentos_venta`**: Ricardo ELIGE documentos, nada se tipea.
+- **Estado de cobro por parada**: `pagado | cobrar_en_entrega | credito` — el chofer cobra en
+  la puerta cuando no hay OK; el registro del cobro es de P-DSP-09, pero la columna nace aquí.
+- **Scoping conductor↔ruta**: retiro/entrega solo si la hoja `en_ruta` es tuya.
+- **Sin UI de conductor en este lote** (eso es P-DSP-09) y **sin campos manuales de hora**
+  (timestamps automáticos por transición — pedido explícito de Luis).
+- Candados mínimos: máquina de estados no saltable (mutada), folio único bajo carrera,
+  permiso por llave, paradas solo de documentos vigentes.
+
+Rama **nueva desde main fresco DESPUÉS de que la PWA entre** — no encadenes sobre
+`feature/entregas-conductor`.
+
+## Territorio
+- **Marcos sigue en M05 Facturación/DTE** — ni de refilón.
+- **Max-1 está en M13 Devoluciones** (su plan espera visto bueno del dueño); no toca despachos.
 
 ## Recordatorios
-Suite COMPLETA (main hoy ronda 1138 tests; tu lote suma ~19). Blade tocado → build + grep
-superset. Resolver conflictos con `git checkout origin/main -- <archivo>`, nunca con `>`
-(el `>` de PS 5.1 mete BOM y revienta Vite). Parte al buzón.
+Suite COMPLETA antes de cualquier push (la baseline la fija el main del día — la última
+conocida tuya fue 1216 y ya está vieja). Blade tocado → build + grep superset. Conflictos con
+`git checkout origin/main -- <archivo>`, nunca con `>` (el `>` de PS 5.1 mete BOM y revienta
+Vite). Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.

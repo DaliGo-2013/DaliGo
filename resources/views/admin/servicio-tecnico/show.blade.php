@@ -119,6 +119,20 @@
                         @elseif ($orden->sucursal?->es_central)
                             <span class="mt-0.5 block text-xs text-neutral-500">Recepción y reparación (casa matriz)</span>
                         @endif
+                        {{-- Dónde está FÍSICAMENTE la máquina. Antes la ficha decía
+                             «se repara en Mirador» sin decir si ya había llegado:
+                             entre la recepción en sucursal y el taller no había
+                             ningún dato (pedido del dueño 03-08). --}}
+                        @if ($orden->en_transito)
+                            <span class="mt-1 block text-xs font-medium text-amber-700">
+                                {{ $orden->motivo_no_llego }}
+                            </span>
+                        @elseif ($orden->traslado)
+                            <span class="mt-1 block text-xs text-neutral-500">
+                                Llegó al taller el {{ $orden->traslado_recibida_at?->enChile()->format('d-m-Y') }}
+                                · <a href="{{ route('admin.traslados.show', $orden->traslado) }}" class="text-brand-600 hover:underline">traslado {{ $orden->traslado->codigo }}</a>
+                            </span>
+                        @endif
                     </dd>
                 </div>
                 <div><dt class="text-xs text-neutral-400">Fecha de ingreso</dt><dd class="text-sm text-neutral-900">{{ $orden->fecha_ingreso?->format('d-m-Y') ?: '—' }}</dd></div>

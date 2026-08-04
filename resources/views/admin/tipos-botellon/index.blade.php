@@ -16,14 +16,18 @@
 
         <x-list-card title="Tipos de botellón" :count="$tipos->count()" :countLabel="\Illuminate\Support\Str::plural('tipo', $tipos->count())">
             @forelse ($tipos as $tipo)
+                {{-- La fila abre la edicion (patron 03-08: fuera el lapiz). El enlace
+                     "Ver produccion" queda FUERA del <a>: es otro destino. --}}
                 <x-list-row>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ $tipo->nombre }}</p>
-                        @unless ($tipo->activo)
-                            <x-badge variant="neutral">inactivo</x-badge>
-                        @endunless
-                    </div>
-                    <p class="truncate text-sm text-neutral-500">{{ $tipo->codigo }}</p>
+                    <a href="{{ route('admin.tipos-botellon.edit', $tipo) }}" class="block">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $tipo->nombre }}</p>
+                            @unless ($tipo->activo)
+                                <x-badge variant="neutral">inactivo</x-badge>
+                            @endunless
+                        </div>
+                        <p class="truncate text-sm text-neutral-500">{{ $tipo->codigo }}</p>
+                    </a>
 
                     <x-slot name="meta">
                         <div class="sm:w-32 sm:shrink-0 sm:text-right">
@@ -33,9 +37,6 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <x-icon-button :href="route('admin.tipos-botellon.edit', $tipo)" label="Editar" title="Editar">
-                            <x-icon.pencil class="h-5 w-5" />
-                        </x-icon-button>
                         <form method="POST" action="{{ route('admin.tipos-botellon.destroy', $tipo) }}"
                               x-data x-on:submit="if (! confirm('¿Eliminar el tipo ' + @js($tipo->nombre) + '?')) $event.preventDefault()">
                             @csrf

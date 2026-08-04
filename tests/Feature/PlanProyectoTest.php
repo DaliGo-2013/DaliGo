@@ -172,6 +172,18 @@ class PlanProyectoTest extends TestCase
         $response->assertSee('Del repo (automático)');
     }
 
+    public function test_el_gantt_marca_el_dia_de_hoy_con_su_fecha(): void
+    {
+        // Computada con FechaNegocio (día de negocio chileno), no hardcodeada:
+        // el test es determinista cualquier día que corra.
+        $hoy = Carbon::parse(\App\Support\FechaNegocio::hoy());
+
+        $this->actingAs($this->usuarioQueVe())->get(route('plan.index'))
+            ->assertOk()
+            ->assertSee('Hoy: '.$hoy->format('d-m-Y'))
+            ->assertSee('Hoy · '.$hoy->day.' ');
+    }
+
     public function test_estado_se_deriva_del_porcentaje(): void
     {
         $this->assertSame('no_iniciada', PlanProyecto::estadoDe(0));
@@ -223,6 +235,17 @@ class PlanProyectoTest extends TestCase
         foreach ($response->viewData('gantt') as $key => $fila) {
             $this->assertLessThanOrEqual(100.5, $fila['left'] + $fila['width'], "La barra de [{$key}] se sale del gantt.");
         }
+    }
+
+    public function test_el_item_del_menu_es_link_directo_fuera_de_administracion(): void
+    {
+        // Pedido del dueño 03-08: primer nivel, no dentro del acordeón de
+        // Administración. El candado evita que un merge lo devuelva adentro.
+        $modulos = \App\Support\MenuPrincipal::MODULOS;
+
+        $this->assertArrayNotHasKey('plan', $modulos['administracion']['items']);
+        $this->assertArrayHasKey('plan', $modulos);
+        $this->assertArrayNotHasKey('items', $modulos['plan'], 'plan debe ser link directo, no acordeón.');
     }
 
     public function test_el_menu_muestra_el_item_solo_con_permiso(): void

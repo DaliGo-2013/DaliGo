@@ -49,6 +49,13 @@ return [
         'emitir nota de credito' => 'Emitir notas de crédito (anular un documento)',
         'ver plan proyecto' => 'Ver el plan del proyecto (carta Gantt)',
         'gestionar plan proyecto' => 'Gestionar los trabajos extras del plan del proyecto',
+        // Traslado de máquinas a reparar (03-08): faltaban sus etiquetas, así que
+        // la pantalla de Roles mostraba el nombre técnico crudo.
+        'despachar traslado servicio' => 'Despachar máquinas a reparar (sucursal → taller)',
+        'recibir traslado servicio' => 'Confirmar la recepción de máquinas en el taller',
+        // Logística · flota de vehículos (04-08).
+        'ver vehiculos' => 'Ver la flota de vehículos y sus vencimientos',
+        'manage vehiculos' => 'Gestionar la flota (crear, editar, dar de baja)',
     ],
 
     /*
@@ -66,12 +73,18 @@ return [
     |
     */
     'grupos' => [
-        'Servicio técnico' => ['servicio tecnico', 'lote servicio', 'reparacion', 'descuento', 'informe'],
+        // 'traslado servicio' es propio: los dos permisos del traslado NO contienen
+        // el literal 'servicio tecnico', así que sin este keyword caían en
+        // "Generales" en la pantalla de Roles.
+        'Servicio técnico' => ['servicio tecnico', 'traslado servicio', 'lote servicio', 'reparacion', 'descuento', 'informe'],
         'Terreno' => ['servicio terreno', 'agenda terreno', 'instalaciones'],
         'Producción' => ['production'],
         // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
         // ningún permiso de ST/terreno (verificado sobre la lista de labels).
         'Despachos' => ['despachos', 'entrega'],
+        // Logística (04-08): hoy es la flota; cuando crezca (mantenciones,
+        // kilometraje) sus permisos caen solos en esta categoría.
+        'Logística' => ['vehiculos'],
         'Comercial' => ['clientes', 'productos'],
         'Usuarios y accesos' => ['users', 'roles'],
         'Aprobaciones' => ['aprobaciones', 'solicitudes'],

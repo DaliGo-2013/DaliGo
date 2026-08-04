@@ -13,13 +13,17 @@
                 :countLabel="\Illuminate\Support\Str::plural('ajuste', $configs->count())"
             >
                 @foreach ($configs as $config)
+                    {{-- La fila abre la edicion (patron 03-08: fuera el lapiz).
+                         Resource entero detras de 'manage settings'. --}}
                     <x-list-row>
-                        <p class="truncate font-medium text-neutral-900">
-                            {{ \Illuminate\Support\Str::headline($config->clave) }}
-                        </p>
-                        @if ($config->descripcion)
-                            <p class="truncate text-sm text-neutral-500">{{ $config->descripcion }}</p>
-                        @endif
+                        <a href="{{ route('admin.configuracion.edit', $config) }}" class="block">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">
+                                {{ \Illuminate\Support\Str::headline($config->clave) }}
+                            </p>
+                            @if ($config->descripcion)
+                                <p class="truncate text-sm text-neutral-500">{{ $config->descripcion }}</p>
+                            @endif
+                        </a>
 
                         <x-slot name="meta">
                             <div class="text-sm text-neutral-700 sm:w-48 sm:shrink-0 sm:text-right">
@@ -37,9 +41,7 @@
                         </x-slot>
 
                         <x-slot name="actions">
-                            <x-icon-button :href="route('admin.configuracion.edit', $config)" label="Editar" title="Editar">
-                                <x-icon.pencil class="h-5 w-5" />
-                            </x-icon-button>
+                            <x-icon.chevron-right class="h-4 w-4 text-neutral-300" aria-hidden="true" />
                         </x-slot>
                     </x-list-row>
                 @endforeach

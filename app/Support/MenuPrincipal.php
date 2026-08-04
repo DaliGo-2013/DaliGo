@@ -87,6 +87,20 @@ class MenuPrincipal
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
             ],
         ],
+        // LOGÍSTICA (pedido del dueño 04-08-2026). Nace con la flota: reemplaza
+        // la planilla «Control vehiculos». Va después de Operación porque es
+        // operación de apoyo, no comercial ni administrativa.
+        // SIN badge a propósito: el dueño eligió «semáforo + aviso», no contador
+        // en el menú (AskUserQuestion 04-08). El vencimiento se ve en la lista
+        // y llega por la campanita; agregarlo aquí sería UNA línea ('badge' =>
+        // 'vehiculos_por_vencer' + su resolver) si algún día lo pide.
+        'logistica' => [
+            'label' => 'Logística',
+            'icon' => 'truck',
+            'items' => [
+                'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos'],
+            ],
+        ],
         // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
         // propósito: hoy muestra lo emitido (cero) y, sobre todo, QUÉ FALTA para
         // emitir — que es la información útil mientras no se emite. Ver
@@ -116,9 +130,6 @@ class MenuPrincipal
                 // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
                 // igual que la bandeja confunde (hallazgo #1 del acta).
                 'historial-aprobaciones' => ['label' => 'Historial de aprobaciones', 'route' => 'admin.aprobaciones.index', 'activo' => ['admin.aprobaciones.*'], 'permiso' => 'view aprobaciones'],
-                // Carta Gantt transicional mientras la app se construye: el
-                // avance oficial se lee del repo (App\Support\PlanProyecto).
-                'plan' => ['label' => 'Plan del proyecto', 'route' => 'plan.index', 'activo' => ['plan.*'], 'permiso' => 'ver plan proyecto'],
             ],
         ],
         'mi-produccion' => [
@@ -155,6 +166,9 @@ class MenuPrincipal
                 'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
+                // Traslado sucursal → casa matriz (decisión del dueño 03-08). Lo ven
+                // las dos puntas: quien despacha y quien recibe.
+                'traslados' => ['label' => 'Traslados al taller', 'route' => 'admin.traslados.index', 'activo' => ['admin.traslados.*'], 'permiso' => 'despachar traslado servicio|recibir traslado servicio'],
                 'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 'seguimiento' => ['label' => 'Seguimiento (boceto)', 'route' => 'admin.servicio-tecnico.seguimiento-demo', 'activo' => ['admin.servicio-tecnico.seguimiento-demo'], 'permiso' => 'view servicio tecnico|manage servicio tecnico'],
@@ -166,6 +180,17 @@ class MenuPrincipal
                 // su grupo de rutas en routes/web.php.
                 'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
             ],
+        ],
+        // Carta Gantt transicional mientras la app se construye: link directo
+        // de primer nivel AL FINAL del menú (pedido del dueño 03-08 — antes
+        // vivía dentro de Administración). El avance oficial se lee del repo
+        // (App\Support\PlanProyecto).
+        'plan' => [
+            'label' => 'Plan del proyecto',
+            'icon' => 'presentation-chart-bar',
+            'route' => 'plan.index',
+            'activo' => ['plan.*'],
+            'permiso' => 'ver plan proyecto',
         ],
     ];
 

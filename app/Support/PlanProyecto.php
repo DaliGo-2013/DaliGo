@@ -75,7 +75,7 @@ class PlanProyecto
             'hecho' => ['Ciclo completo: asignar → tandas del soplador → enviar → aprobar', 'Kardex local al aprobar (consumo de preforma + producción + merma)', 'Cola offline del soplador (PWA, sin señal en planta)', 'Panel del jefe con drill-downs e historial'],
             'falta' => ['Descuento de preforma contra el stock real', 'Meta del día', 'Gráficos de productividad (GP)']],
         'M12' => ['fase' => 'F2', 'label' => 'M12 Servicio técnico', 'inicio' => '2026-06-10', 'fin' => '2026-11-15',
-            'hecho' => ['Taller completo (recepción → diagnóstico → cotización → reparación → entrega)', 'Portal público QR para que el cliente ingrese su equipo', 'Cotización al cliente por correo con respuesta ACEPTO/NO ACEPTO', 'Ingreso por lote del conductor en ruta', 'Informes de dispensadores e industrial', 'Aviso al cliente y a ventas al cerrar sin solución'],
+            'hecho' => ['Taller completo (recepción → diagnóstico → cotización → reparación → entrega)', 'Portal público QR para que el cliente ingrese su equipo', 'Cotización al cliente por correo con respuesta ACEPTO/NO ACEPTO', 'Ingreso por lote del conductor en ruta', 'Informes de dispensadores e industrial', 'Aviso al cliente y a ventas al cerrar sin solución', 'Traslado de máquinas sucursal → taller con emisor y receptor nombrados'],
             'falta' => ['Alertas de mantención 3/6/12 meses', 'Sugerencia automática de repuestos', 'Cobro (depende de M05)']],
         'M13' => ['fase' => 'F2', 'label' => 'M13 Devoluciones', 'inicio' => '2026-10-01', 'fin' => '2026-10-25',
             'hecho' => [],
@@ -92,6 +92,9 @@ class PlanProyecto
         'M17' => ['fase' => 'F2', 'label' => 'M17 Servicio en terreno', 'inicio' => '2026-07-15', 'fin' => '2026-07-24',
             'hecho' => ['Agenda de terreno (calendario + lista, multi-día, franjas de 2h)', 'Confirmación del cliente a la cita por correo', 'Registro de instalaciones', 'Conductores y servicios de terreno'],
             'falta' => ['Cierre fino del ciclo en terreno (cobro y reportes, con M05)']],
+        'M18' => ['fase' => 'F2', 'label' => 'M18 Logística', 'inicio' => '2026-08-04', 'fin' => '2026-08-31',
+            'hecho' => ['Flota de vehículos: ficha, documentos y asignación (reemplaza la planilla «Control vehiculos»)', 'Semáforo automático de vencimientos (revisión técnica, emisiones, permiso de circulación, SOAP, extintor)', 'Aviso por la app 30 días antes de vencer y el día que vence', 'Estado del vehículo separado del conductor: dar de baja exige decir por qué'],
+            'falta' => ['Cargar la flota real (42 vehículos: 31 activos, 9 vendidos, 2 con pérdida total)', 'QA del dueño', 'Kilometraje y mantenciones (fuera de alcance por decisión del dueño 04-08)']],
         'F3' => ['fase' => 'F3', 'label' => 'F3 Piloto Mirador', 'inicio' => '2026-12-07', 'fin' => '2027-01-11',
             'hecho' => [],
             'falta' => ['Hardening (carga, seguridad, respaldos)', 'Migración de datos + peso/dimensiones por SKU', 'Capacitación (Pedro, Ricardo, sopladores)', 'Marcha blanca de diciembre']],
@@ -250,6 +253,22 @@ class PlanProyecto
         }
 
         return $meses;
+    }
+
+    /**
+     * La fecha de HOY (día de negocio) lista para el marcador del Gantt:
+     * completa para la cabecera y corta para el chip sobre la línea.
+     *
+     * @return array{completa: string, corta: string}
+     */
+    public static function hoyFecha(): array
+    {
+        $hoy = Carbon::parse(FechaNegocio::hoy());
+
+        return [
+            'completa' => $hoy->format('d-m-Y'),
+            'corta' => $hoy->day.' '.self::MESES_CORTOS[$hoy->month],
+        ];
     }
 
     /** Posición de "hoy" (día de NEGOCIO, jamás now() UTC) en % del span; null si quedó fuera. */

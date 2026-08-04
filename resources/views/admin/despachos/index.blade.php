@@ -40,26 +40,30 @@
 
             <x-list-card title="Despachos" :count="$despachos->total()" :countLabel="\Illuminate\Support\Str::plural('despacho', $despachos->total())">
                 @forelse ($despachos as $despacho)
+                    {{-- La fila abre la FICHA (patron 03-08: fuera el ojito). El QR
+                         imprimible es OTRA accion y conserva su boton al costado. --}}
                     <x-list-row>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <p class="truncate font-medium text-neutral-900">{{ $despacho->codigo }}</p>
-                            <x-despacho.estado-badge :estado="$despacho->estado" />
-                        </div>
-                        <p class="truncate text-sm text-neutral-500">
-                            Folio {{ $despacho->documento?->folio ?? '—' }}
-                            · {{ $despacho->documento?->cliente?->razon_social ?? 'Sin cliente' }}
-                            @if ($despacho->zona)
-                                · {{ $despacho->zona->nombre }}
+                        <a href="{{ $despacho->urlFicha() }}" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $despacho->codigo }}</p>
+                                <x-despacho.estado-badge :estado="$despacho->estado" />
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">
+                                Folio {{ $despacho->documento?->folio ?? '—' }}
+                                · {{ $despacho->documento?->cliente?->razon_social ?? 'Sin cliente' }}
+                                @if ($despacho->zona)
+                                    · {{ $despacho->zona->nombre }}
+                                @endif
+                                @if ($despacho->conductor)
+                                    · {{ $despacho->conductor->name }}
+                                @endif
+                            </p>
+                            {{-- El saldo de un parcial se VE en la lista: un estado
+                                 "entrega parcial" sin decir qué falta no sirve. --}}
+                            @if ($despacho->entrega_observacion)
+                                <p class="truncate text-xs text-red-700">Pendiente: {{ $despacho->entrega_observacion }}</p>
                             @endif
-                            @if ($despacho->conductor)
-                                · {{ $despacho->conductor->name }}
-                            @endif
-                        </p>
-                        {{-- El saldo de un parcial se VE en la lista: un estado
-                             "entrega parcial" sin decir qué falta no sirve. --}}
-                        @if ($despacho->entrega_observacion)
-                            <p class="truncate text-xs text-red-700">Pendiente: {{ $despacho->entrega_observacion }}</p>
-                        @endif
+                        </a>
 
                         <x-slot name="meta">
                             {{-- enChile(): la hora que ve el usuario va en hora
@@ -70,10 +74,6 @@
                         </x-slot>
 
                         <x-slot name="actions">
-                            <x-icon-button :href="$despacho->urlFicha()" variant="default" size="lg"
-                                           label="Abrir ficha del despacho" title="Ficha / escaneo">
-                                <x-icon.eye class="h-5 w-5" />
-                            </x-icon-button>
                             <x-icon-button :href="route('admin.despachos.qr', $despacho)" variant="default" size="lg"
                                            label="Ver QR imprimible" title="QR para imprimir">
                                 <x-icon.qr-code class="h-5 w-5" />
