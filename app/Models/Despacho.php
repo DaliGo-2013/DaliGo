@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
@@ -19,7 +21,8 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  */
 class Despacho extends Model implements AuditableContract
 {
-    use AuditableTrait;
+    /** @use HasFactory<\Database\Factories\DespachoFactory> */
+    use AuditableTrait, HasFactory;
 
     // Pluralizador inglés fallaría; fijado a mano como ordenes_servicio.
     protected $table = 'despachos';
@@ -52,6 +55,9 @@ class Despacho extends Model implements AuditableContract
         'entrega_uuid',
         'firma_path',
         'foto_path',
+        'receptor_nombre',
+        'receptor_rut',
+        'receptor_relacion',
     ];
 
     protected function casts(): array
@@ -108,6 +114,18 @@ class Despacho extends Model implements AuditableContract
     public function escaneos(): HasMany
     {
         return $this->hasMany(EscaneoDespacho::class, 'despacho_id');
+    }
+
+    /**
+     * La parada de hoja de ruta que lo contiene, si existe. HasOne real:
+     * despacho_id es unique GLOBAL en hoja_ruta_paradas (un despacho no
+     * puede vivir en dos hojas a la vez).
+     *
+     * @return HasOne<HojaRutaParada, $this>
+     */
+    public function parada(): HasOne
+    {
+        return $this->hasOne(HojaRutaParada::class, 'despacho_id');
     }
 
     /**

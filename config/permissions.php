@@ -56,6 +56,11 @@ return [
         // Logística · flota de vehículos (04-08).
         'ver vehiculos' => 'Ver la flota de vehículos y sus vencimientos',
         'manage vehiculos' => 'Gestionar la flota (crear, editar, dar de baja)',
+        // Hoja de ruta digital (04-08 · P-DSP-08): la cadena de 3 llaves (R11).
+        'manage hojas ruta' => 'Armar hojas de ruta (elegir documentos, orden y conductor)',
+        'autorizar pagos ruta' => 'Autorizar los pagos de una hoja de ruta (llave 1 · ventas)',
+        'autorizar ruta' => 'Autorizar la ruta y su orden (llave 2 · despacho)',
+        'autorizar carga' => 'Autorizar la carga y registrar la salida (llave 3 · bodega)',
     ],
 
     /*
@@ -81,7 +86,10 @@ return [
         'Producción' => ['production'],
         // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
         // ningún permiso de ST/terreno (verificado sobre la lista de labels).
-        'Despachos' => ['despachos', 'entrega'],
+        // 'ruta' y 'carga' (04-08): las llaves de la hoja de ruta — sin
+        // colisiones ('autorizar reparacion' no las contiene; verificado
+        // sobre la lista completa al agregarlas).
+        'Despachos' => ['despachos', 'entrega', 'hojas ruta', 'ruta', 'carga'],
         // Logística (04-08): hoy es la flota; cuando crezca (mantenciones,
         // kilometraje) sus permisos caen solos en esta categoría.
         'Logística' => ['vehiculos'],
