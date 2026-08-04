@@ -204,7 +204,9 @@ como enviados perdería la novedad para siempre y el día que exista el perfil
 nadie se enteraría. Mismo criterio que el traslado de máquinas con las cuentas de
 sucursal que aún no existen.
 
-## 4bis. Conductores
+## 4bis. Ítems que llegaron de otros módulos
+
+### Conductores
 
 El catálogo de **Conductores** vive en **LOGÍSTICA** desde el 04-08-2026 (pedido
 del dueño): quien administra la flota administra quién la maneja. Antes estaba en
@@ -215,12 +217,30 @@ el de Servicio Técnico a propósito: el catálogo alimenta el selector del **in
 por lote** y el del **traslado al taller**, así que si el técnico lo perdiera, el
 conductor que retira máquinas en ruta dejaría de existir para él.
 
-Dos reglas al mover un ítem de módulo:
+### Despachos
+
+**Despachos** (M07) vive en **LOGÍSTICA** desde el 05-08-2026 (pedido del dueño).
+Antes estaba en Operación.
+
+Va **primero** en el módulo porque es el principio del flujo: de los despachos
+salen los documentos con los que se arma la **hoja de ruta**, que después se
+asigna a un **vehículo** y a un **conductor** — el orden del menú es el orden en
+que se usa.
+
+A diferencia de Conductores, acá **el permiso no se tocó**: sigue siendo `manage
+despachos`, el mismo que ya gateaba su ruta. El traslado es de **orden**, no de
+**acceso** — nadie gana ni pierde la pantalla, y hay un candado que lo fija
+(`test_el_traslado_no_le_dio_ni_le_quito_la_pantalla_a_nadie`) justamente porque
+«ordenar el menú» es una puerta de entrada silenciosa a ampliar permisos.
+
+### Las dos reglas al mover un ítem de módulo
 
 1. **El gate de la ruta y el del ítem del menú son el mismo** (D-014). Cambiar
    uno solo deja el menú ofreciendo una pantalla que devuelve 403.
 2. **No se duplica el ítem** en el módulo viejo: dos ítems con la misma ruta
-   rompen el candado de `SidebarTest` (una ruta resalta exactamente un ítem).
+   rompen el candado de `SidebarTest` (una ruta resalta exactamente un ítem). Es
+   el error realista —copiar en vez de mover— y está verificado por mutación:
+   duplicando el ítem caen **dos** candados a la vez.
 
 ## 4ter. Descarga en Excel
 
