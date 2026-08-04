@@ -12,14 +12,15 @@
 
 ## 1. Estado del repo al cerrar
 
-- Rama `main`, **5 commits adelante de `origin/main`, SIN PUSHEAR**.
+- Rama `main`, **7 commits adelante de `origin/main`, SIN PUSHEAR** (los 6 de la
+  tabla + este parte).
 - ⚠️ **Pushear a `main` DESPLIEGA A PRODUCCIÓN** (`.github/workflows/deploy.yml`:
   SSH a HostGator + `db:seed --force`). No es solo publicar código.
 - El repo tiene **otra sesión trabajando en paralelo** que empuja seguido: aparecí
   «behind 36» dos veces en una tarde. **Mergear `origin/main` antes de cualquier
   cosa**, y volver a correr la suite después del merge, no antes.
 
-### Los 5 commits sin pushear
+### Los commits sin pushear
 
 | Commit | Qué |
 |---|---|
