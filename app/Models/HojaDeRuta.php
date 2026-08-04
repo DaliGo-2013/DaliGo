@@ -122,6 +122,29 @@ class HojaDeRuta extends Model implements AuditableContract
         return $this->hasMany(HojaRutaParada::class, 'hoja_de_ruta_id')->orderBy('orden');
     }
 
+    // Quién dio cada llave (la columna *_por guarda el id; estas relaciones
+    // resuelven el nombre para la pantalla — camelCase para no chocar con
+    // el atributo snake_case).
+    public function pagosOkPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pagos_ok_por');
+    }
+
+    public function rutaAutorizadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ruta_autorizada_por');
+    }
+
+    public function cargadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cargada_por');
+    }
+
+    public function enRutaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'en_ruta_por');
+    }
+
     public function scopeEnRuta(Builder $query): Builder
     {
         return $query->where('estado', self::EN_RUTA);

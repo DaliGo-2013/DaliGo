@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\DespachoController;
+use App\Http\Controllers\Admin\HojaRutaController;
 use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
@@ -504,6 +505,36 @@ Route::middleware('auth')
             Route::get('vehiculos/excel', [VehiculoController::class, 'excel'])->name('vehiculos.excel');
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
+        });
+
+        // Hoja de ruta digital (P-DSP-08, PLAN-DESPACHOS-V2). Armarla es de
+        // quien gestiona ('manage hojas ruta': Ricardo); las 3 llaves de la
+        // cadena R11 son PERMISOS SEPARADOS y cada una gatea SU ruta — el
+        // index/show lo ven además los tres autorizadores, que necesitan la
+        // hoja delante para dar su llave (D-014: el menú espeja este gate).
+        Route::middleware('permission:manage hojas ruta')->group(function () {
+            Route::get('hojas-ruta/nueva', [HojaRutaController::class, 'create'])->name('hojas-ruta.create');
+            Route::post('hojas-ruta', [HojaRutaController::class, 'store'])->name('hojas-ruta.store');
+            Route::put('hojas-ruta/{hoja}/orden', [HojaRutaController::class, 'orden'])
+                ->whereNumber('hoja')->name('hojas-ruta.orden');
+        });
+        Route::middleware('permission:manage hojas ruta|autorizar pagos ruta|autorizar ruta|autorizar carga')->group(function () {
+            Route::get('hojas-ruta', [HojaRutaController::class, 'index'])->name('hojas-ruta.index');
+            Route::get('hojas-ruta/{hoja}', [HojaRutaController::class, 'show'])
+                ->whereNumber('hoja')->name('hojas-ruta.show');
+        });
+        Route::middleware('permission:autorizar pagos ruta')
+            ->post('hojas-ruta/{hoja}/autorizar-pagos', [HojaRutaController::class, 'autorizarPagos'])
+            ->whereNumber('hoja')->name('hojas-ruta.autorizar-pagos');
+        Route::middleware('permission:autorizar ruta')
+            ->post('hojas-ruta/{hoja}/autorizar-ruta', [HojaRutaController::class, 'autorizarRuta'])
+            ->whereNumber('hoja')->name('hojas-ruta.autorizar-ruta');
+        Route::middleware('permission:autorizar carga')->group(function () {
+            Route::post('hojas-ruta/{hoja}/autorizar-carga', [HojaRutaController::class, 'autorizarCarga'])
+                ->whereNumber('hoja')->name('hojas-ruta.autorizar-carga');
+            // La salida la registra bodega (ve partir el camión): misma llave 3.
+            Route::post('hojas-ruta/{hoja}/salir', [HojaRutaController::class, 'salir'])
+                ->whereNumber('hoja')->name('hojas-ruta.salir');
         });
     });
 
