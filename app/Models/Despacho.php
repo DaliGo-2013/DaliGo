@@ -145,6 +145,26 @@ class Despacho extends Model implements AuditableContract
         return in_array($this->estado, [self::RETIRADO, self::EN_RUTA], true);
     }
 
+    /**
+     * Scoping conductor↔hoja (R22, P-DSP-08 — cierra el hallazgo del gate M07
+     * donde hay hoja): si el despacho está en una parada, manda LA HOJA — solo
+     * el conductor de una hoja EN RUTA lo entrega, aunque despachos.conductor_id
+     * diga otra cosa (quedó copiado al crear y la hoja pudo reasignarse). Sin
+     * hoja, rige la regla original (la PWA en producción sigue operando
+     * mientras las hojas se adoptan — scoping ADITIVO, no rompe nada).
+     */
+    public function entregablePorConductor(User $usuario): bool
+    {
+        if ($parada = $this->parada) {
+            $hoja = $parada->hoja;
+
+            return $hoja->estado === HojaDeRuta::EN_RUTA
+                && $hoja->conductor_id === $usuario->id;
+        }
+
+        return $this->conductor_id === $usuario->id;
+    }
+
     /** Aún no retirado de bodega (la cola "McDonald's" muestra estos). */
     public function scopePendienteDeRetiro(Builder $query): Builder
     {

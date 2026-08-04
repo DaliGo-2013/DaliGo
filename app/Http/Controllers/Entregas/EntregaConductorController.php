@@ -39,11 +39,25 @@ class EntregaConductorController extends Controller
      */
     public function index(Request $request): View
     {
-        $despachos = Despacho::with(['documento.cliente', 'zona'])
+        $userId = $request->user()->id;
+
+        // Scoping conductor↔hoja (R22, aditivo): un despacho EN una parada se
+        // muestra solo si su hoja está EN RUTA y es de este conductor — manda
+        // la hoja, no el conductor_id copiado al despacho. Un despacho SIN
+        // hoja conserva la regla original (la PWA sigue viva mientras las
+        // hojas se adoptan).
+        $despachos = Despacho::with(['documento.cliente', 'zona', 'parada.hoja'])
             ->enReparto()
-            ->where('conductor_id', $request->user()->id)
+            ->where(function ($q) use ($userId) {
+                $q->whereHas('parada.hoja', fn ($qq) => $qq->enRuta()->where('conductor_id', $userId))
+                    ->orWhere(fn ($qq) => $qq->whereDoesntHave('parada')->where('conductor_id', $userId));
+            })
             ->oldest('retirado_at')
-            ->get();
+            ->get()
+            // El orden pactado de la hoja (R3) manda; los sueltos, por hora
+            // de retiro, después de las paradas.
+            ->sortBy(fn (Despacho $d) => [$d->parada?->orden ?? PHP_INT_MAX, $d->retirado_at])
+            ->values();
 
         return view('entregas.index', [
             'despachos' => $despachos,
@@ -56,7 +70,9 @@ class EntregaConductorController extends Controller
     {
         // Scoping ANTES de validar: un despacho ajeno es 403 (la cola offline lo
         // clasifica como rechazo PERMANENTE, correcto — reintentar no lo arregla).
-        abort_unless($despacho->conductor_id === $request->user()->id, 403);
+        // Con hoja de ruta manda LA HOJA (en_ruta y de este conductor, R22);
+        // sin hoja, la regla original — ver Despacho::entregablePorConductor.
+        abort_unless($despacho->entregablePorConductor($request->user()), 403);
 
         $data = $request->validate([
             // La cola SIEMPRE lo manda (idempotencia); el form online también.
