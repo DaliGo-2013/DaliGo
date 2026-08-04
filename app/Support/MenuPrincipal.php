@@ -38,6 +38,11 @@ use Illuminate\Support\Facades\Cache;
  * - 'badge'             => key simbólica resuelta en badges();
  *   'badge_title' lleva ':n' que se reemplaza por el conteo (el texto
  *   "N equipo(s) por atender" es contrato de DashboardTest).
+ * - 'imprenta'          => true si el rótulo del link directo se muestra en
+ *   MAYÚSCULAS, como los títulos de los acordeones (pedido del dueño
+ *   2026-08-04). Es una bandera de DATOS: dice "este rótulo se lee como título
+ *   de sección"; las clases siguen literales en x-layout.sidebar. Dashboard
+ *   queda fuera a propósito — el dueño dijo que esa estaba bien.
  */
 class MenuPrincipal
 {
@@ -124,6 +129,7 @@ class MenuPrincipal
             'permiso' => 'report production',
             'badge' => 'mi_produccion_devueltos',
             'badge_title' => ':n reporte(s) devuelto(s)',
+            'imprenta' => true,
         ],
         'aprobaciones' => [
             'label' => 'Aprobaciones',
@@ -133,6 +139,7 @@ class MenuPrincipal
             'permiso' => 'aprobar solicitudes',
             'badge' => 'aprobaciones_bandeja',
             'badge_title' => ':n solicitud(es) por aprobar',
+            'imprenta' => true,
         ],
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',

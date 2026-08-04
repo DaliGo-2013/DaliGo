@@ -400,4 +400,44 @@ class SidebarTest extends TestCase
             ->assertOk()
             ->assertDontSee(route('admin.configuracion.index'), false);
     }
+
+    /**
+     * Los links directos marcados con 'imprenta' llevan el rótulo en MAYÚSCULAS,
+     * como los títulos de los acordeones (pedido del dueño 2026-08-04).
+     *
+     * El candado no compara texto en mayúsculas —el `uppercase` lo hace el CSS y
+     * el HTML sigue diciendo "Mi producción"— sino que la clase esté puesta en el
+     * rótulo. Y fija que Dashboard queda FUERA a propósito: el dueño dijo que esa
+     * estaba bien, así que si alguien "corrige la inconsistencia" y la uniforma,
+     * esto se pone rojo y obliga a preguntar antes.
+     */
+    public function test_los_links_con_imprenta_llevan_el_rotulo_en_mayusculas(): void
+    {
+        $html = $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['Mi producción', 'Aprobaciones'] as $rotulo) {
+            $this->assertStringContainsString(
+                '<span class="text-xs font-semibold uppercase tracking-wide">'.$rotulo.'</span>',
+                $html,
+                "El rótulo «{$rotulo}» debería ir en imprenta."
+            );
+        }
+
+        $this->assertStringNotContainsString(
+            '<span class="text-xs font-semibold uppercase tracking-wide">Dashboard</span>',
+            $html,
+            'Dashboard queda en minúsculas a propósito (decisión del dueño).'
+        );
+    }
+
+    /** La bandera 'imprenta' es de presentación: no puede alterar el label ni la ruta. */
+    public function test_la_bandera_imprenta_no_cambia_el_texto_del_menu(): void
+    {
+        $this->assertSame('Mi producción', \App\Support\MenuPrincipal::MODULOS['mi-produccion']['label']);
+        $this->assertSame('Aprobaciones', \App\Support\MenuPrincipal::MODULOS['aprobaciones']['label']);
+        $this->assertArrayNotHasKey('imprenta', \App\Support\MenuPrincipal::MODULOS['inicio']);
+    }
 }
