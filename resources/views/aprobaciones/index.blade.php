@@ -62,14 +62,22 @@
                                         // Qué cambia exactamente (hallazgo #7 del QA 15-07): el payload ya
                                         // trae anterior/nuevo — se pintan SOLO los campos que difieren.
                                         // is_array: un payload con forma inesperada degrada a "sin diff".
+                                        // El mapa de labels es POR TIPO: sin su rama, un tipo nuevo degrada
+                                        // MUDO (sin diff) — gotcha documentado en PLAN-M13 §3.
                                         $anterior = $aprobacion->datos['anterior'] ?? [];
                                         $nuevo = $aprobacion->datos['nuevo'] ?? [];
                                         $anterior = is_array($anterior) ? $anterior : [];
                                         $nuevo = is_array($nuevo) ? $nuevo : [];
-                                        $cambios = collect([
-                                            'asignadas' => 'Asignadas', 'primera' => '1ª', 'segunda' => '2ª',
-                                            'malo' => 'Malos', 'danada' => 'Dañadas',
-                                        ])
+                                        $labelsPorTipo = match ($aprobacion->tipo_accion) {
+                                            \App\Models\Aprobacion::ACCION_DEVOLUCION_REEMBOLSO => [
+                                                'monto_reembolso' => 'Reembolso $',
+                                            ],
+                                            default => [
+                                                'asignadas' => 'Asignadas', 'primera' => '1ª', 'segunda' => '2ª',
+                                                'malo' => 'Malos', 'danada' => 'Dañadas',
+                                            ],
+                                        };
+                                        $cambios = collect($labelsPorTipo)
                                             ->filter(fn ($label, $campo) => array_key_exists($campo, $nuevo)
                                                 && (int) ($anterior[$campo] ?? 0) !== (int) $nuevo[$campo])
                                             ->map(fn ($label, $campo) => $label.': '.number_format((int) ($anterior[$campo] ?? 0), 0, ',', '.').' → '.number_format((int) $nuevo[$campo], 0, ',', '.'));

@@ -76,6 +76,13 @@ class Notificacion extends Model
         // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
         'vehiculo.documento_por_vencer' => 'Documento de vehículo por vencer',
         'vehiculo.documento_vencido' => 'Documento de vehículo VENCIDO',
+        // M13 · Devoluciones (flujo A-12, PLAN-M13 §1.3). `solicitada` es el
+        // aviso INTERNO (bodega + ventas); `recibida` y `resuelta` van al
+        // CLIENTE (destinatario externo → solo mail): el «notificar» con que
+        // cierra A-12.
+        'devolucion.solicitada' => 'Devolución declarada por un cliente',
+        'devolucion.recibida' => 'Devolución recibida en bodega',
+        'devolucion.resuelta' => 'Devolución resuelta (aviso al cliente)',
     ];
 
     protected $fillable = [
@@ -152,6 +159,10 @@ class Notificacion extends Model
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
             // La ficha del vehículo: mismo gate que su ruta en routes/web.php.
             'vehiculo.documento_por_vencer', 'vehiculo.documento_vencido' => $user->canAny(['ver vehiculos', 'manage vehiculos']),
+            // La ficha de la devolución: mismo gate que su ruta (M13). Los
+            // eventos al CLIENTE (recibida/resuelta) no llegan aquí — van por
+            // mail a un destinatario externo, sin fila de campanita.
+            'devolucion.solicitada' => $user->canAny(['view devoluciones', 'manage devoluciones']),
             default => false,
         };
 
@@ -226,6 +237,11 @@ class Notificacion extends Model
             'vehiculo.documento_por_vencer', 'vehiculo.documento_vencido' => $this->notificable_id
                 ? route('admin.vehiculos.show', $this->notificable_id)
                 : route('admin.vehiculos.index'),
+            // La devolución aterriza en SU ficha: es donde bodega la recibe,
+            // la categoriza y la resuelve (M13).
+            'devolucion.solicitada' => $this->notificable_id
+                ? route('admin.devoluciones.show', $this->notificable_id)
+                : route('admin.devoluciones.index'),
             default => null,
         };
     }

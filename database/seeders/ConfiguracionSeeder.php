@@ -340,6 +340,57 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'despachos',
                 'descripcion' => 'Interno (lo escribe bsale:sync-documents): hasta dónde el espejo de documentos quedó completo. No editar a mano.',
             ],
+            // ── M13 · Devoluciones (PLAN-M13 §1.3) ─────────────────────────────
+            // El umbral del reembolso NO se siembra aquí: la regla M14 apunta a
+            // `umbral_aprobacion_clp`, ya sembrado arriba y reservado para esto.
+            [
+                'clave' => 'devolucion_bodega_reingreso',
+                'valor' => 'CONTENEDORES',
+                'tipo' => Configuracion::TIPO_STRING,
+                'grupo' => 'devoluciones',
+                // Texto libre a propósito: la estructura de bodegas es D-003 y
+                // está EN CURSO — cuando cierre, este valor se ajusta desde la UI.
+                'descripcion' => 'Nombre de la bodega a la que reingresa un producto devuelto en buen estado (D-003 abierta: se ajusta cuando el catastro de bodegas cierre).',
+            ],
+            [
+                'clave' => 'devolucion_fotos_min',
+                'valor' => '2',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'devoluciones',
+                'descripcion' => 'Fotos que el cliente debe adjuntar al declarar una devolución (mismo estándar que el ingreso QR del taller).',
+            ],
+            // Plantillas M15 de devoluciones. Claves nuevas → el firstOrCreate
+            // las crea en el deploy; no requieren migración one-shot.
+            [
+                'clave' => 'notif_plantilla_devolucion_solicitada',
+                'valor' => json_encode([
+                    'asunto' => 'Devolución {folio}: {cliente} ({canal})',
+                    'cuerpo' => "{cliente} declaró una devolución por {canal}.\nProducto: {producto}\nMotivo: {motivo}\nFalta recibirla en bodega.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno (bodega + ventas) cuando un cliente declara una devolución desde el link público.',
+            ],
+            [
+                'clave' => 'notif_plantilla_devolucion_recibida',
+                'valor' => json_encode([
+                    'asunto' => 'Recibimos tu devolución {folio}',
+                    'cuerpo' => "Hola {cliente}: tu devolución {folio} llegó a bodega y está en revisión.\nProducto: {producto}\nTe avisaremos el resultado por este medio.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Correo al CLIENTE cuando bodega recibe físicamente su devolución.',
+            ],
+            [
+                'clave' => 'notif_plantilla_devolucion_resuelta',
+                'valor' => json_encode([
+                    'asunto' => 'Tu devolución {folio}: {resultado}',
+                    'cuerpo' => "Hola {cliente}: tu devolución {folio} quedó resuelta.\nResultado: {resultado}\n{detalle}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Correo al CLIENTE con el resultado de su devolución (el «notificar» con que cierra el flujo A-12).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

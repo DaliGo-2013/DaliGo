@@ -38,11 +38,13 @@ inventar el documento— para que nadie más lo dé por norma.
 
 | Plan citado | Dónde se cita como fuente | Estado |
 |---|---|---|
-| `PLAN-DESPACHOS-V1` | `docs/fleet/buzon/dictados/max-2.md:17` ("Según PLAN-DESPACHOS-V1 §2…") · `docs/fleet/buzon/anexo-p-dsp-00-shape-documents.md:100` ("Reconciliación del Director contra PLAN-DESPACHOS-V1 §1.2") · `docs/fleet/RELEVO-DIRECTOR.md:75` · `docs/BITACORA-SESIONES.md:249` · la fila «Próximo paso» de `RUTA-MAESTRA.md §0` | **No existe en el repo.** Esta carpeta solo tiene M14, M15, M16-V0, M16-V1 y TIMEZONE |
+| `PLAN-DESPACHOS-V1` | `docs/fleet/buzon/dictados/max-2.md:17` ("Según PLAN-DESPACHOS-V1 §2…") · `docs/fleet/buzon/anexo-p-dsp-00-shape-documents.md:100` ("Reconciliación del Director contra PLAN-DESPACHOS-V1 §1.2") · `docs/fleet/RELEVO-DIRECTOR.md:75` · `docs/BITACORA-SESIONES.md:249` · la fila «Próximo paso» de `RUTA-MAESTRA.md §0` | ✅ **RESUELTO el 2026-07-27:** el documento se escribió y selló (`2d0ec92`). Ya se puede consultar en esta carpeta. |
 
-**Por qué importa:** el alcance de DESPACHOS-V1 —la unidad del stream 2, con rama
-`feature/despachos-v1` viva— se referencia por sección (`§1.2`, `§2`) como si fuera
-normativo, pero no hay dónde leerlo. Tampoco tiene pasos `P-DSP-nn` con ficha en
-`RUTA-MAESTRA` (solo se lo menciona en «Próximo paso»). O el documento vive fuera
-del repo y hay que traerlo, o el trabajo se está guiando por un plan que nadie
-puede consultar. **Pendiente de aclarar con el dueño.**
+> **Nota (2026-07-30):** esta sección quedó desactualizada 3 días —seguía afirmando que
+> `PLAN-DESPACHOS-V1` «no existe en el repo» cuando ya había entrado— y por eso se corrige
+> al agregar `PLAN-M13`. Es el mismo defecto que la sección denuncia, en su propio texto: un
+> documento que describe un estado que dejó de ser cierto. **Si escribís un plan nuevo,
+> actualizá el inventario de abajo en el mismo push.**
+
+**Inventario actual de la carpeta:** `PLAN-M13` · `PLAN-M14` · `PLAN-M15` · `PLAN-M16-V0` ·
+`PLAN-M16-V1` · `PLAN-DESPACHOS-V1` · `PLAN-TIMEZONE` (+ `_archivo/PLAN-M11-FASE2`).

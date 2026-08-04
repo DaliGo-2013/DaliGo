@@ -80,6 +80,9 @@ class MenuPrincipal
                 // legacy tenía en el dropdown Operación, trasladado a la fuente
                 // única al retirarse navigation.blade.php (merge 27-07).
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
+                // Devoluciones (M13, flujo A-12): el cliente declara por el
+                // link público; bodega recibe/categoriza/resuelve acá.
+                'devoluciones' => ['label' => 'Devoluciones', 'route' => 'admin.devoluciones.index', 'activo' => ['admin.devoluciones.*'], 'permiso' => 'view devoluciones|manage devoluciones'],
             ],
         ],
         // LOGÍSTICA (pedido del dueño 04-08-2026). Nace con la flota: reemplaza
