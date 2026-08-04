@@ -81,6 +81,10 @@ class RolesAndPermissionsSeeder extends Seeder
             // ahora evita tener que abrir el codigo cuando exista ese perfil.
             'ver vehiculos',
             'manage vehiculos',
+            // Modulo Devoluciones (M13, flujo A-12). DOS permisos: consultar el
+            // listado/ficha es distinto de recibir, categorizar y resolver.
+            'view devoluciones',
+            'manage devoluciones',
         ];
 
         foreach ($permissions as $name) {
@@ -113,12 +117,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])

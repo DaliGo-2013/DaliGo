@@ -28,5 +28,21 @@ class ReglasAprobacionSeeder extends Seeder
                 'rol_escalamiento' => null,
             ],
         );
+
+        // M13 · reembolso de devolución (PLAN-M13 §1.3): la magnitud es el
+        // monto en CLP contra `umbral_aprobacion_clp` — la clave ya sembrada
+        // que PLAN-M14 reservó para las reglas monetarias. Bajo el umbral se
+        // auto-aprueba con registro; sobre él, la aprueba jefatura de ventas
+        // (quien evalúa con el cliente en A-12). Admin siempre puede resolver.
+        ReglaAprobacion::firstOrCreate(
+            ['tipo_accion' => Aprobacion::ACCION_DEVOLUCION_REEMBOLSO],
+            [
+                'descripcion' => 'Reembolso de una devolución sobre el umbral en CLP',
+                'activa' => true,
+                'umbral_config' => 'umbral_aprobacion_clp',
+                'rol_aprobador' => 'jefe_ventas',
+                'rol_escalamiento' => null,
+            ],
+        );
     }
 }
