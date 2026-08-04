@@ -102,6 +102,16 @@ class Devolucion extends Model implements AuditableContract
         return in_array($this->estado, [self::REEMBOLSADA, self::REINGRESADA, self::RECHAZADA], true);
     }
 
+    /**
+     * Declaradas por el cliente que bodega aún no recibe: la ACCIÓN pendiente
+     * que ancla el badge del menú (doctrina de badges) — espejo único para el
+     * badge y cualquier superficie futura.
+     */
+    public function scopePorRecibir($query)
+    {
+        return $query->where('estado', self::SOLICITADA);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(DevolucionItem::class);

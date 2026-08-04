@@ -521,6 +521,13 @@ Route::middleware('auth')
         // la ficha y la foto (disco privado, con sesión) bastan con view.
         Route::middleware('permission:view devoluciones|manage devoluciones')->group(function () {
             Route::get('devoluciones', [DevolucionController::class, 'index'])->name('devoluciones.index');
+            // El informe ANTES del show: 'informe' no es numérico, así que el
+            // whereNumber ya lo protege, pero el orden lo deja explícito (mismo
+            // idioma que vehiculos/excel). Sin permiso granular nuevo a propósito:
+            // agrega la MISMA información que el listado ya muestra, agregada —
+            // ST necesitó granularidad porque taller y terreno son audiencias
+            // distintas; acá no hay tal división (declarado en el parte v34).
+            Route::get('devoluciones/informe', [DevolucionController::class, 'informe'])->name('devoluciones.informe');
             // La foto ANTES del show: 'foto/...' son 2 segmentos, no chocan
             // con {devolucion} numérico (mismo idioma que servicio-tecnico.foto).
             Route::get('devoluciones/foto/{foto}', [DevolucionController::class, 'foto'])
