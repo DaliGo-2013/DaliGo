@@ -42,13 +42,23 @@ camión. La búsqueda del listado encuentra la patente escrita de las dos formas
 ### 2.2 `base` es texto, NO una FK a `sucursales`
 
 La planilla usa 7 valores en su columna «SUCURSAL» y solo 3 son sucursales de
-DaliGo (Mirador, Coquimbo, Abate Molina). Las otras —Concepción, Damimed,
-Jefaturas, Antofagasta— **no son sucursales y no van a serlo**: crearlas para
-poder enlazarlas las haría aparecer en Servicio Técnico, Producción y Despachos,
-donde no operan. `Vehiculo::BASES` es una **lista sugerida** (`datalist` en el
+DaliGo (Mirador, Coquimbo, Abate Molina). Las otras —Damimed, Jefaturas,
+Antofagasta— **no son sucursales y no van a serlo**: crearlas para poder
+enlazarlas las haría aparecer en Servicio Técnico, Producción y Despachos, donde
+no operan. `Vehiculo::BASES` es una **lista sugerida** (`datalist` en el
 formulario), no un enum: agregar una base no necesita un deploy.
 
 Decisión del dueño, 04-08-2026 (AskUserQuestion).
+
+**Concepción está CERRADA** (dato del dueño, 04-08-2026). Sus dos vehículos
+activos —`PSJW47` «RAM MIRADOR» (Danika Toledo) y `RKHX29` «FVR (CHEVY 2)» (Axel
+Cárdenas)— operan desde **Mirador**; la planilla seguía diciendo Concepción. Por
+eso no está en las sugerencias: para no volver a asignarle un vehículo. Como el
+campo es texto libre, sacarla **no rompe** una ficha que ya la tenga.
+
+Ojo con los **alias**: `RVBD32` se llama «HD35 CONCE» y `PSJW47` «RAM MIRADOR»,
+y ninguno de los dos nombres describe su base. Son apodos de la operación y **se
+conservan tal cual** — la base es el dato, el alias es cómo le dicen.
 
 ### 2.3 El estado va aparte del conductor
 

@@ -53,17 +53,21 @@ class Vehiculo extends Model implements AuditableContract
     ];
 
     /**
-     * Bases sugeridas (los 7 valores de la planilla + Buzeta, que es sucursal
-     * de DaliGo). Es una LISTA SUGERIDA, no un enum: el campo acepta cualquier
-     * texto porque la flota se mueve y no queremos un deploy para agregar una
-     * ubicación. Ver el comentario de la migración.
+     * Bases sugeridas (las de la planilla + Buzeta, que es sucursal de DaliGo).
+     * Es una LISTA SUGERIDA, no un enum: el campo acepta cualquier texto porque
+     * la flota se mueve y no queremos un deploy para agregar una ubicación. Ver
+     * el comentario de la migración.
+     *
+     * CONCEPCIÓN no está: la sucursal CERRÓ (dato del dueño, 04-08-2026) y sus
+     * vehículos pasaron a Mirador. Se saca de las sugerencias para no volver a
+     * asignarle un vehículo; si alguien la escribe a mano, el campo la acepta
+     * igual (y por eso sacarla no rompe una ficha vieja que la tenga).
      */
     public const BASES = [
         'Mirador',
         'Coquimbo',
         'Abate Molina',
         'Buzeta',
-        'Concepción',
         'Damimed',
         'Jefaturas',
         'Antofagasta',
