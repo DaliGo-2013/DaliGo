@@ -21,6 +21,19 @@
 
 ## Sesiones
 
+### [2026-08-04] Se paga la deuda del esqueleto OOXML: un escritor .xlsx compartido, con la salida verificada byte a byte
+- **Quién:** Marcos + Claude (Opus 5)
+- **Objetivo declarado:** extraer el escritor común que la cabecera de `FlotaExcel` anotaba como deuda («no se hizo ahora para no meter un refactor en la clase que genera el Excel que la gerencia usa en reuniones»). Ningún paso `P-xxx`.
+- **Qué se hizo:** dos clases nuevas en `App\Services\Excel` — **`EscritorXlsx`** (recibe las hojas ya armadas + el XML de estilos y devuelve el binario: content types, los dos `.rels`, el workbook y el ZIP) y **`FilasXlsx`** (el buffer de filas: `celdas()`, `vacia()`, `xml()` y `letra()`). `CartaGanttExcel` y `FlotaExcel` quedaron con **solo lo suyo**: el contenido de sus hojas y su tabla de estilos. Se fueron 6 métodos duplicados por clase.
+- **Cómo se hizo sin red visible** (un .xlsx no se revisa a ojo y falla en binario: o abre, o «formato no válido»): **(1)** diff de la SALIDA — script que captura y hashea las **13 partes XML** de los dos archivos, corrido antes y después → **idénticas byte a byte** (datos de prueba en memoria y con valores fijos, para que el diff signifique algo; se comparan las partes y no el .zip, porque `ZipArchive` estampa el mtime en cada entrada); **(2)** abrir los dos con **Excel de verdad** por COM → sin reparaciones, con las fechas como `Double` en `dd-mm-yyyy` y el autofiltro puesto; **(3)** el **control** que vuelve creíble ese OK: un .xlsx roto a propósito (celdas de una fila reordenadas) que **Excel se niega a abrir** mientras `simplexml_load_string` lo da por bueno.
+- **Lo que el refactor obligó a agregar:** el `ksort` de `filaCeldas` —el candado real contra el rechazo silencioso de Excel— ahora es **uno solo para los dos Excel**, así que romperlo rompe dos archivos a la vez. Nuevos `tests/Unit/Excel/{FilasXlsxTest,EscritorXlsxTest}.php` (**15**), **mutados en los dos sentidos**: sin `ksort` → rojo el nuevo y **verdes los 25 viejos**; con el mapa de `rId` roto → ídem. Esa asimetría es la justificación de los candados. Suite completa **1385 verdes** (+15 = 1400 con los nuevos).
+- **Detalle conservado a propósito:** `styles.xml` se queda con `rId2` siempre y las hojas van `rId1, rId3, rId4…`. Se ve raro, es lo que las dos clases ya emitían, y mantenerlo es lo que permitió el diff byte a byte. Documentado en `EscritorXlsx::rIdHoja` para que nadie lo «arregle».
+- **Pasos marcados:** ninguno (pago de deuda técnica, fuera del plan).
+- **Decisiones:** ninguna nueva.
+- **Delegaciones:** ninguna.
+- **Docs:** entrada en la bitácora de errores de `CLAUDE.md` (el método de refactor sin red) y `docs/reglas/flota-de-vehiculos.md` §4ter actualizada.
+- **Próximo paso:** si aparece un tercer Excel, nace sobre `EscritorXlsx` + `FilasXlsx` — no se copia el esqueleto de nuevo.
+
 ### [2026-07-28] Stream responsive móvil del dueño: el QR se maneja con una mano, el técnico cierra su trabajo desde el celular
 - **Quién:** Mauricio + Claude (Opus 5) — stream propio, en paralelo a la flota (los 38 commits del 27-07 son de la otra cuenta y no se tocaron)
 - **Objetivo declarado:** P-MOB-01 — brief de diseño del dueño sobre formato responsive móvil, probado en el simulador de iPhone de su Mac. Regla del dueño: *lo que ya está bien no se toca*.

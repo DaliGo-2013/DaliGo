@@ -3,11 +3,11 @@
 namespace App\Services\Logistica;
 
 use App\Models\Vehiculo;
+use App\Services\Excel\EscritorXlsx;
+use App\Services\Excel\FilasXlsx;
 use App\Support\FechaNegocio;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use RuntimeException;
-use ZipArchive;
 
 /**
  * La flota como archivo Excel (.xlsx), pedido del dueño (04-08-2026): un botón
@@ -20,13 +20,11 @@ use ZipArchive;
  * como fechas de Excel de verdad (serial + formato), así que se ordenan y se
  * filtran; y la hoja sale con autofiltro y la cabecera congelada, como la usan.
  *
- * Sin dependencias: un .xlsx es un ZIP de XMLs y ZipArchive viene con PHP. Mismo
- * enfoque que App\Services\Plan\CartaGanttExcel.
- *
- * NOTA (deuda anotada, no urgente): el esqueleto OOXML —contentTypes, rels,
- * workbook— es igual al de CartaGanttExcel. Cuando haya que tocar cualquiera de
- * las dos, conviene extraer un escritor común. No se hizo ahora para no meter un
- * refactor en la clase que genera el Excel que la gerencia usa en reuniones.
+ * Sin dependencias: un .xlsx es un ZIP de XMLs y ZipArchive viene con PHP. El
+ * esqueleto del formato lo pone App\Services\Excel\EscritorXlsx y las filas las
+ * arma FilasXlsx — los mismos que usa CartaGanttExcel (la deuda que esta
+ * cabecera anotaba el 04-08 quedó pagada ese mismo día). Acá vive lo propio de
+ * este Excel: sus columnas, su contenido y su tabla de estilos.
  *
  * Colores: acá SÍ se usa el semáforo rojo/ámbar/verde y no la paleta de 4 de la
  * app. Es un archivo que se abre FUERA de DaliGo, donde el verde de "al día" es
@@ -67,10 +65,8 @@ class FlotaExcel
         ['Observaciones', 34],
     ];
 
-    /** @var array<int, string> filas XML ya armadas */
-    private array $filas = [];
-
-    private int $fila = 0;
+    /** Buffer de la única hoja (se estrena en cada generar()). */
+    private FilasXlsx $filas;
 
     private Carbon $hoy;
 
@@ -87,29 +83,14 @@ class FlotaExcel
      */
     public function generar(Collection $vehiculos, string $filtro = ''): string
     {
+        $this->filas = new FilasXlsx(self::ESTILOS);
+
         $this->cabecera($vehiculos, $filtro);
         foreach ($vehiculos as $vehiculo) {
             $this->filaVehiculo($vehiculo);
         }
 
-        $tmp = tempnam(sys_get_temp_dir(), 'flota');
-        $zip = new ZipArchive;
-        if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('No se pudo crear el zip del Excel.');
-        }
-
-        $zip->addFromString('[Content_Types].xml', $this->contentTypes());
-        $zip->addFromString('_rels/.rels', $this->relsRaiz());
-        $zip->addFromString('xl/workbook.xml', $this->workbook());
-        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->relsWorkbook());
-        $zip->addFromString('xl/styles.xml', $this->estilos());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $this->hoja($vehiculos->count()));
-        $zip->close();
-
-        $binario = (string) file_get_contents($tmp);
-        @unlink($tmp);
-
-        return $binario;
+        return EscritorXlsx::armar(['Flota' => $this->hoja($vehiculos->count())], $this->estilos());
     }
 
     /** Nombre de descarga, fechado con el día de negocio. */
@@ -125,7 +106,7 @@ class FlotaExcel
     /** @param  Collection<int, Vehiculo>  $vehiculos */
     private function cabecera(Collection $vehiculos, string $filtro): void
     {
-        $this->filaCeldas([[1, 'FLOTA DE VEHÍCULOS · DALI', 'titulo']]);
+        $this->filas->celdas([[1, 'FLOTA DE VEHÍCULOS · DALI', 'titulo']]);
 
         // El resumen se calcula sobre lo que se exporta: si el Excel dice 17 y
         // la lista 10, el archivo miente sobre sí mismo.
@@ -155,14 +136,14 @@ class FlotaExcel
             $conteo['sin_fecha'],
         );
 
-        $this->filaCeldas([[1, $resumen, 'sub']]);
-        $this->filaCeldas([[1, $filtro !== '' ? 'Filtro aplicado: '.$filtro : 'Flota completa (sin filtros)', 'sub']]);
+        $this->filas->celdas([[1, $resumen, 'sub']]);
+        $this->filas->celdas([[1, $filtro !== '' ? 'Filtro aplicado: '.$filtro : 'Flota completa (sin filtros)', 'sub']]);
 
         $cabeceras = [];
         foreach (self::COLUMNAS as $i => [$titulo, $ancho]) {
             $cabeceras[] = [$i + 1, $titulo, 'cab'];
         }
-        $this->filaCeldas($cabeceras);
+        $this->filas->celdas($cabeceras);
     }
 
     private function filaVehiculo(Vehiculo $vehiculo): void
@@ -209,7 +190,7 @@ class FlotaExcel
         $celdas[] = [24, $criticos, 'ajustado'];
         $celdas[] = [25, $vehiculo->observaciones, 'ajustado'];
 
-        $this->filaCeldas($celdas);
+        $this->filas->celdas($celdas);
     }
 
     /**
@@ -251,56 +232,8 @@ class FlotaExcel
     }
 
     // ------------------------------------------------------------------
-    // Mecánica OOXML
+    // La hoja y sus estilos
     // ------------------------------------------------------------------
-
-    /**
-     * Agrega una fila. Cada celda es [columna 1-based, valor|null, estilo].
-     *
-     * Excel exige las celdas EN ORDEN de columna y sin refs repetidas: si no,
-     * rechaza el archivo entero sin decir por qué (y el XML sigue siendo bien
-     * formado, así que un candado de parseo no lo ve). Ver la nota equivalente
-     * en CartaGanttExcel::filaCeldas.
-     *
-     * @param  array<int, array{0: int, 1: mixed, 2: string}>  $celdas
-     */
-    private function filaCeldas(array $celdas): void
-    {
-        $porCol = [];
-        foreach ($celdas as $celda) {
-            $porCol[$celda[0]] = $celda;
-        }
-        ksort($porCol);
-
-        $this->fila++;
-        $xml = '';
-        foreach ($porCol as [$col, $valor, $estilo]) {
-            $ref = $this->letra($col).$this->fila;
-            $s = self::ESTILOS[$estilo] ?? 0;
-            if ($valor === null || $valor === '') {
-                $xml .= "<c r=\"$ref\" s=\"$s\"/>";
-            } elseif (is_int($valor) || is_float($valor)) {
-                $xml .= "<c r=\"$ref\" s=\"$s\"><v>$valor</v></c>";
-            } else {
-                $texto = htmlspecialchars((string) $valor, ENT_XML1 | ENT_QUOTES, 'UTF-8');
-                $xml .= "<c r=\"$ref\" s=\"$s\" t=\"inlineStr\"><is><t xml:space=\"preserve\">$texto</t></is></c>";
-            }
-        }
-        $this->filas[] = '<row r="'.$this->fila.'">'.$xml.'</row>';
-    }
-
-    /** A, B, ..., Z, AA, AB... para una columna 1-based. */
-    private function letra(int $col): string
-    {
-        $s = '';
-        while ($col > 0) {
-            $col--;
-            $s = chr(65 + ($col % 26)).$s;
-            $col = intdiv($col, 26);
-        }
-
-        return $s;
-    }
 
     private function hoja(int $filasDatos): string
     {
@@ -313,7 +246,7 @@ class FlotaExcel
         // Autofiltro sobre la fila de encabezados (4) + los datos: la planilla
         // original se usa con los desplegables de filtro puestos.
         $ultima = 4 + max(1, $filasDatos);
-        $ultimaLetra = $this->letra(count(self::COLUMNAS));
+        $ultimaLetra = FilasXlsx::letra(count(self::COLUMNAS));
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -322,12 +255,15 @@ class FlotaExcel
             .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
             .'<sheetFormatPr defaultRowHeight="14"/>'
             .$cols
-            .'<sheetData>'.implode('', $this->filas).'</sheetData>'
+            .'<sheetData>'.$this->filas->xml().'</sheetData>'
             .'<autoFilter ref="A4:'.$ultimaLetra.$ultima.'"/>'
             .'</worksheet>';
     }
 
-    /** Índice estilo → posición en cellXfs. Contrato con estilos(). */
+    /**
+     * Índice estilo → posición en cellXfs. Contrato con estilos(), y lo que
+     * recibe FilasXlsx para resolver el `s=` de cada celda.
+     */
     private const ESTILOS = [
         'texto' => 0, 'negrita' => 1, 'titulo' => 2, 'sub' => 3, 'cab' => 4,
         'numero' => 5, 'ajustado' => 6,
@@ -400,42 +336,5 @@ class FlotaExcel
             .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
             .$cellXfs
             .'</styleSheet>';
-    }
-
-    private function contentTypes(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-            .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-            .'<Default Extension="xml" ContentType="application/xml"/>'
-            .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-            .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-            .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            .'</Types>';
-    }
-
-    private function relsRaiz(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
-            .'</Relationships>';
-    }
-
-    private function workbook(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            .'<sheets><sheet name="Flota" sheetId="1" r:id="rId1"/></sheets>'
-            .'</workbook>';
-    }
-
-    private function relsWorkbook(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-            .'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
-            .'</Relationships>';
     }
 }
