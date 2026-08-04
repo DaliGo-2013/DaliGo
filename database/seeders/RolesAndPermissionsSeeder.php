@@ -43,6 +43,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'autorizar reparacion',       // vendedor/jefe_ventas/tecnico: coordina el pago de la cotizacion y autoriza al tecnico a reparar
             'aplicar descuento servicio tecnico', // jefe_ventas/admin: aplicar descuentos en la cotizacion (decision comercial; el tecnico NO)
             'crear lote servicio',        // conductor: ingreso por lote en ruta (acotado, NO edita el taller)
+            // Traslado de maquinas sucursal -> casa matriz (decision del dueño 03-08).
+            // Son DOS permisos y no uno: despacha la sucursal, recibe el taller, y
+            // que una misma persona pueda cerrar las dos puntas anularia la cadena
+            // de custodia que este registro existe para tener.
+            'despachar traslado servicio', // jefe de sucursal + administrativos de esa sucursal
+            'recibir traslado servicio',   // tecnico, jefe de bodega y jefe de ventas (en la matriz)
             // Agenda de terreno (tecnico industrial): plantas de osmosis,
             // llenadoras y lavadoras en el cliente.
             'agendar servicio terreno',   // jefe/vendedores: agendar trabajos + editar el catalogo de servicios
@@ -100,12 +106,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
@@ -113,7 +119,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
         // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'autorizar reparacion', 'ver informe dispensadores']);
+            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores']);
         // El tecnico INDUSTRIAL trabaja en terreno (plantas de osmosis,
         // llenadoras, lavadoras en el cliente): gestiona su agenda (agenda,
         // edita y marca lo realizado desde el calendario) e instalaciones. Es un
@@ -143,6 +149,11 @@ class RolesAndPermissionsSeeder extends Seeder
                 'aprobar solicitudes',
                 'ver informe dispensadores', 'ver informe industrial',
                 'emitir nota de credito',
+                // Despacha las maquinas a reparar de SU sucursal a la casa matriz.
+                // Los administrativos de sucursal (1-2 por sucursal, dato del dueño)
+                // reciben este mismo permiso desde la UI de Roles cuando se creen
+                // sus cuentas — es aditivo y no exige tocar el codigo.
+                'despachar traslado servicio',
             ]);
         // El gerente y el jefe de ventas tambien anulan (regla 9). El gerente usa
         // el rol admin, que ya recibe TODOS los permisos mas arriba.

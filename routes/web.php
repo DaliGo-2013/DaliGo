@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\ServicioTerrenoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
+use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
@@ -314,6 +315,25 @@ Route::middleware('auth')
             Route::get('servicio-tecnico/lote/buscar-producto', [LoteServicioController::class, 'buscarProducto'])
                 ->name('servicio-tecnico.lote.buscar-producto');
         });
+
+        // TRASLADO de maquinas a reparar: sucursal -> casa matriz (decision del
+        // dueño 03-08-2026). Las dos puntas van con permisos DISTINTOS a proposito
+        // —despacha la sucursal, recibe el taller—: si una sola persona pudiera
+        // cerrar ambas, la cadena de custodia no probaria nada. Ver el listado con
+        // cualquiera de los dos.
+        Route::middleware('permission:despachar traslado servicio|recibir traslado servicio')->group(function () {
+            Route::get('traslados', [TrasladoServicioController::class, 'index'])->name('traslados.index');
+            Route::get('traslados/{traslado}', [TrasladoServicioController::class, 'show'])
+                ->whereNumber('traslado')->name('traslados.show');
+        });
+        Route::middleware('permission:despachar traslado servicio')->group(function () {
+            Route::get('traslados/nuevo', [TrasladoServicioController::class, 'create'])->name('traslados.create');
+            Route::post('traslados', [TrasladoServicioController::class, 'store'])->name('traslados.store');
+        });
+        Route::put('traslados/{traslado}/recibir', [TrasladoServicioController::class, 'recibir'])
+            ->whereNumber('traslado')
+            ->middleware('permission:recibir traslado servicio')
+            ->name('traslados.recibir');
 
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
