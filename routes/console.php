@@ -58,6 +58,16 @@ Schedule::command('notificaciones:reintentar')
     ->withoutOverlapping(10)
     ->appendOutputTo(storage_path('logs/notificaciones.log'));
 
+// --- LOGÍSTICA · Vencimiento de documentos de la flota --------------------
+// Una vez al día a las 08:00. El minuto :00 está EN la grilla */15 de I-01
+// (:00/:15/:30/:45), así que el cron de cPanel lo alcanza; un dailyAt('08:05')
+// no correría jamás. Es idempotente por diseño (unique de `vehiculo_avisos`),
+// así que si un día se salta el slot, el aviso sale en la corrida siguiente.
+Schedule::command('vehiculos:avisar-vencimientos')
+    ->dailyAt('08:00')
+    ->withoutOverlapping(15)
+    ->appendOutputTo(storage_path('logs/vehiculos.log'));
+
 // --- M14 · Escalamiento de aprobaciones pendientes ------------------------
 // Cada 15 min (grilla */15 de I-01): pendientes sin respuesta tras N min
 // (`aprobacion_escala_minutos`) pasan al rol_escalamiento de su regla y se

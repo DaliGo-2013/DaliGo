@@ -1,8 +1,12 @@
 <x-app-layout ancho="formulario">
     @php
         $esReparacion = $orden->condicion_efectiva === 'reparacion';
+        // tipo_equipo_label (no ucfirst): una bomba es «Bomba de agua» en el resto de
+        // la app y quedaba «Bomba» solo acá. Y el `modelo` es lo que el CLIENTE
+        // escribió del equipo — el técnico lo necesita para identificar la máquina.
         $equipo = collect([
-            ucfirst($orden->tipo_equipo),
+            $orden->tipo_equipo_label,
+            $orden->modelo,
             $orden->producto?->sku,
             $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
         ])->filter()->implode(' · ');

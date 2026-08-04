@@ -3,10 +3,6 @@
      lista "pendientes de otros dias"; la cola de hoy no la necesita). --}}
 @php $mostrarFecha ??= false; @endphp
 <x-list-row>
-    <x-slot name="leading">
-        <x-avatar>{{ mb_substr($reporte->soplador->name, 0, 1) }}</x-avatar>
-    </x-slot>
-
     <a href="{{ route('admin.produccion.soplador', $reporte->soplador) }}"
        class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $reporte->soplador->name }}</a>
     <p class="truncate text-sm text-neutral-500">

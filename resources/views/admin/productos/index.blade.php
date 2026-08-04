@@ -143,31 +143,33 @@
                 @forelse ($productos as $producto)
                     <x-list-row>
                         <x-slot name="leading">
-                            <div class="flex items-center gap-3">
-                                <input type="checkbox" value="{{ $producto->id }}" x-model="sel"
-                                       class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
-                                <x-avatar>{{ mb_substr($producto->nombre, 0, 1) }}</x-avatar>
-                            </div>
+                            <input type="checkbox" value="{{ $producto->id }}" x-model="sel"
+                                   class="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
                         </x-slot>
 
-                        <div class="flex flex-wrap items-center gap-2">
-                            <p class="truncate font-medium text-neutral-900">{{ $producto->nombre }}</p>
-                            @if ($producto->categoria_interna)
-                                <x-badge>corregida</x-badge>
-                            @endif
-                            @if ($producto->marca)
-                                <x-badge variant="neutral">{{ $producto->marca }}</x-badge>
-                            @endif
-                            @unless ($producto->activo)
-                                <x-badge variant="neutral">inactivo</x-badge>
-                            @endunless
-                        </div>
-                        <p class="truncate text-sm text-neutral-500">
-                            {{ $producto->sku }}@if ($producto->categoria_efectiva) · {{ $producto->categoria_efectiva }}@endif
-                            @if ($producto->categoria_interna && $producto->categoria)
-                                <span class="text-neutral-400">· Bsale: {{ $producto->categoria }}</span>
-                            @endif
-                        </p>
+                        {{-- La fila abre la edicion (patron 03-08: fuera el lapiz). El
+                             checkbox de seleccion masiva queda en `leading`, FUERA del
+                             <a>: marcar productos no puede navegar. --}}
+                        <a href="{{ route('admin.productos.edit', $producto) }}" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $producto->nombre }}</p>
+                                @if ($producto->categoria_interna)
+                                    <x-badge>corregida</x-badge>
+                                @endif
+                                @if ($producto->marca)
+                                    <x-badge variant="neutral">{{ $producto->marca }}</x-badge>
+                                @endif
+                                @unless ($producto->activo)
+                                    <x-badge variant="neutral">inactivo</x-badge>
+                                @endunless
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">
+                                {{ $producto->sku }}@if ($producto->categoria_efectiva) · {{ $producto->categoria_efectiva }}@endif
+                                @if ($producto->categoria_interna && $producto->categoria)
+                                    <span class="text-neutral-400">· Bsale: {{ $producto->categoria }}</span>
+                                @endif
+                            </p>
+                        </a>
 
                         <x-slot name="meta">
                             <div class="text-sm text-neutral-500 sm:w-40 sm:shrink-0 sm:text-right">
@@ -180,9 +182,6 @@
                         </x-slot>
 
                         <x-slot name="actions">
-                            <x-icon-button :href="route('admin.productos.edit', $producto)" label="Editar" title="Editar">
-                                <x-icon.pencil class="h-5 w-5" />
-                            </x-icon-button>
                             <form method="POST" action="{{ route('admin.productos.destroy', $producto) }}" onsubmit="return confirm('¿Eliminar el producto {{ $producto->sku }}?');">
                                 @csrf
                                 @method('DELETE')

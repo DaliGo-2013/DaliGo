@@ -40,11 +40,22 @@
         {{-- Por confirmar: llego por QR y aun no se autoriza la recepcion. --}}
         @can('confirmar servicio tecnico')
             @if ($orden->por_confirmar)
+                {{-- El aviso distingue el ORIGEN: por_confirmar es true para el QR del
+                     cliente Y para el retiro en ruta del conductor, y decirle «el
+                     cliente lo envió desde su celular» a una máquina que trajo el
+                     conductor manda a revisar la pantalla equivocada. --}}
+                @php $esRetiroEnRuta = $orden->fuente === \App\Models\OrdenServicio::FUENTE_RUTA; @endphp
                 <div class="flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h3 class="text-sm font-semibold text-brand-700">Ingreso por QR — por confirmar</h3>
+                        <h3 class="text-sm font-semibold text-brand-700">
+                            {{ $esRetiroEnRuta ? 'Retiro en ruta — por confirmar' : 'Ingreso por QR — por confirmar' }}
+                        </h3>
                         <p class="mt-0.5 text-sm text-brand-700">
-                            El cliente lo envió desde su celular. Revisa los datos con el equipo físico y confirma la recepción.
+                            @if ($esRetiroEnRuta)
+                                La trajo el conductor desde la ruta. Revisa la máquina al llegar y confirma la recepción.
+                            @else
+                                El cliente lo envió desde su celular. Revisa los datos con el equipo físico y confirma la recepción.
+                            @endif
                         </p>
                     </div>
                     <form method="POST" action="{{ route('admin.servicio-tecnico.confirmar', $orden) }}"
@@ -71,6 +82,16 @@
                 <div><dt class="text-xs text-neutral-400">Nombre</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_nombre }}</dd></div>
                 <div><dt class="text-xs text-neutral-400">RUT</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_rut }}</dd></div>
                 <div><dt class="text-xs text-neutral-400">Teléfono</dt><dd class="text-sm text-neutral-900">{{ $orden->cliente_telefono ?: '—' }}</dd></div>
+                {{-- El correo es el dato del que dependen la cotización y los avisos:
+                     sin él, la pestaña Cotización se bloquea con «la orden no tiene
+                     correo del cliente». Antes solo se veía DENTRO de una cotización
+                     ya enviada, o sea justo cuando ya era tarde. --}}
+                <div>
+                    <dt class="text-xs text-neutral-400">Correo</dt>
+                    <dd class="text-sm {{ $orden->cliente_email ? 'text-neutral-900' : 'text-red-600' }}">
+                        {{ $orden->cliente_email ?: 'Falta — sin correo no se puede cotizar' }}
+                    </dd>
+                </div>
             </dl>
         </div>
 
@@ -80,6 +101,14 @@
             <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                 <div><dt class="text-xs text-neutral-400">Tipo</dt><dd class="text-sm text-neutral-900">{{ $orden->tipo_equipo_label }}</dd></div>
                 <div><dt class="text-xs text-neutral-400">Código (producto Dali)</dt><dd class="text-sm text-neutral-900">{{ $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : '—' }}</dd></div>
+                {{-- Lo que el CLIENTE escribió del equipo. Se le pide en el QR (y es
+                     obligatorio en el ingreso por cantidad) y no se mostraba en
+                     ninguna pantalla del taller: el técnico trabajaba sin saber qué
+                     declaró el dueño de la máquina. --}}
+                <div>
+                    <dt class="text-xs text-neutral-400">Equipo según el cliente</dt>
+                    <dd class="text-sm text-neutral-900">{{ $orden->modelo ?: '—' }}</dd>
+                </div>
                 <div><dt class="text-xs text-neutral-400">N° de serie</dt><dd class="text-sm text-neutral-900">{{ $orden->numero_serie ?: '—' }}</dd></div>
                 <div>
                     <dt class="text-xs text-neutral-400">Sucursal/Ruta</dt>
@@ -89,6 +118,20 @@
                             <span class="mt-0.5 block text-xs text-neutral-500">Se repara en {{ $sucursalCentral->nombre }} (casa matriz)</span>
                         @elseif ($orden->sucursal?->es_central)
                             <span class="mt-0.5 block text-xs text-neutral-500">Recepción y reparación (casa matriz)</span>
+                        @endif
+                        {{-- Dónde está FÍSICAMENTE la máquina. Antes la ficha decía
+                             «se repara en Mirador» sin decir si ya había llegado:
+                             entre la recepción en sucursal y el taller no había
+                             ningún dato (pedido del dueño 03-08). --}}
+                        @if ($orden->en_transito)
+                            <span class="mt-1 block text-xs font-medium text-amber-700">
+                                {{ $orden->motivo_no_llego }}
+                            </span>
+                        @elseif ($orden->traslado)
+                            <span class="mt-1 block text-xs text-neutral-500">
+                                Llegó al taller el {{ $orden->traslado_recibida_at?->enChile()->format('d-m-Y') }}
+                                · <a href="{{ route('admin.traslados.show', $orden->traslado) }}" class="text-brand-600 hover:underline">traslado {{ $orden->traslado->codigo }}</a>
+                            </span>
                         @endif
                     </dd>
                 </div>
@@ -108,6 +151,23 @@
                 @endif
             </dl>
         </div>
+
+        {{-- Retiro en ruta: quién la trajo y de dónde. Se captura al cargar el lote
+             (conductor + ciudad de origen) y no se veía en ninguna pantalla: si algo
+             venía mal, nadie sabía a quién preguntarle. --}}
+        @if ($orden->lote)
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Retiro en ruta</h3>
+                <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
+                    <div><dt class="text-xs text-neutral-400">Conductor</dt><dd class="text-sm text-neutral-900">{{ $orden->lote->conductor_nombre ?: '—' }}</dd></div>
+                    <div><dt class="text-xs text-neutral-400">Ciudad de origen</dt><dd class="text-sm text-neutral-900">{{ $orden->lote->origen_ciudad ?: '—' }}</dd></div>
+                    <div>
+                        <dt class="text-xs text-neutral-400">Máquinas del lote</dt>
+                        <dd class="text-sm text-neutral-900">{{ $orden->lote->total_ordenes }}</dd>
+                    </div>
+                </dl>
+            </div>
+        @endif
 
         @include('admin.servicio-tecnico._fotos')
 

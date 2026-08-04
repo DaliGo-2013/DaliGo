@@ -16,18 +16,19 @@
 
         <x-list-card title="Máquinas" :count="$maquinas->count()" :countLabel="\Illuminate\Support\Str::plural('máquina', $maquinas->count())">
             @forelse ($maquinas as $maquina)
+                {{-- La fila abre la edicion (patron 03-08: fuera el lapiz). El enlace
+                     "Ver rendimiento" del meta queda FUERA del <a> — son dos destinos
+                     distintos y anidarlos rompe el toque. --}}
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($maquina->nombre, 0, 1) }}</x-avatar>
-                    </x-slot>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ $maquina->nombre }}</p>
-                        @unless ($maquina->activa)
-                            <x-badge variant="neutral">inactiva</x-badge>
-                        @endunless
-                    </div>
-                    <p class="truncate text-sm text-neutral-500">{{ $maquina->sucursal->nombre }}</p>
+                    <a href="{{ route('admin.maquinas.edit', $maquina) }}" class="block">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $maquina->nombre }}</p>
+                            @unless ($maquina->activa)
+                                <x-badge variant="neutral">inactiva</x-badge>
+                            @endunless
+                        </div>
+                        <p class="truncate text-sm text-neutral-500">{{ $maquina->sucursal->nombre }}</p>
+                    </a>
 
                     <x-slot name="meta">
                         <div class="sm:w-32 sm:shrink-0 sm:text-right">
@@ -37,9 +38,6 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <x-icon-button :href="route('admin.maquinas.edit', $maquina)" label="Editar" title="Editar">
-                            <x-icon.pencil class="h-5 w-5" />
-                        </x-icon-button>
                         <form method="POST" action="{{ route('admin.maquinas.destroy', $maquina) }}"
                               x-data x-on:submit="if (! confirm('¿Eliminar la máquina ' + @js($maquina->nombre) + '?')) $event.preventDefault()">
                             @csrf

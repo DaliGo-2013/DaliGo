@@ -56,6 +56,7 @@
                 <x-input-label for="cliente_telefono">Teléfono <span class="text-red-500">*</span></x-input-label>
                 <x-text-input id="cliente_telefono" name="cliente_telefono" type="tel" class="mt-1.5 w-full" required
                     maxlength="30" placeholder="Ej. +56 9 1234 5678" :value="old('cliente_telefono')" />
+                <x-input-hint>Para avisarte cuando tus equipos estén listos.</x-input-hint>
                 <x-input-error :messages="$errors->get('cliente_telefono')" class="mt-2" />
             </div>
         </x-seccion>
@@ -70,7 +71,10 @@
                         <option value="{{ $t }}" @selected(old('tipo_default', 'dispensador') === $t)>{{ \App\Models\OrdenServicio::etiquetaTipo($t) }}</option>
                     @endforeach
                 </x-select>
-                <x-input-hint>Si una máquina es de otro tipo, lo cambias en su tarjeta.</x-input-hint>
+                <x-input-hint>
+                    Si una máquina es de otro tipo, lo cambias en su tarjeta. Los dispensadores y las
+                    lavadoras necesitan N° de serie; las bombas y herramientas no lo llevan.
+                </x-input-hint>
                 <x-input-error :messages="$errors->get('tipo_default')" class="mt-2" />
             </div>
             <div>
@@ -78,10 +82,12 @@
                 <x-select id="facturacion" name="facturacion" class="mt-1.5" required x-model="cond">
                     <option value="">— Selecciona —</option>
                     @foreach ($facturaciones as $f)
-                        <option value="{{ $f }}" @selected(old('facturacion') === $f)>{{ ucfirst($f) }}</option>
+                        <option value="{{ $f }}" @selected(old('facturacion') === $f)>{{ \App\Models\OrdenServicio::etiquetaFacturacion($f) }}</option>
                     @endforeach
                 </x-select>
-                <x-input-hint>Garantía: no se cobra (si está vigente). Reparación: se cobra.</x-input-hint>
+                {{-- Mismo texto que el ingreso por unidad: el cliente no puede leer una
+                     explicación distinta de la misma condición según por dónde entre. --}}
+                <x-input-hint>Garantía: equipos con garantía vigente (trae la boleta o factura). Reparación: fuera de garantía (tiene costo).</x-input-hint>
                 <x-input-error :messages="$errors->get('facturacion')" class="mt-2" />
             </div>
 
@@ -179,6 +185,13 @@
                 <x-agregar-fila-button x-on:click="agregar(); abierta = maquinas.length - 1">Agregar máquina</x-agregar-fila-button>
             </div>
 
+            {{-- Ayuda del N° de serie: UNA sola vez, arriba de las tarjetas (no una por
+                 máquina: con 10 equipos serían 10 modales con la misma foto). Escucha
+                 #tipo_default, el tipo que gobierna el lote. --}}
+            <div class="mb-3">
+                <x-ayuda-serie tipo-selector="tipo_default" />
+            </div>
+
             <div class="space-y-3">
                 <template x-for="(m, i) in maquinas" :key="i">
                     <div :data-maquina="i" class="rounded-xl border"
@@ -237,6 +250,10 @@
                             <input type="text" x-model="m.modelo" :name="`maquinas[${i}][modelo]`" maxlength="191" required
                                 placeholder="Ej. Dispensador LB-16 blanco"
                                 class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                            {{-- Por qué acá es obligatorio y en el ingreso por unidad no: con
+                                 una máquina no hay con qué confundirla; con varias, es el
+                                 rótulo que las distingue en el mostrador y en el taller. --}}
+                            <p class="mt-1 text-xs text-neutral-500">Escríbelo como lo conozcas: nos sirve para distinguir una máquina de otra.</p>
                         </div>
 
                         {{-- Falla y estado de ESTA máquina (golpes, rayas, caja, piezas). --}}

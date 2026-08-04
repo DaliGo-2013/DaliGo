@@ -120,11 +120,90 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Nombres de los campos
+    |--------------------------------------------------------------------------
+    |
+    | Sin esta lista, Laravel arma el :attribute desde el nombre de la COLUMNA:
+    | «El campo producto id es obligatorio», «El campo cliente rut...», y el peor
+    | de todos, «El campo role es obligatorio» — role en inglés, a la vista del
+    | usuario. Salió del barrido de idioma pedido por el dueño (03-08-2026).
+    |
+    | Se listan los campos que un usuario REALMENTE ve al equivocarse en un
+    | formulario (incluidos los públicos del QR); los internos que nadie tipea a
+    | mano no hacen falta.
+    |
+    */
     'attributes' => [
+        // Cuenta y sesión
         'name' => 'nombre',
         'email' => 'correo electrónico',
         'password' => 'contraseña',
         'password_confirmation' => 'confirmación de contraseña',
         'current_password' => 'contraseña actual',
+        'role' => 'rol',
+        'roles' => 'roles',
+        'permissions' => 'permisos',
+
+        // Cliente (formularios del QR y del mostrador)
+        'cliente_nombre' => 'nombre y apellido',
+        'cliente_rut' => 'RUT',
+        'cliente_email' => 'correo',
+        'cliente_telefono' => 'teléfono',
+        'cliente_id' => 'cliente',
+
+        // Equipo y orden de servicio técnico
+        'producto_id' => 'código del producto',
+        'tipo_equipo' => 'tipo de equipo',
+        'numero_serie' => 'N° de serie',
+        'modelo' => 'equipo (marca y modelo)',
+        'falla_reportada' => 'falla del equipo',
+        'facturacion' => 'condición',
+        'garantia_doc_tipo' => 'documento de garantía',
+        'garantia_doc_numero' => 'N° del documento',
+        'garantia_doc_fecha' => 'fecha de compra',
+        'notas_tecnico' => 'notas del técnico',
+        'trabajo_realizado' => 'trabajo realizado',
+        'causa_falla' => 'causa de la falla',
+        'fotos' => 'fotos',
+        'repuestos' => 'repuestos',
+        'maquinas' => 'máquinas',
+        'tipo_default' => 'tipo de equipo',
+        'falla_default' => 'falla común',
+
+        // Ubicación y catálogo
+        'sucursal_id' => 'sucursal',
+        'bodega_id' => 'bodega',
+        'origen_ciudad' => 'ciudad de origen',
+        'vendedor_id' => 'vendedor',
+        'sku' => 'código (SKU)',
+        'peso_kg' => 'peso',
+        'segmento' => 'segmento',
+        'marca' => 'marca',
+        'categoria' => 'categoría',
+        'descripcion' => 'descripción',
+        'direccion' => 'dirección',
+        'ciudad' => 'ciudad',
+
+        // Fechas y períodos
+        'fecha' => 'fecha',
+        'fecha_ingreso' => 'fecha de ingreso',
+        'fecha_retiro' => 'fecha de retiro',
+        'fecha_aviso' => 'fecha de aviso',
+        'desde' => 'fecha desde',
+        'hasta' => 'fecha hasta',
+        'anio' => 'año',
+        'mes' => 'mes',
+
+        // Varios
+        'motivo' => 'motivo',
+        'respuesta' => 'respuesta',
+        'estado' => 'estado',
+        'tipo' => 'tipo',
+        'tipo_dte' => 'tipo de documento',
+        'servicio_terreno_id' => 'servicio de terreno',
+        'conductor' => 'conductor',
+        'q' => 'búsqueda',
     ],
 ];

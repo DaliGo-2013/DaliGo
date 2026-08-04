@@ -26,8 +26,11 @@
                         <td style="padding:32px;">
                             <h1 style="margin:0 0 8px; font-size:22px; color:#171717;">¡Recibimos tu equipo!</h1>
                             <p style="margin:0 0 20px; font-size:15px; color:#525252; line-height:1.5;">
-                                Hola {{ $orden->cliente_nombre }}, tu {{ mb_strtolower($tipo) }} quedó ingresado en nuestro
-                                taller. Guarda este correo: el número de folio te sirve para consultar el estado.
+                                {{-- Sin adjetivo que concuerde en género: el tipo puede ser femenino
+                                     (lavadora, bomba de agua, herramienta) y decía "quedó ingresado". --}}
+                                Hola {{ $orden->cliente_nombre }}, registramos el ingreso de tu {{ mb_strtolower($tipo) }}
+                                en nuestro taller. Guarda este correo: con el número de folio puedes consultarnos el
+                                estado en cualquier momento.
                             </p>
 
                             {{-- Folio destacado --}}
@@ -78,7 +81,7 @@
                     {{-- Pie --}}
                     <tr>
                         <td style="background-color:#fafafa; padding:16px 32px; text-align:center; font-size:12px; color:#a3a3a3; border-top:1px solid #e5e5e5;">
-                            DaliGo · {{ now()->year }}
+                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo.
                         </td>
                     </tr>
                 </table>

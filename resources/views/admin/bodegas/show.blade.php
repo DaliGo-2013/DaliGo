@@ -41,10 +41,6 @@
         <x-list-card title="Stock" :count="$stocks->total()" :countLabel="\Illuminate\Support\Str::plural('producto', $stocks->total())">
             @forelse ($stocks as $stock)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($stock->producto->nombre, 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $stock->producto->nombre }}</p>
                         @unless ($stock->producto->activo)

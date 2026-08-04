@@ -46,6 +46,33 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin())->get('/admin/users')->assertOk();
     }
 
+    /**
+     * La fila de la cuenta ES el enlace a su edicion (pedido del dueño 03-08:
+     * fuera el lapiz, se entra tocando la cuenta), pero SOLO para quien tiene
+     * 'edit users' — la edicion esta gateada aparte del listado, y enlazar a
+     * alguien sin el permiso es mandarlo a un 403.
+     */
+    public function test_la_fila_de_la_cuenta_enlaza_a_editar_solo_con_permiso(): void
+    {
+        $cuenta = User::factory()->create(['name' => 'Empleado Enlace']);
+
+        // Con permiso de editar: el nombre vive DENTRO del <a> a la edicion.
+        $html = $this->actingAs($this->admin())->get('/admin/users')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<a href="[^"]*\/admin\/users\/'.$cuenta->id.'\/edit"[^>]*>(?:(?!<\/a>).)*Empleado Enlace/s',
+            $html,
+            'El nombre de la cuenta no está dentro del enlace a su edición.'
+        );
+        // Y el boton del lapiz se fue.
+        $this->assertStringNotContainsString('title="Editar"', $html);
+
+        // SOLO lectura ('view users' sin 'edit users'): la fila NO enlaza a editar.
+        $lector = $this->userWith(['view users']);
+        $htmlLector = $this->actingAs($lector)->get('/admin/users')->assertOk()->getContent();
+        $this->assertStringContainsString('Empleado Enlace', $htmlLector);
+        $this->assertStringNotContainsString('/admin/users/'.$cuenta->id.'/edit', $htmlLector);
+    }
+
     public function test_admin_can_view_create_form(): void
     {
         $this->actingAs($this->admin())->get('/admin/users/create')

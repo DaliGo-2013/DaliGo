@@ -60,6 +60,28 @@ class BodegaManagementTest extends TestCase
             ->assertSee('inactiva');
     }
 
+    /**
+     * La fila de la bodega ES el enlace al stock (pedido del dueño 03-08: fuera
+     * el icono del ojo, se entra tocando la bodega). El ⓘ del conteo queda FUERA
+     * del enlace: un control interactivo dentro de otro rompe el toque en móvil.
+     */
+    public function test_la_fila_de_la_bodega_enlaza_directo_a_su_stock(): void
+    {
+        $bodega = Bodega::factory()->create(['nombre' => 'MIRADOR']);
+
+        $html = $this->actingAs($this->admin())->get('/admin/bodegas')
+            ->assertOk()->getContent();
+
+        // El nombre vive DENTRO de un <a> que apunta al show de la bodega.
+        $this->assertMatchesRegularExpression(
+            '/<a href="[^"]*\/admin\/bodegas\/'.$bodega->id.'"[^>]*>(?:(?!<\/a>).)*MIRADOR/s',
+            $html,
+            'El nombre de la bodega no está dentro del enlace a su stock.'
+        );
+        // Y el botón del ojo se fue.
+        $this->assertStringNotContainsString('Ver stock', $html);
+    }
+
     public function test_show_lists_stock_and_filters(): void
     {
         $bodega = Bodega::factory()->create(['nombre' => 'MIRADOR']);

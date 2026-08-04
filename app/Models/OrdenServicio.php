@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -34,6 +35,35 @@ class OrdenServicio extends Model implements AuditableContract
                 $orden->codigo = self::generarCodigoUnico();
             }
         });
+
+        // Cualquier alta/baja/cambio invalida los conteos cacheados del historial
+        // (§ver versionHistorial). Es un contador, no un borrado por clave: no hay
+        // que saber QUE claves existen, y con el driver `database` un increment es
+        // una sola escritura por llave primaria.
+        static::saved(fn () => self::invalidarHistorial());
+        static::deleted(fn () => self::invalidarHistorial());
+    }
+
+    /** Clave de version de los conteos del historial (año/mes) del listado. */
+    private const CACHE_VERSION_HISTORIAL = 'dg.st.historial.v';
+
+    /**
+     * Version actual de los conteos del historial. Se usa DENTRO de la clave de
+     * cache, asi que al subirla las entradas viejas quedan huerfanas y expiran
+     * solas — no hace falta enumerarlas para borrarlas.
+     */
+    public static function versionHistorial(): int
+    {
+        return (int) Cache::get(self::CACHE_VERSION_HISTORIAL, 1);
+    }
+
+    /** Sube la version: el proximo listado recalcula los conteos. */
+    public static function invalidarHistorial(): void
+    {
+        // `increment` de un valor ausente no hace nada en varios drivers, asi que
+        // se siembra antes. add() es atomico: si otro proceso ya lo creo, no pisa.
+        Cache::add(self::CACHE_VERSION_HISTORIAL, 1);
+        Cache::increment(self::CACHE_VERSION_HISTORIAL);
     }
 
     /** Codigo unico e impredecible para el folio (ej. ST-K7QM2X9P). Reintenta ante colision. */
@@ -107,6 +137,17 @@ class OrdenServicio extends Model implements AuditableContract
     // Reparacion: se cobra al cliente.
     public const FACTURACION = ['garantia', 'reparacion'];
 
+    // Etiqueta visible de la condicion. Existe porque las cuatro pantallas que
+    // ofrecen este selector (QR por unidad, QR por cantidad, mostrador y lote del
+    // conductor) rotulaban con `ucfirst($f)` -> el CLIENTE leia "Garantia" y
+    // "Reparacion" SIN TILDE. La clave guardada sigue sin tildes (es el valor de
+    // la columna); la tilde vive solo aca, en el rotulo. Mismo patron que
+    // TIPO_ETIQUETAS: fuente unica para que el rotulo no se escriba a mano.
+    public const FACTURACION_ETIQUETAS = [
+        'garantia' => 'Garantía',
+        'reparacion' => 'Reparación',
+    ];
+
     // Documento de compra que respalda la garantia.
     public const GARANTIA_DOC_TIPOS = ['factura', 'boleta'];
 
@@ -146,6 +187,8 @@ class OrdenServicio extends Model implements AuditableContract
         'sucursal_id',
         'ruta',
         'lote_id',
+        'traslado_id',
+        'traslado_recibida_at',
         'fecha_ingreso',
         'tipo_equipo',
         'modelo',
@@ -182,6 +225,7 @@ class OrdenServicio extends Model implements AuditableContract
             'fecha_aviso' => 'date',
             'fecha_retiro' => 'date',
             'confirmada_at' => 'datetime',
+            'traslado_recibida_at' => 'datetime',
             'mano_obra' => 'integer',
             'descuento_pct' => 'integer',
         ];
@@ -243,6 +287,19 @@ class OrdenServicio extends Model implements AuditableContract
     public function getTipoEquipoLabelAttribute(): string
     {
         return self::etiquetaTipo($this->tipo_equipo);
+    }
+
+    /**
+     * Etiqueta visible de la condicion ('garantia' -> "Garantía"), con tilde.
+     * Fallback a ucfirst por si aparece una condicion historica fuera del mapa.
+     */
+    public static function etiquetaFacturacion(?string $facturacion): string
+    {
+        if ($facturacion === null || $facturacion === '') {
+            return '';
+        }
+
+        return self::FACTURACION_ETIQUETAS[$facturacion] ?? ucfirst($facturacion);
     }
 
     /**
@@ -479,18 +536,166 @@ class OrdenServicio extends Model implements AuditableContract
         ])->filter()->implode(' · ');
 
         $datos = [
+            // El folio es el dato con el que se busca la orden: sin el, el aviso
+            // obligaba a buscar por nombre de cliente.
+            'folio' => $this->folio,
             'cliente' => $this->cliente_nombre,
             'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
             'maquinas' => '1 equipo',
             'sucursal' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
             'condicion' => $this->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación',
-            'url' => route('admin.servicio-tecnico.index'),
+            // La ficha de la orden, no el listado: este aviso es de UNA orden y su
+            // boton de confirmar esta en la ficha.
+            'url' => route('admin.servicio-tecnico.show', $this),
         ];
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_INGRESO)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
+    }
+
+    /**
+     * Roles candidatos a los avisos de CIERRE de una orden (reparado / sin
+     * solucion): es VENTAS quien llama al cliente (y quien despues anota la fecha
+     * de aviso).
+     *
+     * El tecnico NO va aca: es quien marca el estado, y avisarle de su propia
+     * accion es ruido (mismo criterio que el resto del modulo). Quien de estos
+     * roles recibe cada orden lo decide `avisarACartera()`, no esta lista.
+     */
+    public const ROLES_AVISO_REPARADO = ['jefe_ventas', 'vendedor', 'admin'];
+
+    /**
+     * Avisa a VENTAS por M15 (campanita + correo segun preferencias) que la orden
+     * se cerro. Punto UNICO de los dos cierres —`taller.reparado` y
+     * `taller.sin_solucion`— porque comparten destinatarios, datos y regla de
+     * reparto: duplicarla era garantizar que un dia divergieran.
+     *
+     * El reparto lo define `esVisiblePara()`, el MISMO filtro que gobierna el
+     * listado y la ficha, y de ahi salen solas las dos mitades de la regla del
+     * dueño (30-07): el jefe de ventas tiene 'ver todo servicio tecnico', asi que
+     * recibe TODAS las ordenes —las de todos sus vendedores—; un vendedor no lo
+     * tiene, asi que recibe solo las de SU cartera (`clientes.vendedor_id`, mas la
+     * de su equipo via `users.jefe_id`).
+     *
+     * Consecuencia a tener presente HOY: mientras no haya carteras asignadas,
+     * `esVisiblePara` es false para todo vendedor, asi que el aviso llega solo a
+     * jefatura. El dia que se asignen, cada vendedor empieza a recibir lo suyo
+     * SIN tocar este codigo — que es justo lo que se pidio.
+     *
+     * Notificar a alguien que despues no puede ABRIR la orden seria el defecto que
+     * ya se corrigio en la campanita (`Notificacion::urlDestinoPara`): un aviso que
+     * termina en 403.
+     *
+     * @param  User|null  $actor  quien cerro la orden (no se autonotifica)
+     * @param  array<string, mixed>  $extra  placeholders propios del evento
+     */
+    private function avisarACartera(string $evento, ?User $actor, array $extra = []): void
+    {
+        $equipo = collect([
+            $this->tipo_equipo_label,
+            $this->modelo,
+            $this->numero_serie ? 'N° '.$this->numero_serie : null,
+        ])->filter()->implode(' · ');
+
+        $datos = array_merge([
+            'folio' => $this->folio,
+            'cliente' => $this->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : $this->tipo_equipo_label,
+            // Se rellenan SIEMPRE: un placeholder sin dato queda CRUDO en el texto
+            // ({trabajo} literal en la campanita).
+            'trabajo' => filled($this->trabajo_realizado) ? $this->trabajo_realizado : 'Sin detalle',
+            'diagnostico' => filled($this->causa_falla) ? $this->causa_falla_label : 'Sin determinar',
+            'tecnico' => $actor?->name ?: 'El técnico',
+            'retiro' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
+            'telefono' => filled($this->cliente_telefono) ? $this->cliente_telefono : 'sin teléfono registrado',
+            'url' => route('admin.servicio-tecnico.show', $this),
+        ], $extra);
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_REPARADO)->get()->unique('id')
+            ->reject(fn (User $u) => $actor && $u->id === $actor->id)
+            ->filter(fn (User $u) => $this->esVisiblePara($u))
+            ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /** El equipo quedo listo: ventas le dice al cliente que puede retirarlo. */
+    public function notificarReparado(?User $actor = null): void
+    {
+        $this->avisarACartera('taller.reparado', $actor);
+    }
+
+    /**
+     * No tuvo arreglo. Ventas necesita el aviso igual que en «reparado» —el
+     * equipo hay que retirarlo—, pero la conversacion es otra: presupuesto de
+     * reemplazo, o garantia si la causa fue falla de fabrica. Por eso el aviso
+     * interno SI lleva el diagnostico del tecnico, y el correo al cliente no
+     * (ver `SinSolucionCliente`).
+     *
+     * @param  bool|null  $avisadoAlCliente  ¿salio el correo al cliente? true/false
+     *   se reflejan TAL CUAL en el aviso interno. Nunca se afirma a ciegas que al
+     *   cliente se le aviso: sin correo en la ficha, o con el SMTP caido, el aviso
+     *   diria «ya se le aviso» y NADIE lo llamaria (mismo defecto que se corrigio
+     *   en el rechazo de terreno el 30-07). null = no se intento.
+     */
+    public function notificarSinSolucion(?User $actor = null, ?bool $avisadoAlCliente = null): void
+    {
+        $telefono = filled($this->cliente_telefono) ? $this->cliente_telefono : 'sin teléfono registrado';
+
+        $this->avisarACartera('taller.sin_solucion', $actor, [
+            'aviso_cliente' => match ($avisadoAlCliente) {
+                true => "Al cliente ya se le avisó por correo. Falta coordinar el retiro y, si corresponde, el reemplazo ({$telefono}).",
+                false => "NO se pudo avisar al cliente por correo: hay que llamarlo ({$telefono}).",
+                null => "Falta avisarle al cliente ({$telefono}).",
+            },
+        ]);
+    }
+
+    /**
+     * Traslado en el que esta maquina viajo a la casa matriz (null si se recibio
+     * directamente ahi, o si es anterior al registro de traslados).
+     */
+    public function traslado(): BelongsTo
+    {
+        return $this->belongsTo(TrasladoServicio::class, 'traslado_id');
+    }
+
+    /**
+     * ¿Esta maquina esta en una sucursal que NO repara? Es la que tiene que
+     * viajar: la casa matriz (es_central) es donde se repara; Abate y Coquimbo
+     * reciben pero no reparan.
+     */
+    public function getDebeViajarAttribute(): bool
+    {
+        return $this->sucursal !== null && ! $this->sucursal->es_central;
+    }
+
+    /**
+     * ¿Todavia NO esta en el taller? Regla del dueño (03-08-2026): una maquina no
+     * se puede reparar si no fue recepcionada en la matriz. Cubre los dos casos
+     * que antes eran invisibles: sigue en la sucursal (sin traslado) o va en
+     * camino (traslado sin confirmar).
+     *
+     * Las ordenes anteriores al registro llevan `traslado_recibida_at` sellado por
+     * la migracion one-shot, asi que NO quedan bloqueadas.
+     */
+    public function getEnTransitoAttribute(): bool
+    {
+        return $this->debe_viajar && $this->traslado_recibida_at === null;
+    }
+
+    /** Motivo legible del bloqueo, para decirle al tecnico QUE falta. */
+    public function getMotivoNoLlegoAttribute(): ?string
+    {
+        if (! $this->en_transito) {
+            return null;
+        }
+
+        return $this->traslado_id
+            ? 'Va en camino desde '.($this->sucursal?->nombre ?? 'la sucursal').' (traslado '.($this->traslado?->codigo ?? '').'): falta confirmar la recepción en el taller.'
+            : 'Sigue en '.($this->sucursal?->nombre ?? 'la sucursal').': todavía no se despachó al taller.';
     }
 
     /**

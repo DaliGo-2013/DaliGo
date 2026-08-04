@@ -1,7 +1,25 @@
-@import 'tailwindcss';
+/*
+ * `source(none)` = SIN autodetección: Tailwind barre EXACTAMENTE los globs de abajo
+ * y nada más. Con la autodetección puesta, el escáner recorría el proyecto entero y
+ * el bundle dejaba de ser reproducible (bitácora 30-07): entraban clases de
+ * `CLAUDE.md` y de `docs/` —el propio texto que las explica las genera—, del regex
+ * de un test (`p-[4-8]` de MarcoHorizontalTest), de worktrees viejos en
+ * `.claude/worktrees/` con copias antiguas de los Blades, y del bundle ANTERIOR, que
+ * se auto-alimentaba. 29 reglas que ninguna plantilla usa.
+ *
+ * También se fue el `@source` de `storage/framework/views/*.php` (las vistas
+ * compiladas): era el gotcha [2026-07-24] —un directorio transitorio que infla el
+ * CSS según cuántos tests corriste— y es REDUNDANTE, porque compilar un Blade no
+ * inventa clases: las mismas que están en el fuente, que ya cubre el glob de abajo.
+ * Verificado empíricamente: con las vistas compiladas POBLADAS (`view:cache`) el
+ * bundle sale idéntico byte a byte.
+ *
+ * Si algún día una clase se arma en PHP (`'bg-'.$color`), no la va a ver NINGÚN
+ * glob: eso se resuelve con `@source inline(...)`, no volviendo a barrer el repo.
+ */
+@import 'tailwindcss' source(none);
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
 

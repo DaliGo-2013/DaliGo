@@ -79,6 +79,17 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
+### I-08 · Parte P-DSP-05 esperó 6 días la doble llave por error del DIRECTOR — CERRADA 03-08
+Max-2 entregó P-DSP-05 (PWA conductor) el 28-07 con parte en regla pidiendo doble llave, y
+adenda de re-refresh el 30-07. Al barrer el buzón el 30-07 el Director lo confundió con la
+rama antigua homónima (`feature/entregas-conductor` figuraba en el informe Gantt como "trabajo
+pre-existente sin mergear") y reportó al dueño "Max-2 sin parte nuevo". Detectado el 03-08 al
+verificar en el árbol que la PWA NO estaba en main (el parte de Max-1 la daba por entrada).
+Corrección: disculpa en el dictado v13, re-refresh ordenado (la rama quedó 54→60 commits
+atrás por la espera) y doble llave priorizada. **Doctrina:** al barrer el buzón, cada parte
+se verifica por FECHA + CONTENIDO contra el dictado vigente — nunca reconocer un lote por el
+nombre de la rama; un nombre puede tener dos historias.
+
 ### I-07 · DEPLOY CAÍDO ×2 por `varchar(191)` — CERRADA el 27-07 con candado
 **Qué pasó:** el merge de DESPACHOS-v1 (`7320bee`, doble llave) tumbó el deploy con
 `SQLSTATE[22001] Data too long for column 'descripcion'` al sembrar `documentos_sync_desde`
