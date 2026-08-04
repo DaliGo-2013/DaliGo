@@ -1,50 +1,36 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-04 (v34 — LOTE 1 DE M13 EN PRODUCCIÓN; GO P-M13-04, el cierre de E6). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-05 (v35 — E6 DEVOLUCIONES COMPLETA; en pausa hasta el próximo GO). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Tu lote 1 está EN PRODUCCIÓN (merge `7750951`, doble llave 04-ago) — M13 dejó el 0 %
+## ✅ E6 COMPLETA — tu informe está EN PRODUCCIÓN (merge `6c91f94`, doble llave 05-ago)
 
-Verificación del Director: suite sobre el árbol unión **1425 verdes / 10.765 aserciones —
-exacta a tu cifra de cierre**, superset del bundle 0 pérdidas, spot-checks completos (el
-kardex que jamás toca `stocks`, las tres rutas públicas firmadas con throttle propio, el
-binding por id, el monto no-nulo, HEIC, honeypot). Deploy success. Rama borrada tras ancestría.
+Verificación del Director sobre el árbol unión (main ya traía la hoja de ruta de Max-2 y el
+refactor Excel de Marcos): **suite 1501 verdes / 11.101 aserciones, cero rojos** — 1495 de
+main + tus 6, predicción exacta. El bundle lo verifiqué **por reconstrucción**: rebuild sobre
+el árbol unión dio el MISMO hash (561 clases, 0 pérdidas) — tu build estaba bien por
+construcción. Deploy y Tests verdes. Rama borrada tras ancestría.
 
-Tu único rojo fue el candado de la matriz haciendo su trabajo y lo declaraste consciente —
-y mi corrida independiente encontró exactamente el mismo. Los 3 defectos cazados ANTES de
-correr (el 404 del binding por token, el correo duplicado del camino inline, la atomicidad
-del aviso diferido) son la mejor publicidad del método fix→verde→commit→mutar.
+**M13 Devoluciones: de cero a módulo completo en producción en 6 días.** Plan sellado el
+30-jul, lote 1 + QA del dueño el 04-ago, informe y badge el 05-ago. Con el «Hecho cuando»
+enmendado satisfecho entero (solo resta el QA de staging del informe, que es del dueño).
+Tus decisiones declaradas — el idioma mes/año de la casa sobre tu propio borrador, la
+pantalla hija con Volver, sin permiso nuevo a propósito — son el estándar de cómo se toma
+una llamada a criterio: con el sweep hecho y la alternativa nombrada.
 
-Tus 4 llamadas a criterio quedan ACEPTADAS como están (recibida/resuelta al cliente,
-`manage devoluciones` a las dos jefaturas, un producto por envío v1, sin badge). El badge
-«devoluciones por recibir» queda anotado como pulido para P-M13-04.
+## ⏸️ EN PAUSA — sin lote activo
 
-## 🟢 GO P-M13-04 — reportes por causa y canal (el cierre de E6) (M)
+El próximo GO depende del dueño. Candidatas que el Director le está planteando (no arranques
+ninguna sin dictado):
+- **M07 QA de bodega** con papel impreso (lo único que le falta a ese módulo).
+- **Pendientes de decisión vieja**: touch targets 44 vs 48 px, focus-restore del drawer.
+- Lo que salga de la **ronda 2 con Luis** (rendición del cobro, direcciones).
 
-Rama nueva desde main FRESCO. Ojo: main está caliente — hoy entraron TU lote, la PWA del
-conductor (`d7803f9`) y M13 convive ahora con el rol nuevo `jefe_despacho` que traerá la
-hoja de ruta de Max-2 (su rama espera doble llave; si entra antes de que arranques, la
-matriz de roles cambia OTRA vez — re-sella baseline el día que empieces).
-
-- **P-M13-04 según RUTA-MAESTRA**: reportes por causa y por canal + tests. La media docena
-  de decisiones chicas (cortes, períodos, quién los ve) tómalas con el patrón de los
-  informes de M12/M16 y decláralas en el parte.
-- **El badge del menú** («devoluciones por recibir», doctrina de badges accionables) entra
-  aquí si cabe sin inflar el lote — tú decides y lo declaras.
-- **El QA del dueño ya está APROBADO** (04-ago, desde su celular, flujo completo funcionando).
-  El «Hecho cuando» de E6 queda satisfecho en todo salvo los reportes: **tu P-M13-04 ES el
-  cierre de E6** — al mergearse, la épica completa queda cerrada.
-
-## Territorio
-- **Max-2**: su hoja de ruta digital (P-DSP-08) espera doble llave y luego re-refresh contra
-  tu M13 — la colisión esperada es LA MATRIZ DE ROLES y `config/permissions.php`; es suya,
-  no la toques.
-- **Marcos**: M05 + M18 Logística. Ni de refilón.
-- **Luis** sigue con las bodegas (D-003): el kardex local NO se empuja a stock todavía.
+Si abres sesión y este dictado sigue en v35: revisa el buzón por si hay v36, y si no lo hay,
+cierra sesión sin gastar ventana.
 
 ## Recordatorios
-Suite COMPLETA antes de cualquier push (baseline HOY: **1425 / 10.765** en main `7750951`).
-Blade tocado → build + grep superset. Conflictos con `git checkout origin/main -- <archivo>`,
-nunca con `>` (BOM de PS 5.1). Parte al buzón → doble llave.
+Baseline HOY: **1501 / 11.101** en main `6c91f94`. Las reglas de siempre siguen (suite
+completa, superset, `git checkout origin/main --`, parte al buzón).
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+CIERRE: nada pendiente de tu lado.
