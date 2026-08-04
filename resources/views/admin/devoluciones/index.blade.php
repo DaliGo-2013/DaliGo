@@ -6,7 +6,11 @@
 --}}
 <x-app-layout ancho="listado">
     <x-slot name="header">
-        <x-page-header title="Devoluciones" subtitle="Lo que los clientes declararon devolver y su estado (flujo completo: recibir → categorizar → resolver)." />
+        <x-page-header title="Devoluciones" subtitle="Lo que los clientes declararon devolver y su estado (flujo completo: recibir → categorizar → resolver).">
+            <x-slot name="action">
+                <x-button-link :href="route('admin.devoluciones.informe')">Informe</x-button-link>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="space-y-4 py-6" x-data="{ paneles: { qr: false } }">

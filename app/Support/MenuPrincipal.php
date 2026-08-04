@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AgendaTrabajo;
 use App\Models\Aprobacion;
+use App\Models\Devolucion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionReporte;
@@ -87,7 +88,7 @@ class MenuPrincipal
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
                 // Devoluciones (M13, flujo A-12): el cliente declara por el
                 // link público; bodega recibe/categoriza/resuelve acá.
-                'devoluciones' => ['label' => 'Devoluciones', 'route' => 'admin.devoluciones.index', 'activo' => ['admin.devoluciones.*'], 'permiso' => 'view devoluciones|manage devoluciones'],
+                'devoluciones' => ['label' => 'Devoluciones', 'route' => 'admin.devoluciones.index', 'activo' => ['admin.devoluciones.*'], 'permiso' => 'view devoluciones|manage devoluciones', 'badge' => 'devoluciones_por_recibir', 'badge_title' => ':n devolución(es) por recibir'],
             ],
         ],
         // LOGÍSTICA (pedido del dueño 04-08-2026). Nace con la flota: reemplaza
@@ -355,7 +356,7 @@ class MenuPrincipal
         return $atributos->get($key);
     }
 
-    /** Los 6 resolvers de badges: cada uno se gatea por SU permiso y tolera
+    /** Los 7 resolvers de badges: cada uno se gatea por SU permiso y tolera
      *  $user null. Todos son COUNTs sobre columnas indexadas. */
     private static function resolverBadges(?User $user): array
     {
@@ -374,6 +375,11 @@ class MenuPrincipal
                 : 0,
             'mi_produccion_devueltos' => ($user && $user->can('report production'))
                 ? ProduccionReporte::devueltosDe($user->id)->count()
+                : 0,
+            // M13: gateado por MANAGE (quien puede ACTUAR recibiendola en
+            // bodega; view solo consulta) — misma logica que st_por_confirmar.
+            'devoluciones_por_recibir' => ($user && $user->can('manage devoluciones'))
+                ? Devolucion::porRecibir()->count()
                 : 0,
             // Solo visibilidad del link "Mis solicitudes" del hub: quien
             // nunca ha solicitado nada no necesita verlo (y el candado de
