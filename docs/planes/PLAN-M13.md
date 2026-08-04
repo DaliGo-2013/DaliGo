@@ -1,5 +1,26 @@
 # PLAN-M13 · Devoluciones — plan fino de la unidad E6
-> **Estado: PROPUESTA (sin código) — sellado contra el código el 2026-07-30 (main @ `b57c672`)**
+> **Estado: PROPUESTA (sin código) — re-sellado contra el código el 2026-08-04 (main @ `042a7f3`; sello original 2026-07-30 @ `b57c672`)**
+
+> **📌 Re-sellado 2026-08-04** — obligado por la regla del `README`: entre el sello y hoy entraron
+> **68 commits** a main (traslados al taller, módulo Logística/vehículos, página `/plan`, avisos
+> reparado/sin-solución, coherencia de los formularios QR). Se re-verificaron las 18 filas del §0:
+> **todas las afirmaciones siguen vigentes**; lo que cambió fue líneas y contexto:
+> - `routes/web.php` creció (entraron `plan.*`, `traslados.*`, `vehiculos.*`): el bloque de
+>   cotización firmada corrió de `:491-508` a `:566-568`. Intacto.
+> - `Notificacion.php` sumó 8 eventos (taller.reparado/sin_solucion, `traslado.*`, `vehiculo.*`).
+>   **Refuerza el plan:** `taller.ingresado` ahora aplica scope de cartera en `urlDestinoPara()` —
+>   el mismo patrón que este plan prescribe para M13. El namespace `devolucion.*` sigue libre.
+> - `IngresoTallerPublicoController` **no cambió** (los Blades del QR sí, por coherencia de
+>   formularios): las citas del honeypot (`:252-258`) y de las fotos (`:296-302`) quedan intactas.
+> - Entraron **dos integraciones más de M15** (traslados y vehículos): más precedente vivo del
+>   camino de integración que §1.3 describe.
+> - Nació el módulo **Logística** en el menú y `conductores` se mudó ahí (permiso ahora
+>   `manage servicio tecnico|manage vehiculos`). El `conductor_id` del esquema §1.2 sigue válido y
+>   el ítem de M13 bajo `operacion` no choca con nada. El campo `transportista` (couriers
+>   externos: Chilexpress/Starken) **no colisiona** con la flota propia de vehículos — dominios
+>   distintos.
+> - P-F3-01 corrió de `RUTA-MAESTRA.md:276` a `:286`; D-005 sigue **exacto** en
+>   `DECISIONES.md:144`; la enmienda de E6 (30-07) está conservada en main.
 
 > **Unidad:** E6 · M13 Devoluciones (`docs/RUTA-MAESTRA.md` §E6) · **Rama:** `feature/m13-devoluciones` · **Stream:** 1 (Max-1)
 > **Objetivo:** que una devolución deje de vivir en la cabeza de una sola persona — el cliente la declara desde su celular con evidencia, bodega la recibe y la categoriza, y el reembolso pasa por el motor de aprobaciones en vez de por un acuerdo verbal.
@@ -15,17 +36,17 @@
 
 ## 0. Verificación de vigencia (qué se revisó del código)
 
-| Área | Archivo verificado | Estado hoy (2026-07-30, main `b57c672`) |
+| Área | Archivo verificado | Estado hoy (verificado 2026-07-30 @ `b57c672`; re-verificado 2026-08-04 @ `042a7f3`) |
 |---|---|---|
 | Código de M13 | `git grep -i devoluc -- app/ database/` | **NO existe ninguna entidad de M13**: cero tablas, modelos, rutas y permisos. Los 5 hits son de OTROS sentidos y confirman la colisión de vocabulario: `ProduccionController.php:642` y `MiProduccionController.php:329` (el `devolver` de M11), `DteController.php:147` (glosa de guía de despacho) y `BsaleEmisor.php:93,119` (**Bsale llama «devolución» a la nota de crédito**). Se crea todo de cero. |
 | Motor de aprobaciones | `app/Services/Aprobaciones/Aprobaciones.php:51` | `solicitar()` es el único punto de entrada. **Si la regla no matchea, aplica el efecto INLINE en la misma request** (`:89-100`) — el llamador nunca aplica. Solo las pendientes notifican (`:103-106`). |
-| Umbral monetario | `database/seeders/ConfiguracionSeeder.php:18` · `docs/planes/PLAN-M14.md:164` | `umbral_aprobacion_clp` = `1000000`, ya sembrado y **reservado textualmente «para las reglas monetarias (M04/M05/M07/M13)»**. M13 no crea clave nueva: siembra su *regla* apuntando a esta. |
+| Umbral monetario | `database/seeders/ConfiguracionSeeder.php:19` · `docs/planes/PLAN-M14.md:164` | `umbral_aprobacion_clp` = `1000000`, ya sembrado y **reservado textualmente «para las reglas monetarias (M04/M05/M07/M13)»**. M13 no crea clave nueva: siembra su *regla* apuntando a esta. |
 | Registro de un tipo de acción | `app/Models/Aprobacion.php:40-50` · `Aprobaciones.php:36-43` · `ReglasAprobacionSeeder.php:21` | Tres puntos, los tres comentados «los consumidores futuros (M04/M05/M07/**M13**) agregan aquí». Falta el handler ⇒ excepción en tiempo de request (`Aprobaciones.php:60-64`). |
 | Contrato del handler | `app/Services/Aprobaciones/AccionAprobable.php:7-23` | `aplicar()` corre DENTRO de la transacción: debe tomar **su propio `lockForUpdate`** y re-validar `datos['objetivo_updated_at']`. Referencia: `Acciones/AjusteReporteProduccion.php:17-50`. |
-| Motor de notificaciones | `app/Models/Notificacion.php:39-63` | `EVENTOS` es fuente única; un evento no registrado **lanza**. Comentario: «los módulos consumidores (M14/M12/**M13**) agregan aquí sus eventos». |
+| Motor de notificaciones | `app/Models/Notificacion.php:44` | `EVENTOS` es fuente única; un evento no registrado **lanza**. Comentario: «los módulos consumidores (M14/M12/**M13**) agregan aquí sus eventos». |
 | Plantillas nuevas | `database/seeders/ConfiguracionSeeder.php:108-110` | «Clave nueva → el `firstOrCreate` del seeder la crea en el deploy; **no requiere migración**». La one-shot solo hace falta al EDITAR un texto ya entregado. |
-| Enlace de la campanita | `app/Models/Notificacion.php:114-135` y `:174-193` | Hay que tocar **las dos**: `urlDestino()` da el destino y `urlDestinoPara()` lo suprime si el usuario no puede entrar (`default => false`). |
-| Ruta pública endurecida | `routes/web.php:491-508` | La variante **nueva** (cotización / confirmación-visita) firma **GET y POST**. La vieja del QR dejó el POST sin firmar y `RUTA-MAESTRA.md:276` (`P-F3-01`) ya lista esa deuda **nombrando a M13**. |
+| Enlace de la campanita | `app/Models/Notificacion.php:130` y `:198` | Hay que tocar **las dos**: `urlDestino()` da el destino y `urlDestinoPara()` lo suprime si el usuario no puede entrar (`default => false`). |
+| Ruta pública endurecida | `routes/web.php:566-568` | La variante **nueva** (cotización / confirmación-visita) firma **GET y POST**. La vieja del QR dejó el POST sin firmar y `RUTA-MAESTRA.md:286` (`P-F3-01`) ya lista esa deuda **nombrando a M13**. |
 | Anti-enumeración | `app/Models/OrdenServicioCotizacion.php:132-136`, `:227` | `getRouteKeyName() => 'token'` con `Str::random(64)`: el id nunca viaja en el link. |
 | Honeypot | `app/Http/Controllers/Publico/IngresoTallerPublicoController.php:252-258` | Campo `sitio_web`; si viene lleno responde **idéntico al éxito** para no dar pistas. |
 | Fotos | `IngresoTallerPublicoController.php:296-302` · `app/Support/ImagenComprimida.php:10-61` | **Nunca la regla `image`** (revienta con HEIC de iPhone): `mimetypes:` + `max:8192` + `size:N`. `ImagenComprimida::guardar()` re-encoda con GD (**sanea** el archivo), nombre `Str::random(40)`, disco **privado** `local`. |
