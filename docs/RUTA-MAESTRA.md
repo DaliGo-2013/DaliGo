@@ -359,7 +359,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M08 Despacho+PWA | 12 | **55 %** | 6.6 | **subido desde 30 % (04-ago)**: la **PWA del conductor entró a producción** (`d7803f9` — Mis entregas: firma, foto, cola offline, idempotencia por BD). Falta: hoja de ruta digital (P-DSP-08, construida, espera doble llave), P-DSP-09/10 y el QA de campo P-DSP-07 |
 | M11 Producción | 6 | 75 % | 4.5 | faltan descuento de preforma, meta del día y GP |
 | M12 Servicio técnico | 8 | **60 %** | 4.8 | **corregido desde 25 %**: taller completo + portal QR + cotización al cliente con respuesta + lotes en ruta + informes (E9: 2 pasos en curso de 5; faltan alertas 3/6/12m, sugerencia de repuestos y cobro) |
-| M13 Devoluciones | 4 | **60 %** | 2.4 | **deja el 0 % (04-ago)**: lote 1 **en producción** (`7750951` — flujo A-12 del link público al cierre: reembolso vía M14, kardex local sin tocar el espejo, fotos en 2 momentos). Falta P-M13-04 (reportes) y el QA de staging del dueño |
+| M13 Devoluciones | 4 | **70 %** | 2.8 | **deja el 0 % (04-ago)**: lote 1 **en producción** (`7750951` — flujo A-12 del link público al cierre: reembolso vía M14, kardex local sin tocar el espejo, fotos en 2 momentos) y **QA del dueño en celular APROBADO el mismo día**. Falta solo P-M13-04 (reportes) |
 | M14 Aprobaciones | 5 | **90 %** | 4.5 | **corregido desde 0 %**: E2 cerrada 17-jul, QA 8/8 en producción. Descuenta que hay **una sola acción cableada** (ajuste de producción) |
 | M15 Notificaciones | 5 | **80 %** | 4.0 | **corregido desde 0 %**: E1 cerrada 8-jul con entregabilidad verificada. Descuenta el **canal WhatsApp, que es un stub** (D-007 aplazada) |
 | M16 BI | 7 | **35 %** | 2.45 | **corregido desde 0 %**: entregado el TABLERO (cortes v0/v1/v1.2); pendiente el BI de reportes, que depende de M05 |
@@ -368,7 +368,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | F3 Piloto (hardening/migración/capacitación) | 7 | 0 % | 0 | — |
 | F4 Rollout Abate | 5 | 0 % | 0 | — |
 | F5 Coquimbo + cierre | 3 | 0 % | 0 | — |
-| **TOTAL** | **108** | | **56.20** | **≈ 52 %** |
+| **TOTAL** | **108** | | **56.60** | **≈ 52 %** |
 
 > **Lo que el número no dice, y hay que decir:** el ciclo de la factura
 > (M04 → M05 → M07 → M08, **35 de los 105 puntos**, el objetivo central del
