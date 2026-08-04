@@ -227,7 +227,11 @@ Dos reglas al mover un ítem de módulo:
 Botón **Descargar Excel** en el listado (pedido del dueño 04-08-2026): la planilla
 que circula sale **al día desde la app** y no se mantiene a mano.
 `App\Services\Logistica\FlotaExcel` arma el `.xlsx` sin librerías (un xlsx es un
-ZIP de XMLs y `ZipArchive` viene con PHP), igual que `CartaGanttExcel`.
+ZIP de XMLs y `ZipArchive` viene con PHP), igual que `CartaGanttExcel`. **El
+esqueleto del formato es compartido** (`App\Services\Excel\EscritorXlsx` arma el
+paquete; `FilasXlsx` escribe las filas): `FlotaExcel` solo aporta sus columnas,
+su contenido y su tabla de estilos. Candados propios del escritor compartido en
+`tests/Unit/Excel/`.
 
 Espeja la forma de «Control vehiculos» —identificación · dimensiones ·
 documentos— y agrega las **dos columnas que la planilla a mano no puede tener**:
@@ -259,7 +263,10 @@ carta Gantt.
 abra el archivo (Excel exige además las celdas en orden de columna y sin refs
 repetidas, y rechaza el archivo entero sin decir por qué). Los candados cubren el
 XML; la prueba final es abrirlo con Excel de verdad — se hizo vía COM y abrió sin
-reparaciones, con las fechas como número y el autofiltro puesto.
+reparaciones, con las fechas como número y el autofiltro puesto. **Repetida el
+04-08 tras extraer el escritor compartido**, y esa vez con el control que la
+vuelve creíble: reordenando a mano las celdas de una fila, Excel se niega a abrir
+el archivo mientras `simplexml_load_string` lo sigue dando por bueno.
 
 ## 5. Permisos
 

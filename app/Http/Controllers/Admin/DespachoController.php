@@ -65,8 +65,8 @@ class DespachoController extends Controller
         // No anulados según el espejo (la verdad fresca la exige el service
         // contra Bsale al crear; esto solo evita ofrecer basura evidente).
         $documentos = DocumentoVenta::with('cliente')
-            ->whereDoesntHave('despachos')
-            ->where(fn ($q) => $q->whereNull('cancellation_status')->orWhere('cancellation_status', 0))
+            ->sinDespacho()
+            ->vigentes()
             ->latest('emitido_at')
             ->limit(100)
             ->get();

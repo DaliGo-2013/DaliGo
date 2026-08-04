@@ -101,6 +101,10 @@ class MenuPrincipal
             'label' => 'Logística',
             'icon' => 'truck',
             'items' => [
+                // Hoja de ruta digital (P-DSP-08): la arma quien gestiona y la
+                // VEN además los tres autorizadores de la cadena R11 — mismo
+                // OR que gatea su ruta (D-014).
+                'hojas-ruta' => ['label' => 'Hojas de ruta', 'route' => 'admin.hojas-ruta.index', 'activo' => ['admin.hojas-ruta.*'], 'permiso' => 'manage hojas ruta|autorizar pagos ruta|autorizar ruta|autorizar carga'],
                 'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos'],
                 // Conductores llegó desde Servicio Técnico el 04-08 (pedido del
                 // dueño): quien administra la flota administra quién la maneja.

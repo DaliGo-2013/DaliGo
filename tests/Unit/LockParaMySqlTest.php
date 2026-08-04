@@ -48,6 +48,24 @@ class LockParaMySqlTest extends TestCase
     }
 
     /**
+     * El folio correlativo de la hoja de ruta (P-DSP-08) calcula max(folio)+1
+     * con el MISMO idioma: este es su builder, compilado con la grammar de
+     * producción. En MySQL el `for update` sobre el agregado toma el next-key
+     * lock que serializa dos creaciones simultáneas; la red final es el
+     * unique de `hojas_de_ruta.folio` (HojaRutaTest lo cubre a nivel BD).
+     */
+    public function test_el_max_del_folio_con_lock_emite_for_update_en_mysql(): void
+    {
+        $sql = $this->builder(MySqlGrammar::class)
+            ->from('hojas_de_ruta')
+            ->selectRaw('max(folio)')
+            ->lockForUpdate()
+            ->toSql();
+
+        $this->assertStringEndsWith('for update', $sql);
+    }
+
+    /**
      * El contrafáctico que documenta POR QUÉ el lock no se puede asertar en la
      * suite de feature. Si algún día este test empieza a fallar es una BUENA
      * noticia: significaría que SQLite pasó a soportar el lock y que entonces sí

@@ -3,11 +3,11 @@
 namespace App\Services\Plan;
 
 use App\Models\PlanExtra;
+use App\Services\Excel\EscritorXlsx;
+use App\Services\Excel\FilasXlsx;
 use App\Support\FechaNegocio;
 use App\Support\PlanProyecto;
 use Illuminate\Support\Carbon;
-use RuntimeException;
-use ZipArchive;
 
 /**
  * Genera la Carta Gantt del proyecto como archivo Excel (.xlsx), alimentada de
@@ -15,9 +15,11 @@ use ZipArchive;
  * (03-08-2026): un boton de descarga para que el Excel que circula en las
  * reuniones deje de mantenerse a mano y salga siempre al dia del repo.
  *
- * Sin dependencias: un .xlsx es un ZIP de XMLs y ZipArchive viene con PHP.
- * Se escriben las 6 partes minimas del formato OOXML con strings INLINE
- * (t="inlineStr"), que evita la tabla de sharedStrings.
+ * Sin dependencias: un .xlsx es un ZIP de XMLs y ZipArchive viene con PHP. El
+ * esqueleto del formato lo pone App\Services\Excel\EscritorXlsx y las filas las
+ * arma FilasXlsx; aca vive lo propio de este Excel: el contenido de sus dos
+ * hojas y su tabla de estilos. Los strings van INLINE (t="inlineStr"), que
+ * evita la tabla de sharedStrings.
  *
  * Semaforo (pedido de Carlos, jefe de proyecto): verde realizada / amarillo en
  * curso / rojo atrasada (fecha fin del plan pasada y <100%) / gris no iniciada.
@@ -41,10 +43,8 @@ class CartaGanttExcel
         'no_iniciada' => 'No iniciada',
     ];
 
-    /** @var array<int, string> filas XML de la hoja ya armadas */
-    private array $filas = [];
-
-    private int $fila = 0;
+    /** Buffer de la hoja que se esta escribiendo (uno nuevo por hoja). */
+    private FilasXlsx $filas;
 
     private int $totalSemanas;
 
@@ -64,27 +64,11 @@ class CartaGanttExcel
     public function generar(): string
     {
         $tracker = PlanProyecto::tracker();
-        $sheet = $this->hoja($tracker);
 
-        $tmp = tempnam(sys_get_temp_dir(), 'gantt');
-        $zip = new ZipArchive;
-        if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('No se pudo crear el zip del Excel.');
-        }
-
-        $zip->addFromString('[Content_Types].xml', $this->contentTypes());
-        $zip->addFromString('_rels/.rels', $this->relsRaiz());
-        $zip->addFromString('xl/workbook.xml', $this->workbook());
-        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->relsWorkbook());
-        $zip->addFromString('xl/styles.xml', $this->estilos());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
-        $zip->addFromString('xl/worksheets/sheet2.xml', $this->hojaAvance($tracker));
-        $zip->close();
-
-        $binario = (string) file_get_contents($tmp);
-        @unlink($tmp);
-
-        return $binario;
+        return EscritorXlsx::armar([
+            'Carta Gantt' => $this->hoja($tracker),
+            'Avance por modulo' => $this->hojaAvance($tracker),
+        ], $this->estilos());
     }
 
     /** Nombre de descarga, fechado con el dia de negocio. */
@@ -127,6 +111,8 @@ class CartaGanttExcel
 
     private function hoja(array $tracker): string
     {
+        $this->filas = new FilasXlsx(self::ESTILOS);
+
         $colGrid = 10;                     // J: primera semana
         $ultimaCol = $colGrid + $this->totalSemanas - 1;
 
@@ -135,19 +121,19 @@ class CartaGanttExcel
         $peso = $tracker['total']['peso'] ?? 0;
         $aporta = $tracker['total']['aporta'] ?? 0;
 
-        $this->filaCeldas([[1, 'DALI Cargos-Transporte · Carta Gantt — Sistema de gestión (App DALI)', 'titulo']]);
-        $this->filaCeldas([[1, 'Generada el '.$this->hoy->format('d-m-Y').' desde el tracker del repositorio (RUTA-MAESTRA §10) — la misma fuente que la página /plan. Cada descarga sale al día.', 'sub']]);
-        $this->filaCeldas([[1, "AVANCE GLOBAL: {$pct}%   ({$aporta} de {$peso} puntos ponderados por esfuerzo)", 'banner']]);
-        $this->filaVacia();
+        $this->filas->celdas([[1, 'DALI Cargos-Transporte · Carta Gantt — Sistema de gestión (App DALI)', 'titulo']]);
+        $this->filas->celdas([[1, 'Generada el '.$this->hoy->format('d-m-Y').' desde el tracker del repositorio (RUTA-MAESTRA §10) — la misma fuente que la página /plan. Cada descarga sale al día.', 'sub']]);
+        $this->filas->celdas([[1, "AVANCE GLOBAL: {$pct}%   ({$aporta} de {$peso} puntos ponderados por esfuerzo)", 'banner']]);
+        $this->filas->vacia();
 
         // --- Leyenda ----------------------------------------------------
-        $this->filaCeldas([
+        $this->filas->celdas([
             [1, 'Leyenda:', 'negrita'],
             [3, 'Realizada', 'chip_realizada'], [5, 'En curso', 'chip_en_curso'],
             [7, 'Atrasada', 'chip_atrasada'], [9, 'No iniciada', 'chip_no_iniciada'],
             [11, 'Tono claro en la barra = tramo que aún falta · Atrasada = fin de plan pasado y <100%', 'sub'],
         ]);
-        $this->filaVacia();
+        $this->filas->vacia();
 
         // --- Cabecera: meses + numeros de semana ------------------------
         $celdasMes = [];
@@ -156,7 +142,7 @@ class CartaGanttExcel
             $celdasMes[] = [$colGrid + $this->semana($m->copy()->max($this->inicio)) - 1, $etiqueta, 'mes'];
         }
         $celdasMes[] = [$colGrid + $this->semana($this->hoy) - 1, 'HOY', 'hoy'];
-        $this->filaCeldas($celdasMes);
+        $this->filas->celdas($celdasMes);
 
         $cab = [
             [1, 'Cód.', 'cab'], [2, 'Módulo / Fase', 'cab'], [3, 'Fase', 'cab'],
@@ -166,18 +152,18 @@ class CartaGanttExcel
         for ($s = 1; $s <= $this->totalSemanas; $s++) {
             $cab[] = [$colGrid + $s - 1, (string) $s, 'cab_sem'];
         }
-        $this->filaCeldas($cab);
+        $this->filas->celdas($cab);
 
         // --- Fase 0 · Discovery -------------------------------------------
         // El tracker no lleva las sub-tareas del discovery (cerraron en junio);
         // mantener esa lista aca seria una segunda copia que driftea. Una fila
         // resumen, realizada, y listo.
-        $this->filaCeldas([[1, 'FASE 0 · Discovery y planificación  (May–Jun) — cerrada', 'seccion']]);
+        $this->filas->celdas([[1, 'FASE 0 · Discovery y planificación  (May–Jun) — cerrada', 'seccion']]);
         $barraF0 = [];
         for ($k = 1; $k <= $this->semana(Carbon::parse('2026-06-30')); $k++) {
             $barraF0[] = [$colGrid + $k - 1, null, 'barra_realizada'];
         }
-        $this->filaCeldas(array_merge([
+        $this->filas->celdas(array_merge([
             [1, 'F0', 'negrita'], [2, 'Discovery: requerimientos, entrevistas, arquitectura, presupuesto', 'texto'],
             [5, 1.0, 'pct'], [6, self::ETIQUETAS['realizada'], 'chip_realizada'],
             [7, '01-05-2026', 'texto'], [8, '30-06-2026', 'texto'],
@@ -195,7 +181,7 @@ class CartaGanttExcel
         foreach (PlanProyecto::MODULOS as $key => $modulo) {
             if ($modulo['fase'] !== $faseAbierta) {
                 $faseAbierta = $modulo['fase'];
-                $this->filaCeldas([[1, $secciones[$faseAbierta] ?? $faseAbierta, 'seccion']]);
+                $this->filas->celdas([[1, $secciones[$faseAbierta] ?? $faseAbierta, 'seccion']]);
             }
             $filaTracker = $tracker['filas'][$key] ?? null;
             $pctItem = (int) ($filaTracker['pct'] ?? 0);
@@ -231,16 +217,16 @@ class CartaGanttExcel
                 $celdas[] = [$colGrid + $sIni - 1 + $k, null, ($k < $solidas ? 'barra_' : 'barrap_').$estado];
             }
 
-            $this->filaCeldas($celdas);
+            $this->filas->celdas($celdas);
         }
 
         // --- Hitos --------------------------------------------------------
-        $this->filaVacia();
-        $this->filaCeldas([[1, 'HITOS', 'cab'], [2, '', 'cab'], [3, '', 'cab'], [4, '', 'cab'], [5, '', 'cab'], [6, '', 'cab'], [7, '', 'cab'], [8, '', 'cab'], [9, '', 'cab']]);
+        $this->filas->vacia();
+        $this->filas->celdas([[1, 'HITOS', 'cab'], [2, '', 'cab'], [3, '', 'cab'], [4, '', 'cab'], [5, '', 'cab'], [6, '', 'cab'], [7, '', 'cab'], [8, '', 'cab'], [9, '', 'cab']]);
         foreach (PlanProyecto::hitos() as $hito) {
             $estado = $hito['cumplido'] ? 'realizada' : ($hito['estado'] === 'atrasado' ? 'atrasada' : 'no_iniciada');
             $texto = $hito['cumplido'] ? 'Cumplido' : ($hito['estado'] === 'atrasado' ? 'Atrasado '.abs($hito['dias']).' d' : 'Faltan '.$hito['dias'].' d');
-            $this->filaCeldas([
+            $this->filas->celdas([
                 [1, $hito['key'], 'negrita'],
                 [2, '◆ '.$hito['label'], 'texto'],
                 [6, $texto, 'chip_'.$estado],
@@ -252,15 +238,15 @@ class CartaGanttExcel
         // --- Trabajos extras (los anotados a mano en /plan) ---------------
         $extras = PlanExtra::orderByDesc('created_at')->get();
         if ($extras->isNotEmpty()) {
-            $this->filaVacia();
-            $this->filaCeldas([[1, 'TRABAJOS EXTRAS EN PARALELO (fuera de la planificación oficial)', 'cab'], [2, '', 'cab'], [3, '', 'cab'], [4, '', 'cab'], [5, '', 'cab'], [6, '', 'cab'], [7, '', 'cab'], [8, '', 'cab'], [9, '', 'cab']]);
+            $this->filas->vacia();
+            $this->filas->celdas([[1, 'TRABAJOS EXTRAS EN PARALELO (fuera de la planificación oficial)', 'cab'], [2, '', 'cab'], [3, '', 'cab'], [4, '', 'cab'], [5, '', 'cab'], [6, '', 'cab'], [7, '', 'cab'], [8, '', 'cab'], [9, '', 'cab']]);
             foreach ($extras as $extra) {
                 $estadoExtra = match ($extra->estado) {
                     'finalizada' => 'realizada',
                     'en_curso' => 'en_curso',
                     default => 'no_iniciada',
                 };
-                $this->filaCeldas([
+                $this->filas->celdas([
                     [2, $extra->titulo, 'texto'],
                     [5, ((int) $extra->avance) / 100, 'pct'],
                     [6, self::ETIQUETAS[$estadoExtra], 'chip_'.$estadoExtra],
@@ -283,7 +269,7 @@ class CartaGanttExcel
             .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
             .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="7" topLeftCell="A8" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
             .$cols
-            .'<sheetData>'.implode('', $this->filas).'</sheetData>'
+            .'<sheetData>'.$this->filas->xml().'</sheetData>'
             .'</worksheet>';
     }
 
@@ -294,14 +280,13 @@ class CartaGanttExcel
      */
     private function hojaAvance(array $tracker): string
     {
-        // Buffer propio: la hoja 1 ya consumió $this->filas/$this->fila.
-        $this->filas = [];
-        $this->fila = 0;
+        // Buffer propio: la hoja 1 ya consumió el suyo.
+        $this->filas = new FilasXlsx(self::ESTILOS);
 
-        $this->filaCeldas([[1, 'Avance por módulo — por qué cada uno está en ese porcentaje', 'titulo']]);
-        $this->filaCeldas([[1, 'Fuente: tracker RUTA-MAESTRA §10 del repositorio, al '.$this->hoy->format('d-m-Y').'. La misma que alimenta la página /plan.', 'sub']]);
-        $this->filaVacia();
-        $this->filaCeldas([
+        $this->filas->celdas([[1, 'Avance por módulo — por qué cada uno está en ese porcentaje', 'titulo']]);
+        $this->filas->celdas([[1, 'Fuente: tracker RUTA-MAESTRA §10 del repositorio, al '.$this->hoy->format('d-m-Y').'. La misma que alimenta la página /plan.', 'sub']]);
+        $this->filas->vacia();
+        $this->filas->celdas([
             [1, 'Cód.', 'cab'], [2, 'Módulo / Fase', 'cab'], [3, 'Fase', 'cab'], [4, 'Peso', 'cab'],
             [5, '% Avance', 'cab'], [6, 'Estado', 'cab'], [7, 'Por qué ese % (fundamento del tracker)', 'cab'],
         ]);
@@ -310,7 +295,7 @@ class CartaGanttExcel
             $filaTracker = $tracker['filas'][$key] ?? null;
             $pctItem = (int) ($filaTracker['pct'] ?? 0);
             $estado = $this->semaforo($pctItem, $modulo['fin'], $modulo['inicio']);
-            $this->filaCeldas([
+            $this->filas->celdas([
                 [1, $key, 'negrita'],
                 [2, $filaTracker['item'] ?? $modulo['label'], 'texto'],
                 [3, $modulo['fase'], 'texto'],
@@ -333,78 +318,18 @@ class CartaGanttExcel
             .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
             .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
             .$cols
-            .'<sheetData>'.implode('', $this->filas).'</sheetData>'
+            .'<sheetData>'.$this->filas->xml().'</sheetData>'
             .'</worksheet>';
     }
 
     // ------------------------------------------------------------------
-    // Primitivas de escritura
-    // ------------------------------------------------------------------
-
-    /**
-     * Agrega una fila. Cada celda es [columna 1-based, valor|null, estilo].
-     * Valor null = celda solo con relleno (las de la barra).
-     *
-     * @param  array<int, array{0: int, 1: mixed, 2: string}>  $celdas
-     */
-    private function filaCeldas(array $celdas): void
-    {
-        // Excel exige las celdas de una fila EN ORDEN de columna y sin referencias
-        // repetidas — si no, rechaza el archivo entero sin decir por que (el XML
-        // sigue siendo bien formado, asi que el candado de parseo no lo ve). El
-        // caso real que lo destapo: la etiqueta del mes y la marca HOY caen en la
-        // MISMA columna cuando el mes empieza esta semana. Se indexa por columna
-        // (la ultima celda gana: HOY pisa al mes, que es lo que se quiere ver) y
-        // se ordena.
-        $porCol = [];
-        foreach ($celdas as $celda) {
-            $porCol[$celda[0]] = $celda;
-        }
-        ksort($porCol);
-
-        $this->fila++;
-        $xml = '';
-        foreach ($porCol as [$col, $valor, $estilo]) {
-            $ref = $this->letra($col).$this->fila;
-            $s = self::ESTILOS[$estilo] ?? 0;
-            if ($valor === null || $valor === '') {
-                $xml .= "<c r=\"$ref\" s=\"$s\"/>";
-            } elseif (is_int($valor) || is_float($valor)) {
-                $xml .= "<c r=\"$ref\" s=\"$s\"><v>$valor</v></c>";
-            } else {
-                $texto = htmlspecialchars((string) $valor, ENT_XML1 | ENT_QUOTES, 'UTF-8');
-                $xml .= "<c r=\"$ref\" s=\"$s\" t=\"inlineStr\"><is><t xml:space=\"preserve\">$texto</t></is></c>";
-            }
-        }
-        $this->filas[] = '<row r="'.$this->fila.'">'.$xml.'</row>';
-    }
-
-    private function filaVacia(): void
-    {
-        $this->fila++;
-        $this->filas[] = '<row r="'.$this->fila.'"/>';
-    }
-
-    /** A, B, ..., Z, AA, AB... para una columna 1-based. */
-    private function letra(int $col): string
-    {
-        $s = '';
-        while ($col > 0) {
-            $col--;
-            $s = chr(65 + ($col % 26)).$s;
-            $col = intdiv($col, 26);
-        }
-
-        return $s;
-    }
-
-    // ------------------------------------------------------------------
-    // Partes fijas del OOXML
+    // Estilos
     // ------------------------------------------------------------------
 
     /**
      * Indice estilo -> posicion en cellXfs de styles.xml. Los dos arrays se
-     * construyen juntos en estilos(); este mapa es el contrato entre ambos.
+     * construyen juntos en estilos(); este mapa es el contrato entre ambos, y
+     * es lo que recibe FilasXlsx para resolver el `s=` de cada celda.
      */
     private const ESTILOS = [
         'texto' => 0, 'negrita' => 1, 'titulo' => 2, 'sub' => 3, 'banner' => 4,
@@ -500,44 +425,5 @@ class CartaGanttExcel
             .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
             .$cellXfs
             .'</styleSheet>';
-    }
-
-    private function contentTypes(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-            .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-            .'<Default Extension="xml" ContentType="application/xml"/>'
-            .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-            .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-            .'<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-            .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            .'</Types>';
-    }
-
-    private function relsRaiz(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
-            .'</Relationships>';
-    }
-
-    private function workbook(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            .'<sheets><sheet name="Carta Gantt" sheetId="1" r:id="rId1"/><sheet name="Avance por modulo" sheetId="2" r:id="rId3"/></sheets>'
-            .'</workbook>';
-    }
-
-    private function relsWorkbook(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-            .'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
-            .'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
-            .'</Relationships>';
     }
 }
