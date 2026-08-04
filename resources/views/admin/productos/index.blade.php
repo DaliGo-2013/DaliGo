@@ -190,9 +190,10 @@
                         </x-slot>
                     </x-list-row>
                 @empty
-                    <li class="px-6 py-8 text-center text-sm text-neutral-500">
-                        No hay productos. Crea uno o importa un CSV.
-                    </li>
+                    <x-lista-vacia :filtros="$filtros"
+                                   vacio="No hay productos. Crea uno o importa un CSV."
+                                   sinResultados="Ningún producto coincide con la búsqueda o los filtros. El catálogo no está vacío: no hay coincidencias en este corte."
+                                   :limpiarHref="route('admin.productos.index')" />
                 @endforelse
             </x-list-card>
 

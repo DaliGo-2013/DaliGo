@@ -225,9 +225,10 @@
                     @endcan
                 </x-list-row>
             @empty
-                <li class="px-6 py-8 text-center text-sm text-neutral-500">
-                    No hay órdenes registradas. Registra el primer ingreso de un equipo al taller.
-                </li>
+                <x-lista-vacia :filtros="$filtros"
+                               vacio="No hay órdenes registradas. Registra el primer ingreso de un equipo al taller."
+                               sinResultados="Ninguna orden coincide con la búsqueda o los filtros. Hay órdenes en el sistema, pero no en este corte."
+                               :limpiarHref="route('admin.servicio-tecnico.index')" />
             @endforelse
         </x-list-card>
 
