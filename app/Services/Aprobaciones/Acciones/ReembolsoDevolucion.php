@@ -55,5 +55,13 @@ class ReembolsoDevolucion implements AccionAprobable
             'resuelta_at' => now(),
             'resuelta_por' => $aprobacion->datos['nuevo']['resuelta_por'] ?? null,
         ]);
+
+        // El cliente se entera del resultado también en el camino DIFERIDO
+        // (cuando el jefe aprueba días después). avisarCliente ya viene con
+        // try/catch + report: un aviso que falle jamás aborta la aprobación.
+        // En prod la cola es `database` (misma BD): las filas del aviso
+        // commitean/rollbackean ATÓMICAS con la transacción de aprobación.
+        app(\App\Services\Devoluciones\Devoluciones::class)
+            ->avisarCliente($devolucion->refresh(), 'devolucion.resuelta');
     }
 }

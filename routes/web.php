@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\DespachoController;
+use App\Http\Controllers\Admin\DevolucionController;
 use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\PlanProyectoController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
+use App\Http\Controllers\Publico\DevolucionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use App\Http\Controllers\Publico\VisitaConfirmacionController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
@@ -505,6 +507,27 @@ Route::middleware('auth')
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
         });
+
+        // Devoluciones (M13, flujo A-12): consultar es distinto de operar.
+        // Las MUTACIONES (recibir/evaluar/resolver) exigen manage; el listado,
+        // la ficha y la foto (disco privado, con sesión) bastan con view.
+        Route::middleware('permission:view devoluciones|manage devoluciones')->group(function () {
+            Route::get('devoluciones', [DevolucionController::class, 'index'])->name('devoluciones.index');
+            // La foto ANTES del show: 'foto/...' son 2 segmentos, no chocan
+            // con {devolucion} numérico (mismo idioma que servicio-tecnico.foto).
+            Route::get('devoluciones/foto/{foto}', [DevolucionController::class, 'foto'])
+                ->whereNumber('foto')->name('devoluciones.foto');
+            Route::get('devoluciones/{devolucion:id}', [DevolucionController::class, 'show'])
+                ->whereNumber('devolucion')->name('devoluciones.show');
+        });
+        Route::middleware('permission:manage devoluciones')->group(function () {
+            Route::post('devoluciones/{devolucion:id}/recibir', [DevolucionController::class, 'recibir'])
+                ->whereNumber('devolucion')->name('devoluciones.recibir');
+            Route::post('devoluciones/{devolucion:id}/evaluar', [DevolucionController::class, 'evaluar'])
+                ->whereNumber('devolucion')->name('devoluciones.evaluar');
+            Route::post('devoluciones/{devolucion:id}/resolver', [DevolucionController::class, 'resolver'])
+                ->whereNumber('devolucion')->name('devoluciones.resolver');
+        });
     });
 
 // Mi produccion (Soplador): su reporte del dia + registros (tandas) por maquina/tipo.
@@ -594,6 +617,21 @@ Route::middleware('throttle:6,1')->group(function () {
         ->middleware('signed')->name('confirmacion-visita.responder');
     Route::get('confirmacion-visita/{token}/gracias', [VisitaConfirmacionController::class, 'gracias'])
         ->middleware('signed')->name('confirmacion-visita.gracias');
+});
+
+// Devolución PÚBLICA del cliente (M13, P-M13-01). Grupo con throttle PROPIO
+// (aprobado en PLAN-M13 §4): el limitador de invitados no incluye la ruta en
+// su firma, así que compartir el 6,1 de arriba dejaba fuera con un 429 al
+// cliente que reintenta con fotos (GET→POST→GET ya gasta 3). La variante
+// ENDURECIDA: GET y POST firmados (no la del QR viejo, cuya deuda ya lista
+// P-F3-01); binding por token de 64 (no enumerable).
+Route::middleware('throttle:12,1')->group(function () {
+    Route::get('devolucion', [DevolucionPublicoController::class, 'create'])
+        ->middleware('signed')->name('devolucion.create');
+    Route::post('devolucion', [DevolucionPublicoController::class, 'store'])
+        ->middleware('signed')->name('devolucion.store');
+    Route::get('devolucion/listo/{devolucion}', [DevolucionPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('devolucion.gracias');
 });
 
 require __DIR__.'/auth.php';
