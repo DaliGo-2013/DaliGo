@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Carga;
 
+use App\Models\CamionSimulacion;
 use App\Models\TipoBulto;
 use App\Models\User;
-use App\Models\Vehiculo;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,7 +20,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
 
     private User $vendedor;
 
-    private Vehiculo $hd35;
+    private CamionSimulacion $hd35;
 
     private TipoBulto $bolsa;
 
@@ -32,10 +32,12 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->vendedor = tap(User::factory()->create())->assignRole('vendedor');
 
-        $this->hd35 = Vehiculo::factory()->create([
-            'ppu' => 'RVBD32', 'alias' => 'HD35',
-            'largo_util_cm' => 430, 'ancho_util_cm' => 200, 'alto_util_cm' => 220,
-            'capacidad_carga_kg' => 1400, 'pasillo_cm' => 0,
+        // El camión es del catálogo PROPIO del simulador (decisión del dueño
+        // 05-08): la flota real no participa en esta pantalla.
+        $this->hd35 = CamionSimulacion::create([
+            'nombre' => 'Hyundai HD35',
+            'largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220,
+            'peso_max_kg' => 1400, 'pasillo_cm' => 0, 'activo' => true,
         ]);
 
         $this->bolsa = TipoBulto::create([
@@ -55,7 +57,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
     private function verMixta(array $lineas)
     {
         return $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
-            'vehiculo_id' => $this->hd35->id,
+            'camion_id' => $this->hd35->id,
             'lineas' => $lineas,
         ]));
     }
@@ -137,7 +139,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
     public function test_sin_lineas_la_pantalla_sigue_siendo_el_cupo_maximo(): void
     {
         $this->actingAs($this->vendedor)
-            ->get(route('admin.carga.index', ['vehiculo_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
             ->assertOk()
             ->assertSee('Entran')
             ->assertViewHas('mixta', null);
@@ -147,14 +149,14 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
     {
         $this->actingAs($this->vendedor)
             ->get(route('admin.carga.index', [
-                'vehiculo_id' => $this->hd35->id,
+                'camion_id' => $this->hd35->id,
                 'lineas' => [['tipo' => 999999, 'cantidad' => 10]],
             ]))
             ->assertSessionHasErrors('lineas.0.tipo');
 
         $this->actingAs($this->vendedor)
             ->get(route('admin.carga.index', [
-                'vehiculo_id' => $this->hd35->id,
+                'camion_id' => $this->hd35->id,
                 'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 0]],
             ]))
             ->assertSessionHasErrors('lineas.0.cantidad');

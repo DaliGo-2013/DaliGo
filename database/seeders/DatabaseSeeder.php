@@ -33,6 +33,10 @@ class DatabaseSeeder extends Seeder
             ZonaSeeder::class,
             // Bultos del simulador de carga (medidas reales, idempotente).
             TiposBultoSeeder::class,
+            // Camiones del simulador (catálogo PROPIO, separado de la flota —
+            // decisión del dueño 05-08): el deploy los crea solo, sin pasos
+            // manuales por phpMyAdmin.
+            CamionesSimulacionSeeder::class,
         ]);
     }
 }

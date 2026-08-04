@@ -21,21 +21,16 @@
 
     <div class="space-y-6 py-6">
 
-        @if ($vehiculos->isEmpty())
+        @if ($camiones->isEmpty())
+            {{-- Solo puede pasar si alguien desactivó todos los camiones del
+                 catálogo: el seeder los crea en cada deploy. --}}
             <x-list-card title="Simulador de carga">
                 <li class="px-6 py-10 text-center">
-                    <p class="text-sm font-medium text-neutral-900">Falta medir la caja de los camiones</p>
+                    <p class="text-sm font-medium text-neutral-900">No hay camiones de simulación activos</p>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-neutral-500">
-                        El simulador necesita el <strong>largo, ancho y alto útiles</strong> de la caja de carga —
-                        medidos por dentro, no los del folleto. Se cargan en la ficha de cada vehículo.
-                        @if ($sinMedidas > 0)
-                            Hay {{ $sinMedidas }} {{ \Illuminate\Support\Str::plural('vehículo', $sinMedidas) }} sin esas medidas.
-                        @endif
-                    </p>
-                    <p class="mt-3 text-xs">
-                        <a href="{{ route('admin.vehiculos.index') }}" class="font-medium text-brand-600 hover:text-brand-700">
-                            Ir a la flota →
-                        </a>
+                        El catálogo del simulador viene sembrado con el próximo deploy
+                        (Contenedor 40', HINO 500, Chevy 3 y HD35). Si esto aparece, se
+                        desactivaron todos: hay que reactivar alguno.
                     </p>
                 </li>
             </x-list-card>
@@ -76,12 +71,12 @@
                       method="GET" action="{{ route('admin.carga.index') }}"
                       class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:flex-row sm:items-end sm:p-4">
                     <div class="flex-1">
-                        <x-input-label for="vehiculo_id" value="Camión" />
-                        <x-select id="vehiculo_id" name="vehiculo_id" class="mt-1.5" onchange="this.form.submit()">
-                            @foreach ($vehiculos as $v)
-                                <option value="{{ $v->id }}" @selected($vehiculo?->id === $v->id)>
-                                    {{ $v->alias ?: trim($v->marca.' '.$v->modelo) ?: $v->ppu }}
-                                    — {{ number_format($v->largo_util_cm / 100, 2, ',', '.') }} × {{ number_format($v->ancho_util_cm / 100, 2, ',', '.') }} × {{ number_format($v->alto_util_cm / 100, 2, ',', '.') }} m
+                        <x-input-label for="camion_id" value="Camión" />
+                        <x-select id="camion_id" name="camion_id" class="mt-1.5" onchange="this.form.submit()">
+                            @foreach ($camiones as $c)
+                                <option value="{{ $c->id }}" @selected($camion?->id === $c->id)>
+                                    {{ $c->nombre }}
+                                    — {{ number_format($c->largo_cm / 100, 2, ',', '.') }} × {{ number_format($c->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($c->alto_cm / 100, 2, ',', '.') }} m
                                 </option>
                             @endforeach
                         </x-select>
@@ -102,12 +97,12 @@
                       method="GET" action="{{ route('admin.carga.index') }}"
                       class="space-y-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <div class="sm:max-w-md">
-                        <x-input-label for="vehiculo_id_mixta" value="Camión" />
-                        <x-select id="vehiculo_id_mixta" name="vehiculo_id" class="mt-1.5">
-                            @foreach ($vehiculos as $v)
-                                <option value="{{ $v->id }}" @selected($vehiculo?->id === $v->id)>
-                                    {{ $v->alias ?: trim($v->marca.' '.$v->modelo) ?: $v->ppu }}
-                                    — {{ number_format($v->largo_util_cm / 100, 2, ',', '.') }} × {{ number_format($v->ancho_util_cm / 100, 2, ',', '.') }} × {{ number_format($v->alto_util_cm / 100, 2, ',', '.') }} m
+                        <x-input-label for="camion_id_mixta" value="Camión" />
+                        <x-select id="camion_id_mixta" name="camion_id" class="mt-1.5">
+                            @foreach ($camiones as $c)
+                                <option value="{{ $c->id }}" @selected($camion?->id === $c->id)>
+                                    {{ $c->nombre }}
+                                    — {{ number_format($c->largo_cm / 100, 2, ',', '.') }} × {{ number_format($c->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($c->alto_cm / 100, 2, ',', '.') }} m
                                 </option>
                             @endforeach
                         </x-select>
@@ -192,7 +187,7 @@
                                         <div class="flex justify-between py-1">
                                             <span class="text-neutral-500">Peso</span>
                                             <span class="font-medium tabular-nums text-neutral-900">
-                                                {{ number_format($mixta['resultado']['peso_kg'], 0, ',', '.') }} kg{{ $vehiculo->capacidad_carga_kg ? ' de '.number_format($vehiculo->capacidad_carga_kg, 0, ',', '.') : '' }}
+                                                {{ number_format($mixta['resultado']['peso_kg'], 0, ',', '.') }} kg{{ $camion->peso_max_kg ? ' de '.number_format($camion->peso_max_kg, 0, ',', '.') : '' }}
                                             </span>
                                         </div>
                                     @endif

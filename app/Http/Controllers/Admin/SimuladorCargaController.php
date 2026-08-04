@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CamionSimulacion;
 use App\Models\TipoBulto;
-use App\Models\Vehiculo;
 use App\Services\Carga\CalculoDeCarga;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -51,7 +51,7 @@ class SimuladorCargaController extends Controller
     public function index(Request $request): View
     {
         $datos = $request->validate([
-            'vehiculo_id' => ['nullable', 'integer', 'exists:vehiculos,id'],
+            'camion_id' => ['nullable', 'integer', 'exists:camiones_simulacion,id'],
             'tipo_bulto_id' => ['nullable', 'integer', 'exists:tipos_bulto,id'],
             // Carga mixta: líneas de (producto, cantidad EN UNIDADES). Tope de 8
             // líneas: una carga real de Dali son 3-4 tipos; más que eso es un
@@ -61,21 +61,19 @@ class SimuladorCargaController extends Controller
             'lineas.*.cantidad' => ['required_with:lineas', 'integer', 'min:1', 'max:100000'],
         ]);
 
-        // Solo los vehículos con las tres medidas útiles cargadas: sin ellas no
-        // hay nada que calcular, y mostrarlos en el selector para que después
-        // salga un cero sería prometer una función que no está.
-        $vehiculos = Vehiculo::query()
-            ->whereNotNull('largo_util_cm')->whereNotNull('ancho_util_cm')->whereNotNull('alto_util_cm')
-            ->orderByRaw('(largo_util_cm * ancho_util_cm * alto_util_cm) desc')
+        // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
+        // carga TIPO sembradas por el deploy, NO los vehículos de la flota. La
+        // versión enganchada a la flota dependía de cargar medidas a mano y
+        // producción quedó mostrando «falta medir» para todo.
+        $camiones = CamionSimulacion::where('activo', true)
+            ->orderByRaw('(largo_cm * ancho_cm * alto_cm) desc')
             ->get();
 
         $bultos = TipoBulto::where('activo', true)->orderBy('categoria')->orderBy('nombre')->get();
 
-        $sinMedidas = Vehiculo::whereNull('largo_util_cm')->count();
-
-        $vehiculo = isset($datos['vehiculo_id'])
-            ? $vehiculos->firstWhere('id', (int) $datos['vehiculo_id'])
-            : $vehiculos->first();
+        $camion = isset($datos['camion_id'])
+            ? $camiones->firstWhere('id', (int) $datos['camion_id'])
+            : $camiones->first();
 
         $bulto = isset($datos['tipo_bulto_id'])
             ? $bultos->firstWhere('id', (int) $datos['tipo_bulto_id'])
@@ -84,22 +82,21 @@ class SimuladorCargaController extends Controller
         // Modo: con líneas es CARGA MIXTA («¿cabe esta carga?»); sin líneas es el
         // cupo máximo de un solo producto («¿cuánto entra?»). La misma pantalla
         // responde las dos preguntas, que son distintas.
-        $mixta = ($vehiculo && isset($datos['lineas']) && $datos['lineas'] !== [])
-            ? $this->calcularMixta($vehiculo, $datos['lineas'], $bultos)
+        $mixta = ($camion && isset($datos['lineas']) && $datos['lineas'] !== [])
+            ? $this->calcularMixta($camion, $datos['lineas'], $bultos)
             : null;
 
-        $resultado = ($vehiculo && $bulto && $mixta === null)
-            ? $this->calculo->cupo($this->vehiculoParaCalculo($vehiculo), $bulto->paraCalculo())
+        $resultado = ($camion && $bulto && $mixta === null)
+            ? $this->calculo->cupo($camion->paraCalculo(), $bulto->paraCalculo())
             : null;
 
         return view('admin.carga.index', [
-            'vehiculos' => $vehiculos,
+            'camiones' => $camiones,
             'bultos' => $bultos,
-            'vehiculo' => $vehiculo,
+            'camion' => $camion,
             'bulto' => $bulto,
             'resultado' => $resultado,
             'mixta' => $mixta,
-            'sinMedidas' => $sinMedidas,
             // Las líneas que el usuario armó, para redibujar el formulario tal
             // cual tras el GET (y como semilla del Alpine).
             'lineasSel' => collect($datos['lineas'] ?? [])
@@ -109,7 +106,7 @@ class SimuladorCargaController extends Controller
             // modelo 3D — la silueta y los bultos son prismas derivados de las
             // medidas. SIEMPRE viaja como lista de bloques: el cupo máximo es el
             // caso particular de un solo bloque.
-            'escena' => $this->escena($vehiculo, $bulto, $resultado, $mixta),
+            'escena' => $this->escena($camion, $bulto, $resultado, $mixta),
         ]);
     }
 
@@ -122,7 +119,7 @@ class SimuladorCargaController extends Controller
      * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
      * @return array{resultado: array, lineas: list<array<string, mixed>>, cabeTodo: bool, peligrosas: list<TipoBulto>}
      */
-    private function calcularMixta(Vehiculo $vehiculo, array $lineasInput, $bultos): array
+    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos): array
     {
         $modelos = [];
         $lineas = [];
@@ -138,7 +135,7 @@ class SimuladorCargaController extends Controller
             ];
         }
 
-        $resultado = $this->calculo->carga($this->vehiculoParaCalculo($vehiculo), $lineas);
+        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas);
 
         $filas = [];
         foreach ($modelos as $i => $modelo) {
@@ -171,9 +168,9 @@ class SimuladorCargaController extends Controller
      * los que el acomodo por zonas haya puesto — ordenados fondo → puerta para
      * que la animación cargue como se carga de verdad.
      */
-    private function escena(?Vehiculo $vehiculo, ?TipoBulto $bulto, ?array $resultado, ?array $mixta): ?array
+    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $resultado, ?array $mixta): ?array
     {
-        if (! $vehiculo || ($resultado === null && $mixta === null)) {
+        if (! $camion || ($resultado === null && $mixta === null)) {
             return null;
         }
 
@@ -206,27 +203,18 @@ class SimuladorCargaController extends Controller
         }
 
         return [
+            // La clave sigue llamándose 'vehiculo' porque es el contrato con
+            // carga3d.js (la silueta del camión); el dato viene del catálogo
+            // propio del simulador.
             'vehiculo' => [
-                'nombre' => $vehiculo->alias ?: trim($vehiculo->marca.' '.$vehiculo->modelo) ?: $vehiculo->ppu,
-                'largo' => $vehiculo->largo_util_cm / 100,
-                'ancho' => $vehiculo->ancho_util_cm / 100,
-                'alto' => $vehiculo->alto_util_cm / 100,
+                'nombre' => $camion->nombre,
+                'largo' => $camion->largo_cm / 100,
+                'ancho' => $camion->ancho_cm / 100,
+                'alto' => $camion->alto_cm / 100,
                 'ejes' => 2,
             ],
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
-        ];
-    }
-
-    /** @return array{largo:int,ancho:int,alto:int,peso_max_kg:int|null,pasillo:int} */
-    private function vehiculoParaCalculo(Vehiculo $v): array
-    {
-        return [
-            'largo' => (int) $v->largo_util_cm,
-            'ancho' => (int) $v->ancho_util_cm,
-            'alto' => (int) $v->alto_util_cm,
-            'peso_max_kg' => $v->capacidad_carga_kg ? (int) $v->capacidad_carga_kg : null,
-            'pasillo' => (int) ($v->pasillo_cm ?? 0),
         ];
     }
 }

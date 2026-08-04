@@ -6,6 +6,29 @@
 > (bolsa de 5, orientación fija, jaulas, UN3480) están en el parte
 > `docs/fleet/buzon/partes/2026-08-04--claude-code--traspaso-simulador-carga.md`.
 
+## 0. Los camiones del simulador NO son los de la flota
+
+**Decisión del dueño, 05-08-2026** («yo no quiero que esté enlazado con los
+vehículos de la flota»). El simulador tiene su **catálogo propio**:
+`camiones_simulacion` (`App\Models\CamionSimulacion`), sembrado por
+`CamionesSimulacionSeeder` en cada deploy con las medidas que él dictó —
+Contenedor 40', HINO 500, Chevy 3 y HD35, verificadas contra sus cupos de
+referencia. Son cajas de carga **TIPO** («un HD35»), no patentes.
+
+La lección que motivó el cambio, para no repetirla: la primera versión leía las
+medidas desde los vehículos de la flota, y cargarlas era un `.sql` manual por
+phpMyAdmin. **Ese paso nunca ocurrió y producción quedó mostrando «falta medir»
+para todo.** Un dato sin el cual la pantalla no funciona no puede depender de un
+paso manual: o viaja en el deploy (seeder) o la pantalla no debió salir. Las
+columnas `*_util_cm` de `vehiculos` quedaron sin uso por ahora; si la flota
+algún día las necesita para otra cosa, ahí están.
+
+El «H1» del dictado original no se siembra (vendido en 2021, descartado por el
+dueño el 04-08): cotizar contra un camión que no existe es prometer un viaje que
+no se puede hacer. Las medidas del seeder son **fuente de verdad del repo**
+(`updateOrCreate`): una corrección viaja al deploy y una edición externa se
+revierte — son datos verificados contra cálculo, no preferencias.
+
 ## 1. Las dos preguntas de la pantalla
 
 La misma página (`admin.carga.index`, permiso `simular carga`) responde dos
