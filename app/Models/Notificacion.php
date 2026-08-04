@@ -50,6 +50,17 @@ class Notificacion extends Model
         // Taller · un cliente ingresó un equipo por QR (unidad o cantidad):
         // aviso a ventas + al técnico para que sepan que entró una máquina.
         'taller.ingresado' => 'Ingreso de equipo al taller (QR)',
+        // Taller · el técnico marcó la orden como REPARADA: ventas tiene que
+        // llamar al cliente para que lo retire (decision del dueño 30-07).
+        'taller.reparado' => 'Equipo reparado (avisar al cliente)',
+        // Taller · no tuvo arreglo. Mismo destinatario que 'reparado', pero la
+        // conversacion es otra: reemplazo, o garantia si fue falla de fabrica.
+        'taller.sin_solucion' => 'Equipo sin solución (avisar al cliente)',
+        // Traslado de maquinas sucursal -> casa matriz (decision del dueño 03-08).
+        'traslado.despachado' => 'Vienen máquinas en camino al taller',
+        'traslado.recibido' => 'Traslado recibido en el taller',
+        // El aviso que cierra las excusas: salieron N y llegaron menos.
+        'traslado.diferencias' => 'Traslado recibido CON DIFERENCIAS',
         // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
@@ -60,6 +71,11 @@ class Notificacion extends Model
         'terreno.confirmada' => 'El cliente respondió a la visita agendada',
         // Agenda de terreno · una solicitud fue rechazada (con motivo)
         'terreno.rechazada' => 'Solicitud de terreno rechazada',
+        // Logística · vencimiento de documentos de la flota (decisión del dueño
+        // 04-08): aviso 30 días antes y aviso cuando ya venció. Lo dispara el
+        // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
+        'vehiculo.documento_por_vencer' => 'Documento de vehículo por vencer',
+        'vehiculo.documento_vencido' => 'Documento de vehículo VENCIDO',
     ];
 
     protected $fillable = [
@@ -122,12 +138,20 @@ class Notificacion extends Model
         $puede = match ($this->evento) {
             'aprobacion.solicitada', 'aprobacion.escalada' => $user->can('aprobar solicitudes'),
             'aprobacion.resuelta' => true, // "mis solicitudes": basta estar autenticado
-            'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico']),
+            // Si el destino es la ficha de una orden, además del permiso hay que
+            // respetar el scope de cartera del vendedor (igual que cotizacion.*).
+            'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
+                && (! $this->notificable instanceof OrdenServicio || $this->notificable->esVisiblePara($user)),
             // Detalle de una orden: permiso Y scope de cartera del vendedor.
+            'taller.reparado', 'taller.sin_solucion',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            // La ficha del traslado la abre quien despacha o quien recibe.
+            'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
+            // La ficha del vehículo: mismo gate que su ruta en routes/web.php.
+            'vehiculo.documento_por_vencer', 'vehiculo.documento_vencido' => $user->canAny(['ver vehiculos', 'manage vehiculos']),
             default => false,
         };
 
@@ -178,16 +202,30 @@ class Notificacion extends Model
         return match ($this->evento) {
             'aprobacion.solicitada', 'aprobacion.escalada' => route('aprobaciones.index').$ancla,
             'aprobacion.resuelta' => route('aprobaciones.mias').$ancla,
-            // Ingreso por QR (por confirmar): la superficie para actuar es el
-            // listado de servicio técnico (ahí se confirma la recepción).
-            'taller.ingresado' => route('admin.servicio-tecnico.index'),
+            // Ingreso por confirmar. Si el origen es UNA orden, se aterriza en su
+            // ficha, que es donde está el botón «Confirmar recepción»; si es un LOTE
+            // (N órdenes, sin ficha propia), en el listado.
+            'taller.ingresado' => $this->notificable instanceof OrdenServicio && $this->notificable_id
+                ? route('admin.servicio-tecnico.show', $this->notificable_id)
+                : route('admin.servicio-tecnico.index'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
+            'taller.reparado', 'taller.sin_solucion',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
             // ven en la agenda de terreno.
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
+            // El traslado aterriza en SU ficha: es donde se confirma la recepcion
+            // y donde se ve que maquina falta.
+            'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $this->notificable_id
+                ? route('admin.traslados.show', $this->notificable_id)
+                : route('admin.traslados.index'),
+            // El vencimiento aterriza en la ficha del vehículo: es donde se
+            // actualiza la fecha del documento que venció.
+            'vehiculo.documento_por_vencer', 'vehiculo.documento_vencido' => $this->notificable_id
+                ? route('admin.vehiculos.show', $this->notificable_id)
+                : route('admin.vehiculos.index'),
             default => null,
         };
     }

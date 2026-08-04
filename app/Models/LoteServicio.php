@@ -108,6 +108,9 @@ class LoteServicio extends Model implements AuditableContract
     public function notificarIngresoInterno(): void
     {
         $datos = [
+            // Un lote son N ordenes, asi que el "folio" del aviso es el codigo del
+            // lote; el destino sigue siendo el listado (el lote no tiene ficha).
+            'folio' => $this->codigo ?? '—',
             'cliente' => $this->cliente_nombre,
             'equipo' => OrdenServicio::etiquetaTipo($this->tipo_default),
             'maquinas' => $this->total_ordenes.' equipos',

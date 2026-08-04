@@ -8,8 +8,10 @@ use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
 use App\Models\User;
+use App\Support\FechaNegocio;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -325,7 +327,9 @@ class DashboardTest extends TestCase
         OrdenServicio::factory()->create(['estado' => 'reparado']);
         // Entregadas: solo las retiradas ESTE mes cuentan en la tarjeta.
         OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
-        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]); // mes pasado → no
+        // Último día del mes ANTERIOR — no subMonth(): un día 31 desborda («31
+        // de junio» → 1 de julio, el MISMO mes) y este fixture contaría de más.
+        OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => now()->startOfMonth()->subDay()->toDateString()]); // mes pasado → no
         OrdenServicio::factory()->create(['estado' => 'entregado', 'fecha_retiro' => null]);                              // histórica → no
 
         $res = $this->actingAs($this->userWithRole('tecnico'))->get('/dashboard');
@@ -342,6 +346,53 @@ class DashboardTest extends TestCase
         $this->assertSame(3, $cards['Recibido / Cotización']['cantidad']);   // 2 + 1
         $this->assertSame(1, $cards['Reparadas']['cantidad']);
         $this->assertSame(1, $cards['Entregadas (mes)']['cantidad']);         // solo la de este mes
+    }
+
+    /**
+     * Candado del borde de mes de «Entregadas (mes)»: el rango que cuenta la
+     * tarjeta es [primer día, último día] del mes de negocio, y eso NO puede
+     * depender del día en que se corra la suite. El fixture de arriba prueba el
+     * mes con la fecha del día — el que lo destapó el 31-07 —; este recorre los
+     * días peligrosos (los 31 que siguen a un mes corto, el día 1, un 29 de
+     * febrero bisiesto, el cierre de año) con las órdenes ancladas a los cuatro
+     * bordes: primer y último día del mes DENTRO, último del anterior y primero
+     * del siguiente FUERA. Siempre 2. Mutado en los dos bordes del rango de
+     * DashboardController (correr endOfMonth() o startOfMonth() un mes → rojo).
+     */
+    public function test_entregadas_del_mes_no_depende_del_dia_de_la_corrida(): void
+    {
+        $tecnico = $this->userWithRole('tecnico');
+
+        $fechas = [
+            '2026-07-31', // el 31 que destapó el bug (junio tiene 30)
+            '2026-03-31', // 31 tras febrero
+            '2026-05-31', '2026-10-31', '2026-12-31',
+            '2026-03-01', '2026-01-01', // día 1
+            '2024-02-29', // bisiesto
+        ];
+
+        foreach ($fechas as $fecha) {
+            // Mediodía UTC, igual que TestCase: misma fecha en UTC y en Chile.
+            $this->travelTo(Carbon::parse($fecha, 'UTC')->setTime(12, 0));
+
+            $mes = FechaNegocio::ahora();
+            foreach ([
+                $mes->copy()->startOfMonth(),             // dentro (borde inferior)
+                $mes->copy()->endOfMonth(),               // dentro (borde superior)
+                $mes->copy()->startOfMonth()->subDay(),   // fuera: mes anterior
+                $mes->copy()->endOfMonth()->addDay(),     // fuera: mes siguiente
+            ] as $retiro) {
+                OrdenServicio::factory()->create([
+                    'estado' => 'entregado',
+                    'fecha_retiro' => $retiro->toDateString(),
+                ]);
+            }
+
+            $cards = collect($this->actingAs($tecnico)->get('/dashboard')->viewData('tallerCards'))->keyBy('label');
+            $this->assertSame(2, $cards['Entregadas (mes)']['cantidad'], "día simulado {$fecha}");
+
+            OrdenServicio::query()->delete();
+        }
     }
 
     public function test_sin_permiso_de_servicio_tecnico_no_hay_tarjetas_de_taller(): void

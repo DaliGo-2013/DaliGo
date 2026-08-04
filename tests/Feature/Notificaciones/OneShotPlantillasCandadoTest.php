@@ -67,29 +67,70 @@ class OneShotPlantillasCandadoTest extends TestCase
     }
 
     /**
-     * One-shot de NOTIFICACIONES INTERNAS (2026_07_22_180000, de Marcos):
-     * cambia SOLO el `cuerpo` y conserva el `asunto`, así que se compara esa
-     * clave del JSON.
+     * One-shots de NOTIFICACIONES INTERNAS: cambian SOLO el `cuerpo` y conservan
+     * el `asunto`, así que se compara esa clave del JSON.
+     *
+     * ⚠️ Van EN ORDEN CRONOLÓGICO. Una misma plantilla puede ser tocada por varias
+     * one-shots a lo largo del tiempo (la de 22-07 entregó A→B; la de 30-07, tras
+     * la auditoría de la ruta de taller, entrega B→C), y entonces el invariante NO
+     * es «el new de cada one-shot es lo que siembra el seeder» — eso solo lo puede
+     * cumplir la ÚLTIMA de la cadena. El invariante real, que es el que este test
+     * verifica ahora, tiene dos mitades:
+     *
+     *   1. La cadena está ENCADENADA: el `new` de una one-shot es el `old` de la
+     *      siguiente que toca esa misma clave. Si se rompe, la segunda no encuentra
+     *      el texto que espera en una BD ya migrada → no-op silencioso.
+     *   2. El `new` de la ÚLTIMA one-shot de cada clave es lo que siembra el seeder
+     *      hoy. Si se rompe, el texto del seeder nunca llega a producción.
+     *
+     * Al agregar una one-shot nueva, súmala AL FINAL de la lista.
      */
-    public function test_la_one_shot_de_notificaciones_internas_calza_con_el_seeder(): void
+    public function test_la_cadena_de_one_shots_de_notificaciones_internas_calza_con_el_seeder(): void
     {
-        $migracion = require database_path(
-            'migrations/2026_07_22_180000_enriquecer_plantillas_notificaciones_internas.php'
-        );
-        $metodo = new ReflectionMethod($migracion, 'plantillas');
-        $metodo->setAccessible(true);
-        $plantillas = $metodo->invoke($migracion);
+        $enOrden = [
+            'migrations/2026_07_22_180000_enriquecer_plantillas_notificaciones_internas.php',
+            'migrations/2026_07_30_100000_limpia_plantillas_taller_terreno_auditoria.php',
+        ];
 
-        $this->assertNotEmpty($plantillas, 'No se pudo leer plantillas() de la one-shot de internas.');
+        /** @var array<string, list<array{archivo: string, old: string, new: string}>> */
+        $cadenas = [];
 
-        foreach ($plantillas as $clave => $cuerpos) {
+        foreach ($enOrden as $archivo) {
+            $migracion = require database_path($archivo);
+            $metodo = new ReflectionMethod($migracion, 'plantillas');
+            $metodo->setAccessible(true);
+            $plantillas = $metodo->invoke($migracion);
+
+            $this->assertNotEmpty($plantillas, "No se pudo leer plantillas() de {$archivo}.");
+
+            foreach ($plantillas as $clave => $cuerpos) {
+                $this->assertNotSame($cuerpos['old'], $cuerpos['new'],
+                    "[{$clave}] el par old/new de {$archivo} es idéntico: no entrega ningún cambio.");
+
+                $cadenas[$clave][] = ['archivo' => $archivo, 'old' => $cuerpos['old'], 'new' => $cuerpos['new']];
+            }
+        }
+
+        foreach ($cadenas as $clave => $eslabones) {
+            // (1) Cada eslabón parte del texto que dejó el anterior.
+            foreach ($eslabones as $i => $eslabon) {
+                if ($i === 0) {
+                    continue;
+                }
+                $this->assertSame($eslabones[$i - 1]['new'], $eslabon['old'],
+                    "[{$clave}] la cadena de one-shots está rota: el `old` de {$eslabon['archivo']} no es el ".
+                    "`new` que dejó {$eslabones[$i - 1]['archivo']}. En una BD ya migrada no encontrará ese ".
+                    'texto y no entregará nada. '.self::AYUDA);
+            }
+
+            // (2) El último eslabón deja exactamente lo que siembra el seeder.
+            $ultimo = end($eslabones);
             $sembrada = Configuracion::get($clave);
 
             $this->assertIsArray($sembrada, "[{$clave}] no está sembrada como JSON en el seeder.");
-            $this->assertSame($cuerpos['new'], $sembrada['cuerpo'] ?? null,
-                "[{$clave}] el cuerpo NUEVO de la one-shot ya no es el que siembra el seeder. ".self::AYUDA);
-            $this->assertNotSame($cuerpos['old'], $cuerpos['new'],
-                "[{$clave}] el par old/new de la one-shot es idéntico: no entrega ningún cambio.");
+            $this->assertSame($ultimo['new'], $sembrada['cuerpo'] ?? null,
+                "[{$clave}] el cuerpo NUEVO de la última one-shot ({$ultimo['archivo']}) ya no es el que ".
+                'siembra el seeder. '.self::AYUDA);
         }
     }
 }

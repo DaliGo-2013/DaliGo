@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\CotizacionCliente;
 use App\Mail\DetalleTrabajoCliente;
+use App\Mail\SinSolucionCliente;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\AgendaTrabajo;
 use App\Models\AgendaTrabajoRepuesto;
@@ -23,6 +24,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -457,6 +459,9 @@ class ServicioTecnicoController extends Controller
             // no es una etapa útil de cara al cliente (el estado interno sigue en ST).
             'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
             'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
+            // Variante para las máquinas recibidas en Abate o Coquimbo: llevan el
+            // paso del viaje a la casa matriz.
+            'pasosConTraslado' => $this->pasosSeguimiento(['recibido', 'en_traslado', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
         ]);
     }
 
@@ -472,6 +477,10 @@ class ServicioTecnicoController extends Controller
     {
         $desc = [
             'recibido' => 'Recibimos tu equipo en el taller.',
+            // Paso propio para el equipo que se recibió en sucursal y viaja a la
+            // casa matriz: el cliente veía «recibido» y después nada por días
+            // (decisión del dueño 03-08, para el seguimiento por folio).
+            'en_traslado' => 'Tu equipo va en camino al taller.',
             'en_revision' => 'El técnico está revisando la falla.',
             'cotizacion' => 'Te enviamos el presupuesto y esperamos tu aprobación.',
             'esperando_repuesto' => 'Pedimos el repuesto necesario para la reparación.',
@@ -494,7 +503,8 @@ class ServicioTecnicoController extends Controller
         // cartera propia (quien tiene 'ver todo servicio tecnico' pasa siempre).
         abort_unless($orden->esVisiblePara(auth()->user()), 403);
 
-        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos']);
+        // `lote` para el bloque «Retiro en ruta» (conductor y ciudad de origen).
+        $orden->load(['producto.precios.lista', 'sucursal', 'repuestos', 'fotos', 'lote']);
 
         return view('admin.servicio-tecnico.show', [
             'orden' => $orden,
@@ -537,7 +547,7 @@ class ServicioTecnicoController extends Controller
 
     public function update(Request $request, OrdenServicio $orden): RedirectResponse
     {
-        $orden->update($this->validateData($request));
+        $orden->update($this->validateData($request, orden: $orden));
 
         return redirect()->route('admin.servicio-tecnico.index')
             ->with('status', "Orden {$orden->folio} actualizada.");
@@ -713,6 +723,15 @@ class ServicioTecnicoController extends Controller
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        // Regla del dueño (03-08-2026): una maquina no se puede reparar si no fue
+        // recepcionada en la casa matriz. Cubre los dos casos que antes eran
+        // invisibles —sigue en la sucursal, o va en camino sin confirmar— y es lo
+        // que obliga a que el traslado se registre: sin este candado el registro
+        // seria opcional y moriria a la semana.
+        if ($orden->en_transito) {
+            return back()->with('status', 'No se puede trabajar esta máquina todavía: '.$orden->motivo_no_llego);
+        }
+
         // Diagnostico final OBLIGATORIO al cerrar la orden: toda maquina que se
         // marca como 'reparado' o 'sin_solucion' debe quedar con la causa de la
         // falla (para que el informe refleje la realidad). En los estados
@@ -760,6 +779,12 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
+        // Estado ANTES de guardar: el aviso de «reparado» va en la TRANSICIÓN, no
+        // en cada guardado. El técnico re-guarda el parte varias veces (agrega un
+        // repuesto, corrige el trabajo) y sin esto ventas recibiría un aviso por
+        // cada vez.
+        $estadoAnterior = $orden->estado;
+
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
@@ -792,11 +817,57 @@ class ServicioTecnicoController extends Controller
             ]);
         }
 
+        // Avisos de CIERRE de la orden. Van en la TRANSICIÓN y son acción
+        // SECUNDARIA (try/catch): un aviso que falle no puede hacer perder el parte
+        // del técnico, que es el dato real.
+        $cerroAhora = fn (string $estado) => $data['estado'] === $estado && $estadoAnterior !== $estado;
+
+        // Reparado: el equipo quedó listo y ventas tiene que llamar al cliente.
+        if ($cerroAhora('reparado')) {
+            try {
+                $orden->notificarReparado($request->user());
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        // Sin solución: al CLIENTE por correo + a ventas (decisión del dueño 30-07).
+        // El correo va PRIMERO porque su resultado entra en el aviso interno: si no
+        // salió, el aviso pide llamarlo en vez de dar por hecho que ya sabe.
+        $avisadoAlCliente = null;
+
+        if ($cerroAhora('sin_solucion')) {
+            if (filled($orden->cliente_email)) {
+                try {
+                    Mail::to($orden->cliente_email)->send(new SinSolucionCliente($orden));
+                    $avisadoAlCliente = true;
+                } catch (\Throwable $e) {
+                    report($e);
+                    $avisadoAlCliente = false;
+                }
+            }
+
+            try {
+                $orden->notificarSinSolucion($request->user(), $avisadoAlCliente);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        // Al técnico se le dice qué pasó con el correo al cliente, no solo que
+        // guardó: es la única pantalla donde se entera de que el aviso salió (o de
+        // que hay que llamar al cliente porque no salió).
+        $aviso = match ($avisadoAlCliente) {
+            true => " Se le avisó a {$orden->cliente_email}.",
+            false => ' No se pudo enviar el correo al cliente: hay que llamarlo.',
+            null => $cerroAhora('sin_solucion') ? ' La orden no tiene correo del cliente: hay que llamarlo.' : '',
+        };
+
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
         // el técnico puede enviar la cotización enseguida —"guarda antes de
         // enviar"— sin perder la página y con los datos ya guardados a la vista.
         return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
-            ->with('status', "Reparación de la orden {$orden->folio} actualizada.");
+            ->with('status', "Reparación de la orden {$orden->folio} actualizada.".$aviso);
     }
 
     /**
@@ -1138,19 +1209,31 @@ class ServicioTecnicoController extends Controller
             ->when($f['tipo_equipo'] ?? null, fn (Builder $qb, $v) => $qb->where('tipo_equipo', $v))
             ->when($f['facturacion'] ?? null, fn (Builder $qb, $v) => $qb->where('facturacion', $v))
             ->when($f['sucursal_id'] ?? null, fn (Builder $qb, $v) => $qb->where('sucursal_id', $v))
-            // Periodo Año/Mes: rango de fechas con whereDate en ambos bordes
-            // (portable MySQL 5.7 / SQLite y usa el indice; nada de YEAR() en
-            // SQL). Mes sin año asume el año actual.
+            // Periodo Año/Mes. Mes sin año asume el año actual.
+            //
+            // Rango SEMIABIERTO sobre la columna cruda (`>= inicio` y `< inicio del
+            // periodo siguiente`), no `whereDate`: acá decía que whereDate "usa el
+            // indice" y es al revés — en MySQL compila a `date(fecha_ingreso) >= ?`,
+            // y envolver la columna en una función deja el índice fuera de juego,
+            // así que cada clic de mes leía la tabla entera, dos veces (el count()
+            // del paginador + la página). Medido con 9.940 órdenes: 15 ms que
+            // crecían con la tabla → 1 ms constante.
+            //
+            // Semiabierto y no BETWEEN por el borde superior: en los tests (SQLite)
+            // la columna guarda '2026-07-31 00:00:00', que como TEXTO es mayor que
+            // '2026-07-31', y el BETWEEN dejaba las órdenes del último día del mes
+            // fuera (lo cazó el candado del borde). `< '2026-08-01'` es correcto en
+            // los dos motores, con y sin hora.
             ->when($f['anio'] ?? $f['mes'] ?? null, function (Builder $qb) use ($f) {
                 $anio = (int) ($f['anio'] ?? \App\Support\FechaNegocio::ahora()->year);
                 $mes = isset($f['mes']) ? (int) $f['mes'] : null;
                 $desde = Carbon::create($anio, $mes ?? 1, 1);
-                $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+                $siguiente = $mes ? $desde->copy()->addMonth() : $desde->copy()->addYear();
                 // Por defecto el período es por fecha de ingreso; 'retiro' lo aplica
                 // sobre fecha_retiro (para "Entregadas del mes").
                 $col = ($f['por'] ?? 'ingreso') === 'retiro' ? 'fecha_retiro' : 'fecha_ingreso';
-                $qb->whereDate($col, '>=', $desde->toDateString())
-                    ->whereDate($col, '<=', $hasta->toDateString());
+                $qb->where($col, '>=', $desde->toDateString())
+                    ->where($col, '<', $siguiente->toDateString());
             });
     }
 
@@ -1164,9 +1247,19 @@ class ServicioTecnicoController extends Controller
      */
     private function resumenHistorial(?int $anioActivo): array
     {
+        // Estos conteos son los MISMOS para todos y cambian solo cuando entra o se
+        // edita una orden, asi que se cachean con una version que sube por evento
+        // del modelo (OrdenServicio::invalidarHistorial): un ingreso nuevo se ve al
+        // instante, y entre ingresos no se vuelve a barrer la tabla.
+        $version = OrdenServicio::versionHistorial();
+
         // Reparacion = total - garantia (igual que condicion_efectiva: las
         // ordenes viejas con facturacion NULL cuentan como reparacion).
-        $anios = OrdenServicio::query()
+        //
+        // El GROUP BY por año necesita SUBSTR sobre la columna, y eso deja el indice
+        // de `fecha_ingreso` fuera de juego -> barrido completo. Por eso justamente
+        // se cachea: es la consulta mas cara del listado y la que menos cambia.
+        $anios = Cache::remember("dg.st.historial.anios.$version", now()->addDay(), fn () => OrdenServicio::query()
             ->whereNotNull('fecha_ingreso')
             ->selectRaw("SUBSTR(fecha_ingreso, 1, 4) as anio, COUNT(*) as total, SUM(CASE WHEN facturacion = 'garantia' THEN 1 ELSE 0 END) as garantia")
             ->groupBy('anio')
@@ -1178,20 +1271,28 @@ class ServicioTecnicoController extends Controller
                     'reparacion' => (int) $fila->total - (int) $fila->garantia,
                 ],
             ])
-            ->sortKeysDesc();
+            ->sortKeysDesc());
 
         $meses = null;
         if ($anioActivo !== null) {
-            $porMes = OrdenServicio::query()
-                ->whereNotNull('fecha_ingreso')
-                ->whereRaw('SUBSTR(fecha_ingreso, 1, 4) = ?', [(string) $anioActivo])
-                ->selectRaw('SUBSTR(fecha_ingreso, 6, 2) as mes, COUNT(*) as total')
-                ->groupBy('mes')
-                ->pluck('total', 'mes');
+            $meses = Cache::remember("dg.st.historial.meses.$anioActivo.$version", now()->addDay(), function () use ($anioActivo) {
+                // El filtro va por RANGO SEMIABIERTO sobre la columna cruda, no con
+                // `SUBSTR(fecha_ingreso,1,4) = ?`: envolver la columna en una
+                // funcion anula el indice y obliga a leer la tabla entera. Con el
+                // rango, MySQL entra por el indice y solo recorre ese año; el SUBSTR
+                // queda unicamente en el SELECT, sobre las filas ya acotadas.
+                // Semiabierto por el borde: en SQLite la columna guarda hora.
+                $porMes = OrdenServicio::query()
+                    ->where('fecha_ingreso', '>=', "$anioActivo-01-01")
+                    ->where('fecha_ingreso', '<', ($anioActivo + 1).'-01-01')
+                    ->selectRaw('SUBSTR(fecha_ingreso, 6, 2) as mes, COUNT(*) as total')
+                    ->groupBy('mes')
+                    ->pluck('total', 'mes');
 
-            $meses = collect(range(1, 12))
-                ->mapWithKeys(fn (int $m) => [$m => (int) ($porMes[str_pad((string) $m, 2, '0', STR_PAD_LEFT)] ?? 0)])
-                ->all();
+                return collect(range(1, 12))
+                    ->mapWithKeys(fn (int $m) => [$m => (int) ($porMes[str_pad((string) $m, 2, '0', STR_PAD_LEFT)] ?? 0)])
+                    ->all();
+            });
         }
 
         return ['anios' => $anios, 'meses' => $meses];
@@ -1270,7 +1371,12 @@ class ServicioTecnicoController extends Controller
         return array_reverse(range(min($primero, $ultimo), $ultimo));
     }
 
-    private function validateData(Request $request, bool $creando = false): array
+    /**
+     * @param  OrdenServicio|null  $orden  La orden que se edita (null al crear). Se
+     *                                     usa para no exigir datos que la orden nunca
+     *                                     tuvo — ver la regla de producto_id.
+     */
+    private function validateData(Request $request, bool $creando = false, ?OrdenServicio $orden = null): array
     {
         // Normalizar el RUT antes de validar (forma canonica 12345678-9), igual que
         // en Clientes; si no se puede normalizar, dejar el valor original para que
@@ -1313,7 +1419,17 @@ class ServicioTecnicoController extends Controller
             // Obligatorio en el mostrador: toda orden se vincula a un producto del
             // catalogo Dali (el encargado ayuda a buscarlo). El form publico del QR
             // lo maneja aparte (alli sigue opcional).
-            'producto_id' => ['required', 'integer', Rule::exists('productos', 'id')],
+            //
+            // Al EDITAR solo se exige si la orden ya lo tenia: las ordenes que nacen
+            // por QR o por lote en ruta no traen producto, y exigirlo obligaba a
+            // clasificar el equipo en el catalogo para poder corregir cualquier otro
+            // dato (un telefono mal escrito, por ejemplo). Quien quiera clasificarla
+            // lo puede hacer igual; lo que ya no se puede es quitarle el producto a
+            // una orden que si lo tenia.
+            'producto_id' => [
+                Rule::requiredIf($creando || filled($orden?->producto_id)),
+                'nullable', 'integer', Rule::exists('productos', 'id'),
+            ],
             'sucursal_id' => [Rule::requiredIf(! $esRuta), 'nullable', 'integer', Rule::exists('sucursales', 'id')],
             // Ciudad/localidad cuando se recibe en ruta (obligatoria en ese caso).
             'ruta' => [Rule::requiredIf($esRuta), 'nullable', 'string', 'max:120'],

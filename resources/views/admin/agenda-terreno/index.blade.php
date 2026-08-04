@@ -243,7 +243,7 @@
                             @endif
                         </div>
                     @empty
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">Sin trabajo por realizar este día.</div>
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">No hay trabajos agendados este día.</div>
                     @endforelse
                 @else
                     {{-- Trabajos existentes del día: cada uno como formulario editable. --}}
@@ -279,35 +279,13 @@
                         </div>
                     @endforeach
 
-                    {{-- Agregar un trabajo para este día (formulario prellenado con la fecha).
-                         Si el día ya tiene trabajos, viene colapsado tras un botón. --}}
-                    <div x-data="{ abierto: {{ $trabajosDia->isEmpty() ? 'true' : 'false' }} }">
-                        <button type="button" x-show="! abierto" x-on:click="abierto = true"
-                                class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-brand-300 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100">
-                            <x-icon.plus class="h-4 w-4" /> Agregar trabajo el {{ $diaSel->translatedFormat('d \d\e F') }}
-                        </button>
-                        <div x-show="abierto" x-cloak
-                             class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6"
-                             x-data="agendaTerrenoForm({
-                                endpointCliente: '{{ route('admin.agenda-terreno.buscar-cliente') }}',
-                                servicios: @js($serviciosJs),
-                                clienteId: 0,
-                                servicioId: '',
-                             })">
-                            <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Nuevo trabajo</p>
-                            <form method="POST" action="{{ route('admin.agenda-terreno.store') }}">
-                                @csrf
-                                @include('admin.agenda-terreno._form', ['trabajo' => null, 'fechaDefault' => $isoSel, 'clienteCatalogo' => null])
-                                <div class="mt-6 flex items-center gap-3">
-                                    <x-primary-button>Agendar trabajo</x-primary-button>
-                                    @unless ($trabajosDia->isEmpty())
-                                        <button type="button" x-on:click="abierto = false"
-                                                class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
-                                    @endunless
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    {{-- Día sin trabajos: mensaje claro de "nada agendado" en vez de
+                         dejar el panel en blanco. Para agregar se usa el botón "Agendar
+                         trabajo" de la cabecera (2026-07-30: se quitó el form inline por
+                         día — duplicaba ese CTA y la fecha en el botón confundía). --}}
+                    @if ($trabajosDia->isEmpty())
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500 shadow-sm">No hay trabajos agendados este día.</div>
+                    @endif
                 @endunless
             </div>
         </div>

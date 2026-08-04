@@ -988,7 +988,8 @@ class ServicioTecnicoManagementTest extends TestCase
     public function test_index_periodo_por_fecha_de_retiro(): void
     {
         OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Este Mes', 'estado' => 'entregado', 'fecha_retiro' => now()->toDateString()]);
-        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Mes Pasado', 'estado' => 'entregado', 'fecha_retiro' => now()->subMonth()->toDateString()]);
+        // Último día del mes ANTERIOR — no subMonth(): un día 31 desborda al mismo mes.
+        OrdenServicio::factory()->create(['cliente_nombre' => 'Retiro Mes Pasado', 'estado' => 'entregado', 'fecha_retiro' => now()->startOfMonth()->subDay()->toDateString()]);
 
         $this->actingAs($this->admin())
             ->get('/admin/servicio-tecnico?estado=entregado&anio='.now()->year.'&mes='.now()->month.'&por=retiro')

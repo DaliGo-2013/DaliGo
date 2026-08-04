@@ -19,24 +19,24 @@
 
         <x-list-card title="Roles" :count="$roles->count()" :countLabel="\Illuminate\Support\Str::plural('rol', $roles->count())">
             @foreach ($roles as $role)
+                {{-- La fila abre la edicion del rol (patron 03-08: fuera el lapiz).
+                     Resource entero detras de 'manage roles'. --}}
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($role->name, 0, 1) }}</x-avatar>
-                    </x-slot>
-
-                    <div class="flex items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ \Illuminate\Support\Str::headline($role->name) }}</p>
-                        @if (in_array($role->name, $baseRoles, true))
-                            <x-badge variant="neutral">sistema</x-badge>
-                        @endif
-                    </div>
-                    <div class="mt-1 flex flex-wrap gap-1">
-                        @forelse ($role->permissions as $permission)
-                            <x-badge>{{ $labels[$permission->name] ?? $permission->name }}</x-badge>
-                        @empty
-                            <span class="text-xs text-neutral-400">sin permisos</span>
-                        @endforelse
-                    </div>
+                    <a href="{{ route('admin.roles.edit', $role) }}" class="block">
+                        <div class="flex items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ \Illuminate\Support\Str::headline($role->name) }}</p>
+                            @if (in_array($role->name, $baseRoles, true))
+                                <x-badge variant="neutral">sistema</x-badge>
+                            @endif
+                        </div>
+                        <div class="mt-1 flex flex-wrap gap-1">
+                            @forelse ($role->permissions as $permission)
+                                <x-badge>{{ $labels[$permission->name] ?? $permission->name }}</x-badge>
+                            @empty
+                                <span class="text-xs text-neutral-400">sin permisos</span>
+                            @endforelse
+                        </div>
+                    </a>
 
                     <x-slot name="meta">
                         <div class="hidden text-sm text-neutral-500 sm:block sm:w-24 sm:shrink-0 sm:text-right">
@@ -45,9 +45,6 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <x-icon-button :href="route('admin.roles.edit', $role)" label="Editar" title="Editar">
-                            <x-icon.pencil class="h-5 w-5" />
-                        </x-icon-button>
                         @unless (in_array($role->name, $baseRoles, true))
                             <form method="POST" action="{{ route('admin.roles.destroy', $role) }}" onsubmit="return confirm('¿Eliminar el rol {{ $role->name }}?');">
                                 @csrf

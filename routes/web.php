@@ -19,12 +19,15 @@ use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\ServicioTerrenoController;
 use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
+use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
+use App\Http\Controllers\PlanProyectoController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
@@ -64,6 +67,23 @@ Route::middleware('auth')->group(function () {
     // Mis solicitudes de aprobacion (M14): el solicitante ve LO SUYO (patron
     // /notificaciones). Literal ANTES del grupo {aprobacion} de abajo.
     Route::get('/aprobaciones/mias', [AprobacionController::class, 'mias'])->name('aprobaciones.mias');
+
+    // Plan del proyecto (carta Gantt transicional): el plan oficial se LEE de
+    // docs/RUTA-MAESTRA.md (push a main = deploy = pagina al dia); solo los
+    // "trabajos extras en paralelo" se editan aqui, con su permiso propio.
+    Route::get('/plan', [PlanProyectoController::class, 'index'])
+        ->middleware('permission:ver plan proyecto')->name('plan.index');
+    // Descarga de la carta Gantt como Excel: se GENERA en el momento desde la
+    // misma fuente que la pagina, asi el archivo que circula en las reuniones
+    // sale siempre al dia (pedido del dueño 03-08).
+    Route::get('/plan/excel', [PlanProyectoController::class, 'excel'])
+        ->middleware('permission:ver plan proyecto')->name('plan.excel');
+    Route::post('/plan/extras', [PlanProyectoController::class, 'extraStore'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.extras.store');
+    Route::patch('/plan/extras/{extra}', [PlanProyectoController::class, 'extraUpdate'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.extras.update');
+    Route::delete('/plan/extras/{extra}', [PlanProyectoController::class, 'extraDestroy'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.extras.destroy');
 });
 
 // Bandeja movil del aprobador (M14): pendientes del rol vigente, resolver
@@ -297,6 +317,25 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.lote.buscar-producto');
         });
 
+        // TRASLADO de maquinas a reparar: sucursal -> casa matriz (decision del
+        // dueño 03-08-2026). Las dos puntas van con permisos DISTINTOS a proposito
+        // —despacha la sucursal, recibe el taller—: si una sola persona pudiera
+        // cerrar ambas, la cadena de custodia no probaria nada. Ver el listado con
+        // cualquiera de los dos.
+        Route::middleware('permission:despachar traslado servicio|recibir traslado servicio')->group(function () {
+            Route::get('traslados', [TrasladoServicioController::class, 'index'])->name('traslados.index');
+            Route::get('traslados/{traslado}', [TrasladoServicioController::class, 'show'])
+                ->whereNumber('traslado')->name('traslados.show');
+        });
+        Route::middleware('permission:despachar traslado servicio')->group(function () {
+            Route::get('traslados/nuevo', [TrasladoServicioController::class, 'create'])->name('traslados.create');
+            Route::post('traslados', [TrasladoServicioController::class, 'store'])->name('traslados.store');
+        });
+        Route::put('traslados/{traslado}/recibir', [TrasladoServicioController::class, 'recibir'])
+            ->whereNumber('traslado')
+            ->middleware('permission:recibir traslado servicio')
+            ->name('traslados.recibir');
+
         Route::middleware('permission:manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico/buscar-cliente', [ServicioTecnicoController::class, 'buscarCliente'])
                 ->name('servicio-tecnico.buscar-cliente');
@@ -349,7 +388,18 @@ Route::middleware('auth')
                 ->parameters(['servicio-tecnico' => 'orden'])
                 ->only(['create', 'store']);
 
-            // Conductores (choferes de ruta) — administrables desde la app.
+        });
+
+        // Conductores (choferes) — administrables desde la app. Vive en LOGÍSTICA
+        // desde el 04-08 (pedido del dueño): quien administra la flota administra
+        // quién la maneja. El permiso es canAny y NO se cambió por 'manage
+        // vehiculos' a secas porque el catálogo alimenta el selector del ingreso
+        // por lote y el del traslado al taller: si el técnico lo perdiera, el
+        // conductor que retira máquinas en ruta dejaría de existir para él.
+        // El gate de la RUTA y el del ítem del menú son el MISMO (D-014): si acá
+        // se agrega o se quita un permiso, hay que espejarlo en MenuPrincipal, o
+        // el menú ofrece una pantalla que devuelve 403.
+        Route::middleware('permission:manage servicio tecnico|manage vehiculos')->group(function () {
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
@@ -429,6 +479,28 @@ Route::middleware('auth')
             // Cierre del despacho: entrega total o parcial con saldo.
             Route::post('despachos/{despacho}/entrega', [DespachoController::class, 'entrega'])
                 ->whereNumber('despacho')->name('despachos.entrega');
+        });
+
+        // LOGISTICA · flota de vehiculos (pedido del dueño 04-08-2026).
+        // Ver y editar van con permisos DISTINTOS: consultar los vencimientos es
+        // lo que mañana necesita cobranzas (paga permisos de circulacion y SOAP)
+        // sin poder cambiar una fecha. 'nuevo' se declara ANTES del show para que
+        // no se lo coma como {vehiculo} (el whereNumber ya lo evita; el orden lo
+        // deja explicito).
+        Route::middleware('permission:manage vehiculos')->group(function () {
+            Route::get('vehiculos/nuevo', [VehiculoController::class, 'create'])->name('vehiculos.create');
+            Route::post('vehiculos', [VehiculoController::class, 'store'])->name('vehiculos.store');
+            Route::get('vehiculos/{vehiculo}/editar', [VehiculoController::class, 'edit'])
+                ->whereNumber('vehiculo')->name('vehiculos.edit');
+            Route::put('vehiculos/{vehiculo}', [VehiculoController::class, 'update'])
+                ->whereNumber('vehiculo')->name('vehiculos.update');
+            Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
+                ->whereNumber('vehiculo')->name('vehiculos.destroy');
+        });
+        Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
+            Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
+            Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
+                ->whereNumber('vehiculo')->name('vehiculos.show');
         });
     });
 

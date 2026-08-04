@@ -57,25 +57,25 @@
         <x-list-card title="Clientes" :count="$clientes->total()" :countLabel="\Illuminate\Support\Str::plural('cliente', $clientes->total())">
             @forelse ($clientes as $cliente)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($cliente->razon_social, 0, 1) }}</x-avatar>
-                    </x-slot>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <p class="truncate font-medium text-neutral-900">{{ $cliente->razon_social }}</p>
-                        @if ($cliente->segmento)
-                            <x-badge>{{ ucfirst($cliente->segmento) }}</x-badge>
-                        @endif
-                        @if ($cliente->bsale_client_id)
-                            <x-badge variant="neutral">Bsale</x-badge>
-                        @endif
-                        @unless ($cliente->activo)
-                            <x-badge variant="neutral">inactivo</x-badge>
-                        @endunless
-                    </div>
-                    <p class="truncate text-sm text-neutral-500">
-                        {{ $cliente->rut ?? 'Sin RUT' }}@if ($cliente->giro) · {{ $cliente->giro }}@endif
-                    </p>
+                    {{-- La fila abre la ficha del cliente (patron 03-08: fuera el lapiz).
+                         Resource entero detras de 'manage clientes'. --}}
+                    <a href="{{ route('admin.clientes.edit', $cliente) }}" class="block">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $cliente->razon_social }}</p>
+                            @if ($cliente->segmento)
+                                <x-badge>{{ ucfirst($cliente->segmento) }}</x-badge>
+                            @endif
+                            @if ($cliente->bsale_client_id)
+                                <x-badge variant="neutral">Bsale</x-badge>
+                            @endif
+                            @unless ($cliente->activo)
+                                <x-badge variant="neutral">inactivo</x-badge>
+                            @endunless
+                        </div>
+                        <p class="truncate text-sm text-neutral-500">
+                            {{ $cliente->rut ?? 'Sin RUT' }}@if ($cliente->giro) · {{ $cliente->giro }}@endif
+                        </p>
+                    </a>
 
                     <x-slot name="meta">
                         @php $vend = $cliente->vendedor_nombre ?: $cliente->vendedor?->name; @endphp
@@ -89,9 +89,6 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <x-icon-button :href="route('admin.clientes.edit', $cliente)" label="Editar" title="Editar">
-                            <x-icon.pencil class="h-5 w-5" />
-                        </x-icon-button>
                         <form method="POST" action="{{ route('admin.clientes.destroy', $cliente) }}" onsubmit="return confirm('¿Eliminar el cliente {{ $cliente->razon_social }}?');">
                             @csrf
                             @method('DELETE')

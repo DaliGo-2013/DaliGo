@@ -131,10 +131,6 @@
         <x-list-card title="Solicitudes" :count="$aprobaciones->total()" :countLabel="\Illuminate\Support\Str::plural('solicitud', $aprobaciones->total())">
             @forelse ($aprobaciones as $aprobacion)
                 <x-list-row>
-                    <x-slot name="leading">
-                        <x-avatar>{{ mb_substr($aprobacion->solicitante?->name ?? 'S', 0, 1) }}</x-avatar>
-                    </x-slot>
-
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="truncate font-medium text-neutral-900">{{ $aprobacion->descripcion }}</p>
                         <x-aprobaciones.estado-badge :estado="$aprobacion->estado" />

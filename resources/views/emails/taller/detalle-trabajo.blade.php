@@ -24,13 +24,16 @@
                     {{-- Cuerpo --}}
                     <tr>
                         <td style="padding:32px;">
-                            <h1 style="margin:0 0 8px; font-size:22px; color:#171717;">Detalle de su servicio</h1>
+                            {{-- Tuteo, como el resto del flujo al cliente (recibido y cotización):
+                                 esta era la única pieza en usted, y además mezclaba usted en el
+                                 cuerpo con tú en el pie. --}}
+                            <h1 style="margin:0 0 8px; font-size:22px; color:#171717;">Detalle de tu servicio</h1>
                             <p style="margin:0 0 4px; font-size:13px; color:#a3a3a3;">Orden {{ $orden->folio }} · {{ now()->format('d-m-Y') }}</p>
                             <p style="margin:16px 0 20px; font-size:15px; color:#525252; line-height:1.6;">
                                 Estimado(a) {{ $orden->cliente_nombre }}:<br>
-                                Revisamos su {{ mb_strtolower($orden->tipo_equipo_label) }}
+                                Revisamos tu {{ mb_strtolower($orden->tipo_equipo_label) }}
                                 @if ($orden->numero_serie) (N° de serie {{ $orden->numero_serie }}) @endif
-                                y le informamos el detalle del trabajo realizado.
+                                y te contamos el detalle del trabajo realizado.
                             </p>
 
                             {{-- Qué se hizo --}}
@@ -84,7 +87,7 @@
                     {{-- Pie --}}
                     <tr>
                         <td style="background-color:#fafafa; padding:16px 32px; text-align:center; font-size:12px; color:#a3a3a3; border-top:1px solid #e5e5e5;">
-                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo o llámanos.
+                            DaliGo · {{ now()->year }} — Si tienes dudas, responde este correo.
                         </td>
                     </tr>
                 </table>

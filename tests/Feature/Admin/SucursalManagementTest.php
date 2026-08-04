@@ -31,6 +31,27 @@ class SucursalManagementTest extends TestCase
         $this->actingAs($this->admin())->get('/admin/sucursales')->assertOk();
     }
 
+    /**
+     * La fila de la sucursal ES el enlace a su edicion (pedido del dueño 03-08:
+     * fuera el lapiz, se entra tocando la sucursal). Sin condicion de permiso:
+     * el resource completo esta detras de 'manage sucursales'.
+     */
+    public function test_la_fila_de_la_sucursal_enlaza_directo_a_editar(): void
+    {
+        $sucursal = Sucursal::factory()->create(['nombre' => 'Coquimbo Enlace']);
+
+        $html = $this->actingAs($this->admin())->get('/admin/sucursales')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<a href="[^"]*\/admin\/sucursales\/'.$sucursal->id.'\/edit"[^>]*>(?:(?!<\/a>).)*Coquimbo Enlace/s',
+            $html,
+            'El nombre de la sucursal no está dentro del enlace a su edición.'
+        );
+        $this->assertStringNotContainsString('title="Editar"', $html);
+        // El tacho de eliminar sigue: solo se fue el lapiz.
+        $this->assertStringContainsString('title="Eliminar"', $html);
+    }
+
     public function test_admin_can_view_create_form(): void
     {
         $this->actingAs($this->admin())->get('/admin/sucursales/create')

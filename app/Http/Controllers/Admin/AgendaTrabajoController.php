@@ -274,22 +274,32 @@ class AgendaTrabajoController extends Controller
 
         $trabajo->update(['estado' => 'cancelado', 'motivo_cancelacion' => $texto]);
 
+        // Se guarda si el aviso al cliente SALIÓ de verdad: sin esto, tanto el aviso
+        // interno como el mensaje de esta pantalla afirmaban que se le avisó incluso
+        // cuando el correo falló o el cliente no tenía correo — y nadie lo llamaba.
+        $avisadoAlCliente = false;
+
         if (filled($trabajo->cliente_email)) {
             try {
                 Mail::to($trabajo->cliente_email)->send(new AgendaTrabajoAviso($trabajo, 'anulada'));
+                $avisadoAlCliente = true;
             } catch (\Throwable $e) {
                 report($e);
             }
         }
 
         try {
-            $trabajo->avisarRechazoInterno($request->user()?->name);
+            $trabajo->avisarRechazoInterno($request->user()?->name, $avisadoAlCliente);
         } catch (\Throwable $e) {
             report($e);
         }
 
+        $aviso = $avisadoAlCliente
+            ? 'se le avisó al cliente por correo'
+            : 'NO se pudo avisar al cliente por correo: contáctalo por teléfono';
+
         return redirect()->route('admin.agenda-terreno.index')
-            ->with('status', "Solicitud de {$trabajo->cliente_nombre} rechazada ({$texto}); se avisó al cliente.");
+            ->with('status', "Solicitud de {$trabajo->cliente_nombre} rechazada ({$texto}); {$aviso}.");
     }
 
     /**
