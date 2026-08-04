@@ -27,7 +27,7 @@ class VehiculoController extends Controller
      * propósito: "vencido" es el peor de 5 fechas con una regla por tipo de
      * vehículo (el semirremolque no rinde emisiones), y expresar eso en un
      * WHERE lo duplicaría fuera del modelo. La flota son decenas de filas
-     * —42 hoy, 31 activas—, así que traerlas todas cuesta una query y ~0 ms.
+     * —17 hoy—, así que traerlas todas cuesta una query y ~0 ms.
      * Si algún día fueran miles, el orden correcto es mover el semáforo a
      * columnas materializadas, no a un WHERE copiado.
      */

@@ -1,9 +1,31 @@
 # Flota de vehículos (módulo LOGÍSTICA)
 
 > Pedido del dueño, 04-08-2026. Reemplaza la planilla `Vehiculos 2026.xlsx`
-> (hoja «Control vehiculos»): **42 vehículos** — 31 activos, 9 vendidos y 2 con
-> pérdida total. La planilla tiene 44 filas: dos (`KBWC66`, `KBBC73`) no son
-> vehículos sino notas sobre cobros de TAG, y no se cargan.
+> (hoja «Control vehiculos»). **La flota son 17 vehículos** (Mirador 13,
+> Coquimbo 3, Abate Molina 1).
+
+## 0. La planilla tiene 44 filas y la flota son 17 — cómo distinguirlas
+
+**Esto costó un error en producción, así que va primero.** La hoja acumula
+historia: vehículos vendidos, con pérdida total, de sucursales cerradas, y hasta
+dos filas (`KBWC66`, `KBBC73`) que no son vehículos sino notas sobre cobros de
+TAG. La flota **actual** son 17 filas.
+
+**El nombre del conductor NO indica que el vehículo esté en la flota.** Ese fue
+el error: al cargar los datos por primera vez se tomó «tiene nombre de chofer en
+su columna» como «está activo», y entraron **31 vehículos en vez de 17**. Catorce
+de los que sobraban tienen nombre de conductor en la hoja (Pedro Castillo, Camilo
+Toro, los Lazcano…) y aun así no son de la flota de hoy: se venden o se dan de
+baja sin limpiar esa columna.
+
+**La flota actual no es deducible del archivo** — vive en el filtro con el que el
+dueño mira la hoja, no en los datos. **Antes de cargar, hay que preguntarle la
+lista de patentes.** Deducirla lleva a borrar en producción para arreglarlo.
+
+Cómo se reconocen los que NO van, cuando ya se tiene la lista: las 25 filas de
+más se identifican por patente, y su rastro se ve en las fechas — sus documentos
+vencieron en 2024 y 2025, mientras que los 17 de la flota tienen todo en 2026,
+2027 y 2028.
 
 ## 1. Qué problema resuelve
 
@@ -54,24 +76,19 @@ Decisión del dueño, 04-08-2026 (AskUserQuestion).
 Dato del dueño, 04-08-2026: **quedan Mirador, Abate Molina y Coquimbo**.
 **Concepción, Antofagasta y Viña del Mar cerraron.**
 
-| Base | Estado | Vehículos |
+| Base | Estado | Vehículos de la flota |
 |---|---|---|
-| Mirador | opera (central) | la mayoría de la flota |
-| Abate Molina | opera | 2 |
-| Coquimbo | opera | 3 |
-| Damimed | grupo de asignación, no sucursal | 1 activo |
-| Jefaturas | grupo de asignación, no sucursal | 2 activos (los X250) |
-| Concepción | **cerrada** | 0 — sus 2 activos pasaron a Mirador |
-| Antofagasta | **cerrada** | 0 activos (3 vendidos conservan la base) |
-| Viña del Mar | **cerrada** | 0 (nunca tuvo, solo estaba en la lista de la planilla) |
+| Mirador | opera (central) | **13** |
+| Coquimbo | opera | **3** |
+| Abate Molina | opera | **1** |
+| Concepción | **cerrada** | 0 — `PSJW47` pasó a Mirador |
+| Antofagasta | **cerrada** | 0 |
+| Viña del Mar | **cerrada** | 0 (nunca tuvo; solo figuraba en una lista de la planilla) |
+| Damimed · Jefaturas | valores de la planilla, no sucursales | 0 — los vehículos que los usaban no son de la flota actual |
 
-Las cerradas salen de las sugerencias para no volver a asignarles un vehículo.
-**Sacarlas no rompe nada:** el campo es texto, así que los 3 vendidos con base
-Antofagasta la conservan — y eso es lo correcto, la base de un vehículo dado de
-baja es **historia**, no un destino al que se pueda mandar algo.
-
-Los dos que se movieron de Concepción a Mirador: `PSJW47` «RAM MIRADOR» (Danika
-Toledo) y `RKHX29` «FVR (CHEVY 2)» (Axel Cárdenas).
+`Vehiculo::BASES` sugiere **solo las tres que operan**. Sacar un valor de ahí no
+rompe una ficha que ya lo tenga: el campo es texto libre justamente para eso, y
+por eso es una lista **sugerida** y no un enum.
 
 **Buzeta es una BODEGA de mercadería, no una sucursal** (dato del dueño,
 04-08-2026): ahí se deja mercadería y **no se dejan vehículos**. Por eso no se
@@ -251,6 +268,13 @@ su motivo y su fecha al día 1 del mes declarado), descarta `NO ASIGNADO` y
 equivocada), convierte los seriales de fecha de Excel, y mueve a
 `observaciones` las notas que vivían dentro de las celdas (`SIN EXTINTOR`,
 indemnizaciones, fechas de entrega).
+
+**PERO el `.sql` no decide qué vehículos van: eso se pregunta.** La primera carga
+metió 31 en vez de 17 por deducir la flota del archivo (ver §0), y hubo que
+corregirlo con un `DELETE` en producción. El orden correcto es: pedir la lista de
+patentes → filtrar por ella → cargar. Y el `.sql` de carga conviene entregarlo
+con un `SELECT` **antes** del `DELETE`/`INSERT`, para que el dueño vea la lista de
+lo que se va a tocar antes de aceptarla.
 
 ## 7. Gotchas encontrados construyendo esto
 

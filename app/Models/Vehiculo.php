@@ -58,26 +58,25 @@ class Vehiculo extends Model implements AuditableContract
      * agregar una ubicación. Ver el comentario de la migración.
      *
      * Las TRES sucursales que operan (dato del dueño, 04-08-2026): Mirador,
-     * Abate Molina y Coquimbo. **Concepción, Antofagasta y Viña del Mar
-     * CERRARON** y salen de las sugerencias para no volver a asignarles un
-     * vehículo. Buzeta también sale, pero por otro motivo: es una **bodega de
-     * mercadería**, no una sucursal — ahí no se dejan vehículos.
+     * Abate Molina y Coquimbo, y no hay más. Y es donde vive la flota real:
+     * Mirador 13, Coquimbo 3, Abate Molina 1.
      *
-     * Damimed y Jefaturas SÍ se quedan, aunque no son sucursales: son grupos de
-     * asignación con vehículos activos hoy (Damimed 1, Jefaturas 2). Si no
-     * estuvieran, la ficha de esos vehículos no podría sugerir su propia base.
+     * Lo que salió, y por qué:
+     * - **Concepción, Antofagasta y Viña del Mar**: las sucursales CERRARON.
+     * - **Buzeta**: es una bodega de mercadería, no una sucursal — ahí no se
+     *   dejan vehículos.
+     * - **Damimed y Jefaturas**: eran valores de la planilla, pero ninguno de
+     *   los 17 vehículos de la flota los usa (los que los tenían no eran de la
+     *   flota actual — ver §1 de docs/reglas/flota-de-vehiculos.md).
      *
-     * Sacar un valor de acá NO rompe las fichas que ya lo tengan (el campo es
-     * texto): los 3 vehículos VENDIDOS con base Antofagasta la conservan, que es
-     * lo correcto — la base de un vehículo dado de baja es historia, no un
-     * destino al que se pueda mandar algo.
+     * Sacar un valor de acá NO rompe una ficha que ya lo tenga: el campo es
+     * texto libre justamente para eso, y por eso es una lista SUGERIDA y no un
+     * enum. Si mañana un vehículo va a otra parte, se escribe y listo.
      */
     public const BASES = [
         'Mirador',
         'Abate Molina',
         'Coquimbo',
-        'Damimed',
-        'Jefaturas',
     ];
 
     /**
