@@ -110,6 +110,9 @@ class MenuPrincipal
                 // técnico no puede perderlo. NO se duplica el ítem en Servicio
                 // Técnico — dos ítems con la misma ruta rompen el candado de
                 // SidebarTest (una ruta resalta exactamente un ítem).
+                // Simulador de carga: responde "¿cuanto entra en tal camion?" antes
+                // de que el vendedor prometa. NO escribe nada operativo.
+                'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*'], 'permiso' => 'simular carga'],
                 'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
             ],
         ],

@@ -56,6 +56,7 @@ return [
         // Logística · flota de vehículos (04-08).
         'ver vehiculos' => 'Ver la flota de vehículos y sus vencimientos',
         'manage vehiculos' => 'Gestionar la flota (crear, editar, dar de baja)',
+        'simular carga' => 'Usar el simulador de carga (¿cuánto entra en cada camión?)',
         // Devoluciones (M13, 04-08).
         'view devoluciones' => 'Ver devoluciones',
         'manage devoluciones' => 'Gestionar devoluciones (recibir, categorizar, resolver)',
@@ -87,7 +88,7 @@ return [
         'Despachos' => ['despachos', 'entrega'],
         // Logística (04-08): hoy es la flota; cuando crezca (mantenciones,
         // kilometraje) sus permisos caen solos en esta categoría.
-        'Logística' => ['vehiculos'],
+        'Logística' => ['vehiculos', 'carga'],
         // Devoluciones (M13): sin esta categoría, sus permisos caerían en
         // "Generales" (el fallback) — gotcha documentado en PLAN-M13 §3.
         'Devoluciones' => ['devoluciones'],

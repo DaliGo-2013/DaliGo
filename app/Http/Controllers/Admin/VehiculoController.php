@@ -236,6 +236,11 @@ class VehiculoController extends Controller
             'cilindrada' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'pbv_kg' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'capacidad_carga_kg' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            // Caja de carga (Simulador de carga). Medidas UTILES, por dentro.
+            'largo_util_cm' => ['nullable', 'integer', 'min:0', 'max:20000'],
+            'ancho_util_cm' => ['nullable', 'integer', 'min:0', 'max:20000'],
+            'alto_util_cm' => ['nullable', 'integer', 'min:0', 'max:20000'],
+            'pasillo_cm' => ['nullable', 'integer', 'min:0', 'max:500'],
             'presion_psi' => ['nullable', 'integer', 'min:0', 'max:500'],
             'base' => ['nullable', 'string', 'max:40'],
             'conductor_nombre' => ['nullable', 'string', 'max:191'],

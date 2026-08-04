@@ -31,6 +31,8 @@ class DatabaseSeeder extends Seeder
             ProduccionTesteoSeeder::class,
             // DESPACHOS-v1: catalogo de zonas comerciales (D-006).
             ZonaSeeder::class,
+            // Bultos del simulador de carga (medidas reales, idempotente).
+            TiposBultoSeeder::class,
         ]);
     }
 }

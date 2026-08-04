@@ -150,6 +150,45 @@
     </div>
 </x-seccion>
 
+{{-- Caja de carga: lo que necesita el Simulador de carga. Va en su propia sección
+     porque no es dato administrativo del vehículo sino del ESPACIO, y porque el
+     aviso de "medir por dentro" tiene que leerse antes de escribir los números:
+     la diferencia entre exterior e interior es 10-20% del volumen, o sea la
+     diferencia entre que la carga entre o quede en el andén. --}}
+<x-seccion titulo="Caja de carga">
+    <p class="mb-3 text-sm text-neutral-500">
+        Medidas <strong>útiles, por dentro</strong> de la caja — no las del folleto. Con las tres cargadas, el
+        vehículo aparece en el <a href="{{ route('admin.carga.index') }}" class="font-medium text-brand-600 hover:text-brand-700">Simulador de carga</a>.
+    </p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+            <x-input-label for="largo_util_cm" value="Largo útil (cm)" />
+            <x-text-input id="largo_util_cm" name="largo_util_cm" type="number" inputmode="numeric" min="0" max="20000"
+                          class="mt-1.5 w-full" :value="old('largo_util_cm', $vehiculo->largo_util_cm)" placeholder="ej. 430" />
+            <x-input-error :messages="$errors->get('largo_util_cm')" class="mt-2" />
+        </div>
+        <div>
+            <x-input-label for="ancho_util_cm" value="Ancho útil (cm)" />
+            <x-text-input id="ancho_util_cm" name="ancho_util_cm" type="number" inputmode="numeric" min="0" max="20000"
+                          class="mt-1.5 w-full" :value="old('ancho_util_cm', $vehiculo->ancho_util_cm)" placeholder="ej. 200" />
+            <x-input-error :messages="$errors->get('ancho_util_cm')" class="mt-2" />
+        </div>
+        <div>
+            <x-input-label for="alto_util_cm" value="Alto útil (cm)" />
+            <x-text-input id="alto_util_cm" name="alto_util_cm" type="number" inputmode="numeric" min="0" max="20000"
+                          class="mt-1.5 w-full" :value="old('alto_util_cm', $vehiculo->alto_util_cm)" placeholder="ej. 220" />
+            <x-input-error :messages="$errors->get('alto_util_cm')" class="mt-2" />
+        </div>
+        <div>
+            <x-input-label for="pasillo_cm" value="Pasillo a reservar (cm)" />
+            <x-text-input id="pasillo_cm" name="pasillo_cm" type="number" inputmode="numeric" min="0" max="500"
+                          class="mt-1.5 w-full" :value="old('pasillo_cm', $vehiculo->pasillo_cm)" placeholder="0" />
+            <x-input-hint>Paso que la bodega necesita para cargar. Se descuenta del largo.</x-input-hint>
+            <x-input-error :messages="$errors->get('pasillo_cm')" class="mt-2" />
+        </div>
+    </div>
+</x-seccion>
+
 {{-- Estado del vehículo. Va SEPARADO del conductor a propósito: en la planilla
      "PERDIDA TOTAL" y "VENTA FEBRERO 2023" se escribían en la columna del
      chofer, y con eso no se puede contar la flota. Los campos de la baja

@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
@@ -498,6 +499,12 @@ Route::middleware('auth')
                 ->whereNumber('vehiculo')->name('vehiculos.update');
             Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
                 ->whereNumber('vehiculo')->name('vehiculos.destroy');
+        });
+        // LOGISTICA · simulador de carga. Es una CALCULADORA: no escribe nada
+        // operativo, asi que va con su propio permiso (lo usa ventas, que no
+        // administra la flota) y solo por GET.
+        Route::middleware('permission:simular carga')->group(function () {
+            Route::get('carga', [SimuladorCargaController::class, 'index'])->name('carga.index');
         });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');

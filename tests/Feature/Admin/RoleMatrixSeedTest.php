@@ -35,19 +35,19 @@ class RoleMatrixSeedTest extends TestCase
                 'manage despachos', 'confirmar entrega',
                 'emitir documentos tributarios', 'emitir nota de credito',
                 'ver plan proyecto', 'gestionar plan proyecto',
-                'ver vehiculos', 'manage vehiculos',
+                'ver vehiculos', 'manage vehiculos', 'simular carga',
                 'view devoluciones', 'manage devoluciones',
             ],
             'member' => [],
-            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial'],
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones'],
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su
             // sucursal y llega al taller, que es quien confirma. Que una misma
             // persona pudiera cerrar las dos puntas anularía la cadena de custodia.
             'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'despachar traslado servicio'],
-            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio', 'manage devoluciones'],
+            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio', 'manage devoluciones', 'simular carga'],
             'conductor' => ['crear lote servicio', 'confirmar entrega'],
             'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores'],
             'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
@@ -57,7 +57,7 @@ class RoleMatrixSeedTest extends TestCase
             // Vehículos. Cobranzas queda pendiente (no existe su perfil):
             // el día que exista recibe 'ver vehiculos' desde la UI de Roles,
             // sin tocar código.
-            'jefe_logistica' => ['ver vehiculos', 'manage vehiculos'],
+            'jefe_logistica' => ['ver vehiculos', 'manage vehiculos', 'simular carga'],
         ];
     }
 
