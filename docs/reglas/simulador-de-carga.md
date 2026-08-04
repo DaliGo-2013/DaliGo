@@ -1,0 +1,110 @@
+# Simulador de carga (módulo LOGÍSTICA)
+
+> Pedido del dueño, 04-08-2026. Construido el mismo día en dos tandas: el cupo
+> máximo (sesión Mac) y la **carga mixta** (esta). Contexto largo en
+> `docs/EXPLORACION-CARGA-3D.md`; los datos del negocio que costó levantar
+> (bolsa de 5, orientación fija, jaulas, UN3480) están en el parte
+> `docs/fleet/buzon/partes/2026-08-04--claude-code--traspaso-simulador-carga.md`.
+
+## 1. Las dos preguntas de la pantalla
+
+La misma página (`admin.carga.index`, permiso `simular carga`) responde dos
+preguntas **distintas**, con un conmutador:
+
+| Modo | Pregunta | Motor |
+|---|---|---|
+| ¿Cuánto entra? | el MÁXIMO de un producto en el camión vacío | `CalculoDeCarga::cupo()` — rejilla exacta |
+| ¿Cabe esta carga? | una lista de (producto, cantidad) concreta | `CalculoDeCarga::carga()` — acomodo por zonas |
+
+El segundo es el caso textual del pedido original: *«200 botellones + 20 cajas de
+tapas + 10 dispensadores → ¿entra en el camión X?»* — y responde **qué queda
+afuera y por qué** (espacio / peso / eje de la caja), que es con lo que el
+vendedor negocia.
+
+## 2. El credo: exagerar es el único pecado
+
+Un simulador que promete carga que no cabe manda al vendedor a comprometerse y la
+carga queda en el andén — peor que no tener la herramienta. TODO redondeo va
+hacia abajo. Reglas del motor mixto, deliberadamente conservadoras:
+
+1. **Acomodo por zonas (guillotina), no empaque 3D genérico.** Bloques de rejilla
+   exacta sobre regiones rectangulares de piso: lo grande al fondo, el piso
+   restante se parte en «detrás» y «al costado» del bloque. Reproduce el patrón
+   real de estiba de las fotos (muro de bolsas, máquinas al costado, cajas en el
+   resto). El bin-packing 3D es NP-difícil y toda heurística genérica es
+   inverificable a mano — esto es verificable, y ese es el punto.
+2. **El espacio SOBRE un bloque es espacio muerto.** No se apila un tipo encima
+   de otro. La estiba real a veces lo hace; prometerlo sin regla de soporte por
+   kilo sería exagerar. Candado: `test_no_apila_un_tipo_sobre_otro`.
+3. **Un bloque parcial reserva solo su huella real** (columnas de a `apilable_max`,
+   en rebanadas a lo ancho), no la rejilla completa — lo contrario regalaría piso.
+   Candado: `test_un_bloque_parcial_no_roba_el_piso_que_no_usa`.
+4. **El peso es global a la carga**: lo que consumió una línea se descuenta a la
+   siguiente, y el recorte dice `peso`.
+5. **CENTÍMETROS ENTEROS**, nunca metros con coma flotante (regla heredada de
+   cupo(): `2.00 // 0.40` da 4 en binario, y eso son 125 botellones fantasma).
+
+### 2.1 El candado de consistencia
+
+**Una carga de UN solo tipo, pedida de sobra, da EXACTAMENTE el cupo máximo.**
+Si `carga()` y `cupo()` divergieran, la pantalla se contradiría a sí misma según
+la pestaña. Es el primer test de `CargaMixtaTest` y el que hay que mirar si
+alguien toca cualquiera de los dos motores.
+
+### 2.2 Orden de colocación
+
+Por **volumen de bulto descendente** (lo grande primero, como en la práctica),
+sin importar el orden en que se escribieron las líneas — pero el reporte respeta
+el orden escrito. Determinista: a igual volumen, el orden de entrada.
+
+## 3. Unidades: el vendedor habla en botellones, el motor en bolsas
+
+Las cantidades del formulario van **en unidades sueltas** (200 botellones, 20
+cajas). El controlador convierte a bultos redondeando **hacia arriba** (198
+botellones = 40 bolsas: la bolsa viaja completa o no viaja) y lo cargado se
+reporta **capado a lo pedido** (198, no 200 — decir más de lo que pidió confunde).
+
+## 4. El visor 3D y sus colores
+
+La escena viaja SIEMPRE como **lista de bloques** (posición, orientación,
+rejilla, cantidad, color, nombre); el cupo máximo es el caso particular de un
+bloque. `carga3d.js` sigue sin librerías (prismas a mano sobre canvas).
+
+**Los colores dentro del lienzo son DATOS**: distinguen un producto de otro y la
+leyenda de la lista «producto por producto» pinta el MISMO color
+(`SimuladorCargaController::COLORES_3D`, pública justo por eso). Es la excepción
+sancionada tipo D-013 — fuera del canvas rige la paleta de 4.
+
+## 5. Mercancía peligrosa
+
+Si una línea lleva un bulto `peligrosa` (los cajones `UN3480` de baterías de
+litio), la pantalla lo dice y aclara que **el cálculo es solo de espacio**: que
+quepa no significa que se pueda cargar así. El simulador no valida normativa de
+transporte — eso quedó explícitamente fuera de alcance (§2quater de la
+exploración).
+
+## 6. Lo que falta, en orden
+
+1. **Calibrar**: contar UNA carga real y ajustar el factor (`conFactor()`) hasta
+   reproducirla. Mientras tanto los números son un TECHO (pasillo 0, factor 1) y
+   la pantalla lo dice.
+2. **Medir las jaulas de máquinas** (llenadora 100/200, osmosis 500/1 tera,
+   lavadora, sopladora): sin medidas no se siembran — no se inventan números.
+3. **Cálculo inverso** («¿cuánto puedo vender en este camión?») — pedido
+   explícito del dueño; mismo motor al revés.
+4. Escenarios guardados y PDF para adjuntar a la cotización.
+
+## 7. Nota sobre la especificación externa (EasyCargo-like)
+
+El dueño entregó el 04-08 una especificación técnica y un `packer.js` (Extreme
+Points, Crainic et al. 2008) como referencia. **Se tomó de ahí lo que aplica** —
+rechazados con motivo, colores por tipo con leyenda, la advertencia de nunca
+perseguir el 100% de llenado — y **se descartó a conciencia** el empaque por
+puntos extremos: para el mix real de Dali (cientos de bultos IDÉNTICOS y
+regulares) la rejilla por zonas es exacta y verificable a mano, mientras que la
+heurística genérica coloca menos en el caso dominante y sus resultados no se
+pueden auditar contra un cálculo manual. Si algún día se cargan decenas de tipos
+irregulares distintos, ahí vale revisitarla (el `.js` de referencia quedó con el
+dueño). El centro de gravedad y el reparto por eje (§6 de esa espec) quedan para
+cuando el simulador se use para carga real y no para cotizar — hoy sería
+precisión decorativa.

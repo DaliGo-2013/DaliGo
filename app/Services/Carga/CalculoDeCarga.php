@@ -136,6 +136,203 @@ class CalculoDeCarga
     }
 
     /**
+     * CARGA MIXTA: ¿cabe ESTA carga concreta? (pedido del dueño 04-08-2026, el
+     * caso textual del pedido original: «200 botellones + 20 cajas de tapas +
+     * 10 dispensadores → ¿entra en el camión X?»).
+     *
+     * Responde una pregunta DISTINTA de cupo(): cupo() dice el máximo de UN tipo
+     * en el camión vacío; carga() recibe una lista de (tipo, cantidad) y dice si
+     * cabe todo, qué quedó afuera y POR QUÉ — que es lo que el vendedor necesita
+     * para negociar («te llevo 140 de los 200 y el resto la próxima semana»).
+     *
+     * CÓMO ACOMODA: bloques de rejilla exacta sobre regiones rectangulares de
+     * piso (partición tipo guillotina). Cada tipo se coloca como un bloque
+     * (misma división entera de cupo()) en la región más al fondo donde quepa;
+     * el piso restante se parte en dos regiones (detrás y al costado del bloque)
+     * y sigue el próximo tipo. Reproduce el patrón real de estiba por ZONAS que
+     * se ve en las fotos de carga de Dali (muro de bolsas, máquinas a un
+     * costado, cajas en el resto) sin caer en el empaque 3D genérico, que es
+     * NP-difícil y del que ninguna heurística puede prometer exactitud.
+     *
+     * REGLAS CONSERVADORAS, deliberadas — todo error va hacia ABAJO:
+     * - El espacio SOBRE un bloque es espacio muerto: no se apila un tipo encima
+     *   de otro. La estiba real a veces lo hace; prometerlo sin regla de soporte
+     *   por kilo sería exagerar, y un simulador que exagera es peor que ninguno.
+     * - Un bloque parcial reserva el piso de su caja envolvente completa.
+     * - El orden de colocación es por volumen de bulto DESCENDENTE (lo grande
+     *   primero, como en la práctica), no el orden en que se escribieron.
+     *
+     * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int}  $vehiculo  cm y kg
+     * @param  list<array{bulto: array, cantidad: int}>  $lineas  cantidad EN BULTOS
+     * @return array{lineas: array<int, array{pedidos:int,colocados:int,unidades_colocadas:int,motivo:?string}>, bloques: list<array{linea:int,x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>, cabe_todo:bool, peso_kg:float, volumen_ocupado_m3:float, volumen_vehiculo_m3:float, ocupacion:float}
+     */
+    public function carga(array $vehiculo, array $lineas): array
+    {
+        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
+        $W = (int) $vehiculo['ancho'];
+        $H = (int) $vehiculo['alto'];
+        $topePeso = $vehiculo['peso_max_kg'] ?? null;
+
+        // Lo grande primero (estable: a igual volumen, el orden escrito).
+        $orden = array_keys($lineas);
+        usort($orden, function (int $a, int $b) use ($lineas) {
+            $va = $lineas[$a]['bulto']['largo'] * $lineas[$a]['bulto']['ancho'] * $lineas[$a]['bulto']['alto'];
+            $vb = $lineas[$b]['bulto']['largo'] * $lineas[$b]['bulto']['ancho'] * $lineas[$b]['bulto']['alto'];
+
+            return $vb <=> $va ?: $a <=> $b;
+        });
+
+        // Regiones de piso libres. Arranca con toda la caja menos el pasillo.
+        $regiones = ($L > 0 && $W > 0) ? [['x' => 0, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];
+
+        $porLinea = [];
+        $bloques = [];
+        $pesoAcum = 0.0;
+        $volOcupado = 0.0;
+
+        foreach ($orden as $i) {
+            $bulto = $lineas[$i]['bulto'];
+            $pedidos = max(0, (int) $lineas[$i]['cantidad']);
+            $porUnidad = max(1, (int) ($bulto['unidades'] ?? 1));
+            $pesoUnit = (float) ($bulto['peso'] ?? 0);
+            $restan = $pedidos;
+            $capadoPorPeso = false;
+
+            while ($restan > 0) {
+                // El tope de peso es GLOBAL a la carga: se evalúa antes de cada
+                // bloque, porque las líneas anteriores ya consumieron kilos.
+                $topeBultos = ($pesoUnit > 0 && $topePeso !== null)
+                    ? (int) floor((max(0, $topePeso - $pesoAcum)) / $pesoUnit)
+                    : PHP_INT_MAX;
+                if ($topeBultos <= 0) {
+                    $capadoPorPeso = true;
+                    break;
+                }
+
+                $puesto = $this->colocarBloque($regiones, $bulto, min($restan, $topeBultos), $H);
+                if ($puesto === null) {
+                    break;   // no cabe ni uno en ninguna región
+                }
+
+                $bloques[] = $puesto + ['linea' => $i];
+                $restan -= $puesto['cantidad'];
+                $pesoAcum += $pesoUnit * $puesto['cantidad'];
+                $volOcupado += $this->m3($bulto['largo'], $bulto['ancho'], $bulto['alto']) * $puesto['cantidad'];
+            }
+
+            $colocados = $pedidos - $restan;
+            $porLinea[$i] = [
+                'pedidos' => $pedidos,
+                'colocados' => $colocados,
+                'unidades_colocadas' => $colocados * $porUnidad,
+                'motivo' => $restan > 0 ? $this->motivoDelFaltante($bulto, $L, $W, $H, $capadoPorPeso) : null,
+            ];
+        }
+
+        ksort($porLinea);
+        $volVeh = $this->m3($vehiculo['largo'], $W, $H);
+
+        return [
+            'lineas' => $porLinea,
+            'bloques' => $bloques,
+            'cabe_todo' => array_filter($porLinea, fn (array $l) => $l['motivo'] !== null) === [],
+            'peso_kg' => round($pesoAcum, 2),
+            'volumen_ocupado_m3' => round($volOcupado, 2),
+            'volumen_vehiculo_m3' => round($volVeh, 2),
+            'ocupacion' => $volVeh > 0 ? round($volOcupado / $volVeh, 4) : 0.0,
+        ];
+    }
+
+    /**
+     * Coloca UN bloque del bulto en la primera región donde quepa (recorriendo
+     * fondo → puerta) y parte esa región en guillotina. Devuelve null si no
+     * entra ni un bulto en ninguna región.
+     *
+     * La región elegida es la de menor `x` (más al fondo): así lo grande queda
+     * contra la cabina y el dibujo 3D se parece al camión real.
+     *
+     * @param  list<array{x:int,y:int,largo:int,ancho:int}>  $regiones  por referencia
+     * @return ?array{x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}
+     */
+    private function colocarBloque(array &$regiones, array $bulto, int $maximo, int $H): ?array
+    {
+        usort($regiones, fn (array $a, array $b) => $a['x'] <=> $b['x'] ?: $a['y'] <=> $b['y']);
+
+        foreach ($regiones as $k => $region) {
+            $mejor = null;
+            foreach ($this->orientaciones($bulto) as [$a, $b, $c]) {
+                if ($a <= 0 || $b <= 0 || $c <= 0) {
+                    continue;
+                }
+                $nl = intdiv($region['largo'], $a);
+                $nw = intdiv($region['ancho'], $b);
+                $nh = min(intdiv($H, $c), max(1, (int) ($bulto['apilable_max'] ?? 1)));
+                $n = $nl * $nw * $nh;
+                if ($n > 0 && ($mejor === null || $n > $mejor['n'])) {
+                    $mejor = ['n' => $n, 'a' => $a, 'b' => $b, 'c' => $c, 'nl' => $nl, 'nw' => $nw, 'nh' => $nh];
+                }
+            }
+
+            if ($mejor === null) {
+                continue;
+            }
+
+            $cantidad = min($mejor['n'], $maximo);
+
+            // Huella REAL del bloque parcial: columnas de nh, en rebanadas a lo
+            // ancho. Reservar la rejilla completa cuando se piden 3 bultos
+            // regalaría piso que otro tipo puede usar.
+            $columnas = (int) ceil($cantidad / $mejor['nh']);
+            $anchoUsado = min($columnas, $mejor['nw']);
+            $largoUsado = (int) ceil($columnas / $mejor['nw']);
+
+            $bl = $largoUsado * $mejor['a'];
+            $bw = $anchoUsado * $mejor['b'];
+
+            // Guillotina: lo que queda DETRÁS del bloque (hacia la puerta, ancho
+            // completo) y lo que queda AL COSTADO (mismo largo del bloque).
+            $nuevas = [];
+            if ($region['largo'] - $bl > 0) {
+                $nuevas[] = ['x' => $region['x'] + $bl, 'y' => $region['y'], 'largo' => $region['largo'] - $bl, 'ancho' => $region['ancho']];
+            }
+            if ($region['ancho'] - $bw > 0) {
+                $nuevas[] = ['x' => $region['x'], 'y' => $region['y'] + $bw, 'largo' => $bl, 'ancho' => $region['ancho'] - $bw];
+            }
+            array_splice($regiones, $k, 1, $nuevas);
+
+            return [
+                'x' => $region['x'],
+                'y' => $region['y'],
+                'orientacion' => ['largo' => $mejor['a'], 'ancho' => $mejor['b'], 'alto' => $mejor['c']],
+                'rejilla' => ['largo' => $largoUsado, 'ancho' => $anchoUsado, 'alto' => $mejor['nh']],
+                'cantidad' => $cantidad,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Por qué quedó carga afuera: peso, un eje del camión (si no entra ni uno en
+     * la caja VACÍA), o espacio a secas (cabía solo, pero el resto de la carga
+     * se lo comió).
+     */
+    private function motivoDelFaltante(array $bulto, int $L, int $W, int $H, bool $capadoPorPeso): string
+    {
+        if ($capadoPorPeso) {
+            return self::LIMITE_PESO;
+        }
+
+        foreach ($this->orientaciones($bulto) as [$a, $b, $c]) {
+            if ($a <= $L && $b <= $W && $c <= $H) {
+                return 'espacio';
+            }
+        }
+
+        return $this->porQueNoEntraNinguno($L, $W, $H, $this->orientaciones($bulto));
+    }
+
+    /**
      * Las 6 rotaciones del bulto, o solo la cargada si la orientación es fija.
      *
      * @return list<array{int,int,int}>  (largo, ancho, alto) en cm

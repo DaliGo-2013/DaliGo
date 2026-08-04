@@ -26,8 +26,9 @@ const v8 = (x, y, z, a, b, c) => [
 export default function iniciarCarga3d(canvas, datos) {
     const ctx = canvas.getContext('2d');
     const veh = datos.vehiculo;
-    const rej = datos.rejilla;
-    const ori = datos.orientacion;
+    // La carga viaja SIEMPRE como lista de bloques (cupo máximo = un bloque;
+    // carga mixta = un bloque por tipo colocado, con su color y su posición).
+    const bloques = datos.bloques || [];
 
     let yaw = -0.85, pitch = -0.3, cant = Math.round(datos.tope * 0.6), anim = null, arrastre = null;
     let CX = 0, CY = 0, ESC = 100, OFF = [0, 0, 0], cola = [];
@@ -118,15 +119,24 @@ export default function iniciarCarga3d(canvas, datos) {
             : [-largoCab * 0.55, veh.largo * 0.72];
         ejes.forEach((ex) => [-0.04, veh.ancho - rw + 0.04].forEach((rz) => rueda(ex, -chas, rz, rr, rw)));
 
-        // carga, en orden de estiba: fondo -> puerta, abajo -> arriba
+        // carga, en orden de estiba: bloque a bloque (fondo -> puerta, el
+        // controlador los manda ya ordenados), y dentro de cada bloque
+        // fondo -> puerta, abajo -> arriba
         let puestos = 0, listo = false;
-        for (let iz = 0; iz < rej.ancho && !listo; iz++) {
-            for (let iy = 0; iy < rej.alto && !listo; iy++) {
-                for (let ix = 0; ix < rej.largo; ix++) {
-                    if (puestos >= cant) { listo = true; break; }
-                    prisma(ix * ori.largo, iy * ori.alto, iz * ori.ancho,
-                        ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, [234, 88, 12]);
-                    puestos++;
+        for (const blq of bloques) {
+            if (listo) break;
+            const rej = blq.rejilla, ori = blq.orientacion, col = blq.color || [234, 88, 12];
+            let delBloque = 0;
+            for (let ix = 0; ix < rej.largo && !listo; ix++) {
+                for (let iz = 0; iz < rej.ancho && !listo; iz++) {
+                    for (let iy = 0; iy < rej.alto; iy++) {
+                        if (puestos >= cant) { listo = true; break; }
+                        if (delBloque >= blq.cantidad) break;
+                        prisma(blq.x + ix * ori.largo, iy * ori.alto, blq.y + iz * ori.ancho,
+                            ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
+                        puestos++;
+                        delBloque++;
+                    }
                 }
             }
         }
