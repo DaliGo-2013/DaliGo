@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,7 +25,8 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  */
 class DocumentoVenta extends Model implements AuditableContract
 {
-    use AuditableTrait;
+    /** @use HasFactory<\Database\Factories\DocumentoVentaFactory> */
+    use AuditableTrait, HasFactory;
 
     // El pluralizador inglés fallaría (documento_ventas); igual que `despachos`.
     protected $table = 'documentos_venta';
@@ -87,5 +90,23 @@ class DocumentoVenta extends Model implements AuditableContract
     public function estaAnulado(): bool
     {
         return ($this->cancellation_status ?? 0) !== 0;
+    }
+
+    /**
+     * No anulado según el espejo. Ojo con el docblock de la clase: este flag
+     * solo es fresco dentro del resolape de la sync — quien ACTÚE sobre el
+     * documento re-verifica contra Bsale (lo hace crearDesdeDocumento).
+     */
+    public function scopeVigentes(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('cancellation_status')->orWhere('cancellation_status', 0);
+        });
+    }
+
+    /** Sin despacho creado todavía (candidato a parada de hoja de ruta). */
+    public function scopeSinDespacho(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('despachos');
     }
 }

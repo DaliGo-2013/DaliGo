@@ -68,6 +68,15 @@ class RolesAndPermissionsSeeder extends Seeder
             // Unidad DESPACHOS-v1 (M05 parcial + M07 + M08 MVP).
             'manage despachos',           // jefe de bodega: crea despachos y valida retiros (QR)
             'confirmar entrega',          // conductor: confirma la entrega con firma+foto (PWA)
+            // Hoja de ruta digital (P-DSP-08, PLAN-DESPACHOS-V2). La cadena
+            // real de la operación son TRES llaves secuenciales (R11) y cada
+            // una es un permiso aparte a propósito: que una misma persona
+            // pueda dar dos llaves anularía el control cruzado que la cadena
+            // existe para tener (mismo criterio que el traslado de máquinas).
+            'manage hojas ruta',          // Ricardo (jefe de logística / despacho): arma la hoja eligiendo documentos
+            'autorizar pagos ruta',       // llave 1 — jefe de ventas: los pagos de la ruta están OK
+            'autorizar ruta',             // llave 2 — jefe de despacho: la ruta y su orden están pactados
+            'autorizar carga',            // llave 3 — jefe de bodega: la carga subió al camión (y registra la salida)
             // Facturacion electronica (M05 · DTE). Ver PROYECTO_DALIGO.md §10.
             'emitir documentos tributarios', // emitir boleta/factura desde DaliGo
             'emitir nota de credito',        // ANULAR un documento ya emitido (el unico camino: los DTE no se borran)
@@ -122,13 +131,17 @@ class RolesAndPermissionsSeeder extends Seeder
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga']);
+            // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
+            // hoja de ruta le da la llave 1 (autorizar pagos ruta).
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
             // Bodega tambien simula: es quien carga y quien sabe si el numero cuadra.
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga']);
+            // UNIÓN 04-08: + devoluciones/simulador (M13) + la llave 3 de la
+            // hoja de ruta (autorizar carga, P-DSP-08).
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar carga']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
@@ -191,6 +204,17 @@ class RolesAndPermissionsSeeder extends Seeder
         // Roles y ve la flota y sus vencimientos SIN tocar codigo (es lo que
         // gana separar 'ver' de 'manage').
         Role::firstOrCreate(['name' => 'jefe_logistica', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver vehiculos', 'manage vehiculos', 'simular carga']);
+            // UNIÓN 04-08: + simulador (Marcos) + armar hojas de ruta (P-DSP-08).
+            ->givePermissionTo(['ver vehiculos', 'manage vehiculos', 'simular carga', 'manage hojas ruta']);
+
+        // JEFE DE DESPACHO (2026-08-04, P-DSP-08). Nace con la hoja de ruta
+        // digital: es la llave 2 de la cadena R11 (autoriza la RUTA y su
+        // orden, pactado con el chofer). No existía en DaliGo — la operación
+        // lo tiene (Luis lo nombra en la ronda 1) y el permiso llega antes
+        // que la primera hoja, mismo criterio que jefe_sucursal el 28-07.
+        // También arma hojas: en la práctica Ricardo cumple ambos papeles y
+        // el dueño decidirá qué cuenta recibe qué rol.
+        Role::firstOrCreate(['name' => 'jefe_despacho', 'guard_name' => 'web'])
+            ->givePermissionTo(['manage hojas ruta', 'autorizar ruta']);
     }
 }

@@ -9,6 +9,8 @@ use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\Despacho;
 use App\Models\DocumentoVenta;
+use App\Models\HojaDeRuta;
+use App\Models\HojaRutaParada;
 use App\Models\ListaPrecio;
 use App\Models\Maquina;
 use App\Models\PreferenciaCanal;
@@ -45,6 +47,8 @@ class AuditController extends Controller
         Zona::class => 'Zona',
         DocumentoVenta::class => 'Documento de venta',
         Despacho::class => 'Despacho',
+        HojaDeRuta::class => 'Hoja de ruta',
+        HojaRutaParada::class => 'Parada de hoja de ruta',
     ];
 
     /**

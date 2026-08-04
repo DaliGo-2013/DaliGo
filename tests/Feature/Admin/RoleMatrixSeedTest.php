@@ -37,17 +37,20 @@ class RoleMatrixSeedTest extends TestCase
                 'ver plan proyecto', 'gestionar plan proyecto',
                 'ver vehiculos', 'manage vehiculos', 'simular carga',
                 'view devoluciones', 'manage devoluciones',
+                'manage hojas ruta', 'autorizar pagos ruta', 'autorizar ruta', 'autorizar carga',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga'],
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga'],
+            // UNIÓN del merge 04-08: devoluciones + simulador (M13/Marcos) y
+            // la llave 1 de la hoja de ruta (P-DSP-08).
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su
             // sucursal y llega al taller, que es quien confirma. Que una misma
             // persona pudiera cerrar las dos puntas anularía la cadena de custodia.
             'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'despachar traslado servicio'],
-            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio', 'manage devoluciones', 'simular carga'],
+            'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio', 'manage devoluciones', 'simular carga', 'autorizar carga'],
             'conductor' => ['crear lote servicio', 'confirmar entrega'],
             'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores'],
             'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
@@ -57,7 +60,12 @@ class RoleMatrixSeedTest extends TestCase
             // Vehículos. Cobranzas queda pendiente (no existe su perfil):
             // el día que exista recibe 'ver vehiculos' desde la UI de Roles,
             // sin tocar código.
-            'jefe_logistica' => ['ver vehiculos', 'manage vehiculos', 'simular carga'],
+            'jefe_logistica' => ['ver vehiculos', 'manage vehiculos', 'simular carga', 'manage hojas ruta'],
+            // Jefe de despacho (2026-08-04, P-DSP-08): la llave 2 de la
+            // cadena de la hoja de ruta (R11). Arma hojas y autoriza la ruta;
+            // las otras dos llaves son de ventas y bodega a propósito — que
+            // una persona pudiera dar dos llaves anularía el control cruzado.
+            'jefe_despacho' => ['manage hojas ruta', 'autorizar ruta'],
         ];
     }
 
@@ -74,12 +82,13 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_once_roles(): void
+    public function test_seeder_deja_exactamente_doce_roles(): void
     {
         // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14)
         // + jefe_sucursal (notas de crédito, 2026-07-28)
-        // + jefe_logistica (flota de vehículos, 2026-08-04).
-        $this->assertSame(11, Role::count());
+        // + jefe_logistica (flota de vehículos, 2026-08-04)
+        // + jefe_despacho (hoja de ruta digital, 2026-08-04 · P-DSP-08).
+        $this->assertSame(12, Role::count());
     }
 
     public function test_solo_la_jefatura_puede_anular_con_nota_de_credito(): void
@@ -118,7 +127,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(11, Role::count());
+        $this->assertSame(12, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

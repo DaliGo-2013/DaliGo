@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
@@ -19,7 +21,8 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  */
 class Despacho extends Model implements AuditableContract
 {
-    use AuditableTrait;
+    /** @use HasFactory<\Database\Factories\DespachoFactory> */
+    use AuditableTrait, HasFactory;
 
     // Pluralizador inglés fallaría; fijado a mano como ordenes_servicio.
     protected $table = 'despachos';
@@ -52,6 +55,9 @@ class Despacho extends Model implements AuditableContract
         'entrega_uuid',
         'firma_path',
         'foto_path',
+        'receptor_nombre',
+        'receptor_rut',
+        'receptor_relacion',
     ];
 
     protected function casts(): array
@@ -111,6 +117,18 @@ class Despacho extends Model implements AuditableContract
     }
 
     /**
+     * La parada de hoja de ruta que lo contiene, si existe. HasOne real:
+     * despacho_id es unique GLOBAL en hoja_ruta_paradas (un despacho no
+     * puede vivir en dos hojas a la vez).
+     *
+     * @return HasOne<HojaRutaParada, $this>
+     */
+    public function parada(): HasOne
+    {
+        return $this->hasOne(HojaRutaParada::class, 'despacho_id');
+    }
+
+    /**
      * URL FIRMADA de la ficha operativa del despacho (pantalla de escaneo).
      * Es la misma para los dos caminos de llegada: el QR pegado en la carga y el
      * enlace del panel. Va firmada y con el CÓDIGO —no el id— para que no se
@@ -125,6 +143,26 @@ class Despacho extends Model implements AuditableContract
     public function admiteEntrega(): bool
     {
         return in_array($this->estado, [self::RETIRADO, self::EN_RUTA], true);
+    }
+
+    /**
+     * Scoping conductor↔hoja (R22, P-DSP-08 — cierra el hallazgo del gate M07
+     * donde hay hoja): si el despacho está en una parada, manda LA HOJA — solo
+     * el conductor de una hoja EN RUTA lo entrega, aunque despachos.conductor_id
+     * diga otra cosa (quedó copiado al crear y la hoja pudo reasignarse). Sin
+     * hoja, rige la regla original (la PWA en producción sigue operando
+     * mientras las hojas se adoptan — scoping ADITIVO, no rompe nada).
+     */
+    public function entregablePorConductor(User $usuario): bool
+    {
+        if ($parada = $this->parada) {
+            $hoja = $parada->hoja;
+
+            return $hoja->estado === HojaDeRuta::EN_RUTA
+                && $hoja->conductor_id === $usuario->id;
+        }
+
+        return $this->conductor_id === $usuario->id;
     }
 
     /** Aún no retirado de bodega (la cola "McDonald's" muestra estos). */
