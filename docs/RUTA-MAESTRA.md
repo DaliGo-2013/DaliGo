@@ -236,7 +236,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 - [x] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias (commits `7434476` esquema + `1cf3e02` frontera pública; GET y POST firmados, throttle propio, `DevolucionPublicaTest` 7 verdes)
 - [x] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen (commit `1cf3e02`; transporte exige transportista+seguimiento EN EL SERVICIO, `DevolucionAdminTest` 8 verdes)
 - [x] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005 (commits `30e8e26` motores + `1cf3e02`; candado «stocks byte a byte igual» MUTADO en rojo, `ReembolsoDevolucionTest` 5 verdes)
-- [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular) — **segundo lote** (recorte del dictado v32)
+- [x] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular) — **segundo lote** (commit `bf31848`: informe mes/año idioma ST + badge «por recibir»; `DevolucionInformeTest` 6 verdes con el candado de los dos bordes; QA staging pendiente del deploy)
 
 ### E7 · M07 QR anti-fraude en retiro (~2 sem)
 **Contexto:** caso real de intento de retiro con factura adulterada (biblia §4/M07). Mayor ROI político del proyecto.
