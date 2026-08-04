@@ -233,9 +233,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 **Rama:** `feature/m13-devoluciones` · **Depende de:** **M14/M15** (las dos cerradas). **NO depende de E4/M04 ni de E5/M05** — D-005 lo dice textual: *«Mientras tanto: M05-F1, **M13**, diseño de M07 no dependen; el espejo read-only ya funciona»* (`docs/DECISIONES.md:144`). El reingreso va a un kardex local y M13 **no emite** nota de crédito.
 **Hecho cuando:** flujo A-12 completo en staging desde el link público del cliente hasta el **CIERRE de la devolución** —reembolso aprobado vía M14 **o** movimiento de reingreso registrado en el kardex local—; límites de upload verificados por IA-cPanel.
 
-- [ ] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias
-- [ ] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen
-- [ ] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005
+- [x] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias (commits `7434476` esquema + `1cf3e02` frontera pública; GET y POST firmados, throttle propio, `DevolucionPublicaTest` 7 verdes)
+- [x] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen (commit `1cf3e02`; transporte exige transportista+seguimiento EN EL SERVICIO, `DevolucionAdminTest` 8 verdes)
+- [x] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005 (commits `30e8e26` motores + `1cf3e02`; candado «stocks byte a byte igual» MUTADO en rojo, `ReembolsoDevolucionTest` 5 verdes)
 - [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular) — **segundo lote** (recorte del dictado v32)
 
 ### E7 · M07 QR anti-fraude en retiro (~2 sem)
