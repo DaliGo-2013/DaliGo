@@ -8,7 +8,9 @@ use App\Models\DevolucionFoto;
 use App\Models\DevolucionItem;
 use App\Models\Sucursal;
 use App\Services\Devoluciones\Devoluciones;
+use App\Support\FechaNegocio;
 use App\Support\ImagenComprimida;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -45,6 +47,93 @@ class DevolucionController extends Controller
             'devoluciones' => $devoluciones,
             'estado' => $estado,
             'linksQr' => $linksQr,
+        ]);
+    }
+
+    /**
+     * Informe por causa y por canal (P-M13-04, el cierre de E6): los datos
+     * agregados que la biblia pide para A-12 y que hoy no existen en ninguna
+     * parte. Mismo idioma que el informe de ST: período mes/año anclado en
+     * FechaNegocio (solo año = año completo), whereDate en AMBOS bordes
+     * (jamás whereBetween sobre casts de fecha — bitácora 2026-07-01/02),
+     * COALESCE portable 5.7/SQLite para las sin evaluar, y porcentajes
+     * enteros calculados ACÁ, nunca en Blade.
+     */
+    public function informe(Request $request): View
+    {
+        $v = $request->validate([
+            'anio' => ['nullable', 'integer', 'between:2020,2100'],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
+        ]);
+
+        $anio = $v['anio'] ?? null;
+        $mes = $v['mes'] ?? null;
+
+        // Sin parámetros → el mes actual del negocio (no now(): P-TZ-01).
+        if ($anio === null) {
+            $anio = FechaNegocio::ahora()->year;
+            $mes ??= FechaNegocio::ahora()->month;
+        }
+
+        $desde = Carbon::create($anio, $mes ?? 1, 1);
+        $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
+        [$desde, $hasta] = [$desde->toDateString(), $hasta->toDateString()];
+
+        $delPeriodo = fn () => Devolucion::query()
+            ->whereDate('created_at', '>=', $desde)
+            ->whereDate('created_at', '<=', $hasta);
+
+        $kpis = $delPeriodo()->selectRaw("
+            COUNT(*) AS total,
+            SUM(CASE WHEN estado = 'solicitada' THEN 1 ELSE 0 END) AS por_recibir,
+            SUM(CASE WHEN estado IN ('reembolsada','reingresada','rechazada') THEN 1 ELSE 0 END) AS resueltas,
+            COALESCE(SUM(CASE WHEN estado = 'reembolsada' THEN monto_reembolso ELSE 0 END), 0) AS reembolsado
+        ")->first();
+
+        // Por CAUSA: las aún no evaluadas se agrupan como 'sin_evaluar' — no
+        // se esconden, son la cola de trabajo de bodega.
+        $porCausa = $delPeriodo()
+            ->selectRaw("COALESCE(causa, 'sin_evaluar') AS clave, COUNT(*) AS cantidad")
+            ->groupBy('clave')->orderByDesc('cantidad')->get()
+            ->map(fn ($fila) => (object) [
+                'nombre' => Devolucion::CAUSAS[$fila->clave] ?? 'Sin evaluar',
+                'cantidad' => (int) $fila->cantidad,
+            ]);
+
+        // Por CANAL: el dato que la biblia pide para A-12 (de dónde vienen).
+        $porCanal = $delPeriodo()
+            ->selectRaw('canal AS clave, COUNT(*) AS cantidad')
+            ->groupBy('clave')->orderByDesc('cantidad')->get()
+            ->map(fn ($fila) => (object) [
+                'nombre' => Devolucion::CANALES[$fila->clave] ?? $fila->clave,
+                'cantidad' => (int) $fila->cantidad,
+            ]);
+
+        // El embudo por estado, en el ORDEN del flujo (no por frecuencia).
+        $conteoEstados = $delPeriodo()
+            ->selectRaw('estado, COUNT(*) AS cantidad')
+            ->groupBy('estado')->pluck('cantidad', 'estado');
+        $porEstado = collect(Devolucion::ESTADOS)
+            ->map(fn (string $e) => (object) ['nombre' => ucfirst($e), 'cantidad' => (int) ($conteoEstados[$e] ?? 0)])
+            ->filter(fn ($fila) => $fila->cantidad > 0)
+            ->values();
+
+        return view('admin.devoluciones.informe', [
+            'anio' => $anio,
+            'mes' => $mes,
+            'anios' => range((int) FechaNegocio::ahora()->year, 2026),
+            'kpis' => [
+                'total' => (int) $kpis->total,
+                'por_recibir' => (int) $kpis->por_recibir,
+                'resueltas' => (int) $kpis->resueltas,
+                'reembolsado' => (int) $kpis->reembolsado,
+            ],
+            'porCausa' => $porCausa,
+            'porCanal' => $porCanal,
+            'porEstado' => $porEstado,
+            'periodoLabel' => $mes
+                ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
+                : 'Año '.$anio,
         ]);
     }
 
