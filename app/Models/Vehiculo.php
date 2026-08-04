@@ -53,25 +53,30 @@ class Vehiculo extends Model implements AuditableContract
     ];
 
     /**
-     * Bases sugeridas (las de la planilla + Buzeta, que es sucursal de DaliGo).
-     * Es una LISTA SUGERIDA, no un enum: el campo acepta cualquier texto porque
-     * la flota se mueve y no queremos un deploy para agregar una ubicación. Ver
-     * el comentario de la migración.
+     * Bases sugeridas. Es una LISTA SUGERIDA, no un enum: el campo acepta
+     * cualquier texto porque la flota se mueve y no queremos un deploy para
+     * agregar una ubicación. Ver el comentario de la migración.
      *
-     * CONCEPCIÓN no está: la sucursal CERRÓ (dato del dueño, 04-08-2026) y sus
-     * vehículos pasaron a Mirador. Se saca de las sugerencias para no volver a
-     * asignarle un vehículo; si alguien la escribe a mano, el campo la acepta
-     * igual (y por eso sacarla no rompe una ficha vieja que la tenga).
+     * Las TRES sucursales que operan (dato del dueño, 04-08-2026): Mirador,
+     * Abate Molina y Coquimbo. **Concepción, Antofagasta y Viña del Mar
+     * CERRARON** y salen de las sugerencias para no volver a asignarles un
+     * vehículo. Buzeta también sale: no está entre las tres.
+     *
+     * Damimed y Jefaturas SÍ se quedan, aunque no son sucursales: son grupos de
+     * asignación con vehículos activos hoy (Damimed 1, Jefaturas 2). Si no
+     * estuvieran, la ficha de esos vehículos no podría sugerir su propia base.
+     *
+     * Sacar un valor de acá NO rompe las fichas que ya lo tengan (el campo es
+     * texto): los 3 vehículos VENDIDOS con base Antofagasta la conservan, que es
+     * lo correcto — la base de un vehículo dado de baja es historia, no un
+     * destino al que se pueda mandar algo.
      */
     public const BASES = [
         'Mirador',
-        'Coquimbo',
         'Abate Molina',
-        'Buzeta',
+        'Coquimbo',
         'Damimed',
         'Jefaturas',
-        'Antofagasta',
-        'Viña del Mar',
     ];
 
     /**

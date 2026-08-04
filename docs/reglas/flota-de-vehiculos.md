@@ -42,19 +42,42 @@ camión. La búsqueda del listado encuentra la patente escrita de las dos formas
 ### 2.2 `base` es texto, NO una FK a `sucursales`
 
 La planilla usa 7 valores en su columna «SUCURSAL» y solo 3 son sucursales de
-DaliGo (Mirador, Coquimbo, Abate Molina). Las otras —Damimed, Jefaturas,
-Antofagasta— **no son sucursales y no van a serlo**: crearlas para poder
-enlazarlas las haría aparecer en Servicio Técnico, Producción y Despachos, donde
-no operan. `Vehiculo::BASES` es una **lista sugerida** (`datalist` en el
+DaliGo. Damimed y Jefaturas **no son sucursales y no van a serlo**: crearlas para
+poder enlazarlas las haría aparecer en Servicio Técnico, Producción y Despachos,
+donde no operan. `Vehiculo::BASES` es una **lista sugerida** (`datalist` en el
 formulario), no un enum: agregar una base no necesita un deploy.
 
 Decisión del dueño, 04-08-2026 (AskUserQuestion).
 
-**Concepción está CERRADA** (dato del dueño, 04-08-2026). Sus dos vehículos
-activos —`PSJW47` «RAM MIRADOR» (Danika Toledo) y `RKHX29` «FVR (CHEVY 2)» (Axel
-Cárdenas)— operan desde **Mirador**; la planilla seguía diciendo Concepción. Por
-eso no está en las sugerencias: para no volver a asignarle un vehículo. Como el
-campo es texto libre, sacarla **no rompe** una ficha que ya la tenga.
+### 2.2.1 Solo operan tres sucursales
+
+Dato del dueño, 04-08-2026: **quedan Mirador, Abate Molina y Coquimbo**.
+**Concepción, Antofagasta y Viña del Mar cerraron.**
+
+| Base | Estado | Vehículos |
+|---|---|---|
+| Mirador | opera (central) | la mayoría de la flota |
+| Abate Molina | opera | 2 |
+| Coquimbo | opera | 3 |
+| Damimed | grupo de asignación, no sucursal | 1 activo |
+| Jefaturas | grupo de asignación, no sucursal | 2 activos (los X250) |
+| Concepción | **cerrada** | 0 — sus 2 activos pasaron a Mirador |
+| Antofagasta | **cerrada** | 0 activos (3 vendidos conservan la base) |
+| Viña del Mar | **cerrada** | 0 (nunca tuvo, solo estaba en la lista de la planilla) |
+
+Las cerradas salen de las sugerencias para no volver a asignarles un vehículo.
+**Sacarlas no rompe nada:** el campo es texto, así que los 3 vendidos con base
+Antofagasta la conservan — y eso es lo correcto, la base de un vehículo dado de
+baja es **historia**, no un destino al que se pueda mandar algo.
+
+Los dos que se movieron de Concepción a Mirador: `PSJW47` «RAM MIRADOR» (Danika
+Toledo) y `RKHX29` «FVR (CHEVY 2)» (Axel Cárdenas).
+
+**Buzeta** está sembrada como sucursal en DaliGo (`SucursalSeeder`) pero no está
+entre las tres que operan y ningún vehículo la usa, así que tampoco se sugiere
+como base. **Ojo, deuda abierta:** las 4 sucursales de la tabla `sucursales`
+siguen `activa = true`, así que Servicio Técnico todavía puede recibir un equipo
+«en Buzeta». Eso es de otro módulo y no se tocó acá.
 
 Ojo con los **alias**: `RVBD32` se llama «HD35 CONCE» y `PSJW47` «RAM MIRADOR»,
 y ninguno de los dos nombres describe su base. Son apodos de la operación y **se
