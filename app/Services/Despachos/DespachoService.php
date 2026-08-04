@@ -167,9 +167,16 @@ class DespachoService
      * `lockForUpdate` en sí no es asertable bajo SQLite (ver la nota extendida en
      * `validarRetiro` y `tests/Unit/LockParaMySqlTest.php`).
      *
+     * @param  array<string,mixed>  $extra  columnas adicionales que entran al MISMO
+     *                                       update, dentro del lock (P-DSP-05: el
+     *                                       uuid de idempotencia y la hora del
+     *                                       dispositivo deben quedar atómicos con el
+     *                                       cambio de estado). Default [] = camino
+     *                                       del jefe byte-equivalente al de antes.
+     *
      * @throws ValidationException si el despacho no salió de bodega o falta el saldo.
      */
-    public function registrarEntrega(Despacho $despacho, bool $parcial, ?string $observacion = null): Despacho
+    public function registrarEntrega(Despacho $despacho, bool $parcial, ?string $observacion = null, array $extra = []): Despacho
     {
         if ($parcial && blank($observacion)) {
             throw ValidationException::withMessages([
@@ -177,7 +184,7 @@ class DespachoService
             ]);
         }
 
-        return DB::transaction(function () use ($despacho, $parcial, $observacion) {
+        return DB::transaction(function () use ($despacho, $parcial, $observacion, $extra) {
             $anclado = Despacho::whereKey($despacho->id)->lockForUpdate()->firstOrFail();
 
             // Solo se entrega lo que SALIÓ de bodega (el retiro es el paso
@@ -190,7 +197,7 @@ class DespachoService
                 ]);
             }
 
-            $anclado->update([
+            $anclado->update($extra + [
                 'estado' => $parcial ? Despacho::ENTREGA_PARCIAL : Despacho::ENTREGADO,
                 'entregado_at' => now(),
                 'entrega_observacion' => blank($observacion) ? null : Str::limit($observacion, 188),
@@ -198,6 +205,63 @@ class DespachoService
 
             return $anclado;
         });
+    }
+
+    /**
+     * CONFIRMACIÓN DEL CONDUCTOR (P-DSP-05): la entrega que llega desde la PWA,
+     * directa o drenada por la cola offline — por eso es IDEMPOTENTE por
+     * `entrega_uuid`: la cola puede reintentar el mismo envío tras un corte y el
+     * segundo intento debe responder éxito SIN tocar nada.
+     *
+     * Tres capas, patrón de LoteServicioController::store:
+     * 1. Pre-check por uuid (la cara amable: responde sin gastar transacción).
+     * 2. El update con el uuid dentro del lock de registrarEntrega().
+     * 3. El UNIQUE de despachos.entrega_uuid + catch de QueryException (la red:
+     *    dos drenados en paralelo pasan ambos el pre-check; el segundo choca con
+     *    la BD y se le responde igual que al duplicado amable).
+     *
+     * @param  array{entrega_uuid:string, capturado_at:string, parcial?:bool, entrega_observacion?:string|null}  $datos
+     * @return array{despacho: Despacho, yaExistia: bool}
+     *
+     * @throws ValidationException si el despacho no admite entrega o falta el saldo.
+     */
+    public function confirmarEntregaConductor(Despacho $despacho, array $datos): array
+    {
+        $uuid = $datos['entrega_uuid'];
+
+        // Cara amable del invariante: ¿este envío ya se procesó?
+        $existente = Despacho::where('entrega_uuid', $uuid)->first();
+        if ($existente !== null) {
+            return ['despacho' => $existente, 'yaExistia' => true];
+        }
+
+        try {
+            $entregado = $this->registrarEntrega(
+                $despacho,
+                (bool) ($datos['parcial'] ?? false),
+                $datos['entrega_observacion'] ?? null,
+                [
+                    'entrega_uuid' => $uuid,
+                    // Hora del DISPOSITIVO (offline-safe): cuándo firmó el
+                    // cliente de verdad, aunque el envío drene horas después.
+                    // entregado_at (hora del server) sigue siendo la verdad de
+                    // auditoría — registrarEntrega la sella igual.
+                    'capturado_at' => $datos['capturado_at'],
+                ],
+            );
+
+            return ['despacho' => $entregado, 'yaExistia' => false];
+        } catch (QueryException $e) {
+            // La carrera real: otro drenado escribió el mismo uuid entre el
+            // pre-check y nuestro update. Para la cola es el mismo éxito.
+            if ($this->esViolacionDeUnique($e)) {
+                $existente = Despacho::where('entrega_uuid', $uuid)->first();
+                if ($existente !== null) {
+                    return ['despacho' => $existente, 'yaExistia' => true];
+                }
+            }
+            throw $e;
+        }
     }
 
     private function exigirSinDespacho(DocumentoVenta $documento): void

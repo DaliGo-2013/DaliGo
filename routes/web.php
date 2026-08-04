@@ -527,6 +527,19 @@ Route::middleware(['auth', 'permission:report production'])
         Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
     });
 
+// Mis entregas (Conductor, P-DSP-05): SU hoja de ruta del dia y la confirmacion
+// de entrega con firma+foto+hora. Grupo de OPERARIO (patron produccion.mi.*),
+// fuera de /admin: el conductor no ve el panel del jefe. El POST es el destino
+// de la cola offline (multipart + entrega_uuid idempotente).
+Route::middleware(['auth', 'permission:confirmar entrega'])
+    ->prefix('entregas')
+    ->name('entregas.')
+    ->group(function () {
+        Route::get('', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'index'])->name('index');
+        Route::post('{despacho}/confirmar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'confirmar'])
+            ->whereNumber('despacho')->name('confirmar');
+    });
+
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
 // install, antes de cualquier login). Ver public/sw.js.
 Route::get('offline', fn () => view('offline'))->name('offline');
