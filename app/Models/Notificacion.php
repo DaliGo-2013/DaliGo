@@ -56,6 +56,11 @@ class Notificacion extends Model
         // Taller · no tuvo arreglo. Mismo destinatario que 'reparado', pero la
         // conversacion es otra: reemplazo, o garantia si fue falla de fabrica.
         'taller.sin_solucion' => 'Equipo sin solución (avisar al cliente)',
+        // Traslado de maquinas sucursal -> casa matriz (decision del dueño 03-08).
+        'traslado.despachado' => 'Vienen máquinas en camino al taller',
+        'traslado.recibido' => 'Traslado recibido en el taller',
+        // El aviso que cierra las excusas: salieron N y llegaron menos.
+        'traslado.diferencias' => 'Traslado recibido CON DIFERENCIAS',
         // M12 · Cotización del taller al cliente (P-M12-02, fase correo)
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
@@ -138,6 +143,8 @@ class Notificacion extends Model
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            // La ficha del traslado la abre quien despacha o quien recibe.
+            'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
             default => false,
         };
 
@@ -202,6 +209,11 @@ class Notificacion extends Model
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
             // ven en la agenda de terreno.
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
+            // El traslado aterriza en SU ficha: es donde se confirma la recepcion
+            // y donde se ve que maquina falta.
+            'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $this->notificable_id
+                ? route('admin.traslados.show', $this->notificable_id)
+                : route('admin.traslados.index'),
             default => null,
         };
     }

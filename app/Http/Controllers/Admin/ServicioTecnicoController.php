@@ -459,6 +459,9 @@ class ServicioTecnicoController extends Controller
             // no es una etapa útil de cara al cliente (el estado interno sigue en ST).
             'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
             'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
+            // Variante para las máquinas recibidas en Abate o Coquimbo: llevan el
+            // paso del viaje a la casa matriz.
+            'pasosConTraslado' => $this->pasosSeguimiento(['recibido', 'en_traslado', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
         ]);
     }
 
@@ -474,6 +477,10 @@ class ServicioTecnicoController extends Controller
     {
         $desc = [
             'recibido' => 'Recibimos tu equipo en el taller.',
+            // Paso propio para el equipo que se recibió en sucursal y viaja a la
+            // casa matriz: el cliente veía «recibido» y después nada por días
+            // (decisión del dueño 03-08, para el seguimiento por folio).
+            'en_traslado' => 'Tu equipo va en camino al taller.',
             'en_revision' => 'El técnico está revisando la falla.',
             'cotizacion' => 'Te enviamos el presupuesto y esperamos tu aprobación.',
             'esperando_repuesto' => 'Pedimos el repuesto necesario para la reparación.',
@@ -716,6 +723,15 @@ class ServicioTecnicoController extends Controller
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        // Regla del dueño (03-08-2026): una maquina no se puede reparar si no fue
+        // recepcionada en la casa matriz. Cubre los dos casos que antes eran
+        // invisibles —sigue en la sucursal, o va en camino sin confirmar— y es lo
+        // que obliga a que el traslado se registre: sin este candado el registro
+        // seria opcional y moriria a la semana.
+        if ($orden->en_transito) {
+            return back()->with('status', 'No se puede trabajar esta máquina todavía: '.$orden->motivo_no_llego);
+        }
+
         // Diagnostico final OBLIGATORIO al cerrar la orden: toda maquina que se
         // marca como 'reparado' o 'sin_solucion' debe quedar con la causa de la
         // falla (para que el informe refleje la realidad). En los estados

@@ -187,6 +187,8 @@ class OrdenServicio extends Model implements AuditableContract
         'sucursal_id',
         'ruta',
         'lote_id',
+        'traslado_id',
+        'traslado_recibida_at',
         'fecha_ingreso',
         'tipo_equipo',
         'modelo',
@@ -223,6 +225,7 @@ class OrdenServicio extends Model implements AuditableContract
             'fecha_aviso' => 'date',
             'fecha_retiro' => 'date',
             'confirmada_at' => 'datetime',
+            'traslado_recibida_at' => 'datetime',
             'mano_obra' => 'integer',
             'descuento_pct' => 'integer',
         ];
@@ -648,6 +651,51 @@ class OrdenServicio extends Model implements AuditableContract
                 null => "Falta avisarle al cliente ({$telefono}).",
             },
         ]);
+    }
+
+    /**
+     * Traslado en el que esta maquina viajo a la casa matriz (null si se recibio
+     * directamente ahi, o si es anterior al registro de traslados).
+     */
+    public function traslado(): BelongsTo
+    {
+        return $this->belongsTo(TrasladoServicio::class, 'traslado_id');
+    }
+
+    /**
+     * ¿Esta maquina esta en una sucursal que NO repara? Es la que tiene que
+     * viajar: la casa matriz (es_central) es donde se repara; Abate y Coquimbo
+     * reciben pero no reparan.
+     */
+    public function getDebeViajarAttribute(): bool
+    {
+        return $this->sucursal !== null && ! $this->sucursal->es_central;
+    }
+
+    /**
+     * ¿Todavia NO esta en el taller? Regla del dueño (03-08-2026): una maquina no
+     * se puede reparar si no fue recepcionada en la matriz. Cubre los dos casos
+     * que antes eran invisibles: sigue en la sucursal (sin traslado) o va en
+     * camino (traslado sin confirmar).
+     *
+     * Las ordenes anteriores al registro llevan `traslado_recibida_at` sellado por
+     * la migracion one-shot, asi que NO quedan bloqueadas.
+     */
+    public function getEnTransitoAttribute(): bool
+    {
+        return $this->debe_viajar && $this->traslado_recibida_at === null;
+    }
+
+    /** Motivo legible del bloqueo, para decirle al tecnico QUE falta. */
+    public function getMotivoNoLlegoAttribute(): ?string
+    {
+        if (! $this->en_transito) {
+            return null;
+        }
+
+        return $this->traslado_id
+            ? 'Va en camino desde '.($this->sucursal?->nombre ?? 'la sucursal').' (traslado '.($this->traslado?->codigo ?? '').'): falta confirmar la recepción en el taller.'
+            : 'Sigue en '.($this->sucursal?->nombre ?? 'la sucursal').': todavía no se despachó al taller.';
     }
 
     /**
