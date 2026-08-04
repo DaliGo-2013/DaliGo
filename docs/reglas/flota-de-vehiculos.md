@@ -187,6 +187,24 @@ como enviados perdería la novedad para siempre y el día que exista el perfil
 nadie se enteraría. Mismo criterio que el traslado de máquinas con las cuentas de
 sucursal que aún no existen.
 
+## 4bis. Conductores
+
+El catálogo de **Conductores** vive en **LOGÍSTICA** desde el 04-08-2026 (pedido
+del dueño): quien administra la flota administra quién la maneja. Antes estaba en
+Servicio Técnico.
+
+Su permiso es **canAny** —`manage servicio tecnico|manage vehiculos`— y conserva
+el de Servicio Técnico a propósito: el catálogo alimenta el selector del **ingreso
+por lote** y el del **traslado al taller**, así que si el técnico lo perdiera, el
+conductor que retira máquinas en ruta dejaría de existir para él.
+
+Dos reglas al mover un ítem de módulo:
+
+1. **El gate de la ruta y el del ítem del menú son el mismo** (D-014). Cambiar
+   uno solo deja el menú ofreciendo una pantalla que devuelve 403.
+2. **No se duplica el ítem** en el módulo viejo: dos ítems con la misma ruta
+   rompen el candado de `SidebarTest` (una ruta resalta exactamente un ítem).
+
 ## 5. Permisos
 
 | Permiso | Quién |

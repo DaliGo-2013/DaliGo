@@ -388,7 +388,18 @@ Route::middleware('auth')
                 ->parameters(['servicio-tecnico' => 'orden'])
                 ->only(['create', 'store']);
 
-            // Conductores (choferes de ruta) — administrables desde la app.
+        });
+
+        // Conductores (choferes) — administrables desde la app. Vive en LOGÍSTICA
+        // desde el 04-08 (pedido del dueño): quien administra la flota administra
+        // quién la maneja. El permiso es canAny y NO se cambió por 'manage
+        // vehiculos' a secas porque el catálogo alimenta el selector del ingreso
+        // por lote y el del traslado al taller: si el técnico lo perdiera, el
+        // conductor que retira máquinas en ruta dejaría de existir para él.
+        // El gate de la RUTA y el del ítem del menú son el MISMO (D-014): si acá
+        // se agrega o se quita un permiso, hay que espejarlo en MenuPrincipal, o
+        // el menú ofrece una pantalla que devuelve 403.
+        Route::middleware('permission:manage servicio tecnico|manage vehiculos')->group(function () {
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);

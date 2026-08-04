@@ -94,6 +94,15 @@ class MenuPrincipal
             'icon' => 'truck',
             'items' => [
                 'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos'],
+                // Conductores llegó desde Servicio Técnico el 04-08 (pedido del
+                // dueño): quien administra la flota administra quién la maneja.
+                // El permiso es el MISMO que gatea su ruta en routes/web.php
+                // (D-014) y conserva 'manage servicio tecnico' porque el catálogo
+                // alimenta el ingreso por lote y el traslado al taller: el
+                // técnico no puede perderlo. NO se duplica el ítem en Servicio
+                // Técnico — dos ítems con la misma ruta rompen el candado de
+                // SidebarTest (una ruta resalta exactamente un ítem).
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
             ],
         ],
         // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
@@ -169,9 +178,9 @@ class MenuPrincipal
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
-                // Ex-huérfana (P-NAV-06): choferes de ruta, mismo permiso que
-                // su grupo de rutas en routes/web.php.
-                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
+                // Conductores se fue a LOGÍSTICA el 04-08 (pedido del dueño).
+                // Sigue siendo visible para el técnico: el permiso del ítem es
+                // canAny y conserva 'manage servicio tecnico'.
             ],
         ],
         // Carta Gantt transicional mientras la app se construye: link directo
