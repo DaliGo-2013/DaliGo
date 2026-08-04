@@ -82,6 +82,20 @@ class MenuPrincipal
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
             ],
         ],
+        // LOGÍSTICA (pedido del dueño 04-08-2026). Nace con la flota: reemplaza
+        // la planilla «Control vehiculos». Va después de Operación porque es
+        // operación de apoyo, no comercial ni administrativa.
+        // SIN badge a propósito: el dueño eligió «semáforo + aviso», no contador
+        // en el menú (AskUserQuestion 04-08). El vencimiento se ve en la lista
+        // y llega por la campanita; agregarlo aquí sería UNA línea ('badge' =>
+        // 'vehiculos_por_vencer' + su resolver) si algún día lo pide.
+        'logistica' => [
+            'label' => 'Logística',
+            'icon' => 'truck',
+            'items' => [
+                'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos'],
+            ],
+        ],
         // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
         // propósito: hoy muestra lo emitido (cero) y, sobre todo, QUÉ FALTA para
         // emitir — que es la información útil mientras no se emite. Ver

@@ -74,6 +74,13 @@ class RolesAndPermissionsSeeder extends Seeder
             // Plan del proyecto (/plan, carta Gantt transicional).
             'ver plan proyecto',       // consultar la pagina (gantt + tracker + hitos + extras)
             'gestionar plan proyecto', // crear/editar/eliminar los "trabajos extras en paralelo"
+            // Modulo LOGISTICA · flota de vehiculos (pedido del dueño 04-08-2026).
+            // DOS permisos: ver la flota y sus vencimientos es una consulta que
+            // manana necesita cobranzas (paga permisos de circulacion y SOAP);
+            // editar las fechas es de quien mantiene el registro. Separarlos
+            // ahora evita tener que abrir el codigo cuando exista ese perfil.
+            'ver vehiculos',
+            'manage vehiculos',
         ];
 
         foreach ($permissions as $name) {
@@ -158,5 +165,22 @@ class RolesAndPermissionsSeeder extends Seeder
         // El gerente y el jefe de ventas tambien anulan (regla 9). El gerente usa
         // el rol admin, que ya recibe TODOS los permisos mas arriba.
         Role::findByName('jefe_ventas')->givePermissionTo('emitir nota de credito');
+
+        // JEFE DE LOGISTICA (2026-08-04). Nace con el modulo LOGISTICA: la flota
+        // la mantienen el gerente (rol admin, que ya tiene todo) y el jefe de
+        // logistica (decision del dueño). Mismo criterio que jefe_sucursal el
+        // 28-07: el rol se crea con el permiso, no el dia que se cree la cuenta.
+        //
+        // Alcance ACOTADO a la flota a proposito: hoy logistica es Vehiculos.
+        // Cuando el modulo crezca (mantenciones, kilometraje, rutas) los
+        // permisos nuevos se le suman aca.
+        //
+        // COBRANZAS queda PENDIENTE y es deliberado: el dueño lo pidio "en un
+        // futuro, todavia no esta creado su perfil". No se inventa un rol vacio;
+        // el dia que exista, se le da 'ver vehiculos' desde Administracion →
+        // Roles y ve la flota y sus vencimientos SIN tocar codigo (es lo que
+        // gana separar 'ver' de 'manage').
+        Role::firstOrCreate(['name' => 'jefe_logistica', 'guard_name' => 'web'])
+            ->givePermissionTo(['ver vehiculos', 'manage vehiculos']);
     }
 }

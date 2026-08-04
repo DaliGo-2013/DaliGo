@@ -35,6 +35,7 @@ class RoleMatrixSeedTest extends TestCase
                 'manage despachos', 'confirmar entrega',
                 'emitir documentos tributarios', 'emitir nota de credito',
                 'ver plan proyecto', 'gestionar plan proyecto',
+                'ver vehiculos', 'manage vehiculos',
             ],
             'member' => [],
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial'],
@@ -50,6 +51,12 @@ class RoleMatrixSeedTest extends TestCase
             'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores'],
             'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
             'soplador' => ['report production'],
+            // Jefe de logística (2026-08-04): nace con el módulo LOGÍSTICA.
+            // Alcance ACOTADO a la flota a propósito — hoy logística es
+            // Vehículos. Cobranzas queda pendiente (no existe su perfil):
+            // el día que exista recibe 'ver vehiculos' desde la UI de Roles,
+            // sin tocar código.
+            'jefe_logistica' => ['ver vehiculos', 'manage vehiculos'],
         ];
     }
 
@@ -66,11 +73,12 @@ class RoleMatrixSeedTest extends TestCase
         }
     }
 
-    public function test_seeder_deja_exactamente_diez_roles(): void
+    public function test_seeder_deja_exactamente_once_roles(): void
     {
         // 8 del negocio + tecnico_industrial (agenda de terreno, 2026-07-14)
-        // + jefe_sucursal (notas de crédito, 2026-07-28).
-        $this->assertSame(10, Role::count());
+        // + jefe_sucursal (notas de crédito, 2026-07-28)
+        // + jefe_logistica (flota de vehículos, 2026-08-04).
+        $this->assertSame(11, Role::count());
     }
 
     public function test_solo_la_jefatura_puede_anular_con_nota_de_credito(): void
@@ -109,7 +117,7 @@ class RoleMatrixSeedTest extends TestCase
         $this->assertTrue($role->hasPermissionTo('view users'));
 
         // No se duplicaron roles.
-        $this->assertSame(10, Role::count());
+        $this->assertSame(11, Role::count());
     }
 
     public function test_index_muestra_nombres_y_permisos_legibles(): void

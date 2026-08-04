@@ -63,7 +63,7 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                                 <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
-                                <x-badge variant="warning">En {{ $orden->sucursal?->nombre }}</x-badge>
+                                <x-badge variant="brand">En {{ $orden->sucursal?->nombre }}</x-badge>
                             </div>
                             <p class="truncate text-sm text-neutral-500">
                                 {{ $orden->tipo_equipo_label }}@if ($orden->numero_serie) · N° {{ $orden->numero_serie }}@endif

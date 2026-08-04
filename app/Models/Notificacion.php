@@ -71,6 +71,11 @@ class Notificacion extends Model
         'terreno.confirmada' => 'El cliente respondió a la visita agendada',
         // Agenda de terreno · una solicitud fue rechazada (con motivo)
         'terreno.rechazada' => 'Solicitud de terreno rechazada',
+        // Logística · vencimiento de documentos de la flota (decisión del dueño
+        // 04-08): aviso 30 días antes y aviso cuando ya venció. Lo dispara el
+        // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
+        'vehiculo.documento_por_vencer' => 'Documento de vehículo por vencer',
+        'vehiculo.documento_vencido' => 'Documento de vehículo VENCIDO',
     ];
 
     protected $fillable = [
@@ -145,6 +150,8 @@ class Notificacion extends Model
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
             // La ficha del traslado la abre quien despacha o quien recibe.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
+            // La ficha del vehículo: mismo gate que su ruta en routes/web.php.
+            'vehiculo.documento_por_vencer', 'vehiculo.documento_vencido' => $user->canAny(['ver vehiculos', 'manage vehiculos']),
             default => false,
         };
 
@@ -214,6 +221,11 @@ class Notificacion extends Model
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $this->notificable_id
                 ? route('admin.traslados.show', $this->notificable_id)
                 : route('admin.traslados.index'),
+            // El vencimiento aterriza en la ficha del vehículo: es donde se
+            // actualiza la fecha del documento que venció.
+            'vehiculo.documento_por_vencer', 'vehiculo.documento_vencido' => $this->notificable_id
+                ? route('admin.vehiculos.show', $this->notificable_id)
+                : route('admin.vehiculos.index'),
             default => null,
         };
     }

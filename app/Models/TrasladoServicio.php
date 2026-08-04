@@ -150,13 +150,19 @@ class TrasladoServicio extends Model implements AuditableContract
             : 'Recibido';
     }
 
-    /** Variante de <x-badge> del estado (rojo si falta alguna maquina). */
+    /**
+     * Variante de <x-badge> del estado. Paleta ESTRICTA de 4 (CLAUDE.md): rojo
+     * solo para lo negativo (falta una maquina), naranjo de marca para lo que
+     * REQUIERE accion (en transito: alguien tiene que confirmar) y neutro para
+     * lo que ya esta cerrado. No existen 'success'/'warning' en <x-badge>: el
+     * componente cae en silencio a 'brand' y el estado pierde su significado.
+     */
     public function getEstadoVarianteAttribute(): string
     {
         return match (true) {
             $this->tiene_diferencia => 'danger',
-            $this->recibido => 'success',
-            default => 'warning',
+            $this->recibido => 'neutral',
+            default => 'brand',
         };
     }
 

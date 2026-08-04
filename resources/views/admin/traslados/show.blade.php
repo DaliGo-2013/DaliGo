@@ -171,11 +171,11 @@
                             <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                             <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
                             @if ($orden->traslado_recibida_at)
-                                <x-badge variant="success">En el taller</x-badge>
+                                <x-badge variant="neutral">En el taller</x-badge>
                             @elseif ($traslado->recibido)
                                 <x-badge variant="danger">No llegó</x-badge>
                             @else
-                                <x-badge variant="warning">En tránsito</x-badge>
+                                <x-badge variant="brand">En tránsito</x-badge>
                             @endif
                         </div>
                         <p class="truncate text-sm text-neutral-500">

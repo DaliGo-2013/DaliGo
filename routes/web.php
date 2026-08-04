@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
@@ -467,6 +468,28 @@ Route::middleware('auth')
             // Cierre del despacho: entrega total o parcial con saldo.
             Route::post('despachos/{despacho}/entrega', [DespachoController::class, 'entrega'])
                 ->whereNumber('despacho')->name('despachos.entrega');
+        });
+
+        // LOGISTICA · flota de vehiculos (pedido del dueño 04-08-2026).
+        // Ver y editar van con permisos DISTINTOS: consultar los vencimientos es
+        // lo que mañana necesita cobranzas (paga permisos de circulacion y SOAP)
+        // sin poder cambiar una fecha. 'nuevo' se declara ANTES del show para que
+        // no se lo coma como {vehiculo} (el whereNumber ya lo evita; el orden lo
+        // deja explicito).
+        Route::middleware('permission:manage vehiculos')->group(function () {
+            Route::get('vehiculos/nuevo', [VehiculoController::class, 'create'])->name('vehiculos.create');
+            Route::post('vehiculos', [VehiculoController::class, 'store'])->name('vehiculos.store');
+            Route::get('vehiculos/{vehiculo}/editar', [VehiculoController::class, 'edit'])
+                ->whereNumber('vehiculo')->name('vehiculos.edit');
+            Route::put('vehiculos/{vehiculo}', [VehiculoController::class, 'update'])
+                ->whereNumber('vehiculo')->name('vehiculos.update');
+            Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
+                ->whereNumber('vehiculo')->name('vehiculos.destroy');
+        });
+        Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
+            Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
+            Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
+                ->whereNumber('vehiculo')->name('vehiculos.show');
         });
     });
 

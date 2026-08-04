@@ -260,6 +260,35 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando se rechaza una solicitud de terreno (con el motivo).',
             ],
+            // Logística · vencimiento de documentos de la flota (decisión del
+            // dueño 04-08). Claves nuevas → el firstOrCreate del seeder las crea
+            // en el deploy; no requieren migración one-shot.
+            [
+                'clave' => 'notif_plantilla_vehiculo_documento_por_vencer',
+                'valor' => json_encode([
+                    'asunto' => 'Por vencer: {total} documento(s) de {patente}',
+                    // El detalle va EN EL CUERPO: el aviso tiene que decir QUÉ
+                    // documento y para cuándo, o obliga a abrir la ficha para
+                    // saber si hay que salir corriendo o no.
+                    'cuerpo' => "{vehiculo} ({base}) tiene {total} documento(s) por vencer:\n{documentos}\nConductor asignado: {conductor}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a gerencia y logística cuando a un documento de un vehículo le faltan 30 días o menos para vencer.',
+            ],
+            [
+                'clave' => 'notif_plantilla_vehiculo_documento_vencido',
+                'valor' => json_encode([
+                    'asunto' => '⚠ VENCIDO: {total} documento(s) de {patente}',
+                    // La última línea no es adorno: con el permiso de circulación
+                    // o el SOAP vencidos el vehículo no puede circular, y esa es
+                    // la consecuencia que ordena la prioridad de quien lee.
+                    'cuerpo' => "{vehiculo} ({base}) tiene {total} documento(s) VENCIDO(S):\n{documentos}\nConductor asignado: {conductor}\nCon el permiso de circulación o el SOAP vencidos el vehículo no puede circular.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a gerencia y logística cuando un documento de un vehículo venció (dentro de los últimos 30 días).',
+            ],
             // --- M14 · Aprobaciones (PLAN-M14 §1.3) ---
             [
                 'clave' => 'umbral_ajuste_produccion_unidades',

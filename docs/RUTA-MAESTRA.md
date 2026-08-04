@@ -17,7 +17,7 @@
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
-| **Avance global** | **≈ 46 %** sobre base 105 (tracker actualizado el 2026-07-30 en §10: entran DESPACHOS y el andamiaje DTE — M05 30 %, M07 70 %, M08 30 %). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 31 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
+| **Avance global** | **≈ 47 %** sobre base 108 (tracker actualizado el 2026-08-04 en §10: entra **M18 Logística** con peso 3 al 60 %, R-004; antes, el 2026-07-30: DESPACHOS y el andamiaje DTE — M05 30 %, M07 70 %, M08 30 %). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 31 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04) · **M15 Notificaciones (E1, cerrada 2026-07-08)**
 **En curso:** E0 (esta consolidación)
@@ -332,6 +332,12 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 > porque entra **M17 Servicio en terreno**, construido en julio y ahora sí en la
 > biblia. Cada % corregido lleva su fundamento en la columna de la derecha.
 >
+> **Actualización · 2026-08-04.** Entra **M18 Logística** (peso 3, 60 %): la flota
+> de vehículos, pedida por el dueño el 04-08 y construida ese día. La base sube de
+> 105 a **108** y el global de ≈ 46 % a **≈ 47 %**. No es alcance nuevo inventado:
+> es un módulo que la biblia no tenía y que la operación ya llevaba en una planilla
+> (ver R-004 en §11).
+>
 > **Actualización · 2026-07-30.** Entra el stream DESPACHOS y el andamiaje DTE:
 > M05 30 %, M07 70 %, M08 30 % — verificado contra `origin/main` (rutas, servicios
 > y migraciones citadas en el informe de avance del 30-jul). El ciclo de la
@@ -353,10 +359,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M15 Notificaciones | 5 | **80 %** | 4.0 | **corregido desde 0 %**: E1 cerrada 8-jul con entregabilidad verificada. Descuenta el **canal WhatsApp, que es un stub** (D-007 aplazada) |
 | M16 BI | 7 | **35 %** | 2.45 | **corregido desde 0 %**: entregado el TABLERO (cortes v0/v1/v1.2); pendiente el BI de reportes, que depende de M05 |
 | **M17 Servicio en terreno** | **5** | **85 %** | **4.25** | **ítem nuevo**: agenda, confirmación del cliente, instalaciones, conductores — en producción desde el 24-jul |
+| **M18 Logística** | **3** | **60 %** | **1.8** | **ítem nuevo (04-ago, R-004)**: flota de vehículos en producción — ficha, semáforo automático de vencimientos y aviso 30 días antes; reemplaza la planilla «Control vehiculos». Descuenta que **falta cargar los 42 vehículos reales** y el QA del dueño; kilometraje y mantenciones quedaron fuera de alcance por decisión del dueño |
 | F3 Piloto (hardening/migración/capacitación) | 7 | 0 % | 0 | — |
 | F4 Rollout Abate | 5 | 0 % | 0 | — |
 | F5 Coquimbo + cierre | 3 | 0 % | 0 | — |
-| **TOTAL** | **105** | | **48.55** | **≈ 46 %** |
+| **TOTAL** | **108** | | **50.35** | **≈ 47 %** |
 
 > **Lo que el número no dice, y hay que decir:** el ciclo de la factura
 > (M04 → M05 → M07 → M08, **35 de los 105 puntos**, el objetivo central del
@@ -390,3 +397,10 @@ Cada cambio al plan se anota aquí con fecha y motivo. El ORDEN de los módulos 
 - **Qué:** **M17 Servicio en terreno** (técnico industrial: agenda, confirmación del cliente, instalaciones, conductores) se incorpora a la biblia como módulo 17, y al tracker §10 con peso 5. La base sube de 100 a 105.
 - **Por qué:** ya estaba construido y en producción (14–24 de julio, ~27 rutas) pero no correspondía a ninguno de los 16 módulos: durante ~6 semanas la spec describía una app que no era la real. No es alcance nuevo — es alcance que se ejecutó sin pasar por la spec y ahora se sincera.
 - **Regla que lo evita:** biblia §9 — *un módulo nuevo se agrega a la sección 4 ANTES de construirse*.
+
+### R-004 · 2026-08-04 — Entra M18 Logística al alcance
+- **Qué:** **M18 Logística** (flota de vehículos: ficha, documentos con vencimiento, semáforo y aviso automático) entra al tracker §10 con **peso 3 al 60 %**. La base sube de 105 a **108** y el global de ≈ 46 % a **≈ 47 %**.
+- **Por qué:** lo pidió el dueño el 04-08 y se construyó el mismo día. No corresponde a ninguno de los 17 módulos de la biblia: la flota se administraba en la planilla `Vehiculos 2026.xlsx`, fuera de la app. **Es alcance nuevo, no alcance ejecutado a escondidas** — la diferencia con R-003 es que acá el registro entra el mismo día, no seis semanas después.
+- **Peso 3 y no más:** es un CRUD de una entidad con avisos programados; comparado con M13 Devoluciones (peso 4) o M17 (peso 5) es más chico. El 60 % descuenta lo que falta: **cargar los 42 vehículos reales**, el QA del dueño, y los bloques que quedaron fuera por decisión suya (kilometraje y mantenciones).
+- **Qué NO cambia:** el ciclo de la factura sigue en 35 puntos y en ≈ 31 %. El módulo nuevo **no aporta al objetivo central** del proyecto; suma en la periferia. Vale decirlo para que el +1 % no se lea como avance del ciclo.
+- **Regla que lo evita:** ninguna — esta vez la regla se cumplió. Se deja como precedente del camino correcto: módulo nuevo → fila en §10 + línea de fechas en `PlanProyecto::MODULOS` + esta R-00N, **en el mismo push**.
