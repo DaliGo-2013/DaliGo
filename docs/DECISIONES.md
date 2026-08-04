@@ -15,7 +15,7 @@ Formato fijo (máx. ~15 líneas por decisión):
 - **Estado:** ABIERTA | TOMADA | DESCARTADA · **Decisor:** quién · **Fecha límite útil:** cuándo deja de ser gratis esperar
 - **Contexto:** por qué hay que decidir (1–3 líneas, con referencia a biblia/HANDOFF)
 - **Opciones:** (a) … (b) … — con recomendación marcada
-- **Decisión:** — pendiente — | lo decidido, fecha y por quién
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2. | lo decidido, fecha y por quién
 - **Consecuencias:** qué cambia según lo decidido
 - **Bloquea:** pasos de RUTA-MAESTRA afectados (etiqueta [B:D-0NN])
 - **Mientras tanto:** trabajo NO bloqueado que se puede seguir haciendo
@@ -34,7 +34,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 | D-003 | Bodegas virtuales (16): levantamiento | 🟡 ABIERTA · **Ricardo respondió 13-07 (por anexar); Luis pendiente** | Luis + Ricardo | mapping bodega↔sucursal (M04 pospuesto) | sin fecha crítica (pivote 13-07) |
 | D-004 | Boleta rápida: flujo tributario | 🔴 ABIERTA | Contabilidad (vía Luis) | M05-F3 | antes de W23 |
 | D-005 | Huecos API Bsale (docs + soporte oficial) | 🔴 ABIERTA | Soporte Bsale (correo en curso vía Director) | M05-F2 (DTE), webhooks, push kardex M11 | **antes de W18** |
-| D-006 | CRM / zonas de vendedores: ¿entra? | 🔴 ABIERTA | Mauricio | Diseño hoja de ruta M08 | antes de E8 (~W27) |
+| D-006 | CRM / zonas de vendedores: ¿entra? | 🟢 RESUELTA 03-ago | Mauricio | Diseño hoja de ruta M08 | cerrada (respuesta de Luis, ronda 1 despachos) |
 | D-007 | WhatsApp Business API | 🟡 APLAZADA | Mauricio (2026-07-13) | nada (stub hasta nueva orden) | — |
 | D-008 | Impresora térmica (modelo) | 🔴 ABIERTA | Gonzalo + Mauricio | M09-mini (E12) | antes de ene 2027 |
 | D-009 | WordPress: curso WooCommerce vs código propio | ⚫ DESCARTADA | Mauricio (2026-07-08) | — | — |
@@ -48,7 +48,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 
 > D-014 se agregó al semáforo el 2026-07-26: tenía su ficha completa en §4 desde el 24-07 pero faltaba en esta tabla, que es la que se revisa. Una decisión que no aparece acá, para el ritual del viernes no existe.
 
-**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026** — quedan **5 abiertas** (D-003, D-004, D-005, D-006, D-008) y faltan menos de 5 días.
+**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026** — quedan **4 abiertas** (D-003 EN CURSO — Luis trabajando la limpieza de bodegas al 03-ago —, D-004, D-005, D-008); el objetivo del 31-jul no se cumplió, D-006 cerró el 03-ago.
 
 ---
 
@@ -60,7 +60,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **Estado:** ABIERTA — brief despachado 2026-07-08; **Ricardo YA respondió su parte (2026-07-13)** — respuestas por anexar (las entrega Mauricio); **Luis con recordatorio pendiente** (catastro ✔ obtenido 2026-07-02) · **Decisor:** Luis + Ricardo (dudas técnicas Bsale → soporte oficial, ver D-005) · **Fecha límite útil:** ~~antes de E3/M04-F1~~ **M04 pospuesto (pivote a DESPACHOS 2026-07-13)** — sigue siendo valiosa para el mapping bodega↔sucursal, sin fecha crítica |
 - **Contexto:** biblia §3 (corrección de Luis): limpiar las bodegas virtuales heredadas. **Catastro real verificado en producción** (evidencia `docs/qa/INFRA/2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md`): son **16 bodegas** (no ~25 como estimaba la biblia). Además resuelve el misterio "Santa Rosa": ES una bodega de Bsale.
 - **Opciones por bodega:** (a) se mantiene (¿con qué propósito y de qué sucursal?), (b) se elimina/fusiona, (c) queda solo histórica.
-- **Decisión:** — pendiente —
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
 - **Consecuencias:** define la clasificación física/virtual/propósito y el mapping bodega↔sucursal de M04; mal resuelta, corrompe todo el inventario.
 - **Bloquea:** ~~`[B:D-003]` en P-M04-01~~ (M04 pospuesto por el pivote 13-07); insumo de DESPACHOS-v1 para el mapeo bodega↔zona.
 - **Mientras tanto:** el espejo sigue sincronizando todo; la clasificación es aditiva (columnas locales nuevas).
@@ -117,7 +117,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **Estado:** ABIERTA · **Decisor:** Contabilidad (Melissa/Scarleth) vía Luis · **Fecha límite útil:** antes de M05-F3 (~W23)
 - **Contexto:** biblia §3/§7: venta "paga y se va" en <1 minuto sin datos del cliente. Hay que validar el tratamiento tributario antes de construirla.
 - **Opciones:** (a) boleta electrónica a consumidor final (RUT `66666666-6`) vía Bsale — **probable respuesta correcta, confirmar**, (b) otro mecanismo que indique contabilidad.
-- **Decisión:** — pendiente —
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
 - **Consecuencias:** define M05-F3. Si no llega a tiempo, F3 se posterga sin arrastrar a F1/F2.
 - **Bloquea:** `[B:D-004]` en P-M05 (solo sub-fase F3).
 - **Mientras tanto:** M05-F1 (cotizaciones) y F2 (emisión normal) completos no la necesitan.
@@ -138,7 +138,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **Estado:** ABIERTA · **Vía de resolución:** investigación en la documentación oficial de Bsale + **correo a soporte oficial Bsale (en curso vía Director)** · **Fecha límite útil:** antes de M05-F2 (~W18)
 - **⚠️ Corrección de identidad (2026-07-08):** la ficha original asumía a "Víctor" como contacto de Bsale — **es incorrecto**. Víctor es el **sysadmin INTERNO de DALI** (sistemas/redes/cPanel/correos); **no existe contacto directo en Bsale**. Toda referencia a "Víctor (Bsale)" en docs quedó corregida a "soporte oficial Bsale".
 - **Contexto:** las preguntas YA están redactadas en `docs/BSALE_API.md` §Huecos (endpoints de marcas, scopes del token, modified-since, webhooks, unicidad de code, plan contratado, uptime, OAuth). Sumar 2 nuevas: **acceso a sandbox para pruebas de escritura de DTE** y **confirmar bodegas virtuales de la cuenta real** (la DEMO tiene 0). **Pivote a DESPACHOS (2026-07-13):** subió la prioridad de la ruta A (docs oficiales, vía IA de Chrome) con una pregunta nueva clave: *¿el endpoint `documents` permite filtrar por fecha de emisión/modificación para sync incremental, y trae los ítems del documento?* — insumo directo del espejo de documentos de DESPACHOS-v1. Textos reutilizables (correo a ayuda@bsale.app + prompt Chrome): `docs/fleet/buzon/dictados/navegador.md`.
-- **Decisión:** — pendiente —
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
 - **Consecuencias:** habilita la emisión de documentos (M05-F2), define si los traspasos de M04-F2 escriben stock en Bsale o quedan locales, y si el kardex M11 se puede empujar.
 - **Bloquea:** `[B:D-005]` en P-M05-F2, P-M04-F2 (parcial), push kardex M11.
 - **Mientras tanto:** M05-F1, M13, diseño de M07 no dependen; el espejo read-only ya funciona.
@@ -146,10 +146,10 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 **Brief:** copiar `docs/BSALE_API.md` §Huecos + añadir: "¿Nos habilitan una cuenta sandbox para probar emisión de documentos sin tocar producción? ¿La cuenta real de Dali tiene bodegas virtuales configuradas y cuántas?" → destinatario: **soporte oficial Bsale** (ayuda@bsale.app / canal oficial), no un contacto interno.
 
 ### D-006 · CRM / zonas de vendedores: ¿entra al alcance?
-- **Estado:** ABIERTA · **Decisor:** Mauricio · **Fecha límite útil:** antes de E8/M08 (~W27)
+- **Estado:** **RESUELTA (2026-08-03)** · **Decisor:** Mauricio · resuelta con la respuesta de Luis (ronda 1 de despachos, R21)
 - **Contexto:** biblia §7. La hoja de ruta de M08 se organiza por ZONA con vendedor asignado; hay que decidir si "zona" es un atributo simple o un CRM completo.
 - **Opciones:** (a) **`zona` como atributo del cliente** (norte/oriente/costa/valles) — recomendada para MVP, (b) CRM completo con carteras e indicadores → post-9-meses.
-- **Decisión:** — pendiente —
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
 - **Consecuencias:** (a) permite hojas de ruta por zona sin proyecto nuevo; (b) desplaza fechas.
 - **Bloquea:** `[B:D-006]` en P-M08 (diseño de hoja de ruta).
 - **Mientras tanto:** modelar `zona` nullable en clientes desde E5 (barato y compatible con ambas).
@@ -162,7 +162,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **⚠️ Corrección de decisor (2026-07-08):** la ficha decía "Marco" — era una confusión con **Marcos (2º dev, stream M12)**. El decisor real es **Mauricio**.
 - **Contexto:** biblia §7: confirmar migración a WhatsApp Business API. M15 quedó construido con canal WhatsApp enchufable (`CanalWhatsApp` stub que loguea, LIVE desde 2026-07-07).
 - **Opciones:** (a) Meta Cloud API directa, (b) BSP (proveedor intermedio), (c) mientras tanto deep-links `wa.me` sin API (cero costo — es el puente actual para M12).
-- **Decisión:** — pendiente —
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
 - **Consecuencias:** define costo/plazo del canal WhatsApp real para M15/M14/M12.
 - **Bloquea:** `[B:D-007]` solo en el paso "activar canal WhatsApp" de M15.
 - **Mientras tanto:** email + campanita in-app (M15, ya en producción), links `wa.me` (M12).
@@ -171,7 +171,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **Estado:** ABIERTA · **Decisor:** Gonzalo + Mauricio · **Fecha límite útil:** antes de E12/M09-mini (ene 2027)
 - **Contexto:** biblia §7: la actual se sobrecalienta con volumen ML. Necesaria para las etiquetas 10x15 de M09.
 - **Opciones:** cotizar 2–3 modelos (Zebra / Xprinter u otros compatibles con etiquetas ML 10x15).
-- **Decisión:** — pendiente —
+- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
 - **Bloquea:** `[B:D-008]` en P-M09 (impresión de etiquetas).
 - **Mientras tanto:** nada de M09 se construye antes de F4; el M09-mini (bandeja + boleta vinculada) no requiere la impresora.
 
