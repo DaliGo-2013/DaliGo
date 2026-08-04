@@ -38,6 +38,11 @@ use Illuminate\Support\Facades\Cache;
  * - 'badge'             => key simbólica resuelta en badges();
  *   'badge_title' lleva ':n' que se reemplaza por el conteo (el texto
  *   "N equipo(s) por atender" es contrato de DashboardTest).
+ * - 'imprenta'          => true si el rótulo del link directo se muestra en
+ *   MAYÚSCULAS, como los títulos de los acordeones (pedido del dueño
+ *   2026-08-04). Es una bandera de DATOS: dice "este rótulo se lee como título
+ *   de sección"; las clases siguen literales en x-layout.sidebar. Dashboard
+ *   queda fuera a propósito — el dueño dijo que esa estaba bien.
  */
 class MenuPrincipal
 {
@@ -80,6 +85,9 @@ class MenuPrincipal
                 // legacy tenía en el dropdown Operación, trasladado a la fuente
                 // única al retirarse navigation.blade.php (merge 27-07).
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
+                // Devoluciones (M13, flujo A-12): el cliente declara por el
+                // link público; bodega recibe/categoriza/resuelve acá.
+                'devoluciones' => ['label' => 'Devoluciones', 'route' => 'admin.devoluciones.index', 'activo' => ['admin.devoluciones.*'], 'permiso' => 'view devoluciones|manage devoluciones'],
             ],
         ],
         // LOGÍSTICA (pedido del dueño 04-08-2026). Nace con la flota: reemplaza
@@ -106,6 +114,9 @@ class MenuPrincipal
                 // técnico no puede perderlo. NO se duplica el ítem en Servicio
                 // Técnico — dos ítems con la misma ruta rompen el candado de
                 // SidebarTest (una ruta resalta exactamente un ítem).
+                // Simulador de carga: responde "¿cuanto entra en tal camion?" antes
+                // de que el vendedor prometa. NO escribe nada operativo.
+                'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*'], 'permiso' => 'simular carga'],
                 'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
             ],
         ],
@@ -148,6 +159,7 @@ class MenuPrincipal
             'permiso' => 'report production',
             'badge' => 'mi_produccion_devueltos',
             'badge_title' => ':n reporte(s) devuelto(s)',
+            'imprenta' => true,
         ],
         // Hoja de ruta del conductor (P-DSP-05): link directo por la misma
         // doctrina que Mi producción — la pantalla del operario no se esconde
@@ -168,6 +180,7 @@ class MenuPrincipal
             'permiso' => 'aprobar solicitudes',
             'badge' => 'aprobaciones_bandeja',
             'badge_title' => ':n solicitud(es) por aprobar',
+            'imprenta' => true,
         ],
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',

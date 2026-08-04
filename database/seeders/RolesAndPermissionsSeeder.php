@@ -90,6 +90,12 @@ class RolesAndPermissionsSeeder extends Seeder
             // ahora evita tener que abrir el codigo cuando exista ese perfil.
             'ver vehiculos',
             'manage vehiculos',
+            // Simulador de carga: es una calculadora, la usa ventas.
+            'simular carga',
+            // Modulo Devoluciones (M13, flujo A-12). DOS permisos: consultar el
+            // listado/ficha es distinto de recibir, categorizar y resolver.
+            'view devoluciones',
+            'manage devoluciones',
         ];
 
         foreach ($permissions as $name) {
@@ -113,7 +119,10 @@ class RolesAndPermissionsSeeder extends Seeder
         // servicio tecnico', asi que el listado y las fichas se filtran a los
         // clientes que tiene asignados (+ los de su equipo si es jefatura).
         Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web'])
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial']);
+            // 'simular carga': el vendedor es el usuario PRINCIPAL del simulador —
+            // arma la ruta y responde "¿cuanto le cabe?" sin adivinar. Es solo
+            // lectura y no escribe nada operativo, asi que no hay riesgo en darlo.
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga']);
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
@@ -122,12 +131,17 @@ class RolesAndPermissionsSeeder extends Seeder
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'autorizar pagos ruta']);
+            // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
+            // hoja de ruta le da la llave 1 (autorizar pagos ruta).
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
         Role::firstOrCreate(['name' => 'jefe_bodega', 'guard_name' => 'web'])
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'autorizar carga']);
+            // Bodega tambien simula: es quien carga y quien sabe si el numero cuadra.
+            // UNIÓN 04-08: + devoluciones/simulador (M13) + la llave 3 de la
+            // hoja de ruta (autorizar carga, P-DSP-08).
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar carga']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
@@ -190,7 +204,8 @@ class RolesAndPermissionsSeeder extends Seeder
         // Roles y ve la flota y sus vencimientos SIN tocar codigo (es lo que
         // gana separar 'ver' de 'manage').
         Role::firstOrCreate(['name' => 'jefe_logistica', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver vehiculos', 'manage vehiculos', 'manage hojas ruta']);
+            // UNIÓN 04-08: + simulador (Marcos) + armar hojas de ruta (P-DSP-08).
+            ->givePermissionTo(['ver vehiculos', 'manage vehiculos', 'simular carga', 'manage hojas ruta']);
 
         // JEFE DE DESPACHO (2026-08-04, P-DSP-08). Nace con la hoja de ruta
         // digital: es la llave 2 de la cadena R11 (autoriza la RUTA y su

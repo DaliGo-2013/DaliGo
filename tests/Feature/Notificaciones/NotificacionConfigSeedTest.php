@@ -29,6 +29,10 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_plantilla_terreno_solicitada',
         'notif_plantilla_terreno_confirmada',
         'notif_plantilla_terreno_rechazada',
+        // M13 · Devoluciones (solicitada = interno; recibida/resuelta = cliente)
+        'notif_plantilla_devolucion_solicitada',
+        'notif_plantilla_devolucion_recibida',
+        'notif_plantilla_devolucion_resuelta',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

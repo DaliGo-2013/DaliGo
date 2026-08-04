@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\DespachoController;
+use App\Http\Controllers\Admin\DevolucionController;
 use App\Http\Controllers\Admin\HojaRutaController;
 use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
@@ -32,6 +34,7 @@ use App\Http\Controllers\PlanProyectoController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
+use App\Http\Controllers\Publico\DevolucionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use App\Http\Controllers\Publico\VisitaConfirmacionController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
@@ -498,6 +501,12 @@ Route::middleware('auth')
             Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
                 ->whereNumber('vehiculo')->name('vehiculos.destroy');
         });
+        // LOGISTICA · simulador de carga. Es una CALCULADORA: no escribe nada
+        // operativo, asi que va con su propio permiso (lo usa ventas, que no
+        // administra la flota) y solo por GET.
+        Route::middleware('permission:simular carga')->group(function () {
+            Route::get('carga', [SimuladorCargaController::class, 'index'])->name('carga.index');
+        });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
             // La descarga va ANTES del show: 'excel' no es numérico, así que el
@@ -505,6 +514,27 @@ Route::middleware('auth')
             Route::get('vehiculos/excel', [VehiculoController::class, 'excel'])->name('vehiculos.excel');
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
+        });
+
+        // Devoluciones (M13, flujo A-12): consultar es distinto de operar.
+        // Las MUTACIONES (recibir/evaluar/resolver) exigen manage; el listado,
+        // la ficha y la foto (disco privado, con sesión) bastan con view.
+        Route::middleware('permission:view devoluciones|manage devoluciones')->group(function () {
+            Route::get('devoluciones', [DevolucionController::class, 'index'])->name('devoluciones.index');
+            // La foto ANTES del show: 'foto/...' son 2 segmentos, no chocan
+            // con {devolucion} numérico (mismo idioma que servicio-tecnico.foto).
+            Route::get('devoluciones/foto/{foto}', [DevolucionController::class, 'foto'])
+                ->whereNumber('foto')->name('devoluciones.foto');
+            Route::get('devoluciones/{devolucion:id}', [DevolucionController::class, 'show'])
+                ->whereNumber('devolucion')->name('devoluciones.show');
+        });
+        Route::middleware('permission:manage devoluciones')->group(function () {
+            Route::post('devoluciones/{devolucion:id}/recibir', [DevolucionController::class, 'recibir'])
+                ->whereNumber('devolucion')->name('devoluciones.recibir');
+            Route::post('devoluciones/{devolucion:id}/evaluar', [DevolucionController::class, 'evaluar'])
+                ->whereNumber('devolucion')->name('devoluciones.evaluar');
+            Route::post('devoluciones/{devolucion:id}/resolver', [DevolucionController::class, 'resolver'])
+                ->whereNumber('devolucion')->name('devoluciones.resolver');
         });
 
         // Hoja de ruta digital (P-DSP-08, PLAN-DESPACHOS-V2). Armarla es de
@@ -625,6 +655,21 @@ Route::middleware('throttle:6,1')->group(function () {
         ->middleware('signed')->name('confirmacion-visita.responder');
     Route::get('confirmacion-visita/{token}/gracias', [VisitaConfirmacionController::class, 'gracias'])
         ->middleware('signed')->name('confirmacion-visita.gracias');
+});
+
+// Devolución PÚBLICA del cliente (M13, P-M13-01). Grupo con throttle PROPIO
+// (aprobado en PLAN-M13 §4): el limitador de invitados no incluye la ruta en
+// su firma, así que compartir el 6,1 de arriba dejaba fuera con un 429 al
+// cliente que reintenta con fotos (GET→POST→GET ya gasta 3). La variante
+// ENDURECIDA: GET y POST firmados (no la del QR viejo, cuya deuda ya lista
+// P-F3-01); binding por token de 64 (no enumerable).
+Route::middleware('throttle:12,1')->group(function () {
+    Route::get('devolucion', [DevolucionPublicoController::class, 'create'])
+        ->middleware('signed')->name('devolucion.create');
+    Route::post('devolucion', [DevolucionPublicoController::class, 'store'])
+        ->middleware('signed')->name('devolucion.store');
+    Route::get('devolucion/listo/{devolucion}', [DevolucionPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('devolucion.gracias');
 });
 
 require __DIR__.'/auth.php';

@@ -56,6 +56,10 @@ return [
         // Logística · flota de vehículos (04-08).
         'ver vehiculos' => 'Ver la flota de vehículos y sus vencimientos',
         'manage vehiculos' => 'Gestionar la flota (crear, editar, dar de baja)',
+        'simular carga' => 'Usar el simulador de carga (¿cuánto entra en cada camión?)',
+        // Devoluciones (M13, 04-08).
+        'view devoluciones' => 'Ver devoluciones',
+        'manage devoluciones' => 'Gestionar devoluciones (recibir, categorizar, resolver)',
         // Hoja de ruta digital (04-08 · P-DSP-08): la cadena de 3 llaves (R11).
         'manage hojas ruta' => 'Armar hojas de ruta (elegir documentos, orden y conductor)',
         'autorizar pagos ruta' => 'Autorizar los pagos de una hoja de ruta (llave 1 · ventas)',
@@ -86,13 +90,17 @@ return [
         'Producción' => ['production'],
         // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
         // ningún permiso de ST/terreno (verificado sobre la lista de labels).
-        // 'ruta' y 'carga' (04-08): las llaves de la hoja de ruta — sin
-        // colisiones ('autorizar reparacion' no las contiene; verificado
-        // sobre la lista completa al agregarlas).
-        'Despachos' => ['despachos', 'entrega', 'hojas ruta', 'ruta', 'carga'],
-        // Logística (04-08): hoy es la flota; cuando crezca (mantenciones,
-        // kilometraje) sus permisos caen solos en esta categoría.
-        'Logística' => ['vehiculos'],
+        // 'ruta' + 'autorizar carga' (04-08): las llaves de la hoja de ruta.
+        // OJO: el keyword es 'autorizar carga' COMPLETO y no 'carga' a secas —
+        // Despachos se evalúa antes que Logística y un 'carga' genérico aquí
+        // se comería 'simular carga' (que es del simulador, merge 04-08).
+        'Despachos' => ['despachos', 'entrega', 'hojas ruta', 'ruta', 'autorizar carga'],
+        // Logística (04-08): hoy es la flota + el simulador ('carga' matchea
+        // 'simular carga'; 'autorizar carga' ya fue capturado por Despachos).
+        'Logística' => ['vehiculos', 'carga'],
+        // Devoluciones (M13): sin esta categoría, sus permisos caerían en
+        // "Generales" (el fallback) — gotcha documentado en PLAN-M13 §3.
+        'Devoluciones' => ['devoluciones'],
         'Comercial' => ['clientes', 'productos'],
         'Usuarios y accesos' => ['users', 'roles'],
         'Aprobaciones' => ['aprobaciones', 'solicitudes'],

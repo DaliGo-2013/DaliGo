@@ -39,14 +39,20 @@ class Aprobacion extends Model implements AuditableContract
 
     public const ACCION_AJUSTE_REPORTE = 'produccion.ajuste_reporte';
 
+    // M13 · reembolso de una devolución (PLAN-M13 §1.3): la magnitud es el
+    // monto en CLP y la regla apunta a `umbral_aprobacion_clp` — la clave que
+    // PLAN-M14 dejó reservada para las reglas monetarias.
+    public const ACCION_DEVOLUCION_REEMBOLSO = 'devoluciones.reembolso';
+
     /**
      * Catálogo de tipos de acción => etiqueta legible (patrón
-     * Notificacion::EVENTOS). Los consumidores futuros (M04/M05/M07/M13)
+     * Notificacion::EVENTOS). Los consumidores futuros (M04/M05/M07)
      * agregan aquí su tipo al integrarse, junto con su handler en
      * Aprobaciones::HANDLERS y su regla en ReglasAprobacionSeeder.
      */
     public const TIPOS_ACCION = [
         self::ACCION_AJUSTE_REPORTE => 'Ajuste de reporte de producción',
+        self::ACCION_DEVOLUCION_REEMBOLSO => 'Reembolso de devolución',
     ];
 
     /**

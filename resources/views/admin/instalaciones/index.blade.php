@@ -149,9 +149,10 @@
                     </div>
                 </li>
             @empty
-                <li class="px-6 py-8 text-center text-sm text-neutral-500">
-                    Aún no hay instalaciones registradas. Usa «Registrar instalación» para la primera.
-                </li>
+                <x-lista-vacia :filtros="$filtros"
+                               vacio="Aún no hay instalaciones registradas. Usa «Registrar instalación» para la primera."
+                               sinResultados="Ninguna instalación coincide con la búsqueda o los filtros. Hay instalaciones registradas, pero ninguna en este corte."
+                               :limpiarHref="route('admin.instalaciones.index')" />
             @endforelse
         </x-list-card>
 

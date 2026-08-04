@@ -99,9 +99,10 @@
                     </x-slot>
                 </x-list-row>
             @empty
-                <li class="px-6 py-8 text-center text-sm text-neutral-500">
-                    No hay clientes. Crea uno o sincroniza desde Bsale (php artisan bsale:sync-clients).
-                </li>
+                <x-lista-vacia :filtros="$filtros"
+                               vacio="No hay clientes. Crea uno o sincroniza desde Bsale (php artisan bsale:sync-clients)."
+                               sinResultados="Ningún cliente coincide con la búsqueda o los filtros. Hay clientes cargados, pero ninguno en este corte."
+                               :limpiarHref="route('admin.clientes.index')" />
             @endforelse
         </x-list-card>
 

@@ -162,7 +162,12 @@
                     </x-slot>
                 </x-list-row>
             @empty
-                <li class="px-6 py-8 text-center text-sm text-neutral-500">No hay solicitudes con esos filtros.</li>
+                {{-- Antes decía siempre "con esos filtros", que era el error espejo: sin
+                     filtros afirmaba que había un filtro aplicado. --}}
+                <x-lista-vacia :filtros="$filtros"
+                               vacio="No hay solicitudes de aprobación todavía. Se crean solas cuando alguien pide autorizar algo que la supera."
+                               sinResultados="Ninguna solicitud coincide con esos filtros. Hay solicitudes registradas, pero ninguna en este corte."
+                               :limpiarHref="route('admin.aprobaciones.index')" />
             @endforelse
         </x-list-card>
 

@@ -94,7 +94,10 @@
                     </x-slot>
                 </x-list-row>
             @empty
-                <li class="px-6 py-8 text-center text-sm text-neutral-500">No hay notificaciones registradas.</li>
+                <x-lista-vacia :filtros="$filtros"
+                               vacio="No hay notificaciones registradas todavía."
+                               sinResultados="Ninguna notificación coincide con los filtros. Hay notificaciones registradas, pero ninguna en este corte."
+                               :limpiarHref="route('admin.notificaciones.index')" />
             @endforelse
         </x-list-card>
 

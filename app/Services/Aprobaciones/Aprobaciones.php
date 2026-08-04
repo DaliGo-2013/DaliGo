@@ -4,11 +4,13 @@ namespace App\Services\Aprobaciones;
 
 use App\Models\Aprobacion;
 use App\Models\Configuracion;
+use App\Models\Devolucion;
 use App\Models\Notificacion;
 use App\Models\ProduccionReporte;
 use App\Models\ReglaAprobacion;
 use App\Models\User;
 use App\Services\Aprobaciones\Acciones\AjusteReporteProduccion;
+use App\Services\Aprobaciones\Acciones\ReembolsoDevolucion;
 use App\Services\Notificaciones\NotificacionDispatcher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
@@ -35,11 +37,12 @@ class Aprobaciones
 {
     /**
      * tipo_accion => handler de la accion diferida. Los consumidores futuros
-     * (M04/M05/M07/M13) agregan aqui su par al integrarse, junto con su tipo
+     * (M04/M05/M07) agregan aqui su par al integrarse, junto con su tipo
      * en Aprobacion::TIPOS_ACCION y su regla en ReglasAprobacionSeeder.
      */
     public const HANDLERS = [
         Aprobacion::ACCION_AJUSTE_REPORTE => AjusteReporteProduccion::class,
+        Aprobacion::ACCION_DEVOLUCION_REEMBOLSO => ReembolsoDevolucion::class,
     ];
 
     /**
@@ -352,6 +355,12 @@ class Aprobaciones
                 $objeto->fecha?->format('d-m-Y') ?? '—',
                 $objeto->turno ?? '—',
                 $objeto->soplador?->name ?? '—',
+            ),
+            $objeto instanceof Devolucion => sprintf(
+                'Devolución %s · %s · %s',
+                $objeto->folio,
+                Devolucion::CANALES[$objeto->canal] ?? $objeto->canal,
+                $objeto->cliente_nombre ?? '—',
             ),
             $objeto !== null => class_basename($objeto).' #'.$objeto->getKey(),
             default => '—',

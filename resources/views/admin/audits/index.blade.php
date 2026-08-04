@@ -65,7 +65,10 @@
                     </x-slot>
                 </x-list-row>
             @empty
-                <li class="px-6 py-8 text-center text-sm text-neutral-500">No hay eventos registrados.</li>
+                <x-lista-vacia :filtros="$filtros"
+                               vacio="No hay eventos registrados. La auditoría se va llenando sola a medida que se usa el sistema."
+                               sinResultados="Ningún evento coincide con los filtros. La auditoría tiene eventos, pero no en este corte."
+                               :limpiarHref="route('admin.audits.index')" />
             @endforelse
         </x-list-card>
 

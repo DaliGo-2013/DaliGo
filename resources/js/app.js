@@ -1203,3 +1203,22 @@ window.dgComprimirFoto = async function (file) {
         return file;
     }
 };
+
+/**
+ * Visor 3D del simulador de carga (LOGISTICA). Import dinamico, mismo patron que
+ * 'qrcode': el modulo se descarga SOLO en esa pantalla (chunk aparte), no en el
+ * bundle global de todas las vistas.
+ */
+const montarCarga3d = () => {
+    const canvas = document.getElementById('carga3d');
+    const datos = document.getElementById('carga3d-datos');
+    if (!canvas || !datos) return;
+    import('./carga3d.js').then((mod) => {
+        try {
+            (mod.default ?? mod)(canvas, JSON.parse(datos.textContent));
+        } catch (e) {
+            console.error('No se pudo montar el visor de carga:', e);
+        }
+    });
+};
+document.addEventListener('DOMContentLoaded', montarCarga3d);

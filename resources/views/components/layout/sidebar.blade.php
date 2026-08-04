@@ -89,7 +89,12 @@
                         : 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700' }}">
                         <x-dynamic-component :component="'icon.' . $modulo['icon']" class="h-5 w-5" />
                     </span>
-                    {{ $modulo['label'] }}
+                    {{-- Con 'imprenta' el rótulo se lee como título de sección, igual que
+                         los acordeones (mismas utilidades que x-sidebar-group). Dashboard
+                         no la lleva: el dueño dijo que esa estaba bien así. --}}
+                    <span class="{{ ($modulo['imprenta'] ?? false)
+                        ? 'text-xs font-semibold uppercase tracking-wide'
+                        : '' }}">{{ $modulo['label'] }}</span>
                     @if ($badgeDirecto > 0)
                         <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-brand-600 px-1 text-xs font-semibold text-white"
                               title="{{ str_replace(':n', $badgeDirecto, $modulo['badge_title'] ?? ':n') }}">{{ $badgeDirecto }}</span>

@@ -155,7 +155,12 @@
                     </x-slot>
                 </x-list-row>
             @empty
-                <li class="px-6 py-10 text-center">
+                {{-- Sin filtros conserva el texto que explica qué va a aparecer acá (el módulo
+                     se lee como avance, no como carencia). Con filtros ese texto sería
+                     engañoso: ya hay documentos emitidos, solo que ninguno coincide. --}}
+                <x-lista-vacia :filtros="$filtros"
+                               sinResultados="Ningún documento emitido coincide con esos filtros. Hay documentos registrados, pero no de ese tipo o estado."
+                               :limpiarHref="route('admin.dte.index')">
                     <p class="text-sm font-medium text-neutral-900">Acá van a aparecer los documentos emitidos</p>
                     <p class="mx-auto mt-1 max-w-md text-sm text-neutral-500">
                         Cada uno con su folio, su estado ante el SII y los enlaces al PDF y al XML. El XML es el
@@ -166,7 +171,7 @@
                             Ver el avance de la preparación →
                         </a>
                     </p>
-                </li>
+                </x-lista-vacia>
             @endforelse
         </x-list-card>
 

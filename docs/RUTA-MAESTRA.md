@@ -17,7 +17,7 @@
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
-| **Avance global** | **≈ 47 %** sobre base 108 (tracker actualizado el 2026-08-04 en §10: entra **M18 Logística** con peso 3 al 75 %, R-004; antes, el 2026-07-30: DESPACHOS y el andamiaje DTE — M05 30 %, M07 70 %, M08 30 %). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 31 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
+| **Avance global** | **≈ 52 %** sobre base 108 (tracker actualizado el 2026-08-04 en §10: PWA del conductor en producción —M08 55 %—, lote 1 de M13 Devoluciones —60 %— y **M18 Logística** nuevo con peso 3 al 75 %, R-004). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 39 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04) · **M15 Notificaciones (E1, cerrada 2026-07-08)**
 **En curso:** E0 (esta consolidación)
@@ -233,9 +233,9 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 **Rama:** `feature/m13-devoluciones` · **Depende de:** **M14/M15** (las dos cerradas). **NO depende de E4/M04 ni de E5/M05** — D-005 lo dice textual: *«Mientras tanto: M05-F1, **M13**, diseño de M07 no dependen; el espejo read-only ya funciona»* (`docs/DECISIONES.md:144`). El reingreso va a un kardex local y M13 **no emite** nota de crédito.
 **Hecho cuando:** flujo A-12 completo en staging desde el link público del cliente hasta el **CIERRE de la devolución** —reembolso aprobado vía M14 **o** movimiento de reingreso registrado en el kardex local—; límites de upload verificados por IA-cPanel.
 
-- [ ] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias
-- [ ] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen
-- [ ] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005
+- [x] **P-M13-01** · Formulario público del CLIENTE (ruta sin auth con token firmado) + fotos obligatorias (commits `7434476` esquema + `1cf3e02` frontera pública; GET y POST firmados, throttle propio, `DevolucionPublicaTest` 7 verdes)
+- [x] **P-M13-02** · Categorización transporte/fábrica/otro + reglas automáticas por tipo y origen (commit `1cf3e02`; transporte exige transportista+seguimiento EN EL SERVICIO, `DevolucionAdminTest` 8 verdes)
+- [x] **P-M13-03** · Reembolso vía M14 si ≥ umbral; reingreso como movimiento del **kardex LOCAL de devoluciones** si el producto está apto — **nunca escribe `stocks`/`bodegas`**; el push a Bsale espera a M04/D-005 (commits `30e8e26` motores + `1cf3e02`; candado «stocks byte a byte igual» MUTADO en rojo, `ReembolsoDevolucionTest` 5 verdes)
 - [ ] **P-M13-04** · Reportes por causa y por canal + tests + QA staging (desde un celular) — **segundo lote** (recorte del dictado v32)
 
 ### E7 · M07 QR anti-fraude en retiro (~2 sem)
@@ -332,6 +332,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 > porque entra **M17 Servicio en terreno**, construido en julio y ahora sí en la
 > biblia. Cada % corregido lleva su fundamento en la columna de la derecha.
 >
+> **Actualización · 2026-08-04 (tarde).** Dos merges con doble llave: la **PWA del
+> conductor** (M08 30 → 55 %) y el **lote 1 de M13 Devoluciones** (0 → 60 %). El
+> ciclo de la factura sube a **≈ 39 %** (13.75 de 35) — sigue entrando por los
+> extremos: M05 aún no emite y M04 espera D-003 (Luis trabajando las bodegas).
+>
 > **Actualización · 2026-08-04.** Entra **M18 Logística** (peso 3, 75 %): la flota
 > de vehículos, pedida por el dueño el 04-08 y construida ese día. La base sube de
 > 105 a **108** y el global de ≈ 46 % a **≈ 47 %**. No es alcance nuevo inventado:
@@ -351,10 +356,10 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M04 Inventario | 9 | 15 % (espejo) | 1.35 | solo el espejo read-only de Bsale |
 | M05 Ciclo factura | 10 | **30 %** | 3.0 | **corregido desde 0 % (30-jul)**: andamiaje DTE completo y probado —puerto emisor Bsale, servicios, config, candados—, pero **NO EMITE**: `config/dte.php` con los 3 mapas vacíos, `emision_habilitada=false`, sin ruta de emisión ni comando `dte:emitir-prueba` (B6). Marcos activo aquí |
 | M07 QR retiro | 4 | **70 %** | 2.8 | **corregido desde 0 % (30-jul)**: P-DSP-00..04 **en producción** — QR firmado de retiro, validación en puesto de bodega, doble-retiro cerrado (lock + candado a nivel grammar). NO cierra «retirar carga ajena» (decisión de producto reportada) y falta QA de bodega con papel impreso |
-| M08 Despacho+PWA | 12 | **30 %** | 3.6 | **corregido desde 0 % (30-jul)**: lado bodega **en producción** (cola tipo McDonald's, escaneo, entrega con firma/foto/parcial). La PWA del conductor está **codificada entera en `feature/entregas-conductor` sin mergear** (mergearla y probarla en campo lo subiría a ~55-60 %); P-DSP-05 la rehace desde main |
+| M08 Despacho+PWA | 12 | **55 %** | 6.6 | **subido desde 30 % (04-ago)**: la **PWA del conductor entró a producción** (`d7803f9` — Mis entregas: firma, foto, cola offline, idempotencia por BD). Falta: hoja de ruta digital (P-DSP-08, construida, espera doble llave), P-DSP-09/10 y el QA de campo P-DSP-07 |
 | M11 Producción | 6 | 75 % | 4.5 | faltan descuento de preforma, meta del día y GP |
 | M12 Servicio técnico | 8 | **60 %** | 4.8 | **corregido desde 25 %**: taller completo + portal QR + cotización al cliente con respuesta + lotes en ruta + informes (E9: 2 pasos en curso de 5; faltan alertas 3/6/12m, sugerencia de repuestos y cobro) |
-| M13 Devoluciones | 4 | 0 % | 0 | — |
+| M13 Devoluciones | 4 | **70 %** | 2.8 | **deja el 0 % (04-ago)**: lote 1 **en producción** (`7750951` — flujo A-12 del link público al cierre: reembolso vía M14, kardex local sin tocar el espejo, fotos en 2 momentos) y **QA del dueño en celular APROBADO el mismo día**. Falta solo P-M13-04 (reportes) |
 | M14 Aprobaciones | 5 | **90 %** | 4.5 | **corregido desde 0 %**: E2 cerrada 17-jul, QA 8/8 en producción. Descuenta que hay **una sola acción cableada** (ajuste de producción) |
 | M15 Notificaciones | 5 | **80 %** | 4.0 | **corregido desde 0 %**: E1 cerrada 8-jul con entregabilidad verificada. Descuenta el **canal WhatsApp, que es un stub** (D-007 aplazada) |
 | M16 BI | 7 | **35 %** | 2.45 | **corregido desde 0 %**: entregado el TABLERO (cortes v0/v1/v1.2); pendiente el BI de reportes, que depende de M05 |
@@ -363,7 +368,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | F3 Piloto (hardening/migración/capacitación) | 7 | 0 % | 0 | — |
 | F4 Rollout Abate | 5 | 0 % | 0 | — |
 | F5 Coquimbo + cierre | 3 | 0 % | 0 | — |
-| **TOTAL** | **108** | | **50.80** | **≈ 47 %** |
+| **TOTAL** | **108** | | **56.60** | **≈ 52 %** |
 
 > **Lo que el número no dice, y hay que decir:** el ciclo de la factura
 > (M04 → M05 → M07 → M08, **35 de los 105 puntos**, el objetivo central del
