@@ -85,6 +85,9 @@ class MenuPrincipal
                 // legacy tenía en el dropdown Operación, trasladado a la fuente
                 // única al retirarse navigation.blade.php (merge 27-07).
                 'despachos' => ['label' => 'Despachos', 'route' => 'admin.despachos.index', 'activo' => ['admin.despachos.*'], 'permiso' => 'manage despachos'],
+                // Devoluciones (M13, flujo A-12): el cliente declara por el
+                // link público; bodega recibe/categoriza/resuelve acá.
+                'devoluciones' => ['label' => 'Devoluciones', 'route' => 'admin.devoluciones.index', 'activo' => ['admin.devoluciones.*'], 'permiso' => 'view devoluciones|manage devoluciones'],
             ],
         ],
         // LOGÍSTICA (pedido del dueño 04-08-2026). Nace con la flota: reemplaza
@@ -99,6 +102,15 @@ class MenuPrincipal
             'icon' => 'truck',
             'items' => [
                 'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos'],
+                // Conductores llegó desde Servicio Técnico el 04-08 (pedido del
+                // dueño): quien administra la flota administra quién la maneja.
+                // El permiso es el MISMO que gatea su ruta en routes/web.php
+                // (D-014) y conserva 'manage servicio tecnico' porque el catálogo
+                // alimenta el ingreso por lote y el traslado al taller: el
+                // técnico no puede perderlo. NO se duplica el ítem en Servicio
+                // Técnico — dos ítems con la misma ruta rompen el candado de
+                // SidebarTest (una ruta resalta exactamente un ítem).
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
             ],
         ],
         // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
@@ -142,6 +154,17 @@ class MenuPrincipal
             'badge_title' => ':n reporte(s) devuelto(s)',
             'imprenta' => true,
         ],
+        // Hoja de ruta del conductor (P-DSP-05): link directo por la misma
+        // doctrina que Mi producción — la pantalla del operario no se esconde
+        // tras un acordeón (y el conductor no tiene permisos de Operación, así
+        // que ahí quedaría como único ítem huérfano de contexto).
+        'mis-entregas' => [
+            'label' => 'Mis entregas',
+            'icon' => 'truck',
+            'route' => 'entregas.index',
+            'activo' => ['entregas.*'],
+            'permiso' => 'confirmar entrega',
+        ],
         'aprobaciones' => [
             'label' => 'Aprobaciones',
             'icon' => 'check-badge',
@@ -176,9 +199,9 @@ class MenuPrincipal
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
-                // Ex-huérfana (P-NAV-06): choferes de ruta, mismo permiso que
-                // su grupo de rutas en routes/web.php.
-                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico'],
+                // Conductores se fue a LOGÍSTICA el 04-08 (pedido del dueño).
+                // Sigue siendo visible para el técnico: el permiso del ítem es
+                // canAny y conserva 'manage servicio tecnico'.
             ],
         ],
         // Carta Gantt transicional mientras la app se construye: link directo

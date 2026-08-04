@@ -311,6 +311,43 @@ class VehiculoTest extends TestCase
         $this->assertArrayNotHasKey('logistica', MenuPrincipal::para(User::factory()->create()));
     }
 
+    // --- Conductores dentro de Logística (pedido del dueño 04-08) -----------
+
+    public function test_conductores_vive_en_logistica_y_no_en_servicio_tecnico(): void
+    {
+        $arbol = MenuPrincipal::para($this->jefeLogistica());
+
+        $this->assertArrayHasKey('conductores', $arbol['logistica']['items']);
+        $this->assertArrayNotHasKey(
+            'conductores',
+            $arbol['servicio-tecnico']['items'] ?? [],
+            'Conductores no puede quedar duplicado: dos ítems con la misma ruta rompen el resaltado del menú.',
+        );
+    }
+
+    public function test_el_jefe_de_logistica_puede_abrir_conductores_de_verdad(): void
+    {
+        // El par que importa: que el menú lo OFREZCA y que la ruta lo DEJE
+        // entrar. Si el gate del ítem y el de la ruta se separan, el menú
+        // muestra una pantalla que devuelve 403 (D-014).
+        $this->actingAs($this->jefeLogistica())
+            ->get(route('admin.conductores.index'))
+            ->assertOk();
+    }
+
+    public function test_el_tecnico_no_pierde_conductores_al_moverse_el_item(): void
+    {
+        // El catálogo alimenta el ingreso por lote y el traslado al taller: si el
+        // técnico lo perdiera, el conductor que retira máquinas en ruta dejaría
+        // de existir para él.
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+
+        $arbol = MenuPrincipal::para($tecnico);
+
+        $this->assertArrayHasKey('conductores', $arbol['logistica']['items']);
+        $this->actingAs($tecnico)->get(route('admin.conductores.index'))->assertOk();
+    }
+
     public function test_la_ficha_es_el_destino_de_la_fila(): void
     {
         $vehiculo = Vehiculo::factory()->alDia()->create(['ppu' => 'PLKC95', 'alias' => 'Actros']);

@@ -53,21 +53,30 @@ class Vehiculo extends Model implements AuditableContract
     ];
 
     /**
-     * Bases sugeridas (los 7 valores de la planilla + Buzeta, que es sucursal
-     * de DaliGo). Es una LISTA SUGERIDA, no un enum: el campo acepta cualquier
-     * texto porque la flota se mueve y no queremos un deploy para agregar una
-     * ubicación. Ver el comentario de la migración.
+     * Bases sugeridas. Es una LISTA SUGERIDA, no un enum: el campo acepta
+     * cualquier texto porque la flota se mueve y no queremos un deploy para
+     * agregar una ubicación. Ver el comentario de la migración.
+     *
+     * Las TRES sucursales que operan (dato del dueño, 04-08-2026): Mirador,
+     * Abate Molina y Coquimbo, y no hay más. Y es donde vive la flota real:
+     * Mirador 13, Coquimbo 3, Abate Molina 1.
+     *
+     * Lo que salió, y por qué:
+     * - **Concepción, Antofagasta y Viña del Mar**: las sucursales CERRARON.
+     * - **Buzeta**: es una bodega de mercadería, no una sucursal — ahí no se
+     *   dejan vehículos.
+     * - **Damimed y Jefaturas**: eran valores de la planilla, pero ninguno de
+     *   los 17 vehículos de la flota los usa (los que los tenían no eran de la
+     *   flota actual — ver §1 de docs/reglas/flota-de-vehiculos.md).
+     *
+     * Sacar un valor de acá NO rompe una ficha que ya lo tenga: el campo es
+     * texto libre justamente para eso, y por eso es una lista SUGERIDA y no un
+     * enum. Si mañana un vehículo va a otra parte, se escribe y listo.
      */
     public const BASES = [
         'Mirador',
-        'Coquimbo',
         'Abate Molina',
-        'Buzeta',
-        'Concepción',
-        'Damimed',
-        'Jefaturas',
-        'Antofagasta',
-        'Viña del Mar',
+        'Coquimbo',
     ];
 
     /**

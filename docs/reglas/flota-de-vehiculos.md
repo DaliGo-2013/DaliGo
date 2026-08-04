@@ -1,9 +1,31 @@
 # Flota de vehículos (módulo LOGÍSTICA)
 
 > Pedido del dueño, 04-08-2026. Reemplaza la planilla `Vehiculos 2026.xlsx`
-> (hoja «Control vehiculos»): **42 vehículos** — 31 activos, 9 vendidos y 2 con
-> pérdida total. La planilla tiene 44 filas: dos (`KBWC66`, `KBBC73`) no son
-> vehículos sino notas sobre cobros de TAG, y no se cargan.
+> (hoja «Control vehiculos»). **La flota son 17 vehículos** (Mirador 13,
+> Coquimbo 3, Abate Molina 1).
+
+## 0. La planilla tiene 44 filas y la flota son 17 — cómo distinguirlas
+
+**Esto costó un error en producción, así que va primero.** La hoja acumula
+historia: vehículos vendidos, con pérdida total, de sucursales cerradas, y hasta
+dos filas (`KBWC66`, `KBBC73`) que no son vehículos sino notas sobre cobros de
+TAG. La flota **actual** son 17 filas.
+
+**El nombre del conductor NO indica que el vehículo esté en la flota.** Ese fue
+el error: al cargar los datos por primera vez se tomó «tiene nombre de chofer en
+su columna» como «está activo», y entraron **31 vehículos en vez de 17**. Catorce
+de los que sobraban tienen nombre de conductor en la hoja (Pedro Castillo, Camilo
+Toro, los Lazcano…) y aun así no son de la flota de hoy: se venden o se dan de
+baja sin limpiar esa columna.
+
+**La flota actual no es deducible del archivo** — vive en el filtro con el que el
+dueño mira la hoja, no en los datos. **Antes de cargar, hay que preguntarle la
+lista de patentes.** Deducirla lleva a borrar en producción para arreglarlo.
+
+Cómo se reconocen los que NO van, cuando ya se tiene la lista: las 25 filas de
+más se identifican por patente, y su rastro se ve en las fechas — sus documentos
+vencieron en 2024 y 2025, mientras que los 17 de la flota tienen todo en 2026,
+2027 y 2028.
 
 ## 1. Qué problema resuelve
 
@@ -42,13 +64,52 @@ camión. La búsqueda del listado encuentra la patente escrita de las dos formas
 ### 2.2 `base` es texto, NO una FK a `sucursales`
 
 La planilla usa 7 valores en su columna «SUCURSAL» y solo 3 son sucursales de
-DaliGo (Mirador, Coquimbo, Abate Molina). Las otras —Concepción, Damimed,
-Jefaturas, Antofagasta— **no son sucursales y no van a serlo**: crearlas para
+DaliGo. Damimed y Jefaturas **no son sucursales y no van a serlo**: crearlas para
 poder enlazarlas las haría aparecer en Servicio Técnico, Producción y Despachos,
 donde no operan. `Vehiculo::BASES` es una **lista sugerida** (`datalist` en el
 formulario), no un enum: agregar una base no necesita un deploy.
 
 Decisión del dueño, 04-08-2026 (AskUserQuestion).
+
+### 2.2.1 Solo operan tres sucursales
+
+Dato del dueño, 04-08-2026: **quedan Mirador, Abate Molina y Coquimbo**.
+**Concepción, Antofagasta y Viña del Mar cerraron.**
+
+| Base | Estado | Vehículos de la flota |
+|---|---|---|
+| Mirador | opera (central) | **13** |
+| Coquimbo | opera | **3** |
+| Abate Molina | opera | **1** |
+| Concepción | **cerrada** | 0 — `PSJW47` pasó a Mirador |
+| Antofagasta | **cerrada** | 0 |
+| Viña del Mar | **cerrada** | 0 (nunca tuvo; solo figuraba en una lista de la planilla) |
+| Damimed · Jefaturas | valores de la planilla, no sucursales | 0 — los vehículos que los usaban no son de la flota actual |
+
+`Vehiculo::BASES` sugiere **solo las tres que operan**. Sacar un valor de ahí no
+rompe una ficha que ya lo tenga: el campo es texto libre justamente para eso, y
+por eso es una lista **sugerida** y no un enum.
+
+**Buzeta es una BODEGA de mercadería, no una sucursal** (dato del dueño,
+04-08-2026): ahí se deja mercadería y **no se dejan vehículos**. Por eso no se
+sugiere como base. Está sembrada en la tabla `sucursales` (`SucursalSeeder`)
+porque es una ubicación del negocio, pero no opera como sucursal.
+
+> **Corrección de una afirmación anterior de este documento** (commit `be2b82f`,
+> corregido el mismo día): se dejó anotado como «deuda abierta» que Servicio
+> Técnico podía recibir un equipo en Buzeta. **Es falso** — la exclusión ya
+> existía desde antes de este módulo, y en tres capas:
+> `config/servicio_tecnico.php` → `sucursales_recepcion` lista solo
+> `MIRADOR`/`COQUIMBO`/`ABATE-MOLINA`; el scope `Sucursal::recepcionServicioTecnico()`
+> filtra por ahí y lo usan **tanto** la página de códigos QR **como** el
+> formulario interno de ingreso y el lote del conductor; y el formulario público
+> del QR va por **link firmado** con el `sucursal_id` embebido, así que la
+> sucursal no se puede cambiar por URL. La lección: antes de declarar una deuda,
+> hay que buscar el control — «no lo vi» no es «no existe».
+
+Ojo con los **alias**: `RVBD32` se llama «HD35 CONCE» y `PSJW47` «RAM MIRADOR»,
+y ninguno de los dos nombres describe su base. Son apodos de la operación y **se
+conservan tal cual** — la base es el dato, el alias es cómo le dicen.
 
 ### 2.3 El estado va aparte del conductor
 
@@ -143,6 +204,63 @@ como enviados perdería la novedad para siempre y el día que exista el perfil
 nadie se enteraría. Mismo criterio que el traslado de máquinas con las cuentas de
 sucursal que aún no existen.
 
+## 4bis. Conductores
+
+El catálogo de **Conductores** vive en **LOGÍSTICA** desde el 04-08-2026 (pedido
+del dueño): quien administra la flota administra quién la maneja. Antes estaba en
+Servicio Técnico.
+
+Su permiso es **canAny** —`manage servicio tecnico|manage vehiculos`— y conserva
+el de Servicio Técnico a propósito: el catálogo alimenta el selector del **ingreso
+por lote** y el del **traslado al taller**, así que si el técnico lo perdiera, el
+conductor que retira máquinas en ruta dejaría de existir para él.
+
+Dos reglas al mover un ítem de módulo:
+
+1. **El gate de la ruta y el del ítem del menú son el mismo** (D-014). Cambiar
+   uno solo deja el menú ofreciendo una pantalla que devuelve 403.
+2. **No se duplica el ítem** en el módulo viejo: dos ítems con la misma ruta
+   rompen el candado de `SidebarTest` (una ruta resalta exactamente un ítem).
+
+## 4ter. Descarga en Excel
+
+Botón **Descargar Excel** en el listado (pedido del dueño 04-08-2026): la planilla
+que circula sale **al día desde la app** y no se mantiene a mano.
+`App\Services\Logistica\FlotaExcel` arma el `.xlsx` sin librerías (un xlsx es un
+ZIP de XMLs y `ZipArchive` viene con PHP), igual que `CartaGanttExcel`.
+
+Espeja la forma de «Control vehiculos» —identificación · dimensiones ·
+documentos— y agrega las **dos columnas que la planilla a mano no puede tener**:
+*Estado documental* y *Qué vence*, con el plazo en palabras.
+
+Tres decisiones que lo hacen usable como planilla y no como volcado:
+
+1. **Las fechas van como fechas de Excel** (serial + formato `dd-mm-yyyy`), no
+   como texto: si viajaran como texto no se podría ordenar ni filtrar por
+   vencimiento, que es para lo que se descarga. Candado que lo fija:
+   `FlotaExcelTest::test_las_fechas_viajan_como_fechas_de_excel_y_no_como_texto`.
+2. **Autofiltro + cabecera congelada**: son 25 columnas; sin eso es inmanejable.
+   Así se usa la planilla original.
+3. **Respeta los filtros de la pantalla** («descargar lo que estoy viendo») **y
+   escribe adentro cuál se aplicó**. Sin esa línea, un Excel de 10 filas circula
+   por correo como si fuera la flota completa y nadie puede saberlo mirándolo. El
+   resumen del encabezado cuenta **lo que el archivo trae**, no la flota entera.
+
+El listado y la descarga filtran por el MISMO método privado
+(`VehiculoController::filtrada`). Si cada uno armara su query, la descarga
+empezaría a diferir de lo que se ve — el defecto clásico de este tipo de botón.
+
+**Colores:** acá sí se usa el semáforo rojo/ámbar/verde y no la paleta de 4 de la
+app. Es un archivo que se abre FUERA de DaliGo, donde el verde de «al día» es el
+idioma que la gente espera de una planilla; mismo criterio que el Excel de la
+carta Gantt.
+
+**Verificación que no se salta:** XML bien formado **no** garantiza que Excel
+abra el archivo (Excel exige además las celdas en orden de columna y sin refs
+repetidas, y rechaza el archivo entero sin decir por qué). Los candados cubren el
+XML; la prueba final es abrirlo con Excel de verdad — se hizo vía COM y abrió sin
+reparaciones, con las fechas como número y el autofiltro puesto.
+
 ## 5. Permisos
 
 | Permiso | Quién |
@@ -189,6 +307,13 @@ su motivo y su fecha al día 1 del mes declarado), descarta `NO ASIGNADO` y
 equivocada), convierte los seriales de fecha de Excel, y mueve a
 `observaciones` las notas que vivían dentro de las celdas (`SIN EXTINTOR`,
 indemnizaciones, fechas de entrega).
+
+**PERO el `.sql` no decide qué vehículos van: eso se pregunta.** La primera carga
+metió 31 en vez de 17 por deducir la flota del archivo (ver §0), y hubo que
+corregirlo con un `DELETE` en producción. El orden correcto es: pedir la lista de
+patentes → filtrar por ella → cargar. Y el `.sql` de carga conviene entregarlo
+con un `SELECT` **antes** del `DELETE`/`INSERT`, para que el dueño vea la lista de
+lo que se va a tocar antes de aceptarla.
 
 ## 7. Gotchas encontrados construyendo esto
 

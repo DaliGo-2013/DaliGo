@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BodegaController;
 use App\Http\Controllers\Admin\ClienteController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\DespachoController;
+use App\Http\Controllers\Admin\DevolucionController;
 use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\PlanProyectoController;
 use App\Http\Controllers\Produccion\MiProduccionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
+use App\Http\Controllers\Publico\DevolucionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use App\Http\Controllers\Publico\VisitaConfirmacionController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
@@ -388,7 +390,18 @@ Route::middleware('auth')
                 ->parameters(['servicio-tecnico' => 'orden'])
                 ->only(['create', 'store']);
 
-            // Conductores (choferes de ruta) — administrables desde la app.
+        });
+
+        // Conductores (choferes) — administrables desde la app. Vive en LOGÍSTICA
+        // desde el 04-08 (pedido del dueño): quien administra la flota administra
+        // quién la maneja. El permiso es canAny y NO se cambió por 'manage
+        // vehiculos' a secas porque el catálogo alimenta el selector del ingreso
+        // por lote y el del traslado al taller: si el técnico lo perdiera, el
+        // conductor que retira máquinas en ruta dejaría de existir para él.
+        // El gate de la RUTA y el del ítem del menú son el MISMO (D-014): si acá
+        // se agrega o se quita un permiso, hay que espejarlo en MenuPrincipal, o
+        // el menú ofrece una pantalla que devuelve 403.
+        Route::middleware('permission:manage servicio tecnico|manage vehiculos')->group(function () {
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
@@ -488,8 +501,32 @@ Route::middleware('auth')
         });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
+            // La descarga va ANTES del show: 'excel' no es numérico, así que el
+            // whereNumber ya lo protege, pero el orden lo deja explícito.
+            Route::get('vehiculos/excel', [VehiculoController::class, 'excel'])->name('vehiculos.excel');
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
+        });
+
+        // Devoluciones (M13, flujo A-12): consultar es distinto de operar.
+        // Las MUTACIONES (recibir/evaluar/resolver) exigen manage; el listado,
+        // la ficha y la foto (disco privado, con sesión) bastan con view.
+        Route::middleware('permission:view devoluciones|manage devoluciones')->group(function () {
+            Route::get('devoluciones', [DevolucionController::class, 'index'])->name('devoluciones.index');
+            // La foto ANTES del show: 'foto/...' son 2 segmentos, no chocan
+            // con {devolucion} numérico (mismo idioma que servicio-tecnico.foto).
+            Route::get('devoluciones/foto/{foto}', [DevolucionController::class, 'foto'])
+                ->whereNumber('foto')->name('devoluciones.foto');
+            Route::get('devoluciones/{devolucion:id}', [DevolucionController::class, 'show'])
+                ->whereNumber('devolucion')->name('devoluciones.show');
+        });
+        Route::middleware('permission:manage devoluciones')->group(function () {
+            Route::post('devoluciones/{devolucion:id}/recibir', [DevolucionController::class, 'recibir'])
+                ->whereNumber('devolucion')->name('devoluciones.recibir');
+            Route::post('devoluciones/{devolucion:id}/evaluar', [DevolucionController::class, 'evaluar'])
+                ->whereNumber('devolucion')->name('devoluciones.evaluar');
+            Route::post('devoluciones/{devolucion:id}/resolver', [DevolucionController::class, 'resolver'])
+                ->whereNumber('devolucion')->name('devoluciones.resolver');
         });
     });
 
@@ -511,6 +548,19 @@ Route::middleware(['auth', 'permission:report production'])
         Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->whereNumber('reporte')->name('mi.update');
         Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->whereNumber('reporte')->name('mi.registros.store');
         Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
+    });
+
+// Mis entregas (Conductor, P-DSP-05): SU hoja de ruta del dia y la confirmacion
+// de entrega con firma+foto+hora. Grupo de OPERARIO (patron produccion.mi.*),
+// fuera de /admin: el conductor no ve el panel del jefe. El POST es el destino
+// de la cola offline (multipart + entrega_uuid idempotente).
+Route::middleware(['auth', 'permission:confirmar entrega'])
+    ->prefix('entregas')
+    ->name('entregas.')
+    ->group(function () {
+        Route::get('', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'index'])->name('index');
+        Route::post('{despacho}/confirmar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'confirmar'])
+            ->whereNumber('despacho')->name('confirmar');
     });
 
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
@@ -567,6 +617,21 @@ Route::middleware('throttle:6,1')->group(function () {
         ->middleware('signed')->name('confirmacion-visita.responder');
     Route::get('confirmacion-visita/{token}/gracias', [VisitaConfirmacionController::class, 'gracias'])
         ->middleware('signed')->name('confirmacion-visita.gracias');
+});
+
+// Devolución PÚBLICA del cliente (M13, P-M13-01). Grupo con throttle PROPIO
+// (aprobado en PLAN-M13 §4): el limitador de invitados no incluye la ruta en
+// su firma, así que compartir el 6,1 de arriba dejaba fuera con un 429 al
+// cliente que reintenta con fotos (GET→POST→GET ya gasta 3). La variante
+// ENDURECIDA: GET y POST firmados (no la del QR viejo, cuya deuda ya lista
+// P-F3-01); binding por token de 64 (no enumerable).
+Route::middleware('throttle:12,1')->group(function () {
+    Route::get('devolucion', [DevolucionPublicoController::class, 'create'])
+        ->middleware('signed')->name('devolucion.create');
+    Route::post('devolucion', [DevolucionPublicoController::class, 'store'])
+        ->middleware('signed')->name('devolucion.store');
+    Route::get('devolucion/listo/{devolucion}', [DevolucionPublicoController::class, 'gracias'])
+        ->middleware('signed')->name('devolucion.gracias');
 });
 
 require __DIR__.'/auth.php';

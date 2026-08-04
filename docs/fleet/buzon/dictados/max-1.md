@@ -1,73 +1,49 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-03 (v33 — VISTO BUENO del dueño al PLAN-M13; re-sellado primero, migraciones después). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-04 (v34 — LOTE 1 DE M13 EN PRODUCCIÓN; GO P-M13-04, el cierre de E6). Manda sobre lo anterior.
 
-MODELO: Opus 4.8 · high (construcción de módulo nuevo; xhigh solo si algo se resiste).
+MODELO: Opus 4.8 · high.
 
-## ✅ VISTO BUENO del dueño al PLAN-M13 (03-ago) — puedes construir
+## ✅ Tu lote 1 está EN PRODUCCIÓN (merge `7750951`, doble llave 04-ago) — M13 dejó el 0 %
 
-El dueño aprobó el plan tal como lo sellaste, **con la condición que tú mismo pediste**: el
-re-sellado va ANTES de la primera migración. Tus 3 decisiones de alcance consultadas quedan
-firmes: **kardex local propio** (patrón M11), **fotos en los dos momentos** (cliente y
-bodega), **transportista + N° de seguimiento dentro**. La enmienda de E6 ya está aplicada
-desde tu parte anterior.
+Verificación del Director: suite sobre el árbol unión **1425 verdes / 10.765 aserciones —
+exacta a tu cifra de cierre**, superset del bundle 0 pérdidas, spot-checks completos (el
+kardex que jamás toca `stocks`, las tres rutas públicas firmadas con throttle propio, el
+binding por id, el monto no-nulo, HEIC, honeypot). Deploy success. Rama borrada tras ancestría.
 
-Tu parte del 30-07 fue exactamente lo que un plan-sin-código debe ser: las 18 citas
-verificadas una por una (y la corregida documentando la colisión de vocabulario vale más que
-la original), la confesión de la suite descartada incluida. Esa confesión es la razón por la
-que tu cifra vale.
+Tu único rojo fue el candado de la matriz haciendo su trabajo y lo declaraste consciente —
+y mi corrida independiente encontró exactamente el mismo. Los 3 defectos cazados ANTES de
+correr (el 404 del binding por token, el correo duplicado del camino inline, la atomicidad
+del aviso diferido) son la mejor publicidad del método fix→verde→commit→mutar.
 
-## 🔴 Paso 1 — re-verificar y RE-SELLAR el plan contra el main de HOY
+Tus 4 llamadas a criterio quedan ACEPTADAS como están (recibida/resuelta al cliente,
+`manage devoluciones` a las dos jefaturas, un producto por envío v1, sin badge). El badge
+«devoluciones por recibir» queda anotado como pulido para P-M13-04.
 
-Tenías razón: el sello quedó viejo. Y main corrió MÁS desde tu parte — al 03-ago entraron
-además: página `/plan` (P-PLAN-01..03, parsea el tracker §10), «Sin solución» del taller,
-tarjetas de permisos, fixes de borde de mes, **idioma-espanol** (paginación y nombres de campo
-en español) y **PLAN-DESPACHOS-V2** (hoy, del Director — toca DECISIONES y RUTA-MAESTRA §E8,
-no tu territorio, pero re-verifica que ninguna cita tuya apunte a línea movida).
+## 🟢 GO P-M13-04 — reportes por causa y canal (el cierre de E6) (M)
 
-- Re-verifica las 18 citas del §0 (especialmente `publico/taller/create*.blade.php`, el molde
-  de P-M13-01 que sabías tocado).
-- Re-sella con fecha nueva. Si algo cambió de fondo, dilo en el parte del cierre — no hace
-  falta parte separado por el re-sellado.
-- **La baseline de suite la fija el main del día** (tu 1273 ya está vieja).
+Rama nueva desde main FRESCO. Ojo: main está caliente — hoy entraron TU lote, la PWA del
+conductor (`d7803f9`) y M13 convive ahora con el rol nuevo `jefe_despacho` que traerá la
+hoja de ruta de Max-2 (su rama espera doble llave; si entra antes de que arranques, la
+matriz de roles cambia OTRA vez — re-sella baseline el día que empieces).
 
-## 🟢 Paso 2 — construir el lote 1 (con el plan re-sellado)
-
-Orden del propio plan: primera migración recién tras el re-sellado.
-
-- **P-M13-01** · formulario público del cliente: ruta sin auth con **token firmado GET y
-  POST** (la variante endurecida, como tu plan cita) + fotos obligatorias con compresión en
-  navegador + **throttle propio del grupo M13** (tu riesgo declarado del `throttle:6,1`
-  compartido: aprobado, resuélvelo).
-- **P-M13-02** · categorización transporte/fábrica/otro + reglas por tipo y origen.
-- **P-M13-03 según el plan aprobado** · reembolso vía M14 (`monto` nunca null; recuerda que
-  `solicitar()` aplica inline bajo el umbral) + **kardex local `devolucion_movimientos`** +
-  estado «apta para reingreso» + aviso M15 (claves nuevas por seeder `firstOrCreate`, sin
-  one-shot). El empuje a stock real sigue fuera (M04/D-003 — Luis está trabajando las bodegas
-  AHORA, no te cruces con eso).
-- **P-M13-04** (reportes) sigue fuera de este lote.
-
-### El dato de cPanel — LLEGÓ el mismo 03-ago (evidencia: `docs/qa/INFRA/2026-08-03--INFRA--limites-upload-user-ini-litespeed.md`)
-**LiteSpeed SÍ honra el `.user.ini`.** Valores WEB efectivos verificados por phpinfo en el
-dominio (Server API LiteSpeed V8.3): `upload_max_filesize` **12M** · `post_max_size` **30M** ·
-`memory_limit` **256M** · `max_file_uploads` **20** (default real, no fijado). Los cuatro
-idénticos a lo esperado; el contraste CLI (512M/516M) confirma que la diferencia viene del
-archivo. **Fija el validador con certeza, ya no como asunción**: 12M por archivo comprimido
-(la compresión en navegador sigue obligatoria), el request completo con holgura bajo 30M, y
-tope duro de fotos muy por debajo de 20. El punto único de configuración queda igual — ahora
-con el techo real documentado al lado.
+- **P-M13-04 según RUTA-MAESTRA**: reportes por causa y por canal + tests. La media docena
+  de decisiones chicas (cortes, períodos, quién los ve) tómalas con el patrón de los
+  informes de M12/M16 y decláralas en el parte.
+- **El badge del menú** («devoluciones por recibir», doctrina de badges accionables) entra
+  aquí si cabe sin inflar el lote — tú decides y lo declaras.
+- El «Hecho cuando» de E6 se cierra con **QA de staging del dueño** (link público desde su
+  celular, flujo A-12 completo). Ya se lo recordé; tu lote solo debe dejar el terreno listo.
 
 ## Territorio
-- **Marcos en M05** — ni de refilón. El MEDIO de «Ver documento» sigue en canal directo del dueño.
-- **Max-2 en despachos**: re-refresh de su PWA (doble llave inminente) y luego P-DSP-08 (hoja
-  de ruta digital, PLAN-DESPACHOS-V2 que entró hoy). M13 no comparte archivos con despachos;
-  ante un cruce raro (p. ej. notificaciones), gana el primero en main y el otro rebasea.
-- **Luis está limpiando las bodegas en Bsale (D-003 EN CURSO)** — nada de M13 debe asumir
-  estructura de bodegas todavía; el kardex local existe justo para eso.
+- **Max-2**: su hoja de ruta digital (P-DSP-08) espera doble llave y luego re-refresh contra
+  tu M13 — la colisión esperada es LA MATRIZ DE ROLES y `config/permissions.php`; es suya,
+  no la toques.
+- **Marcos**: M05 + M18 Logística. Ni de refilón.
+- **Luis** sigue con las bodegas (D-003): el kardex local NO se empuja a stock todavía.
 
 ## Recordatorios
-Suite COMPLETA antes de cualquier push (baseline = main del día). Blade tocado → build + grep
-superset. Conflictos con `git checkout origin/main -- <archivo>`, nunca con `>` (BOM de PS 5.1
-revienta Vite). Fotos: nunca la regla `image` (HEIC), compresión en navegador obligatoria.
-Parte al buzón → doble llave.
+Suite COMPLETA antes de cualquier push (baseline HOY: **1425 / 10.765** en main `7750951`).
+Blade tocado → build + grep superset. Conflictos con `git checkout origin/main -- <archivo>`,
+nunca con `>` (BOM de PS 5.1). Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.
