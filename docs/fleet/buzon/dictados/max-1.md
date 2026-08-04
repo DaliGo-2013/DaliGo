@@ -31,8 +31,9 @@ matriz de roles cambia OTRA vez — re-sella baseline el día que empieces).
   informes de M12/M16 y decláralas en el parte.
 - **El badge del menú** («devoluciones por recibir», doctrina de badges accionables) entra
   aquí si cabe sin inflar el lote — tú decides y lo declaras.
-- El «Hecho cuando» de E6 se cierra con **QA de staging del dueño** (link público desde su
-  celular, flujo A-12 completo). Ya se lo recordé; tu lote solo debe dejar el terreno listo.
+- **El QA del dueño ya está APROBADO** (04-ago, desde su celular, flujo completo funcionando).
+  El «Hecho cuando» de E6 queda satisfecho en todo salvo los reportes: **tu P-M13-04 ES el
+  cierre de E6** — al mergearse, la épica completa queda cerrada.
 
 ## Territorio
 - **Max-2**: su hoja de ruta digital (P-DSP-08) espera doble llave y luego re-refresh contra
