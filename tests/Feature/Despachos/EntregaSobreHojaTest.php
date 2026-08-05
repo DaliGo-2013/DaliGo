@@ -177,6 +177,52 @@ class EntregaSobreHojaTest extends TestCase
         $this->assertSame(Despacho::ENTREGADO, $suelto->fresh()->estado);
     }
 
+    // ─── La pantalla (smoke de ganchos, P-DSP-09) ───────────────────
+
+    public function test_la_hoja_muestra_direccion_telefono_cobro_y_rechazo(): void
+    {
+        $conductor = $this->conductor();
+        $despacho = $this->despachoEnHoja($conductor);
+        $despacho->documento->cliente->update([
+            'direccion' => 'Av. Sintética 1234',
+            'comuna' => 'Maipú',
+            'telefono' => '+56 9 1111 1111',
+        ]);
+
+        $this->actingAs($conductor)->get(route('entregas.index'))
+            ->assertOk()
+            ->assertSee('Av. Sintética 1234, Maipú')               // el hueco más grande vs el papel
+            ->assertSee('tel:+56911111111', false)                  // llamar es UN toque
+            ->assertSee('Cobrar en entrega', false)                 // el chip ANTES de abrir el panel
+            ->assertSee('data-cobro', false)                        // el bloque del cobro (solo cobrar_en_entrega)
+            ->assertSee('Quién recibe')                             // receptor R13
+            ->assertSee('autocapitalize="characters"', false)       // gotcha del DV K (28-07)
+            ->assertSee('data-rechazo', false)                      // rechazo R15 (tiene parada)
+            // La URL viaja por Js::from (los / quedan \/ en el JSON del x-data).
+            ->assertSee("entregas\\/{$despacho->id}\\/rechazar", false);
+    }
+
+    public function test_una_parada_pagada_no_muestra_el_bloque_de_cobro(): void
+    {
+        $conductor = $this->conductor();
+        $this->despachoEnHoja($conductor, HojaRutaParada::COBRO_PAGADO);
+
+        $this->actingAs($conductor)->get(route('entregas.index'))
+            ->assertOk()
+            ->assertSee('Pagado')
+            ->assertDontSee('data-cobro');
+    }
+
+    public function test_un_despacho_suelto_no_ofrece_rechazo(): void
+    {
+        $conductor = $this->conductor();
+        Despacho::factory()->retirado()->create(['conductor_id' => $conductor->id]);
+
+        $this->actingAs($conductor)->get(route('entregas.index'))
+            ->assertOk()
+            ->assertDontSee('data-rechazo');
+    }
+
     // ─── Idempotencia con los campos nuevos ─────────────────────────
 
     public function test_el_duplicado_de_la_cola_no_pisa_receptor_ni_cobro(): void
