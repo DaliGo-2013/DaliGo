@@ -117,6 +117,29 @@ dibujan igual).
 geometría, no una librería, y son ~150 KB comprimidos en una PWA. El chunk del
 visor quedó en 7,9 KB (3,5 KB gzip).
 
+### 4.1bis Controles: zoom de ESCRITORIO y nombres por bloque (05-08-2026)
+
+**El zoom es solo de escritorio, a pedido del dueño**: *«no lo quiero para celular,
+no quiero que se quede pegada o se ponga lento»*. Se cumple **por construcción y no
+por un `if` de ancho**: entra por la **rueda del mouse** (que un táctil no emite) y
+por botones que la vista esconde con `hidden lg:flex`. **No hay ningún handler de
+`touch` ni de pinza** — lo vigila `test_el_visor_no_registra_gestos_tactiles`. En
+celular sigue andando el arrastre para girar, que ya existía. Si algún día se quiere
+la pinza, que sea a propósito y midiendo antes que no se ponga lento.
+
+El zoom **ancla el punto bajo el cursor**: apuntar a la carga y girar la rueda acerca
+la carga. Anclarlo al centro geométrico del camión dejaba la carga fuera de cuadro —
+y lo que se pidió fue «zoom a la carga».
+
+**Nombres**: UNA etiqueta por BLOQUE, no por bulto (con 324 bultos serían 324 textos
+ilegibles y lentos). Un bloque = un producto, así que son 2-4 etiquetas. Llevan el
+punto del color del bloque, que es la misma leyenda que la lista «producto por
+producto». Se pueden apagar, y un bloque que la animación todavía no cargó **no** se
+rotula: la etiqueta señalaría un lugar vacío.
+
+El bloque del visor vive en el partial `admin.carga._visor`: estaba copiado idéntico
+en los dos modos de la pantalla y los controles nuevos habrían quedado duplicados.
+
 ### 4.2 El orden de dibujo y los cuerpos largos
 
 El visor ordena por la profundidad del **centro de cada cara**. Con eso, un cuerpo

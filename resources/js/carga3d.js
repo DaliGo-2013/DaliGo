@@ -66,6 +66,13 @@ export default function iniciarCarga3d(canvas, datos) {
 
     let yaw = -0.85, pitch = -0.3, cant = Math.round(datos.tope * 0.6), anim = null, arrastre = null;
     let CX = 0, CY = 0, ESC = 100, OFF = [0, 0, 0], cola = [];
+    // Encuadre base (escala y centro medidos a escala 1) + zoom encima. Separarlos
+    // es lo que permite que girar no cambie el zoom.
+    let escBase = 100, centro = [0, 0], zoom = 1, nombres = true;
+    const ZOOM_MIN = 0.7, ZOOM_MAX = 4;
+    // Cuántos bultos se dibujaron de cada bloque: lo llena `bultos()` y lo usan las
+    // etiquetas para no rotular un bloque que la animación todavía no cargó.
+    let dibujadosPorBloque = [];
 
     /**
      * Proporciones del vehículo, derivadas de sus medidas útiles. Se calculan UNA
@@ -398,8 +405,9 @@ export default function iniciarCarga3d(canvas, datos) {
      */
     function bultos() {
         let puestos = 0;
+        dibujadosPorBloque = bloques.map(() => 0);
 
-        for (const blq of bloques) {
+        for (const [i, blq] of bloques.entries()) {
             if (puestos >= cant) break;
             const rej = blq.rejilla, ori = blq.orientacion, col = blq.color || [234, 88, 12];
             const capa = rej.ancho * rej.alto;
@@ -420,7 +428,83 @@ export default function iniciarCarga3d(canvas, datos) {
                 prisma(blq.x + ix * ori.largo, iy * ori.alto, blq.y + iz * ori.ancho,
                     ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
             }
+            dibujadosPorBloque[i] = dibujables;
             puestos += dibujables;
+        }
+    }
+
+    /**
+     * Nombre de cada producto sobre SU bloque, con una línea que lo ancla.
+     *
+     * UNA etiqueta por bloque, no por bulto: con 324 bultos serían 324 textos
+     * ilegibles y lentos. Un bloque = un producto, así que son 2-4 etiquetas y se
+     * leen. Van DESPUÉS de `pintar()`, encima de todo, porque una etiqueta tapada
+     * por la carga no sirve de nada.
+     *
+     * Si dos quedan pegadas se separan hacia arriba (las de más adelante primero):
+     * superpuestas no se lee ninguna de las dos.
+     */
+    function etiquetas() {
+        if (!nombres || bloques.length === 0) return;
+
+        const puestas = [];
+        for (const [i, blq] of bloques.entries()) {
+            // Un bloque que todavía no se cargó (la animación va por la mitad) no
+            // lleva etiqueta: señalaría un lugar vacío.
+            if (!blq.nombre || !dibujadosPorBloque[i]) continue;
+            const rej = blq.rejilla, ori = blq.orientacion;
+            // Ancla: el centro del techo del bloque.
+            const ancla = proyectar([
+                blq.x + (rej.largo * ori.largo) / 2,
+                rej.alto * ori.alto,
+                blq.y + (rej.ancho * ori.ancho) / 2,
+            ]);
+            puestas.push({ ancla, texto: blq.nombre, cantidad: blq.cantidad, col: blq.color || [234, 88, 12] });
+        }
+
+        // De adelante hacia atrás: la de adelante manda y las de atrás ceden.
+        puestas.sort((a, b) => a.ancla[2] - b.ancla[2]);
+        const ocupadas = [];
+        ctx.font = '600 15px -apple-system,system-ui,sans-serif';
+        ctx.textAlign = 'left';
+
+        for (const e of puestas) {
+            const texto = `${e.texto} · ${e.cantidad}`;
+            const ancho = ctx.measureText(texto).width + 32;
+            const alto = 26;
+            let x = Math.min(Math.max(8, e.ancla[0] - ancho / 2), canvas.width - ancho - 8);
+            let y = e.ancla[1] - 46;
+
+            while (ocupadas.some((o) => Math.abs(o.y - y) < alto + 4 && Math.abs(o.x - x) < (o.ancho + ancho) / 2)) {
+                y -= alto + 6;
+            }
+            y = Math.max(6, y);
+            ocupadas.push({ x, y, ancho });
+
+            // Línea de anclaje al techo del bloque.
+            ctx.beginPath();
+            ctx.moveTo(e.ancla[0], e.ancla[1]);
+            ctx.lineTo(x + ancho / 2, y + alto);
+            ctx.strokeStyle = 'rgba(70,70,75,.45)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Cartel.
+            ctx.beginPath();
+            ctx.roundRect(x, y, ancho, alto, 7);
+            ctx.fillStyle = 'rgba(255,255,255,.94)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,.14)';
+            ctx.stroke();
+
+            // Punto del color del bloque: es la misma leyenda que la lista de abajo.
+            ctx.beginPath();
+            ctx.arc(x + 13, y + alto / 2, 5, 0, Math.PI * 2);
+            ctx.fillStyle = rgb(e.col);
+            ctx.fill();
+
+            ctx.fillStyle = '#3f3f46';
+            ctx.fillText(texto, x + 24, y + alto / 2 + 5);
         }
     }
 
@@ -454,11 +538,50 @@ export default function iniciarCarga3d(canvas, datos) {
             }
         }
 
-        ESC = Math.min(canvas.width * 0.93 / Math.max(0.01, x1 - x0),
+        escBase = Math.min(canvas.width * 0.93 / Math.max(0.01, x1 - x0),
             canvas.height * 0.88 / Math.max(0.01, y1 - y0));
-        CX = canvas.width / 2 - ((x0 + x1) / 2) * ESC;
-        CY = canvas.height / 2 - ((y0 + y1) / 2) * ESC;
+        centro = [(x0 + x1) / 2, (y0 + y1) / 2];
         yaw = yaw0; pitch = pitch0;
+        reiniciarVista();
+    }
+
+    /** Vuelve al encuadre y al ángulo con que abre la pantalla. */
+    function reiniciarVista() {
+        zoom = 1;
+        yaw = -0.85; pitch = -0.3;
+        ESC = escBase;
+        CX = canvas.width / 2 - centro[0] * ESC;
+        CY = canvas.height / 2 - centro[1] * ESC;
+    }
+
+    /**
+     * Acerca o aleja ANCLANDO un punto de la pantalla: el punto que estaba bajo el
+     * cursor sigue estando ahí después de acercar. Por eso apuntar a la carga y
+     * girar la rueda acerca LA CARGA, que es lo que se pidió — un zoom al centro
+     * geométrico del camión deja la carga fuera de cuadro.
+     *
+     * Sin `px`/`py` ancla el centro del lienzo (los botones + / −).
+     */
+    function acercar(factor, px = canvas.width / 2, py = canvas.height / 2) {
+        const antes = zoom;
+        zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom * factor));
+        if (zoom === antes) return;
+
+        // Punto del mundo proyectado que está bajo (px, py), en unidades de escala 1.
+        const ux = (px - CX) / ESC, uy = (py - CY) / ESC;
+        ESC = escBase * zoom;
+        CX = px - ux * ESC;
+        CY = py - uy * ESC;
+    }
+
+    /** Pasa las coordenadas del puntero a píxeles del lienzo (se dibuja a 1240×720
+     *  y el CSS lo escala, así que sin esto el ancla del zoom queda corrida). */
+    function aLienzo(e) {
+        const r = canvas.getBoundingClientRect();
+        return [
+            (e.clientX - r.left) * (canvas.width / Math.max(1, r.width)),
+            (e.clientY - r.top) * (canvas.height / Math.max(1, r.height)),
+        ];
     }
 
     function dibujar() {
@@ -467,6 +590,7 @@ export default function iniciarCarga3d(canvas, datos) {
         if (M.semi) siluetaSemirremolque(); else siluetaCamion();
         bultos();
         pintar();
+        etiquetas();
 
         ctx.fillStyle = '#8a8a8a';
         ctx.font = '600 15px -apple-system,system-ui,sans-serif';
@@ -492,19 +616,51 @@ export default function iniciarCarga3d(canvas, datos) {
     });
     canvas.addEventListener('pointerup', () => { arrastre = null; });
 
-    const play = document.getElementById('carga3dPlay');
-    if (play) {
-        play.addEventListener('click', () => {
-            clearInterval(anim);
-            cant = 0;
-            const paso = Math.max(1, Math.round(datos.tope / 70));
-            anim = setInterval(() => {
-                cant = Math.min(datos.tope, cant + paso);
-                dibujar();
-                if (cant >= datos.tope) clearInterval(anim);
-            }, 45);
-        });
-    }
+    /**
+     * ZOOM SOLO EN ESCRITORIO (pedido del dueño 05-08-2026: «no lo quiero para
+     * celular, no quiero que se quede pegada o se ponga lento»).
+     *
+     * Se cumple por CONSTRUCCIÓN y no por un `if` de ancho de pantalla: el zoom
+     * entra por la rueda del mouse —que un táctil no emite— y por botones que la
+     * vista esconde con `hidden lg:flex`. NO se registra ningún handler de touch ni
+     * de pinza: si mañana se quiere en celular, hay que agregarlo a propósito y
+     * medir antes que no se ponga lento.
+     */
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const [px, py] = aLienzo(e);
+        acercar(e.deltaY < 0 ? 1.12 : 1 / 1.12, px, py);
+        dibujar();
+    }, { passive: false });
+
+    const boton = (id, fn) => {
+        const b = document.getElementById(id);
+        if (b) b.addEventListener('click', fn);
+        return b;
+    };
+
+    boton('carga3dMas', () => { acercar(1.25); dibujar(); });
+    boton('carga3dMenos', () => { acercar(1 / 1.25); dibujar(); });
+    boton('carga3dReset', () => { reiniciarVista(); dibujar(); });
+
+    const btnNombres = boton('carga3dNombres', () => {
+        nombres = !nombres;
+        btnNombres.setAttribute('aria-pressed', String(nombres));
+        btnNombres.classList.toggle('bg-neutral-100', !nombres);
+        btnNombres.classList.toggle('text-neutral-400', !nombres);
+        dibujar();
+    });
+
+    boton('carga3dPlay', () => {
+        clearInterval(anim);
+        cant = 0;
+        const paso = Math.max(1, Math.round(datos.tope / 70));
+        anim = setInterval(() => {
+            cant = Math.min(datos.tope, cant + paso);
+            dibujar();
+            if (cant >= datos.tope) clearInterval(anim);
+        }, 45);
+    });
 
     encuadrar();
     dibujar();

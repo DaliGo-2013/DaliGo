@@ -5,7 +5,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-H88-IbkQ.css",
+    "file": "assets/app-RPRrOgbY.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -14,7 +14,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-UjlKiFhC.js",
+    "file": "assets/app-Exfe-2yF.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -24,7 +24,7 @@
     ]
   },
   "resources/js/carga3d.js": {
-    "file": "assets/carga3d-jb7rUaqJ.js",
+    "file": "assets/carga3d-52src5iS.js",
     "name": "carga3d",
     "src": "resources/js/carga3d.js",
     "isDynamicEntry": true

@@ -230,6 +230,52 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame('semirremolque', $this->siluetaDe($this->camion('Acoplado corto', 500, 'semirremolque'))['silueta']);
     }
 
+    // --- Controles del visor (05-08-2026) -----------------------------------
+
+    public function test_los_dos_modos_ofrecen_los_mismos_controles_del_visor(): void
+    {
+        // El bloque del visor vivía COPIADO en los dos modos de la pantalla; al
+        // sumar los controles de zoom se extrajo a un partial. Este candado mira
+        // que ninguno de los dos modos quede sin controles.
+        $mixta = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
+        $cupo = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->assertOk()->getContent();
+
+        foreach (['mixta' => $mixta, 'cupo máximo' => $cupo] as $modo => $html) {
+            foreach (['carga3dPlay', 'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres'] as $control) {
+                $this->assertStringContainsString(
+                    'id="'.$control.'"', $html,
+                    "Al modo «{$modo}» le falta el control [{$control}] del visor.",
+                );
+            }
+        }
+    }
+
+    public function test_el_zoom_se_ofrece_solo_en_escritorio(): void
+    {
+        // Pedido del dueño 05-08: «no lo quiero para celular, no quiero que se
+        // quede pegada o se ponga lento». Los botones + / − viven en un contenedor
+        // oculto hasta `lg`; si alguien los saca de ahí, esto se pone rojo y
+        // obliga a leer el porqué antes de exponerlos en el teléfono.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
+
+        $this->assertStringContainsString('hidden items-center gap-1.5 text-xs lg:flex', $html);
+    }
+
+    public function test_el_visor_no_registra_gestos_tactiles(): void
+    {
+        // La otra mitad del pedido: el zoom entra por la RUEDA del mouse, que un
+        // táctil no emite. Nada de touch ni de pinza — si algún día se quiere en
+        // celular, que sea a propósito y midiendo que no se ponga lento.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString("addEventListener('wheel'", $js);
+        foreach (['touchstart', 'touchmove', 'gesturestart', 'gesturechange'] as $gesto) {
+            $this->assertStringNotContainsString($gesto, $js, "El visor registra [{$gesto}]: el zoom era solo de escritorio.");
+        }
+    }
+
     public function test_una_silueta_que_el_visor_no_conoce_cae_a_la_deducida(): void
     {
         // Un dato viejo o mal escrito no puede dejar el lienzo sin dibujo: cae a

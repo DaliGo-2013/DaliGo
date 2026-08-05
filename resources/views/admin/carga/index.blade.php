@@ -209,18 +209,10 @@
                             </div>
                         </div>
 
-                        {{-- Visor 3D --}}
-                        <div class="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
-                            <canvas id="carga3d" width="1240" height="720" class="block w-full cursor-grab"></canvas>
-                            <div class="absolute left-4 top-3 text-xs font-medium text-neutral-500">
-                                {{ $escena['vehiculo']['nombre'] }} · arrastrá para girar
-                            </div>
-                            <div class="absolute bottom-3 left-4 flex items-center gap-3 text-xs">
-                                <button type="button" id="carga3dPlay"
-                                        class="rounded-lg bg-brand-600 px-2.5 py-1 font-semibold text-white transition hover:bg-brand-700">▶ Cargar</button>
-                                <span class="text-neutral-500"><span id="carga3dN">0</span> de {{ $escena['tope'] }}</span>
-                            </div>
-                        </div>
+                        {{-- Visor 3D. En un partial porque este bloque vivía COPIADO
+                             en los dos modos de la pantalla y los controles nuevos
+                             habrían quedado duplicados. --}}
+                        @include('admin.carga._visor')
                     </div>
 
                     {{-- El detalle por producto: qué entra, qué queda afuera y POR QUÉ.
@@ -332,18 +324,10 @@
                             </p>
                         </div>
 
-                        {{-- Visor 3D --}}
-                        <div class="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
-                            <canvas id="carga3d" width="1240" height="720" class="block w-full cursor-grab"></canvas>
-                            <div class="absolute left-4 top-3 text-xs font-medium text-neutral-500">
-                                {{ $escena['vehiculo']['nombre'] }} · arrastrá para girar
-                            </div>
-                            <div class="absolute bottom-3 left-4 flex items-center gap-3 text-xs">
-                                <button type="button" id="carga3dPlay"
-                                        class="rounded-lg bg-brand-600 px-2.5 py-1 font-semibold text-white transition hover:bg-brand-700">▶ Cargar</button>
-                                <span class="text-neutral-500"><span id="carga3dN">0</span> de {{ $escena['tope'] }}</span>
-                            </div>
-                        </div>
+                        {{-- Visor 3D. En un partial porque este bloque vivía COPIADO
+                             en los dos modos de la pantalla y los controles nuevos
+                             habrían quedado duplicados. --}}
+                        @include('admin.carga._visor')
                     </div>
                 @endif
             </div>
