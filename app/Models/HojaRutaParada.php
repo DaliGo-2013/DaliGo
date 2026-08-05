@@ -53,6 +53,7 @@ class HojaRutaParada extends Model implements AuditableContract
         'cobro_metodo',
         'cobro_monto',
         'resultado',
+        'rechazo_motivo',
     ];
 
     protected function casts(): array

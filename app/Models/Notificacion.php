@@ -83,6 +83,11 @@ class Notificacion extends Model
         'devolucion.solicitada' => 'Devolución declarada por un cliente',
         'devolucion.recibida' => 'Devolución recibida en bodega',
         'devolucion.resuelta' => 'Devolución resuelta (aviso al cliente)',
+        // M08 · Hoja de ruta (P-DSP-09): el conductor NO pudo entregar una
+        // parada — el jefe de despacho decide qué pasa con esa carga (R15;
+        // si el rechazo crea la devolución M13 solo es decisión del dueño,
+        // pregunta abierta en el parte de P-DSP-09).
+        'despacho.parada_rechazada' => 'Entrega rechazada en la puerta',
     ];
 
     protected $fillable = [
@@ -163,6 +168,8 @@ class Notificacion extends Model
             // eventos al CLIENTE (recibida/resuelta) no llegan aquí — van por
             // mail a un destinatario externo, sin fila de campanita.
             'devolucion.solicitada' => $user->canAny(['view devoluciones', 'manage devoluciones']),
+            // La hoja de ruta: mismo gate que su show en routes/web.php.
+            'despacho.parada_rechazada' => $user->canAny(['manage hojas ruta', 'autorizar pagos ruta', 'autorizar ruta', 'autorizar carga']),
             default => false,
         };
 
@@ -242,6 +249,11 @@ class Notificacion extends Model
             'devolucion.solicitada' => $this->notificable_id
                 ? route('admin.devoluciones.show', $this->notificable_id)
                 : route('admin.devoluciones.index'),
+            // El rechazo en puerta aterriza en la HOJA DE RUTA (el morph es la
+            // hoja): ahí el jefe ve la parada rechazada con su motivo.
+            'despacho.parada_rechazada' => $this->notificable_id
+                ? route('admin.hojas-ruta.show', $this->notificable_id)
+                : route('admin.hojas-ruta.index'),
             default => null,
         };
     }

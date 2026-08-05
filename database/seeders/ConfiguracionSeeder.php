@@ -391,6 +391,18 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Correo al CLIENTE con el resultado de su devolución (el «notificar» con que cierra el flujo A-12).',
             ],
+            // Hoja de ruta (P-DSP-09): el conductor no pudo entregar una parada.
+            // Clave nueva → el firstOrCreate la crea en el deploy, sin one-shot.
+            [
+                'clave' => 'notif_plantilla_despacho_parada_rechazada',
+                'valor' => json_encode([
+                    'asunto' => 'Entrega rechazada: {cliente} (hoja {folio_hoja})',
+                    'cuerpo' => "{conductor} no pudo entregar en la puerta.\nCliente: {cliente}\nDocumento folio: {folio_documento}\nMotivo: {motivo}\nLa carga vuelve a bodega; decide qué pasa con ella desde la hoja de ruta.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno (despacho + logística) cuando el conductor rechaza una parada en la puerta (R15).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

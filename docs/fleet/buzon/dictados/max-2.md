@@ -1,51 +1,36 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-05 (v16 — HOJA DE RUTA EN PRODUCCIÓN; GO P-DSP-09, la PWA sobre la hoja). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-05 (v17 — P-DSP-09 EN PRODUCCIÓN, F2 COMPLETA; en pausa hasta el próximo GO). Manda sobre lo anterior.
 
 MODELO: el que fije el dueño en tu asiento · high.
 
-## ✅ La hoja de ruta digital está EN PRODUCCIÓN (merge `b9d89a3`, doble llave 05-ago)
+## ✅ P-DSP-09 está EN PRODUCCIÓN (merge `f3be802`, doble llave 05-ago)
 
-Verificación del Director: dos corridas de suite (la primera la ganó un refactor de Marcos
-que entró en plena carrera — el escritor Excel compartido; se absorbió y se re-corrió
-entera): **1495 verdes / 11.069 aserciones, cero rojos** sobre el árbol final. Deploy y
-Tests de CI verdes. Rama borrada tras ancestría.
+Verificación del Director sobre el árbol unión (main solo había recibido el visor 3D de
+Marcos — cero intersección de código con tu rama): **suite 1556 verdes / 11.358 aserciones,
+cero rojos** — tus 1553 + 3 del visor, cuadre exacto. Bundle por rebuild: superset CSS
+559 ⊇ 558/558, 0 pérdidas. Deploy y Tests de CI verdes. Rama borrada tras ancestría.
 
-Tu colisión fina del keyword `'carga'` era exactamente el tipo de defecto que un merge verde
-esconde — cazarla ANTES del parte es lo que hace confiable tu doble llave. El hallazgo del
-`manifest 3.json` ya está reportado al dueño para el canal directo de Marcos.
+**Con esto F2 de PLAN-DESPACHOS-V2 queda COMPLETA** — el conductor ve dirección/comuna/
+teléfono, exige receptor, registra cobro y maneja rechazo, todo por la misma cola offline.
 
-Después de tu parte entró también el **informe de devoluciones de Max-1** (`6c91f94`, suite
-1501/11.101): E6 quedó COMPLETA. Baseline del día para ti: **1501 / 11.101**.
+Tu hallazgo de que **la idempotencia gana a la validación condicional** quedó verificado
+contra el código antes del merge — es exactamente el tipo de defecto que solo un test de
+duplicado caza, y el guard está bien puesto (el service re-verifica igual). La micro-decisión
+del DV suave del RUT es correcta por la razón que diste: un 422 diferido horas después de la
+puerta es un error falso incorregible; el dato duro es la firma.
 
-## 🟢 GO P-DSP-09 — la PWA del conductor SOBRE la hoja (F2 de PLAN-DESPACHOS-V2)
+## ⏸️ EN PAUSA — sin lote activo
 
-Rama **nueva desde main FRESCO** (main ya tiene tu hoja + el informe + el refactor Excel).
-El corazón — es cerrar los huecos que el papel todavía le gana a la app:
+**P-DSP-10 (edición de hoja en curso + cierre + bono) está BLOQUEADO por la ronda 2 con
+Luis** — el Excel de la fórmula del bono y la rendición del cobro ya viajan en el
+cuestionario que el dueño le entregó (6 preguntas, incluida la tuya del bloqueo de salida
+con paradas sin escanear y la del rechazo→devolución automática).
 
-- **Dirección + comuna + teléfono visibles por parada** (el hueco más grande: hoy el
-  conductor no los ve; vienen de `clientes` vía el documento de la parada).
-- **Receptor OBLIGATORIO al confirmar**: nombre + RUT + relación (`empresa|conserje|otro`)
-  — las columnas ya existen en `despachos` desde tu F1; ahora se exigen (validador + UI).
-- **Cobro en entrega**: parada `cobrar_en_entrega` → método (`efectivo|cheque|transbank`) +
-  monto OBLIGATORIOS; parada `pagado`/`credito` → ni se muestran. El monto queda registrado,
-  la rendición NO es de este lote (ronda 2 con Luis).
-- **Rechazo con motivo** → `resultado=rechazada` + notificación (M15) a jefe de despacho;
-  el gancho a M13 Devoluciones ya existe en BD — NO automatices la devolución (es decisión
-  del dueño si el rechazo en puerta crea la devolución sola; anótalo como pregunta).
-- **Orden pactado** ya lo respetas; **offline**: los campos nuevos viajan en el MISMO
-  payload de la cola IndexedDB (uuid + capturado_at intactos) — un solo camino, como tu
-  P-DSP-05.
-- Candados mínimos: receptor/cobro exigidos según estado de la parada (mutados), el 403 de
-  hoja ajena sigue antes de validar, offline con campos nuevos drena idéntico.
-
-## Territorio
-- **Max-1** cerró E6 y queda en pausa — sin cruce.
-- **Marcos**: M05 + M18 + Excel compartido, MUY activo (ganó una carrera al push hoy).
-  Rama corta, re-refresh por-paso, push temprano.
+Si abres sesión y este dictado sigue en v17: revisa el buzón por si hay v18, y si no lo
+hay, cierra sesión sin gastar ventana.
 
 ## Recordatorios
-Suite COMPLETA antes de cualquier push (baseline HOY: **1501 / 11.101** en main `6c91f94`).
-Blade tocado → build + grep superset. Conflictos con `git checkout origin/main -- <archivo>`,
-nunca con `>` (BOM de PS 5.1). Parte al buzón → doble llave.
+Baseline HOY: **1556 / 11.358** en main `f3be802`. Las reglas de siempre siguen (suite
+completa, superset, `git checkout origin/main --`, parte al buzón).
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+CIERRE: nada pendiente de tu lado.

@@ -606,6 +606,10 @@ Route::middleware(['auth', 'permission:confirmar entrega'])
         Route::get('', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'index'])->name('index');
         Route::post('{despacho}/confirmar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'confirmar'])
             ->whereNumber('despacho')->name('confirmar');
+        // Rechazo en puerta (P-DSP-09, R15): segundo destino de la cola
+        // offline, mismo permiso y mismo scoping por hoja que confirmar.
+        Route::post('{despacho}/rechazar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'rechazar'])
+            ->whereNumber('despacho')->name('rechazar');
     });
 
 // Fallback offline de la PWA (sin auth: el service worker la precachea en su
