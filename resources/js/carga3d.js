@@ -88,6 +88,23 @@ const rotulo = (nombre) => {
     return palabras.join(' ');
 };
 
+/**
+ * Nombre para el cartel del lienzo. Con tres productos, tres carteles de 300 px
+ * tapan más carga de la que explican — el nombre completo está en la lista de
+ * abajo y la LETRA alcanza para saber cuál es cuál.
+ *
+ * Primero suelta el paréntesis del final, que es lo menos distintivo del catálogo
+ * de Dali («(vacío)» lo llevan todas las bolsas, y lo que las separa es el «20 L»
+ * contra el «10 L»). Recortar por largo lo hacía terminar en «20 L (v…», que es
+ * peor que no decirlo. Si aun así no entra, ahí sí recorta por el final: el
+ * principio del nombre es lo que distingue.
+ */
+const nombreCorto = (n) => {
+    const limpio = n.length > 26 ? n.replace(/\s*\([^)]*\)\s*$/, '') : n;
+
+    return limpio.length > 26 ? `${limpio.slice(0, 25).trimEnd()}…` : limpio;
+};
+
 export default function iniciarCarga3d(canvas, datos) {
     const ctx = canvas.getContext('2d');
     const veh = datos.vehiculo;
@@ -108,11 +125,23 @@ export default function iniciarCarga3d(canvas, datos) {
     let CX = 0, CY = 0, ESC = 100, OFF = [0, 0, 0], cola = [];
     // Encuadre base (escala y centro medidos a escala 1) + zoom encima. Separarlos
     // es lo que permite que girar no cambie el zoom.
-    let escBase = 100, centro = [0, 0], zoom = 1, nombres = true;
+    let escBase = 100, centro = [0, 0], zoom = 1, nombres = true, codigos = true, vistaActual = '3d';
+    // Acumulador de la medición del encuadre. Distinto de null = se está midiendo, y
+    // en ese rato nada debe pintar en el lienzo (ver `medirEncuadre`).
+    let midiendo = null;
+    // Medidas LÓGICAS del lienzo, en píxeles de CSS. TODO el dibujo se hace en estas
+    // coordenadas, no en las del mapa de bits (ver `ajustarLienzo`): así una pantalla
+    // de alta densidad se ve nítida sin que las letras salgan a la mitad de tamaño.
+    let AW = canvas.width, AH = canvas.height;
     const ZOOM_MIN = 0.7, ZOOM_MAX = 4;
     // Hasta cuántas bolsas se dibujan como BIDONES antes de caer al bulto rectangular
     // (ver `bultos`). Medido sobre los polígonos por frame, no elegido a ojo.
     const TOPE_BIDONES = 150;
+    // Los códigos sobre las cajas solo tienen sentido si hay MÁS DE UN producto: con
+    // uno solo, escribir «A» en las 420 bolsas no distingue nada y solo ensucia. El
+    // botón sigue estando (igual que «Nombres») para no cambiar los controles según
+    // la carga, pero no dibuja.
+    const VARIOS = new Set(bloques.map((b) => b.nombre)).size > 1;
     // Cuántos bultos se dibujaron de cada bloque: lo llena `bultos()` y lo usan las
     // etiquetas para no rotular un bloque que la animación todavía no cargó.
     let dibujadosPorBloque = [];
@@ -188,6 +217,81 @@ export default function iniciarCarga3d(canvas, datos) {
 
     const prisma = (x, y, z, a, b, c, col, opts) => cuerpo(v8(x, y, z, a, b, c), col, opts);
     const G = { grad: true };
+
+    /**
+     * Tamaño mínimo de letra, en píxeles, para escribir el código de un bulto. Debajo
+     * de esto es una manchita que ensucia en vez de aclarar — y hace de LOD gratis:
+     * alejado no se escribe nada, al acercarte aparecen los códigos.
+     *
+     * El 8 está MEDIDO, no elegido: con el umbral en 11 no se escribía ni un código en
+     * la carga real del dueño (HINO con bolsas de bidones, cajas de soportes y
+     * dispensadores). La cara que se ve de una bolsa de 26 × 51 cm, girada y en fuga,
+     * mide unos 17 px de lado corto, así que pedía una letra de 12 px y el umbral la
+     * descartaba. Al dibujarse en alta densidad, esos 12 px salen nítidos.
+     */
+    const CODIGO_MIN = 8;
+
+    /**
+     * Escribe el código del producto sobre la cara VISIBLE más cercana del bulto.
+     *
+     * Es «las cajas escritas con códigos» de EasyCargo, que el dueño señaló como
+     * una de las tres cosas que más le sirven de esa app (05-08-2026): con el color
+     * solo, dos productos de tono parecido se confunden y no se pueden nombrar en
+     * voz alta.
+     *
+     * UNA cara por bulto, la más cercana a la cámara: escribir en las tres caras
+     * visibles triplicaría el texto para no aclarar nada, y elegir «la de la
+     * puerta» dejaría los códigos invisibles en la vista de costado. Al elegir por
+     * cercanía, la vista no importa: siempre cae en una cara que se ve.
+     */
+    function codigoEnBulto(x, y, z, a, b, c, letra) {
+        const pv = v8(x, y, z, a, b, c).map(proyectar);
+        const zCentro = pv.reduce((s, p) => s + p[2], 0) / 8;
+
+        let mejor = null;
+        for (const f of CARAS) {
+            const zc = (pv[f[0]][2] + pv[f[1]][2] + pv[f[2]][2] + pv[f[3]][2]) / 4;
+            if (zc > zCentro + 1e-9) continue;      // mira para el otro lado
+            if (!mejor || zc < mejor.zc) mejor = { zc, pts: f.map((i) => pv[i]) };
+        }
+        if (!mejor) return;
+
+        const [p0, p1, , p3] = mejor.pts;
+        const lado = (u, v) => Math.hypot(u[0] - v[0], u[1] - v[1]);
+        // La letra se dimensiona con el lado CORTO de la cara: con el largo, una cara
+        // muy en fuga (casi de perfil) pediría una letra que no entra.
+        const px = Math.min(lado(p0, p1), lado(p0, p3)) * 0.72;
+        if (px < CODIGO_MIN) return;
+
+        cola.push({
+            // Apenas por delante de su cara: si empatan, el orden de `sort` no está
+            // definido y el código parpadearía al girar.
+            z: mejor.zc - 1e-6,
+            pts: null,
+            letra,
+            // Tope: la cara de una bolsa vista de costado mide 1,30 × 0,51 m y pedía una
+            // letra de 30 px que se comía el bulto. A 22 se lee igual y no compite con
+            // el dibujo.
+            px: Math.min(px, 22),
+            x: mejor.pts.reduce((s, p) => s + p[0], 0) / 4,
+            y: mejor.pts.reduce((s, p) => s + p[1], 0) / 4,
+        });
+    }
+
+    /** Pinta una entrada de código: letra clara con filo oscuro, para que se lea
+     *  igual sobre un bloque naranja que sobre uno azul. */
+    function pintarCodigo(o) {
+        ctx.font = `700 ${o.px.toFixed(1)}px -apple-system,system-ui,sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = Math.max(2, o.px * 0.18);
+        ctx.strokeStyle = 'rgba(0,0,0,.55)';
+        ctx.strokeText(o.letra, o.x, o.y);
+        ctx.fillStyle = 'rgba(255,255,255,.96)';
+        ctx.fillText(o.letra, o.x, o.y);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+    }
 
     /**
      * Prisma LARGO partido en tramos a lo largo de x.
@@ -358,6 +462,11 @@ export default function iniciarCarga3d(canvas, datos) {
         const ry = (Math.max(...ys) - Math.min(...ys)) / 2 * 1.3;
         if (!(rx > 0 && ry > 0)) return;
 
+        // La sombra es la única pieza que se pinta al margen de la cola, así que es
+        // la única que tiene que declararse sola al medir el encuadre. Antes no
+        // entraba en la cuenta y quedaba CORTADA contra el borde de abajo.
+        if (midiendo) { registrar(cx - rx, cy - ry); registrar(cx + rx, cy + ry); return; }
+
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
         g.addColorStop(0, 'rgba(0,0,0,.20)');
         g.addColorStop(0.6, 'rgba(0,0,0,.09)');
@@ -371,6 +480,12 @@ export default function iniciarCarga3d(canvas, datos) {
     function pintar() {
         cola.sort((a, b) => b.z - a.z);
         cola.forEach((o) => {
+            // Entrada de solo TEXTO (el código de un bulto): viaja en la misma cola
+            // que las caras justamente para que una caja de adelante lo tape, igual
+            // que taparía a la caja de atrás. Fuera de la cola habría que resolver la
+            // oclusión a mano.
+            if (!o.pts) { pintarCodigo(o); return; }
+
             ctx.beginPath();
             o.pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
             ctx.closePath();
@@ -802,11 +917,16 @@ export default function iniciarCarga3d(canvas, datos) {
                     && puesto(ix, iz, iy - 1) && puesto(ix, iz, iy + 1)) continue;
 
                 const px = blq.x + ix * ori.largo, py = iy * ori.alto, pz = blq.y + iz * ori.ancho;
+                const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
                 if (bidones) {
-                    bolsaDeBidones(px, py, pz, ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
+                    bolsaDeBidones(px, py, pz, ba, bb, bc, col);
                 } else {
-                    prisma(px, py, pz, ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
+                    prisma(px, py, pz, ba, bb, bc, col);
                 }
+                // El código va sobre la caja de siempre, sea prisma o bolsa de
+                // bidones: las dos ocupan el mismo volumen, así que la cara se
+                // calcula igual y una bolsa también queda rotulada.
+                if (codigos && VARIOS && blq.letra) codigoEnBulto(px, py, pz, ba, bb, bc, blq.letra);
             }
             dibujadosPorBloque[i] = dibujables;
             puestos += dibujables;
@@ -856,9 +976,10 @@ export default function iniciarCarga3d(canvas, datos) {
             // creer. Los números son del PRODUCTO, sumando todas sus zonas.
             puestas.push({
                 ancla,
-                texto: nombre,
+                texto: nombreCorto(nombre),
                 cuenta: g.puestos < g.total ? `${g.puestos} de ${g.total}` : String(g.total),
                 col: blq.color || [234, 88, 12],
+                letra: VARIOS ? blq.letra : null,
             });
         }
 
@@ -870,15 +991,30 @@ export default function iniciarCarga3d(canvas, datos) {
 
         for (const e of puestas) {
             const texto = `${e.texto} · ${e.cuenta}`;
-            const ancho = ctx.measureText(texto).width + 32;
+            const ancho = ctx.measureText(texto).width + 38;
             const alto = 26;
-            let x = Math.min(Math.max(8, e.ancla[0] - ancho / 2), canvas.width - ancho - 8);
-            let y = e.ancla[1] - 46;
+            const x = Math.min(Math.max(8, e.ancla[0] - ancho / 2), AW - ancho - 8);
 
-            while (ocupadas.some((o) => Math.abs(o.y - y) < alto + 4 && Math.abs(o.x - x) < (o.ancho + ancho) / 2)) {
-                y -= alto + 6;
+            // Busca un hueco libre: primero SUBIENDO desde el ancla y, si arriba no
+            // queda lugar, BAJANDO.
+            //
+            // Antes se subía sin tope y después se recortaba con `Math.max(6, y)`, que
+            // deshacía la separación recién calculada: con tres productos apilados en
+            // el mismo frente, sus anclas caen casi en la misma x, las tres etiquetas
+            // terminaban en y=6 y se tapaban entre ellas (se leía «…tes · 40» detrás de
+            // la de las bolsas). El recorte tiene que estar DENTRO de la búsqueda.
+            const paso = alto + 6;
+            const choca = (yy) => ocupadas.some((o) => Math.abs(o.y - yy) < paso && Math.abs(o.x - x) < (o.ancho + ancho) / 2);
+            const base = Math.min(Math.max(6, e.ancla[1] - 46), AH - alto - 6);
+
+            let y = base;
+            if (choca(y)) {
+                y = null;
+                for (let c = base - paso; c >= 6 && y === null; c -= paso) if (!choca(c)) y = c;
+                for (let c = base + paso; c <= AH - alto - 6 && y === null; c += paso) if (!choca(c)) y = c;
+                if (y === null) y = base;   // lienzo lleno de etiquetas: no queda mejor lugar
             }
-            y = Math.max(6, y);
+
             ocupadas.push({ x, y, ancho });
 
             // Línea de anclaje al techo del bloque.
@@ -897,61 +1033,230 @@ export default function iniciarCarga3d(canvas, datos) {
             ctx.strokeStyle = 'rgba(0,0,0,.14)';
             ctx.stroke();
 
-            // Punto del color del bloque: es la misma leyenda que la lista de abajo.
+            // Chapita del color del bloque con la LETRA del producto adentro: es la
+            // misma leyenda que la lista de abajo y la misma letra que llevan escritas
+            // las cajas, así que el cartel, el renglón y el bulto se leen como uno.
             ctx.beginPath();
-            ctx.arc(x + 13, y + alto / 2, 5, 0, Math.PI * 2);
+            ctx.roundRect(x + 7, y + alto / 2 - 8, 16, 16, 4);
             ctx.fillStyle = rgb(e.col);
             ctx.fill();
 
+            if (e.letra) {
+                ctx.font = '700 12px -apple-system,system-ui,sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#fff';
+                ctx.fillText(e.letra, x + 15, y + alto / 2 + 4);
+                ctx.textAlign = 'left';
+                ctx.font = '600 15px -apple-system,system-ui,sans-serif';
+            }
+
             ctx.fillStyle = '#3f3f46';
-            ctx.fillText(texto, x + 24, y + alto / 2 + 5);
+            ctx.fillText(texto, x + 29, y + alto / 2 + 5);
         }
     }
 
     // ------------------------------------------------------------------- escena
 
     /**
-     * Encuadre: escala y centro para que el vehículo LLENE el lienzo.
+     * Mide escala y centro para que el vehículo LLENE el lienzo VISTO DESDE
+     * `yawV`/`pitchV`.
      *
      * Se miden los extremos REALES del cuerpo ya proyectado en vez de dividir el
      * largo por un número a ojo. La versión anterior reservaba ancho para una
      * rotación que no estaba usando y el camión quedaba chico en el medio, con el
      * primer quinto del lienzo siempre vacío.
      *
-     * Se calcula con los ÁNGULOS POR DEFECTO y queda fijo: si se recalculara en
-     * cada frame, arrastrar para girar haría zoom, que no es lo que uno espera.
+     * Recibe los ángulos en vez de leer los de la vista porque cada vista los
+     * necesita distintos: de costado el camión es larguísimo y bajo, de planta es
+     * largo y angosto, y desde la puerta es casi un cuadrado. Con una sola escala
+     * medida en 3/4, la vista de costado se salía del lienzo y la de la puerta
+     * quedaba diminuta en el medio.
      */
-    function encuadrar() {
-        const yaw0 = yaw, pitch0 = pitch;
-        yaw = -0.85; pitch = -0.3;
+    function medirEncuadre(yawV, pitchV) {
+        const yaw0 = yaw, pitch0 = pitch, cola0 = cola;
+        yaw = yawV; pitch = pitchV;
         OFF = [(veh.largo - M.delante) / 2, (M.techo + M.suelo) / 2, veh.ancho / 2];
         CX = 0; CY = 0; ESC = 1;
 
-        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const x of [-M.delante, veh.largo]) {
-            for (const y of [M.suelo, M.techo]) {
-                for (const z of [0, veh.ancho]) {
-                    const p = proyectar([x, y, z]);
-                    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
-                    y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]);
-                }
-            }
-        }
+        // Se dibuja la silueta a una cola DESCARTABLE y se miden sus vértices ya
+        // proyectados. `midiendo` evita que la sombra —lo único que se pinta fuera de
+        // la cola— manche el lienzo durante la medición.
+        //
+        // Se mide la silueta y NO los bultos: si entraran, el encuadre cambiaría
+        // según cuánto haya cargado y el camión daría un salto de tamaño en cada
+        // «+10». La caja de carga es parte de la silueta, así que la carga, que nunca
+        // sale de la caja, ya está contenida.
+        cola = [];
+        midiendo = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+        if (M.semi) siluetaSemirremolque(); else siluetaCamion();
+        for (const o of cola) if (o.pts) for (const p of o.pts) registrar(p[0], p[1]);
 
-        escBase = Math.min(canvas.width * 0.93 / Math.max(0.01, x1 - x0),
-            canvas.height * 0.88 / Math.max(0.01, y1 - y0));
-        centro = [(x0 + x1) / 2, (y0 + y1) / 2];
+        const medida = midiendo;
+        midiendo = null;
+        cola = cola0;
         yaw = yaw0; pitch = pitch0;
-        reiniciarVista();
+
+        return medida;
+    }
+
+    /**
+     * Da al recuadro la FORMA del camión dibujado, y ajusta el mapa de bits.
+     *
+     * Es la otra mitad de «el camión se ve chico» (dueño, 05-08-2026: «necesito que
+     * sea más grande el espacio cuadrado, se sigue viendo apretado o pequeño»). El
+     * recuadro era apaisado 2,21:1 y el camión en 3/4 proyecta una silueta de
+     * ~1,45:1, así que el alto se llenaba al 95% y del ancho sobraba una cuarta
+     * parte: el camión entraba por lo alto y quedaba chico. Midiendo la silueta se
+     * sabe su proporción, y el recuadro se corta a esa medida.
+     *
+     * Se fija UNA vez con los ángulos de apertura y no cambia al cambiar de vista:
+     * si cada vista redimensionara el recuadro, la página entera saltaría al tocar
+     * «Planta». Las demás vistas entran adentro de ese mismo recuadro.
+     *
+     * El clamp evita los dos extremos: un contenedor de 12 m no puede dejar un
+     * recuadro tan apaisado que la carga sea una línea, y un camión corto no puede
+     * pedir un recuadro tan alto que empuje los datos abajo de la pantalla.
+     */
+    function proporcionar(ext) {
+        const ancho = Math.max(0.01, ext.x1 - ext.x0), alto = Math.max(0.01, ext.y1 - ext.y0);
+        const ratio = Math.min(2.5, Math.max(1.35, ancho / alto));
+        canvas.style.aspectRatio = ratio.toFixed(3);
+        ajustarLienzo();
+    }
+
+    /**
+     * Deja la vista en esos extremos: escala para llenar el lienzo y centro para que
+     * el dibujo quede EN EL MEDIO.
+     *
+     * Los márgenes son chicos porque la medida es EXACTA: mide lo que se pinta
+     * (espejos, paragolpes, guardabarros y la sombra incluidos). La versión anterior
+     * medía los 8 vértices de la caja de carga, que no es lo que se ve: reservaba
+     * adelante un hueco que la cabina no llenaba y se le escapaba la sombra por
+     * abajo, que quedaba CORTADA contra el borde (medido: 0 px de margen abajo).
+     */
+    function aplicar(ext) {
+        escBase = Math.min(AW * 0.97 / Math.max(0.01, ext.x1 - ext.x0),
+            AH * 0.95 / Math.max(0.01, ext.y1 - ext.y0));
+        centro = [(ext.x0 + ext.x1) / 2, (ext.y0 + ext.y1) / 2];
+        zoom = 1;
+        ESC = escBase;
+        CX = AW / 2 - centro[0] * ESC;
+        CY = AH / 2 - centro[1] * ESC;
+    }
+
+    /** Suma un punto a la medición del encuadre en curso. */
+    function registrar(x, y) {
+        if (!midiendo) return;
+        if (x < midiendo.x0) midiendo.x0 = x;
+        if (x > midiendo.x1) midiendo.x1 = x;
+        if (y < midiendo.y0) midiendo.y0 = y;
+        if (y > midiendo.y1) midiendo.y1 = y;
+    }
+
+    /**
+     * Ajusta el mapa de bits al tamaño REAL del recuadro y a la densidad de la
+     * pantalla. Devuelve si cambió.
+     *
+     * El lienzo tenía un tamaño fijo de 1240 px y el CSS lo escalaba: en un monitor
+     * ancho eso es una imagen de 1240 px estirada a 2000, o sea blanda. Ahora se
+     * dibuja a la medida del hueco que hay, que es lo que el dueño pidió al decir
+     * que quería «más grande el espacio» (05-08-2026).
+     *
+     * El alto del recuadro lo fija el CSS con `aspect-ratio`, NO el atributo del
+     * lienzo. Es lo que evita el bucle: si el alto saliera del mapa de bits, tocarlo
+     * cambiaría el recuadro, que volvería a cambiar el mapa de bits.
+     */
+    function ajustarLienzo() {
+        const r = canvas.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) return false;
+
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        // Tope de ancho: en un monitor 4K, dibujar a 3800 px cuadruplicaría el costo
+        // de cada frame para una nitidez que ya nadie distingue.
+        const k = Math.min(dpr, 2600 / r.width);
+        const w = Math.max(320, Math.round(r.width * k)), h = Math.max(200, Math.round(r.height * k));
+        if (w === canvas.width && h === canvas.height && AW === r.width) return false;
+
+        canvas.width = w; canvas.height = h;
+
+        // Se dibuja en píxeles LÓGICOS (los del CSS) y la escala la pone la matriz del
+        // contexto. Es la única forma de subir la densidad sin encoger todo lo que se
+        // mide en píxeles: si se dibujara en píxeles del mapa de bits, un lienzo al
+        // doble de resolución mostraría las letras y los carteles a la mitad de
+        // tamaño. Redimensionar el lienzo BORRA el estado del contexto, así que la
+        // matriz se vuelve a poner acá, junto al cambio de tamaño.
+        AW = r.width; AH = r.height;
+        ctx.setTransform(w / AW, 0, 0, h / AH, 0, 0);
+
+        return true;
+    }
+
+    /**
+     * Encuadre inicial: le da al recuadro la forma del camión y se para en 3/4.
+     *
+     * La proporción se toma de la vista de apertura y queda fija para toda la
+     * pantalla (ver `proporcionar`).
+     */
+    function encuadrar() {
+        proporcionar(medirEncuadre(...VISTAS['3d']));
+        vista('3d');
+    }
+
+    /**
+     * Se para en una de las vistas fijas. Es lo que en EasyCargo es el panel
+     * «Views», y el dueño lo señaló como lo que más le sirve de esa app
+     * (05-08-2026): «la capacidad para mostrar los diferentes opciones para ver la
+     * carga».
+     *
+     * Cada vista es un par de ángulos, no una cámara aparte, así que sigue siendo
+     * el mismo dibujo de siempre y se puede seguir arrastrando desde donde quedó.
+     * Los ángulos NO son a ojo, salen de la proyección (ver `proyectar`):
+     * · costado → yaw 0: la coordenada z (el ancho) deja de entrar en la x de
+     *   pantalla, así que se ve el perfil puro, con la puerta a la derecha.
+     * · planta  → pitch muy negativo: mira desde arriba. No se usa −π/2 exacto
+     *   porque a 90° las caras verticales degeneran en líneas y la carga pierde
+     *   todo el volumen; a −1,35 rad se lee como planta y conserva el espesor.
+     * · puerta  → yaw −π/2: la x (el largo) sale de la x de pantalla y el fondo del
+     *   camión queda DETRÁS de la carga, que es mirar por la puerta abierta.
+     *
+     * Vuelve el zoom a 1: si no, cambiar de vista con la carga ampliada dejaba el
+     * lienzo mirando el vacío al costado del camión.
+     */
+    const VISTAS = {
+        '3d': [-0.85, -0.3],
+        costado: [0, 0],
+        planta: [0, -1.35],
+        puerta: [-Math.PI / 2, -0.15],
+    };
+
+    function vista(clave) {
+        const [y, p] = VISTAS[clave] || VISTAS['3d'];
+
+        aplicar(medirEncuadre(y, p));
+        yaw = y; pitch = p;
+        vistaActual = clave;
+        marcarVista();
     }
 
     /** Vuelve al encuadre y al ángulo con que abre la pantalla. */
     function reiniciarVista() {
-        zoom = 1;
-        yaw = -0.85; pitch = -0.3;
-        ESC = escBase;
-        CX = canvas.width / 2 - centro[0] * ESC;
-        CY = canvas.height / 2 - centro[1] * ESC;
+        vista('3d');
+    }
+
+    /** Marca cuál de las vistas está puesta. Tolera que los botones no existan: el
+     *  encuadre inicial corre antes de que se cablee nada. */
+    function marcarVista() {
+        for (const clave of Object.keys(VISTAS)) {
+            const b = document.getElementById(`carga3dVista${clave}`);
+            if (!b) continue;
+            const puesta = clave === vistaActual;
+            b.setAttribute('aria-pressed', String(puesta));
+            b.classList.toggle('bg-brand-600', puesta);
+            b.classList.toggle('text-white', puesta);
+            b.classList.toggle('border-brand-600', puesta);
+            b.classList.toggle('bg-white', !puesta);
+            b.classList.toggle('text-neutral-700', !puesta);
+        }
     }
 
     /**
@@ -962,7 +1267,7 @@ export default function iniciarCarga3d(canvas, datos) {
      *
      * Sin `px`/`py` ancla el centro del lienzo (los botones + / −).
      */
-    function acercar(factor, px = canvas.width / 2, py = canvas.height / 2) {
+    function acercar(factor, px = AW / 2, py = AH / 2) {
         const antes = zoom;
         zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom * factor));
         if (zoom === antes) return;
@@ -979,13 +1284,13 @@ export default function iniciarCarga3d(canvas, datos) {
     function aLienzo(e) {
         const r = canvas.getBoundingClientRect();
         return [
-            (e.clientX - r.left) * (canvas.width / Math.max(1, r.width)),
-            (e.clientY - r.top) * (canvas.height / Math.max(1, r.height)),
+            (e.clientX - r.left) * (AW / Math.max(1, r.width)),
+            (e.clientY - r.top) * (AH / Math.max(1, r.height)),
         ];
     }
 
     function dibujar() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, AW, AH);
 
         if (M.semi) siluetaSemirremolque(); else siluetaCamion();
         bultos();
@@ -996,7 +1301,7 @@ export default function iniciarCarga3d(canvas, datos) {
         ctx.fillStyle = '#8a8a8a';
         ctx.font = '600 15px -apple-system,system-ui,sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('PUERTA →', canvas.width - 22, 30);
+        ctx.fillText('PUERTA →', AW - 22, 30);
         ctx.textAlign = 'left';
 
         const n = document.getElementById('carga3dN');
@@ -1012,7 +1317,9 @@ export default function iniciarCarga3d(canvas, datos) {
     canvas.addEventListener('pointermove', (e) => {
         if (!arrastre) return;
         yaw = arrastre.yaw + (e.clientX - arrastre.x) * 0.008;
-        pitch = Math.max(-1.15, Math.min(0.45, arrastre.pitch + (e.clientY - arrastre.y) * 0.006));
+        // El tope de abajo llega hasta la vista de PLANTA (−1,35): con el −1,15 de
+        // antes, entrar en planta y mover un pixel el dedo saltaba de golpe a 3/4.
+        pitch = Math.max(-1.42, Math.min(0.45, arrastre.pitch + (e.clientY - arrastre.y) * 0.006));
         dibujar();
     });
     canvas.addEventListener('pointerup', () => { arrastre = null; });
@@ -1044,13 +1351,27 @@ export default function iniciarCarga3d(canvas, datos) {
     boton('carga3dMenos', () => { acercar(1 / 1.25); dibujar(); });
     boton('carga3dReset', () => { reiniciarVista(); dibujar(); });
 
-    const btnNombres = boton('carga3dNombres', () => {
-        nombres = !nombres;
-        btnNombres.setAttribute('aria-pressed', String(nombres));
-        btnNombres.classList.toggle('bg-neutral-100', !nombres);
-        btnNombres.classList.toggle('text-neutral-400', !nombres);
-        dibujar();
-    });
+    /** Los interruptores de «Nombres» y «Códigos», que se ven apagados al apagarse. */
+    const interruptor = (id, leer, escribir) => {
+        const b = boton(id, () => {
+            escribir(!leer());
+            b.setAttribute('aria-pressed', String(leer()));
+            b.classList.toggle('bg-neutral-100', !leer());
+            b.classList.toggle('text-neutral-400', !leer());
+            dibujar();
+        });
+
+        return b;
+    };
+
+    interruptor('carga3dNombres', () => nombres, (v) => { nombres = v; });
+    interruptor('carga3dCodigos', () => codigos, (v) => { codigos = v; });
+
+    // Las VISTAS fijas. A diferencia del zoom, van también en celular: son la forma
+    // de mirar la carga desde otro lado sin tener que arrastrar con el dedo.
+    for (const clave of Object.keys(VISTAS)) {
+        boton(`carga3dVista${clave}`, () => { vista(clave); dibujar(); });
+    }
 
     /**
      * Fija cuántos bultos se ven cargados. Corta la animación si estaba corriendo:
@@ -1079,6 +1400,26 @@ export default function iniciarCarga3d(canvas, datos) {
             dibujar();
             if (cant >= TOPE) clearInterval(anim);
         }, 45);
+    });
+
+    /**
+     * El recuadro cambia de tamaño cuando cambia la ventana (y cuando se abre el
+     * menú lateral, que corre la columna). Se redibuja a la nueva medida en vez de
+     * dejar el lienzo estirado.
+     *
+     * Se agenda con `requestAnimationFrame` porque al arrastrar el borde de la
+     * ventana el evento llega decenas de veces por segundo, y remedir el encuadre en
+     * cada uno sería trabajo tirado.
+     */
+    let pendiente = null;
+    window.addEventListener('resize', () => {
+        if (pendiente) return;
+        pendiente = requestAnimationFrame(() => {
+            pendiente = null;
+            if (!ajustarLienzo()) return;
+            vista(vistaActual);
+            dibujar();
+        });
     });
 
     encuadrar();

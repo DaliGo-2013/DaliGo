@@ -201,6 +201,7 @@ class SimuladorCargaController extends Controller
                     'rejilla' => $b['rejilla'],
                     'cantidad' => $b['cantidad'],
                     'color' => self::COLORES_3D[$b['linea'] % count(self::COLORES_3D)],
+                    'letra' => self::letra($b['linea']),
                     'nombre' => $mixta['lineas'][$b['linea']]['modelo']->nombre,
                     'forma' => $mixta['lineas'][$b['linea']]['modelo']->formaVisor(),
                 ])
@@ -213,6 +214,7 @@ class SimuladorCargaController extends Controller
                 'rejilla' => $resultado['rejilla'],
                 'cantidad' => $resultado['bultos'],
                 'color' => self::COLORES_3D[0],
+                'letra' => self::letra(0),
                 'nombre' => $bulto->nombre,
                 'forma' => $bulto->formaVisor(),
             ]] : [];
@@ -232,7 +234,53 @@ class SimuladorCargaController extends Controller
             ],
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
+            'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
         ];
+    }
+
+    /**
+     * La LETRA con que se identifica un producto: A, B, C… por orden de la lista
+     * que armó el usuario.
+     *
+     * Es el vínculo entre la lista de abajo y el lienzo, y va escrita sobre las
+     * cajas. Nace de mirar EasyCargo (05-08-2026): ahí cada renglón lleva su letra
+     * y cada caja la trae impresa, y por eso se distingue de un vistazo qué es
+     * qué. Acá había SOLO color, que es peor de dos maneras: un color no se puede
+     * nombrar en voz alta («cargá el verde» con dos verdes al lado no sirve) y con
+     * ocho productos los tonos se confunden.
+     *
+     * El índice es el de la línea, el MISMO con que se elige el color, así que la
+     * letra del lienzo y la del renglón no pueden desalinearse. Más de 26
+     * productos no existe: el formulario admite 8.
+     */
+    public static function letra(int $linea): string
+    {
+        return chr(65 + ($linea % 26));
+    }
+
+    /**
+     * Metros de piso LIBRES desde la puerta, en metros.
+     *
+     * El «Free meters» de EasyCargo, y es más accionable que el porcentaje de
+     * ocupación: «te queda 1,2 m contra la puerta» se entiende sin traducir, y
+     * dice si vale la pena sumar algo más al viaje.
+     *
+     * Se mide hasta el bloque que llega más adelante, así que el espacio que
+     * informa es un rectángulo de TODO el ancho y TODO el alto: no hay nada más
+     * allá de esa línea. Conservador a propósito — puede quedar piso libre al
+     * costado de un bloque corto y no se cuenta, en la misma dirección que el
+     * resto del motor (nunca prometer de más).
+     *
+     * @param  list<array{x:float,orientacion:array{largo:float},rejilla:array{largo:int}}>  $bloques
+     */
+    private static function pisoLibre(float $largo, array $bloques): float
+    {
+        $fin = 0.0;
+        foreach ($bloques as $b) {
+            $fin = max($fin, $b['x'] + $b['rejilla']['largo'] * $b['orientacion']['largo']);
+        }
+
+        return round(max(0, $largo - $fin), 2);
     }
 
     /**

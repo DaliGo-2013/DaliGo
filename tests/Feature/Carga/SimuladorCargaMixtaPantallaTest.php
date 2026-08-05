@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Carga;
 
+use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Models\CamionSimulacion;
 use App\Models\TipoBulto;
 use App\Models\User;
@@ -244,7 +245,9 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
 
         $controles = [
             // Vista
-            'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres',
+            'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres', 'carga3dCodigos',
+            // Vistas fijas (el panel «Views» de EasyCargo, pedido del dueño 05-08).
+            'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
             // Cuánto se ve cargado: animación + pasos a mano (pedido del dueño 05-08).
             'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1',
             'carga3dSuma1', 'carga3dSuma5', 'carga3dSuma10', 'carga3dTodo',
@@ -328,6 +331,123 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame(
             ['silueta' => 'semirremolque', 'ejes' => 3],
             $this->siluetaDe($this->camion('Raro', 1203, 'nave-espacial')),
+        );
+    }
+
+    public function test_cada_producto_lleva_su_letra_y_es_la_misma_en_la_lista_y_en_el_lienzo(): void
+    {
+        // La letra es el vínculo entre el renglón de la lista y las cajas del lienzo
+        // (idea tomada de EasyCargo, 05-08). Si la del payload se desalineara del orden
+        // de la lista, el visor diría «B» sobre lo que la lista llama «A» — el error
+        // más caro posible acá, porque se cargaría el camión mirando la letra.
+        $escena = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100],
+            ['tipo' => $this->caja->id, 'cantidad' => 20],
+        ])->assertOk()->viewData('escena');
+
+        $letras = collect($escena['bloques'])->pluck('letra', 'nombre');
+
+        $this->assertSame('A', $letras[$this->bolsa->nombre], 'El primer producto de la lista es la A.');
+        $this->assertSame('B', $letras[$this->caja->nombre], 'El segundo es la B.');
+
+        // Y la letra sale de la MISMA función que usa la vista para el renglón.
+        $this->assertSame('A', SimuladorCargaController::letra(0));
+        $this->assertSame('B', SimuladorCargaController::letra(1));
+        $this->assertSame('H', SimuladorCargaController::letra(7));
+    }
+
+    public function test_un_producto_partido_en_dos_zonas_conserva_una_sola_letra(): void
+    {
+        // El acomodo por zonas puede partir un producto en dos bloques. Los dos son el
+        // MISMO renglón de la lista, así que tienen que llevar la misma letra: dos
+        // letras para un producto haría creer que son dos cosas distintas.
+        $escena = $this->verMixta([
+            ['tipo' => $this->caja->id, 'cantidad' => 60],
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50],
+        ])->assertOk()->viewData('escena');
+
+        foreach (collect($escena['bloques'])->groupBy('nombre') as $nombre => $bloques) {
+            $this->assertCount(
+                1, $bloques->pluck('letra')->unique(),
+                "El producto «{$nombre}» quedó con más de una letra.",
+            );
+        }
+    }
+
+    public function test_la_escena_dice_cuantos_metros_de_piso_quedan_libres(): void
+    {
+        // El «Free meters» de EasyCargo. Con 100 botellones (20 bolsas) en el HD35, la
+        // bolsa entra con su lado de 130 cm a lo largo del camión, así que el muro come
+        // 1,30 m de los 4,30 m y quedan 3,00 m. Es el número que decide si al viaje le
+        // cabe algo más.
+        $escena = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])
+            ->assertOk()->viewData('escena');
+
+        $this->assertSame(3.0, $escena['libre_m']);
+
+        // Y cuadra con el bloque que dibuja el visor: el piso libre no es un número
+        // aparte, es el largo menos hasta donde llega la carga.
+        $bloque = $escena['bloques'][0];
+        $this->assertSame(
+            round(4.30 - ($bloque['x'] + $bloque['rejilla']['largo'] * $bloque['orientacion']['largo']), 2),
+            $escena['libre_m'],
+        );
+    }
+
+    public function test_el_piso_libre_es_todo_el_largo_cuando_no_entra_nada(): void
+    {
+        // Un bulto que no entra por medidas deja el camión vacío: los metros libres son
+        // TODO el largo, no cero. Un cero acá se leería como «camión lleno».
+        $gigante = TipoBulto::create([
+            'nombre' => 'Estanque 5 m', 'categoria' => 'otros',
+            'largo_cm' => 500, 'ancho_cm' => 190, 'alto_cm' => 190, 'peso_kg' => 80,
+            'unidades' => 1, 'apilable_max' => 1, 'soporta_peso_encima' => false,
+            'orientacion_fija' => true, 'activo' => true,
+        ]);
+
+        $escena = $this->verMixta([['tipo' => $gigante->id, 'cantidad' => 1]])
+            ->assertOk()->viewData('escena');
+
+        $this->assertSame([], $escena['bloques']);
+        $this->assertSame(4.3, $escena['libre_m']);
+    }
+
+    public function test_el_piso_libre_se_muestra_en_la_pantalla(): void
+    {
+        $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])
+            ->assertOk()
+            ->assertSee('Piso libre en la puerta')
+            ->assertSee('3,00 m');
+    }
+
+    public function test_el_recuadro_del_visor_fija_su_alto_por_css_y_no_por_el_lienzo(): void
+    {
+        // El visor ajusta el mapa de bits al recuadro real (para que no salga borroso
+        // en un monitor ancho). Eso SOLO es estable si el alto del recuadro lo fija el
+        // CSS: si saliera del atributo `height`, tocar el mapa de bits movería el
+        // recuadro, que volvería a mover el mapa de bits — un bucle. Este candado
+        // cuida esa condición, que no se ve en ninguna pantalla hasta que se rompe.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
+
+        $this->assertStringContainsString('aspect-ratio: 1240 / 660', $html);
+        $this->assertStringContainsString('id="carga3d"', $html);
+    }
+
+    public function test_el_encuadre_mide_el_dibujo_y_no_una_caja_supuesta(): void
+    {
+        // El camión se veía chico y corrido a la derecha (reporte del dueño 05-08):
+        // el encuadre medía los 8 vértices de la caja de carga, que no es lo que se
+        // pinta. Medido en el HINO: 221 px muertos a la izquierda contra 23 a la
+        // derecha, y la sombra cortada abajo. Ahora dibuja la silueta a una cola
+        // descartable y mide sus vértices. Si alguien vuelve a la caja supuesta, el
+        // síntoma es sutil (se ve «casi bien») y nadie lo ataja: esto lo ataja.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('function medirEncuadre', $js);
+        $this->assertMatchesRegularExpression(
+            '/midiendo = \{[^}]*\};\s*\n\s*if \(M\.semi\) siluetaSemirremolque\(\); else siluetaCamion\(\);/',
+            $js,
+            'El encuadre ya no dibuja la silueta para medirla.',
         );
     }
 }

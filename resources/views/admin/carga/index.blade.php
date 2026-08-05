@@ -114,6 +114,15 @@
                                         <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
                                     </div>
                                 @endif
+                                {{-- Los metros de piso que quedan contra la puerta: el «Free meters» de
+                                     EasyCargo. Dice más que el porcentaje de ocupación para la pregunta
+                                     que se hace todos los días («¿le sumo algo más a este viaje?»). --}}
+                                <div class="flex justify-between gap-3 py-1">
+                                    <span class="text-neutral-500">Piso libre en la puerta</span>
+                                    <span class="font-medium tabular-nums text-neutral-900">
+                                        {{ number_format($escena['libre_m'], 2, ',', '.') }} m
+                                    </span>
+                                </div>
                             </div>
 
                             <p class="mt-4 text-xs leading-relaxed text-neutral-400">
@@ -200,9 +209,15 @@
                                             ][$fila['motivo']] ?? null;
                                         @endphp
                                         <x-list-row>
+                                            {{-- La LETRA del producto sobre su color: la misma que va escrita
+                                                 sobre las cajas en el lienzo. Antes era solo un cuadradito de
+                                                 color, y un color no se puede nombrar en voz alta («cargá el
+                                                 verde» con dos verdes al lado no sirve) ni se distingue bien
+                                                 con ocho productos. --}}
                                             <x-slot name="leading">
-                                                <span class="mt-1 block h-3.5 w-3.5 rounded"
-                                                      style="background: rgb({{ implode(',', $rgb) }})" aria-hidden="true"></span>
+                                                <span class="mt-0.5 flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold text-white"
+                                                      style="background: rgb({{ implode(',', $rgb) }})"
+                                                      title="Esta letra va escrita sobre sus cajas en el visor">{{ \App\Http\Controllers\Admin\SimuladorCargaController::letra($i) }}</span>
                                             </x-slot>
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <p class="font-medium text-neutral-900">{{ $fila['modelo']->nombre }}</p>

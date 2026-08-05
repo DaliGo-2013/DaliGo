@@ -256,6 +256,80 @@ paragolpes, parrilla, espejos y ruedas.
 El bloque del visor vive en el partial `admin.carga._visor`: estaba copiado idéntico
 en los dos modos de la pantalla y los controles nuevos habrían quedado duplicados.
 
+### 4.1septies Lo que se le tomó a EasyCargo (05-08-2026)
+
+El dueño pasó capturas de EasyCargo y pidió ideas para el visor. **El artículo de su blog
+no sirve** (siete generalidades de marketing: 3D, arrastrar y soltar, web, API, 16
+idiomas); las capturas sí. De ellas señaló tres cosas como lo que más le sirve, y son las
+tres que se hicieron:
+
+1. **Vistas fijas** («la capacidad para mostrar los diferentes opciones para ver la
+   carga»). Cuatro botones: 3D, Costado, Planta, Puerta. Cada vista es un par de ángulos,
+   no una cámara aparte. Los ángulos salen de la proyección, no del ojo: costado = `yaw 0`
+   (el ancho deja de entrar en la x de pantalla); puerta = `yaw −π/2` (el largo sale de la
+   x y el fondo queda detrás de la carga); planta = `pitch −1,35`, **no −π/2**, porque a
+   90° exactos las caras verticales degeneran en líneas y la carga pierde el volumen.
+   **Van también en celular**: sin zoom táctil, cambiar de vista es la única forma de
+   mirar la carga desde otro lado.
+2. **Códigos escritos en las cajas.** Cada producto tiene una LETRA (A, B, C… por orden de
+   la lista) que va en el renglón de la lista, en el cartel del bloque y **escrita sobre
+   cada bulto**. Antes solo había color, que es peor de dos maneras: un color no se puede
+   nombrar en voz alta («cargá el verde» con dos verdes al lado no sirve) y con ocho
+   productos los tonos se confunden. `SimuladorCargaController::letra()` es la única
+   fuente, así que lienzo y lista no pueden desalinearse.
+   · Una cara por bulto, **la más cercana a la cámara**: escribir en las tres visibles
+     triplica el texto sin aclarar nada, y elegir «la de la puerta» dejaría los códigos
+     invisibles en la vista de costado.
+   · Las entradas de texto viajan en la MISMA cola de profundidad que las caras, para que
+     una caja de adelante tape el código de la de atrás.
+   · `CODIGO_MIN = 8` px está **medido**: con 11 no se escribía ni un código en la carga
+     real (la cara visible de una bolsa de 26 × 51 cm, girada y en fuga, mide ~17 px de
+     lado corto y pedía letra de 12). De paso hace de LOD gratis: alejado no se escribe
+     nada, al acercarte aparecen.
+3. **Metros de piso libres** («Free meters»). Más accionable que el porcentaje de
+   ocupación para la pregunta de todos los días: «¿le sumo algo más a este viaje?». Se
+   mide hasta el bloque que llega más adelante, así que lo que informa es un rectángulo de
+   TODO el ancho y TODO el alto — conservador a propósito, en la misma dirección que el
+   resto del motor.
+
+**Descartado a propósito:** arrastrar y soltar bultos a mano. El acomodo lo calcula
+`CalculoDeCarga` y es conservador y verificado; permitir mover bultos dejaría armar en
+pantalla un plan que el motor dice que no cabe. También queda afuera el peso por eje: pide
+distancias entre ejes y peso vacío por eje que no existen en el catálogo, y los límites
+legales salen de la normativa del MOP, no de una app.
+
+### 4.1octies El encuadre mide el DIBUJO, y el recuadro toma la forma del camión
+
+Reporte del dueño: «se sigue viendo apretado o pequeño» y «se ve muy hacia la derecha».
+Las dos cosas eran el mismo error y se midieron antes de tocar nada:
+
+- El encuadre medía **los 8 vértices de la caja de carga**, que no es lo que se pinta.
+  Reservaba adelante un hueco que la cabina no llenaba (**medido: 221 px muertos a la
+  izquierda contra 23 a la derecha**) y se le escapaba la sombra por abajo, que quedaba
+  **cortada contra el borde** (0 px de margen). Ahora `medirEncuadre()` dibuja la silueta
+  a una cola descartable y mide sus vértices ya proyectados: espejos, paragolpes,
+  guardabarros y sombra incluidos. Quedó en 1,4% de desbalance.
+- El recuadro era apaisado 2,21:1 y el camión en 3/4 proyecta una silueta de ~1,49:1: el
+  alto se llenaba al 95% y **del ancho sobraba una cuarta parte**. Ahora `proporcionar()`
+  le da al recuadro la proporción del camión dibujado. Se fija UNA vez con los ángulos de
+  apertura y no cambia al cambiar de vista — si cada vista redimensionara el recuadro, la
+  página entera saltaría al tocar «Planta».
+
+Dos reglas que se derivan y no hay que romper:
+
+1. **El encuadre mide la silueta y NO los bultos.** Si entraran, el encuadre cambiaría
+   según cuánto haya cargado y el camión daría un salto de tamaño en cada «+10». La caja
+   de carga es parte de la silueta, y la carga nunca sale de la caja.
+2. **El alto del recuadro lo fija el CSS (`aspect-ratio`), no el atributo del lienzo.** El
+   visor ajusta el mapa de bits al recuadro real para no salir borroso en un monitor
+   ancho; si el alto saliera del mapa de bits, tocarlo movería el recuadro y el recuadro
+   volvería a mover el mapa de bits. Candado:
+   `test_el_recuadro_del_visor_fija_su_alto_por_css_y_no_por_el_lienzo`.
+
+Y como el mapa de bits ya no es de 1240 px fijos, **todo el dibujo se hace en píxeles
+lógicos** (los del CSS) con la escala en la matriz del contexto (`AW`/`AH`). Sin eso, un
+lienzo al doble de resolución mostraría letras y carteles a la mitad de tamaño.
+
 ### 4.2 El orden de dibujo y los cuerpos largos
 
 El visor ordena por la profundidad del **centro de cada cara**. Con eso, un cuerpo
