@@ -260,6 +260,32 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         }
     }
 
+    public function test_la_escena_dice_con_que_forma_dibujar_cada_bulto(): void
+    {
+        // Los botellones se dibujan como los bidones dentro de la bolsa (foto del
+        // dueño 05-08: es la carga diaria y era la que menos se parecía a la realidad);
+        // las cajas y los dispensadores siguen siendo bultos rectangulares. Es dato de
+        // DIBUJO: no toca el cupo.
+        $escena = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100],
+            ['tipo' => $this->caja->id, 'cantidad' => 20],
+        ])->assertOk()->viewData('escena');
+
+        $formas = collect($escena['bloques'])->pluck('forma', 'nombre');
+
+        $this->assertSame('botellones', $formas[$this->bolsa->nombre]);
+        $this->assertSame('caja', $formas[$this->caja->nombre]);
+    }
+
+    public function test_la_forma_no_cambia_el_cupo(): void
+    {
+        // Candado del credo: `forma` es dibujo. Si alguien la mete en paraCalculo()
+        // —el array que ve el motor— empezaría a mover números.
+        $this->assertArrayNotHasKey('forma', $this->bolsa->paraCalculo());
+        $this->assertSame('botellones', $this->bolsa->formaVisor());
+        $this->assertSame('caja', $this->caja->formaVisor());
+    }
+
     public function test_la_escena_lleva_el_nombre_para_la_chapa_de_atras(): void
     {
         // El visor pinta una chapa atrás con el modelo (pedido del dueño 05-08) y lo

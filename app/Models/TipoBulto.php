@@ -53,6 +53,24 @@ class TipoBulto extends Model implements AuditableContract
         return round(($this->largo_cm / 100) * ($this->ancho_cm / 100) * ($this->alto_cm / 100), 4);
     }
 
+    /**
+     * Con qué FORMA lo dibuja el visor 3D.
+     *
+     * Los botellones no viajan como una caja: son 5 bidones parados en fila dentro
+     * de una bolsa (foto del dueño 05-08 — se ven los 5 picos gathered arriba, y las
+     * medidas 130 × 26 × 51 cuadran con 5 × 26 cm de diámetro). Es la carga diaria,
+     * así que dibujarla como un ladrillo naranja era lo que menos se parecía a la
+     * realidad.
+     *
+     * Es dato de DIBUJO: `paraCalculo()` no lo mira, así que no puede mover un cupo.
+     * Todo lo que no sea botellones se sigue dibujando como bulto rectangular, que es
+     * lo que son las cajas y los dispensadores.
+     */
+    public function formaVisor(): string
+    {
+        return $this->categoria === 'botellones' ? 'botellones' : 'caja';
+    }
+
     /** Forma que espera CalculoDeCarga::cupo(), sin que el servicio conozca Eloquent. */
     public function paraCalculo(): array
     {

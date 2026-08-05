@@ -106,6 +106,9 @@ export default function iniciarCarga3d(canvas, datos) {
     // es lo que permite que girar no cambie el zoom.
     let escBase = 100, centro = [0, 0], zoom = 1, nombres = true;
     const ZOOM_MIN = 0.7, ZOOM_MAX = 4;
+    // Hasta cuántas bolsas se dibujan como BIDONES antes de caer al bulto rectangular
+    // (ver `bultos`). Medido sobre los polígonos por frame, no elegido a ojo.
+    const TOPE_BIDONES = 150;
     // Cuántos bultos se dibujaron de cada bloque: lo llena `bultos()` y lo usan las
     // etiquetas para no rotular un bloque que la animación todavía no cargó.
     let dibujadosPorBloque = [];
@@ -255,6 +258,66 @@ export default function iniciarCarga3d(canvas, datos) {
                 cola.push({ z: zc(llanta) - 0.02, pts: llanta, fill: 'rgb(122,124,130)', borde: null });
             }
         }
+    }
+
+    /**
+     * Bolsa de bidones: los N botellones parados en fila dentro de la bolsa, en vez
+     * de un ladrillo naranja. Es la carga diaria de Dali, así que es la que más se
+     * mira (foto del dueño 05-08: se ven los 5 picos gathered arriba).
+     *
+     * Los N salen de la GEOMETRÍA, no de un número fijo: `largo / ancho` da 5 tanto en
+     * la bolsa de 20 L (130/26) como en la de 10 L (110/21), y si mañana entra una
+     * bolsa de 4 se dibuja con 4 sin tocar nada.
+     *
+     * Cada bidón son dos prismas hexagonales (cuerpo + pico). Seis lados alcanzan para
+     * que se lea redondo a este tamaño y cuestan la mitad que ocho — y de estos van
+     * cinco por bolsa.
+     */
+    function bolsaDeBidones(x, y, z, l, w, h, col) {
+        const n = Math.max(1, Math.min(8, Math.round(l / Math.max(0.01, w))));
+        const paso = l / n, r = Math.min(paso, w) * 0.46;
+
+        for (let i = 0; i < n; i++) {
+            const cx = x + paso * (i + 0.5), cz = z + w / 2;
+            cilindro(cx, cz, y, r, h * 0.80, col);                       // cuerpo
+            cilindro(cx, cz, y + h * 0.80, r * 0.42, h * 0.20, col);     // pico
+        }
+        // La bolsa: SOLO la película de arriba, que es donde se ve en la foto (el
+        // plástico gathered sobre los picos). Dibujarla como caja entera metía tres
+        // caras translúcidas por bolsa y con 74 bolsas apiladas la carga se veía de
+        // vidrio, además de pelearse el orden de dibujo con los bidones de atrás.
+        panel([[x, y + h, z], [x + l, y + h, z], [x + l, y + h, z + w], [x, y + h, z + w]],
+            [216, 230, 245], { alpha: 0.34 });
+    }
+
+    /**
+     * Prisma de 8 lados con eje VERTICAL, descartando las caras del otro lado.
+     *
+     * El sombreado va por el ÁNGULO de cada cara alrededor del eje contra una luz
+     * fija del mundo, no por su profundidad en pantalla: así el redondeo se lee igual
+     * desde cualquier ángulo de cámara. La primera versión usaba la profundidad y los
+     * bidones salían angulosos y con el brillo saltando al girar.
+     */
+    function cilindro(cx, cz, y0, r, alto, col) {
+        const N = 8, per = [], LUZ = -0.9;   // la luz entra por el frente-izquierda
+        for (let i = 0; i < N; i++) {
+            const a = (i * 2 * Math.PI) / N;
+            per.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r, a]);
+        }
+        const A = per.map((p) => proyectar([p[0], y0, p[1]]));
+        const B = per.map((p) => proyectar([p[0], y0 + alto, p[1]]));
+        const zc = (q) => q.reduce((s, p) => s + p[2], 0) / q.length;
+        const eje = (zc(A) + zc(B)) / 2;
+
+        for (let i = 0; i < N; i++) {
+            const j = (i + 1) % N, q = [A[i], A[j], B[j], B[i]];
+            const z = zc(q);
+            if (z > eje) continue;   // cara del otro lado del cilindro
+            const normal = per[i][2] + Math.PI / N;      // hacia dónde mira la cara
+            const s = 0.64 + 0.36 * (0.5 + 0.5 * Math.cos(normal - LUZ));
+            cola.push({ z, pts: q, fill: rgb(col, s), borde: null });
+        }
+        cola.push({ z: zc(B) - 0.01, pts: B, fill: rgb(col, 1), borde: 'rgba(0,0,0,.18)' });
     }
 
     /** Guardabarros: media caña sobre la rueda. Quita lo de «chasis pelado». */
@@ -492,6 +555,13 @@ export default function iniciarCarga3d(canvas, datos) {
             const capa = rej.ancho * rej.alto;
             const dibujables = Math.max(0, Math.min(blq.cantidad, rej.largo * capa, cant - puestos));
 
+            // Los bidones cuestan ~6 veces más polígonos que un bulto rectangular, y
+            // se dibujan uno por bolsa. Con cientos de bolsas (el contenedor lleva
+            // 324) se cae al bulto rectangular: a ese tamaño en pantalla se ve
+            // prácticamente igual y el arrastre se mantiene fluido. El límite se fijó
+            // MIDIENDO los polígonos por frame, no a ojo (ver las reglas).
+            const bidones = blq.forma === 'botellones' && dibujables <= TOPE_BIDONES;
+
             const indice = (ix, iz, iy) => ix * capa + iz * rej.alto + iy;
             const puesto = (ix, iz, iy) => ix >= 0 && ix < rej.largo && iz >= 0 && iz < rej.ancho
                 && iy >= 0 && iy < rej.alto && indice(ix, iz, iy) < dibujables;
@@ -504,8 +574,12 @@ export default function iniciarCarga3d(canvas, datos) {
                     && puesto(ix, iz - 1, iy) && puesto(ix, iz + 1, iy)
                     && puesto(ix, iz, iy - 1) && puesto(ix, iz, iy + 1)) continue;
 
-                prisma(blq.x + ix * ori.largo, iy * ori.alto, blq.y + iz * ori.ancho,
-                    ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
+                const px = blq.x + ix * ori.largo, py = iy * ori.alto, pz = blq.y + iz * ori.ancho;
+                if (bidones) {
+                    bolsaDeBidones(px, py, pz, ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
+                } else {
+                    prisma(px, py, pz, ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985, col);
+                }
             }
             dibujadosPorBloque[i] = dibujables;
             puestos += dibujables;

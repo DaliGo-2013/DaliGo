@@ -201,6 +201,7 @@ class SimuladorCargaController extends Controller
                     'cantidad' => $b['cantidad'],
                     'color' => self::COLORES_3D[$b['linea'] % count(self::COLORES_3D)],
                     'nombre' => $mixta['lineas'][$b['linea']]['modelo']->nombre,
+                    'forma' => $mixta['lineas'][$b['linea']]['modelo']->formaVisor(),
                 ])
                 ->all();
         } else {
@@ -212,6 +213,7 @@ class SimuladorCargaController extends Controller
                 'cantidad' => $resultado['bultos'],
                 'color' => self::COLORES_3D[0],
                 'nombre' => $bulto->nombre,
+                'forma' => $bulto->formaVisor(),
             ]] : [];
         }
 

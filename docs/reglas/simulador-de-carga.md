@@ -149,6 +149,35 @@ punto del color del bloque, que es la misma leyenda que la lista «producto por
 producto». Se pueden apagar, y un bloque que la animación todavía no cargó **no** se
 rotula: la etiqueta señalaría un lugar vacío.
 
+### 4.1ter La bolsa de bidones se dibuja como bidones (05-08-2026)
+
+Es la carga diaria de Dali y era la que menos se parecía a la realidad: un ladrillo
+naranja. Con la foto del dueño (los 5 picos gathered arriba, y las medidas 130 × 26 × 51
+que cuadran con 5 × 26 cm de diámetro) se dibuja como **N bidones parados en fila** con
+la película de la bolsa por encima.
+
+Los **N salen de la geometría**, no de un número fijo: `largo / ancho` da 5 tanto en la
+bolsa de 20 L (130/26) como en la de 10 L (110/21). `TipoBulto::formaVisor()` decide
+por categoría (`botellones` → bidones; el resto → bulto rectangular) y viaja en la
+escena como `forma`. Es **dato de dibujo**: no está en `paraCalculo()`, así que no puede
+mover un cupo — con candado (`test_la_forma_no_cambia_el_cupo`).
+
+**Tope de detalle, medido y no elegido a ojo.** Un bidón son dos prismas de 8 lados, así
+que una bolsa cuesta ~6 veces más polígonos que un bulto rectangular. Medido en el HD35
+con 84 bolsas: **4.046 polígonos y 17,8 ms por frame (~56 fps)**. El contenedor con 324
+bolsas daría ~11.000 polígonos y ~20 fps al arrastrar, así que por encima de
+`TOPE_BIDONES = 150` bolsas se cae al bulto rectangular — a ese tamaño en pantalla se ve
+prácticamente igual. Si algún día se quiere el detalle también ahí, hay que subir el
+tope A SABIENDAS de que cuesta ~35 fps.
+
+Dos cosas que se probaron y salieron mal, para no repetirlas:
+1. **La bolsa como caja translúcida completa**: tres caras por bolsa × 74 bolsas
+   apiladas y la carga entera se veía de vidrio. Quedó solo la película de ARRIBA, que
+   es donde se ve en la foto.
+2. **Sombrear el cilindro por profundidad de pantalla**: los bidones salían angulosos y
+   el brillo saltaba al girar. Va por el ÁNGULO de cada cara contra una luz fija del
+   mundo, que se lee igual desde cualquier cámara.
+
 **Chapa de atrás** (pedido del dueño 05-08): un rótulo con el MODELO en la cara trasera
 de la caja, abajo. No es una patente: el catálogo del simulador son cajas de carga TIPO.
 Sale de `vehiculo.nombre` quitándole el paréntesis y, si sigue largo, las palabras de
