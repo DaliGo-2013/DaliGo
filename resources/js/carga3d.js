@@ -55,7 +55,34 @@ const cuna = (x, y, z, a, b, c, dxFondo = 0, dxFrente = 0) => [
 
 const rgb = (c, s = 1) => `rgb(${Math.round(c[0] * s)},${Math.round(c[1] * s)},${Math.round(c[2] * s)})`;
 
-const AZUL = [58, 110, 170], VIDRIO = [128, 176, 220], GRIS = [78, 82, 90], CLARO = [188, 191, 198];
+/**
+ * La cabina va BLANCA, como la flota real (se ve en las fotos de carga que pasó el
+ * dueño el 05-08). Antes era azul inventado.
+ *
+ * Y va en NEUTROS a propósito, sin franja de color: dentro del lienzo el color es
+ * DATO —distingue un producto de otro y la leyenda lo traduce— así que pintar la
+ * cabina de naranjo o azul la haría confundible con la carga. El contraste lo dan
+ * los grises de paragolpes, parrilla, espejos y ruedas.
+ */
+const CABINA = [214, 218, 224], VIDRIO = [138, 158, 176], GRIS = [78, 82, 90], CLARO = [188, 191, 198];
+const CHAPA = [236, 236, 228];
+
+/**
+ * Rótulo de la chapa de atrás. El catálogo del simulador son cajas de carga TIPO, así
+ * que esto es un rótulo de MODELO y no una patente real.
+ *
+ * Se le quita el paréntesis («HINO 500 (FC 1118)» → «HINO 500») y, si sigue largo, se
+ * le sacan las palabras de adelante hasta que entre en una chapa: en 9 caracteres no
+ * cabe «HYUNDAI HD35» legible, y lo que identifica al camión es «HD35» — que además
+ * es como lo pidió el dueño. «CONTENEDOR 40'» queda «40'», que es como se nombran los
+ * contenedores.
+ */
+const rotulo = (nombre) => {
+    const palabras = (nombre || '').replace(/\s*\([^)]*\)/g, '').trim().toUpperCase().split(/\s+/);
+    while (palabras.length > 1 && palabras.join(' ').length > 9) palabras.shift();
+
+    return palabras.join(' ');
+};
 
 export default function iniciarCarga3d(canvas, datos) {
     const ctx = canvas.getContext('2d');
@@ -82,6 +109,9 @@ export default function iniciarCarga3d(canvas, datos) {
     // Cuántos bultos se dibujaron de cada bloque: lo llena `bultos()` y lo usan las
     // etiquetas para no rotular un bloque que la animación todavía no cargó.
     let dibujadosPorBloque = [];
+    // Rótulo de atrás: se calcula una vez y `textoChapa` lo pinta arriba de todo.
+    const ROTULO = rotulo(veh.nombre);
+    let chapaCaja = null;
 
     /**
      * Proporciones del vehículo, derivadas de sus medidas útiles. Se calculan UNA
@@ -296,14 +326,14 @@ export default function iniciarCarga3d(canvas, datos) {
         const x0 = -M.delante, w = veh.ancho - 0.06, z0 = 0.03;
         const alto = M.altoCab, cuerpoBajo = alto * 0.52, largo = M.largoCab;
 
-        prisma(x0, 0, z0, largo, w, cuerpoBajo, AZUL, G);
+        prisma(x0, 0, z0, largo, w, cuerpoBajo, CABINA, G);
         // Parabrisas reclinado: el techo se mete hacia atrás.
-        cuerpo(cuna(x0, cuerpoBajo, z0, largo, w, alto - cuerpoBajo, 0, largo * 0.30), AZUL, G);
+        cuerpo(cuna(x0, cuerpoBajo, z0, largo, w, alto - cuerpoBajo, 0, largo * 0.30), CABINA, G);
         // Vidrio, apenas por delante del parabrisas.
         cuerpo(cuna(x0 - 0.015, cuerpoBajo + 0.06, z0 + 0.05, largo * 0.32, w - 0.1,
             (alto - cuerpoBajo) * 0.72, 0, largo * 0.22), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.3)' });
         // Dormitorio: el cajón que hace inconfundible al tracto.
-        if (conDormitorio) prisma(x0 + largo * 0.34, alto, z0 + 0.04, largo * 0.62, w - 0.08, alto * 0.30, AZUL, G);
+        if (conDormitorio) prisma(x0 + largo * 0.34, alto, z0 + 0.04, largo * 0.62, w - 0.08, alto * 0.30, CABINA, G);
         // Paragolpes y parrilla.
         prisma(x0 - 0.10, 0.05, z0 + 0.02, 0.12, w - 0.04, cuerpoBajo * 0.42, GRIS, G);
         prisma(x0 - 0.03, cuerpoBajo * 0.56, z0 + 0.10, 0.05, w - 0.2, cuerpoBajo * 0.28, [40, 42, 48], G);
@@ -311,6 +341,45 @@ export default function iniciarCarga3d(canvas, datos) {
         for (const z of [z0 - 0.15, z0 + w + 0.03]) {
             prisma(x0 + largo * 0.24, cuerpoBajo + 0.10, z, 0.05, 0.12, 0.25, [45, 47, 52]);
         }
+    }
+
+    /**
+     * Chapa con el rótulo del camión, atrás y abajo (pedido del dueño 05-08). Va
+     * sobre la cara trasera de la caja, así que se lee justo desde donde se mira la
+     * puerta. El texto NO se dibuja acá: se pinta en la pasada de arriba
+     * (`textoChapa`), porque encolarlo entre las caras lo taparía la carga.
+     */
+    function chapa() {
+        if (!ROTULO) return;
+        const alto = 0.17;
+        const ancho = Math.min(0.70, Math.max(0.34, veh.ancho * 0.30));
+        chapaCaja = { x: veh.largo, y: 0.06, z: (veh.ancho - ancho) / 2, ancho, alto };
+        prisma(chapaCaja.x, chapaCaja.y, chapaCaja.z, 0.03, ancho, alto, CHAPA, { borde: 'rgba(0,0,0,.4)' });
+    }
+
+    /**
+     * El texto de la chapa, en la pasada de arriba. Se saltea cuando la cara trasera
+     * no nos está mirando (girado el camión, el rótulo quedaría espejado) o cuando en
+     * pantalla mide tan poco que no se leería.
+     */
+    function textoChapa() {
+        if (!chapaCaja || !ROTULO) return;
+        const c = chapaCaja;
+        const medio = c.y + c.alto / 2;
+        const centro = proyectar([c.x + 0.03, medio, c.z + c.ancho / 2]);
+        const adentro = proyectar([c.x - 0.4, medio, c.z + c.ancho / 2]);
+        if (centro[2] > adentro[2]) return;    // la chapa quedó del lado de atrás
+
+        const orilla = proyectar([c.x + 0.03, medio, c.z]);
+        const anchoPx = Math.hypot(centro[0] - orilla[0], centro[1] - orilla[1]) * 2;
+        if (anchoPx < 34) return;              // de canto o muy chica
+
+        const tam = Math.max(7, Math.min(20, (anchoPx * 1.5) / Math.max(5, ROTULO.length)));
+        ctx.font = `700 ${tam.toFixed(1)}px -apple-system,system-ui,sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#3f3f46';
+        ctx.fillText(ROTULO, centro[0], centro[1] + tam * 0.36);
+        ctx.textAlign = 'left';
     }
 
     /** La caja: piso opaco, marco y rieles, y paredes translúcidas para ver adentro. */
@@ -325,6 +394,7 @@ export default function iniciarCarga3d(canvas, datos) {
         for (const y of [0, H - 0.10]) prisma(L - 0.04, y, 0, 0.04, W, 0.10, CLARO, G);
         for (const z of [0, W - 0.05]) prisma(L - 0.04, 0, z, 0.04, 0.05, H, CLARO, G);
         paredes(L, W, H);
+        chapa();
     }
 
     /**
@@ -609,6 +679,7 @@ export default function iniciarCarga3d(canvas, datos) {
         bultos();
         pintar();
         etiquetas();
+        textoChapa();
 
         ctx.fillStyle = '#8a8a8a';
         ctx.font = '600 15px -apple-system,system-ui,sans-serif';

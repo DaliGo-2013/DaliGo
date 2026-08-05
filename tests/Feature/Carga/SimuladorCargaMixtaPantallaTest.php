@@ -260,6 +260,17 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         }
     }
 
+    public function test_la_escena_lleva_el_nombre_para_la_chapa_de_atras(): void
+    {
+        // El visor pinta una chapa atrás con el modelo (pedido del dueño 05-08) y lo
+        // saca de `vehiculo.nombre`. Si alguien lo quita del payload, la chapa
+        // desaparece en silencio: nada se rompe, solo deja de estar.
+        $escena = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])
+            ->assertOk()->viewData('escena');
+
+        $this->assertSame('Hyundai HD35', $escena['vehiculo']['nombre']);
+    }
+
     public function test_el_zoom_se_ofrece_solo_en_escritorio(): void
     {
         // Pedido del dueño 05-08: «no lo quiero para celular, no quiero que se

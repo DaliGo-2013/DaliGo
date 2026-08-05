@@ -149,6 +149,20 @@ punto del color del bloque, que es la misma leyenda que la lista «producto por
 producto». Se pueden apagar, y un bloque que la animación todavía no cargó **no** se
 rotula: la etiqueta señalaría un lugar vacío.
 
+**Chapa de atrás** (pedido del dueño 05-08): un rótulo con el MODELO en la cara trasera
+de la caja, abajo. No es una patente: el catálogo del simulador son cajas de carga TIPO.
+Sale de `vehiculo.nombre` quitándole el paréntesis y, si sigue largo, las palabras de
+adelante hasta que entre legible en la chapa — «Hyundai HD35» → **HD35**, «HINO 500 (FC
+1118)» → **HINO 500**, «Contenedor 40'» → **40'**. El texto se pinta en la pasada de
+arriba y se saltea cuando la cara trasera no mira a la cámara (saldría espejado) o
+cuando en pantalla mide menos de 34 px (no se leería).
+
+**La cabina va BLANCA y en NEUTROS.** Blanca porque así es la flota real (se ve en las
+fotos de carga del 05-08; antes era un azul inventado). Y en neutros, sin franja de
+color, porque **dentro del lienzo el color es DATO**: pintar la cabina de naranjo o azul
+la haría confundible con un producto de la carga. El contraste lo dan los grises de
+paragolpes, parrilla, espejos y ruedas.
+
 El bloque del visor vive en el partial `admin.carga._visor`: estaba copiado idéntico
 en los dos modos de la pantalla y los controles nuevos habrían quedado duplicados.
 
