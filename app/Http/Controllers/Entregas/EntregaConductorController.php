@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Models\Despacho;
+use App\Models\HojaRutaParada;
 use App\Services\Despachos\DespachoService;
 use App\Support\ImagenComprimida;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -86,7 +88,38 @@ class EntregaConductorController extends Controller
             'firma' => ['required', 'file', 'mimetypes:image/png,image/jpeg', 'max:2048'],
             'parcial' => ['nullable', 'boolean'],
             'entrega_observacion' => ['required_if:parcial,1', 'nullable', 'string', 'max:188'],
+            // Receptor en la puerta (R13, P-DSP-09): SIEMPRE obligatorio. El
+            // RUT va con formato SUAVE a propósito (sin DV estricto): con la
+            // cola offline un 422 llega HORAS después de la puerta, cuando ya
+            // no se puede corregir, y mataría la evidencia real (firma+foto).
+            'receptor_nombre' => ['required', 'string', 'max:191'],
+            'receptor_rut' => ['required', 'string', 'min:8', 'max:12'],
+            'receptor_relacion' => ['required', Rule::in(['empresa', 'conserje', 'otro'])],
+            'cobro_metodo' => ['nullable', Rule::in(['efectivo', 'cheque', 'transbank'])],
+            'cobro_monto' => ['nullable', 'integer', 'min:1', 'max:100000000'],
         ]);
+
+        // El cobro es CONDICIONAL por el estado de la parada (vive en BD, un
+        // required_if no alcanza): la hoja dijo cobrar_en_entrega ⇒ método y
+        // monto obligatorios; pagado/crédito ⇒ lo recibido se ignora (y el
+        // service lo ignora de nuevo — doble capa).
+        //
+        // PERO la idempotencia gana: si este uuid YA se procesó (reintento de
+        // la cola), no se le exige nada — sin este guard, un duplicado que
+        // tropiece aquí daría 422 y la cola marcaría «no se pudo enviar» una
+        // entrega que SÍ está registrada. El service re-verifica el uuid
+        // igual (su pre-check + el unique de BD).
+        $yaProcesada = Despacho::where('entrega_uuid', $data['entrega_uuid'])->exists();
+
+        if (! $yaProcesada && $despacho->parada?->estado_cobro === HojaRutaParada::COBRO_EN_ENTREGA) {
+            $request->validate([
+                'cobro_metodo' => ['required', Rule::in(['efectivo', 'cheque', 'transbank'])],
+                'cobro_monto' => ['required', 'integer', 'min:1', 'max:100000000'],
+            ], [
+                'cobro_metodo.required' => 'Esta parada se cobra en la entrega: indica cómo pagó.',
+                'cobro_monto.required' => 'Esta parada se cobra en la entrega: indica cuánto recibiste.',
+            ]);
+        }
 
         $resultado = $service->confirmarEntregaConductor($despacho, $data);
 

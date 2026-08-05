@@ -5,6 +5,7 @@ namespace App\Services\Despachos;
 use App\Models\Despacho;
 use App\Models\DocumentoVenta;
 use App\Models\EscaneoDespacho;
+use App\Models\HojaRutaParada;
 use App\Models\User;
 use App\Services\Bsale\BsaleClient;
 use Illuminate\Database\QueryException;
@@ -173,10 +174,16 @@ class DespachoService
      *                                       dispositivo deben quedar atómicos con el
      *                                       cambio de estado). Default [] = camino
      *                                       del jefe byte-equivalente al de antes.
+     * @param  \Closure|null  $dentro  gancho ejecutado con la fila ANCLADA, dentro
+     *                                 de la misma transacción (P-DSP-09: escribir el
+     *                                 cobro y el resultado en la PARADA debe quedar
+     *                                 atómico con el cambio de estado del despacho —
+     *                                 mismo patrón que transicionar() en
+     *                                 HojaRutaService). Default null = sin efecto.
      *
      * @throws ValidationException si el despacho no salió de bodega o falta el saldo.
      */
-    public function registrarEntrega(Despacho $despacho, bool $parcial, ?string $observacion = null, array $extra = []): Despacho
+    public function registrarEntrega(Despacho $despacho, bool $parcial, ?string $observacion = null, array $extra = [], ?\Closure $dentro = null): Despacho
     {
         if ($parcial && blank($observacion)) {
             throw ValidationException::withMessages([
@@ -184,7 +191,7 @@ class DespachoService
             ]);
         }
 
-        return DB::transaction(function () use ($despacho, $parcial, $observacion, $extra) {
+        return DB::transaction(function () use ($despacho, $parcial, $observacion, $extra, $dentro) {
             $anclado = Despacho::whereKey($despacho->id)->lockForUpdate()->firstOrFail();
 
             // Solo se entrega lo que SALIÓ de bodega (el retiro es el paso
@@ -203,6 +210,10 @@ class DespachoService
                 'entrega_observacion' => blank($observacion) ? null : Str::limit($observacion, 188),
             ]);
 
+            if ($dentro) {
+                $dentro($anclado);
+            }
+
             return $anclado;
         });
     }
@@ -220,7 +231,13 @@ class DespachoService
      *    dos drenados en paralelo pasan ambos el pre-check; el segundo choca con
      *    la BD y se le responde igual que al duplicado amable).
      *
-     * @param  array{entrega_uuid:string, capturado_at:string, parcial?:bool, entrega_observacion?:string|null}  $datos
+     * P-DSP-09: además del despacho, la confirmación escribe la PARADA de la
+     * hoja de ruta (si existe) EN LA MISMA transacción: `resultado=entregada`
+     * y — solo si la parada es `cobrar_en_entrega` — el método y el monto que
+     * el chofer cobró en la puerta (R4+R7). El receptor (R13) va al despacho
+     * por $extra. El registro de la rendición NO es de este lote.
+     *
+     * @param  array{entrega_uuid:string, capturado_at:string, parcial?:bool, entrega_observacion?:string|null, receptor_nombre?:string, receptor_rut?:string, receptor_relacion?:string, cobro_metodo?:string|null, cobro_monto?:int|null}  $datos
      * @return array{despacho: Despacho, yaExistia: bool}
      *
      * @throws ValidationException si el despacho no admite entrega o falta el saldo.
@@ -247,7 +264,30 @@ class DespachoService
                     // entregado_at (hora del server) sigue siendo la verdad de
                     // auditoría — registrarEntrega la sella igual.
                     'capturado_at' => $datos['capturado_at'],
+                    // Receptor en la puerta (R13): quién recibió, atómico con
+                    // el cambio de estado. El controller ya los exigió.
+                    'receptor_nombre' => $datos['receptor_nombre'] ?? null,
+                    'receptor_rut' => $datos['receptor_rut'] ?? null,
+                    'receptor_relacion' => $datos['receptor_relacion'] ?? null,
                 ],
+                function (Despacho $anclado) use ($datos) {
+                    $parada = $anclado->parada;
+                    if (! $parada) {
+                        return;   // despacho suelto: nada que cerrar en la hoja
+                    }
+
+                    $cambios = ['resultado' => HojaRutaParada::RESULTADO_ENTREGADA];
+
+                    // El cobro solo existe donde la hoja lo pidió; en una
+                    // parada pagada/crédito lo recibido se IGNORA (el
+                    // controller tampoco lo exige — doble capa).
+                    if ($parada->estado_cobro === HojaRutaParada::COBRO_EN_ENTREGA) {
+                        $cambios['cobro_metodo'] = $datos['cobro_metodo'] ?? null;
+                        $cambios['cobro_monto'] = $datos['cobro_monto'] ?? null;
+                    }
+
+                    $parada->update($cambios);
+                },
             );
 
             return ['despacho' => $entregado, 'yaExistia' => false];
