@@ -17,7 +17,7 @@
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
-| **Avance global** | **≈ 54 %** sobre base 108 (tracker actualizado el 2026-08-05 en §10: hoja de ruta digital en producción —M08 65 %— y **E6 Devoluciones COMPLETA** —M13 85 %—; el 04-ago: PWA conductor, lote 1 M13 y M18 Logística nuevo, R-004). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 43 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
+| **Avance global** | **≈ 55 %** sobre base 108 (tracker actualizado el 2026-08-05 en §10: **F2 de PLAN-DESPACHOS-V2 completa** —P-DSP-09, la PWA sobre la hoja, M08 75 %—, hoja de ruta digital en producción y **E6 Devoluciones COMPLETA** —M13 85 %—; el 04-ago: PWA conductor, lote 1 M13 y M18 Logística nuevo, R-004). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 46 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04) · **M15 Notificaciones (E1, cerrada 2026-07-08)**
 **En curso:** E0 (esta consolidación)
@@ -332,6 +332,11 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 > porque entra **M17 Servicio en terreno**, construido en julio y ahora sí en la
 > biblia. Cada % corregido lleva su fundamento en la columna de la derecha.
 >
+> **Actualización · 2026-08-05 (tarde).** Cuarta doble llave del día: **P-DSP-09, la PWA
+> del conductor SOBRE la hoja** (`f3be802`) — dirección/teléfono por parada, receptor
+> obligatorio, cobro en entrega, rechazo en puerta con aviso. **F2 de PLAN-DESPACHOS-V2
+> completa** (M08 → 75 %). El ciclo de la factura va en **≈ 46 %** (16.15 de 35).
+>
 > **Actualización · 2026-08-05.** Otras dos dobles llaves: la **hoja de ruta digital**
 > (M08 → 65 %) y el **informe de devoluciones que COMPLETA E6** (M13 → 85 %). El ciclo
 > de la factura va en **≈ 43 %** (14.95 de 35). M13: de cero a módulo completo en 6 días.
@@ -360,7 +365,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M04 Inventario | 9 | 15 % (espejo) | 1.35 | solo el espejo read-only de Bsale |
 | M05 Ciclo factura | 10 | **30 %** | 3.0 | **corregido desde 0 % (30-jul)**: andamiaje DTE completo y probado —puerto emisor Bsale, servicios, config, candados—, pero **NO EMITE**: `config/dte.php` con los 3 mapas vacíos, `emision_habilitada=false`, sin ruta de emisión ni comando `dte:emitir-prueba` (B6). Marcos activo aquí |
 | M07 QR retiro | 4 | **70 %** | 2.8 | **corregido desde 0 % (30-jul)**: P-DSP-00..04 **en producción** — QR firmado de retiro, validación en puesto de bodega, doble-retiro cerrado (lock + candado a nivel grammar). NO cierra «retirar carga ajena» (decisión de producto reportada) y falta QA de bodega con papel impreso |
-| M08 Despacho+PWA | 12 | **65 %** | 7.8 | **subido desde 55 % (05-ago)**: PWA del conductor (`d7803f9`) **y hoja de ruta digital (`b9d89a3`) en producción** — folio desde 1000, 3 llaves, scoping conductor↔hoja. Falta: P-DSP-09 (PWA sobre la hoja, en curso), P-DSP-10 (cierre+bono) y el QA de campo P-DSP-07 |
+| M08 Despacho+PWA | 12 | **75 %** | 9.0 | **subido desde 65 % (05-ago tarde)**: P-DSP-09 en producción (`f3be802`) — **F2 de PLAN-DESPACHOS-V2 completa**: la PWA sobre la hoja (dirección/comuna/teléfono por parada, receptor obligatorio, cobro en entrega, rechazo en puerta + aviso M15). Antes ese día: hoja de ruta digital (`b9d89a3`); el 04-ago la PWA base (`d7803f9`). Falta: P-DSP-10 (cierre+bono, bloqueado por la ronda 2 con Luis) y el QA de campo punta a punta |
 | M11 Producción | 6 | 75 % | 4.5 | faltan descuento de preforma, meta del día y GP |
 | M12 Servicio técnico | 8 | **60 %** | 4.8 | **corregido desde 25 %**: taller completo + portal QR + cotización al cliente con respuesta + lotes en ruta + informes (E9: 2 pasos en curso de 5; faltan alertas 3/6/12m, sugerencia de repuestos y cobro) |
 | M13 Devoluciones | 4 | **85 %** | 3.4 | **E6 COMPLETA (05-ago)**: lote 1 (`7750951`, QA del dueño aprobado) **+ informe por causa/canal y badge (`6c91f94`) en producción** — módulo de cero a completo en 6 días. Resta el QA de staging del informe y el empuje del kardex a stock real (espera M04/D-003) |
@@ -372,7 +377,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | F3 Piloto (hardening/migración/capacitación) | 7 | 0 % | 0 | — |
 | F4 Rollout Abate | 5 | 0 % | 0 | — |
 | F5 Coquimbo + cierre | 3 | 0 % | 0 | — |
-| **TOTAL** | **108** | | **58.40** | **≈ 54 %** |
+| **TOTAL** | **108** | | **59.60** | **≈ 55 %** |
 
 > **Lo que el número no dice, y hay que decir:** el ciclo de la factura
 > (M04 → M05 → M07 → M08, **35 de los 105 puntos**, el objetivo central del
