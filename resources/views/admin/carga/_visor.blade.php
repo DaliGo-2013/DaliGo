@@ -19,10 +19,25 @@
         {{ $escena['vehiculo']['nombre'] }} · arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>
     </div>
 
-    <div class="absolute bottom-3 left-4 flex items-center gap-3 text-xs">
+    {{-- Cuánto se ve cargado. «▶» reproduce la estiba de a poco (para mirar en qué
+         ORDEN va la carga) y los pasos permiten armarla a mano: de a uno para el
+         detalle, de a 5 o de a 10 para avanzar, «Todo» y «Vaciar» para los extremos
+         (pedido del dueño 05-08). Envuelve en pantalla angosta. --}}
+    <div class="absolute bottom-3 left-4 flex flex-wrap items-center gap-1.5 text-xs">
         <button type="button" id="carga3dPlay"
                 class="rounded-lg bg-brand-600 px-2.5 py-1 font-semibold text-white transition hover:bg-brand-700">▶ Cargar</button>
-        <span class="text-neutral-500"><span id="carga3dN">0</span> de {{ $escena['tope'] }}</span>
+        <span class="mx-1 tabular-nums font-medium text-neutral-600"><span id="carga3dN">0</span> de {{ $escena['tope'] }}</span>
+        @foreach ([
+            'carga3dVaciar' => 'Vaciar',
+            'carga3dQuita1' => '−1',
+            'carga3dSuma1' => '+1',
+            'carga3dSuma5' => '+5',
+            'carga3dSuma10' => '+10',
+            'carga3dTodo' => 'Todo',
+        ] as $id => $texto)
+            <button type="button" id="{{ $id }}"
+                    class="rounded-lg border border-neutral-300 bg-white px-2 py-1 font-medium text-neutral-700 transition hover:bg-neutral-50">{{ $texto }}</button>
+        @endforeach
     </div>
 
     {{-- Nombres de los productos sobre su bloque. Se puede apagar: con un solo

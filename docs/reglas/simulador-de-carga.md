@@ -131,6 +131,13 @@ El zoom **ancla el punto bajo el cursor**: apuntar a la carga y girar la rueda a
 la carga. Anclarlo al centro geométrico del camión dejaba la carga fuera de cuadro —
 y lo que se pidió fue «zoom a la carga».
 
+**Cuánto se ve cargado** (pedido del dueño 05-08): el visor abre **LLENO**, porque el
+título dice «entran 420» y el dibujo tiene que decir lo mismo — antes abría al 60% y
+los dos números no coincidían. `▶ Cargar` reproduce la estiba de a poco (para ver en
+qué ORDEN va la carga) y los pasos `+1 / +5 / +10 / Todo / Vaciar` permiten armarla a
+mano. Cualquier paso **corta la animación** si estaba corriendo: si no, seguiría
+sumando sola y pelearía con el botón recién tocado.
+
 **Nombres**: UNA etiqueta por BLOQUE, no por bulto (con 324 bultos serían 324 textos
 ilegibles y lentos). Un bloque = un producto, así que son 2-4 etiquetas. Llevan el
 punto del color del bloque, que es la misma leyenda que la lista «producto por

@@ -64,7 +64,12 @@ export default function iniciarCarga3d(canvas, datos) {
     // carga mixta = un bloque por tipo colocado, con su color y su posición).
     const bloques = datos.bloques || [];
 
-    let yaw = -0.85, pitch = -0.3, cant = Math.round(datos.tope * 0.6), anim = null, arrastre = null;
+    // Arranca LLENO: el título de la pantalla dice «entran 420» y el dibujo tiene
+    // que decir lo mismo. Antes abría al 60% y el número de arriba no coincidía con
+    // lo que se veía. Para ver el orden de estiba está «▶ Cargar», y para armarla a
+    // mano están los pasos (+1 / +5 / +10 / Todo / Vaciar).
+    const TOPE = Math.max(0, datos.tope || 0);
+    let yaw = -0.85, pitch = -0.3, cant = TOPE, anim = null, arrastre = null;
     let CX = 0, CY = 0, ESC = 100, OFF = [0, 0, 0], cola = [];
     // Encuadre base (escala y centro medidos a escala 1) + zoom encima. Separarlos
     // es lo que permite que girar no cambie el zoom.
@@ -459,7 +464,16 @@ export default function iniciarCarga3d(canvas, datos) {
                 rej.alto * ori.alto,
                 blq.y + (rej.ancho * ori.ancho) / 2,
             ]);
-            puestas.push({ ancla, texto: blq.nombre, cantidad: blq.cantidad, col: blq.color || [234, 88, 12] });
+            // Cuando el bloque está a medio cargar (los pasos, o la animación) la
+            // etiqueta dice CUÁNTOS VAN de cuántos: poner solo el total mientras se
+            // ven 18 de 84 hace dudar de qué número creer.
+            const puestos = dibujadosPorBloque[i];
+            puestas.push({
+                ancla,
+                texto: blq.nombre,
+                cuenta: puestos < blq.cantidad ? `${puestos} de ${blq.cantidad}` : String(blq.cantidad),
+                col: blq.color || [234, 88, 12],
+            });
         }
 
         // De adelante hacia atrás: la de adelante manda y las de atrás ceden.
@@ -469,7 +483,7 @@ export default function iniciarCarga3d(canvas, datos) {
         ctx.textAlign = 'left';
 
         for (const e of puestas) {
-            const texto = `${e.texto} · ${e.cantidad}`;
+            const texto = `${e.texto} · ${e.cuenta}`;
             const ancho = ctx.measureText(texto).width + 32;
             const alto = 26;
             let x = Math.min(Math.max(8, e.ancla[0] - ancho / 2), canvas.width - ancho - 8);
@@ -651,14 +665,32 @@ export default function iniciarCarga3d(canvas, datos) {
         dibujar();
     });
 
+    /**
+     * Fija cuántos bultos se ven cargados. Corta la animación si estaba corriendo:
+     * si no, seguiría sumando por su cuenta y pelearía con el botón que se acaba de
+     * tocar.
+     */
+    const fijar = (n) => {
+        clearInterval(anim);
+        cant = Math.max(0, Math.min(TOPE, Math.round(n)));
+        dibujar();
+    };
+
+    boton('carga3dVaciar', () => fijar(0));
+    boton('carga3dTodo', () => fijar(TOPE));
+    boton('carga3dQuita1', () => fijar(cant - 1));
+    boton('carga3dSuma1', () => fijar(cant + 1));
+    boton('carga3dSuma5', () => fijar(cant + 5));
+    boton('carga3dSuma10', () => fijar(cant + 10));
+
     boton('carga3dPlay', () => {
         clearInterval(anim);
         cant = 0;
-        const paso = Math.max(1, Math.round(datos.tope / 70));
+        const paso = Math.max(1, Math.round(TOPE / 70));
         anim = setInterval(() => {
-            cant = Math.min(datos.tope, cant + paso);
+            cant = Math.min(TOPE, cant + paso);
             dibujar();
-            if (cant >= datos.tope) clearInterval(anim);
+            if (cant >= TOPE) clearInterval(anim);
         }, 45);
     });
 

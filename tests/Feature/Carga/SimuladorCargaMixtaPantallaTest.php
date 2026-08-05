@@ -242,8 +242,16 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
             ->assertOk()->getContent();
 
+        $controles = [
+            // Vista
+            'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres',
+            // Cuánto se ve cargado: animación + pasos a mano (pedido del dueño 05-08).
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1',
+            'carga3dSuma1', 'carga3dSuma5', 'carga3dSuma10', 'carga3dTodo',
+        ];
+
         foreach (['mixta' => $mixta, 'cupo máximo' => $cupo] as $modo => $html) {
-            foreach (['carga3dPlay', 'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres'] as $control) {
+            foreach ($controles as $control) {
                 $this->assertStringContainsString(
                     'id="'.$control.'"', $html,
                     "Al modo «{$modo}» le falta el control [{$control}] del visor.",
