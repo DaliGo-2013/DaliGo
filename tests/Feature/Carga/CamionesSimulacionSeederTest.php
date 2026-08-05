@@ -87,4 +87,36 @@ class CamionesSimulacionSeederTest extends TestCase
             );
         }
     }
+
+    public function test_todo_camion_sembrado_declara_una_silueta_que_el_visor_conoce(): void
+    {
+        // La silueta es dato de DIBUJO: un valor mal escrito no rompe el cálculo,
+        // así que se caería en silencio (el visor lo deduciría del largo y nadie
+        // se enteraría de que la declaración no servía). Este candado lo grita.
+        $this->seed(CamionesSimulacionSeeder::class);
+
+        foreach (CamionSimulacion::all() as $camion) {
+            $this->assertArrayHasKey(
+                $camion->silueta,
+                CamionSimulacion::SILUETAS,
+                "«{$camion->nombre}» declara la silueta «{$camion->silueta}», que el visor no sabe dibujar.",
+            );
+        }
+    }
+
+    public function test_el_contenedor_no_se_dibuja_como_camion_de_reparto(): void
+    {
+        // Su propia nota dice que va sobre el semirremolque: dibujarle cabina
+        // propia era el error que se veía en pantalla.
+        $this->seed(CamionesSimulacionSeeder::class);
+
+        $this->assertSame(
+            'semirremolque',
+            CamionSimulacion::where('nombre', "Contenedor 40'")->firstOrFail()->silueta,
+        );
+        $this->assertSame(
+            'camion_liviano',
+            CamionSimulacion::where('nombre', 'Hyundai HD35')->firstOrFail()->silueta,
+        );
+    }
 }

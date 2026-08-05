@@ -93,6 +93,48 @@ La escena viaja SIEMPRE como **lista de bloques** (posición, orientación,
 rejilla, cantidad, color, nombre); el cupo máximo es el caso particular de un
 bloque. `carga3d.js` sigue sin librerías (prismas a mano sobre canvas).
 
+### 4.1 Tres siluetas, no una (05-08-2026)
+
+Pedido del dueño: «que los camiones se vean más reales y no cuadrados». La causa
+no eran las luces: **los cuatro camiones se dibujaban idénticos** (una caja de
+cabina pegada a una caja de carga), y así el visor no ayudaba a reconocer contra
+qué se cotiza. El Contenedor 40' salía con cabina propia cuando en realidad viaja
+sobre el semirremolque, y el HD35 de 4,3 m salía como un camión de reparto.
+
+`camiones_simulacion.silueta` declara con qué dibujar
+(`CamionSimulacion::SILUETAS`): `semirremolque` (tracto con dormitorio, quinta
+rueda, patas de apoyo y tridem), `camion` (cabina separada, ruedas dobles atrás) y
+`camion_liviano`. Es **dato de dibujo**: `paraCalculo()` no lo mira, así que una
+silueta mal elegida afea el lienzo pero no puede mover un cupo. Es nullable y una
+silueta ausente o desconocida cae a la deducida del largo
+(`SimuladorCargaController::silueta()`), para que la pantalla nunca quede sin
+dibujo por un dato que falte. Candados: `CamionesSimulacionSeederTest` (todo
+camión sembrado declara una silueta que el visor conoce) y
+`SimuladorCargaMixtaPantallaTest` (un acoplado y un camión de reparto no se
+dibujan igual).
+
+**Se descartó Three.js**, que era la recomendación externa: lo que faltaba era
+geometría, no una librería, y son ~150 KB comprimidos en una PWA. El chunk del
+visor quedó en 7,9 KB (3,5 KB gzip).
+
+### 4.2 El orden de dibujo y los cuerpos largos
+
+El visor ordena por la profundidad del **centro de cada cara**. Con eso, un cuerpo
+largo (el piso, un riel o una pared de 12 m) se ordenaba como si estuviera entero
+a la distancia de su punto medio y **se pintaba encima de la carga del fondo**: se
+veía un parche gris en medio del bulterío y la cabina salía lavada. Por eso las
+paredes van en **paneles** de ~0,6 m (`paredes()`) y el piso, los rieles y el
+chasis en **tramos** de ~0,8 m (`tira()`). Y por eso el larguero bajo la caja son
+dos vigas angostas y no una placa del ancho completo: dos superficies grandes casi
+a la misma altura, partidas en tramos distintos, no las puede resolver este
+algoritmo. Si mañana se agrega otro cuerpo largo, va partido.
+
+Rendimiento: se descartan las caras que miran para el lado contrario a la cámara y
+los bultos tapados por sus seis vecinos (invisibles dentro de un bloque macizo).
+Sin eso, un cupo de 900 bultos son 5.400 polígonos ordenados por frame y el
+arrastre se arrastra en celular. Los degradados van solo en la silueta (decenas de
+caras), nunca en los bultos (miles).
+
 **Los colores dentro del lienzo son DATOS**: distinguen un producto de otro y la
 leyenda de la lista «producto por producto» pinta el MISMO color
 (`SimuladorCargaController::COLORES_3D`, pública justo por eso). Es la excepción

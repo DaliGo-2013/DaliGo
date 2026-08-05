@@ -21,9 +21,21 @@ class CamionSimulacion extends Model implements AuditableContract
 
     protected $table = 'camiones_simulacion';
 
+    /**
+     * Siluetas que sabe dibujar el visor (`carga3d.js`). Es dato de DIBUJO: no
+     * entra en `paraCalculo()`, así que elegir mal una silueta afea el lienzo
+     * pero no puede alterar un cupo. Si se agrega una acá, hay que agregarla
+     * también en el `switch` del visor — lo vigila CamionesSimulacionSeederTest.
+     */
+    public const SILUETAS = [
+        'semirremolque' => 'Tracto + acoplado (o contenedor)',
+        'camion' => 'Camión de reparto (cabina + caja)',
+        'camion_liviano' => 'Camión liviano / furgón chico',
+    ];
+
     protected $fillable = [
         'nombre', 'largo_cm', 'ancho_cm', 'alto_cm',
-        'peso_max_kg', 'pasillo_cm', 'activo', 'notas',
+        'peso_max_kg', 'pasillo_cm', 'activo', 'notas', 'silueta',
     ];
 
     protected function casts(): array

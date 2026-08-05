@@ -170,4 +170,73 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->get(route('admin.carga.index'))
             ->assertRedirect(route('dashboard'));
     }
+
+    // --- Silueta del visor (05-08-2026) ------------------------------------
+    //
+    // El visor dibujaba los cuatro camiones idénticos. Estos candados fijan que
+    // la escena diga CON QUÉ dibujar, y que un acoplado y un camión de reparto
+    // no vuelvan a salir iguales.
+
+    /** @return array{silueta:string,ejes:int} */
+    private function siluetaDe(CamionSimulacion $camion): array
+    {
+        $escena = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', [
+                'camion_id' => $camion->id,
+                'tipo_bulto_id' => $this->bolsa->id,
+            ]))
+            ->assertOk()
+            ->viewData('escena');
+
+        return ['silueta' => $escena['vehiculo']['silueta'], 'ejes' => $escena['vehiculo']['ejes']];
+    }
+
+    private function camion(string $nombre, int $largoCm, ?string $silueta): CamionSimulacion
+    {
+        return CamionSimulacion::create([
+            'nombre' => $nombre,
+            'largo_cm' => $largoCm, 'ancho_cm' => 235, 'alto_cm' => 239,
+            'pasillo_cm' => 0, 'activo' => true, 'silueta' => $silueta,
+        ]);
+    }
+
+    public function test_la_escena_dice_con_que_silueta_dibujar(): void
+    {
+        // El HD35 del setUp no declara silueta: se deduce de su largo (4,3 m).
+        $this->assertSame(
+            ['silueta' => 'camion_liviano', 'ejes' => 2],
+            $this->siluetaDe($this->hd35),
+        );
+    }
+
+    public function test_un_acoplado_no_se_dibuja_igual_que_un_camion_de_reparto(): void
+    {
+        // El bug que motivó todo esto: el Contenedor 40' (que viaja sobre el
+        // semirremolque, sin cabina propia) salía con la misma silueta que un
+        // camión de reparto.
+        $acoplado = $this->siluetaDe($this->camion("Contenedor 40'", 1203, 'semirremolque'));
+        $reparto = $this->siluetaDe($this->camion('HINO 500', 797, 'camion'));
+
+        $this->assertSame('semirremolque', $acoplado['silueta']);
+        $this->assertSame(3, $acoplado['ejes'], 'Un acoplado se dibuja con tren de tres ejes.');
+        $this->assertSame('camion', $reparto['silueta']);
+        $this->assertSame(2, $reparto['ejes']);
+        $this->assertNotSame($acoplado['silueta'], $reparto['silueta']);
+    }
+
+    public function test_la_silueta_declarada_manda_sobre_la_deducida_del_largo(): void
+    {
+        // 5 m de caja: por largo se deduciría «liviano», pero lo declarado gana.
+        $this->assertSame('semirremolque', $this->siluetaDe($this->camion('Acoplado corto', 500, 'semirremolque'))['silueta']);
+    }
+
+    public function test_una_silueta_que_el_visor_no_conoce_cae_a_la_deducida(): void
+    {
+        // Un dato viejo o mal escrito no puede dejar el lienzo sin dibujo: cae a
+        // la deducción por largo (12 m → acoplado) en vez de romper la pantalla.
+        $this->assertSame(
+            ['silueta' => 'semirremolque', 'ejes' => 3],
+            $this->siluetaDe($this->camion('Raro', 1203, 'nave-espacial')),
+        );
+    }
 }

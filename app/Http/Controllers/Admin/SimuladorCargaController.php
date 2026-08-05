@@ -46,6 +46,19 @@ class SimuladorCargaController extends Controller
         [107, 114, 128],  // gris
     ];
 
+    /**
+     * Ejes que dibuja cada silueta. Es una CONSECUENCIA del dibujo, no un dato
+     * del camión: no existe columna `ejes` y no vale inventarla para esto —
+     * ninguna decisión del negocio depende de este número, solo el lienzo. Si
+     * algún día hace falta el conteo exacto por camión, entra como columna
+     * nullable editable y este mapa pasa a ser el respaldo.
+     */
+    private const EJES_POR_SILUETA = [
+        'semirremolque' => 3,
+        'camion' => 2,
+        'camion_liviano' => 2,
+    ];
+
     public function __construct(private CalculoDeCarga $calculo) {}
 
     public function index(Request $request): View
@@ -211,10 +224,31 @@ class SimuladorCargaController extends Controller
                 'largo' => $camion->largo_cm / 100,
                 'ancho' => $camion->ancho_cm / 100,
                 'alto' => $camion->alto_cm / 100,
-                'ejes' => 2,
+                'silueta' => $this->silueta($camion),
+                'ejes' => self::EJES_POR_SILUETA[$this->silueta($camion)],
             ],
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
         ];
+    }
+
+    /**
+     * Con qué silueta se dibuja este camión. La DECLARADA manda; si falta se
+     * deduce del largo, que es lo que mejor separa un acoplado de un camión de
+     * reparto y de un liviano. Un valor desconocido (dato viejo o mal escrito)
+     * también cae a la deducción en vez de dejar el lienzo vacío: el visor
+     * tiene que dibujar algo siempre.
+     */
+    private function silueta(CamionSimulacion $camion): string
+    {
+        if ($camion->silueta && isset(self::EJES_POR_SILUETA[$camion->silueta])) {
+            return $camion->silueta;
+        }
+
+        return match (true) {
+            $camion->largo_cm >= 1000 => 'semirremolque',
+            $camion->largo_cm >= 600 => 'camion',
+            default => 'camion_liviano',
+        };
     }
 }

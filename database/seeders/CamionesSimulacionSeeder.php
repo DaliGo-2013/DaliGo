@@ -30,12 +30,16 @@ class CamionesSimulacionSeeder extends Seeder
                 'largo_cm' => 1203, 'ancho_cm' => 235, 'alto_cm' => 239,
                 // De la placa del contenedor: 42G1, CU.CAP. 67,7 m³, NET 28.800 kg.
                 'peso_max_kg' => 28800,
+                // Su propia nota dice cómo viaja, y así se dibuja: el contenedor
+                // NO tiene cabina propia.
+                'silueta' => 'semirremolque',
                 'notas' => 'Va sobre el semirremolque (Tremac), tirado por el Actros.',
             ],
             [
                 'nombre' => 'HINO 500 (FC 1118)',
                 'largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266,
                 'peso_max_kg' => 11000,
+                'silueta' => 'camion',
                 'notas' => 'La misma caja en los dos HINO de la flota.',
             ],
             [
@@ -44,12 +48,14 @@ class CamionesSimulacionSeeder extends Seeder
                 // La planilla no trae su capacidad en kg: sin dato no se limita
                 // ni se inventa. El espacio manda igual (botellones vacíos).
                 'peso_max_kg' => null,
+                'silueta' => 'camion',
                 'notas' => 'Capacidad en kg pendiente de confirmar.',
             ],
             [
                 'nombre' => 'Hyundai HD35',
                 'largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220,
                 'peso_max_kg' => 1500,
+                'silueta' => 'camion_liviano',
                 'notas' => 'La misma caja en los tres HD35 de la flota.',
             ],
         ];
