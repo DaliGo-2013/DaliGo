@@ -55,6 +55,7 @@ class SimuladorCargaController extends Controller
      */
     private const EJES_POR_SILUETA = [
         'semirremolque' => 3,
+        'camion_hino' => 2,
         'camion' => 2,
         'camion_liviano' => 2,
     ];

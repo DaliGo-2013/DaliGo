@@ -29,8 +29,9 @@ class CamionSimulacion extends Model implements AuditableContract
      */
     public const SILUETAS = [
         'semirremolque' => 'Tracto + acoplado (o contenedor)',
-        'camion' => 'Camión de reparto (cabina + caja)',
-        'camion_liviano' => 'Camión liviano / furgón chico',
+        'camion_hino' => 'HINO 500 (cabina propia)',
+        'camion' => 'Camión de reparto genérico (cabina + caja)',
+        'camion_liviano' => 'Hyundai HD35 (cabina propia)',
     ];
 
     protected $fillable = [

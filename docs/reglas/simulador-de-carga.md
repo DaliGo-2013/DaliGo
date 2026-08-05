@@ -223,10 +223,29 @@ Y un error que las fotos destaparon: **el HD35 lleva ruedas gemelas atrás** (se
 foto de la trasera del chasis) y se le dibujaba una sola por eje. Ahora los dos camiones
 de reparto llevan simple adelante y doble atrás.
 
-**La cabina del HINO y la del Chevy siguen genéricas a propósito**: esperan sus fotos.
-Moldearlas a ojo mientras tanto sería inventar de nuevo, que es justo lo que se estaba
-corrigiendo. Cuando lleguen, cada una va a su propia función igual que estas dos — no
-volver a meter todo en `cabina()` con banderas.
+### 4.1sexies El HINO 500 FC 1118, moldeado sobre sus fotos (05-08-2026)
+
+Silueta propia `camion_hino` y función `cabinaHino()`. Lo que la distingue en las fotos,
+en orden de cuánto se nota:
+
+1. **Espejos enormes sobre brazos largos**, montados alto y bien salidos — pasan el ancho
+   del furgón y son lo primero que se reconoce del frente. Con espejos chicos la cabina
+   se veía de cualquier camión.
+2. El **furgón le gana en alto** (el techo de la cabina queda a ~2/3 de la caja) y un
+   poco en ancho. `altoCab` bajó de 0,78× a **0,68×** el alto de la caja.
+3. Parrilla con **marco plateado y el óvalo del logo al centro**, con listones negros.
+4. Paragolpes claro con la placa al medio, faldón negro abajo y antiniebla.
+5. Faros angulares grandes en las esquinas; techo plano con una ceja al frente.
+
+**Una silueta por camión.** El dueño pidió «un modelo por cada camión», así que cada uno
+tiene la suya y su propia función de cabina: `semirremolque` (Actros + Tremac),
+`camion_hino` (HINO 500), `camion_liviano` (HD35) y `camion`, la **genérica que queda
+solo para el Chevy 3** hasta que lleguen sus fotos. Candado:
+`test_cada_camion_moldeado_sobre_fotos_tiene_su_propia_silueta`. **No volver a
+colapsarlas en una función con banderas** — el `switch` está para eso.
+
+De paso: luces de gálibo ámbar en las esquinas de adelante del furgón (están en las fotos
+del HD35 y del HINO). El contenedor no las lleva.
 
 **La cabina va BLANCA y en NEUTROS.** Blanca porque así es la flota real (se ve en las
 fotos de carga del 05-08; antes era un azul inventado). Y en neutros, sin franja de

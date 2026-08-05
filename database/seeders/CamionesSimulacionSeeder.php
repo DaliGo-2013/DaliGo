@@ -39,7 +39,9 @@ class CamionesSimulacionSeeder extends Seeder
                 'nombre' => 'HINO 500 (FC 1118)',
                 'largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266,
                 'peso_max_kg' => 11000,
-                'silueta' => 'camion',
+                // Silueta propia, moldeada sobre sus fotos (05-08). El Chevy sigue con
+                // la genérica `camion` hasta que lleguen las suyas.
+                'silueta' => 'camion_hino',
                 'notas' => 'La misma caja en los dos HINO de la flota.',
             ],
             [

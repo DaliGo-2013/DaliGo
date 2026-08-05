@@ -14,10 +14,14 @@
  * NO existe ningún modelo 3D: la silueta se deriva de las medidas del camión y
  * cada bulto de las suyas. Cambiar un número en la base cambia el dibujo.
  *
- * TRES SILUETAS (`veh.silueta`, que manda el controlador): un contenedor de 40'
- * no tiene cabina propia —viaja sobre el semirremolque— y un HD35 de 4,3 m no es
- * un camión de reparto mediano. Dibujados todos iguales, el visor no ayudaba a
- * reconocer contra qué se está cotizando, que es la mitad de para qué existe.
+ * UNA SILUETA POR CAMIÓN (`veh.silueta`, que manda el controlador). Empezó con tres
+ * genéricas —un contenedor de 40' no tiene cabina propia porque viaja sobre el
+ * semirremolque, y un HD35 de 4,3 m no es un camión de reparto mediano— y el dueño
+ * pidió después «un modelo por cada camión», así que las va moldeando sobre fotos de
+ * su flota, de a una: `semirremolque` (Actros + Tremac), `camion_liviano` (HD35),
+ * `camion_hino` (HINO 500 FC 1118) y `camion`, la genérica que queda para el Chevy 3
+ * hasta que lleguen sus fotos. Cada cabina tiene su propia función: NO meterlas todas
+ * en una con banderas.
  *
  * RENDIMIENTO: se descartan las caras que miran para el lado contrario a la
  * cámara y los bultos tapados por sus seis vecinos (ver `bultos`). Sin eso, un
@@ -124,16 +128,18 @@ export default function iniciarCarga3d(canvas, datos) {
     const M = (() => {
         const semi = veh.silueta === 'semirremolque';
         const liviano = veh.silueta === 'camion_liviano';
+        const hino = veh.silueta === 'camion_hino';
         const chas = semi ? 0.24 : (liviano ? 0.14 : 0.20);
         const r = semi ? 0.46 : (liviano ? 0.32 : 0.46);
         const rw = semi ? 0.24 : (liviano ? 0.17 : 0.22);
         const sep = semi ? 0.35 : 0;   // hueco entre el tracto y el frente del acoplado
-        const largoCab = Math.min(semi ? 2.6 : (liviano ? 1.45 : 2.15), veh.largo * (semi ? 0.25 : 0.42));
+        const largoCab = Math.min(semi ? 2.6 : (liviano ? 1.45 : (hino ? 1.95 : 2.15)), veh.largo * (semi ? 0.25 : 0.42));
         const altoCab = semi
             ? Math.min(veh.alto * 1.05, 2.35)
-            : (liviano ? Math.min(veh.alto * 0.60, 1.35) : Math.min(veh.alto * 0.78, 2.05));
+            : (liviano ? Math.min(veh.alto * 0.60, 1.35)
+                : (hino ? Math.min(veh.alto * 0.68, 1.95) : Math.min(veh.alto * 0.78, 2.05)));
         return {
-            semi, liviano, chas, r, rw, sep, largoCab, altoCab,
+            semi, liviano, hino, chas, r, rw, sep, largoCab, altoCab,
             suelo: -chas - r * 2,
             delante: largoCab + sep,
             // El techo del tracto (cabina + deflector) puede pasar al contenedor. Ya no
@@ -532,8 +538,68 @@ export default function iniciarCarga3d(canvas, datos) {
         }
     }
 
-    /** Cabina de los camiones de reparto medianos (HINO, Chevy). Sigue siendo genérica:
-     *  esperan sus propias fotos, y moldearlas a ojo mientras tanto sería inventar. */
+    /**
+     * Cabina del HINO 500 FC 1118, moldeada sobre las fotos del dueño (05-08).
+     *
+     * Lo que la distingue en las fotos, en orden de cuánto se nota:
+     * · ESPEJOS enormes sobre brazos largos, montados alto y bien salidos — pasan el
+     *   ancho del furgón y son lo primero que se reconoce del frente;
+     * · el furgón le gana en alto (el techo de la cabina queda a ~2/3 de la caja) y un
+     *   poco en ancho;
+     * · parrilla con marco plateado y el logo al centro, con listones negros;
+     * · paragolpes claro con la placa al medio, faldón negro abajo y antiniebla;
+     * · faros angulares grandes en las esquinas; techo plano con una ceja al frente.
+     */
+    function cabinaHino() {
+        const largo = M.largoCab, alto = M.altoCab;
+        const anchoCab = Math.max(1.9, veh.ancho - 0.16);   // apenas menos que la caja
+        const z0 = (veh.ancho - anchoCab) / 2;
+        const x0 = -largo, y0 = -M.chas, h = alto - y0;
+
+        // Cuerpo con el frente casi vertical + techo plano con ceja al frente.
+        cuerpo(cuna(x0, y0, z0, largo, anchoCab, h, largo * 0.05, 0), CABINA, G);
+        prisma(x0 - 0.02, alto, z0 + 0.02, largo * 0.5, anchoCab - 0.04, 0.06, CABINA, G);
+
+        // Parabrisas grande, dejando los parantes.
+        cuerpo(cuna(x0 - 0.02, y0 + h * 0.55, z0 + 0.10, largo * 0.12, anchoCab - 0.20,
+            h * 0.36, largo * 0.035, 0), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.35)' });
+
+        // Marco plateado de la parrilla + el óvalo del logo al centro.
+        prisma(x0 - 0.035, y0 + h * 0.30, z0 + 0.08, 0.04, anchoCab - 0.16, h * 0.22, [196, 200, 208], G);
+        prisma(x0 - 0.055, y0 + h * 0.34, z0 + anchoCab * 0.40, 0.04, anchoCab * 0.20, h * 0.13, [168, 172, 180], G);
+        // Listones negros de la parrilla.
+        for (let i = 0; i < 2; i++) {
+            prisma(x0 - 0.05, y0 + h * (0.20 + i * 0.07), z0 + 0.16, 0.04, anchoCab - 0.32, h * 0.045, [36, 38, 42]);
+        }
+
+        // Paragolpes: parte clara con la placa, faldón negro y antiniebla.
+        prisma(x0 - 0.09, y0 + h * 0.05, z0 + 0.01, 0.11, anchoCab - 0.02, h * 0.11, CABINA, G);
+        prisma(x0 - 0.10, y0 + h * 0.07, z0 + anchoCab * 0.36, 0.03, anchoCab * 0.28, h * 0.06, [238, 239, 232]);
+        prisma(x0 - 0.10, y0 - 0.03, z0 + 0.01, 0.12, anchoCab - 0.02, h * 0.07, [46, 48, 53]);
+        for (const z of [z0 + 0.10, z0 + anchoCab - 0.24]) {
+            prisma(x0 - 0.11, y0 - 0.01, z, 0.04, 0.14, h * 0.045, [236, 237, 228]);
+        }
+
+        // Faros angulares en las esquinas.
+        for (const z of [z0 + 0.02, z0 + anchoCab - 0.28]) {
+            prisma(x0 - 0.07, y0 + h * 0.17, z, 0.05, 0.26, h * 0.12, [242, 243, 234], { borde: 'rgba(0,0,0,.3)' });
+        }
+
+        // ESPEJOS: brazo largo hacia adelante + paleta grande. Es lo que más identifica
+        // al 500 de frente, y con espejos chicos la cabina se veía de cualquier camión.
+        for (const z of [z0 - 0.30, z0 + anchoCab + 0.06]) {
+            prisma(x0 + largo * 0.06, alto - h * 0.22, z > z0 ? z - 0.24 : z + 0.06, largo * 0.10, 0.26, 0.05, [42, 44, 50]);
+            prisma(x0 + largo * 0.10, alto - h * 0.42, z, 0.05, 0.20, 0.40, [46, 48, 54], G);
+        }
+
+        // Estribo bajo la puerta.
+        for (const z of [z0 - 0.03, z0 + anchoCab - 0.20]) {
+            prisma(x0 + largo * 0.44, y0 - 0.05, z, largo * 0.42, 0.23, 0.06, [88, 91, 98], G);
+        }
+    }
+
+    /** Cabina del camión de reparto GENÉRICO (hoy solo el Chevy 3). Sigue genérica:
+     *  espera sus propias fotos, y moldearla a ojo mientras tanto sería inventar. */
     function cabina() {
         const x0 = -M.delante, w = veh.ancho - 0.06, z0 = 0.03;
         const alto = M.altoCab, cuerpoBajo = alto * 0.52, largo = M.largoCab;
@@ -603,6 +669,11 @@ export default function iniciarCarga3d(canvas, datos) {
         }
         for (const y of [0, H - 0.10]) prisma(L - 0.04, y, 0, 0.04, W, 0.10, CLARO, G);
         for (const z of [0, W - 0.05]) prisma(L - 0.04, 0, z, 0.04, 0.05, H, CLARO, G);
+        // Luces de gálibo ámbar en las esquinas de adelante del furgón: están en las
+        // fotos del HD35 y del HINO y son baratas. El contenedor no las lleva.
+        if (!M.semi) {
+            for (const z of [0.01, W - 0.09]) prisma(-0.02, H - 0.13, z, 0.05, 0.08, 0.07, [226, 148, 38]);
+        }
         paredes(L, W, H);
         chapa();
     }
@@ -641,7 +712,7 @@ export default function iniciarCarga3d(canvas, datos) {
         // caja van largueros angostos.
         tira(-M.delante, -M.chas, 0.02, M.delante, veh.ancho - 0.04, M.chas - 0.05, GRIS, G);
         largueros(0, veh.largo);
-        if (M.liviano) cabinaLiviana(); else cabina();
+        if (M.liviano) cabinaLiviana(); else if (M.hino) cabinaHino(); else cabina();
         cajaDeCarga();
 
         // Rueda delantera SIMPLE y trasera DOBLE en los dos: el HD35 también lleva

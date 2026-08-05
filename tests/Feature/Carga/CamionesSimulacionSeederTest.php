@@ -119,4 +119,24 @@ class CamionesSimulacionSeederTest extends TestCase
             CamionSimulacion::where('nombre', 'Hyundai HD35')->firstOrFail()->silueta,
         );
     }
+
+    public function test_cada_camion_moldeado_sobre_fotos_tiene_su_propia_silueta(): void
+    {
+        // El dueño pidió «un modelo por cada camión» y las va moldeando sobre fotos de
+        // su flota, de a una (05-08). Los tres que ya tienen fotos llevan silueta propia;
+        // el Chevy sigue con la genérica hasta que lleguen las suyas. Si alguien vuelve a
+        // colapsarlos en una silueta compartida, esto se pone rojo.
+        $this->seed(CamionesSimulacionSeeder::class);
+
+        $siluetas = CamionSimulacion::pluck('silueta', 'nombre');
+
+        $this->assertSame('semirremolque', $siluetas["Contenedor 40'"]);
+        $this->assertSame('camion_hino', $siluetas['HINO 500 (FC 1118)']);
+        $this->assertSame('camion_liviano', $siluetas['Hyundai HD35']);
+        $this->assertSame('camion', $siluetas['Chevy 3 (NQR 919)'], 'El Chevy espera sus fotos.');
+
+        // Y ninguno comparte silueta con otro salvo el genérico.
+        $propias = $siluetas->reject(fn (string $s) => $s === 'camion');
+        $this->assertSame($propias->count(), $propias->unique()->count());
+    }
 }

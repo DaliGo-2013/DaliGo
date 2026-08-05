@@ -14,7 +14,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BXxmOnGn.js",
+    "file": "assets/app-BLU0pQuR.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -24,7 +24,7 @@
     ]
   },
   "resources/js/carga3d.js": {
-    "file": "assets/carga3d-BTzE0scR.js",
+    "file": "assets/carga3d-mBdJODlx.js",
     "name": "carga3d",
     "src": "resources/js/carga3d.js",
     "isDynamicEntry": true
