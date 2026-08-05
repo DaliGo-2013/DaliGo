@@ -202,10 +202,31 @@ semirremolque) se corrigió contra esas fotos:
 | Guardabarro blanco (color carrocería) + estribo | No existían |
 | Tracto **6×4**: eje delantero + tándem trasero | Un solo eje delantero |
 
-**Las cabinas del HINO, el Chevy y el HD35 siguen genéricas a propósito**: esperan sus
-propias fotos. Moldearlas a ojo mientras tanto sería inventar de nuevo, que es justo lo
-que se estaba corrigiendo. Cuando lleguen, cada una va a su propia función igual que
-esta — no volver a meter todo en `cabina()` con banderas.
+### 4.1quinquies El HD35, moldeado sobre sus fotos (05-08-2026)
+
+El dueño pasó las fotos del **Hyundai HD35** y pidió «un modelo por cada camión». Su
+cabina tiene función propia (`cabinaLiviana()`).
+
+**Lo que más lo delataba**: en el HD35 con furgón, la CAJA es más **ancha** y bastante
+más **alta** que la cabina —el furgón sobresale por los costados y queda muy por encima
+del techo— y acá se dibujaba todo del mismo ancho y casi del mismo alto. Por eso la
+cabina lleva su propio `anchoCab` (máx. 1,78 m) en vez de heredar el de la caja, y su
+`altoCab` bajó de 0,86 × alto a **0,60 × alto**.
+
+El resto sale de las fotos: cabina corta de techo plano (sin dormitorio), parabrisas de
+~35% de la cara y más angosto que ella (quedan los parantes blancos), panel blanco del
+logo, **parrilla negra**, paragolpes de parte baja negra, faros verticales con el ámbar
+hacia afuera, espejos negros grandes sobre brazos que pasan el ancho de la caja, calco
+gris diagonal en la puerta y estribo.
+
+Y un error que las fotos destaparon: **el HD35 lleva ruedas gemelas atrás** (se ve en la
+foto de la trasera del chasis) y se le dibujaba una sola por eje. Ahora los dos camiones
+de reparto llevan simple adelante y doble atrás.
+
+**La cabina del HINO y la del Chevy siguen genéricas a propósito**: esperan sus fotos.
+Moldearlas a ojo mientras tanto sería inventar de nuevo, que es justo lo que se estaba
+corrigiendo. Cuando lleguen, cada una va a su propia función igual que estas dos — no
+volver a meter todo en `cabina()` con banderas.
 
 **La cabina va BLANCA y en NEUTROS.** Blanca porque así es la flota real (se ve en las
 fotos de carga del 05-08; antes era un azul inventado). Y en neutros, sin franja de

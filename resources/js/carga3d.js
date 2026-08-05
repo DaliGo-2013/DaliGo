@@ -128,10 +128,10 @@ export default function iniciarCarga3d(canvas, datos) {
         const r = semi ? 0.46 : (liviano ? 0.32 : 0.46);
         const rw = semi ? 0.24 : (liviano ? 0.17 : 0.22);
         const sep = semi ? 0.35 : 0;   // hueco entre el tracto y el frente del acoplado
-        const largoCab = Math.min(semi ? 2.6 : (liviano ? 1.55 : 2.15), veh.largo * (semi ? 0.25 : 0.42));
+        const largoCab = Math.min(semi ? 2.6 : (liviano ? 1.45 : 2.15), veh.largo * (semi ? 0.25 : 0.42));
         const altoCab = semi
             ? Math.min(veh.alto * 1.05, 2.35)
-            : Math.min(veh.alto * (liviano ? 0.86 : 0.78), liviano ? 1.75 : 2.05);
+            : (liviano ? Math.min(veh.alto * 0.60, 1.35) : Math.min(veh.alto * 0.78, 2.05));
         return {
             semi, liviano, chas, r, rw, sep, largoCab, altoCab,
             suelo: -chas - r * 2,
@@ -465,7 +465,74 @@ export default function iniciarCarga3d(canvas, datos) {
         }
     }
 
-    /** Cabina de los camiones de reparto (HINO, Chevy, HD35). Sigue siendo genérica:
+    /**
+     * Cabina del HD35, moldeada sobre las fotos del dueño (05-08).
+     *
+     * Lo que más lo delataba: en el HD35 la CAJA es más ANCHA y bastante más ALTA que
+     * la cabina —el furgón sobresale por los costados y queda muy por encima del
+     * techo— y acá se dibujaba todo del mismo ancho y casi del mismo alto. Por eso la
+     * cabina lleva su propio `anchoCab` en vez de heredar el de la caja.
+     *
+     * El resto sale de las fotos: cabina corta de techo plano (no hay dormitorio),
+     * parabrisas grande, panel blanco del morro con la parrilla negra debajo, faros
+     * verticales con el ámbar hacia afuera, paragolpes de parte baja negra, espejos
+     * negros grandes sobre brazos que pasan el ancho de la caja, calco gris diagonal en
+     * la puerta y estribo.
+     */
+    function cabinaLiviana() {
+        const largo = M.largoCab, alto = M.altoCab;
+        // La cabina es más angosta que la caja: es LA marca del HD35 con furgón.
+        const anchoCab = Math.min(veh.ancho - 0.22, 1.78);
+        const z0 = (veh.ancho - anchoCab) / 2;
+        const x0 = -largo, y0 = -M.chas;                 // arranca al ras del chasis
+        const h = alto - y0;
+
+        // Cuerpo. El frente es casi vertical con el morro apenas saliente abajo.
+        cuerpo(cuna(x0, y0, z0, largo, anchoCab, h, largo * 0.05, 0), CABINA, G);
+        // Techo plano con una ceja mínima (no hay deflector ni cajón).
+        prisma(x0 + 0.02, alto, z0 + 0.02, largo * 0.94, anchoCab - 0.04, 0.05, CABINA, G);
+
+        // Reparto del frente sacado de las fotos, de arriba abajo: parabrisas ~35%,
+        // panel blanco del logo, parrilla NEGRA y paragolpes. La primera versión le daba
+        // 40% al parabrisas y dejaba el panel tan finito que la parrilla no se veía.
+        //
+        // Parabrisas, más angosto que la cara para que queden los parantes blancos.
+        cuerpo(cuna(x0 - 0.02, y0 + h * 0.56, z0 + 0.10, largo * 0.13, anchoCab - 0.20,
+            h * 0.34, largo * 0.04, 0), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.35)' });
+
+        // Panel blanco del morro (donde va el logo).
+        prisma(x0 - 0.035, y0 + h * 0.34, z0 + 0.08, 0.04, anchoCab - 0.16, h * 0.20, CABINA, G);
+        // Parrilla negra, bien salida para que no la tape el panel.
+        prisma(x0 - 0.05, y0 + h * 0.16, z0 + 0.14, 0.05, anchoCab - 0.28, h * 0.16, [38, 40, 44]);
+
+        // Paragolpes: parte alta clara y parte baja NEGRA.
+        prisma(x0 - 0.08, y0 + h * 0.03, z0 + 0.01, 0.10, anchoCab - 0.02, h * 0.11, CABINA, G);
+        prisma(x0 - 0.09, y0 - 0.03, z0 + 0.01, 0.11, anchoCab - 0.02, h * 0.07, [48, 50, 55]);
+
+        // Faros verticales en las esquinas, con el ámbar hacia afuera.
+        for (const z of [z0 + 0.02, z0 + anchoCab - 0.24]) {
+            prisma(x0 - 0.07, y0 + h * 0.17, z, 0.05, 0.22, h * 0.14, [242, 243, 234], { borde: 'rgba(0,0,0,.3)' });
+        }
+        for (const z of [z0 - 0.015, z0 + anchoCab - 0.045]) {
+            prisma(x0 - 0.06, y0 + h * 0.18, z, 0.04, 0.06, h * 0.11, [228, 150, 38]);
+        }
+
+        // Espejos negros grandes: pasan el ancho de la CAJA, no solo el de la cabina.
+        for (const z of [z0 - 0.26, z0 + anchoCab + 0.04]) {
+            prisma(x0 + largo * 0.20, alto - h * 0.30, z, 0.05, 0.22, 0.30, [46, 48, 54], G);
+        }
+
+        // Calco gris diagonal de la puerta + estribo.
+        for (const z of [z0 - 0.005, z0 + anchoCab - 0.02]) {
+            cuerpo(cuna(x0 + largo * 0.34, y0 + h * 0.34, z, largo * 0.62, 0.025, h * 0.16,
+                largo * 0.30, 0), [126, 130, 138], { borde: null });
+        }
+        for (const z of [z0 - 0.04, z0 + anchoCab - 0.18]) {
+            prisma(x0 + largo * 0.40, y0 - 0.04, z, largo * 0.44, 0.22, 0.05, [88, 91, 98], G);
+        }
+    }
+
+    /** Cabina de los camiones de reparto medianos (HINO, Chevy). Sigue siendo genérica:
      *  esperan sus propias fotos, y moldearlas a ojo mientras tanto sería inventar. */
     function cabina() {
         const x0 = -M.delante, w = veh.ancho - 0.06, z0 = 0.03;
@@ -574,13 +641,16 @@ export default function iniciarCarga3d(canvas, datos) {
         // caja van largueros angostos.
         tira(-M.delante, -M.chas, 0.02, M.delante, veh.ancho - 0.04, M.chas - 0.05, GRIS, G);
         largueros(0, veh.largo);
-        cabina();
+        if (M.liviano) cabinaLiviana(); else cabina();
         cajaDeCarga();
 
-        const anchoTras = M.liviano ? M.rw : M.rw * 2 + 0.03;
+        // Rueda delantera SIMPLE y trasera DOBLE en los dos: el HD35 también lleva
+        // ruedas gemelas atrás (se ve en la foto de la trasera del chasis), y antes se
+        // le dibujaba una sola por eje.
+        const anchoTras = M.rw * 2 + 0.03;
         for (const z of [-0.03, veh.ancho - M.rw + 0.03]) rueda(-M.largoCab * 0.58, -M.chas, z, M.r, M.rw);
         for (const z of [-0.03, veh.ancho - anchoTras + 0.03]) {
-            rueda(veh.largo * 0.74, -M.chas, z, M.r, M.rw, !M.liviano);
+            rueda(veh.largo * 0.74, -M.chas, z, M.r, M.rw, true);
             guardabarro(veh.largo * 0.74, -M.chas, z, M.r, anchoTras);
         }
     }
