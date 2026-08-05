@@ -526,11 +526,23 @@ export default function iniciarCarga3d(canvas, datos) {
     function etiquetas() {
         if (!nombres || bloques.length === 0) return;
 
-        const puestas = [];
+        // UNA etiqueta por PRODUCTO, no por bloque: el acomodo por zonas puede partir
+        // un mismo producto en dos o tres bloques, y rotularlos todos repetía el
+        // nombre («Caja de soportes» dos veces con números distintos). Se rotula el
+        // bloque más grande de cada producto y el número es el TOTAL del producto.
+        const porProducto = new Map();
         for (const [i, blq] of bloques.entries()) {
-            // Un bloque que todavía no se cargó (la animación va por la mitad) no
-            // lleva etiqueta: señalaría un lugar vacío.
             if (!blq.nombre || !dibujadosPorBloque[i]) continue;
+            const g = porProducto.get(blq.nombre) ?? { puestos: 0, total: 0, mayor: -1, bloque: null };
+            g.puestos += dibujadosPorBloque[i];
+            g.total += blq.cantidad;
+            if (dibujadosPorBloque[i] > g.mayor) { g.mayor = dibujadosPorBloque[i]; g.bloque = blq; }
+            porProducto.set(blq.nombre, g);
+        }
+
+        const puestas = [];
+        for (const [nombre, g] of porProducto) {
+            const blq = g.bloque;
             const rej = blq.rejilla, ori = blq.orientacion;
             // Ancla: el centro del techo del bloque.
             const ancla = proyectar([
@@ -538,14 +550,13 @@ export default function iniciarCarga3d(canvas, datos) {
                 rej.alto * ori.alto,
                 blq.y + (rej.ancho * ori.ancho) / 2,
             ]);
-            // Cuando el bloque está a medio cargar (los pasos, o la animación) la
-            // etiqueta dice CUÁNTOS VAN de cuántos: poner solo el total mientras se
-            // ven 18 de 84 hace dudar de qué número creer.
-            const puestos = dibujadosPorBloque[i];
+            // A medio cargar (los pasos, o la animación) dice CUÁNTOS VAN de cuántos:
+            // poner solo el total mientras se ven 18 de 84 hace dudar de qué número
+            // creer. Los números son del PRODUCTO, sumando todas sus zonas.
             puestas.push({
                 ancla,
-                texto: blq.nombre,
-                cuenta: puestos < blq.cantidad ? `${puestos} de ${blq.cantidad}` : String(blq.cantidad),
+                texto: nombre,
+                cuenta: g.puestos < g.total ? `${g.puestos} de ${g.total}` : String(g.total),
                 col: blq.color || [234, 88, 12],
             });
         }

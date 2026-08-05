@@ -12,8 +12,16 @@
     NO se registran handlers de touch ni de pinza. En celular sigue andando el
     arrastre para girar, que ya estaba.
 --}}
-<div class="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
-    <canvas id="carga3d" width="1240" height="720" class="block w-full cursor-grab"></canvas>
+{{-- Sin `lg:col-span-2`: el visor ya no vive en una grilla, va a todo el ancho y arriba
+     de todo (pedido del dueño 05-08). Dentro de la grilla el recuadro se ESTIRABA a la
+     altura de la columna de datos y el lienzo, con su proporción fija, quedaba pegado
+     arriba dejando un hueco blanco abajo.
+
+     El lienzo es más BAJO en proporción (1240×560 en vez de 1240×720) justamente porque
+     ahora es el doble de ancho: con 720 de alto ocuparía media pantalla de alto y habría
+     que scrollear para ver los datos. --}}
+<div class="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+    <canvas id="carga3d" width="1240" height="560" class="block w-full cursor-grab"></canvas>
 
     <div class="absolute left-4 top-3 text-xs font-medium text-neutral-500">
         {{ $escena['vehiculo']['nombre'] }} · arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>

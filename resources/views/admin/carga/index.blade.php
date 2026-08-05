@@ -5,6 +5,13 @@
                                         (el caso textual del pedido del dueño:
                                         200 botellones + 20 cajas + 10 dispensadores).
 
+    ORDEN DE LA PANTALLA (pedido del dueño 05-08): el camión en 3D ARRIBA y a todo el
+    ancho, debajo dos columnas —el camión en números | el veredicto y el detalle— y el
+    formulario al final. El visor iba antes en una grilla al lado de la columna de
+    datos: como esa columna es más alta, el recuadro se estiraba y el lienzo, que tiene
+    proporción fija, quedaba pegado arriba con un hueco blanco abajo. A todo el ancho no
+    hay nada que lo estire.
+
     El visor 3D NO usa librerías: la silueta del camión y los bultos son prismas
     proyectados a mano sobre un <canvas>, derivados de las medidas. No hay ningún
     modelo 3D que mantener, y no entra ni un byte de dependencia al bundle.
@@ -63,6 +70,232 @@
                         ¿Cabe esta carga?
                     </button>
                 </div>
+
+                @if ($escena)
+                    {{-- ① EL CAMIÓN, a todo el ancho y arriba de todo. --}}
+                    @include('admin.carga._visor')
+
+                    {{-- ② Los datos: el camión en números | el veredicto y el detalle. --}}
+                    <div class="grid gap-4 lg:grid-cols-3">
+
+                        {{-- Columna 1 · el camión en números. Antes estas medidas solo
+                             existían dentro del selector del formulario, que ahora quedó
+                             al final de la pantalla. --}}
+                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">El camión</p>
+                            <p class="mt-1 text-lg font-semibold leading-tight text-neutral-900">{{ $camion->nombre }}</p>
+
+                            <div class="mt-3 border-t border-neutral-100 pt-3 text-sm">
+                                <div class="flex justify-between gap-3 py-1">
+                                    <span class="text-neutral-500">Medidas útiles</span>
+                                    <span class="text-right font-medium tabular-nums text-neutral-900">
+                                        {{ number_format($camion->largo_cm / 100, 2, ',', '.') }} ×
+                                        {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} ×
+                                        {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m
+                                    </span>
+                                </div>
+                                <div class="flex justify-between gap-3 py-1">
+                                    <span class="text-neutral-500">Volumen</span>
+                                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
+                                </div>
+                                <div class="flex justify-between gap-3 py-1">
+                                    <span class="text-neutral-500">Carga máxima</span>
+                                    <span class="font-medium tabular-nums text-neutral-900">
+                                        @if ($camion->peso_max_kg)
+                                            {{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg
+                                        @else
+                                            <span class="font-normal text-neutral-400">sin dato</span>
+                                        @endif
+                                    </span>
+                                </div>
+                                @if ($camion->pasillo_cm > 0)
+                                    <div class="flex justify-between gap-3 py-1">
+                                        <span class="text-neutral-500">Pasillo reservado</span>
+                                        <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <p class="mt-4 text-xs leading-relaxed text-neutral-400">
+                                Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e
+                                interior hay 10 a 20% de volumen, que es la diferencia entre que la carga
+                                entre o quede en el andén.
+                            </p>
+                        </div>
+
+                        {{-- Columna 2 · el veredicto, la ocupación y el detalle. --}}
+                        <div class="space-y-4 lg:col-span-2">
+
+                            {{-- RESULTADO · carga mixta --}}
+                            @if ($mixta !== null)
+                                {{-- El veredicto, primero y sin rodeos --}}
+                                @if ($mixta['cabeTodo'])
+                                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <p class="text-2xl font-semibold text-brand-600">Cabe todo ✓</p>
+                                        <p class="mt-1 text-sm text-neutral-500">
+                                            La carga completa entra en {{ $escena['vehiculo']['nombre'] }}.
+                                        </p>
+                                    </div>
+                                @else
+                                    <div class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
+                                        <p class="text-2xl font-semibold text-red-700">No cabe todo</p>
+                                        <p class="mt-1 text-sm text-red-700">
+                                            Abajo está qué queda afuera y por qué — con eso se negocia.
+                                        </p>
+                                    </div>
+                                @endif
+
+                                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                    <div class="text-sm">
+                                        <div class="flex justify-between py-1">
+                                            <span class="text-neutral-500">Ocupación</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ round($mixta['resultado']['ocupacion'] * 100) }}%</span>
+                                        </div>
+                                        <div class="mb-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                                            <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, round($mixta['resultado']['ocupacion'] * 100)) }}%"></div>
+                                        </div>
+                                        <div class="flex justify-between py-1">
+                                            <span class="text-neutral-500">Volumen</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ number_format($mixta['resultado']['volumen_ocupado_m3'], 1, ',', '.') }} de {{ number_format($mixta['resultado']['volumen_vehiculo_m3'], 1, ',', '.') }} m³</span>
+                                        </div>
+                                        @if ($mixta['resultado']['peso_kg'] > 0)
+                                            <div class="flex justify-between py-1">
+                                                <span class="text-neutral-500">Peso</span>
+                                                <span class="font-medium tabular-nums text-neutral-900">
+                                                    {{ number_format($mixta['resultado']['peso_kg'], 0, ',', '.') }} kg{{ $camion->peso_max_kg ? ' de '.number_format($camion->peso_max_kg, 0, ',', '.') : '' }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @if ($mixta['peligrosas'] !== [])
+                                        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                                            <strong>Mercancía peligrosa en la carga
+                                                ({{ collect($mixta['peligrosas'])->map(fn ($p) => $p->peligrosa_codigo ?: $p->nombre)->implode(', ') }}).</strong>
+                                            El cálculo es solo de espacio: el transporte tiene reglas propias de rotulado y
+                                            segregación. Que quepa no significa que se pueda cargar así.
+                                        </p>
+                                    @endif
+
+                                    <p class="mt-4 text-xs leading-relaxed text-neutral-400">
+                                        Acomodo por zonas, como se estiba de verdad: lo grande al fondo, sin apilar un
+                                        producto arriba de otro. Capacidad práctica, no promesa.
+                                    </p>
+                                </div>
+
+                                {{-- El detalle por producto: qué entra, qué queda afuera y POR QUÉ.
+                                     El color de cada fila es la leyenda del visor. --}}
+                                <x-list-card title="La carga, producto por producto" :count="count($mixta['lineas'])"
+                                             :countLabel="\Illuminate\Support\Str::plural('producto', count($mixta['lineas']))">
+                                    @foreach ($mixta['lineas'] as $i => $fila)
+                                        @php
+                                            $rgb = \App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D[$i % count(\App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D)];
+                                            $pendientes = $fila['pedidas_unidades'] - $fila['cargadas_unidades'];
+                                            $motivoTexto = [
+                                                'espacio' => 'no queda espacio con el resto de la carga',
+                                                'peso' => 'se pasa de la carga máxima en kilos',
+                                                'largo' => 'no entra por el largo de la caja',
+                                                'ancho' => 'no entra por el ancho de la caja',
+                                                'alto' => 'no entra por la altura de la caja',
+                                            ][$fila['motivo']] ?? null;
+                                        @endphp
+                                        <x-list-row>
+                                            <x-slot name="leading">
+                                                <span class="mt-1 block h-3.5 w-3.5 rounded"
+                                                      style="background: rgb({{ implode(',', $rgb) }})" aria-hidden="true"></span>
+                                            </x-slot>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <p class="font-medium text-neutral-900">{{ $fila['modelo']->nombre }}</p>
+                                                @if ($fila['motivo'] === null)
+                                                    <x-badge variant="brand">Completo</x-badge>
+                                                @else
+                                                    <x-badge variant="danger">Queda afuera</x-badge>
+                                                @endif
+                                            </div>
+                                            <p class="text-sm text-neutral-500">
+                                                Cargadas <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}</span>
+                                                de {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}
+                                                @if ($fila['modelo']->unidades > 1)
+                                                    ({{ $fila['bultos_colocados'] }} {{ \Illuminate\Support\Str::plural('bolsa', $fila['bultos_colocados']) }})
+                                                @endif
+                                                @if ($motivoTexto)
+                                                    · <span class="text-red-600">quedan {{ number_format($pendientes, 0, ',', '.') }} afuera: {{ $motivoTexto }}</span>
+                                                @endif
+                                            </p>
+                                        </x-list-row>
+                                    @endforeach
+                                </x-list-card>
+                            @endif
+
+                            {{-- RESULTADO · cupo máximo --}}
+                            @if ($resultado)
+                                @php
+                                    $lim = [
+                                        'largo' => 'el largo de la caja',
+                                        'ancho' => 'el ancho de la caja',
+                                        'alto' => 'la altura (o el tope de apilado)',
+                                        'peso' => 'la carga máxima en kilos',
+                                        'ninguno' => '—',
+                                    ][$resultado['limite']] ?? '—';
+                                @endphp
+
+                                <div x-show="modo === 'maximo'" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
+                                    <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
+                                    <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
+
+                                    @if ($bulto->unidades > 1)
+                                        <p class="mt-3 text-2xl font-semibold text-brand-600 tabular-nums">
+                                            {{ number_format($resultado['unidades'], 0, ',', '.') }}
+                                        </p>
+                                        <p class="text-sm text-neutral-500">unidades ({{ $bulto->unidades }} por bulto)</p>
+                                    @endif
+
+                                    <div class="mt-4 border-t border-neutral-100 pt-3 text-sm">
+                                        <div class="flex justify-between py-1">
+                                            <span class="text-neutral-500">Se agota primero</span>
+                                            <span class="font-medium text-neutral-900">{{ $lim }}</span>
+                                        </div>
+                                        <div class="flex justify-between py-1">
+                                            <span class="text-neutral-500">Rejilla</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
+                                        </div>
+                                        <div class="flex justify-between py-1">
+                                            <span class="text-neutral-500">Ocupación</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ round($resultado['ocupacion'] * 100) }}%</span>
+                                        </div>
+                                        @if ($resultado['peso_kg'] > 0)
+                                            <div class="flex justify-between py-1">
+                                                <span class="text-neutral-500">Peso</span>
+                                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                                        <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, round($resultado['ocupacion'] * 100)) }}%"></div>
+                                    </div>
+
+                                    @if ($bulto->peligrosa)
+                                        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                                            <strong>Mercancía peligrosa{{ $bulto->peligrosa_codigo ? ' ('.$bulto->peligrosa_codigo.')' : '' }}.</strong>
+                                            El cupo es solo de espacio: el transporte tiene reglas propias de rotulado y segregación.
+                                            Que quepa no significa que se pueda cargar así.
+                                        </p>
+                                    @endif
+
+                                    <p class="mt-4 text-xs leading-relaxed text-neutral-400">
+                                        Capacidad práctica, no promesa: la estiba real no es una rejilla perfecta (amarres, hilera del
+                                        piso girada). Se calibra contando una carga real.
+                                    </p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                {{-- ③ El formulario, al final: el dueño quiso el 3D lo más grande
+                     posible y arriba de todo (05-08). --}}
 
                 {{-- MODO 1 · cupo máximo de un producto. El x-cloak va en el form
                      del modo INACTIVO según lo que respondió el servidor: sin él,
@@ -148,188 +381,6 @@
                         </p>
                     </div>
                 </form>
-
-                {{-- RESULTADO · carga mixta --}}
-                @if ($mixta !== null)
-                    <div class="grid gap-4 lg:grid-cols-3">
-                        <div class="space-y-4">
-                            {{-- El veredicto, primero y sin rodeos --}}
-                            @if ($mixta['cabeTodo'])
-                                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                    <p class="text-2xl font-semibold text-brand-600">Cabe todo ✓</p>
-                                    <p class="mt-1 text-sm text-neutral-500">
-                                        La carga completa entra en {{ $escena['vehiculo']['nombre'] }}.
-                                    </p>
-                                </div>
-                            @else
-                                <div class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
-                                    <p class="text-2xl font-semibold text-red-700">No cabe todo</p>
-                                    <p class="mt-1 text-sm text-red-700">
-                                        Abajo está qué queda afuera y por qué — con eso se negocia.
-                                    </p>
-                                </div>
-                            @endif
-
-                            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                <div class="text-sm">
-                                    <div class="flex justify-between py-1">
-                                        <span class="text-neutral-500">Ocupación</span>
-                                        <span class="font-medium tabular-nums text-neutral-900">{{ round($mixta['resultado']['ocupacion'] * 100) }}%</span>
-                                    </div>
-                                    <div class="mb-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                                        <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, round($mixta['resultado']['ocupacion'] * 100)) }}%"></div>
-                                    </div>
-                                    <div class="flex justify-between py-1">
-                                        <span class="text-neutral-500">Volumen</span>
-                                        <span class="font-medium tabular-nums text-neutral-900">{{ number_format($mixta['resultado']['volumen_ocupado_m3'], 1, ',', '.') }} de {{ number_format($mixta['resultado']['volumen_vehiculo_m3'], 1, ',', '.') }} m³</span>
-                                    </div>
-                                    @if ($mixta['resultado']['peso_kg'] > 0)
-                                        <div class="flex justify-between py-1">
-                                            <span class="text-neutral-500">Peso</span>
-                                            <span class="font-medium tabular-nums text-neutral-900">
-                                                {{ number_format($mixta['resultado']['peso_kg'], 0, ',', '.') }} kg{{ $camion->peso_max_kg ? ' de '.number_format($camion->peso_max_kg, 0, ',', '.') : '' }}
-                                            </span>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                @if ($mixta['peligrosas'] !== [])
-                                    <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                                        <strong>Mercancía peligrosa en la carga
-                                            ({{ collect($mixta['peligrosas'])->map(fn ($p) => $p->peligrosa_codigo ?: $p->nombre)->implode(', ') }}).</strong>
-                                        El cálculo es solo de espacio: el transporte tiene reglas propias de rotulado y
-                                        segregación. Que quepa no significa que se pueda cargar así.
-                                    </p>
-                                @endif
-
-                                <p class="mt-4 text-xs leading-relaxed text-neutral-400">
-                                    Acomodo por zonas, como se estiba de verdad: lo grande al fondo, sin apilar un
-                                    producto arriba de otro. Capacidad práctica, no promesa.
-                                </p>
-                            </div>
-                        </div>
-
-                        {{-- Visor 3D. En un partial porque este bloque vivía COPIADO
-                             en los dos modos de la pantalla y los controles nuevos
-                             habrían quedado duplicados. --}}
-                        @include('admin.carga._visor')
-                    </div>
-
-                    {{-- El detalle por producto: qué entra, qué queda afuera y POR QUÉ.
-                         El color de cada fila es la leyenda del visor. --}}
-                    <x-list-card title="La carga, producto por producto" :count="count($mixta['lineas'])"
-                                 :countLabel="\Illuminate\Support\Str::plural('producto', count($mixta['lineas']))">
-                        @foreach ($mixta['lineas'] as $i => $fila)
-                            @php
-                                $rgb = \App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D[$i % count(\App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D)];
-                                $pendientes = $fila['pedidas_unidades'] - $fila['cargadas_unidades'];
-                                $motivoTexto = [
-                                    'espacio' => 'no queda espacio con el resto de la carga',
-                                    'peso' => 'se pasa de la carga máxima en kilos',
-                                    'largo' => 'no entra por el largo de la caja',
-                                    'ancho' => 'no entra por el ancho de la caja',
-                                    'alto' => 'no entra por la altura de la caja',
-                                ][$fila['motivo']] ?? null;
-                            @endphp
-                            <x-list-row>
-                                <x-slot name="leading">
-                                    <span class="mt-1 block h-3.5 w-3.5 rounded"
-                                          style="background: rgb({{ implode(',', $rgb) }})" aria-hidden="true"></span>
-                                </x-slot>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <p class="font-medium text-neutral-900">{{ $fila['modelo']->nombre }}</p>
-                                    @if ($fila['motivo'] === null)
-                                        <x-badge variant="brand">Completo</x-badge>
-                                    @else
-                                        <x-badge variant="danger">Queda afuera</x-badge>
-                                    @endif
-                                </div>
-                                <p class="text-sm text-neutral-500">
-                                    Cargadas <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}</span>
-                                    de {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}
-                                    @if ($fila['modelo']->unidades > 1)
-                                        ({{ $fila['bultos_colocados'] }} {{ \Illuminate\Support\Str::plural('bolsa', $fila['bultos_colocados']) }})
-                                    @endif
-                                    @if ($motivoTexto)
-                                        · <span class="text-red-600">quedan {{ number_format($pendientes, 0, ',', '.') }} afuera: {{ $motivoTexto }}</span>
-                                    @endif
-                                </p>
-                            </x-list-row>
-                        @endforeach
-                    </x-list-card>
-                @endif
-
-                {{-- RESULTADO · cupo máximo (igual que siempre) --}}
-                @if ($resultado)
-                    @php
-                        $lim = [
-                            'largo' => 'el largo de la caja',
-                            'ancho' => 'el ancho de la caja',
-                            'alto' => 'la altura (o el tope de apilado)',
-                            'peso' => 'la carga máxima en kilos',
-                            'ninguno' => '—',
-                        ][$resultado['limite']] ?? '—';
-                    @endphp
-
-                    <div x-show="modo === 'maximo'" class="grid gap-4 lg:grid-cols-3">
-                        {{-- Resultado --}}
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
-                            <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
-                            <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
-
-                            @if ($bulto->unidades > 1)
-                                <p class="mt-3 text-2xl font-semibold text-brand-600 tabular-nums">
-                                    {{ number_format($resultado['unidades'], 0, ',', '.') }}
-                                </p>
-                                <p class="text-sm text-neutral-500">unidades ({{ $bulto->unidades }} por bulto)</p>
-                            @endif
-
-                            <div class="mt-4 border-t border-neutral-100 pt-3 text-sm">
-                                <div class="flex justify-between py-1">
-                                    <span class="text-neutral-500">Se agota primero</span>
-                                    <span class="font-medium text-neutral-900">{{ $lim }}</span>
-                                </div>
-                                <div class="flex justify-between py-1">
-                                    <span class="text-neutral-500">Rejilla</span>
-                                    <span class="font-medium tabular-nums text-neutral-900">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
-                                </div>
-                                <div class="flex justify-between py-1">
-                                    <span class="text-neutral-500">Ocupación</span>
-                                    <span class="font-medium tabular-nums text-neutral-900">{{ round($resultado['ocupacion'] * 100) }}%</span>
-                                </div>
-                                @if ($resultado['peso_kg'] > 0)
-                                    <div class="flex justify-between py-1">
-                                        <span class="text-neutral-500">Peso</span>
-                                        <span class="font-medium tabular-nums text-neutral-900">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                                <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, round($resultado['ocupacion'] * 100)) }}%"></div>
-                            </div>
-
-                            @if ($bulto->peligrosa)
-                                <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                                    <strong>Mercancía peligrosa{{ $bulto->peligrosa_codigo ? ' ('.$bulto->peligrosa_codigo.')' : '' }}.</strong>
-                                    El cupo es solo de espacio: el transporte tiene reglas propias de rotulado y segregación.
-                                    Que quepa no significa que se pueda cargar así.
-                                </p>
-                            @endif
-
-                            <p class="mt-4 text-xs leading-relaxed text-neutral-400">
-                                Capacidad práctica, no promesa: la estiba real no es una rejilla perfecta (amarres, hilera del
-                                piso girada). Se calibra contando una carga real.
-                            </p>
-                        </div>
-
-                        {{-- Visor 3D. En un partial porque este bloque vivía COPIADO
-                             en los dos modos de la pantalla y los controles nuevos
-                             habrían quedado duplicados. --}}
-                        @include('admin.carga._visor')
-                    </div>
-                @endif
             </div>
 
             {{-- Los datos de la escena viajan como JSON inerte; el visor los lee.
