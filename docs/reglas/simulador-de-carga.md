@@ -131,12 +131,17 @@ El zoom **ancla el punto bajo el cursor**: apuntar a la carga y girar la rueda a
 la carga. Anclarlo al centro geométrico del camión dejaba la carga fuera de cuadro —
 y lo que se pidió fue «zoom a la carga».
 
-**Cuánto se ve cargado** (pedido del dueño 05-08): el visor abre **LLENO**, porque el
-título dice «entran 420» y el dibujo tiene que decir lo mismo — antes abría al 60% y
-los dos números no coincidían. `▶ Cargar` reproduce la estiba de a poco (para ver en
-qué ORDEN va la carga) y los pasos `+1 / +5 / +10 / Todo / Vaciar` permiten armarla a
-mano. Cualquier paso **corta la animación** si estaba corriendo: si no, seguiría
-sumando sola y pelearía con el botón recién tocado.
+**Cuánto se ve cargado** (pedido del dueño 05-08): el visor abre **VACÍO** y se carga
+con los pasos `+1 / +5 / +10 / Todo / Vaciar`, o con `▶ Cargar`, que reproduce la
+estiba de a poco (para ver en qué ORDEN va la carga). Cualquier paso **corta la
+animación** si estaba corriendo: si no, seguiría sumando sola y pelearía con el botón
+recién tocado.
+
+> Se probó abrir **lleno**, para que el dibujo coincidiera con el «entran 420» del
+> título, y **el dueño lo descartó**: *«no quiero que el camión esté contabilizado a
+> cuánto tiene que llegar»* — perseguir el tope no es lo que hace cuando arma una
+> carga. El visor es una herramienta que se maneja, no una foto del máximo. No volver
+> a cambiar el default sin preguntarle.
 
 **Nombres**: UNA etiqueta por BLOQUE, no por bulto (con 324 bultos serían 324 textos
 ilegibles y lentos). Un bloque = un producto, así que son 2-4 etiquetas. Llevan el

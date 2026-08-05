@@ -64,12 +64,16 @@ export default function iniciarCarga3d(canvas, datos) {
     // carga mixta = un bloque por tipo colocado, con su color y su posición).
     const bloques = datos.bloques || [];
 
-    // Arranca LLENO: el título de la pantalla dice «entran 420» y el dibujo tiene
-    // que decir lo mismo. Antes abría al 60% y el número de arriba no coincidía con
-    // lo que se veía. Para ver el orden de estiba está «▶ Cargar», y para armarla a
-    // mano están los pasos (+1 / +5 / +10 / Todo / Vaciar).
+    // Arranca VACÍO (decisión del dueño 05-08: «no quiero que el camión esté
+    // contabilizado a cuánto tiene que llegar»). El visor es una herramienta que se
+    // maneja, no una foto del máximo: se carga con los pasos (+1 / +5 / +10 / Todo)
+    // o con «▶ Cargar», que reproduce la estiba de a poco.
+    //
+    // Se probó abrir LLENO para que el dibujo coincidiera con el «entran 420» del
+    // título, y el dueño lo descartó: perseguir el tope no es lo que hace cuando
+    // arma una carga. No volver a cambiarlo sin preguntarle.
     const TOPE = Math.max(0, datos.tope || 0);
-    let yaw = -0.85, pitch = -0.3, cant = TOPE, anim = null, arrastre = null;
+    let yaw = -0.85, pitch = -0.3, cant = 0, anim = null, arrastre = null;
     let CX = 0, CY = 0, ESC = 100, OFF = [0, 0, 0], cola = [];
     // Encuadre base (escala y centro medidos a escala 1) + zoom encima. Separarlos
     // es lo que permite que girar no cambie el zoom.
