@@ -38,7 +38,12 @@ class HojaRutaScopingTest extends TestCase
         return tap(User::factory()->create())->assignRole('conductor');
     }
 
-    /** Un despacho retirado dentro de una hoja con el estado dado. */
+    /**
+     * Un despacho retirado dentro de una hoja con el estado dado. La parada
+     * nace PAGADA a propósito: estos tests prueban el SCOPING, y el default
+     * cobrar_en_entrega exigiría además el cobro (eso lo cubre
+     * EntregaSobreHojaTest).
+     */
     private function despachoEnHoja(HojaDeRuta $hoja, array $despacho = []): Despacho
     {
         $d = Despacho::factory()->retirado()->create($despacho);
@@ -46,6 +51,7 @@ class HojaRutaScopingTest extends TestCase
             'hoja_de_ruta_id' => $hoja->id,
             'despacho_id' => $d->id,
             'orden' => (int) $hoja->paradas()->max('orden') + 1,
+            'estado_cobro' => HojaRutaParada::COBRO_PAGADO,
         ]);
 
         return $d;
@@ -58,6 +64,10 @@ class HojaRutaScopingTest extends TestCase
             'capturado_at' => now()->toIso8601String(),
             'foto' => UploadedFile::fake()->image('entrega.jpg', 800, 600),
             'firma' => UploadedFile::fake()->image('firma.png', 600, 300),
+            // El receptor es obligatorio desde P-DSP-09 (R13).
+            'receptor_nombre' => 'Receptor Sintético',
+            'receptor_rut' => '33333333-3',
+            'receptor_relacion' => 'otro',
         ];
     }
 

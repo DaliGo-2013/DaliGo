@@ -732,21 +732,41 @@ Alpine.data('firmaPad', () => ({
  * payload en IndexedDB y la tarjeta queda tachada (optimista) — drena solo al
  * volver la senal, idempotente por entrega_uuid.
  */
-Alpine.data('entregaForm', ({ url, etiqueta }) => ({
+Alpine.data('entregaForm', ({ url, urlRechazo, etiqueta, cobra, total }) => ({
     url,
+    urlRechazo: urlRechazo || '',
     etiqueta: etiqueta || '',
+    cobra: !!cobra,           // la parada es cobrar_en_entrega (server-side)
     abierto: false,
     enviando: false,
     encolada: false,
+    rechazada: false,          // el rechazo quedó registrado/encolado
     parcial: false,
     observacion: '',
     fotoLista: false,
     firmaLista: false,
+    // Receptor en la puerta (R13): obligatorio siempre.
+    receptorNombre: '',
+    receptorRut: '',
+    receptorRelacion: '',
+    // Cobro en la puerta (R4+R7): solo si la parada lo pide.
+    cobroMetodo: '',
+    cobroMonto: total || '',
+    // Rechazo (R15).
+    rechazando: false,
+    motivoRechazo: '',
     error: '',
 
     puedeEnviar() {
-        return this.fotoLista && this.firmaLista && (!this.parcial || this.observacion.trim() !== '')
-            && !this.enviando && !this.encolada;
+        const receptorOk = this.receptorNombre.trim() !== ''
+            && this.receptorRut.trim().length >= 8
+            && this.receptorRelacion !== '';
+        const cobroOk = !this.cobra
+            || (this.cobroMetodo !== '' && Number(this.cobroMonto) > 0);
+
+        return this.fotoLista && this.firmaLista && receptorOk && cobroOk
+            && (!this.parcial || this.observacion.trim() !== '')
+            && !this.enviando && !this.encolada && !this.rechazada;
     },
 
     async confirmar() {
@@ -769,7 +789,15 @@ Alpine.data('entregaForm', ({ url, etiqueta }) => ({
                 capturado_at: new Date().toISOString(),
                 parcial: this.parcial ? 1 : 0,
                 entrega_observacion: this.parcial ? this.observacion.trim() : '',
+                // Receptor (R13): viaja en el MISMO payload de la cola.
+                receptor_nombre: this.receptorNombre.trim(),
+                receptor_rut: this.receptorRut.trim().toUpperCase(),
+                receptor_relacion: this.receptorRelacion,
             };
+            if (this.cobra) {
+                campos.cobro_metodo = this.cobroMetodo;
+                campos.cobro_monto = Number(this.cobroMonto);
+            }
             const uuid = crypto.randomUUID ? crypto.randomUUID()
                 : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -821,6 +849,73 @@ Alpine.data('entregaForm', ({ url, etiqueta }) => ({
             blobs: { firma, foto },
         });
         this.encolada = true; // tacha la tarjeta (optimista) y bloquea reenvios
+        window.dispatchEvent(new CustomEvent('daligo:cola-cambio'));
+    },
+
+    /**
+     * Rechazo en puerta (R15): no se pudo entregar. MISMO camino que la
+     * confirmacion — online postea directo; sin señal viaja por la misma
+     * cola (sin blobs: el rechazo no lleva firma ni foto). El uuid solo es
+     * la clave de IndexedDB; el server es idempotente por el estado de la
+     * parada, no por este uuid.
+     */
+    async rechazar() {
+        this.error = '';
+        if (this.motivoRechazo.trim() === '' || this.enviando || this.rechazada || this.encolada) return;
+        this.enviando = true;
+
+        try {
+            const campos = {
+                motivo: this.motivoRechazo.trim(),
+                capturado_at: new Date().toISOString(),
+            };
+            const uuid = crypto.randomUUID ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+            if (this.$store.red && !this.$store.red.online) {
+                await this.encolarRechazo({ uuid, campos });
+                return;
+            }
+
+            const fd = new FormData();
+            Object.entries(campos).forEach(([k, v]) => fd.append(k, v));
+
+            let resp;
+            try {
+                resp = await fetch(this.urlRechazo, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: fd,
+                });
+            } catch (e) {
+                await this.encolarRechazo({ uuid, campos });
+                return;
+            }
+
+            if (resp.ok) {
+                window.location.reload();
+                return;
+            }
+            const data = await resp.json().catch(() => null);
+            this.error = data?.message ?? 'No se pudo registrar el rechazo. Revisa e intenta de nuevo.';
+        } finally {
+            this.enviando = false;
+        }
+    },
+
+    async encolarRechazo({ uuid, campos }) {
+        await window.dgColaEntregas.encolarEntrega({
+            uuid,
+            url: this.urlRechazo,
+            etiqueta: `Rechazo · ${this.etiqueta}`,
+            campos,
+            blobs: {},
+        });
+        this.rechazada = true;
         window.dispatchEvent(new CustomEvent('daligo:cola-cambio'));
     },
 }));

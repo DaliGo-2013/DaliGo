@@ -66,7 +66,11 @@ class EntregaConductorTest extends TestCase
         ], $overrides));
     }
 
-    /** El payload multipart que manda el form / la cola offline. */
+    /**
+     * El payload multipart que manda el form / la cola offline. Desde
+     * P-DSP-09 el receptor (R13) es OBLIGATORIO, así que el helper lo trae;
+     * los tests que prueban su ausencia lo quitan con except().
+     */
     private function payload(array $overrides = []): array
     {
         return array_merge([
@@ -74,6 +78,9 @@ class EntregaConductorTest extends TestCase
             'capturado_at' => '2026-07-28T15:42:11.000Z',
             'foto' => UploadedFile::fake()->image('entrega.jpg', 800, 600),
             'firma' => UploadedFile::fake()->image('firma.png', 600, 300),
+            'receptor_nombre' => 'Recepción Sintética',
+            'receptor_rut' => '11111111-1',
+            'receptor_relacion' => 'conserje',
         ], $overrides);
     }
 
