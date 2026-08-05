@@ -36,24 +36,34 @@
                     <p class="text-sm font-medium text-neutral-900">No hay camiones de simulación activos</p>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-neutral-500">
                         El catálogo del simulador viene sembrado con el próximo deploy
-                        (Contenedor 40', HINO 500, Chevy 3 y HD35). Si esto aparece, se
+                        (Contenedor 40', HINO 500 y HD35). Si esto aparece, se
                         desactivaron todos: hay que reactivar alguno.
                     </p>
                 </li>
             </x-list-card>
         @else
             @php
-                $bultosJson = $bultos->map(fn ($b) => ['id' => $b->id, 'nombre' => $b->nombre, 'unidades' => $b->unidades])->values();
+                // «acuesta»: si a este producto tiene sentido ofrecerle la estiba. Solo
+                // los de orientación fija — al resto el motor ya le prueba las 6
+                // rotaciones y elige la mejor.
+                //
+                // Comentario de PHP y no de Blade: dentro de @php un {{-- --}} NO se
+                // procesa y sale tal cual al PHP compilado.
+                $bultosJson = $bultos->map(fn ($b) => [
+                    'id' => $b->id, 'nombre' => $b->nombre, 'unidades' => $b->unidades,
+                    'acuesta' => $b->puedeAcostarse(),
+                ])->values();
                 $lineasIniciales = $lineasSel->isNotEmpty()
                     ? $lineasSel
-                    : collect([['tipo' => $bultos->first()?->id, 'cantidad' => 100]]);
+                    : collect([['tipo' => $bultos->first()?->id, 'cantidad' => 100, 'acostado' => 0]]);
             @endphp
 
             <div x-data="{
                     modo: '{{ $mixta !== null ? 'mixta' : 'maximo' }}',
                     lineas: {{ $lineasIniciales->toJson() }},
                     bultos: {{ $bultosJson->toJson() }},
-                    agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10 }); },
+                    agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, acostado: 0 }); },
+                    acuesta(tipo) { return this.bultos.find(b => b.id === tipo)?.acuesta ?? false; },
                     quitar(i) { this.lineas.splice(i, 1); },
                  }" class="space-y-6">
 
@@ -226,6 +236,12 @@
                                                 @else
                                                     <x-badge variant="danger">Queda afuera</x-badge>
                                                 @endif
+                                                {{-- La estiba cambia el número, así que el resultado tiene que
+                                                     decir con cuál se calculó: leer «entran 270» sin saber que
+                                                     fue acostado invita a compararlo con los 420 de pie. --}}
+                                                @if ($fila['acostado'])
+                                                    <x-badge>Acostado</x-badge>
+                                                @endif
                                             </div>
                                             <p class="text-sm text-neutral-500">
                                                 Cargadas <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}</span>
@@ -267,6 +283,14 @@
                                     @endif
 
                                     <div class="mt-4 border-t border-neutral-100 pt-3 text-sm">
+                                        @if ($bulto->puedeAcostarse())
+                                            {{-- Con qué estiba salió este número: sin decirlo, «entran 270»
+                                                 se compara contra los 420 de pie y parece un error. --}}
+                                            <div class="flex justify-between py-1">
+                                                <span class="text-neutral-500">Cómo viaja</span>
+                                                <span class="font-medium text-neutral-900">{{ $acostado ? 'Acostado' : 'De pie' }}</span>
+                                            </div>
+                                        @endif
                                         <div class="flex justify-between py-1">
                                             <span class="text-neutral-500">Se agota primero</span>
                                             <span class="font-medium text-neutral-900">{{ $lim }}</span>
@@ -337,6 +361,17 @@
                             @endforeach
                         </x-select>
                     </div>
+                    @if ($bulto?->puedeAcostarse())
+                        {{-- La misma elección de estiba que en la carga mixta: sin esto, la
+                             pregunta «¿cuánto entra?» solo se podría responder de pie. --}}
+                        <div class="sm:w-36">
+                            <x-input-label for="acostado" value="Cómo viaja" />
+                            <x-select id="acostado" name="acostado" class="mt-1.5" onchange="this.form.submit()">
+                                <option value="0" @selected(! $acostado)>De pie</option>
+                                <option value="1" @selected($acostado)>Acostado</option>
+                            </x-select>
+                        </div>
+                    @endif
                     <div><x-primary-button>Calcular</x-primary-button></div>
                 </form>
 
@@ -373,6 +408,16 @@
                                                class="block w-32 rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                         <span class="w-16 text-xs text-neutral-400"
                                               x-text="(bultos.find(b => b.id === linea.tipo)?.unidades ?? 1) > 1 ? 'unidades' : 'bultos'"></span>
+                                        {{-- CÓMO VIAJA el pack: de pie o acostado (pedido del dueño 05-08).
+                                             Solo aparece donde cambia algo; en el resto el motor ya elige la
+                                             orientación que más entra. --}}
+                                        <select :name="`lineas[${i}][acostado]`" x-model.number="linea.acostado"
+                                                x-show="acuesta(linea.tipo)" x-cloak
+                                                title="Cómo viaja el pack"
+                                                class="block w-28 rounded-lg border border-neutral-300 bg-white px-2.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                            <option value="0">De pie</option>
+                                            <option value="1">Acostado</option>
+                                        </select>
                                         <button type="button" @click="quitar(i)" x-show="lineas.length > 1"
                                                 class="rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-red-50 hover:text-red-600"
                                                 title="Quitar producto">

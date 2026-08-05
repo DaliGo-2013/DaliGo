@@ -22,14 +22,13 @@ class CamionesSimulacionSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_siembra_los_cuatro_camiones_con_las_medidas_del_dueno(): void
+    public function test_siembra_los_camiones_con_las_medidas_del_dueno(): void
     {
         $this->seed(CamionesSimulacionSeeder::class);
 
         $esperado = [
             "Contenedor 40'" => [1203, 235, 239, 28800],
             'HINO 500 (FC 1118)' => [797, 260, 266, 11000],
-            'Chevy 3 (NQR 919)' => [800, 230, 245, null],
             'Hyundai HD35' => [430, 200, 220, 1500],
         ];
 
@@ -49,6 +48,25 @@ class CamionesSimulacionSeederTest extends TestCase
         $this->assertNull(CamionSimulacion::where('nombre', 'like', '%H1%')->first());
     }
 
+    public function test_un_camion_vendido_se_borra_del_catalogo_aunque_ya_estuviera_sembrado(): void
+    {
+        // El Chevy 3 estuvo sembrado y LLEGÓ A PRODUCCIÓN; el dueño avisó el 05-08 que
+        // lo vendieron. Sacarlo del array del seeder no alcanza: `updateOrCreate` no
+        // borra lo que dejó de estar en la lista, así que la fila sobreviviría al deploy
+        // y se seguiría cotizando contra un camión que la empresa ya no tiene.
+        $this->seed(CamionesSimulacionSeeder::class);
+        CamionSimulacion::create([
+            'nombre' => 'Chevy 3 (NQR 919)',
+            'largo_cm' => 800, 'ancho_cm' => 230, 'alto_cm' => 245,
+            'pasillo_cm' => 0, 'activo' => true, 'silueta' => 'camion',
+        ]);
+
+        $this->seed(CamionesSimulacionSeeder::class);
+
+        $this->assertNull(CamionSimulacion::where('nombre', 'Chevy 3 (NQR 919)')->first());
+        $this->assertSame(3, CamionSimulacion::count());
+    }
+
     public function test_resembrar_no_duplica_y_una_correccion_de_medida_viaja(): void
     {
         $this->seed(CamionesSimulacionSeeder::class);
@@ -59,7 +77,7 @@ class CamionesSimulacionSeederTest extends TestCase
         CamionSimulacion::where('nombre', 'Hyundai HD35')->update(['largo_cm' => 999]);
         $this->seed(CamionesSimulacionSeeder::class);
 
-        $this->assertSame(4, CamionSimulacion::count());
+        $this->assertSame(3, CamionSimulacion::count());
         $this->assertSame(430, CamionSimulacion::where('nombre', 'Hyundai HD35')->value('largo_cm'));
     }
 
@@ -73,7 +91,6 @@ class CamionesSimulacionSeederTest extends TestCase
         $referencia = [
             "Contenedor 40'" => 1620,
             'HINO 500 (FC 1118)' => 1500,
-            'Chevy 3 (NQR 919)' => 960,
             'Hyundai HD35' => 420,
         ];
 
@@ -122,9 +139,9 @@ class CamionesSimulacionSeederTest extends TestCase
 
     public function test_cada_camion_moldeado_sobre_fotos_tiene_su_propia_silueta(): void
     {
-        // El dueño pidió «un modelo por cada camión» y las va moldeando sobre fotos de
-        // su flota, de a una (05-08). Los tres que ya tienen fotos llevan silueta propia;
-        // el Chevy sigue con la genérica hasta que lleguen las suyas. Si alguien vuelve a
+        // El dueño pidió «un modelo por cada camión» y las moldeó sobre fotos de su
+        // flota, de a una (05-08). Al venderse el Chevy quedaron los tres que tienen
+        // fotos, así que YA NINGUNO usa la silueta genérica. Si alguien vuelve a
         // colapsarlos en una silueta compartida, esto se pone rojo.
         $this->seed(CamionesSimulacionSeeder::class);
 
@@ -133,10 +150,10 @@ class CamionesSimulacionSeederTest extends TestCase
         $this->assertSame('semirremolque', $siluetas["Contenedor 40'"]);
         $this->assertSame('camion_hino', $siluetas['HINO 500 (FC 1118)']);
         $this->assertSame('camion_liviano', $siluetas['Hyundai HD35']);
-        $this->assertSame('camion', $siluetas['Chevy 3 (NQR 919)'], 'El Chevy espera sus fotos.');
 
-        // Y ninguno comparte silueta con otro salvo el genérico.
-        $propias = $siluetas->reject(fn (string $s) => $s === 'camion');
-        $this->assertSame($propias->count(), $propias->unique()->count());
+        // Ninguno comparte silueta con otro, y ninguno cae en la genérica: `camion`
+        // queda solo como respaldo para un camión sin silueta declarada.
+        $this->assertSame($siluetas->count(), $siluetas->unique()->count());
+        $this->assertNotContains('camion', $siluetas->all());
     }
 }

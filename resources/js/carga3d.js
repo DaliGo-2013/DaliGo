@@ -19,9 +19,10 @@
  * semirremolque, y un HD35 de 4,3 m no es un camión de reparto mediano— y el dueño
  * pidió después «un modelo por cada camión», así que las va moldeando sobre fotos de
  * su flota, de a una: `semirremolque` (Actros + Tremac), `camion_liviano` (HD35),
- * `camion_hino` (HINO 500 FC 1118) y `camion`, la genérica que queda para el Chevy 3
- * hasta que lleguen sus fotos. Cada cabina tiene su propia función: NO meterlas todas
- * en una con banderas.
+ * `camion_hino` (HINO 500 FC 1118) y `camion`, la genérica de respaldo. Al venderse el
+ * Chevy 3 (05-08) los tres camiones del catálogo tienen silueta propia y la genérica
+ * quedó solo para un camión sin silueta declarada. Cada cabina tiene su propia función:
+ * NO meterlas todas en una con banderas.
  *
  * RENDIMIENTO: se descartan las caras que miran para el lado contrario a la
  * cámara y los bultos tapados por sus seis vecinos (ver `bultos`). Sin eso, un
@@ -244,7 +245,7 @@ export default function iniciarCarga3d(canvas, datos) {
      * puerta» dejaría los códigos invisibles en la vista de costado. Al elegir por
      * cercanía, la vista no importa: siempre cae en una cara que se ve.
      */
-    function codigoEnBulto(x, y, z, a, b, c, letra) {
+    function codigoEnBulto(x, y, z, a, b, c, letra, adentro = false) {
         const pv = v8(x, y, z, a, b, c).map(proyectar);
         const zCentro = pv.reduce((s, p) => s + p[2], 0) / 8;
 
@@ -256,6 +257,14 @@ export default function iniciarCarga3d(canvas, datos) {
         }
         if (!mejor) return;
 
+        // `adentro`: el bulto no se dibuja como un prisma lleno sino con CONTENIDO
+        // adentro (los bidones de la bolsa). Esos cilindros son tangentes a la cara,
+        // así que quedan a la misma profundidad que el código y lo tapaban — la letra
+        // salía sobre las cajas y sobre los bidones de pie, pero no sobre los
+        // acostados. Se adelanta hasta el vértice MÁS CERCANO del bulto, que por
+        // definición está delante de todo lo que el bulto tenga adentro.
+        const zFrente = adentro ? Math.min(...pv.map((p) => p[2])) : mejor.zc;
+
         const [p0, p1, , p3] = mejor.pts;
         const lado = (u, v) => Math.hypot(u[0] - v[0], u[1] - v[1]);
         // La letra se dimensiona con el lado CORTO de la cara: con el largo, una cara
@@ -266,7 +275,7 @@ export default function iniciarCarga3d(canvas, datos) {
         cola.push({
             // Apenas por delante de su cara: si empatan, el orden de `sort` no está
             // definido y el código parpadearía al girar.
-            z: mejor.zc - 1e-6,
+            z: zFrente - 1e-6,
             pts: null,
             letra,
             // Tope: la cara de una bolsa vista de costado mide 1,30 × 0,51 m y pedía una
@@ -384,14 +393,27 @@ export default function iniciarCarga3d(canvas, datos) {
      * que se lea redondo a este tamaño y cuestan la mitad que ocho — y de estos van
      * cinco por bolsa.
      */
-    function bolsaDeBidones(x, y, z, l, w, h, col) {
-        const n = Math.max(1, Math.min(8, Math.round(l / Math.max(0.01, w))));
-        const paso = l / n, r = Math.min(paso, w) * 0.46;
+    function bolsaDeBidones(x, y, z, l, w, h, col, acostado = false) {
+        // ACOSTADO: los botellones van tumbados (pedido del dueño 05-08-2026, «en los
+        // camiones la mayoría se acuestan»). El pack acostado mide 130 × 51 × 26, así
+        // que el que marca cuántos entran en fila deja de ser el ancho y pasa a ser el
+        // ALTO —que es el diámetro del botellón cuando está tumbado— y el eje del
+        // cilindro pasa de vertical a horizontal, a lo ancho del camión.
+        const grosor = Math.max(0.01, acostado ? h : w);
+        const n = Math.max(1, Math.min(8, Math.round(l / grosor)));
+        const paso = l / n, r = Math.min(paso, grosor) * 0.46;
 
         for (let i = 0; i < n; i++) {
-            const cx = x + paso * (i + 0.5), cz = z + w / 2;
-            cilindro(cx, cz, y, r, h * 0.80, col);                       // cuerpo
-            cilindro(cx, cz, y + h * 0.80, r * 0.42, h * 0.20, col);     // pico
+            const cx = x + paso * (i + 0.5);
+            if (acostado) {
+                const cy = y + h / 2;
+                cilindroAcostado(cx, cy, z, r, w * 0.80, col);                    // cuerpo
+                cilindroAcostado(cx, cy, z + w * 0.80, r * 0.42, w * 0.20, col);  // pico
+            } else {
+                const cz = z + w / 2;
+                cilindro(cx, cz, y, r, h * 0.80, col);                       // cuerpo
+                cilindro(cx, cz, y + h * 0.80, r * 0.42, h * 0.20, col);     // pico
+            }
         }
         // La bolsa: SOLO la película de arriba, que es donde se ve en la foto (el
         // plástico gathered sobre los picos). Dibujarla como caja entera metía tres
@@ -409,6 +431,43 @@ export default function iniciarCarga3d(canvas, datos) {
      * desde cualquier ángulo de cámara. La primera versión usaba la profundidad y los
      * bidones salían angulosos y con el brillo saltando al girar.
      */
+    /**
+     * Cilindro TUMBADO: el eje va a lo ancho del camión (z), no a lo alto.
+     *
+     * Es una función aparte y no una bandera dentro de `cilindro` por la misma razón
+     * que cada cabina tiene la suya: el sombreado y la tapa se calculan sobre planos
+     * distintos y con banderas quedaría un enredo de condicionales.
+     *
+     * · La sección circular vive en el plano x/y, así que la luz se mide en ese plano
+     *   y no en el del piso: el brillo tiene que quedar ARRIBA del botellón tumbado.
+     * · Se dibuja la tapa del extremo MÁS CERCANO a la cámara (no siempre la misma):
+     *   al girar, la tapa que se ve cambia de punta, y fijar una dejaba ver el
+     *   cilindro «abierto» desde la mitad de los ángulos.
+     */
+    function cilindroAcostado(cx, cy, z0, r, largo, col) {
+        const N = 8, per = [], LUZ = 1.9;   // hacia arriba y un poco al frente
+        for (let i = 0; i < N; i++) {
+            const a = (i * 2 * Math.PI) / N;
+            per.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r, a]);
+        }
+        const A = per.map((p) => proyectar([p[0], p[1], z0]));
+        const B = per.map((p) => proyectar([p[0], p[1], z0 + largo]));
+        const zc = (q) => q.reduce((s, p) => s + p[2], 0) / q.length;
+        const eje = (zc(A) + zc(B)) / 2;
+
+        for (let i = 0; i < N; i++) {
+            const j = (i + 1) % N, q = [A[i], A[j], B[j], B[i]];
+            const z = zc(q);
+            if (z > eje) continue;   // cara del otro lado del cilindro
+            const normal = per[i][2] + Math.PI / N;
+            const s = 0.64 + 0.36 * (0.5 + 0.5 * Math.cos(normal - LUZ));
+            cola.push({ z, pts: q, fill: rgb(col, s), borde: null });
+        }
+
+        const tapa = zc(A) < zc(B) ? A : B;
+        cola.push({ z: zc(tapa) - 0.01, pts: tapa, fill: rgb(col, 0.92), borde: 'rgba(0,0,0,.18)' });
+    }
+
     function cilindro(cx, cz, y0, r, alto, col) {
         const N = 8, per = [], LUZ = -0.9;   // la luz entra por el frente-izquierda
         for (let i = 0; i < N; i++) {
@@ -713,8 +772,9 @@ export default function iniciarCarga3d(canvas, datos) {
         }
     }
 
-    /** Cabina del camión de reparto GENÉRICO (hoy solo el Chevy 3). Sigue genérica:
-     *  espera sus propias fotos, y moldearla a ojo mientras tanto sería inventar. */
+    /** Cabina del camión de reparto GENÉRICO. Desde que se vendió el Chevy 3 (05-08) no
+     *  la usa ningún camión del catálogo: queda de respaldo para uno que llegue sin
+     *  silueta declarada, para que el lienzo nunca se quede sin dibujo. */
     function cabina() {
         const x0 = -M.delante, w = veh.ancho - 0.06, z0 = 0.03;
         const alto = M.altoCab, cuerpoBajo = alto * 0.52, largo = M.largoCab;
@@ -820,7 +880,7 @@ export default function iniciarCarga3d(canvas, datos) {
         panel([[L, 0, 0], [L, H, 0], [L, H, W], [L, 0, W]], VID, { alpha: 0.09, tono: 0.9 });
     }
 
-    /** Camión de reparto (HINO, Chevy) y su variante liviana (HD35). */
+    /** Camión de reparto (HINO) y su variante liviana (HD35). */
     function siluetaCamion() {
         sombraSuave(-M.delante - 0.1, veh.largo);
         // Placa entera solo BAJO LA CABINA (ahí no hay piso que tapar); bajo la
@@ -919,14 +979,14 @@ export default function iniciarCarga3d(canvas, datos) {
                 const px = blq.x + ix * ori.largo, py = iy * ori.alto, pz = blq.y + iz * ori.ancho;
                 const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
                 if (bidones) {
-                    bolsaDeBidones(px, py, pz, ba, bb, bc, col);
+                    bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado);
                 } else {
                     prisma(px, py, pz, ba, bb, bc, col);
                 }
                 // El código va sobre la caja de siempre, sea prisma o bolsa de
                 // bidones: las dos ocupan el mismo volumen, así que la cara se
                 // calcula igual y una bolsa también queda rotulada.
-                if (codigos && VARIOS && blq.letra) codigoEnBulto(px, py, pz, ba, bb, bc, blq.letra);
+                if (codigos && VARIOS && blq.letra) codigoEnBulto(px, py, pz, ba, bb, bc, blq.letra, bidones);
             }
             dibujadosPorBloque[i] = dibujables;
             puestos += dibujables;

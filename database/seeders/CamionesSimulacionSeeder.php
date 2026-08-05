@@ -22,6 +22,16 @@ use Illuminate\Database\Seeder;
  */
 class CamionesSimulacionSeeder extends Seeder
 {
+    /**
+     * Camiones que la empresa VENDIÓ y hay que sacar del catálogo.
+     *
+     * El Chevy 3 (NQR 919) estuvo sembrado y llegó a producción; el dueño avisó el
+     * 05-08-2026 que ya no está («el chevy 3 no está más, lo vendieron»). Borrarlo del
+     * array de arriba no alcanza: la fila ya existe en producción y `updateOrCreate` no
+     * borra lo que dejó de estar en la lista.
+     */
+    private const VENDIDOS = ['Chevy 3 (NQR 919)'];
+
     public function run(): void
     {
         $camiones = [
@@ -45,15 +55,6 @@ class CamionesSimulacionSeeder extends Seeder
                 'notas' => 'La misma caja en los dos HINO de la flota.',
             ],
             [
-                'nombre' => 'Chevy 3 (NQR 919)',
-                'largo_cm' => 800, 'ancho_cm' => 230, 'alto_cm' => 245,
-                // La planilla no trae su capacidad en kg: sin dato no se limita
-                // ni se inventa. El espacio manda igual (botellones vacíos).
-                'peso_max_kg' => null,
-                'silueta' => 'camion',
-                'notas' => 'Capacidad en kg pendiente de confirmar.',
-            ],
-            [
                 'nombre' => 'Hyundai HD35',
                 'largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220,
                 'peso_max_kg' => 1500,
@@ -68,5 +69,15 @@ class CamionesSimulacionSeeder extends Seeder
                 $c + ['pasillo_cm' => 0, 'activo' => true],
             );
         }
+
+        // Camiones que salieron de la flota. Se BORRAN, no se desactivan: la fila
+        // desactivada seguiría apareciendo en cualquier listado que olvide filtrar por
+        // `activo`, y cotizar contra un camión que la empresa ya vendió es prometer un
+        // viaje que no se puede hacer. Es el mismo criterio que con el «H1».
+        //
+        // Va acá y no en una migración a propósito: la fuente de verdad del catálogo es
+        // este seeder, corre en cada deploy y es idempotente. Una migración lo borraría
+        // una vez y el próximo deploy lo volvería a sembrar.
+        CamionSimulacion::whereIn('nombre', self::VENDIDOS)->delete();
     }
 }

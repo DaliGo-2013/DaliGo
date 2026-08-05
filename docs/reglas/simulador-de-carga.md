@@ -12,7 +12,7 @@
 vehículos de la flota»). El simulador tiene su **catálogo propio**:
 `camiones_simulacion` (`App\Models\CamionSimulacion`), sembrado por
 `CamionesSimulacionSeeder` en cada deploy con las medidas que él dictó —
-Contenedor 40', HINO 500, Chevy 3 y HD35, verificadas contra sus cupos de
+Contenedor 40', HINO 500 y HD35, verificadas contra sus cupos de
 referencia. Son cajas de carga **TIPO** («un HD35»), no patentes.
 
 La lección que motivó el cambio, para no repetirla: la primera versión leía las
@@ -86,6 +86,59 @@ Las cantidades del formulario van **en unidades sueltas** (200 botellones, 20
 cajas). El controlador convierte a bultos redondeando **hacia arriba** (198
 botellones = 40 bolsas: la bolsa viaja completa o no viaja) y lo cargado se
 reporta **capado a lo pedido** (198, no 200 — decir más de lo que pidió confunde).
+
+## 3.1 De pie o acostado: la estiba se ELIGE (05-08-2026)
+
+Pedido del dueño: *«necesito la opción de poder acostar el pack de botellones ya que en
+los camiones la mayoría se acuestan»*.
+
+La bolsa medida son **130 × 26 × 51**: cinco botellones **PARADOS** en fila (el 51 es el
+alto del botellón, el 26 su diámetro). Acostarlos pone el eje en horizontal, así que el
+pack pasa a **130 × 51 × 26** — el mismo largo, y el diámetro pasa a ser la altura.
+`TipoBulto::paraCalculo(bool $acostado)` intercambia ancho y alto; el motor no cambió.
+
+**El número cambia, y hacia abajo:** en el HD35 son **420 de pie contra 270 acostados**,
+porque acostada la bolsa mide 26 cm de alto y el tope de apilado (6) corta antes que los
+220 cm de la caja.
+
+Tres reglas que salen de eso:
+
+1. **De pie es el predeterminado.** Es la orientación con la que el dueño verificó sus
+   referencias (420 / 960 / 1500 / 1620). Si el default se diera vuelta, esos números
+   dejarían de cuadrar y nadie sabría por qué. Candado:
+   `test_acostado_da_menos_botellones_y_de_pie_sigue_siendo_el_predeterminado`.
+2. **Se elige POR LÍNEA**, no por pantalla: en la misma carga puede ir un pack acostado y
+   otro de pie.
+3. **Solo se ofrece donde cambia algo**, o sea en los bultos de orientación FIJA
+   (`TipoBulto::puedeAcostarse()`). A los demás el motor ya les prueba las 6 rotaciones y
+   se queda con la mejor: ofrecerles «acostado» sería ofrecer empeorar el resultado. Si
+   igual llega por URL, se ignora.
+
+**La pantalla DICE con qué estiba calculó** (fila «Cómo viaja» en el cupo máximo, chapita
+«Acostado» en el detalle de la carga mixta). Leer «entran 270» sin saber que fue acostado
+invita a compararlo con los 420 de pie y a pensar que el simulador se equivocó.
+
+Y el visor dibuja los botellones **tumbados de verdad** (`cilindroAcostado`, función
+aparte de la vertical porque el sombreado y la tapa se calculan sobre planos distintos).
+Si el lienzo mostrara los botellones parados mientras el cálculo dice «acostado», dejaría
+de ser la prueba de lo que el motor hizo — que es todo lo que aporta.
+
+## 3.2 El Chevy 3 se vendió (05-08-2026)
+
+Aviso del dueño: *«el chevy 3 no está más, lo vendieron»*. Quedan **tres** camiones.
+
+Sacarlo del array del seeder **no alcanza**: la fila ya había llegado a producción y
+`updateOrCreate` no borra lo que dejó de estar en la lista. Por eso el seeder tiene
+`VENDIDOS`, que **borra** esas filas en cada deploy. Se borra y no se desactiva porque una
+fila desactivada seguiría apareciendo en cualquier listado que olvide filtrar por `activo`,
+y cotizar contra un camión que la empresa ya vendió es prometer un viaje imposible — el
+mismo criterio que con el «H1». Va en el seeder y no en una migración porque el seeder es
+la fuente de verdad del catálogo y corre en cada deploy: una migración lo borraría una vez
+y el próximo deploy lo volvería a sembrar. Candado:
+`test_un_camion_vendido_se_borra_del_catalogo_aunque_ya_estuviera_sembrado`.
+
+Efecto de rebote: **ya ningún camión usa la silueta genérica** `camion`, que queda solo
+como respaldo para un camión sin silueta declarada.
 
 ## 4. El visor 3D y sus colores
 

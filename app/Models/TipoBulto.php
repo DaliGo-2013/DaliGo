@@ -71,13 +71,42 @@ class TipoBulto extends Model implements AuditableContract
         return $this->categoria === 'botellones' ? 'botellones' : 'caja';
     }
 
-    /** Forma que espera CalculoDeCarga::cupo(), sin que el servicio conozca Eloquent. */
-    public function paraCalculo(): array
+    /**
+     * Si tiene sentido ofrecer ELEGIR entre de pie y acostado.
+     *
+     * Solo en los de orientación FIJA. A los demás el motor ya les prueba las 6
+     * rotaciones y se queda con la que más entra, así que ofrecer la opción sería
+     * ofrecer empeorar el resultado sin ningún motivo: el usuario elegiría «acostado»
+     * y el número bajaría porque le sacó al motor la libertad que tenía.
+     */
+    public function puedeAcostarse(): bool
     {
+        return (bool) $this->orientacion_fija;
+    }
+
+    /**
+     * Forma que espera CalculoDeCarga::cupo(), sin que el servicio conozca Eloquent.
+     *
+     * ACOSTADO intercambia ancho y alto (pedido del dueño 05-08-2026: «necesito la
+     * opción de poder acostar el pack de botellones, en los camiones la mayoría se
+     * acuestan»). La bolsa medida son 130 × 26 × 51: cinco botellones PARADOS en fila
+     * —el 51 es el alto del botellón y el 26 su diámetro—. Acostarlos pone el eje del
+     * botellón en horizontal, así que el pack pasa a 130 × 51 × 26: el mismo largo, y
+     * el diámetro pasa a ser la altura.
+     *
+     * No es cosmético y el número CAMBIA: en el HD35 son 420 botellones de pie contra
+     * 270 acostados, porque acostado la bolsa mide 26 cm de alto y el tope de apilado
+     * (6) corta antes que los 220 cm de la caja. Por eso de pie sigue siendo el
+     * predeterminado: es la orientación con la que el dueño verificó sus referencias.
+     */
+    public function paraCalculo(bool $acostado = false): array
+    {
+        $acostado = $acostado && $this->puedeAcostarse();
+
         return [
             'largo' => $this->largo_cm,
-            'ancho' => $this->ancho_cm,
-            'alto' => $this->alto_cm,
+            'ancho' => $acostado ? $this->alto_cm : $this->ancho_cm,
+            'alto' => $acostado ? $this->ancho_cm : $this->alto_cm,
             'peso' => (float) $this->peso_kg,
             'unidades' => $this->unidades,
             'apilable_max' => $this->apilable_max,

@@ -433,6 +433,102 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('id="carga3d"', $html);
     }
 
+    public function test_acostar_el_pack_intercambia_ancho_y_alto(): void
+    {
+        // Pedido del dueño 05-08: «necesito la opción de poder acostar el pack de
+        // botellones, en los camiones la mayoría se acuestan». La bolsa medida son
+        // 130 × 26 × 51 = cinco botellones PARADOS (51 el alto del botellón, 26 su
+        // diámetro). Acostarlos pone el eje en horizontal: 130 × 51 × 26.
+        $dePie = $this->bolsa->paraCalculo();
+        $acostado = $this->bolsa->paraCalculo(true);
+
+        $this->assertSame([130, 26, 51], [$dePie['largo'], $dePie['ancho'], $dePie['alto']]);
+        $this->assertSame([130, 51, 26], [$acostado['largo'], $acostado['ancho'], $acostado['alto']]);
+    }
+
+    public function test_acostado_da_menos_botellones_y_de_pie_sigue_siendo_el_predeterminado(): void
+    {
+        // El número CAMBIA y hacia abajo: acostada la bolsa mide 26 cm de alto y el tope
+        // de apilado (6) corta antes que los 220 cm de la caja. De pie tiene que seguir
+        // siendo el predeterminado porque es la orientación con la que el dueño verificó
+        // sus 420 — si el default se diera vuelta, su referencia dejaría de cuadrar y
+        // nadie sabría por qué.
+        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $camion = $this->hd35->paraCalculo();
+
+        $this->assertSame(420, $calculo->cupo($camion, $this->bolsa->paraCalculo())['unidades']);
+        $this->assertSame(270, $calculo->cupo($camion, $this->bolsa->paraCalculo(true))['unidades']);
+
+        // Sin pedir nada, la pantalla responde DE PIE.
+        $sinPedir = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->assertOk();
+
+        $this->assertSame(420, $sinPedir->viewData('resultado')['unidades']);
+        $this->assertFalse($sinPedir->viewData('acostado'));
+    }
+
+    public function test_la_pantalla_calcula_acostado_cuando_se_pide(): void
+    {
+        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->bolsa->id,
+            'acostado' => 1,
+        ]))->assertOk();
+
+        $this->assertSame(270, $res->viewData('resultado')['unidades']);
+        $this->assertTrue($res->viewData('acostado'));
+        // Y lo DICE: «entran 270» sin decir con qué estiba invita a compararlo con
+        // los 420 de pie y a pensar que el simulador se equivocó.
+        $res->assertSee('Cómo viaja')->assertSee('Acostado');
+    }
+
+    public function test_la_estiba_se_elige_por_linea_en_la_carga_mixta(): void
+    {
+        // En la misma carga puede ir un pack acostado y otro de pie, así que la elección
+        // es POR LÍNEA y no de la pantalla.
+        $escena = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'acostado' => 1],
+            ['tipo' => $this->caja->id, 'cantidad' => 10],
+        ])->assertOk()->viewData('escena');
+
+        $porNombre = collect($escena['bloques'])->keyBy('nombre');
+
+        $this->assertTrue($porNombre[$this->bolsa->nombre]['acostado']);
+        $this->assertFalse($porNombre[$this->caja->nombre]['acostado']);
+
+        // El bloque acostado mide 26 cm de alto y 51 de ancho, al revés que de pie.
+        $this->assertSame(0.51, $porNombre[$this->bolsa->nombre]['orientacion']['ancho']);
+        $this->assertSame(0.26, $porNombre[$this->bolsa->nombre]['orientacion']['alto']);
+    }
+
+    public function test_un_bulto_que_el_motor_ya_rota_no_ofrece_la_opcion_y_la_ignora(): void
+    {
+        // La caja NO es de orientación fija: el motor le prueba las 6 rotaciones y se
+        // queda con la mejor. Ofrecerle «acostado» sería ofrecer empeorar el resultado,
+        // y forzarlo por URL no debe cambiar nada.
+        $this->assertFalse($this->caja->puedeAcostarse());
+        $this->assertTrue($this->bolsa->puedeAcostarse());
+
+        $this->assertSame(
+            $this->caja->paraCalculo(),
+            $this->caja->paraCalculo(true),
+            'Acostar un bulto que el motor ya rota le cambió las medidas.',
+        );
+    }
+
+    public function test_el_visor_dibuja_los_botellones_tumbados_y_no_una_caja_girada(): void
+    {
+        // Si el lienzo mostrara los botellones parados mientras el cálculo dice
+        // «acostado», dejaría de ser la prueba de lo que el motor hizo — que es todo lo
+        // que aporta. El cilindro tumbado es una función APARTE de la vertical: el
+        // sombreado y la tapa se calculan sobre planos distintos.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('function cilindroAcostado', $js);
+        $this->assertStringContainsString('bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado)', $js);
+    }
+
     public function test_el_encuadre_mide_el_dibujo_y_no_una_caja_supuesta(): void
     {
         // El camión se veía chico y corrido a la derecha (reporte del dueño 05-08):
