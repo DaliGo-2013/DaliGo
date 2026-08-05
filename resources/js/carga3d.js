@@ -136,8 +136,9 @@ export default function iniciarCarga3d(canvas, datos) {
             semi, liviano, chas, r, rw, sep, largoCab, altoCab,
             suelo: -chas - r * 2,
             delante: largoCab + sep,
-            // El dormitorio del tracto es lo más alto de la escena.
-            techo: veh.alto + (semi ? Math.max(0, altoCab + altoCab * 0.30 - veh.alto) : 0),
+            // El techo del tracto (cabina + deflector) puede pasar al contenedor. Ya no
+            // se suma un cajón de dormitorio: el deflector son 14 cm, no 30% del alto.
+            techo: veh.alto + (semi ? Math.max(0, altoCab + 0.14 - veh.alto) : 0),
         };
     })();
 
@@ -384,8 +385,89 @@ export default function iniciarCarga3d(canvas, datos) {
 
     // ----------------------------------------------------------------- siluetas
 
-    /** Cabina con capó y parabrisas reclinados, paragolpes, parrilla y espejos. */
-    function cabina(conDormitorio) {
+    /**
+     * Cabina del TRACTO, moldeada sobre las fotos del Actros 2545 del dueño (05-08).
+     *
+     * Lo que estaba mal antes, según esas fotos:
+     * · era una cuña con un CAJÓN encima haciendo de dormitorio; en el tracto real el
+     *   dormitorio es parte del cuerpo y arriba solo va el deflector, fino;
+     * · el parabrisas estaba reclinado un 30% y en el Actros es casi vertical;
+     * · faltaban la banda oscura bajo el vidrio, la parrilla en tres franjas, los faros
+     *   de las esquinas bajas, el guardabarro y el estribo;
+     * · los espejos eran dos palitos y son grandes, sobre brazos.
+     *
+     * Solo la usa el semirremolque: las cabinas del HINO y del HD35 esperan sus propias
+     * fotos, y moldearlas a ojo mientras tanto sería inventar otra vez.
+     */
+    function cabinaTracto() {
+        const x0 = -M.delante, largo = M.largoCab, w = veh.ancho - 0.06, z0 = 0.03;
+        const alto = M.altoCab, capo = alto * 0.44;
+
+        // Cuerpo de una pieza. El parabrisas apenas se inclina (7% del largo).
+        prisma(x0, 0, z0, largo, w, capo, CABINA, G);
+        cuerpo(cuna(x0, capo, z0, largo, w, alto - capo, largo * 0.07, 0), CABINA, G);
+
+        // Deflector del techo: sobresale al frente y a los costados, y es FINO.
+        prisma(x0 - 0.03, alto, z0 - 0.03, largo * 0.92, w + 0.06, 0.14, CABINA, G);
+
+        // Parabrisas: grande y casi vertical, ocupando casi todo el frente de arriba.
+        cuerpo(cuna(x0 - 0.02, capo + 0.14, z0 + 0.05, largo * 0.16, w - 0.10,
+            (alto - capo) * 0.62, largo * 0.05, 0), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.35)' });
+        // Banda oscura bajo el parabrisas (la zona de los limpiaparabrisas).
+        prisma(x0 - 0.03, capo + 0.02, z0 + 0.04, 0.05, w - 0.08, 0.13, [44, 46, 52]);
+
+        // Parrilla: tres franjas hundidas, como en las fotos.
+        for (let i = 0; i < 3; i++) {
+            prisma(x0 - 0.025, capo * (0.30 + i * 0.21), z0 + 0.16, 0.03, w - 0.32, capo * 0.14, [62, 64, 70]);
+        }
+
+        // Paragolpes con el escalón central + faros en las esquinas bajas.
+        prisma(x0 - 0.09, 0.06, z0 + 0.01, 0.11, w - 0.02, capo * 0.30, CABINA, G);
+        prisma(x0 - 0.10, 0.06, z0 + w * 0.34, 0.12, w * 0.32, capo * 0.20, [54, 56, 62]);
+        for (const z of [z0 + 0.04, z0 + w - 0.30]) {
+            prisma(x0 - 0.08, capo * 0.30, z, 0.05, 0.26, 0.13, [242, 243, 232], { borde: 'rgba(0,0,0,.3)' });
+        }
+
+        // Espejos grandes sobre brazos, a la altura del parabrisas.
+        for (const z of [z0 - 0.22, z0 + w + 0.04]) {
+            prisma(x0 + largo * 0.13, alto * 0.58, z, 0.05, 0.18, 0.36, [56, 58, 64], G);
+            prisma(x0 + largo * 0.13, alto * 0.72, z > z0 ? z - 0.06 : z + 0.18, 0.04, 0.08, 0.04, [44, 46, 52]);
+        }
+
+        // Guardabarro blanco sobre la rueda delantera + estribo bajo la puerta.
+        for (const z of [-0.03, veh.ancho - M.rw + 0.03]) {
+            guardabarroClaro(-M.largoCab * 0.60, -M.chas, z, M.r, M.rw);
+        }
+        for (const z of [z0 - 0.05, z0 + w - 0.20]) {
+            prisma(x0 + largo * 0.42, -M.chas * 0.4, z, largo * 0.34, 0.25, 0.06, [96, 99, 106], G);
+        }
+
+        // Tanque de combustible y pasarela detrás de la cabina.
+        prisma(x0 + largo + 0.10, -M.chas + 0.02, z0 - 0.06, 0.70, 0.34, 0.44, [176, 180, 188], G);
+    }
+
+    /** Guardabarro CLARO (carrocería) en vez del gris del chasis: en el tracto real
+     *  el pasarruedas delantero es del color de la cabina. */
+    function guardabarroClaro(cx, cyBase, z, r, ancho) {
+        const N = 7, R = r + 0.09, cen = cyBase - r, arco = [];
+        for (let i = 0; i <= N; i++) {
+            const a = Math.PI - (i * Math.PI) / N;
+            arco.push([cx + Math.cos(a) * R, cen + Math.sin(a) * R]);
+        }
+        for (let i = 0; i < N; i++) {
+            const q = [
+                proyectar([arco[i][0], arco[i][1], z]),
+                proyectar([arco[i + 1][0], arco[i + 1][1], z]),
+                proyectar([arco[i + 1][0], arco[i + 1][1], z + ancho]),
+                proyectar([arco[i][0], arco[i][1], z + ancho]),
+            ];
+            cola.push({ z: q.reduce((s, p) => s + p[2], 0) / 4, pts: q, fill: rgb(CABINA, 0.94), borde: null });
+        }
+    }
+
+    /** Cabina de los camiones de reparto (HINO, Chevy, HD35). Sigue siendo genérica:
+     *  esperan sus propias fotos, y moldearlas a ojo mientras tanto sería inventar. */
+    function cabina() {
         const x0 = -M.delante, w = veh.ancho - 0.06, z0 = 0.03;
         const alto = M.altoCab, cuerpoBajo = alto * 0.52, largo = M.largoCab;
 
@@ -395,8 +477,6 @@ export default function iniciarCarga3d(canvas, datos) {
         // Vidrio, apenas por delante del parabrisas.
         cuerpo(cuna(x0 - 0.015, cuerpoBajo + 0.06, z0 + 0.05, largo * 0.32, w - 0.1,
             (alto - cuerpoBajo) * 0.72, 0, largo * 0.22), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.3)' });
-        // Dormitorio: el cajón que hace inconfundible al tracto.
-        if (conDormitorio) prisma(x0 + largo * 0.34, alto, z0 + 0.04, largo * 0.62, w - 0.08, alto * 0.30, CABINA, G);
         // Paragolpes y parrilla.
         prisma(x0 - 0.10, 0.05, z0 + 0.02, 0.12, w - 0.04, cuerpoBajo * 0.42, GRIS, G);
         prisma(x0 - 0.03, cuerpoBajo * 0.56, z0 + 0.10, 0.05, w - 0.2, cuerpoBajo * 0.28, [40, 42, 48], G);
@@ -494,7 +574,7 @@ export default function iniciarCarga3d(canvas, datos) {
         // caja van largueros angostos.
         tira(-M.delante, -M.chas, 0.02, M.delante, veh.ancho - 0.04, M.chas - 0.05, GRIS, G);
         largueros(0, veh.largo);
-        cabina(false);
+        cabina();
         cajaDeCarga();
 
         const anchoTras = M.liviano ? M.rw : M.rw * 2 + 0.03;
@@ -514,7 +594,7 @@ export default function iniciarCarga3d(canvas, datos) {
         tira(-M.delante, -M.chas, 0.06, M.delante + 0.35, veh.ancho - 0.12, M.chas * 0.8, GRIS, G);
         // Quinta rueda: el disco donde se apoya el acoplado.
         prisma(-M.sep * 0.6, -0.02, veh.ancho * 0.28, 0.55, veh.ancho * 0.44, 0.06, [58, 60, 66]);
-        cabina(true);
+        cabinaTracto();
         cajaDeCarga();
         // Patas de apoyo: sin ellas el acoplado parece flotar.
         for (const z of [veh.ancho * 0.16, veh.ancho * 0.78]) {
@@ -522,7 +602,13 @@ export default function iniciarCarga3d(canvas, datos) {
         }
 
         const anchoDoble = M.rw * 2 + 0.03;
+        // Eje delantero simple del tracto + TÁNDEM trasero doble: en las fotos del
+        // Actros se ven las dos ruedas juntas detrás de la cabina (es un 6×4), y antes
+        // el tracto tenía un solo eje y parecía apoyado en el aire.
         for (const z of [-0.03, veh.ancho - M.rw + 0.03]) rueda(-M.largoCab * 0.60, -M.chas, z, M.r, M.rw);
+        for (const ex of [-M.sep - 0.10, -M.sep + 1.25]) {
+            for (const z of [-0.03, veh.ancho - anchoDoble + 0.03]) rueda(ex, -M.chas, z, M.r, M.rw, true);
+        }
         // Tridem: separación 1,4 m contra ruedas de 0,92 m para que se lean
         // sueltas. Con 1,3 m y radio 0,50 se tocaban y quedaba un amasijo.
         for (const ex of [veh.largo * 0.66, veh.largo * 0.66 + 1.4, veh.largo * 0.66 + 2.8]) {

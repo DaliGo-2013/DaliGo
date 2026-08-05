@@ -186,6 +186,27 @@ adelante hasta que entre legible en la chapa — «Hyundai HD35» → **HD35**, 
 arriba y se saltea cuando la cara trasera no mira a la cámara (saldría espejado) o
 cuando en pantalla mide menos de 34 px (no se leería).
 
+### 4.1quater La cabina del tracto, moldeada sobre fotos (05-08-2026)
+
+El dueño pasó fotos de su **Actros 2545** (el que tira el contenedor) y pidió ir
+moldeando **un camión por vez**. La cabina del tracto (`cabinaTracto()`, que solo usa el
+semirremolque) se corrigió contra esas fotos:
+
+| En las fotos | Lo que se dibujaba antes |
+|---|---|
+| Cabina alta **de una pieza**; arriba solo el deflector, fino | Cuña + un **cajón** de dormitorio encima |
+| Parabrisas **casi vertical** | Reclinado un 30% del largo |
+| Banda oscura ancha bajo el vidrio | No existía |
+| Parrilla en **tres franjas** + faros en las esquinas bajas | Una franja |
+| Espejos **grandes sobre brazos** | Dos palitos |
+| Guardabarro blanco (color carrocería) + estribo | No existían |
+| Tracto **6×4**: eje delantero + tándem trasero | Un solo eje delantero |
+
+**Las cabinas del HINO, el Chevy y el HD35 siguen genéricas a propósito**: esperan sus
+propias fotos. Moldearlas a ojo mientras tanto sería inventar de nuevo, que es justo lo
+que se estaba corrigiendo. Cuando lleguen, cada una va a su propia función igual que
+esta — no volver a meter todo en `cabina()` con banderas.
+
 **La cabina va BLANCA y en NEUTROS.** Blanca porque así es la flota real (se ve en las
 fotos de carga del 05-08; antes era un azul inventado). Y en neutros, sin franja de
 color, porque **dentro del lienzo el color es DATO**: pintar la cabina de naranjo o azul
