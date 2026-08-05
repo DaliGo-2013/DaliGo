@@ -33,6 +33,7 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_plantilla_devolucion_solicitada',
         'notif_plantilla_devolucion_recibida',
         'notif_plantilla_devolucion_resuelta',
+        'notif_plantilla_despacho_parada_rechazada',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

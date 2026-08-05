@@ -304,6 +304,102 @@ class DespachoService
         }
     }
 
+    /**
+     * RECHAZO EN PUERTA (P-DSP-09, R15): el conductor NO pudo entregar. Solo
+     * existe para despachos EN una hoja (el resultado vive en la parada); la
+     * carga física vuelve a bodega y el jefe de despacho decide qué pasa —
+     * el aviso M15 sale de aquí. NO crea la devolución M13 (decisión del
+     * dueño pendiente, pregunta del parte).
+     *
+     * Idempotente SIN columna uuid: el rechazo no crea filas — un reintento
+     * de la cola encuentra la parada ya rechazada y responde duplicado sin
+     * pisar el motivo original. El re-check corre bajo el lock del despacho
+     * (misma fila ancla que la entrega: entrega y rechazo compiten entre sí).
+     *
+     * @param  array{motivo:string, capturado_at?:string|null}  $datos
+     * @return array{despacho: Despacho, yaExistia: bool}
+     *
+     * @throws ValidationException si el despacho no tiene parada o su ciclo ya cerró.
+     */
+    public function rechazarEntregaConductor(Despacho $despacho, array $datos): array
+    {
+        $parada = $despacho->parada;
+
+        if (! $parada) {
+            throw ValidationException::withMessages([
+                'despacho' => 'Este despacho no pertenece a una hoja de ruta: el rechazo en puerta se registra sobre la parada.',
+            ]);
+        }
+
+        // Cara amable: ¿ya se rechazó? (reintento de la cola)
+        if ($parada->resultado === HojaRutaParada::RESULTADO_RECHAZADA) {
+            return ['despacho' => $despacho, 'yaExistia' => true];
+        }
+
+        $resultado = DB::transaction(function () use ($despacho, $datos) {
+            $anclado = Despacho::whereKey($despacho->id)->lockForUpdate()->firstOrFail();
+            $parada = $anclado->parada()->first();
+
+            // Re-check con la fila tomada: otro drenado pudo rechazarla (o
+            // entregarla) entre el pre-check y este lock.
+            if ($parada->resultado === HojaRutaParada::RESULTADO_RECHAZADA) {
+                return ['despacho' => $anclado, 'yaExistia' => true];
+            }
+
+            if ($parada->resultado !== null || ! $anclado->admiteEntrega()) {
+                throw ValidationException::withMessages([
+                    'estado' => "El despacho {$anclado->codigo} ya está resuelto: no se puede rechazar.",
+                ]);
+            }
+
+            $parada->update([
+                'resultado' => HojaRutaParada::RESULTADO_RECHAZADA,
+                'rechazo_motivo' => Str::limit($datos['motivo'], 188),
+            ]);
+
+            return ['despacho' => $anclado, 'yaExistia' => false];
+        });
+
+        // El aviso sale DESPUÉS del commit (patrón M13): si el correo falla,
+        // el rechazo ya está registrado — se reporta, no se revienta.
+        if (! $resultado['yaExistia']) {
+            $this->avisarParadaRechazada($resultado['despacho']);
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Aviso M15 al equipo de despacho: una parada volvió rechazada (R15). Por
+     * ROL (patrón M13): jefe_despacho decide, jefe_logistica arma las hojas,
+     * admin supervisa. Campanita al tiro; correo con la latencia de la grilla.
+     */
+    private function avisarParadaRechazada(Despacho $despacho): void
+    {
+        try {
+            $parada = $despacho->parada()->with('hoja.conductor')->first();
+            $hoja = $parada?->hoja;
+            if (! $hoja) {
+                return;
+            }
+
+            $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+            $datos = [
+                'folio_hoja' => (string) $hoja->folio,
+                'folio_documento' => (string) ($despacho->documento?->folio ?? '—'),
+                'cliente' => $despacho->documento?->cliente?->razon_social ?? '—',
+                'motivo' => $parada->rechazo_motivo ?? '—',
+                'conductor' => $hoja->conductor?->name ?? '—',
+                'url' => route('admin.hojas-ruta.show', $hoja),
+            ];
+
+            User::role(['jefe_despacho', 'jefe_logistica', 'admin'])->get()->unique('id')
+                ->each(fn (User $u) => $dispatcher->despachar('despacho.parada_rechazada', $hoja, $u, $datos));
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
     private function exigirSinDespacho(DocumentoVenta $documento): void
     {
         $existente = $documento->despachos()->first();

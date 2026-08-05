@@ -51,7 +51,12 @@ class EntregaConductorController extends Controller
         $despachos = Despacho::with(['documento.cliente', 'zona', 'parada.hoja'])
             ->enReparto()
             ->where(function ($q) use ($userId) {
-                $q->whereHas('parada.hoja', fn ($qq) => $qq->enRuta()->where('conductor_id', $userId))
+                // Una parada RESUELTA (rechazada) no se vuelve a mostrar aunque
+                // el despacho siga en_ruta: la carga vuelve a bodega (R15).
+                $q->whereHas('parada', function ($qq) use ($userId) {
+                    $qq->whereNull('resultado')
+                        ->whereHas('hoja', fn ($qqq) => $qqq->enRuta()->where('conductor_id', $userId));
+                })
                     ->orWhere(fn ($qq) => $qq->whereDoesntHave('parada')->where('conductor_id', $userId));
             })
             ->oldest('retirado_at')
@@ -139,6 +144,40 @@ class EntregaConductorController extends Controller
         }
 
         return $this->respuesta($request, $resultado['despacho'], $resultado['yaExistia']);
+    }
+
+    /**
+     * RECHAZO EN PUERTA (P-DSP-09, R15): el conductor no pudo entregar. Es el
+     * segundo destino de la cola offline (mismo mecanismo, sin archivos) y
+     * también es idempotente — un reintento responde duplicado sin pisar el
+     * motivo. Solo aplica a despachos EN una hoja de ruta.
+     */
+    public function rechazar(Request $request, Despacho $despacho, DespachoService $service): RedirectResponse|JsonResponse
+    {
+        // Mismo scoping que confirmar, ANTES de validar: 403 permanente.
+        abort_unless($despacho->entregablePorConductor($request->user()), 403);
+
+        $data = $request->validate([
+            'motivo' => ['required', 'string', 'max:188'],
+            // Hora del dispositivo (offline-safe), como en la confirmación.
+            'capturado_at' => ['nullable', 'date'],
+        ]);
+
+        $resultado = $service->rechazarEntregaConductor($despacho, $data);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'despacho' => $resultado['despacho']->codigo,
+                'duplicado' => $resultado['yaExistia'],
+            ]);
+        }
+
+        return redirect()
+            ->route('entregas.index')
+            ->with('status', $resultado['yaExistia']
+                ? "El rechazo de {$resultado['despacho']->codigo} ya estaba registrado."
+                : "Rechazo de {$resultado['despacho']->codigo} registrado — el equipo de despacho fue avisado.");
     }
 
     private function respuesta(Request $request, Despacho $despacho, bool $yaExistia): RedirectResponse|JsonResponse
