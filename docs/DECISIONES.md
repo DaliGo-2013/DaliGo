@@ -31,7 +31,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 |---|---|---|---|---|---|
 | D-001 | Nombre definitivo del sistema: **DaliGo** | 🟢 TOMADA | Mauricio (2026-07-08) | — | — |
 | D-002 | Matriz "qué rol ve qué" | 🟢 TOMADA como ESTRATEGIA | Mauricio (2026-07-08) | — | — |
-| D-003 | Bodegas virtuales (16): levantamiento | 🟡 ABIERTA · **Ricardo respondió 13-07 (por anexar); Luis pendiente** | Luis + Ricardo | mapping bodega↔sucursal (M04 pospuesto) | sin fecha crítica (pivote 13-07) |
+| D-003 | Bodegas virtuales (16): levantamiento | 🟢 **RESUELTA PARCIAL 06-ago** · Excel conjunto Ricardo+Luis anexado: **11/16 firmes** (5 viven, 6 mueren), 5 [B] con pregunta puntual | Luis + Ricardo | mapping bodega↔sucursal → **M04 se destraba** | las 5 [B] cierran con la ronda 2 de Luis |
 | D-004 | Boleta rápida: flujo tributario | 🔴 ABIERTA | Contabilidad (vía Luis) | M05-F3 | antes de W23 |
 | D-005 | Huecos API Bsale (docs + soporte oficial) | 🔴 ABIERTA | Soporte Bsale (correo en curso vía Director) | M05-F2 (DTE), webhooks, push kardex M11 | **antes de W18** |
 | D-006 | CRM / zonas de vendedores: ¿entra? | 🟢 RESUELTA 03-ago | Mauricio | Diseño hoja de ruta M08 | cerrada (respuesta de Luis, ronda 1 despachos) |
@@ -48,7 +48,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 
 > D-014 se agregó al semáforo el 2026-07-26: tenía su ficha completa en §4 desde el 24-07 pero faltaba en esta tabla, que es la que se revisa. Una decisión que no aparece acá, para el ritual del viernes no existe.
 
-**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026** — quedan **4 abiertas** (D-003 EN CURSO — Luis trabajando la limpieza de bodegas al 03-ago —, D-004, D-005, D-008); el objetivo del 31-jul no se cumplió, D-006 cerró el 03-ago.
+**Ritual:** revisar este semáforo cada viernes (ver `docs/RUTA-MAESTRA.md` §0). Objetivo H1': **todas cerradas al 31-jul-2026** — quedan **3 abiertas** (D-004, D-005, D-008); el objetivo del 31-jul no se cumplió, D-006 cerró el 03-ago y **D-003 quedó resuelta parcial el 06-ago** (Excel de Luis anexado; 5 filas [B] esperan su pregunta de la ronda 2).
 
 ---
 
@@ -56,16 +56,39 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 
 > **D-001 y D-002 pasaron a TOMADAS** — fichas en §4. **D-009 DESCARTADA y D-010 CERRADA** — fichas en §4.
 
-### D-003 · Bodegas virtuales: levantamiento y destino ⚠️ LA MÁS URGENTE
-- **Estado:** ABIERTA — brief despachado 2026-07-08; **Ricardo YA respondió su parte (2026-07-13)** — respuestas por anexar (las entrega Mauricio); **Luis con recordatorio pendiente** (catastro ✔ obtenido 2026-07-02) · **Decisor:** Luis + Ricardo (dudas técnicas Bsale → soporte oficial, ver D-005) · **Fecha límite útil:** ~~antes de E3/M04-F1~~ **M04 pospuesto (pivote a DESPACHOS 2026-07-13)** — sigue siendo valiosa para el mapping bodega↔sucursal, sin fecha crítica |
+### D-003 · Bodegas virtuales: levantamiento y destino
+- **Estado:** 🟢 **RESUELTA PARCIAL (2026-08-06)** — Excel conjunto `Bodegas Bsale.xlsx` entregado por el dueño (auditoría de Ricardo 13-07 + revisión de Luis, quien esperaba la confirmación de un tercero para UNA bodega — cuál, por identificar). **11/16 filas firmes; las 5 restantes quedan [B] con su pregunta puntual en la ronda 2.** · **Decisor:** Luis + Ricardo · **Cierre total:** cuando vuelva la ronda 2.
 - **Contexto:** biblia §3 (corrección de Luis): limpiar las bodegas virtuales heredadas. **Catastro real verificado en producción** (evidencia `docs/qa/INFRA/2026-07-02--INFRA--duplicados-variantid-catastro-bodegas.md`): son **16 bodegas** (no ~25 como estimaba la biblia). Además resuelve el misterio "Santa Rosa": ES una bodega de Bsale.
 - **Opciones por bodega:** (a) se mantiene (¿con qué propósito y de qué sucursal?), (b) se elimina/fusiona, (c) queda solo histórica.
-- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
-- **Consecuencias:** define la clasificación física/virtual/propósito y el mapping bodega↔sucursal de M04; mal resuelta, corrompe todo el inventario.
-- **Bloquea:** ~~`[B:D-003]` en P-M04-01~~ (M04 pospuesto por el pivote 13-07); insumo de DESPACHOS-v1 para el mapeo bodega↔zona.
+- **Decisión:** clasificación **ADITIVA sobre el espejo** (en Bsale no se toca nada; el sync sigue trayendo las 16): **5 viven** (MIRADOR central, COQUIMBO, ABATE MOLINA, BUZETA almacenaje masivo, MERMAS virtual transversal), **6 mueren** = dejan de mostrarse (CERTIFICACIONES —Luis: «CERRAR»—, SERAFIN ZAMORA, CONCEPCIÓN, VIÑA DEL MAR, ABATE PRUEBA, COQUIMBO PRUEBA), **5 pendientes [B]** (tabla anexa). El mapping bodega↔sucursal usa las 4 sucursales que la app ya tiene (`SucursalSeeder`: Mirador, Coquimbo, Abate Molina, Buzeta) + `sucursal_id` NULL para las transversales.
+- **Consecuencias:** define la clasificación física/virtual/propósito y el mapping bodega↔sucursal de M04; mal resuelta, corrompe todo el inventario. **M04 queda destrabado** → `docs/planes/PLAN-M04.md`.
+- **Bloquea:** ya nada estructural; cada fila [B] bloquea solo SU fila en PLAN-M04.
 - **Mientras tanto:** el espejo sigue sincronizando todo; la clasificación es aditiva (columnas locales nuevas).
 
-**Anexo — respuesta de RICARDO (Excel del dueño, 2026-07-13; verbatim resumido). Estado: MEDIA-RESPUESTA (Luis pendiente):**
+**Anexo 2 — respuesta CONJUNTA (Excel `Bodegas Bsale.xlsx`, 2026-08-06; columna Estado = veredicto de la auditoría):**
+
+| Bodega | Veredicto | Sucursal | Nota / pregunta [B] |
+|---|---|---|---|
+| MIRADOR | ✅ VIVE | Mirador | física, central |
+| COQUIMBO | ✅ VIVE | Coquimbo | física |
+| ABATE MOLINA | ✅ VIVE | Abate Molina | física |
+| BUZETA | ✅ VIVE | Buzeta | física, almacenaje masivo (baja rotación) |
+| BODEGA MERMAS | ✅ VIVE | — (transversal) | virtual, mermas/dañados |
+| BODEGA SANTA ROSA | ⏳ [B] | ¿Mirador? | confirmar propósito (¿central de insumos?) y si su stock es vendible |
+| BODEGA SERVICIO TECNICO | ⏳ [B] | ¿Mirador? | Ricardo: «MAQUINARIA (Carlos Tablante)» — ¿cuál de las 2 ST queda? |
+| SERVICIO TECNICO | ⏳ [B] | ¿? | Ricardo: «MÁQUINAS Y HERRAMIENTAS» — NO parecen duplicadas, confirmar |
+| RESERVA SUCURSALES | ⏳ [B] | — (transversal) | ¿se mantiene? ¿cómo nace una reserva hoy? |
+| CONTENEDORES | ⏳ [B] | ¿Abate? | Luis: «¿NECESARIO?» vs Ricardo: «ahí se ingresa la mercancía por 1ª vez» → si muere, ¿dónde entra la importación? |
+| CERTIFICACIONES | ❌ MUERE | — | Luis: «CERRAR» |
+| SERAFIN ZAMORA | ❌ MUERE | — | bodega cerrada |
+| CONCEPCIÓN | ❌ MUERE | — | sucursal cerrada |
+| VIÑA DEL MAR | ❌ MUERE | — | sucursal cerrada |
+| ABATE PRUEBA | ❌ MUERE | — | de prueba |
+| COQUIMBO PRUEBA | ❌ MUERE | — | de prueba |
+
+> **Preguntas de cierre (viajan con la ronda 2 de despachos):** (1) ¿cuál de las 2 ST queda y de qué sucursal? (2) Santa Rosa: propósito y vendibilidad; (3) Contenedores: si se cierra, ¿dónde se ingresa la importación?; (4) Reserva Sucursales: ¿se mantiene y cómo opera?; (5) ¿cuál era LA bodega que esperaba confirmación de un tercero?
+
+**Anexo 1 — respuesta de RICARDO (Excel del dueño, 2026-07-13; verbatim resumido). Superseded por el Anexo 2:**
 
 | Bodega | ¿Se usa? | Aclaración de Ricardo |
 |---|---|---|
@@ -117,7 +140,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **Estado:** ABIERTA · **Decisor:** Contabilidad (Melissa/Scarleth) vía Luis · **Fecha límite útil:** antes de M05-F3 (~W23)
 - **Contexto:** biblia §3/§7: venta "paga y se va" en <1 minuto sin datos del cliente. Hay que validar el tratamiento tributario antes de construirla.
 - **Opciones:** (a) boleta electrónica a consumidor final (RUT `66666666-6`) vía Bsale — **probable respuesta correcta, confirmar**, (b) otro mecanismo que indique contabilidad.
-- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
+- **Decisión:** pendiente (contabilidad no ha confirmado). *Nota 06-ago: esta línea tenía pegado por error el texto de la decisión de D-006 — corregido.*
 - **Consecuencias:** define M05-F3. Si no llega a tiempo, F3 se posterga sin arrastrar a F1/F2.
 - **Bloquea:** `[B:D-004]` en P-M05 (solo sub-fase F3).
 - **Mientras tanto:** M05-F1 (cotizaciones) y F2 (emisión normal) completos no la necesitan.
