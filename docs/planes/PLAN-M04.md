@@ -106,13 +106,15 @@ confirmadas). Después manda la UI.
 
 - [ ] Las 16 bodegas clasificadas y EDITABLES en producción; las 6 muertas invisibles en
       operación (dadas de baja vía el flujo real, no por seeder).
-- [ ] Sucursales: eliminar con bodegas/hojas asignadas bloquea con mensaje útil.
+- [x] Sucursales: eliminar con bodegas/hojas asignadas bloquea con mensaje útil —
+      **QA del dueño en producción (06-ago, celular): funcionando**.
 - [ ] Una bodega con stock NO se puede dar de baja sin orden de traslado; una con stock 0
       sí, al tiro; el cierre automático post-sync funciona (probado con sync simulado).
 - [ ] Bodega nueva en Bsale aparece sola con su badge y su notificación.
 - [ ] M11 y M13 registran movimientos contra bodega real (select), no texto.
-- [ ] QA del dueño: clasificar una [B], dar de baja una muerta, intentar dar de baja una
-      con stock (ver el wizard), y crear una bodega de prueba en Bsale para verla llegar.
+- [x] QA del dueño (parte F1): clasificación en producción probada desde el celular —
+      **APROBADO 06-ago, «todo funcionando»**. Quedan para F2 los tramos del wizard
+      (dar de baja con/sin stock) y la prueba opcional de crear bodega en Bsale.
 
 ## 5. Preguntas abiertas
 
