@@ -15,7 +15,7 @@ Formato fijo (máx. ~15 líneas por decisión):
 - **Estado:** ABIERTA | TOMADA | DESCARTADA · **Decisor:** quién · **Fecha límite útil:** cuándo deja de ser gratis esperar
 - **Contexto:** por qué hay que decidir (1–3 líneas, con referencia a biblia/HANDOFF)
 - **Opciones:** (a) … (b) … — con recomendación marcada
-- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2. | lo decidido, fecha y por quién
+- **Decisión:** — (lo decidido, fecha y por quién)
 - **Consecuencias:** qué cambia según lo decidido
 - **Bloquea:** pasos de RUTA-MAESTRA afectados (etiqueta [B:D-0NN])
 - **Mientras tanto:** trabajo NO bloqueado que se puede seguir haciendo
@@ -185,7 +185,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **⚠️ Corrección de decisor (2026-07-08):** la ficha decía "Marco" — era una confusión con **Marcos (2º dev, stream M12)**. El decisor real es **Mauricio**.
 - **Contexto:** biblia §7: confirmar migración a WhatsApp Business API. M15 quedó construido con canal WhatsApp enchufable (`CanalWhatsApp` stub que loguea, LIVE desde 2026-07-07).
 - **Opciones:** (a) Meta Cloud API directa, (b) BSP (proveedor intermedio), (c) mientras tanto deep-links `wa.me` sin API (cero costo — es el puente actual para M12).
-- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
+- **Decisión:** pendiente — canal en stub hasta nueva orden (ver Aplazamiento arriba). *Nota 06-ago: esta línea tenía pegado por error el texto de la decisión de D-006 — corregido.*
 - **Consecuencias:** define costo/plazo del canal WhatsApp real para M15/M14/M12.
 - **Bloquea:** `[B:D-007]` solo en el paso "activar canal WhatsApp" de M15.
 - **Mientras tanto:** email + campanita in-app (M15, ya en producción), links `wa.me` (M12).
@@ -194,7 +194,7 @@ Al **tomarse** una decisión: (1) completar la ficha, (2) `grep "\[B:D-0NN\]" do
 - **Estado:** ABIERTA · **Decisor:** Gonzalo + Mauricio · **Fecha límite útil:** antes de E12/M09-mini (ene 2027)
 - **Contexto:** biblia §7: la actual se sobrecalienta con volumen ML. Necesaria para las etiquetas 10x15 de M09.
 - **Opciones:** cotizar 2–3 modelos (Zebra / Xprinter u otros compatibles con etiquetas ML 10x15).
-- **Decisión:** **opción (a) con matiz**: `zona` como atributo simple — la hoja de ruta se arma POR ZONA, pero el vendedor **NO es fijo por ruta** (Luis, R21: hay rutas con ventas de varios vendedores y otras de uno solo). Sin CRM. El catálogo `zonas` ya existe en producción desde DESPACHOS-v1; el diseño de la hoja va en `docs/planes/PLAN-DESPACHOS-V2.md` §2.
+- **Decisión:** pendiente (cotización sin hacer). *Nota 06-ago: esta línea tenía pegado por error el texto de la decisión de D-006 — corregido.*
 - **Bloquea:** `[B:D-008]` en P-M09 (impresión de etiquetas).
 - **Mientras tanto:** nada de M09 se construye antes de F4; el M09-mini (bandeja + boleta vinculada) no requiere la impresora.
 
