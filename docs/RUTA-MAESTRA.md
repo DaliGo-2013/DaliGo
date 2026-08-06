@@ -195,7 +195,15 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 **Rama:** `feature/m04-inventario-f1` · **Depende de:** D-003 (levantamiento) — D-002 deseable, no bloqueante (default conservador).
 **Hecho cuando:** stock mostrado cuadra contra Bsale en 5 SKUs × 3 bodegas (QA staging); roles operativos reciben 403 en la vista cruzada.
 
-- [ ] **P-M04-01** · Campos locales en `bodegas`: clasificación física/virtual, propósito, `sucursal_id` — *(marca `[B:D-003]` retirada el 2026-07-26: `docs/DECISIONES.md` §D-003 ya la había tachado al posponerse M04 en R-002; la etiqueta acá había quedado stale y hacía ver como bloqueado un paso que solo está pospuesto)*
+> ⚠️ **Enmienda (2026-08-06, dictado v36):** `PLAN-M04.md` v2 (VIGENTE, visto bueno del dueño 06-ago) reorganizó
+> la F1 como **P-M04-10/11/12** (bodegas full paramétricas, GO a Max-1) — ojo con la **colisión de número**: el
+> `P-M04-10` viejo de E4 (tests de concurrencia) es OTRO paso y sigue vivo; la renumeración/reestructura de E3-E4
+> contra el plan v2 es del Director. El viejo `P-M04-01` queda **absorbido** por el nuevo P-M04-10 (mismo trabajo).
+
+- [x] **P-M04-10 (v2)** · Bodegas editables: capa local (`sucursal_id`/`proposito`/`en_operacion`/`clasificacion_confirmada`/`estado_baja`/`alias`), seeder D-003 por `bsale_office_id` que jamás pisa una fila confirmada, edit/update con `manage sucursales` (guardar = confirmar), badges y scopes — rama `feature/m04-bodegas-parametricas` `9e23e62`; baterías `ClasificacionBodegasSeederTest` (5) + `BodegaClasificacionTest` (9), 3 mutaciones rojas donde deben
+- [x] **P-M04-11 (v2)** · Guardas de sucursales COMPLETAS: destroy bloquea por bodegas, hojas de ruta, devoluciones y traslados ST (el sweep encontró 4 FKs RESTRICT que daban 500) + test de la guarda de máquinas que faltaba + `Js::from` en el confirm (apóstrofo) — mismo commit; 6 tests nuevos en `SucursalManagementTest`
+- [x] **P-M04-12 (v2)** · Adopción automática: bodega nueva del sync nace por clasificar + aviso M15 `bodega.nueva` a `manage sucursales` (una sola vez, `wasRecentlyCreated`; candado «sync 2× no duplica ni pisa lo local») + botón instructivo «Agregar bodega» — mismo commit; 4 tests en `BsaleStockSyncTest`
+- [x] ~~**P-M04-01**~~ · Campos locales en `bodegas` — **absorbido por P-M04-10 (v2)** el 2026-08-06 *(marca `[B:D-003]` retirada el 2026-07-26: `docs/DECISIONES.md` §D-003 ya la había tachado al posponerse M04 en R-002; la etiqueta acá había quedado stale y hacía ver como bloqueado un paso que solo está pospuesto)*
 - [ ] **P-M04-02** · Vistas de stock por producto/bodega/sucursal + permisos `view stock`/`manage inventario`
 - [ ] **P-M04-03** · Vista cruzada filtrada por perfil (accesos por rol se definen al CIERRE del módulo — estrategia D-002; interim: solo admin/jefes)
 - [ ] **P-M04-04** · Alertas básicas: bajo mínimo, sin movimiento 10 días; punto de reorden por SKU

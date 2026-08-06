@@ -28,25 +28,38 @@ class StockSync
     public function __construct(private BsaleClient $client) {}
 
     /**
-     * @return array{bodegas:int,creados:int,actualizados:int,eliminados:int,omitidos:int,errores:array<int,array>}
+     * @return array{bodegas:int,nuevas:int,creados:int,actualizados:int,eliminados:int,omitidos:int,errores:array<int,array>}
      */
     public function run(): array
     {
-        $stats = ['bodegas' => 0, 'creados' => 0, 'actualizados' => 0, 'eliminados' => 0, 'omitidos' => 0, 'errores' => []];
+        $stats = ['bodegas' => 0, 'nuevas' => 0, 'creados' => 0, 'actualizados' => 0, 'eliminados' => 0, 'omitidos' => 0, 'errores' => []];
 
         // Fase 1: bodegas (offices). Sin audit por fila.
         $bodegaPorOffice = [];
-        Bodega::withoutAuditing(function () use (&$stats, &$bodegaPorOffice) {
+        $bodegasNuevas = [];
+        Bodega::withoutAuditing(function () use (&$stats, &$bodegaPorOffice, &$bodegasNuevas) {
             foreach ($this->client->each('offices.json') as $o) {
                 try {
                     $bodega = $this->upsertBodega($o);
                     $bodegaPorOffice[$bodega->bsale_office_id] = $bodega->id;
                     $stats['bodegas']++;
+
+                    // Adopcion automatica (M04-F1, P-M04-12): una office que Bsale
+                    // trae por primera vez nace sin clasificar (defaults de la
+                    // migracion) y hay que avisarle a quien administra la
+                    // estructura. wasRecentlyCreated = una sola vez por bodega:
+                    // el proximo sync la ACTUALIZA, no la crea, y no re-avisa.
+                    if ($bodega->wasRecentlyCreated) {
+                        $bodegasNuevas[] = $bodega;
+                        $stats['nuevas']++;
+                    }
                 } catch (Throwable $e) {
                     $stats['errores'][] = ['office_id' => $o['id'] ?? null, 'error' => $e->getMessage()];
                 }
             }
         });
+
+        $this->avisarBodegasNuevas($bodegasNuevas);
 
         // Fase 2: stock (snapshot global). Match producto por bsale_variant_id.
         $productoPorVariante = Producto::whereNotNull('bsale_variant_id')->pluck('id', 'bsale_variant_id');
@@ -102,6 +115,51 @@ class StockSync
         ));
 
         return $stats;
+    }
+
+    /**
+     * Aviso M15 `bodega.nueva` a quienes tienen `manage sucursales` (el mismo
+     * gate de la ruta de clasificar). Patron de VehiculosAvisarVencimientos:
+     * try/catch POR destinatario — un correo mal configurado no deja sin aviso
+     * a los demas ni tumba la sync; sin destinatarios, no se registra nada.
+     * La LOGICA DE ESPEJO no cambia: esto corre despues del upsert.
+     *
+     * @param  list<Bodega>  $bodegasNuevas
+     */
+    private function avisarBodegasNuevas(array $bodegasNuevas): void
+    {
+        if ($bodegasNuevas === []) {
+            return;
+        }
+
+        try {
+            $destinatarios = \App\Models\User::permission('manage sucursales')->get()->unique('id')->values();
+            $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+        } catch (Throwable $e) {
+            Log::warning('Aviso de bodega nueva no despachado (setup)', ['error' => $e->getMessage()]);
+
+            return;
+        }
+
+        foreach ($bodegasNuevas as $bodega) {
+            $datos = [
+                'nombre' => $bodega->nombre ?: '—',
+                'office_id' => $bodega->bsale_office_id ?? '—',
+                'url' => route('admin.bodegas.edit', $bodega),
+            ];
+
+            foreach ($destinatarios as $destinatario) {
+                try {
+                    $dispatcher->despachar('bodega.nueva', $bodega, $destinatario, $datos);
+                } catch (Throwable $e) {
+                    Log::warning('Aviso de bodega nueva no despachado', [
+                        'bodega_id' => $bodega->id,
+                        'user_id' => $destinatario->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
     }
 
     private function upsertBodega(array $o): Bodega

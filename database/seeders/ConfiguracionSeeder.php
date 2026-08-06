@@ -403,6 +403,18 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno (despacho + logística) cuando el conductor rechaza una parada en la puerta (R15).',
             ],
+            // M04-F1 (P-M04-12): el sync trajo una bodega que Bsale creó.
+            // Clave nueva → el firstOrCreate la crea en el deploy, sin one-shot.
+            [
+                'clave' => 'notif_plantilla_bodega_nueva',
+                'valor' => json_encode([
+                    'asunto' => 'Bodega nueva en Bsale: {nombre}',
+                    'cuerpo' => "El espejo de inventario trajo una bodega nueva desde Bsale.\nNombre: {nombre}\nOffice Bsale: {office_id}\nLlega sin clasificar: asígnale sucursal y propósito desde su ficha.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno (quienes administran sucursales) cuando el sync adopta una bodega creada en Bsale (M04).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

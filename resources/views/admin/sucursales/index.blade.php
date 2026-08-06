@@ -42,7 +42,10 @@
                     </x-slot>
 
                     <x-slot name="actions">
-                        <form method="POST" action="{{ route('admin.sucursales.destroy', $sucursal) }}" onsubmit="return confirm('¿Eliminar la sucursal {{ $sucursal->nombre }}?');">
+                        {{-- Js::from y no {{ }}: un nombre con apostrofo ("O'Higgins")
+                             rompia el confirm() y el form se enviaba SIN preguntar
+                             (bitacora 2026-07-28, mismo fix que agenda-terreno). --}}
+                        <form method="POST" action="{{ route('admin.sucursales.destroy', $sucursal) }}" onsubmit="return confirm({{ Illuminate\Support\Js::from('¿Eliminar la sucursal '.$sucursal->nombre.'?') }});">
                             @csrf
                             @method('DELETE')
                             <x-icon-button type="submit" variant="danger" label="Eliminar" title="Eliminar">

@@ -48,7 +48,11 @@ class SucursalController extends Controller
     }
 
     /**
-     * Elimina una sucursal. Guarda: no se puede borrar si tiene usuarios o maquinas.
+     * Elimina una sucursal. Guardas COMPLETAS (P-M04-11): cada FK con datos
+     * bloquea con un mensaje que dice QUE reasignar — el cinturon RESTRICT de
+     * la BD queda de respaldo, no de primera linea (un 500 no explica nada).
+     * Se consulta HojaDeRuta/Devolucion/TrasladoServicio por query directa
+     * (solo LECTURA de esos modulos; la relacion inversa no es de ellos).
      */
     public function destroy(Sucursal $sucursal): RedirectResponse
     {
@@ -58,6 +62,23 @@ class SucursalController extends Controller
 
         if ($sucursal->maquinas()->exists()) {
             return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene máquinas asociadas.");
+        }
+
+        if ($sucursal->bodegas()->exists()) {
+            return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene bodegas asignadas. Reasígnalas primero desde Inventario.");
+        }
+
+        if (\App\Models\HojaDeRuta::where('sucursal_id', $sucursal->id)->exists()) {
+            return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene hojas de ruta registradas.");
+        }
+
+        if (\App\Models\Devolucion::where('sucursal_id', $sucursal->id)->exists()) {
+            return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene devoluciones registradas.");
+        }
+
+        if (\App\Models\TrasladoServicio::where('sucursal_origen_id', $sucursal->id)
+            ->orWhere('sucursal_destino_id', $sucursal->id)->exists()) {
+            return back()->with('status', "No puedes eliminar {$sucursal->nombre}: tiene traslados de servicio técnico registrados.");
         }
 
         $sucursal->delete();

@@ -14,6 +14,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
             SucursalSeeder::class,
+            // Despues de SucursalSeeder: la pre-carga D-003 asigna bodegas a
+            // sucursales por codigo. Solo clasifica lo que el sync ya espejo
+            // y JAMAS pisa una fila confirmada desde la UI (M04-F1).
+            ClasificacionBodegasSeeder::class,
             ConfiguracionSeeder::class,
             // Despues de ConfiguracionSeeder: las reglas apuntan a claves de config.
             ReglasAprobacionSeeder::class,
