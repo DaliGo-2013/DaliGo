@@ -529,6 +529,52 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado)', $js);
     }
 
+    public function test_las_tres_cabinas_llevan_los_detalles_del_costado(): void
+    {
+        // Pedido del dueño 05-08: «la cabina del camión, ¿no hay chance de dejarla un
+        // poco más real o con más detalle?». De frente ya tenían parrilla, faros,
+        // paragolpes y espejos; de COSTADO —una de las vistas fijas— eran una lámina
+        // blanca sin una sola línea. `costadoDeCabina()` pone vidrio de puerta, junta,
+        // manija y zócalo, y lo llaman las TRES con sus propias medidas.
+        //
+        // Es un candado de fuente porque el visor no tiene tests de JS: si alguien suma
+        // una cabina nueva y se olvida del costado, el defecto vuelve sin que nada avise.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('function costadoDeCabina', $js);
+        $this->assertStringContainsString('function visera', $js);
+
+        foreach (['cabinaHino', 'cabinaLiviana', 'cabinaTracto'] as $cabina) {
+            $cuerpo = $this->cuerpoDeFuncion($js, $cabina);
+            $this->assertStringContainsString(
+                'costadoDeCabina(', $cuerpo,
+                "La cabina [{$cabina}] no dibuja los detalles del costado.",
+            );
+        }
+    }
+
+    public function test_arrastrar_apaga_la_vista_fija_marcada(): void
+    {
+        // El dueño mandó una captura con «Costado» encendido y el camión en tres cuartos:
+        // había arrastrado y el botón seguía marcado, o sea mentía sobre dónde está la
+        // cámara.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('if (vistaActual) { vistaActual = null; marcarVista(); }', $js);
+    }
+
+    /** El cuerpo de una función del visor, para poder afirmar sobre UNA cabina y no
+     *  sobre todo el archivo (donde cualquier otra llamada daría un falso verde). */
+    private function cuerpoDeFuncion(string $js, string $nombre): string
+    {
+        $desde = strpos($js, "function {$nombre}(");
+        $this->assertNotFalse($desde, "No existe la función [{$nombre}] en el visor.");
+
+        $hasta = strpos($js, "\n    }\n", $desde);
+
+        return substr($js, $desde, $hasta - $desde);
+    }
+
     public function test_el_encuadre_mide_el_dibujo_y_no_una_caja_supuesta(): void
     {
         // El camión se veía chico y corrido a la derecha (reporte del dueño 05-08):

@@ -491,6 +491,58 @@ export default function iniciarCarga3d(canvas, datos) {
     }
 
     /** Guardabarros: media caña sobre la rueda. Quita lo de «chasis pelado». */
+    /**
+     * Los detalles del COSTADO de una cabina: vidrio de la puerta, junta, manija y
+     * zócalo. Y arriba, la visera sobre el parabrisas.
+     *
+     * Nace de un pedido del dueño (05-08-2026: «la cabina del camión, ¿no hay chance de
+     * dejarla un poco más real o con más detalle?») mirando la vista de COSTADO, que es
+     * donde más se notaba: la cabina era una lámina blanca sin una sola línea. De frente
+     * ya tenía parrilla, faros, paragolpes y espejos; de costado, nada.
+     *
+     * Es un helper con parámetros y NO una cabina más: cada camión lo llama con SUS
+     * medidas, así que se sigue cumpliendo «una función de cabina por camión».
+     *
+     * El vidrio y las líneas se separan 6 mm HACIA AFUERA de la cara del cuerpo. Eso
+     * hace dos cosas de una: los pone delante de la chapa cuando ese costado mira a la
+     * cámara, y los deja detrás —o sea invisibles— cuando mira para el otro lado, sin
+     * necesidad de decidir nada.
+     */
+    function costadoDeCabina(x0, y0, z0, largo, anchoCab, h, opts = {}) {
+        const { puerta = 0.30, vidrioDe = 0.36, vidrioA = 0.94, arriba = 0.86 } = opts;
+        const s = 0.006;
+
+        for (const [z, fuera] of [[z0, -s], [z0 + anchoCab, s]]) {
+            const zc = z + fuera;
+            const cara = (xa, xb, ya, yb, col, o) => panel([
+                [xa, ya, zc], [xb, ya, zc], [xb, yb, zc], [xa, yb, zc],
+            ], col, o);
+
+            // Vidrio de la puerta. Arranca pasada la junta y muere antes del respaldo:
+            // una luneta de punta a punta haría parecer la cabina un microbús.
+            cara(x0 + largo * vidrioDe, x0 + largo * vidrioA, y0 + h * 0.55, y0 + h * arriba,
+                VIDRIO, { alpha: 0.94, borde: 'rgba(0,0,0,.38)' });
+
+            // Junta de la puerta, de arriba abajo.
+            cara(x0 + largo * puerta, x0 + largo * puerta + 0.014, y0 + h * 0.06, y0 + h * 0.95,
+                GRIS, { alpha: 0.5 });
+
+            // Manija, apenas debajo del vidrio.
+            cara(x0 + largo * (vidrioDe + 0.08), x0 + largo * (vidrioDe + 0.26),
+                y0 + h * 0.46, y0 + h * 0.50, [64, 66, 72], {});
+
+            // Zócalo: la franja oscura de abajo. Es lo que le saca el aire de caja
+            // flotando, porque apoya la cabina contra el chasis.
+            cara(x0 + largo * 0.06, x0 + largo * 0.98, y0, y0 + h * 0.10, [92, 95, 102], { alpha: 0.85 });
+        }
+    }
+
+    /** Visera sobre el parabrisas: una lengüeta oscura que sobresale del frente. Es
+     *  chica y cambia mucho, porque le da alero a la cara y deja de ser un plano. */
+    function visera(x0, z0, anchoCab, yTecho, saliente) {
+        prisma(x0 - saliente, yTecho - 0.075, z0 + 0.02, saliente + 0.05, anchoCab - 0.04, 0.055, [58, 60, 66], G);
+    }
+
     function guardabarro(cx, cyBase, z, r, ancho) {
         const N = 7, R = r + 0.07, cen = cyBase - r, arco = [];
         for (let i = 0; i <= N; i++) {
@@ -624,6 +676,11 @@ export default function iniciarCarga3d(canvas, datos) {
 
         // Tanque de combustible y pasarela detrás de la cabina.
         prisma(x0 + largo + 0.10, -M.chas + 0.02, z0 - 0.06, 0.70, 0.34, 0.44, [176, 180, 188], G);
+
+        // El costado. Sin visera: el tracto ya tiene el deflector del techo rompiendo el
+        // plano, y sumarle una lengüeta encima sería inventar algo que las fotos no
+        // tienen. La cabina arranca en 0 (no en el chasis) así que el alto útil es `alto`.
+        costadoDeCabina(x0, 0, z0, largo, w, alto, { puerta: 0.26, vidrioDe: 0.32, arriba: 0.84 });
     }
 
     /** Guardabarro CLARO (carrocería) en vez del gris del chasis: en el tracto real
@@ -710,6 +767,11 @@ export default function iniciarCarga3d(canvas, datos) {
         for (const z of [z0 - 0.04, z0 + anchoCab - 0.18]) {
             prisma(x0 + largo * 0.40, y0 - 0.04, z, largo * 0.44, 0.22, 0.05, [88, 91, 98], G);
         }
+
+        // El costado y la visera. La puerta arranca más adelante que en el HINO porque
+        // la cabina es corta: con la junta al 30% quedaba pegada al parabrisas.
+        costadoDeCabina(x0, y0, z0, largo, anchoCab, h, { puerta: 0.36, vidrioDe: 0.44, arriba: 0.84 });
+        visera(x0, z0, anchoCab, alto, 0.05);
     }
 
     /**
@@ -769,6 +831,16 @@ export default function iniciarCarga3d(canvas, datos) {
         // Estribo bajo la puerta.
         for (const z of [z0 - 0.03, z0 + anchoCab - 0.20]) {
             prisma(x0 + largo * 0.44, y0 - 0.05, z, largo * 0.42, 0.23, 0.06, [88, 91, 98], G);
+        }
+
+        // El costado (vidrio de la puerta, junta, manija, zócalo) y la visera.
+        costadoDeCabina(x0, y0, z0, largo, anchoCab, h);
+        visera(x0, z0, anchoCab, alto, 0.07);
+
+        // Luces de gálibo del techo: van en el HINO «full» de las fotos y son lo que
+        // remata la cabina por arriba.
+        for (const z of [z0 + anchoCab * 0.18, z0 + anchoCab * 0.44, z0 + anchoCab * 0.70]) {
+            prisma(x0 + 0.03, alto + 0.06, z, 0.10, anchoCab * 0.10, 0.035, [232, 168, 62]);
         }
     }
 
@@ -894,7 +966,13 @@ export default function iniciarCarga3d(canvas, datos) {
         // ruedas gemelas atrás (se ve en la foto de la trasera del chasis), y antes se
         // le dibujaba una sola por eje.
         const anchoTras = M.rw * 2 + 0.03;
-        for (const z of [-0.03, veh.ancho - M.rw + 0.03]) rueda(-M.largoCab * 0.58, -M.chas, z, M.r, M.rw);
+        for (const z of [-0.03, veh.ancho - M.rw + 0.03]) {
+            rueda(-M.largoCab * 0.58, -M.chas, z, M.r, M.rw);
+            // Arco de la rueda delantera. Faltaba en los dos camiones de reparto y era lo
+            // que más delataba la cabina como un cajón: la rueda salía de un costado
+            // liso, sin nada que explicara de dónde. Atrás ya estaba.
+            guardabarro(-M.largoCab * 0.58, -M.chas, z, M.r, M.rw);
+        }
         for (const z of [-0.03, veh.ancho - anchoTras + 0.03]) {
             rueda(veh.largo * 0.74, -M.chas, z, M.r, M.rw, true);
             guardabarro(veh.largo * 0.74, -M.chas, z, M.r, anchoTras);
@@ -1376,6 +1454,11 @@ export default function iniciarCarga3d(canvas, datos) {
     });
     canvas.addEventListener('pointermove', (e) => {
         if (!arrastre) return;
+        // Girando con el dedo o el mouse ya no se está en ninguna vista fija, así que se
+        // apaga el botón marcado. Si no, quedaba «Costado» encendido con el camión en
+        // tres cuartos —el dueño lo mandó en una captura— y el botón mentía.
+        if (vistaActual) { vistaActual = null; marcarVista(); }
+
         yaw = arrastre.yaw + (e.clientX - arrastre.x) * 0.008;
         // El tope de abajo llega hasta la vista de PLANTA (−1,35): con el −1,15 de
         // antes, entrar en planta y mover un pixel el dedo saltaba de golpe a 3/4.

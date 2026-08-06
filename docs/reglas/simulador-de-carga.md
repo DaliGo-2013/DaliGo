@@ -351,6 +351,37 @@ pantalla un plan que el motor dice que no cabe. También queda afuera el peso po
 distancias entre ejes y peso vacío por eje que no existen en el catálogo, y los límites
 legales salen de la normativa del MOP, no de una app.
 
+### 4.1septies-bis El COSTADO de la cabina (06-08-2026)
+
+Pedido del dueño: *«la cabina del camión, ¿no hay chance de dejarla un poco más real o con
+más detalle?»* — mirando la vista de **Costado**, que es donde se veía el problema. De
+frente las tres cabinas ya tenían parrilla, faros, paragolpes y espejos; **de costado eran
+una lámina blanca sin una sola línea**, y el costado es una de las cuatro vistas fijas.
+
+`costadoDeCabina()` agrega, y lo llaman las **tres** cabinas con sus propias medidas:
+vidrio de la puerta, junta de la puerta, manija y zócalo. `visera()` suma la lengüeta
+sobre el parabrisas (no en el tracto: ya tiene el deflector rompiendo el plano, y sumarle
+una visera sería inventar algo que las fotos no muestran). Y el **arco de la rueda
+delantera**, que faltaba en los dos camiones de reparto — atrás ya estaba, y era lo que
+más delataba la cabina como un cajón: la rueda salía de un costado liso.
+
+Dos detalles de implementación que importan:
+
+- **El vidrio y las líneas se separan 6 mm hacia AFUERA** de la cara del cuerpo. Eso
+  resuelve dos cosas de una sola vez: los pone delante de la chapa cuando ese costado mira
+  a la cámara, y los deja detrás —invisibles— cuando mira para el otro lado. Sin decidir
+  nada, sin un `if` de ángulo.
+- Es un **helper con parámetros, no una cabina más**: se sigue cumpliendo «una función de
+  cabina por camión». Candado: `test_las_tres_cabinas_llevan_los_detalles_del_costado`,
+  que mira el cuerpo de CADA función y no el archivo entero (ahí una sola llamada daría
+  falso verde).
+
+**El techo de este motor.** Lo que sí se puede seguir sumando son facetas planas: molduras,
+más vidrios, biseles, calcos. Lo que **no** se puede sin cambiar de tecnología son curvas
+suaves, texturas y reflejos — el visor son quads planos con sombreado por cara sobre
+canvas 2D. Si algún día se pide realismo fotográfico hay que discutir Three.js otra vez,
+con el costo en la mano (~150 KB gzip en una PWA contra los 7,8 KB de hoy).
+
 ### 4.1octies El encuadre mide el DIBUJO, y el recuadro toma la forma del camión
 
 Reporte del dueño: «se sigue viendo apretado o pequeño» y «se ve muy hacia la derecha».
