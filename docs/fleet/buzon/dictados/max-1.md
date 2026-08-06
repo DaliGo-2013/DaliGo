@@ -1,40 +1,64 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-06 (v37 — F1 DE M04 EN PRODUCCIÓN; en pausa hasta el próximo GO). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-06 (v38 — GO F2 de PLAN-M04: wizard de baja con orden de traslado). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ F1 de PLAN-M04 está EN PRODUCCIÓN (merge `276a54f`, doble llave 06-ago)
+## Antes de nada: tu F1 tiene QA del dueño APROBADO
 
-Verificación del Director sobre el árbol unión: **suite 1614 verdes / 11.676 aserciones,
-cero rojos** — cuadre EXACTO con tu cifra de cierre (tu rama 1612 + los 2 tests del visor
-de Marcos que tu base no traía). Bundle por reconstrucción: tu `ms-1.5` presente; las 7
-clases que «desaparecen» respecto a tu bundle son huérfanas reales del refactor del visor
-(0 usos en el árbol unión — el drop de Tailwind es correcto, tu build también lo era en tu
-base). Deploy y Tests de CI verdes. Rama borrada tras ancestría.
+Probó la clasificación en producción desde su celular el mismo día del merge: «todo
+funcionando». F1 cerrada de punta a punta en un día. El GO de F2 vino con la opción
+explícita del dueño de NO esperar la ronda 2 de Luis — el wizard no depende de qué
+bodega muera.
 
-**M04 se destrabó tras 24 días pospuesto, y tu lote lo hizo el mismo día en que D-003
-aterrizó.** El ciclo de la factura tocó el **50 % justo** — por primera vez con avance en
-su INICIO. Tus 2 guardas extra del sweep (devoluciones, traslados ST) son exactamente el
-espíritu del paso bien leído: «destroy jamás da 500». Y el cuadre de tu baseline fijada
-ANTES de empezar contra mi corrida de la unión es el estándar de cómo se despacha un parte
-con la suite en curso sin mentir: árbol intacto + cifra prometida + cifra entregada.
+## 🟢 GO — P-M04-20 · el wizard de baja (F2 de PLAN-M04, el pedido literal del dueño)
 
-## ⏸️ EN PAUSA — sin lote activo
+**Lee `docs/planes/PLAN-M04.md` §3-F2** (VIGENTE). El corazón: «eliminar» una bodega
+jamás pierde stock ni da 500 — o está vacía y muere al tiro, o el sistema te obliga a
+decidir a dónde va lo que contiene.
 
-El próximo GO depende de insumos del dueño:
-- **F2 de PLAN-M04 (wizard de baja + orden de traslado)**: puede arrancar sin la ronda 2
-  (el wizard no depende de QUÉ bodega muere), pero el dueño decide si va ya o espera.
-- Las **5 [B] de D-003** cierran con la ronda 2 de Luis (xlsx v2 en su poder) — cuando
-  vuelvan, el cierre es un ajuste de datos vía UI (clasificar), no código tuyo.
-- Tus hallazgos del radar quedaron registrados: la colisión de numeración la absorbiste
-  bien (nota fechada en §10); `devolucion_bodega_reingreso` texto libre + los 3
-  `nullOnDelete` silenciosos quedan para F2/F3.
+### Comportamiento
+- **Stock 0 en todos los productos** → baja inmediata: `estado_baja='dada_de_baja'` +
+  `en_operacion=false`. (La columna ya existe — tu migración F1 la creó; NO hay migración
+  nueva salvo las 2 tablas de traslados.)
+- **Stock ≠ 0** → wizard:
+  1. Lista los ítems con existencias (desde el espejo `stocks`: real/reservado/disponible).
+  2. Exige bodega DESTINO viva (scope `enOperacion()`, excluida la propia).
+  3. Crea la **orden de traslado**: `bodega_traslados` (origen, destino, estado
+     `pendiente|completado|anulado`, solicitante, timestamps) + `bodega_traslado_items`
+     (producto, cantidad AL MOMENTO de la orden — foto, no referencia viva). Varchar ≤191.
+  4. Deja la bodega `estado_baja='pendiente_traslado'`: fuera de selectores operativos,
+     visible en admin con su badge «EN BAJA» (el badge ya existe de F1).
+  5. Orden imprimible/exportable — **reusa el escritor Excel de la casa** (el de Marcos,
+     el mismo de los informes).
+- **Cierre automático**: cuando un sync posterior confirme stock 0 en la bodega
+  `pendiente_traslado` → baja se completa SOLA (`dada_de_baja`) + orden a `completado` +
+  notificación M15 al solicitante. Evento nuevo o reuso de `bodega.nueva` como molde — a
+  tu criterio declarado (sweep + alternativa nombrada, como siempre).
+- **Stock nuevo llegando a una `pendiente_traslado`** → NO la revive: notificación
+  «llegó stock a una bodega en baja» (mismo destino M15).
+- El traslado FÍSICO hoy se ejecuta en Bsale (D-005 pendiente) — la orden es el puente.
+  Cuando D-005 habilite push, el mismo wizard ejecutará por API (F4, no tuyo).
 
-Si abres sesión y este dictado sigue en v37: revisa el buzón por si hay v38, y si no lo
-hay, cierra sesión sin gastar ventana.
+### Candados mínimos
+1. Bodega con stock NO puede saltarse el wizard (MUTADO: quitar el check → rojo).
+2. Baja con stock 0 funciona al tiro y no toca `stocks` ni históricos.
+3. Cierre automático post-sync: simulado 2× (idempotente, notifica UNA vez).
+4. Stock nuevo en bodega en baja → notifica, no revive (mutado si es barato).
+5. 403 sin `manage sucursales` en todo el flujo de baja.
+6. Orden con foto de cantidades: cambiar el stock DESPUÉS de la orden no altera la orden.
+7. Destino no puede ser bodega muerta/en baja ni la misma origen.
+
+## Territorio
+- **Marcos MUY activo** (3+ pushes hoy, simulador; hubo outage de GitHub Actions — lee
+  I-09 del tablero: rojos con «job not acquired by Runner» = infra, no código; máx 1
+  re-run en cola).
+- **Max-2** en pausa — sin cruce.
 
 ## Recordatorios
-Baseline HOY: **1614 / 11.676** en main `276a54f`. Las reglas de siempre siguen (suite
-completa, superset, `git checkout origin/main --`, parte al buzón).
+Rama nueva desde main FRESCO. **Suite COMPLETA de main fresco ANTES de empezar** para
+fijar TU baseline (la última del Director fue 1614/11.676 en `276a54f` y main ya avanzó
+con Marcos — la cifra del día la fijas tú). Suite completa de nuevo antes del push. Blade
+tocado → build + grep superset. Conflictos con `git checkout origin/main -- <archivo>`,
+nunca con `>` (BOM de PS 5.1). Parte al buzón → doble llave.
 
-CIERRE: nada pendiente de tu lado.
+CIERRE: parte a docs/fleet/buzon/partes/ + push.
