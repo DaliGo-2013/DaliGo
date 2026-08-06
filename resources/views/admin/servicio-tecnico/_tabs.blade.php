@@ -1,6 +1,6 @@
 {{--
     Barra de pestañas del flujo del técnico para UNA orden: navega entre las 3
-    etapas del mismo dispensador (Recepción · Cotización · Parte del técnico).
+    etapas del mismo dispensador (Recepción · Parte del técnico · Cotización).
     Se incluye en show (ficha), edit (recepción), cotización y reparación.
     Requiere $orden y $activa in ['recepcion', 'cotizacion', 'tecnico'].
 --}}
@@ -14,11 +14,13 @@
             ? route('admin.servicio-tecnico.edit', $orden)
             : route('admin.servicio-tecnico.show', $orden),
     ];
-    // Cotización y Parte del técnico son etapas de taller (permiso manage); un
+    // Parte del técnico y Cotización son etapas de taller (permiso manage); un
     // rol que solo VE la orden (vendedor/jefe) no las ve para no chocar con 403.
+    // El orden de estas dos es el del arreglo: primero el parte, después la
+    // cotización (el técnico registra el trabajo y luego se le pone precio).
     if (auth()->user()?->can('manage servicio tecnico')) {
-        $stTabs['cotizacion'] = ['label' => 'Cotización', 'url' => route('admin.servicio-tecnico.cotizacion', $orden)];
         $stTabs['tecnico'] = ['label' => 'Parte del técnico', 'url' => route('admin.servicio-tecnico.reparacion', $orden)];
+        $stTabs['cotizacion'] = ['label' => 'Cotización', 'url' => route('admin.servicio-tecnico.cotizacion', $orden)];
     }
 @endphp
 @if (count($stTabs) > 1)
