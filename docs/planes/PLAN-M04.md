@@ -1,10 +1,10 @@
 # PLAN-M04 · Inventario real — bodegas y sucursales FULL PARAMÉTRICAS
 
-> **Estado: BORRADOR v2 (2026-08-06)** — espera el visto bueno del dueño antes del primer
-> GO. Insumos: D-003 resuelta parcial (anexo 2 de `docs/DECISIONES.md`) + **corrección de
-> rumbo del dueño (06-ago)**: nada de clasificación congelada en seeder — bodegas y
-> sucursales se agregan/editan/eliminan DESDE LA APP, todo paramétrico, con guardas
-> operacionales. La v1 de este plan queda superseded. Autor: Director.
+> **Estado: VIGENTE (visto bueno del dueño 2026-08-06)** — GO de F1 emitido a Max-1
+> (dictado v36). Insumos: D-003 resuelta parcial (anexo 2 de `docs/DECISIONES.md`) +
+> **corrección de rumbo del dueño (06-ago)**: nada de clasificación congelada en seeder —
+> bodegas y sucursales se agregan/editan/eliminan DESDE LA APP, todo paramétrico, con
+> guardas operacionales. La v1 de este plan queda superseded. Autor: Director.
 
 ## 0. El problema en una frase
 
