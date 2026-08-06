@@ -65,6 +65,15 @@
                     agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, acostado: 0 }); },
                     acuesta(tipo) { return this.bultos.find(b => b.id === tipo)?.acuesta ?? false; },
                     quitar(i) { this.lineas.splice(i, 1); },
+                    // Mover un producto en la lista es la forma honesta de «mover la carga»:
+                    // con el orden en «Como armé la lista», el primero va al FONDO. Se
+                    // recalcula todo, así que el acomodo sigue siendo uno que el motor
+                    // verificó — a diferencia de arrastrar bloques a mano.
+                    mover(i, d) {
+                        const j = i + d;
+                        if (j < 0 || j >= this.lineas.length) return;
+                        const t = this.lineas[i]; this.lineas[i] = this.lineas[j]; this.lineas[j] = t;
+                    },
                  }" class="space-y-6">
 
                 {{-- Las dos preguntas, como conmutador --}}
@@ -418,6 +427,17 @@
                                             <option value="0">De pie</option>
                                             <option value="1">Acostado</option>
                                         </select>
+                                        {{-- Mover el producto en la lista. Con el orden en «Como armé la
+                                             lista», el primero es el que va al FONDO del camión: es
+                                             mover la carga sin dejar de recalcular. --}}
+                                        <div class="flex items-center" x-show="lineas.length > 1">
+                                            <button type="button" @click="mover(i, -1)" :disabled="i === 0"
+                                                    class="rounded-lg px-1.5 py-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-30"
+                                                    title="Mover hacia el fondo del camión">▲<span class="sr-only">Mover hacia el fondo</span></button>
+                                            <button type="button" @click="mover(i, 1)" :disabled="i === lineas.length - 1"
+                                                    class="rounded-lg px-1.5 py-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-30"
+                                                    title="Mover hacia la puerta">▼<span class="sr-only">Mover hacia la puerta</span></button>
+                                        </div>
                                         <button type="button" @click="quitar(i)" x-show="lineas.length > 1"
                                                 class="rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-red-50 hover:text-red-600"
                                                 title="Quitar producto">
@@ -433,6 +453,18 @@
                                 <x-icon.plus class="h-4 w-4" />
                                 Agregar producto
                             </x-secondary-button>
+                            {{-- QUIÉN DECIDE el orden de estiba. En automático el motor pone lo
+                                 grande al fondo, que es como se carga en la práctica; en «Como
+                                 armé la lista» manda el orden de arriba y las flechas ▲▼ pasan a
+                                 mover la carga de verdad. El automático sigue siendo el
+                                 predeterminado: es el que reproduce las cargas verificadas. --}}
+                            <div class="flex items-center gap-2" x-show="lineas.length > 1">
+                                <label for="orden" class="text-xs text-neutral-500">Orden de estiba</label>
+                                <x-select id="orden" name="orden" class="w-52">
+                                    <option value="auto" @selected($orden === 'auto')>Automático (lo grande al fondo)</option>
+                                    <option value="lista" @selected($orden === 'lista')>Como armé la lista</option>
+                                </x-select>
+                            </div>
                             <x-primary-button>Calcular la carga</x-primary-button>
                         </div>
                         <p class="mt-2 text-xs text-neutral-400">

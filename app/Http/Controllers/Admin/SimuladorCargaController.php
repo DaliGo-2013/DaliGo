@@ -77,6 +77,9 @@ class SimuladorCargaController extends Controller
             // producto: el mismo pack viaja de las dos formas según el camión.
             'lineas.*.acostado' => ['nullable', 'boolean'],
             'acostado' => ['nullable', 'boolean'],
+            // Quién decide qué producto va al fondo: el motor por volumen (auto) o el
+            // orden en que el usuario armó la lista.
+            'orden' => ['nullable', 'in:auto,lista'],
         ]);
 
         // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
@@ -100,8 +103,10 @@ class SimuladorCargaController extends Controller
         // Modo: con líneas es CARGA MIXTA («¿cabe esta carga?»); sin líneas es el
         // cupo máximo de un solo producto («¿cuánto entra?»). La misma pantalla
         // responde las dos preguntas, que son distintas.
+        $enOrdenDeLista = ($datos['orden'] ?? 'auto') === 'lista';
+
         $mixta = ($camion && isset($datos['lineas']) && $datos['lineas'] !== [])
-            ? $this->calcularMixta($camion, $datos['lineas'], $bultos)
+            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista)
             : null;
 
         $acostado = (bool) ($datos['acostado'] ?? false);
@@ -118,6 +123,7 @@ class SimuladorCargaController extends Controller
             'resultado' => $resultado,
             'mixta' => $mixta,
             'acostado' => $acostado,
+            'orden' => $enOrdenDeLista ? 'lista' : 'auto',
             // Las líneas que el usuario armó, para redibujar el formulario tal
             // cual tras el GET (y como semilla del Alpine).
             'lineasSel' => collect($datos['lineas'] ?? [])
@@ -146,7 +152,7 @@ class SimuladorCargaController extends Controller
      * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
      * @return array{resultado: array, lineas: list<array<string, mixed>>, cabeTodo: bool, peligrosas: list<TipoBulto>}
      */
-    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos): array
+    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false): array
     {
         $modelos = [];
         $acostadas = [];
@@ -168,7 +174,7 @@ class SimuladorCargaController extends Controller
             ];
         }
 
-        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas);
+        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas, $enOrdenDeLista);
 
         $filas = [];
         foreach ($modelos as $i => $modelo) {

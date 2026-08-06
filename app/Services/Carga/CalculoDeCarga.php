@@ -160,27 +160,39 @@ class CalculoDeCarga
      *   por kilo sería exagerar, y un simulador que exagera es peor que ninguno.
      * - Un bloque parcial reserva el piso de su caja envolvente completa.
      * - El orden de colocación es por volumen de bulto DESCENDENTE (lo grande
-     *   primero, como en la práctica), no el orden en que se escribieron.
+     *   primero, como en la práctica), no el orden en que se escribieron —
+     *   salvo que `$enOrdenDeLista` lo pida, y ahí manda el orden del usuario.
      *
      * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int}  $vehiculo  cm y kg
      * @param  list<array{bulto: array, cantidad: int}>  $lineas  cantidad EN BULTOS
+     * @param  bool  $enOrdenDeLista  respeta el orden dado en vez de ordenar por volumen
      * @return array{lineas: array<int, array{pedidos:int,colocados:int,unidades_colocadas:int,motivo:?string}>, bloques: list<array{linea:int,x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>, cabe_todo:bool, peso_kg:float, volumen_ocupado_m3:float, volumen_vehiculo_m3:float, ocupacion:float}
      */
-    public function carga(array $vehiculo, array $lineas): array
+    public function carga(array $vehiculo, array $lineas, bool $enOrdenDeLista = false): array
     {
         $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
         $W = (int) $vehiculo['ancho'];
         $H = (int) $vehiculo['alto'];
         $topePeso = $vehiculo['peso_max_kg'] ?? null;
 
-        // Lo grande primero (estable: a igual volumen, el orden escrito).
+        // El ORDEN de colocación decide qué producto queda al fondo y qué queda contra la
+        // puerta, porque cada bloque se pone en la región más al fondo donde quepa.
+        //
+        // Por defecto: lo grande primero (estable: a igual volumen, el orden escrito), que
+        // es como se estiba en la práctica. Con `$enOrdenDeLista` manda el orden que armó
+        // el usuario, y ahí él decide qué va al fondo — es la forma HONESTA de «mover la
+        // carga»: se reordena la lista y el motor recalcula, así que el resultado sigue
+        // siendo un acomodo que el motor verificó. Arrastrar bloques a mano dejaría armar
+        // en pantalla una carga que el cálculo dice que no cabe.
         $orden = array_keys($lineas);
-        usort($orden, function (int $a, int $b) use ($lineas) {
-            $va = $lineas[$a]['bulto']['largo'] * $lineas[$a]['bulto']['ancho'] * $lineas[$a]['bulto']['alto'];
-            $vb = $lineas[$b]['bulto']['largo'] * $lineas[$b]['bulto']['ancho'] * $lineas[$b]['bulto']['alto'];
+        if (! $enOrdenDeLista) {
+            usort($orden, function (int $a, int $b) use ($lineas) {
+                $va = $lineas[$a]['bulto']['largo'] * $lineas[$a]['bulto']['ancho'] * $lineas[$a]['bulto']['alto'];
+                $vb = $lineas[$b]['bulto']['largo'] * $lineas[$b]['bulto']['ancho'] * $lineas[$b]['bulto']['alto'];
 
-            return $vb <=> $va ?: $a <=> $b;
-        });
+                return $vb <=> $va ?: $a <=> $b;
+            });
+        }
 
         // Regiones de piso libres. Arranca con toda la caja menos el pasillo.
         $regiones = ($L > 0 && $W > 0) ? [['x' => 0, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];

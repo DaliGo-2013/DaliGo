@@ -529,6 +529,84 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado)', $js);
     }
 
+    public function test_el_orden_de_la_lista_decide_que_producto_va_al_fondo(): void
+    {
+        // «Mover la carga» (pedido del dueño 06-08, mirando EasyCargo) resuelto de la
+        // forma honesta: se reordena la lista y el motor RECALCULA, así que el acomodo
+        // sigue siendo uno que el motor verificó. Arrastrar bloques a mano dejaría armar
+        // en pantalla una carga que el cálculo dice que no cabe.
+        //
+        // La caja tiene menos volumen que la bolsa, así que en automático la bolsa va al
+        // fondo (x = 0). Pidiendo el orden de la lista con la caja primero, la caja pasa
+        // al fondo.
+        $lineas = [
+            ['tipo' => $this->caja->id, 'cantidad' => 10],
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50],
+        ];
+
+        $auto = $this->verMixta($lineas)->assertOk()->viewData('escena');
+        $conLista = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id, 'lineas' => $lineas, 'orden' => 'lista',
+        ]))->assertOk()->viewData('escena');
+
+        $alFondo = fn (array $escena) => collect($escena['bloques'])->sortBy('x')->first()['nombre'];
+
+        $this->assertSame($this->bolsa->nombre, $alFondo($auto), 'En automático va lo grande al fondo.');
+        $this->assertSame($this->caja->nombre, $alFondo($conLista), 'Con el orden de la lista manda el usuario.');
+    }
+
+    public function test_el_orden_automatico_sigue_siendo_el_predeterminado(): void
+    {
+        // El automático es el que reproduce las cargas verificadas contra fotos («lo
+        // grande al fondo, como se estiba de verdad»). Si el default se diera vuelta,
+        // cambiarían acomodos que ya estaban validados.
+        $res = $this->verMixta([
+            ['tipo' => $this->caja->id, 'cantidad' => 10],
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50],
+        ])->assertOk();
+
+        $this->assertSame('auto', $res->viewData('orden'));
+
+        // Y un valor inventado no pasa la validación en vez de caer en silencio.
+        $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 10]],
+            'orden' => 'como-quiera',
+        ]))->assertSessionHasErrors('orden');
+    }
+
+    public function test_el_panel_de_cubicaje_acompana_al_camion(): void
+    {
+        // El formato del panel izquierdo de EasyCargo, que el dueño pidió (06-08): por
+        // producto, su letra, cuántas van de cuántas y un punto verde o rojo, AL LADO del
+        // camión. Repite el detalle de abajo a propósito — el valor es no levantar la
+        // vista del dibujo para saber qué es cada bloque.
+        $html = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 200],
+            ['tipo' => $this->caja->id, 'cantidad' => 20],
+        ])->assertOk()->getContent();
+
+        $panel = substr($html, strpos($html, 'La carga</p>'), 1400);
+
+        $this->assertStringContainsString('200/200', $panel);
+        $this->assertStringContainsString('20/20', $panel);
+        // El punto: verde cuando entra completo.
+        $this->assertStringContainsString('bg-brand-600', $panel);
+    }
+
+    public function test_el_panel_de_cubicaje_marca_en_rojo_lo_que_no_entra(): void
+    {
+        // 600 botellones son 120 bolsas y el HD35 admite 84: el punto tiene que avisar
+        // sin que haya que leer el detalle de abajo.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
+            ->assertOk()->getContent();
+
+        $panel = substr($html, strpos($html, 'La carga</p>'), 1400);
+
+        $this->assertStringContainsString('420/600', $panel);
+        $this->assertStringContainsString('bg-red-500', $panel);
+    }
+
     public function test_las_tres_cabinas_llevan_los_detalles_del_costado(): void
     {
         // Pedido del dueño 05-08: «la cabina del camión, ¿no hay chance de dejarla un

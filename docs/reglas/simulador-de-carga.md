@@ -80,6 +80,25 @@ Por **volumen de bulto descendente** (lo grande primero, como en la práctica),
 sin importar el orden en que se escribieron las líneas — pero el reporte respeta
 el orden escrito. Determinista: a igual volumen, el orden de entrada.
 
+### 2.3 «Mover la carga»: se reordena la lista, no se arrastran bloques (06-08-2026)
+
+El dueño pidió lo que vio en EasyCargo: *«me interesa el tema de la última foto donde se
+puede mover la carga»*. Ahí se arrastran los bultos con el mouse. **Acá se resolvió
+distinto y a propósito:** el selector «Orden de estiba» pasa a `lista` y las flechas ▲▼ de
+cada renglón mueven el producto; **el primero de la lista va al FONDO**. El motor
+recalcula, así que lo que queda en pantalla sigue siendo un acomodo que el motor verificó.
+
+Arrastrar bloques a mano dejaría armar en pantalla una carga que el propio cálculo dice
+que no cabe, y el simulador existe justamente para que eso no pase (§2, el credo). Con el
+reordenamiento el dueño consigue lo que necesita —decidir qué va contra la cabina y qué
+contra la puerta— sin poder inventar una estiba imposible.
+
+`CalculoDeCarga::carga(..., bool $enOrdenDeLista = false)`. **El automático sigue siendo el
+predeterminado** porque es el que reproduce las cargas verificadas contra fotos; un valor
+de `orden` inventado se rechaza en la validación en vez de caer en silencio. Candados:
+`test_el_orden_de_la_lista_decide_que_producto_va_al_fondo` y
+`test_el_orden_automatico_sigue_siendo_el_predeterminado`.
+
 ## 3. Unidades: el vendedor habla en botellones, el motor en bolsas
 
 Las cantidades del formulario van **en unidades sueltas** (200 botellones, 20
@@ -345,11 +364,19 @@ tres que se hicieron:
    TODO el ancho y TODO el alto — conservador a propósito, en la misma dirección que el
    resto del motor.
 
+4. **El panel de cubicaje en la esquina** (pedido explícito del 06-08). Por producto: su
+   letra sobre su color, cuántas van de cuántas y un punto verde o rojo, **al lado del
+   camión**. Repite el detalle que está más abajo **a propósito**: el valor es no levantar
+   la vista del dibujo para saber qué es cada bloque. Se muestra desde `sm` — en un celular
+   esos 13 rem se comerían media pantalla del camión, y ahí el detalle de abajo queda a un
+   scroll.
+
 **Descartado a propósito:** arrastrar y soltar bultos a mano. El acomodo lo calcula
 `CalculoDeCarga` y es conservador y verificado; permitir mover bultos dejaría armar en
-pantalla un plan que el motor dice que no cabe. También queda afuera el peso por eje: pide
-distancias entre ejes y peso vacío por eje que no existen en el catálogo, y los límites
-legales salen de la normativa del MOP, no de una app.
+pantalla un plan que el motor dice que no cabe. Lo que sí se hizo es reordenar la lista y
+recalcular — ver §2.3. También queda afuera el peso por eje: pide distancias entre ejes y
+peso vacío por eje que no existen en el catálogo, y los límites legales salen de la
+normativa del MOP, no de una app.
 
 ### 4.1septies-bis El COSTADO de la cabina (06-08-2026)
 

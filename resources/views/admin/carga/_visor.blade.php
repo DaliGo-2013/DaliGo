@@ -63,6 +63,33 @@
         @endforeach
     </div>
 
+    {{-- EL CUBICAJE, en la esquina: el formato del panel izquierdo de EasyCargo, que el
+         dueño pidió expresamente (06-08-2026). Por producto: su letra sobre su color,
+         cuántas van de cuántas y un punto verde o rojo.
+
+         SÍ, repite el detalle que está más abajo, y es a propósito: el valor está en
+         tenerlo AL LADO del camión, sin levantar la vista del dibujo para saber qué es
+         cada bloque. Abajo sigue el detalle completo, con el motivo de lo que no entró.
+
+         Desde `sm`: en un celular estos 13 rem se comerían media pantalla del camión, y
+         ahí el detalle de abajo queda a un scroll. --}}
+    @if ($mixta !== null)
+        <div class="absolute left-4 top-[4.4rem] hidden w-52 rounded-xl border border-neutral-200 bg-white/90 p-1.5 text-xs shadow-sm backdrop-blur sm:block">
+            <p class="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">La carga</p>
+            @foreach ($mixta['lineas'] as $i => $fila)
+                @php $rgbPanel = \App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D[$i % count(\App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D)]; @endphp
+                <div class="flex items-center gap-1.5 px-1 py-0.5">
+                    <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+                          style="background: rgb({{ implode(',', $rgbPanel) }})">{{ \App\Http\Controllers\Admin\SimuladorCargaController::letra($i) }}</span>
+                    <span class="flex-1 truncate text-neutral-600" title="{{ $fila['modelo']->nombre }}">{{ $fila['modelo']->nombre }}</span>
+                    <span class="shrink-0 font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}/{{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}</span>
+                    <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $fila['motivo'] === null ? 'bg-brand-600' : 'bg-red-500' }}"
+                          title="{{ $fila['motivo'] === null ? 'Entra completo' : 'Queda carga afuera' }}"></span>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     {{-- Cuánto se ve cargado. «▶» reproduce la estiba de a poco (para mirar en qué
          ORDEN va la carga) y los pasos permiten armarla a mano: de a uno para el
          detalle, de a 5 o de a 10 para avanzar, «Todo» y «Vaciar» para los extremos
