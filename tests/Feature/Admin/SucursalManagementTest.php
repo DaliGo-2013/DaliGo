@@ -190,4 +190,96 @@ class SucursalManagementTest extends TestCase
         $this->assertSame(4, Sucursal::count());
         $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR', 'es_central' => true]);
     }
+
+    // ── P-M04-11 · guardas de eliminación COMPLETAS ────────────────────────
+    // Cada FK con datos bloquea con un flash que dice QUÉ reasignar; el
+    // RESTRICT de la BD es el cinturón, no la primera línea (un 500 no
+    // explica nada). Se asserta el estado Y el mensaje.
+
+    /** La guarda de máquinas existía desde M11 pero sin test (hallazgo del sweep). */
+    public function test_cannot_delete_sucursal_with_maquinas(): void
+    {
+        $sucursal = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR']);
+        \App\Models\Maquina::create(['nombre' => 'Sopladora 1', 'sucursal_id' => $sucursal->id, 'activa' => true]);
+
+        $this->actingAs($this->admin())->delete("/admin/sucursales/{$sucursal->id}")
+            ->assertSessionHas('status', 'No puedes eliminar Mirador: tiene máquinas asociadas.');
+
+        $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR']);
+    }
+
+    public function test_cannot_delete_sucursal_with_bodegas(): void
+    {
+        $sucursal = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR']);
+        \App\Models\Bodega::factory()->create(['sucursal_id' => $sucursal->id]);
+
+        $this->actingAs($this->admin())->delete("/admin/sucursales/{$sucursal->id}")
+            ->assertSessionHas('status', 'No puedes eliminar Mirador: tiene bodegas asignadas. Reasígnalas primero desde Inventario.');
+
+        $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR']);
+    }
+
+    public function test_cannot_delete_sucursal_with_hojas_de_ruta(): void
+    {
+        $sucursal = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR']);
+        \App\Models\HojaDeRuta::factory()->create(['sucursal_id' => $sucursal->id]);
+
+        $this->actingAs($this->admin())->delete("/admin/sucursales/{$sucursal->id}")
+            ->assertSessionHas('status', 'No puedes eliminar Mirador: tiene hojas de ruta registradas.');
+
+        $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR']);
+    }
+
+    public function test_cannot_delete_sucursal_with_devoluciones(): void
+    {
+        $sucursal = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR']);
+        \App\Models\Devolucion::factory()->create(['sucursal_id' => $sucursal->id]);
+
+        $this->actingAs($this->admin())->delete("/admin/sucursales/{$sucursal->id}")
+            ->assertSessionHas('status', 'No puedes eliminar Mirador: tiene devoluciones registradas.');
+
+        $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR']);
+    }
+
+    public function test_cannot_delete_sucursal_with_traslados_de_servicio(): void
+    {
+        $origen = Sucursal::create(['nombre' => 'Coquimbo', 'codigo' => 'COQUIMBO']);
+        $destino = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR']);
+        \App\Models\TrasladoServicio::create([
+            'codigo' => 'TR-TEST-1',
+            'sucursal_origen_id' => $origen->id,
+            'sucursal_destino_id' => $destino->id,
+            'emisor_nombre' => 'Prueba',
+            'despachado_at' => now(),
+            'total_enviado' => 1,
+        ]);
+
+        // Bloquea tanto como ORIGEN…
+        $this->actingAs($this->admin())->delete("/admin/sucursales/{$origen->id}")
+            ->assertSessionHas('status', 'No puedes eliminar Coquimbo: tiene traslados de servicio técnico registrados.');
+        // …como DESTINO.
+        $this->actingAs($this->admin())->delete("/admin/sucursales/{$destino->id}")
+            ->assertSessionHas('status', 'No puedes eliminar Mirador: tiene traslados de servicio técnico registrados.');
+
+        $this->assertSame(2, Sucursal::count());
+    }
+
+    /**
+     * El confirm() de eliminar interpola el nombre vía Js::from: un apóstrofo
+     * ("O'Higgins") con {{ }} crudo era un SyntaxError y el form se enviaba
+     * SIN preguntar (bitácora 2026-07-28). Rojo con el código viejo.
+     */
+    public function test_confirmacion_de_eliminar_sobrevive_un_apostrofo(): void
+    {
+        Sucursal::create(['nombre' => "O'Higgins", 'codigo' => 'OHIGGINS']);
+
+        $html = $this->actingAs($this->admin())->get('/admin/sucursales')->assertOk()->getContent();
+
+        // Js::from escapa el apóstrofo a la secuencia unicode u0027 con
+        // contrabarra dentro del string JS; la contrabarra viaja literal en el
+        // HTML y se arma con chr(92) para no pelear con capas de escapado.
+        $this->assertStringContainsString('O'.chr(92).'u0027Higgins', $html);
+        // …y la forma cruda que rompía el handler ya no puede aparecer.
+        $this->assertStringNotContainsString("confirm('¿Eliminar la sucursal O'Higgins?')", $html);
+    }
 }
