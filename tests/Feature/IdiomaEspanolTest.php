@@ -128,13 +128,17 @@ class IdiomaEspanolTest extends TestCase
     /** Las pantallas internas, en español (texto y atributos). */
     public function test_las_pantallas_internas_estan_en_espanol(): void
     {
-        // La ficha de clasificación necesita una bodega real (M04-F1).
+        // La ficha de clasificación necesita una bodega real (M04-F1); el
+        // wizard de baja y la orden de traslado, sus fixtures (F2).
         $bodega = \App\Models\Bodega::factory()->create();
+        $orden = \App\Models\BodegaTraslado::factory()->create();
 
         $urls = [
             '/dashboard', '/admin/servicio-tecnico', '/admin/servicio-tecnico/create',
             '/admin/productos', '/admin/clientes', '/admin/bodegas', '/admin/listas-precios',
             "/admin/bodegas/{$bodega->id}/edit",
+            "/admin/bodegas/{$bodega->id}/baja",
+            "/admin/bodegas/traslados/{$orden->id}",
             '/admin/sucursales', '/admin/users', '/admin/users/create', '/admin/roles',
             '/admin/configuracion', '/admin/maquinas', '/admin/tipos-botellon', '/admin/audits',
             '/admin/despachos', '/admin/notificaciones', '/admin/agenda-terreno',

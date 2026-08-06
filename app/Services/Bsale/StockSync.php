@@ -28,11 +28,11 @@ class StockSync
     public function __construct(private BsaleClient $client) {}
 
     /**
-     * @return array{bodegas:int,nuevas:int,creados:int,actualizados:int,eliminados:int,omitidos:int,errores:array<int,array>}
+     * @return array{bodegas:int,nuevas:int,creados:int,actualizados:int,eliminados:int,omitidos:int,bajas_completadas:int,avisos_stock_baja:int,errores:array<int,array>}
      */
     public function run(): array
     {
-        $stats = ['bodegas' => 0, 'nuevas' => 0, 'creados' => 0, 'actualizados' => 0, 'eliminados' => 0, 'omitidos' => 0, 'errores' => []];
+        $stats = ['bodegas' => 0, 'nuevas' => 0, 'creados' => 0, 'actualizados' => 0, 'eliminados' => 0, 'omitidos' => 0, 'bajas_completadas' => 0, 'avisos_stock_baja' => 0, 'errores' => []];
 
         // Fase 1: bodegas (offices). Sin audit por fila.
         $bodegaPorOffice = [];
@@ -109,9 +109,20 @@ class StockSync
             ];
         }
 
+        // M04-F2: con el espejo ya fresco, las bajas pendientes se concilian
+        // (origen en 0 → la orden se completa sola; stock nuevo → aviso). En
+        // try/catch: la sync JAMÁS muere por la capa local de bajas.
+        try {
+            $bajas = app(\App\Services\Inventario\BajaDeBodegas::class)->conciliarConEspejo();
+            $stats['bajas_completadas'] = $bajas['completadas'];
+            $stats['avisos_stock_baja'] = $bajas['avisos_stock'];
+        } catch (Throwable $e) {
+            $stats['errores'][] = ['office_id' => null, 'error' => 'Conciliación de bajas: '.$e->getMessage()];
+        }
+
         Log::info(sprintf(
-            'bsale:sync-stock → %d bodegas, %d stock creados, %d actualizados, %d eliminados, %d omitidos, %d errores.',
-            $stats['bodegas'], $stats['creados'], $stats['actualizados'], $stats['eliminados'], $stats['omitidos'], count($stats['errores']),
+            'bsale:sync-stock → %d bodegas, %d stock creados, %d actualizados, %d eliminados, %d omitidos, %d bajas completadas, %d errores.',
+            $stats['bodegas'], $stats['creados'], $stats['actualizados'], $stats['eliminados'], $stats['omitidos'], $stats['bajas_completadas'], count($stats['errores']),
         ));
 
         return $stats;

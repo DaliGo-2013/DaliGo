@@ -4,7 +4,18 @@
                        :back="route('admin.bodegas.index')" backTitle="Volver a bodegas">
             @can('manage sucursales')
                 <x-slot name="action">
-                    <x-button-link :href="route('admin.bodegas.edit', $bodega)">Editar bodega</x-button-link>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @unless ($bodega->enBaja())
+                            {{-- «Eliminar» = baja lógica con guarda de traslado
+                                 (M04-F2): el wizard decide si es inmediata o
+                                 exige orden. Jamás un delete. --}}
+                            <x-secondary-button-link :href="route('admin.bodegas.baja', $bodega)"
+                                                     title="Dar de baja esta bodega (con traslado si tiene stock)">
+                                Dar de baja
+                            </x-secondary-button-link>
+                        @endunless
+                        <x-button-link :href="route('admin.bodegas.edit', $bodega)">Editar bodega</x-button-link>
+                    </div>
                 </x-slot>
             @endcan
         </x-page-header>
@@ -24,6 +35,34 @@
                 <span class="text-neutral-400">· {{ $bodega->direccion }}@if ($bodega->comuna), {{ $bodega->comuna }}@endif</span>
             @endif
         </div>
+
+        @if ($traslados->isNotEmpty())
+            {{-- Las órdenes de baja de esta bodega (F2): el descubrimiento es
+                 acá, junto a la bodega — sin index de órdenes hasta F3. --}}
+            <x-list-card title="Órdenes de traslado por baja" :count="$traslados->count()"
+                         :countLabel="\Illuminate\Support\Str::plural('orden', $traslados->count())">
+                @foreach ($traslados as $orden)
+                    <x-list-row>
+                        <a href="{{ route('admin.bodegas.traslados.show', $orden) }}" class="block">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Orden #{{ $orden->id }} → {{ $orden->destino->nombre }}</p>
+                                @if ($orden->estado === \App\Models\BodegaTraslado::PENDIENTE)
+                                    <x-badge variant="brand">pendiente</x-badge>
+                                @elseif ($orden->estado === \App\Models\BodegaTraslado::COMPLETADO)
+                                    <x-badge variant="neutral">completada</x-badge>
+                                @else
+                                    <x-badge variant="neutral">anulada</x-badge>
+                                @endif
+                            </div>
+                            <p class="truncate text-sm text-neutral-500">{{ $orden->solicitante_nombre }} · {{ $orden->created_at?->enChile()->format('d-m-Y H:i') }}</p>
+                        </a>
+                        <x-slot name="actions">
+                            <x-icon.chevron-right class="h-4 w-4 text-neutral-300" aria-hidden="true" />
+                        </x-slot>
+                    </x-list-row>
+                @endforeach
+            </x-list-card>
+        @endif
 
         <form method="GET" action="{{ route('admin.bodegas.show', $bodega) }}"
               class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">

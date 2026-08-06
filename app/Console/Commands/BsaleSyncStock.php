@@ -36,8 +36,8 @@ class BsaleSyncStock extends Command
         }
 
         $this->table(
-            ['Bodegas', 'Nuevas', 'Stock creados', 'Actualizados', 'Eliminados', 'Omitidos', 'Errores'],
-            [[$stats['bodegas'], $stats['nuevas'], $stats['creados'], $stats['actualizados'], $stats['eliminados'], $stats['omitidos'], count($stats['errores'])]],
+            ['Bodegas', 'Nuevas', 'Stock creados', 'Actualizados', 'Eliminados', 'Omitidos', 'Bajas compl.', 'Errores'],
+            [[$stats['bodegas'], $stats['nuevas'], $stats['creados'], $stats['actualizados'], $stats['eliminados'], $stats['omitidos'], $stats['bajas_completadas'], count($stats['errores'])]],
         );
 
         if ($stats['omitidos'] > 0) {
