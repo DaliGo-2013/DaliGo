@@ -59,7 +59,7 @@
             @endphp
 
             <div x-data="{
-                    modo: '{{ $mixta !== null ? 'mixta' : 'maximo' }}',
+                    modo: '{{ $mixta !== null ? 'mixta' : ($enPallet !== null ? 'pallet' : 'maximo') }}',
                     lineas: {{ $lineasIniciales->toJson() }},
                     bultos: {{ $bultosJson->toJson() }},
                     agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, acostado: 0 }); },
@@ -87,6 +87,14 @@
                             :class="modo === 'mixta' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
                             class="rounded-lg px-4 py-2 text-sm font-semibold transition duration-150">
                         ¿Cabe esta carga?
+                    </button>
+                    {{-- Tercer modo: armar un pallet y subirlo. Es una pregunta DISTINTA de
+                         las otras dos («¿cuántas unidades me llevo paletizadas?») y tiene su
+                         propio flujo, así que va como modo y no como una casilla. --}}
+                    <button type="button" @click="modo = 'pallet'" role="tab" :aria-selected="modo === 'pallet'"
+                            :class="modo === 'pallet' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
+                            class="rounded-lg px-4 py-2 text-sm font-semibold transition duration-150">
+                        Sobre pallet
                     </button>
                 </div>
 
@@ -338,6 +346,79 @@
                                     </p>
                                 </div>
                             @endif
+
+                            {{-- RESULTADO · SOBRE PALLET. Se lee de arriba abajo como se arma:
+                                 primero lo que entra en UN pallet, después cuántos pallets entran
+                                 en el camión, y al final el total. --}}
+                            @if ($enPallet !== null)
+                                <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Sobre pallet</p>
+                                    <p class="mt-1 text-4xl font-semibold tabular-nums text-brand-600">
+                                        {{ number_format($enPallet['unidadesTotales'], 0, ',', '.') }}
+                                    </p>
+                                    <p class="text-sm text-neutral-500">
+                                        unidades en total, en {{ $enPallet['cabenPallets'] }}
+                                        {{ \Illuminate\Support\Str::plural('pallet', $enPallet['cabenPallets']) }}
+                                    </p>
+
+                                    <div class="mt-4 border-t border-neutral-100 pt-3 text-sm">
+                                        <div class="flex justify-between gap-3 py-1">
+                                            <span class="text-neutral-500">En un pallet</span>
+                                            <span class="text-right font-medium tabular-nums text-neutral-900">
+                                                {{ number_format($enPallet['unidadesPorPallet'], 0, ',', '.') }} unidades
+                                                ({{ $enPallet['porPallet']['bultos'] }} {{ \Illuminate\Support\Str::plural('bulto', $enPallet['porPallet']['bultos']) }})
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between gap-3 py-1">
+                                            <span class="text-neutral-500">Rejilla en el pallet</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ $enPallet['porPallet']['rejilla']['largo'] }} × {{ $enPallet['porPallet']['rejilla']['ancho'] }} × {{ $enPallet['porPallet']['rejilla']['alto'] }}</span>
+                                        </div>
+                                        <div class="flex justify-between gap-3 py-1">
+                                            <span class="text-neutral-500">Pallet armado</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">
+                                                {{ $pallet->largo_cm }} × {{ $pallet->ancho_cm }} × {{ $pallet->alto_cm }} cm
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between gap-3 py-1">
+                                            <span class="text-neutral-500">Peso por pallet</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ number_format($enPallet['pesoArmadoKg'], 0, ',', '.') }} kg</span>
+                                        </div>
+                                        <div class="flex justify-between gap-3 py-1">
+                                            <span class="text-neutral-500">Pallets en el camión</span>
+                                            <span class="font-medium tabular-nums text-neutral-900">{{ $enPallet['enCamion']['rejilla']['largo'] }} × {{ $enPallet['enCamion']['rejilla']['ancho'] }}</span>
+                                        </div>
+                                    </div>
+
+                                    @if (! $enPallet['entraEnPallet'])
+                                        {{-- Pasa de verdad y no es un error del cálculo: la bolsa de
+                                             botellones mide 130 cm y un pallet estándar tiene 120, así
+                                             que sobresale. Hay que decir POR QUÉ y qué hacer, porque un
+                                             «0» pelado se lee como que la app se equivocó. --}}
+                                        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-600">
+                                            <strong>«{{ $bulto->nombre }}» no entra sobre este pallet.</strong>
+                                            Mide {{ $bulto->largo_cm }} × {{ $bulto->ancho_cm }} × {{ $bulto->alto_cm }} cm
+                                            y el pallet da {{ $pallet->largo_cm }} × {{ $pallet->ancho_cm }} ×
+                                            {{ $pallet->altoUtilCm() }} cm útiles. Agrandá el pallet en «Ajustar medidas»
+                                            @if ($bulto->largo_cm > $pallet->largo_cm)
+                                                (necesita al menos {{ $bulto->largo_cm }} cm de largo)
+                                            @endif
+                                            o subí el alto total.
+                                        </p>
+                                    @elseif ($enPallet['cabenPallets'] === 0)
+                                        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                                            <strong>El pallet armado no entra en {{ $camion->nombre }}.</strong>
+                                            Con {{ $pallet->alto_cm }} cm de alto no pasa: probá bajarlo en «Ajustar medidas».
+                                        </p>
+                                    @endif
+
+                                    <p class="mt-4 text-xs leading-relaxed text-neutral-400">
+                                        Un pallet es una caja de carga: el mismo cálculo que dice cuánto entra en el
+                                        camión dice cuánto entra encima del pallet. No se apila un pallet sobre otro —
+                                        la estiba real a veces lo hace, pero prometerlo sin una regla de soporte por
+                                        kilo sería exagerar.
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endif
@@ -379,6 +460,19 @@
                                 <option value="0" @selected(! $acostado)>De pie</option>
                                 <option value="1" @selected($acostado)>Acostado</option>
                             </x-select>
+                        </div>
+                    @endif
+                    {{-- TOPE DE APILADO. Es lo que dejaba el hueco arriba de la carga que el
+                         dueño marcó (06-08): el catálogo dice 6 y el motor no sube más aunque
+                         quede altura. Cuántas aguanta la de abajo es dato de terreno, no de
+                         geometría, así que la decisión es suya. --}}
+                    @if ($bulto)
+                        <div class="sm:w-32">
+                            <x-input-label for="apilado" value="Apilar hasta" />
+                            <x-text-input id="apilado" name="apilado" type="number" min="1" max="30"
+                                          class="mt-1.5 w-full" inputmode="numeric"
+                                          value="{{ $apilado ?: $bulto->apilable_max }}"
+                                          title="Cuántos se apilan uno sobre otro. El catálogo dice {{ $bulto->apilable_max }}." />
                         </div>
                     @endif
                     <div><x-primary-button>Calcular</x-primary-button></div>
@@ -472,6 +566,112 @@
                             viajan en bolsas de 5: se completa la bolsa.
                         </p>
                     </div>
+                </form>
+
+                {{-- MODO 3 · SOBRE PALLET. Se arma un pallet con un producto y se sube al
+                     camión (pedido del dueño 06-08). TODAS las medidas son editables: las dos
+                     estándar que dictó son el punto de partida, no una jaula. --}}
+                <form x-show="modo === 'pallet'" @if ($enPallet === null) x-cloak @endif
+                      method="GET" action="{{ route('admin.carga.index') }}"
+                      class="space-y-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4"
+                      x-data="{
+                          medidas: false,
+                          tipos: {{ json_encode(\App\Services\Carga\PalletSimulado::TIPOS) }},
+                          tipo: '{{ $pallet->largo_cm === 120 && $pallet->ancho_cm === 80 ? 'epal' : 'industrial' }}',
+                          largo: {{ $pallet->largo_cm }}, ancho: {{ $pallet->ancho_cm }},
+                          alto: {{ $pallet->alto_cm }}, base: {{ $pallet->base_cm }},
+                          elegir() { const t = this.tipos[this.tipo]; if (t) { this.largo = t.largo; this.ancho = t.ancho; } },
+                      }">
+                    <input type="hidden" name="sobre_pallet" value="1">
+
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                            <x-input-label for="camion_id_pallet" value="Camión" />
+                            <x-select id="camion_id_pallet" name="camion_id" class="mt-1.5">
+                                @foreach ($camiones as $c)
+                                    <option value="{{ $c->id }}" @selected($camion?->id === $c->id)>{{ $c->nombre }}</option>
+                                @endforeach
+                            </x-select>
+                        </div>
+                        <div>
+                            <x-input-label for="tipo_bulto_id_pallet" value="Qué se paletiza" />
+                            <x-select id="tipo_bulto_id_pallet" name="tipo_bulto_id" class="mt-1.5">
+                                @foreach ($bultos as $b)
+                                    <option value="{{ $b->id }}" @selected($bulto?->id === $b->id)>{{ $b->nombre }}</option>
+                                @endforeach
+                            </x-select>
+                        </div>
+                        <div>
+                            <x-input-label for="pallet_tipo" value="Pallet" />
+                            <x-select id="pallet_tipo" name="pallet_tipo" class="mt-1.5" x-model="tipo" @change="elegir()">
+                                @foreach (\App\Services\Carga\PalletSimulado::TIPOS as $clave => $t)
+                                    <option value="{{ $clave }}">{{ $t['nombre'] }} cm</option>
+                                @endforeach
+                            </x-select>
+                        </div>
+                        <div>
+                            <x-input-label for="pallet_alto" value="Alto total (cm)" />
+                            <x-text-input id="pallet_alto" name="pallet_alto" type="number" x-model.number="alto"
+                                          min="{{ \App\Services\Carga\PalletSimulado::ALTO_MIN }}"
+                                          max="{{ \App\Services\Carga\PalletSimulado::ALTO_MAX }}"
+                                          class="mt-1.5 w-full" inputmode="numeric" />
+                        </div>
+                    </div>
+
+                    {{-- «Un botón para ajustar medidas», textual del pedido: las medidas finas
+                         viven detrás de un botón para no llenar la pantalla de campos que casi
+                         nunca se tocan, pero están. --}}
+                    <div>
+                        <x-secondary-button type="button" @click="medidas = !medidas">
+                            <x-icon.plus class="h-4 w-4" />
+                            <span x-text="medidas ? 'Listo' : 'Ajustar medidas'"></span>
+                        </x-secondary-button>
+
+                        <div x-show="medidas" x-cloak class="mt-3 grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <x-input-label for="pallet_largo" value="Largo del pallet (cm)" />
+                                <x-text-input id="pallet_largo" name="pallet_largo" type="number" x-model.number="largo"
+                                              min="40" max="300" class="mt-1.5 w-full" inputmode="numeric" />
+                            </div>
+                            <div>
+                                <x-input-label for="pallet_ancho" value="Ancho del pallet (cm)" />
+                                <x-text-input id="pallet_ancho" name="pallet_ancho" type="number" x-model.number="ancho"
+                                              min="40" max="300" class="mt-1.5 w-full" inputmode="numeric" />
+                            </div>
+                            <div>
+                                <x-input-label for="pallet_base" value="Alto de la tarima (cm)" />
+                                <x-text-input id="pallet_base" name="pallet_base" type="number" x-model.number="base"
+                                              min="5" max="30" class="mt-1.5 w-full" inputmode="numeric" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        @if ($bulto)
+                            <div class="flex items-center gap-2">
+                                <label for="apilado_pallet" class="text-xs text-neutral-500">Apilar hasta</label>
+                                <x-text-input id="apilado_pallet" name="apilado" type="number" min="1" max="30"
+                                              class="w-20" inputmode="numeric"
+                                              value="{{ $apilado ?: $bulto->apilable_max }}" />
+                            </div>
+                        @endif
+                        @if ($bulto?->puedeAcostarse())
+                            <div class="flex items-center gap-2">
+                                <label for="acostado_pallet" class="text-xs text-neutral-500">Cómo viaja</label>
+                                <x-select id="acostado_pallet" name="acostado" class="w-32">
+                                    <option value="0" @selected(! $acostado)>De pie</option>
+                                    <option value="1" @selected($acostado)>Acostado</option>
+                                </x-select>
+                            </div>
+                        @endif
+                        <x-primary-button>Armar el pallet</x-primary-button>
+                    </div>
+
+                    <p class="text-xs leading-relaxed text-neutral-400">
+                        La tarima estándar mide 14,4 cm y acá se usan 15 enteros: redondear la base
+                        hacia arriba deja menos altura útil, y todo error tiene que ir hacia abajo. En la
+                        práctica el pallet armado va entre 1,60 y 2,20 m de alto total.
+                    </p>
                 </form>
             </div>
 

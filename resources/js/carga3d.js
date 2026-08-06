@@ -143,6 +143,11 @@ export default function iniciarCarga3d(canvas, datos) {
     // botón sigue estando (igual que «Nombres») para no cambiar los controles según
     // la carga, pero no dibuja.
     const VARIOS = new Set(bloques.map((b) => b.nombre)).size > 1;
+    // Modo SOBRE PALLET: el pallet arranca EN EL PISO al lado del camión y se sube con un
+    // botón. Sin pallet en la escena `subido` vale true desde el principio, así que la
+    // carga suelta se dibuja como siempre.
+    const PALLET = !!datos.pallet;
+    let subido = !PALLET;
     // Cuántos bultos se dibujaron de cada bloque: lo llena `bultos()` y lo usan las
     // etiquetas para no rotular un bloque que la animación todavía no cargó.
     let dibujadosPorBloque = [];
@@ -1094,43 +1099,152 @@ export default function iniciarCarga3d(canvas, datos) {
 
         for (const [i, blq] of bloques.entries()) {
             if (puestos >= cant) break;
-            const rej = blq.rejilla, ori = blq.orientacion, col = blq.color || [234, 88, 12];
-            const capa = rej.ancho * rej.alto;
-            const dibujables = Math.max(0, Math.min(blq.cantidad, rej.largo * capa, cant - puestos));
+            const rej = blq.rejilla, ori = blq.orientacion;
+            const dibujables = Math.max(0, Math.min(blq.cantidad, rej.largo * rej.ancho * rej.alto, cant - puestos));
 
-            // Los bidones cuestan ~6 veces más polígonos que un bulto rectangular, y
-            // se dibujan uno por bolsa. Con cientos de bolsas (el contenedor lleva
-            // 324) se cae al bulto rectangular: a ese tamaño en pantalla se ve
-            // prácticamente igual y el arrastre se mantiene fluido. El límite se fijó
-            // MIDIENDO los polígonos por frame, no a ojo (ver las reglas).
-            const bidones = blq.forma === 'botellones' && dibujables <= TOPE_BIDONES;
-
-            const indice = (ix, iz, iy) => ix * capa + iz * rej.alto + iy;
-            const puesto = (ix, iz, iy) => ix >= 0 && ix < rej.largo && iz >= 0 && iz < rej.ancho
-                && iy >= 0 && iy < rej.alto && indice(ix, iz, iy) < dibujables;
-
-            for (let n = 0; n < dibujables; n++) {
-                const ix = Math.floor(n / capa), resto = n % capa;
-                const iz = Math.floor(resto / rej.alto), iy = resto % rej.alto;
-
-                if (puesto(ix - 1, iz, iy) && puesto(ix + 1, iz, iy)
-                    && puesto(ix, iz - 1, iy) && puesto(ix, iz + 1, iy)
-                    && puesto(ix, iz, iy - 1) && puesto(ix, iz, iy + 1)) continue;
-
-                const px = blq.x + ix * ori.largo, py = iy * ori.alto, pz = blq.y + iz * ori.ancho;
-                const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
-                if (bidones) {
-                    bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado);
-                } else {
-                    prisma(px, py, pz, ba, bb, bc, col);
-                }
-                // El código va sobre la caja de siempre, sea prisma o bolsa de
-                // bidones: las dos ocupan el mismo volumen, así que la cara se
-                // calcula igual y una bolsa también queda rotulada.
-                if (codigos && VARIOS && blq.letra) codigoEnBulto(px, py, pz, ba, bb, bc, blq.letra, bidones);
+            if (blq.forma === 'pallet') {
+                rejillaDePallets(blq, dibujables);
+            } else {
+                rejillaDeBultos(blq.x, 0, blq.y, rej, ori, dibujables, blq);
             }
+
             dibujadosPorBloque[i] = dibujables;
             puestos += dibujables;
+        }
+    }
+
+    /** Los pallets ARMADOS dentro del camión: cada uno es su base de madera más su carga
+     *  encima, dibujada con la misma rejilla que la carga suelta. */
+    function rejillaDePallets(blq, n) {
+        const rej = blq.rejilla, ori = blq.orientacion, it = blq.interior;
+        const capa = rej.ancho * rej.alto;
+        // Con muchos pallets la madera detallada son 17 prismas cada uno: a partir de una
+        // docena se cae a la tarima simple, que a ese tamaño en pantalla se ve igual.
+        const detalle = n <= 12;
+
+        for (let k = 0; k < n; k++) {
+            const ix = Math.floor(k / capa), resto = k % capa;
+            const iz = Math.floor(resto / rej.alto), iy = resto % rej.alto;
+            const px = blq.x + ix * ori.largo, py = iy * ori.alto, pz = blq.y + iz * ori.ancho;
+
+            palletDeMadera(px, py, pz, ori.largo * 0.99, ori.ancho * 0.99, blq.base, detalle);
+            if (!it) continue;
+
+            // La carga va CENTRADA sobre la tarima: la rejilla casi nunca llena el pallet
+            // justo, y arrimada a una esquina parecía mal estibada.
+            const usaL = it.rejilla.largo * it.orientacion.largo;
+            const usaW = it.rejilla.ancho * it.orientacion.ancho;
+            rejillaDeBultos(
+                px + (ori.largo - usaL) / 2, py + blq.base, pz + (ori.ancho - usaW) / 2,
+                it.rejilla, it.orientacion, it.cantidad, it,
+            );
+        }
+    }
+
+    /**
+     * Tarima de madera. `detalle` dibuja las tablas y los tacos; sin él, un cajón liso.
+     *
+     * Las proporciones son las de un pallet real: tablas de arriba cruzadas al largo,
+     * nueve tacos y tres patines abajo. Es lo que lo hace reconocible como pallet y no
+     * como una caja marrón.
+     */
+    function palletDeMadera(x, y, z, l, w, base, detalle = true) {
+        const MADERA = [186, 146, 98], TACO = [150, 114, 74];
+
+        if (!detalle) {
+            prisma(x, y, z, l, w, base, MADERA, G);
+
+            return;
+        }
+
+        const tabla = base * 0.16;
+        // Tablas de arriba: cruzan a lo ancho, con luz entre ellas.
+        for (let i = 0; i < 5; i++) {
+            prisma(x + (l - l * 0.13) * (i / 4), y + base - tabla, z, l * 0.13, w, tabla, MADERA, G);
+        }
+        // Tacos.
+        for (const dx of [0, (l - w * 0.13) / 2, l - w * 0.13]) {
+            for (const dz of [0, (w - w * 0.13) / 2, w - w * 0.13]) {
+                prisma(x + dx, y + tabla, z + dz, w * 0.13, w * 0.13, base - tabla * 2, TACO, G);
+            }
+        }
+        // Patines de abajo, a lo largo.
+        for (const dz of [0, (w - w * 0.13) / 2, w - w * 0.13]) {
+            prisma(x, y, z + dz, l, w * 0.13, tabla, MADERA, G);
+        }
+    }
+
+    /**
+     * El pallet EN EL PISO, al lado del camión, mientras se arma (pedido del dueño
+     * 06-08-2026: «que el pallet aparezca al lado del camión en el piso con la opción de
+     * armarlo y luego subirlo al camión»).
+     *
+     * Va del lado CERCANO a la cámara (z negativo) y apoyado en el mismo piso que las
+     * ruedas, para que se lea que está en el suelo y no flotando al lado de la caja.
+     */
+    function palletAlLado() {
+        const p = datos.pallet;
+        if (!p) return;
+
+        const x = veh.largo * 0.16;
+        const z = -(p.ancho + 0.95);
+        const y = M.suelo;
+
+        palletDeMadera(x, y, z, p.largo, p.ancho, p.base, true);
+
+        const it = p.interior;
+        if (it && it.cantidad > 0) {
+            const usaL = it.rejilla.largo * it.orientacion.largo;
+            const usaW = it.rejilla.ancho * it.orientacion.ancho;
+            rejillaDeBultos(
+                x + (p.largo - usaL) / 2, y + p.base, z + (p.ancho - usaW) / 2,
+                it.rejilla, it.orientacion, it.cantidad, it,
+            );
+        }
+    }
+
+    /**
+     * Dibuja los `n` primeros bultos de una rejilla apoyada en (x0, y0, z0).
+     *
+     * Sale de `bultos()` para que el PALLET pueda armar su carga con exactamente el mismo
+     * dibujo: un pallet armado es una rejilla de bultos sobre una base de madera, así que
+     * duplicar este bucle habría dejado dos versiones que driftean (el descarte de
+     * interiores, el LOD de los bidones y los códigos se habrían quedado en una sola).
+     */
+    function rejillaDeBultos(x0, y0, z0, rej, ori, n, blq) {
+        if (n <= 0) return;
+
+        const col = blq.color || [234, 88, 12];
+        const capa = rej.ancho * rej.alto;
+
+        // Los bidones cuestan ~6 veces más polígonos que un bulto rectangular, y se
+        // dibujan uno por bolsa. Con cientos de bolsas (el contenedor lleva 324) se cae al
+        // bulto rectangular: a ese tamaño en pantalla se ve prácticamente igual y el
+        // arrastre se mantiene fluido. El límite se fijó MIDIENDO los polígonos por frame.
+        const bidones = blq.forma === 'botellones' && n <= TOPE_BIDONES;
+
+        const indice = (ix, iz, iy) => ix * capa + iz * rej.alto + iy;
+        const puesto = (ix, iz, iy) => ix >= 0 && ix < rej.largo && iz >= 0 && iz < rej.ancho
+            && iy >= 0 && iy < rej.alto && indice(ix, iz, iy) < n;
+
+        for (let k = 0; k < n; k++) {
+            const ix = Math.floor(k / capa), resto = k % capa;
+            const iz = Math.floor(resto / rej.alto), iy = resto % rej.alto;
+
+            if (puesto(ix - 1, iz, iy) && puesto(ix + 1, iz, iy)
+                && puesto(ix, iz - 1, iy) && puesto(ix, iz + 1, iy)
+                && puesto(ix, iz, iy - 1) && puesto(ix, iz, iy + 1)) continue;
+
+            const px = x0 + ix * ori.largo, py = y0 + iy * ori.alto, pz = z0 + iz * ori.ancho;
+            const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
+            if (bidones) {
+                bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado);
+            } else {
+                prisma(px, py, pz, ba, bb, bc, col);
+            }
+            // El código va sobre la caja de siempre, sea prisma o bolsa de bidones: las
+            // dos ocupan el mismo volumen, así que la cara se calcula igual.
+            if (codigos && VARIOS && blq.letra) codigoEnBulto(px, py, pz, ba, bb, bc, blq.letra, bidones);
         }
     }
 
@@ -1290,6 +1404,9 @@ export default function iniciarCarga3d(canvas, datos) {
         cola = [];
         midiendo = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
         if (M.semi) siluetaSemirremolque(); else siluetaCamion();
+        // El pallet del piso entra al encuadre: si no, queda fuera del lienzo justo cuando
+        // se lo está armando, que es cuando hay que verlo.
+        if (PALLET && !subido) palletAlLado();
         for (const o of cola) if (o.pts) for (const p of o.pts) registrar(p[0], p[1]);
 
         const medida = midiendo;
@@ -1494,7 +1611,7 @@ export default function iniciarCarga3d(canvas, datos) {
         ctx.clearRect(0, 0, AW, AH);
 
         if (M.semi) siluetaSemirremolque(); else siluetaCamion();
-        bultos();
+        if (PALLET && !subido) palletAlLado(); else bultos();
         pintar();
         etiquetas();
         textoChapa();
@@ -1612,6 +1729,24 @@ export default function iniciarCarga3d(canvas, datos) {
     boton('carga3dSuma1', () => fijar(cant + 1));
     boton('carga3dSuma5', () => fijar(cant + 5));
     boton('carga3dSuma10', () => fijar(cant + 10));
+
+    /**
+     * SUBIR / BAJAR el pallet del camión (pedido del dueño 06-08: «con la opción de
+     * armarlo y luego subirlo al camión»).
+     *
+     * Al subir se llenan TODOS los pallets: es el momento de ver el resultado, y el paso
+     * es explícito del usuario, así que no contradice la regla de que la pantalla abre
+     * vacía. Al bajar vuelve el pallet al piso y el camión queda limpio.
+     */
+    const btnSubir = boton('carga3dSubir', () => {
+        clearInterval(anim);
+        subido = !subido;
+        cant = subido ? TOPE : 0;
+        btnSubir.textContent = subido ? '↓ Bajar del camión' : '↑ Subir al camión';
+        // Reencuadra: con el pallet en el piso la escena es más ancha que el camión solo.
+        encuadrar();
+        dibujar();
+    });
 
     boton('carga3dPlay', () => {
         clearInterval(anim);

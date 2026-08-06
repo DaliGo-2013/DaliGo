@@ -159,6 +159,62 @@ y el próximo deploy lo volvería a sembrar. Candado:
 Efecto de rebote: **ya ningún camión usa la silueta genérica** `camion`, que queda solo
 como respaldo para un camión sin silueta declarada.
 
+## 3.3 SOBRE PALLET: un pallet es una caja de carga (06-08-2026)
+
+Tercer modo de la pantalla. El dueño lo pidió así: *«que el pallet aparezca al lado del
+camión en el piso con la opción de armarlo y luego subirlo al camión, que tenga un botón
+para ajustar medidas»*.
+
+**LA IDEA QUE EVITÓ ESCRIBIR UN MOTOR NUEVO: un pallet es una caja de carga.** Cuántas
+unidades entran ENCIMA de un pallet se responde con el mismo `cupo()` que responde cuántas
+entran en un camión, cambiando la caja de 12 m por una de 1,20 m. Y el pallet armado vuelve
+al motor como un BULTO más, así que cuántos pallets entran en el camión también sale de
+`cupo()`. **Dos llamadas al mismo cálculo verificado, cero heurísticas nuevas** — y por eso
+el resultado hereda rejilla exacta, centímetros enteros y redondeo hacia abajo.
+
+`App\Services\Carga\PalletSimulado`. Reglas:
+
+1. **Los dos estándar que dictó** (120 × 100 y 120 × 80) son el punto de partida, **no una
+   jaula**: largo, ancho, alto total y alto de la tarima son editables detrás del botón
+   «Ajustar medidas» («deja la opción de modificar», textual).
+2. **La tarima son 15 cm enteros** aunque la ficha del EPAL diga 14,4. El motor trabaja en
+   centímetros enteros (§2.5) y redondear la base HACIA ARRIBA deja menos altura útil: el
+   error va hacia abajo, que es el credo.
+3. **Rotación solo HORIZONTAL** (`CalculoDeCarga`, `rotacion: 'horizontal'`). Un pallet gira
+   90° sobre el piso pero no se tumba. Sin esta regla había que elegir entre dos mentiras:
+   `orientacion_fija` perdía el giro válido (cupo más bajo que el real) y liberarlo dejaba
+   al motor tumbarlo y prometer un acomodo que en la vida se hace.
+4. **No se apila un pallet sobre otro** (`apilable_max: 1`), por el mismo motivo que no se
+   apila un tipo sobre otro: sin regla de soporte por kilo sería exagerar.
+5. **Si no entra ni un bulto encima, se reportan CERO pallets**, no «14 pallets vacíos».
+   Pasa de verdad: la bolsa de botellones mide 130 cm y un pallet estándar tiene 120, así
+   que sobresale. La pantalla dice el motivo y la medida que falta — un «0» pelado se lee
+   como que la app se equivocó.
+
+El visor dibuja el pallet **en el piso al lado del camión** mientras se arma (tarima de
+madera con tablas, tacos y patines) y el botón **«Subir al camión»** lo mete: ahí cada
+bulto del camión es un pallet armado, con su base y su carga encima. El dibujo de la carga
+sale de `rejillaDeBultos()`, la MISMA función que dibuja la carga suelta — duplicar ese
+bucle habría dejado dos versiones que driftean (el descarte de interiores, el LOD de los
+bidones y los códigos se habrían quedado en una sola).
+
+## 3.4 El tope de apilado se puede pisar (06-08-2026)
+
+El dueño marcó el hueco que quedaba arriba de la carga: *«ahí también se pueda cargar
+bidones porque en la vida cotidiana se usa todo el espacio»*. **No era un error del dibujo
+ni del acomodo: era `apilable_max` del catálogo**, que corta antes que la altura de la caja
+(la bolsa dice 6, y acostada mide 26 cm, así que dejaba libre casi la mitad del HINO).
+
+Ahora la pantalla acepta un tope por SIMULACIÓN que pisa el del catálogo
+(`TipoBulto::paraCalculo($acostado, $apilado)`). Medido en el HINO con la bolsa acostada:
+**180 bolsas con el tope 6 contra 300 con el tope 10** — el camión pasa a ir lleno de piso a
+techo.
+
+**El del catálogo sigue siendo el predeterminado**: es el dato que él dictó y con el que se
+verificaron los cupos de referencia. Cuántas aguanta la bolsa de abajo es dato de terreno,
+no de geometría, así que la decisión es suya y no del código. Candado:
+`test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre`.
+
 ## 4. El visor 3D y sus colores
 
 La escena viaja SIEMPRE como **lista de bloques** (posición, orientación,

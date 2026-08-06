@@ -95,6 +95,12 @@
          detalle, de a 5 o de a 10 para avanzar, «Todo» y «Vaciar» para los extremos
          (pedido del dueño 05-08). Envuelve en pantalla angosta. --}}
     <div class="absolute bottom-3 left-4 flex flex-wrap items-center gap-1.5 text-xs">
+        @if (! empty($escena['pallet']))
+            {{-- Armar el pallet en el piso y SUBIRLO. El visor arranca con el pallet al
+                 costado y el camión vacío; este botón lo mete. --}}
+            <button type="button" id="carga3dSubir"
+                    class="rounded-lg bg-neutral-800 px-2.5 py-1 font-semibold text-white transition hover:bg-neutral-900">↑ Subir al camión</button>
+        @endif
         <button type="button" id="carga3dPlay"
                 class="rounded-lg bg-brand-600 px-2.5 py-1 font-semibold text-white transition hover:bg-brand-700">▶ Cargar</button>
         <span class="mx-1 tabular-nums font-medium text-neutral-600"><span id="carga3dN">0</span> de {{ $escena['tope'] }}</span>

@@ -631,6 +631,121 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         }
     }
 
+    public function test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre(): void
+    {
+        // El dueño marcó el hueco arriba de la carga: «ahí también se pueda cargar bidones
+        // porque en la vida cotidiana se usa todo el espacio». No era un error del dibujo
+        // ni del acomodo: era el tope de apilado del catálogo (6), que corta antes que la
+        // altura de la caja. Ahora se puede pisar POR SIMULACIÓN.
+        $ver = fn (?int $apilado) => $this->actingAs($this->vendedor)->get(route('admin.carga.index', array_filter([
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->bolsa->id,
+            'apilado' => $apilado,
+        ])))->assertOk();
+
+        // De pie, la bolsa mide 51 cm: en 220 cm de caja entran 4 capas, así que el tope
+        // de 6 no muerde y subirlo no cambia nada. Acostada mide 26 y entran 8 capas: ahí
+        // el tope SÍ manda, y es el caso que el dueño estaba mirando.
+        $conTope = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'acostado' => 1,
+        ]))->assertOk();
+        $sinTope = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'acostado' => 1, 'apilado' => 8,
+        ]))->assertOk();
+
+        $this->assertSame(270, $conTope->viewData('resultado')['unidades'], '6 capas de 26 cm.');
+        $this->assertSame(360, $sinTope->viewData('resultado')['unidades'], '8 capas llenan los 220 cm.');
+
+        // Sin pedir nada manda el catálogo: es el dato que él dictó y con el que se
+        // verificaron las referencias.
+        $this->assertNull($ver(null)->viewData('apilado'));
+        $this->assertSame(420, $ver(null)->viewData('resultado')['unidades']);
+    }
+
+    public function test_el_pallet_se_resuelve_con_el_mismo_cupo_dos_veces(): void
+    {
+        // «A veces cargamos en pallet» + «que el pallet aparezca al lado del camión con la
+        // opción de armarlo y luego subirlo». La idea clave: un pallet ES una caja de
+        // carga, así que son dos llamadas al mismo `cupo()` verificado y ni una línea de
+        // cálculo nueva.
+        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->caja->id,
+            'sobre_pallet' => 1,
+            'pallet_tipo' => 'industrial',
+            'pallet_alto' => 180,
+        ]))->assertOk();
+
+        $enPallet = $res->viewData('enPallet');
+        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $pallet = $res->viewData('pallet');
+
+        // 1) Lo que entra ENCIMA del pallet sale de cupo() con el pallet como caja.
+        $this->assertSame(
+            $calculo->cupo($pallet->comoCajaDeCarga(), $this->caja->paraCalculo())['unidades'],
+            $enPallet['unidadesPorPallet'],
+        );
+        // 2) Y los pallets en el camión, del mismo cupo() con el pallet armado como bulto.
+        $this->assertSame($enPallet['enCamion']['bultos'], $enPallet['cabenPallets']);
+        $this->assertSame(
+            $enPallet['cabenPallets'] * $enPallet['unidadesPorPallet'],
+            $enPallet['unidadesTotales'],
+        );
+        // La tarima se descuenta del alto útil: 180 − 15.
+        $this->assertSame(165, $pallet->altoUtilCm());
+    }
+
+    public function test_un_pallet_gira_90_grados_pero_no_se_tumba(): void
+    {
+        // Un pallet se puede poner a lo largo o a lo ancho, pero acostarlo volcaría la
+        // carga. Sin esta regla había que elegir entre dos mentiras: fijarlo perdía el giro
+        // válido (cupo más bajo que el real) y liberarlo dejaba al motor tumbarlo.
+        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $pallet = \App\Services\Carga\PalletSimulado::desdeFormulario('industrial', null, null, 180);
+        $bulto = $pallet->comoBulto(500.0, 40);
+
+        // Cabe de las dos formas horizontales, y NUNCA de canto: el alto del bulto
+        // colocado tiene que ser siempre el alto del pallet.
+        $caja = ['largo' => 430, 'ancho' => 200, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
+        $r = $calculo->cupo($caja, $bulto);
+
+        $this->assertSame(180, $r['orientacion']['alto'], 'El pallet quedó tumbado.');
+        $this->assertContains($r['orientacion']['largo'], [120, 100]);
+        $this->assertSame(1, $r['rejilla']['alto'], 'No se apila un pallet sobre otro.');
+    }
+
+    public function test_la_escena_lleva_el_pallet_para_dibujarlo_en_el_piso(): void
+    {
+        // El visor dibuja el pallet AL LADO del camión mientras se arma, así que la escena
+        // tiene que llevarlo con su carga encima. Si esto se cae, el botón «Subir al
+        // camión» queda sin nada que subir y no se rompe nada — desaparece en silencio.
+        $escena = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->caja->id,
+            'sobre_pallet' => 1,
+        ]))->assertOk()->viewData('escena');
+
+        $this->assertArrayHasKey('pallet', $escena);
+        $this->assertSame(1.20, $escena['pallet']['largo']);
+        $this->assertSame(0.15, $escena['pallet']['base']);
+        $this->assertGreaterThan(0, $escena['pallet']['interior']['cantidad']);
+        // Y los bultos del camión son PALLETS, con su base y su interior para dibujarlos.
+        $this->assertSame('pallet', $escena['bloques'][0]['forma']);
+        $this->assertArrayHasKey('interior', $escena['bloques'][0]);
+    }
+
+    public function test_medidas_de_pallet_disparatadas_se_acotan_en_vez_de_reventar(): void
+    {
+        // Los campos son un `<input number>` que el usuario tipea. Un 5000 de más no puede
+        // reventar la pantalla ni entrar al cálculo.
+        $p = \App\Services\Carga\PalletSimulado::desdeFormulario('industrial', 9999, 0, 9999, 999);
+
+        $this->assertSame(300, $p->largo_cm);
+        $this->assertSame(100, $p->ancho_cm, 'Un 0 cae al estándar del tipo elegido.');
+        $this->assertSame(\App\Services\Carga\PalletSimulado::ALTO_MAX, $p->alto_cm);
+        $this->assertSame(30, $p->base_cm);
+    }
+
     public function test_girar_reencuadra_para_que_el_camion_no_quede_cortado(): void
     {
         // Reporte del dueño (06-08): «quiero que en el cuadrado el camión esté en el

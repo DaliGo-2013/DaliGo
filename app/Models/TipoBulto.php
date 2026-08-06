@@ -99,7 +99,7 @@ class TipoBulto extends Model implements AuditableContract
      * (6) corta antes que los 220 cm de la caja. Por eso de pie sigue siendo el
      * predeterminado: es la orientación con la que el dueño verificó sus referencias.
      */
-    public function paraCalculo(bool $acostado = false): array
+    public function paraCalculo(bool $acostado = false, ?int $apilado = null): array
     {
         $acostado = $acostado && $this->puedeAcostarse();
 
@@ -109,7 +109,19 @@ class TipoBulto extends Model implements AuditableContract
             'alto' => $acostado ? $this->ancho_cm : $this->alto_cm,
             'peso' => (float) $this->peso_kg,
             'unidades' => $this->unidades,
-            'apilable_max' => $this->apilable_max,
+            // El tope de apilado del catálogo se puede PISAR para una simulación.
+            //
+            // El dueño lo pidió mirando el hueco que quedaba arriba de la carga
+            // (06-08-2026): «ahí también se pueda cargar bidones porque en la vida
+            // cotidiana se usa todo el espacio». Ese hueco no era un error del dibujo ni
+            // del acomodo: era este tope, que corta antes que la altura de la caja.
+            //
+            // El del catálogo sigue siendo el predeterminado —es el dato que él dictó y
+            // con el que se verificaron los cupos de referencia—, pero la simulación es
+            // justamente el lugar para probar «¿y si apilo 9?». Es una pregunta legítima
+            // que solo él puede responder: cuántas aguanta la bolsa de abajo es dato de
+            // terreno, no de geometría.
+            'apilable_max' => max(1, $apilado ?: $this->apilable_max),
             'orientacion_fija' => $this->orientacion_fija,
         ];
     }

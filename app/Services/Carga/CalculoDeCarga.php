@@ -355,6 +355,16 @@ class CalculoDeCarga
         $w = (int) $bulto['ancho'];
         $h = (int) $bulto['alto'];
 
+        // SOLO HORIZONTAL: gira 90° sobre el piso pero NO se tumba. Es el caso del
+        // pallet armado — se lo puede poner a lo largo o a lo ancho, pero acostarlo
+        // volcaría la carga. Sin esto había que elegir entre dos mentiras: con
+        // `orientacion_fija` se perdía el giro válido de 90° (y el cupo salía más bajo de
+        // lo real), y sin ella el motor probaba tumbarlo y podía prometer un acomodo que
+        // en la vida se hace.
+        if (($bulto['rotacion'] ?? null) === 'horizontal') {
+            return [[$l, $w, $h], [$w, $l, $h]];
+        }
+
         if (! empty($bulto['orientacion_fija'])) {
             return [[$l, $w, $h]];
         }
