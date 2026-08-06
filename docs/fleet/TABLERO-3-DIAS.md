@@ -79,6 +79,25 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
+### I-09 · Outage mayor de GitHub Actions — rojos falsos en CI — DIAGNOSTICADA 06-08 (doctrina fijada)
+El 06-08 (desde ~15:22 UTC) GitHub Actions entró en **Major Outage** oficial (githubstatus.com):
+jobs en cola sin arrancar y runners hosted sin capacidad. En nuestro repo: Tests y Deploy del
+merge M04 (`276a54f`), Tests de `3b8ee54` y el par de `5a8f0b4` cayeron ROJOS **sin ejecutar ni
+un test** — todos con la anotación *«The job was not acquired by Runner of type hosted even
+after multiple attempts»* y ~15 min muertos (timeout esperando máquina). Max-2 lo diagnosticó
+en paralelo a pedido del dueño (aviso en el buzón) — dos diagnósticos independientes, mismo
+veredicto. Producción quedó al día por los deploys #547 y #550 (verdes entre medio del outage).
+**Doctrina para el próximo outage de Actions:**
+1. La anotación «job not acquired by Runner» + duración ~15 min exactos = **infra, no código**.
+   Confirmar en githubstatus.com antes de tocar nada.
+2. La verificación que manda durante el outage es la **suite local del Director** ejecutada
+   sobre el árbol exacto (la de siempre) — CI es el respaldo, no la fuente.
+3. `deploy.yml` instala SIEMPRE la punta de main (`git reset --hard FETCH_HEAD`): un solo
+   deploy verde posterior cierra TODOS los huecos anteriores. No hay riesgo de rollback por
+   orden de runs.
+4. Máximo **1 re-run en cola por workflow** — apilar re-runs solo engorda la cola atascada.
+5. Un rojo que REAPAREZCA con runners ya sanos deja de ser outage: investigar como defecto.
+
 ### I-08 · Parte P-DSP-05 esperó 6 días la doble llave por error del DIRECTOR — CERRADA 03-08
 Max-2 entregó P-DSP-05 (PWA conductor) el 28-07 con parte en regla pidiendo doble llave, y
 adenda de re-refresh el 30-07. Al barrer el buzón el 30-07 el Director lo confundió con la
