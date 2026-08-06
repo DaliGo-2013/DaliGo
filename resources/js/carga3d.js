@@ -170,6 +170,17 @@ export default function iniciarCarga3d(canvas, datos) {
                 : (hino ? Math.min(veh.alto * 0.68, 1.95) : Math.min(veh.alto * 0.78, 2.05)));
         return {
             semi, liviano, hino, chas, r, rw, sep, largoCab, altoCab,
+            // Dónde va el EJE DELANTERO, medido desde el frente de la caja hacia atrás.
+            //
+            // En el tracto estaba al 60% de la cabina y quedaba casi pegado al tándem
+            // (1,11 m entre centros contra ruedas de 0,92: quedaban 19 cm de aire y se
+            // veían las tres juntas, no como un eje delantero — reporte del dueño 06-08).
+            // Al 82% queda bajo el frente de la cabina, que es donde va en un cab-over
+            // real, y se separa 1,68 m del tándem.
+            //
+            // Un solo valor para el silueteado Y el guardabarro: estaban escritos dos
+            // veces y mover uno dejaba el otro flotando sobre la nada.
+            ejeDel: -largoCab * (semi ? 0.82 : 0.58),
             suelo: -chas - r * 2,
             delante: largoCab + sep,
             // El techo del tracto (cabina + deflector) puede pasar al contenedor. Ya no
@@ -576,7 +587,17 @@ export default function iniciarCarga3d(canvas, datos) {
         // La sombra es la única pieza que se pinta al margen de la cola, así que es
         // la única que tiene que declararse sola al medir el encuadre. Antes no
         // entraba en la cuenta y quedaba CORTADA contra el borde de abajo.
-        if (midiendo) { registrar(cx - rx, cy - ry); registrar(cx + rx, cy + ry); return; }
+        //
+        // Declara el 90% de su radio. El degradado se va a transparente, así que el
+        // anillo de afuera casi no se ve y reservarlo entero descentraba el camión hacia
+        // arriba. Con 0,75 se pasaba para el otro lado y el borde de la sombra tocaba el
+        // filo de abajo; 0,90 centra mejor sin que se note ningún recorte.
+        if (midiendo) {
+            registrar(cx - rx * 0.90, cy - ry * 0.90);
+            registrar(cx + rx * 0.90, cy + ry * 0.90);
+
+            return;
+        }
 
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
         g.addColorStop(0, 'rgba(0,0,0,.20)');
@@ -668,7 +689,7 @@ export default function iniciarCarga3d(canvas, datos) {
 
         // Guardabarro blanco sobre la rueda delantera + estribo bajo la puerta.
         for (const z of [-0.03, veh.ancho - M.rw + 0.03]) {
-            guardabarroClaro(-M.largoCab * 0.60, -M.chas, z, M.r, M.rw);
+            guardabarroClaro(M.ejeDel, -M.chas, z, M.r, M.rw);
         }
         for (const z of [z0 - 0.05, z0 + w - 0.20]) {
             prisma(x0 + largo * 0.42, -M.chas * 0.4, z, largo * 0.34, 0.25, 0.06, [96, 99, 106], G);
@@ -922,7 +943,41 @@ export default function iniciarCarga3d(canvas, datos) {
             for (const z of [0.01, W - 0.09]) prisma(-0.02, H - 0.13, z, 0.05, 0.08, 0.07, [226, 148, 38]);
         }
         paredes(L, W, H);
+        // Puerta lateral: la pidió el dueño (06-08, «el lateral, ¿hay chance de ponerle
+        // puertas?»). Solo en los furgones — un contenedor 40' no tiene puerta al costado,
+        // y dibujársela sería mostrar algo que su contenedor no tiene; ahí el detalle del
+        // costado es la corrugación (ver `paredes`).
+        if (!M.semi) puertaLateral(L, W, H);
         chapa();
+    }
+
+    /**
+     * Puerta de servicio en el costado del furgón: marco, hoja y manija.
+     *
+     * Va en z = 0, que es el costado que MIRA A LA CÁMARA en el ángulo de apertura (con
+     * yaw −0,85 la profundidad crece con z, así que z = 0 es el lado cercano). Puesta en
+     * el otro costado quedaría escondida detrás de la carga justo en la vista por defecto.
+     *
+     * Se dibuja translúcida con borde, no opaca: la pared del furgón deja ver la carga a
+     * propósito, y una puerta sólida taparía justo lo que se vino a mirar.
+     */
+    function puertaLateral(L, W, H) {
+        const x0 = L * 0.50, ancho = Math.min(1.10, L * 0.22);
+        const y0 = 0.10, alto = Math.min(H * 0.78, 1.95);
+        const z = -0.006;   // apenas afuera de la pared, para que no compitan al dibujar
+
+        panel([[x0, y0, z], [x0 + ancho, y0, z], [x0 + ancho, y0 + alto, z], [x0, y0 + alto, z]],
+            [232, 234, 238], { alpha: 0.16, borde: 'rgba(60,62,70,.55)' });
+        // Junta central: es una puerta de dos hojas.
+        panel([[x0 + ancho / 2, y0, z], [x0 + ancho / 2 + 0.012, y0, z],
+            [x0 + ancho / 2 + 0.012, y0 + alto, z], [x0 + ancho / 2, y0 + alto, z]],
+            [90, 93, 100], { alpha: 0.5 });
+        // Manijas de barra, verticales, una por hoja.
+        for (const dx of [ancho / 2 - 0.14, ancho / 2 + 0.10]) {
+            panel([[x0 + dx, y0 + alto * 0.34, z], [x0 + dx + 0.035, y0 + alto * 0.34, z],
+                [x0 + dx + 0.035, y0 + alto * 0.62, z], [x0 + dx, y0 + alto * 0.62, z]],
+                [64, 66, 74], { alpha: 0.85 });
+        }
     }
 
     /**
@@ -942,10 +997,18 @@ export default function iniciarCarga3d(canvas, datos) {
         // grandes y la carga se veía lavada igual. Son caras planas, salen baratas.
         const N = Math.max(6, Math.round(L / 0.6));
 
+        // Nervios / juntas de panel: los tramos van con el tono ALTERNADO. Un contenedor
+        // real es corrugado y un furgón está hecho de paneles con junta, y de costado —una
+        // de las vistas fijas— la pared era una sábana lisa de punta a punta. Sale gratis
+        // porque los tramos ya existían por el orden de dibujo. En el contenedor la
+        // alternancia es más marcada: la corrugación se ve mucho más que una junta.
+        const nervio = M.semi ? 0.10 : 0.045;
+
         for (let i = 0; i < N; i++) {
             const xa = (i * L) / N, xb = ((i + 1) * L) / N;
-            panel([[xa, 0, 0], [xb, 0, 0], [xb, H, 0], [xa, H, 0]], VID, { alpha: 0.10, tono: 0.86 });
-            panel([[xa, 0, W], [xb, 0, W], [xb, H, W], [xa, H, W]], VID, { alpha: 0.10, tono: 0.95 });
+            const t = i % 2 ? 1 - nervio : 1;
+            panel([[xa, 0, 0], [xb, 0, 0], [xb, H, 0], [xa, H, 0]], VID, { alpha: 0.10, tono: 0.86 * t });
+            panel([[xa, 0, W], [xb, 0, W], [xb, H, W], [xa, H, W]], VID, { alpha: 0.10, tono: 0.95 * t });
             panel([[xa, H, 0], [xb, H, 0], [xb, H, W], [xa, H, W]], VID, { alpha: 0.09 });
         }
         panel([[0, 0, 0], [0, H, 0], [0, H, W], [0, 0, W]], VID, { alpha: 0.11, tono: 0.8 });
@@ -967,11 +1030,11 @@ export default function iniciarCarga3d(canvas, datos) {
         // le dibujaba una sola por eje.
         const anchoTras = M.rw * 2 + 0.03;
         for (const z of [-0.03, veh.ancho - M.rw + 0.03]) {
-            rueda(-M.largoCab * 0.58, -M.chas, z, M.r, M.rw);
+            rueda(M.ejeDel, -M.chas, z, M.r, M.rw);
             // Arco de la rueda delantera. Faltaba en los dos camiones de reparto y era lo
             // que más delataba la cabina como un cajón: la rueda salía de un costado
             // liso, sin nada que explicara de dónde. Atrás ya estaba.
-            guardabarro(-M.largoCab * 0.58, -M.chas, z, M.r, M.rw);
+            guardabarro(M.ejeDel, -M.chas, z, M.r, M.rw);
         }
         for (const z of [-0.03, veh.ancho - anchoTras + 0.03]) {
             rueda(veh.largo * 0.74, -M.chas, z, M.r, M.rw, true);
@@ -999,7 +1062,7 @@ export default function iniciarCarga3d(canvas, datos) {
         // Eje delantero simple del tracto + TÁNDEM trasero doble: en las fotos del
         // Actros se ven las dos ruedas juntas detrás de la cabina (es un 6×4), y antes
         // el tracto tenía un solo eje y parecía apoyado en el aire.
-        for (const z of [-0.03, veh.ancho - M.rw + 0.03]) rueda(-M.largoCab * 0.60, -M.chas, z, M.r, M.rw);
+        for (const z of [-0.03, veh.ancho - M.rw + 0.03]) rueda(M.ejeDel, -M.chas, z, M.r, M.rw);
         for (const ex of [-M.sep - 0.10, -M.sep + 1.25]) {
             for (const z of [-0.03, veh.ancho - anchoDoble + 0.03]) rueda(ex, -M.chas, z, M.r, M.rw, true);
         }
@@ -1463,6 +1526,22 @@ export default function iniciarCarga3d(canvas, datos) {
         // El tope de abajo llega hasta la vista de PLANTA (−1,35): con el −1,15 de
         // antes, entrar en planta y mover un pixel el dedo saltaba de golpe a 3/4.
         pitch = Math.max(-1.42, Math.min(0.45, arrastre.pitch + (e.clientY - arrastre.y) * 0.006));
+
+        // REENCUADRA MIENTRAS GIRA (pedido del dueño 06-08-2026: «quiero que en el
+        // cuadrado el camión esté en el centro, ahí lo estoy girando y se ve cortado la
+        // última parte»).
+        //
+        // Esto REVIERTE una decisión anterior —el encuadre se medía una vez por vista y
+        // no se tocaba, para que girar no cambiara el tamaño—. La razón por la que estaba
+        // mal: al girar, el ancho proyectado de un acoplado de 12 m pasa de 12 m (de
+        // costado) a 2,4 m (desde la puerta). Con una escala fija, cualquier ángulo que
+        // no sea el medido queda o cortado contra el borde o diminuto en el medio. Que el
+        // camión cambie de tamaño al girar molesta mucho menos que verlo cortado.
+        //
+        // Solo con zoom 1: si el usuario se acercó a mirar un bulto, reencuadrar le
+        // sacaría de golpe el zoom que acaba de hacer.
+        if (zoom === 1) aplicar(medirEncuadre(yaw, pitch));
+
         dibujar();
     });
     canvas.addEventListener('pointerup', () => { arrastre = null; });

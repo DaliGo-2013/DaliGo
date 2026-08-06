@@ -403,6 +403,23 @@ Dos detalles de implementación que importan:
   que mira el cuerpo de CADA función y no el archivo entero (ahí una sola llamada daría
   falso verde).
 
+**El costado de la CAJA (06-08).** También era una sábana lisa de punta a punta. Ahora los
+tramos de pared van con el tono **alternado** —nervios—, más marcados en el contenedor
+(es corrugado) que en el furgón (paneles con junta). Sale gratis: los tramos ya existían
+por el orden de dibujo. Y el furgón lleva **puerta lateral** de dos hojas con manijas
+(`puertaLateral`), pedida por el dueño; **el contenedor no**, porque un 40' no tiene puerta
+al costado y dibujársela sería mostrarle algo que su contenedor no tiene. Va translúcida
+con borde, no opaca: la pared deja ver la carga a propósito y una puerta sólida taparía
+justo lo que se vino a mirar. Va en `z = 0`, el costado que mira a la cámara en el ángulo de
+apertura. Candado: `test_la_puerta_lateral_es_del_furgon_y_no_del_contenedor`.
+
+**El eje delantero (06-08).** En el tracto estaba al 60% de la cabina y quedaba a 19 cm del
+tándem: se veían las tres ruedas juntas y ninguna parecía el eje delantero (reporte del
+dueño). Pasó al **82%**, que es donde va en un cab-over real, y se separa 1,68 m. Sale de
+`M.ejeDel`, **un solo valor** para la rueda y para el guardabarro: estaban escritos por
+separado y corregir uno dejaba el otro flotando sobre la nada. Candado:
+`test_el_eje_delantero_tiene_una_sola_definicion`.
+
 **El techo de este motor.** Lo que sí se puede seguir sumando son facetas planas: molduras,
 más vidrios, biseles, calcos. Lo que **no** se puede sin cambiar de tecnología son curvas
 suaves, texturas y reflejos — el visor son quads planos con sombreado por cara sobre
@@ -425,6 +442,23 @@ Las dos cosas eran el mismo error y se midieron antes de tocar nada:
   le da al recuadro la proporción del camión dibujado. Se fija UNA vez con los ángulos de
   apertura y no cambia al cambiar de vista — si cada vista redimensionara el recuadro, la
   página entera saltaría al tocar «Planta».
+
+**Girar REENCUADRA (06-08-2026).** Esto revierte a propósito la decisión de medir el
+encuadre una sola vez por vista. Reporte del dueño: *«quiero que en el cuadrado el camión
+esté en el centro, ahí lo estoy girando y se ve cortado la última parte»*. El motivo por el
+que la escala fija estaba mal: al girar, el ancho proyectado de un acoplado de 12 m pasa de
+12 m (de costado) a 2,4 m (desde la puerta), así que **cualquier ángulo distinto del medido
+queda cortado contra el borde o diminuto en el medio**. Que el camión cambie de tamaño al
+girar molesta mucho menos que verlo cortado.
+
+- Solo con **zoom 1**: si el usuario se acercó a mirar un bulto, reencuadrar le sacaría de
+  golpe el zoom que acaba de hacer.
+- Costo medido: **6,9 ms por frame** girando el contenedor lleno (el reencuadre solo mide
+  la silueta, no los bultos). Verificado en 7 ángulos: no toca ningún borde y el desbalance
+  horizontal queda en ≤ 22 px de 1403.
+- La sombra declara el **90%** de su radio al medir. Con el 100% descentraba el camión
+  hacia arriba (130 px arriba contra 186 abajo); con el 75% se pasaba al otro lado y el
+  borde de la sombra tocaba el filo de abajo.
 
 Dos reglas que se derivan y no hay que romper:
 

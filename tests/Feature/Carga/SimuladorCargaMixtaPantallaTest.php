@@ -631,6 +631,54 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         }
     }
 
+    public function test_girar_reencuadra_para_que_el_camion_no_quede_cortado(): void
+    {
+        // Reporte del dueño (06-08): «quiero que en el cuadrado el camión esté en el
+        // centro, ahí lo estoy girando y se ve cortado la última parte».
+        //
+        // El encuadre se medía UNA vez por vista y no se tocaba, para que girar no
+        // cambiara el tamaño. Está mal porque al girar el ancho proyectado de un acoplado
+        // de 12 m pasa de 12 m (de costado) a 2,4 m (desde la puerta): con escala fija,
+        // cualquier ángulo distinto del medido queda cortado o diminuto. Verificado
+        // midiendo la tinta en 7 ángulos: no toca ningún borde y queda centrado.
+        //
+        // La condición `zoom === 1` es la mitad importante: si el usuario se acercó a
+        // mirar un bulto, reencuadrar le sacaría el zoom que acaba de hacer.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('if (zoom === 1) aplicar(medirEncuadre(yaw, pitch));', $js);
+    }
+
+    public function test_el_eje_delantero_tiene_una_sola_definicion(): void
+    {
+        // La rueda delantera y su guardabarro estaban escritos por separado, y el dueño
+        // reportó que en el tracto quedaba pegada al tándem («las primeras no parecen
+        // ruedas delanteras»). Al corregirla había que corregir los dos lugares o el
+        // guardabarro quedaba flotando sobre la nada. Ahora sale de `M.ejeDel`.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('ejeDel:', $js);
+        $this->assertDoesNotMatchRegularExpression(
+            '/(rueda|guardabarro|guardabarroClaro)\(-M\.largoCab \* 0\.\d+/',
+            $js,
+            'Volvió a haber una posición de eje delantero escrita a mano.',
+        );
+    }
+
+    public function test_la_puerta_lateral_es_del_furgon_y_no_del_contenedor(): void
+    {
+        // Pedido del dueño: «el lateral, ¿hay chance de ponerle puertas?». Va en los
+        // furgones. Un contenedor 40' NO tiene puerta al costado —dibujársela sería
+        // mostrarle algo que su contenedor no tiene—; ahí el detalle del costado es la
+        // corrugación de la pared.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('function puertaLateral', $js);
+        $this->assertStringContainsString('if (!M.semi) puertaLateral(', $js);
+        // Y la pared lleva nervios: de costado era una sábana lisa de punta a punta.
+        $this->assertStringContainsString('const nervio = M.semi', $js);
+    }
+
     public function test_arrastrar_apaga_la_vista_fija_marcada(): void
     {
         // El dueño mandó una captura con «Costado» encendido y el camión en tres cuartos:
