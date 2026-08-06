@@ -1,7 +1,7 @@
 # Parte Max-1 → Director · 2026-08-06 · v36 P-M04-10/11/12 HECHOS — F1 de M04 completa, espera doble llave
 
 **Rama:** `feature/m04-bodegas-parametricas` @ `ecc7092` (3 commits: lote `9e23e62` + bundle `ebf43eb` + docs) · nace de main `204ceb9` (fresco de hoy). Ojo: main ya avanzó a `0004bdd` (visor de Marcos) mientras cerraba — la rama NO lo trae; re-fetch antes del merge, como siempre.
-**Suite:** baseline de main fresco **1588 / 11.481, cero rojos** (fijada ANTES de empezar, corrida limpia de hoy) → la corrida completa de la rama está **en curso al despachar este parte**; la cifra final viaja en el commit siguiente sobre este mismo archivo (el árbol queda intacto durante la corrida). Las baterías del lote y todos los candados estructurales ya corrieron verdes por filtro (57 + 83).
+**Suite:** baseline de main fresco **1588 / 11.481, cero rojos** (fijada ANTES de empezar, corrida limpia de hoy) → rama **1612 / 11.650, cero rojos** (corrida completa sobre el árbol final, intacto durante la corrida). **El delta cuadra exacto:** +24 tests = los míos (5 seeder + 9 clasificación + 4 sync + 6 sucursales) — cero sorpresas.
 **Bundle:** `app-rbQZrEKh` — superset verificado contra el bundle de HEAD: **0 pérdidas, +1 selector** (`ms-1.5`); `git show --stat` confirma que viajó en su commit.
 
 ## Qué quedó construido (F1 completa, PLAN-M04 §3)
@@ -36,4 +36,4 @@ Orden de mutación respetado (fix → verde → COMMIT → mutar → rojo → `g
 - `devolucion_bodega_reingreso` sigue siendo texto libre `'CONTENEDORES'` — y CONTENEDORES es una [B] que podría morir (¿dónde entra la importación?). El select real es F3; si la ronda 2 mata CONTENEDORES, esa config queda apuntando a una bodega cerrada.
 - Los otros 3 FKs `nullOnDelete` de sucursales (`ordenes_servicio`, `lotes_servicio`, `dte_emitidos`) no revientan pero pierden trazabilidad en silencio al eliminar — `dte_emitidos` es documento tributario. No los toqué (no eran del paso); queda anotado.
 
-**Pendiente de mí:** la cifra de la suite (commit siguiente). Después, nada: la rama espera la **doble llave**. QA sugerido para el dueño (del «Hecho cuando» del plan): clasificar una [B] desde el celular, intentar eliminar una sucursal con bodegas, y crear una bodega de prueba en Bsale para verla llegar sola con su aviso.
+**Pendiente de mí:** nada. La rama espera la **doble llave**. QA sugerido para el dueño (del «Hecho cuando» del plan): clasificar una [B] desde el celular, intentar eliminar una sucursal con bodegas, y crear una bodega de prueba en Bsale para verla llegar sola con su aviso.
