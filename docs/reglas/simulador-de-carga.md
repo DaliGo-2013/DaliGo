@@ -106,41 +106,57 @@ cajas). El controlador convierte a bultos redondeando **hacia arriba** (198
 botellones = 40 bolsas: la bolsa viaja completa o no viaja) y lo cargado se
 reporta **capado a lo pedido** (198, no 200 — decir más de lo que pidió confunde).
 
-## 3.1 De pie o acostado: la estiba se ELIGE (05-08-2026)
+## 3.1 La ESTIBA se elige entre TRES (05 y 06-08-2026)
 
 Pedido del dueño: *«necesito la opción de poder acostar el pack de botellones ya que en
-los camiones la mayoría se acuestan»*.
+los camiones la mayoría se acuestan»* (05-08), ampliado el 06-08 con la tercera: *«hacela
+hasta donde se pueda»* (la de «pico a la puerta», que él había descrito el 05-08 mirando
+sus fotos de carga).
 
 La bolsa medida son **130 × 26 × 51**: cinco botellones **PARADOS** en fila (el 51 es el
-alto del botellón, el 26 su diámetro). Acostarlos pone el eje en horizontal, así que el
-pack pasa a **130 × 51 × 26** — el mismo largo, y el diámetro pasa a ser la altura.
-`TipoBulto::paraCalculo(bool $acostado)` intercambia ancho y alto; el motor no cambió.
+alto del botellón, el 26 su diámetro, el 130 la fila de cinco). De ahí salen las tres, y
+cada una es una **rotación distinta del mismo pack** (`TipoBulto::ESTIBAS`):
 
-**El número cambia, y hacia abajo:** en el HD35 son **420 de pie contra 270 acostados**,
-porque acostada la bolsa mide 26 cm de alto y el tope de apilado (6) corta antes que los
-220 cm de la caja.
+| Estiba | Medidas | Eje del botellón | Cupo en el HD35 |
+|---|---|---|---|
+| `pie` | 130 × 26 × 51 | vertical | **420** |
+| `costado` | 130 × 51 × 26 | cruzando el camión | **270** |
+| `pico` | 51 × 130 × 26 | mirando a la puerta | **240** |
+
+`costado` y `pico` se diferencian en un giro de 90° sobre el piso. **Parece lo mismo y no
+lo es**, porque el motor no rota estos bultos (son de orientación fija): «pico a la
+puerta» cruza la fila de 130 cm en una caja de 200 y desperdicia 70 cm de ancho, y por eso
+da el peor cupo. No es un error — es la razón por la que en la práctica se elige según el
+camión.
+
+**El número cambia con cada una, y hacia abajo respecto de `pie`**: acostada la bolsa mide
+26 cm de alto y el tope de apilado corta antes que los 220 cm de la caja.
 
 Tres reglas que salen de eso:
 
-1. **De pie es el predeterminado.** Es la orientación con la que el dueño verificó sus
-   referencias (420 / 960 / 1500 / 1620). Si el default se diera vuelta, esos números
-   dejarían de cuadrar y nadie sabría por qué. Candado:
-   `test_acostado_da_menos_botellones_y_de_pie_sigue_siendo_el_predeterminado`.
-2. **Se elige POR LÍNEA**, no por pantalla: en la misma carga puede ir un pack acostado y
-   otro de pie.
+1. **`pie` es el predeterminado.** Es la orientación con la que el dueño verificó sus
+   referencias (420 / 1500 / 1620). Si el default se diera vuelta, esos números dejarían
+   de cuadrar y nadie sabría por qué. Una estiba desconocida cae a `pie` en vez de
+   calcular con medidas que nadie pidió. Candado:
+   `test_cada_estiba_da_un_numero_distinto_y_de_pie_es_el_predeterminado`.
+2. **Se elige POR LÍNEA**, no por pantalla: en la misma carga puede ir un pack de costado,
+   otro de pie y otro con el pico a la puerta.
 3. **Solo se ofrece donde cambia algo**, o sea en los bultos de orientación FIJA
    (`TipoBulto::puedeAcostarse()`). A los demás el motor ya les prueba las 6 rotaciones y
    se queda con la mejor: ofrecerles «acostado» sería ofrecer empeorar el resultado. Si
    igual llega por URL, se ignora.
 
 **La pantalla DICE con qué estiba calculó** (fila «Cómo viaja» en el cupo máximo, chapita
-«Acostado» en el detalle de la carga mixta). Leer «entran 270» sin saber que fue acostado
-invita a compararlo con los 420 de pie y a pensar que el simulador se equivocó.
+con el nombre de la estiba en el detalle de la carga mixta). Leer «entran 240» sin saber
+cuál se usó invita a compararlo con los 420 de pie y a pensar que el simulador se equivocó.
 
-Y el visor dibuja los botellones **tumbados de verdad** (`cilindroAcostado`, función
-aparte de la vertical porque el sombreado y la tapa se calculan sobre planos distintos).
-Si el lienzo mostrara los botellones parados mientras el cálculo dice «acostado», dejaría
-de ser la prueba de lo que el motor hizo — que es todo lo que aporta.
+Y el visor dibuja **la estiba que se calculó**, no una aproximación: `cilindroTumbado()` es
+una función aparte de la vertical porque el sombreado y la tapa van sobre otros planos, y
+recibe el EJE —a lo largo del camión para «pico a la puerta», a lo ancho para «de costado»—
+porque las dos se ven distinto. Ahí la bandera está bien: es literalmente el eje del
+cilindro, no dos cuerpos disfrazados de uno. Si el lienzo mostrara los botellones parados
+mientras el cálculo dice «pico a la puerta», dejaría de ser la prueba de lo que el motor
+hizo — que es todo lo que aporta. Candado: `test_el_visor_dibuja_la_estiba_que_se_calculo`.
 
 ## 3.2 El Chevy 3 se vendió (05-08-2026)
 
@@ -206,7 +222,7 @@ ni del acomodo: era `apilable_max` del catálogo**, que corta antes que la altur
 (la bolsa dice 6, y acostada mide 26 cm, así que dejaba libre casi la mitad del HINO).
 
 Ahora la pantalla acepta un tope por SIMULACIÓN que pisa el del catálogo
-(`TipoBulto::paraCalculo($acostado, $apilado)`). Medido en el HINO con la bolsa acostada:
+(`TipoBulto::paraCalculo($estiba, $apilado)`). Medido en el HINO con la bolsa acostada:
 **180 bolsas con el tope 6 contra 300 con el tope 10** — el camión pasa a ir lleno de piso a
 techo.
 

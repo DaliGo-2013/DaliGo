@@ -409,26 +409,42 @@ export default function iniciarCarga3d(canvas, datos) {
      * que se lea redondo a este tamaño y cuestan la mitad que ocho — y de estos van
      * cinco por bolsa.
      */
-    function bolsaDeBidones(x, y, z, l, w, h, col, acostado = false) {
-        // ACOSTADO: los botellones van tumbados (pedido del dueño 05-08-2026, «en los
-        // camiones la mayoría se acuestan»). El pack acostado mide 130 × 51 × 26, así
-        // que el que marca cuántos entran en fila deja de ser el ancho y pasa a ser el
-        // ALTO —que es el diámetro del botellón cuando está tumbado— y el eje del
-        // cilindro pasa de vertical a horizontal, a lo ancho del camión.
-        const grosor = Math.max(0.01, acostado ? h : w);
-        const n = Math.max(1, Math.min(8, Math.round(l / grosor)));
-        const paso = l / n, r = Math.min(paso, grosor) * 0.46;
+    function bolsaDeBidones(x, y, z, l, w, h, col, estiba = 'pie') {
+        // LAS TRES ESTIBAS que describió el dueño. Cada una cambia el EJE del botellón y
+        // la dirección en que se cuenta la fila de cinco, así que el dibujo tiene que
+        // seguir al cálculo o el lienzo deja de ser la prueba de lo que el motor hizo:
+        //
+        //   pie      130 × 26 × 51  eje vertical, fila a lo largo del camión
+        //   costado  130 × 51 × 26  eje cruzando el camión, fila a lo largo
+        //   pico      51 × 130 × 26 eje mirando a la puerta, fila CRUZANDO el camión
+        //
+        // El grosor es el diámetro del botellón, que en cada caso cae en otra medida del
+        // pack: es lo que dice cuántos entran en la fila.
+        if (estiba === 'pico') {
+            const n = Math.max(1, Math.min(8, Math.round(w / Math.max(0.01, h))));
+            const paso = w / n, r = Math.min(paso, h) * 0.46;
+            for (let i = 0; i < n; i++) {
+                const cz = z + paso * (i + 0.5), cy = y + h / 2;
+                cilindroTumbado(cz, cy, x, r, l * 0.80, col, true);                    // cuerpo
+                cilindroTumbado(cz, cy, x + l * 0.80, r * 0.42, l * 0.20, col, true);  // pico
+            }
+        } else {
+            const acostado = estiba === 'costado';
+            const grosor = Math.max(0.01, acostado ? h : w);
+            const n = Math.max(1, Math.min(8, Math.round(l / grosor)));
+            const paso = l / n, r = Math.min(paso, grosor) * 0.46;
 
-        for (let i = 0; i < n; i++) {
-            const cx = x + paso * (i + 0.5);
-            if (acostado) {
-                const cy = y + h / 2;
-                cilindroAcostado(cx, cy, z, r, w * 0.80, col);                    // cuerpo
-                cilindroAcostado(cx, cy, z + w * 0.80, r * 0.42, w * 0.20, col);  // pico
-            } else {
-                const cz = z + w / 2;
-                cilindro(cx, cz, y, r, h * 0.80, col);                       // cuerpo
-                cilindro(cx, cz, y + h * 0.80, r * 0.42, h * 0.20, col);     // pico
+            for (let i = 0; i < n; i++) {
+                const cx = x + paso * (i + 0.5);
+                if (acostado) {
+                    const cy = y + h / 2;
+                    cilindroTumbado(cx, cy, z, r, w * 0.80, col, false);                    // cuerpo
+                    cilindroTumbado(cx, cy, z + w * 0.80, r * 0.42, w * 0.20, col, false);  // pico
+                } else {
+                    const cz = z + w / 2;
+                    cilindro(cx, cz, y, r, h * 0.80, col);                       // cuerpo
+                    cilindro(cx, cz, y + h * 0.80, r * 0.42, h * 0.20, col);     // pico
+                }
             }
         }
         // La bolsa: SOLO la película de arriba, que es donde se ve en la foto (el
@@ -448,26 +464,37 @@ export default function iniciarCarga3d(canvas, datos) {
      * bidones salían angulosos y con el brillo saltando al girar.
      */
     /**
-     * Cilindro TUMBADO: el eje va a lo ancho del camión (z), no a lo alto.
+     * Cilindro TUMBADO: el eje va horizontal, no a lo alto.
      *
-     * Es una función aparte y no una bandera dentro de `cilindro` por la misma razón
-     * que cada cabina tiene la suya: el sombreado y la tapa se calculan sobre planos
-     * distintos y con banderas quedaría un enredo de condicionales.
+     * Es una función aparte de `cilindro` porque el sombreado y la tapa se calculan
+     * sobre planos distintos: la sección circular vive en un plano VERTICAL, así que la
+     * luz se mide ahí y no en el del piso — el brillo tiene que quedar arriba del
+     * botellón tumbado.
      *
-     * · La sección circular vive en el plano x/y, así que la luz se mide en ese plano
-     *   y no en el del piso: el brillo tiene que quedar ARRIBA del botellón tumbado.
-     * · Se dibuja la tapa del extremo MÁS CERCANO a la cámara (no siempre la misma):
-     *   al girar, la tapa que se ve cambia de punta, y fijar una dejaba ver el
-     *   cilindro «abierto» desde la mitad de los ángulos.
+     * `ejeX` sí es una bandera, y acá está bien: es literalmente el EJE del cilindro (a
+     * lo largo del camión para «pico a la puerta», a lo ancho para «de costado»), no dos
+     * cuerpos distintos disfrazados de uno. Lo único que cambia es a qué coordenada del
+     * mundo va cada componente, y eso lo resuelve `punto()` en una línea.
+     *
+     * Se dibuja la tapa del extremo MÁS CERCANO a la cámara, no siempre la misma: al
+     * girar, la punta que se ve cambia, y fijar una dejaba ver el cilindro «abierto»
+     * desde la mitad de los ángulos.
+     *
+     * @param  number  a1  centro sobre el eje horizontal de la sección (x si el eje es z; z si es x)
+     * @param  number  cy  centro en altura
+     * @param  number  t0  dónde arranca el cilindro sobre su propio eje
      */
-    function cilindroAcostado(cx, cy, z0, r, largo, col) {
+    function cilindroTumbado(a1, cy, t0, r, largo, col, ejeX = false) {
         const N = 8, per = [], LUZ = 1.9;   // hacia arriba y un poco al frente
+        // Con el eje en x, la sección circular vive en el plano z/y; con el eje en z,
+        // en el plano x/y. `punto` es lo único que cambia entre los dos casos.
+        const punto = (u, v, t) => (ejeX ? [t, v, u] : [u, v, t]);
         for (let i = 0; i < N; i++) {
             const a = (i * 2 * Math.PI) / N;
-            per.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r, a]);
+            per.push([a1 + Math.cos(a) * r, cy + Math.sin(a) * r, a]);
         }
-        const A = per.map((p) => proyectar([p[0], p[1], z0]));
-        const B = per.map((p) => proyectar([p[0], p[1], z0 + largo]));
+        const A = per.map((p) => proyectar(punto(p[0], p[1], t0)));
+        const B = per.map((p) => proyectar(punto(p[0], p[1], t0 + largo)));
         const zc = (q) => q.reduce((s, p) => s + p[2], 0) / q.length;
         const eje = (zc(A) + zc(B)) / 2;
 
@@ -1238,7 +1265,7 @@ export default function iniciarCarga3d(canvas, datos) {
             const px = x0 + ix * ori.largo, py = y0 + iy * ori.alto, pz = z0 + iz * ori.ancho;
             const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
             if (bidones) {
-                bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado);
+                bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.estiba);
             } else {
                 prisma(px, py, pz, ba, bb, bc, col);
             }

@@ -85,28 +85,54 @@ class TipoBulto extends Model implements AuditableContract
     }
 
     /**
+     * Las TRES formas de estibar un pack, tal como las describió el dueño (05-08-2026:
+     * «dependiendo de la capacidad del camión van como en las fotos, de costado frente a
+     * frente, a veces van con el pico de la botella mirando a la puerta»).
+     *
+     * La bolsa medida son 130 × 26 × 51: cinco botellones PARADOS en fila —el 51 es el
+     * alto del botellón, el 26 su diámetro y el 130 la fila de cinco—. De ahí salen las
+     * tres, y cada una es una rotación distinta del MISMO pack:
+     *
+     *   pie      130 × 26 × 51   los botellones parados
+     *   costado  130 × 51 × 26   tumbados, el eje del botellón cruzando el camión
+     *   pico      51 × 130 × 26  tumbados, el eje mirando a la puerta (la fila cruza)
+     *
+     * `costado` y `pico` se diferencian en un giro de 90° sobre el piso. Parece lo mismo
+     * y NO lo es, porque el motor no rota estos bultos (son de orientación fija): en el
+     * HD35 dan 270 y 240 botellones respectivamente — «pico a la puerta» desperdicia 70
+     * cm de ancho al cruzar la fila de 130 en una caja de 200.
+     */
+    public const ESTIBAS = [
+        'pie' => 'De pie',
+        'costado' => 'Acostado de costado',
+        'pico' => 'Acostado, pico a la puerta',
+    ];
+
+    /**
      * Forma que espera CalculoDeCarga::cupo(), sin que el servicio conozca Eloquent.
      *
-     * ACOSTADO intercambia ancho y alto (pedido del dueño 05-08-2026: «necesito la
-     * opción de poder acostar el pack de botellones, en los camiones la mayoría se
-     * acuestan»). La bolsa medida son 130 × 26 × 51: cinco botellones PARADOS en fila
-     * —el 51 es el alto del botellón y el 26 su diámetro—. Acostarlos pone el eje del
-     * botellón en horizontal, así que el pack pasa a 130 × 51 × 26: el mismo largo, y
-     * el diámetro pasa a ser la altura.
-     *
-     * No es cosmético y el número CAMBIA: en el HD35 son 420 botellones de pie contra
-     * 270 acostados, porque acostado la bolsa mide 26 cm de alto y el tope de apilado
-     * (6) corta antes que los 220 cm de la caja. Por eso de pie sigue siendo el
-     * predeterminado: es la orientación con la que el dueño verificó sus referencias.
+     * La ESTIBA no es cosmética y el número CAMBIA: en el HD35 son 420 botellones de pie,
+     * 270 de costado y 240 con el pico a la puerta. Por eso `pie` es el predeterminado —
+     * es la orientación con la que el dueño verificó sus referencias.
      */
-    public function paraCalculo(bool $acostado = false, ?int $apilado = null): array
+    public function paraCalculo(string $estiba = 'pie', ?int $apilado = null): array
     {
-        $acostado = $acostado && $this->puedeAcostarse();
+        // Una estiba que este bulto no admite (o un valor inventado) cae a `pie` en vez
+        // de calcular con medidas giradas que el usuario no pidió.
+        if (! $this->puedeAcostarse() || ! isset(self::ESTIBAS[$estiba])) {
+            $estiba = 'pie';
+        }
+
+        [$largo, $ancho, $alto] = match ($estiba) {
+            'costado' => [$this->largo_cm, $this->alto_cm, $this->ancho_cm],
+            'pico' => [$this->alto_cm, $this->largo_cm, $this->ancho_cm],
+            default => [$this->largo_cm, $this->ancho_cm, $this->alto_cm],
+        };
 
         return [
-            'largo' => $this->largo_cm,
-            'ancho' => $acostado ? $this->alto_cm : $this->ancho_cm,
-            'alto' => $acostado ? $this->ancho_cm : $this->alto_cm,
+            'largo' => $largo,
+            'ancho' => $ancho,
+            'alto' => $alto,
             'peso' => (float) $this->peso_kg,
             'unidades' => $this->unidades,
             // El tope de apilado del catálogo se puede PISAR para una simulación.

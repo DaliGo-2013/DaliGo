@@ -442,31 +442,41 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('id="carga3d"', $html);
     }
 
-    public function test_acostar_el_pack_intercambia_ancho_y_alto(): void
+    public function test_las_tres_estibas_son_tres_rotaciones_del_mismo_pack(): void
     {
-        // Pedido del dueño 05-08: «necesito la opción de poder acostar el pack de
-        // botellones, en los camiones la mayoría se acuestan». La bolsa medida son
-        // 130 × 26 × 51 = cinco botellones PARADOS (51 el alto del botellón, 26 su
-        // diámetro). Acostarlos pone el eje en horizontal: 130 × 51 × 26.
-        $dePie = $this->bolsa->paraCalculo();
-        $acostado = $this->bolsa->paraCalculo(true);
+        // Pedido del dueño 05-08 («necesito la opción de poder acostar el pack») ampliado
+        // el 06-08 («hacé la de pico a la puerta hasta donde se pueda»). Las tres salen de
+        // la bolsa medida, 130 × 26 × 51 = cinco botellones PARADOS —51 el alto del
+        // botellón, 26 su diámetro, 130 la fila de cinco—.
+        $de = fn (string $e) => array_values(array_intersect_key(
+            $this->bolsa->paraCalculo($e), array_flip(['largo', 'ancho', 'alto']),
+        ));
 
-        $this->assertSame([130, 26, 51], [$dePie['largo'], $dePie['ancho'], $dePie['alto']]);
-        $this->assertSame([130, 51, 26], [$acostado['largo'], $acostado['ancho'], $acostado['alto']]);
+        $this->assertSame([130, 26, 51], $de('pie'), 'Parados.');
+        $this->assertSame([130, 51, 26], $de('costado'), 'Tumbados, el eje cruzando el camión.');
+        $this->assertSame([51, 130, 26], $de('pico'), 'Tumbados, el eje mirando a la puerta.');
+
+        // Una estiba inventada cae a `pie` en vez de calcular con medidas que nadie pidió.
+        $this->assertSame($de('pie'), $de('de-costadito'));
     }
 
-    public function test_acostado_da_menos_botellones_y_de_pie_sigue_siendo_el_predeterminado(): void
+    public function test_cada_estiba_da_un_numero_distinto_y_de_pie_es_el_predeterminado(): void
     {
-        // El número CAMBIA y hacia abajo: acostada la bolsa mide 26 cm de alto y el tope
-        // de apilado (6) corta antes que los 220 cm de la caja. De pie tiene que seguir
-        // siendo el predeterminado porque es la orientación con la que el dueño verificó
-        // sus 420 — si el default se diera vuelta, su referencia dejaría de cuadrar y
-        // nadie sabría por qué.
+        // El número CAMBIA con la estiba, y hacia abajo. De pie tiene que seguir siendo el
+        // predeterminado porque es la orientación con la que el dueño verificó sus 420: si
+        // el default se diera vuelta, su referencia dejaría de cuadrar y nadie sabría por
+        // qué.
+        //
+        // «Pico a la puerta» da el peor cupo porque cruza la fila de 130 cm en una caja de
+        // 200: se pierden 70 cm de ancho. No es un error — es la razón por la que en la
+        // práctica se elige según el camión.
         $calculo = new \App\Services\Carga\CalculoDeCarga;
         $camion = $this->hd35->paraCalculo();
+        $cupo = fn (string $e) => $calculo->cupo($camion, $this->bolsa->paraCalculo($e))['unidades'];
 
-        $this->assertSame(420, $calculo->cupo($camion, $this->bolsa->paraCalculo())['unidades']);
-        $this->assertSame(270, $calculo->cupo($camion, $this->bolsa->paraCalculo(true))['unidades']);
+        $this->assertSame(420, $cupo('pie'));
+        $this->assertSame(270, $cupo('costado'));
+        $this->assertSame(240, $cupo('pico'));
 
         // Sin pedir nada, la pantalla responde DE PIE.
         $sinPedir = $this->actingAs($this->vendedor)
@@ -474,22 +484,24 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->assertOk();
 
         $this->assertSame(420, $sinPedir->viewData('resultado')['unidades']);
-        $this->assertFalse($sinPedir->viewData('acostado'));
+        $this->assertSame('pie', $sinPedir->viewData('estiba'));
     }
 
-    public function test_la_pantalla_calcula_acostado_cuando_se_pide(): void
+    public function test_la_pantalla_calcula_la_estiba_pedida_y_dice_cual_uso(): void
     {
-        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
-            'camion_id' => $this->hd35->id,
-            'tipo_bulto_id' => $this->bolsa->id,
-            'acostado' => 1,
-        ]))->assertOk();
+        foreach (['costado' => 270, 'pico' => 240] as $estiba => $unidades) {
+            $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id,
+                'tipo_bulto_id' => $this->bolsa->id,
+                'estiba' => $estiba,
+            ]))->assertOk();
 
-        $this->assertSame(270, $res->viewData('resultado')['unidades']);
-        $this->assertTrue($res->viewData('acostado'));
-        // Y lo DICE: «entran 270» sin decir con qué estiba invita a compararlo con
-        // los 420 de pie y a pensar que el simulador se equivocó.
-        $res->assertSee('Cómo viaja')->assertSee('Acostado');
+            $this->assertSame($unidades, $res->viewData('resultado')['unidades']);
+            $this->assertSame($estiba, $res->viewData('estiba'));
+            // Y lo DICE: «entran 240» sin decir con qué estiba invita a compararlo con los
+            // 420 de pie y a pensar que el simulador se equivocó.
+            $res->assertSee('Cómo viaja')->assertSee(TipoBulto::ESTIBAS[$estiba]);
+        }
     }
 
     public function test_la_estiba_se_elige_por_linea_en_la_carga_mixta(): void
@@ -497,14 +509,14 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // En la misma carga puede ir un pack acostado y otro de pie, así que la elección
         // es POR LÍNEA y no de la pantalla.
         $escena = $this->verMixta([
-            ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'acostado' => 1],
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'estiba' => 'costado'],
             ['tipo' => $this->caja->id, 'cantidad' => 10],
         ])->assertOk()->viewData('escena');
 
         $porNombre = collect($escena['bloques'])->keyBy('nombre');
 
-        $this->assertTrue($porNombre[$this->bolsa->nombre]['acostado']);
-        $this->assertFalse($porNombre[$this->caja->nombre]['acostado']);
+        $this->assertSame('costado', $porNombre[$this->bolsa->nombre]['estiba']);
+        $this->assertSame('pie', $porNombre[$this->caja->nombre]['estiba']);
 
         // El bloque acostado mide 26 cm de alto y 51 de ancho, al revés que de pie.
         $this->assertSame(0.51, $porNombre[$this->bolsa->nombre]['orientacion']['ancho']);
@@ -521,21 +533,25 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
 
         $this->assertSame(
             $this->caja->paraCalculo(),
-            $this->caja->paraCalculo(true),
+            $this->caja->paraCalculo('costado'),
             'Acostar un bulto que el motor ya rota le cambió las medidas.',
         );
     }
 
-    public function test_el_visor_dibuja_los_botellones_tumbados_y_no_una_caja_girada(): void
+    public function test_el_visor_dibuja_la_estiba_que_se_calculo(): void
     {
-        // Si el lienzo mostrara los botellones parados mientras el cálculo dice
-        // «acostado», dejaría de ser la prueba de lo que el motor hizo — que es todo lo
-        // que aporta. El cilindro tumbado es una función APARTE de la vertical: el
-        // sombreado y la tapa se calculan sobre planos distintos.
+        // Si el lienzo mostrara los botellones parados mientras el cálculo dice «pico a la
+        // puerta», dejaría de ser la prueba de lo que el motor hizo — que es todo lo que
+        // aporta. El cilindro tumbado es una función APARTE de la vertical (el sombreado y
+        // la tapa van sobre otros planos) y recibe el EJE, porque «de costado» y «pico a la
+        // puerta» se dibujan con el botellón mirando a distinto lado.
         $js = file_get_contents(resource_path('js/carga3d.js'));
 
-        $this->assertStringContainsString('function cilindroAcostado', $js);
-        $this->assertStringContainsString('bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.acostado)', $js);
+        $this->assertStringContainsString('function cilindroTumbado', $js);
+        $this->assertStringContainsString('bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.estiba)', $js);
+        // Las tres estibas tienen que estar contempladas en el dibujo, no solo dos.
+        $this->assertStringContainsString("estiba === 'pico'", $js);
+        $this->assertStringContainsString("estiba === 'costado'", $js);
     }
 
     public function test_el_orden_de_la_lista_decide_que_producto_va_al_fondo(): void
@@ -707,10 +723,10 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // de 6 no muerde y subirlo no cambia nada. Acostada mide 26 y entran 8 capas: ahí
         // el tope SÍ manda, y es el caso que el dueño estaba mirando.
         $conTope = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
-            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'acostado' => 1,
+            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'estiba' => 'costado',
         ]))->assertOk();
         $sinTope = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
-            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'acostado' => 1, 'apilado' => 8,
+            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'estiba' => 'costado', 'apilado' => 8,
         ]))->assertOk();
 
         $this->assertSame(270, $conTope->viewData('resultado')['unidades'], '6 capas de 26 cm.');
