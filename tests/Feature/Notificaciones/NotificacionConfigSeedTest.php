@@ -34,6 +34,8 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_plantilla_devolucion_recibida',
         'notif_plantilla_devolucion_resuelta',
         'notif_plantilla_despacho_parada_rechazada',
+        // M04 · adopción de bodegas nuevas del sync (P-M04-12)
+        'notif_plantilla_bodega_nueva',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

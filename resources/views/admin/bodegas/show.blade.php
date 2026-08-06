@@ -1,20 +1,25 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="$bodega->nombre" subtitle="Stock espejado desde Bsale (solo lectura)."
-                       :back="route('admin.bodegas.index')" backTitle="Volver a bodegas" />
+        <x-page-header :title="$bodega->nombre" subtitle="Stock espejado desde Bsale (solo lectura); la clasificación de la bodega es local y editable."
+                       :back="route('admin.bodegas.index')" backTitle="Volver a bodegas">
+            @can('manage sucursales')
+                <x-slot name="action">
+                    <x-button-link :href="route('admin.bodegas.edit', $bodega)">Editar bodega</x-button-link>
+                </x-slot>
+            @endcan
+        </x-page-header>
     </x-slot>
 
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
-        <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
-            @unless ($bodega->activa)
-                <x-badge variant="neutral">inactiva</x-badge>
-            @endunless
-            @if ($bodega->es_virtual)
-                <x-badge variant="neutral">virtual</x-badge>
+        <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3 text-sm text-neutral-600 shadow-sm sm:p-4">
+            @include('admin.bodegas.partials._badges', ['bodega' => $bodega])
+            <span>{{ $bodega->sucursal?->nombre ?? 'Transversal' }}</span>
+            @if ($bodega->alias)
+                <span class="text-neutral-400">· {{ $bodega->alias }}</span>
             @endif
-            <span>{{ number_format($bodega->stocks_count, 0, ',', '.') }} {{ \Illuminate\Support\Str::plural('producto', $bodega->stocks_count) }}</span>
+            <span class="text-neutral-400">· {{ number_format($bodega->stocks_count, 0, ',', '.') }} {{ \Illuminate\Support\Str::plural('producto', $bodega->stocks_count) }}</span>
             @if ($bodega->direccion)
                 <span class="text-neutral-400">· {{ $bodega->direccion }}@if ($bodega->comuna), {{ $bodega->comuna }}@endif</span>
             @endif

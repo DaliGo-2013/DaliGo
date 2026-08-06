@@ -101,4 +101,14 @@ class Sucursal extends Model implements AuditableContract
     {
         return $this->hasMany(Maquina::class);
     }
+
+    /**
+     * Bodegas (espejo Bsale) clasificadas bajo esta sucursal (M04-F1).
+     *
+     * @return HasMany<Bodega>
+     */
+    public function bodegas(): HasMany
+    {
+        return $this->hasMany(Bodega::class);
+    }
 }

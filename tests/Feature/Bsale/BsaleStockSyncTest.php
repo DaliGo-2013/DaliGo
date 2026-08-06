@@ -3,13 +3,18 @@
 namespace Tests\Feature\Bsale;
 
 use App\Models\Bodega;
+use App\Models\Notificacion;
 use App\Models\Producto;
 use App\Models\Stock;
+use App\Models\Sucursal;
+use App\Models\User;
 use App\Services\Bsale\BsaleClient;
 use App\Services\Bsale\StockSync;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class BsaleStockSyncTest extends TestCase
@@ -262,5 +267,96 @@ class BsaleStockSyncTest extends TestCase
 
         $this->assertFalse(Bodega::where('bsale_office_id', 8)->firstOrFail()->activa);
         $this->assertSame(1, Stock::count()); // el stock se espeja igual
+    }
+
+    // ── M04-F1 · adopción de bodegas nuevas + clasificación local (P-M04-12) ──
+
+    /**
+     * Candado 2 del dictado v36 (el MÁS importante del lote): el sync horario
+     * PISA los campos espejados de Bsale pero JAMÁS la capa local editada
+     * desde la app — si la pisara, cada clasificación viviría ≤15 minutos.
+     */
+    public function test_sync_no_pisa_la_clasificacion_local_editada(): void
+    {
+        $this->producto(979);
+        $this->fakeBsale([$this->office(4, 'MIRADOR')], [$this->stock(1, 4, 979, 10)]);
+        $this->sync();
+
+        $sucursal = Sucursal::factory()->create();
+        $bodega = Bodega::where('bsale_office_id', 4)->firstOrFail();
+        $bodega->update([
+            'sucursal_id' => $sucursal->id,
+            'proposito' => 'fisica',
+            'en_operacion' => false,
+            'clasificacion_confirmada' => true,
+            'alias' => 'La central',
+        ]);
+
+        // Bsale renombra la office: el espejo debe reflejarlo…
+        $this->fakeBsale([$this->office(4, 'MIRADOR CENTRAL')], [$this->stock(1, 4, 979, 10)]);
+        $this->sync();
+
+        $bodega->refresh();
+        $this->assertSame('MIRADOR CENTRAL', $bodega->nombre, 'El espejo sigue siendo espejo.');
+        // …sin tocar ni un campo local.
+        $this->assertSame($sucursal->id, $bodega->sucursal_id);
+        $this->assertSame('fisica', $bodega->proposito);
+        $this->assertFalse($bodega->en_operacion);
+        $this->assertTrue($bodega->clasificacion_confirmada);
+        $this->assertSame('La central', $bodega->alias);
+    }
+
+    public function test_office_nueva_notifica_a_quienes_administran_sucursales_y_a_nadie_mas(): void
+    {
+        Queue::fake();
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $administra = User::factory()->create();
+        $administra->assignRole('admin');
+        $soloMira = User::factory()->create();
+        $soloMira->givePermissionTo('manage productos');
+
+        $this->fakeBsale([$this->office(20, 'BODEGA NUEVA DEL SUR')], []);
+        $stats = $this->sync();
+
+        $this->assertSame(1, $stats['nuevas']);
+
+        $bodega = Bodega::where('bsale_office_id', 20)->firstOrFail();
+        $this->assertFalse($bodega->clasificacion_confirmada, 'Nace por clasificar (default de la migración).');
+        $this->assertNull($bodega->proposito);
+
+        $filas = Notificacion::where('evento', 'bodega.nueva')->where('canal', Notificacion::CANAL_DATABASE);
+        $this->assertSame(1, (clone $filas)->where('user_id', $administra->id)->count());
+        $this->assertSame(0, (clone $filas)->where('user_id', $soloMira->id)->count(),
+            'Ver el inventario no es administrar la estructura: sin aviso.');
+    }
+
+    public function test_sync_dos_veces_no_duplica_el_aviso_de_bodega_nueva(): void
+    {
+        Queue::fake();
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $administra = User::factory()->create();
+        $administra->assignRole('admin');
+
+        $this->fakeBsale([$this->office(20, 'BODEGA NUEVA DEL SUR')], []);
+        $this->sync();
+        $stats = $this->sync(); // la corrida siguiente del cron
+
+        $this->assertSame(0, $stats['nuevas'], 'La 2ª corrida ACTUALIZA la bodega, no la crea.');
+        $this->assertSame(1, Notificacion::where('evento', 'bodega.nueva')
+            ->where('canal', Notificacion::CANAL_DATABASE)
+            ->where('user_id', $administra->id)
+            ->count(), 'El aviso es UNA sola vez por bodega.');
+    }
+
+    public function test_sin_destinatarios_la_sync_no_revienta_ni_registra(): void
+    {
+        Queue::fake();
+        $this->seed(RolesAndPermissionsSeeder::class); // el permiso existe, nadie lo tiene
+
+        $this->fakeBsale([$this->office(20, 'BODEGA NUEVA DEL SUR')], []);
+        $stats = $this->sync();
+
+        $this->assertSame(1, $stats['nuevas']);
+        $this->assertSame(0, Notificacion::where('evento', 'bodega.nueva')->count());
     }
 }

@@ -88,6 +88,10 @@ class Notificacion extends Model
         // si el rechazo crea la devolución M13 solo es decisión del dueño,
         // pregunta abierta en el parte de P-DSP-09).
         'despacho.parada_rechazada' => 'Entrega rechazada en la puerta',
+        // M04 · Inventario (P-M04-12): el sync trajo una office que Bsale creó
+        // — llega sin clasificar y alguien con `manage sucursales` tiene que
+        // asignarle sucursal y propósito. Lo dispara StockSync, no un usuario.
+        'bodega.nueva' => 'Bodega nueva en Bsale (por clasificar)',
     ];
 
     protected $fillable = [
@@ -170,6 +174,8 @@ class Notificacion extends Model
             'devolucion.solicitada' => $user->canAny(['view devoluciones', 'manage devoluciones']),
             // La hoja de ruta: mismo gate que su show en routes/web.php.
             'despacho.parada_rechazada' => $user->canAny(['manage hojas ruta', 'autorizar pagos ruta', 'autorizar ruta', 'autorizar carga']),
+            // La ficha de clasificación: mismo gate que bodegas.edit (M04-F1).
+            'bodega.nueva' => $user->can('manage sucursales'),
             default => false,
         };
 
@@ -254,6 +260,11 @@ class Notificacion extends Model
             'despacho.parada_rechazada' => $this->notificable_id
                 ? route('admin.hojas-ruta.show', $this->notificable_id)
                 : route('admin.hojas-ruta.index'),
+            // La bodega nueva aterriza en su FICHA DE CLASIFICACIÓN: la acción
+            // pendiente es asignarle sucursal y propósito (M04-F1).
+            'bodega.nueva' => $this->notificable_id
+                ? route('admin.bodegas.edit', $this->notificable_id)
+                : route('admin.bodegas.index'),
             default => null,
         };
     }

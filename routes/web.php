@@ -174,10 +174,18 @@ Route::middleware('auth')
             ->middleware('permission:manage productos')
             ->only(['index', 'show', 'update']);
 
-        // Inventario (M04): bodegas + stock espejados desde Bsale, solo lectura.
+        // Inventario (M04): bodegas + stock espejados desde Bsale. La LECTURA
+        // (index/show) va con `manage productos` (quien ve el catalogo ve su
+        // stock); la CLASIFICACION local (edit/update, M04-F1) con `manage
+        // sucursales` — administrar la estructura de bodegas es el mismo acto
+        // que administrar sucursales, sin permiso nuevo (leccion M13: la
+        // matriz de roles no se toca).
         Route::resource('bodegas', BodegaController::class)
             ->middleware('permission:manage productos')
             ->only(['index', 'show']);
+        Route::resource('bodegas', BodegaController::class)
+            ->middleware('permission:manage sucursales')
+            ->only(['edit', 'update']);
 
         // Clientes (M03): ficha local espejada desde Bsale + cartera por vendedor.
         Route::resource('clientes', ClienteController::class)
