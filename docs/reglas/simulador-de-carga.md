@@ -141,10 +141,17 @@ Tres reglas que salen de eso:
    `test_cada_estiba_da_un_numero_distinto_y_de_pie_es_el_predeterminado`.
 2. **Se elige POR LÍNEA**, no por pantalla: en la misma carga puede ir un pack de costado,
    otro de pie y otro con el pico a la puerta.
-3. **Solo se ofrece donde cambia algo**, o sea en los bultos de orientación FIJA
-   (`TipoBulto::puedeAcostarse()`). A los demás el motor ya les prueba las 6 rotaciones y
-   se queda con la mejor: ofrecerles «acostado» sería ofrecer empeorar el resultado. Si
-   igual llega por URL, se ignora.
+3. **Se ofrece en TODOS los productos, con `auto` adelante** (regla DADA VUELTA por el
+   dueño el 06-08: *«que los dispensadores, cualesquiera que sea, tengan la opción de pie
+   y acostado»*). Antes solo los de orientación fija la tenían — al resto el motor le
+   probaba las 6 rotaciones y ofrecerle «acostado» era ofrecer empeorar el resultado. El
+   argumento del dueño gana: un dispensador VIAJA parado aunque tumbado entren más, así
+   que forzar la estiba es una necesidad real. Forzarla en un bulto libre significa
+   exactamente **sacarle la rotación al motor** (`orientacion_fija = true` con las
+   medidas giradas). Lo que protege los números verificados es el default
+   **`auto`** (`TipoBulto::ESTIBAS_ELEGIBLES`): en auto, el fijo se calcula de pie y el
+   libre rota como siempre — nada cambia hasta que alguien elige a propósito. Candado:
+   `test_forzar_la_estiba_de_un_bulto_libre_le_saca_la_rotacion_al_motor`.
 
 **La pantalla DICE con qué estiba calculó** (fila «Cómo viaja» en el cupo máximo, chapita
 con el nombre de la estiba en el detalle de la carga mixta). Leer «entran 240» sin saber
@@ -531,6 +538,19 @@ Candado: `test_los_controles_viven_en_un_solo_menu_y_no_en_las_cuatro_esquinas`,
 que **todos** los ids `carga3d*` estén dentro del `<aside>` y que el menú no sea `absolute`.
 Es lo que se rompe sin darse cuenta cuando alguien agrega «rápido» el próximo botón en una
 esquina.
+
+**Ampliaciones del 06-08 (pedido del dueño):**
+
+- **Cada sección es un DESPLEGABLE** (`<details>` nativo, sin JS): Vista y Cargar abren
+  abiertos —son los que se tocan todo el tiempo—, el resto cerrado.
+- **Pasos de carga simétricos**: −10/−5/−1 y +1/+5/+10, más Todo y Vaciar. Con −1 solo,
+  bajar de a mucho era un botón repetido veinte veces.
+- **Sección Pallet en el menú**, con los dos tipos estándar (Industrial 120 × 100 y
+  EUR/EPAL 120 × 80) como enlaces al modo Sobre pallet conservando camión y producto.
+- **Cantidad a probar** en «¿Cuánto entra?»: *«¿me entran 50?»* además del máximo. No toca
+  el motor — capa el dibujo a lo pedido y el veredicto sale de comparar contra el máximo;
+  vacío = el máximo, como siempre. Candado:
+  `test_la_cantidad_a_probar_capa_el_resultado_y_el_dibujo`.
 
 > Nota para quien verifique esto en el navegador de las herramientas: con la pestaña oculta
 > **ni `requestAnimationFrame` ni `ResizeObserver` corren** (no hay ciclo de pintado). Para

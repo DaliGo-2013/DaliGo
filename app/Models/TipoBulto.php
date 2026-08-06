@@ -72,16 +72,18 @@ class TipoBulto extends Model implements AuditableContract
     }
 
     /**
-     * Si tiene sentido ofrecer ELEGIR entre de pie y acostado.
+     * Si a este producto se le puede ELEGIR la estiba. Hoy es a TODOS.
      *
-     * Solo en los de orientación FIJA. A los demás el motor ya les prueba las 6
-     * rotaciones y se queda con la que más entra, así que ofrecer la opción sería
-     * ofrecer empeorar el resultado sin ningún motivo: el usuario elegiría «acostado»
-     * y el número bajaría porque le sacó al motor la libertad que tenía.
+     * Antes solo los de orientación fija: al resto el motor le probaba las 6 rotaciones
+     * y ofrecerle «acostado» era ofrecer empeorar el resultado. El dueño lo dio vuelta
+     * (06-08-2026): «que los dispensadores, cualesquiera que sea, tengan la opción de
+     * pie y acostado» — en la práctica un dispensador VIAJA parado aunque el motor
+     * pudiera acomodarlo tumbado, así que forzar la estiba es una necesidad real, no un
+     * capricho. Lo que protege del empeoramiento accidental es el default `auto`.
      */
     public function puedeAcostarse(): bool
     {
-        return (bool) $this->orientacion_fija;
+        return true;
     }
 
     /**
@@ -109,17 +111,42 @@ class TipoBulto extends Model implements AuditableContract
     ];
 
     /**
+     * Lo que se OFRECE en el selector: `auto` primero, y las tres forzadas.
+     *
+     * `auto` deja al motor hacer lo de siempre según el producto: a los de orientación
+     * fija los calcula de pie (su dato de catálogo), y a los libres les prueba las 6
+     * rotaciones y se queda con la que más entra. Es el predeterminado porque es el
+     * comportamiento con el que se verificaron todas las referencias — elegir una estiba
+     * forzada es una decisión consciente, nunca un accidente del formulario.
+     */
+    public const ESTIBAS_ELEGIBLES = [
+        'auto' => 'Automático (la que más entra)',
+        'pie' => 'De pie',
+        'costado' => 'Acostado de costado',
+        'pico' => 'Acostado, pico a la puerta',
+    ];
+
+    /**
      * Forma que espera CalculoDeCarga::cupo(), sin que el servicio conozca Eloquent.
      *
      * La ESTIBA no es cosmética y el número CAMBIA: en el HD35 son 420 botellones de pie,
-     * 270 de costado y 240 con el pico a la puerta. Por eso `pie` es el predeterminado —
-     * es la orientación con la que el dueño verificó sus referencias.
+     * 270 de costado y 240 con el pico a la puerta.
+     *
+     * Con una estiba FORZADA (pie/costado/pico) el bulto viaja al motor con esas medidas
+     * y `orientacion_fija = true`, sea cual sea su dato de catálogo: forzar la estiba de
+     * un producto que el motor rotaba libre (un dispensador, 06-08) significa justamente
+     * sacarle esa libertad. Con `auto`, cada producto se comporta como siempre.
      */
-    public function paraCalculo(string $estiba = 'pie', ?int $apilado = null): array
+    public function paraCalculo(string $estiba = 'auto', ?int $apilado = null): array
     {
-        // Una estiba que este bulto no admite (o un valor inventado) cae a `pie` en vez
-        // de calcular con medidas giradas que el usuario no pidió.
-        if (! $this->puedeAcostarse() || ! isset(self::ESTIBAS[$estiba])) {
+        // Un valor inventado cae a `auto` en vez de calcular con medidas giradas que
+        // nadie pidió. Y en los de orientación fija, `auto` ES `pie`: su dato de
+        // catálogo dice que no se rotan solos.
+        if (! isset(self::ESTIBAS_ELEGIBLES[$estiba])) {
+            $estiba = 'auto';
+        }
+        $forzada = $estiba !== 'auto';
+        if (! $forzada && $this->orientacion_fija) {
             $estiba = 'pie';
         }
 
@@ -148,7 +175,17 @@ class TipoBulto extends Model implements AuditableContract
             // que solo él puede responder: cuántas aguanta la bolsa de abajo es dato de
             // terreno, no de geometría.
             'apilable_max' => max(1, $apilado ?: $this->apilable_max),
-            'orientacion_fija' => $this->orientacion_fija,
+            'orientacion_fija' => $forzada ? true : $this->orientacion_fija,
         ];
+    }
+
+    /**
+     * La estiba que el VISOR tiene que dibujar: una de las tres concretas, nunca
+     * `auto`. Para un producto libre en `auto` da `pie` — su bloque se dibuja como caja
+     * con la orientación que eligió el motor, así que la palabra no cambia nada.
+     */
+    public static function estibaEfectiva(string $estiba): string
+    {
+        return isset(self::ESTIBAS[$estiba]) ? $estiba : 'pie';
     }
 }

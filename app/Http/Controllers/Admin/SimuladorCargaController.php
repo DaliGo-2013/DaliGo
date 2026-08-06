@@ -84,8 +84,8 @@ class SimuladorCargaController extends Controller
             // Cómo viaja el pack: de pie, acostado de costado, o acostado con el pico a
             // la puerta (ver TipoBulto::ESTIBAS). Es una elección de ESTIBA y no un dato
             // del producto: el mismo pack viaja de las tres formas según el camión.
-            'lineas.*.estiba' => ['nullable', 'in:'.implode(',', array_keys(TipoBulto::ESTIBAS))],
-            'estiba' => ['nullable', 'in:'.implode(',', array_keys(TipoBulto::ESTIBAS))],
+            'lineas.*.estiba' => ['nullable', 'in:'.implode(',', array_keys(TipoBulto::ESTIBAS_ELEGIBLES))],
+            'estiba' => ['nullable', 'in:'.implode(',', array_keys(TipoBulto::ESTIBAS_ELEGIBLES))],
             // Quién decide qué producto va al fondo: el motor por volumen (auto) o el
             // orden en que el usuario armó la lista.
             'orden' => ['nullable', 'in:auto,lista'],
@@ -102,6 +102,10 @@ class SimuladorCargaController extends Controller
             // Tope de apilado para ESTA simulación (pisa el del catálogo). Es lo que
             // dejaba el hueco arriba de la carga.
             'apilado' => ['nullable', 'integer', 'min:1', 'max:30'],
+            // Cantidad A PROBAR en «¿Cuánto entra?» (pedido del dueño 06-08: «me falta
+            // la opción de cuánto cargo, 1, 20, 50, para realizar la prueba»). En
+            // unidades sueltas, como todo el formulario. Vacío = el máximo, como antes.
+            'cantidad' => ['nullable', 'integer', 'min:1', 'max:100000'],
         ]);
 
         // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
@@ -131,7 +135,7 @@ class SimuladorCargaController extends Controller
             ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista)
             : null;
 
-        $estiba = $datos['estiba'] ?? 'pie';
+        $estiba = $datos['estiba'] ?? 'auto';
 
         // SOBRE PALLET es un tercer modo: se arma un pallet y se sube al camión.
         $pallet = PalletSimulado::desdeFormulario(
@@ -152,6 +156,21 @@ class SimuladorCargaController extends Controller
             ? $this->calculo->cupo($camion->paraCalculo(), $bulto->paraCalculo($estiba, $apilado))
             : null;
 
+        // La PRUEBA: «¿me entran 50?» encima del cupo máximo. No toca el motor — capa
+        // el resultado y el dibujo a lo pedido, y el veredicto sale de comparar.
+        $cantidad = isset($datos['cantidad']) ? (int) $datos['cantidad'] : null;
+        $prueba = null;
+        if ($resultado !== null && $cantidad !== null) {
+            $porBulto = max(1, $bulto->unidades);
+            $prueba = [
+                'pedidas' => $cantidad,
+                'caben' => $cantidad <= $resultado['unidades'],
+                'cargadas' => min($cantidad, $resultado['unidades']),
+                // La bolsa viaja completa o no viaja: 23 unidades de a 5 son 5 bolsas.
+                'bultos' => min((int) ceil($cantidad / $porBulto), $resultado['bultos']),
+            ];
+        }
+
         return view('admin.carga.index', [
             'camiones' => $camiones,
             'bultos' => $bultos,
@@ -164,6 +183,8 @@ class SimuladorCargaController extends Controller
             'pallet' => $pallet,
             'enPallet' => $enPallet,
             'apilado' => $apilado,
+            'prueba' => $prueba,
+            'cantidad' => $cantidad,
             // Las líneas que el usuario armó, para redibujar el formulario tal
             // cual tras el GET (y como semilla del Alpine).
             'lineasSel' => collect($datos['lineas'] ?? [])
@@ -172,14 +193,14 @@ class SimuladorCargaController extends Controller
                     'cantidad' => (int) $l['cantidad'],
                     // 0/1 y no true/false: es el valor del <select> del formulario, y
                     // Alpine lo compara con las opciones tal cual viene.
-                    'estiba' => isset(TipoBulto::ESTIBAS[$l['estiba'] ?? '']) ? $l['estiba'] : 'pie',
+                    'estiba' => isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto',
                 ])
                 ->values(),
             // La escena 3D se arma en el cliente con estos números: no hay ningún
             // modelo 3D — la silueta y los bultos son prismas derivados de las
             // medidas. SIEMPRE viaja como lista de bloques: el cupo máximo es el
             // caso particular de un solo bloque.
-            'escena' => $this->escena($camion, $bulto, $resultado, $mixta, $estiba, $enPallet),
+            'escena' => $this->escena($camion, $bulto, $resultado, $mixta, $estiba, $enPallet, $prueba['bultos'] ?? null),
         ]);
     }
 
@@ -201,11 +222,9 @@ class SimuladorCargaController extends Controller
             $modelo = $bultos->firstWhere('id', (int) $l['tipo']);
             $modelos[$i] = $modelo;
             // La estiba se elige POR LÍNEA: en la misma carga puede ir un pack de
-            // botellones acostado y otro de pie. El modelo ignora el pedido si el
-            // bulto no admite elegir (ver TipoBulto::puedeAcostarse).
-            $estibas[$i] = $modelo->puedeAcostarse()
-                ? (isset(TipoBulto::ESTIBAS[$l['estiba'] ?? '']) ? $l['estiba'] : 'pie')
-                : 'pie';
+            // botellones acostado, otro de pie y una caja en automático. Un valor
+            // inventado cae a `auto`, que es el comportamiento verificado.
+            $estibas[$i] = isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto';
             // El vendedor habla en UNIDADES (200 botellones); el motor en BULTOS
             // (bolsas de 5). Se redondea HACIA ARRIBA: 198 botellones son 40
             // bolsas — la bolsa viaja completa o no viaja.
@@ -294,7 +313,7 @@ class SimuladorCargaController extends Controller
      * los que el acomodo por zonas haya puesto — ordenados fondo → puerta para
      * que la animación cargue como se carga de verdad.
      */
-    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $resultado, ?array $mixta, string $estiba = 'pie', ?array $enPallet = null): ?array
+    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $resultado, ?array $mixta, string $estiba = 'auto', ?array $enPallet = null, ?int $topeBultos = null): ?array
     {
         if (! $camion || ($resultado === null && $mixta === null && $enPallet === null)) {
             return null;
@@ -324,21 +343,24 @@ class SimuladorCargaController extends Controller
                     // dibujo diría «de pie» mientras el cálculo dice «acostado» y el
                     // lienzo dejaría de ser la prueba de lo que el motor hizo, que es todo
                     // lo que aporta.
-                    'estiba' => $mixta['lineas'][$b['linea']]['estiba'],
+                    'estiba' => TipoBulto::estibaEfectiva($mixta['lineas'][$b['linea']]['estiba']),
                 ])
                 ->all();
         } else {
-            $bloques = $resultado['bultos'] > 0 ? [[
+            // Con una CANTIDAD A PROBAR, el dibujo se capa a lo pedido: si el veredicto
+            // dice «entran tus 50», el camión tiene que mostrar 50, no el máximo.
+            $enEscena = min($resultado['bultos'], $topeBultos ?? PHP_INT_MAX);
+            $bloques = $enEscena > 0 ? [[
                 'x' => 0,
                 'y' => 0,
                 'orientacion' => array_map($m, $resultado['orientacion']),
                 'rejilla' => $resultado['rejilla'],
-                'cantidad' => $resultado['bultos'],
+                'cantidad' => $enEscena,
                 'color' => self::COLORES_3D[0],
                 'letra' => self::letra(0),
                 'nombre' => $bulto->nombre,
                 'forma' => $bulto->formaVisor(),
-                'estiba' => $bulto->puedeAcostarse() ? $estiba : 'pie',
+                'estiba' => TipoBulto::estibaEfectiva($estiba),
             ]] : [];
         }
 

@@ -1752,7 +1752,11 @@ export default function iniciarCarga3d(canvas, datos) {
 
     boton('carga3dVaciar', () => fijar(0));
     boton('carga3dTodo', () => fijar(TOPE));
+    // Pasos simétricos para poner y sacar (los de restar los pidió el dueño 06-08:
+    // con −1 solo, bajar de a mucho era un botón repetido veinte veces).
     boton('carga3dQuita1', () => fijar(cant - 1));
+    boton('carga3dQuita5', () => fijar(cant - 5));
+    boton('carga3dQuita10', () => fijar(cant - 10));
     boton('carga3dSuma1', () => fijar(cant + 1));
     boton('carga3dSuma5', () => fijar(cant + 5));
     boton('carga3dSuma10', () => fijar(cant + 10));

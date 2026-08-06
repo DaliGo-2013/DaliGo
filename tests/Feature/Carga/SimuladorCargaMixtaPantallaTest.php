@@ -248,8 +248,9 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres', 'carga3dCodigos',
             // Vistas fijas (el panel «Views» de EasyCargo, pedido del dueño 05-08).
             'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
-            // Cuánto se ve cargado: animación + pasos a mano (pedido del dueño 05-08).
-            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1',
+            // Cuánto se ve cargado: animación + pasos a mano SIMÉTRICOS (los de restar
+            // en tandas los pidió el dueño 06-08).
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dQuita5', 'carga3dQuita10',
             'carga3dSuma1', 'carga3dSuma5', 'carga3dSuma10', 'carga3dTodo',
         ];
 
@@ -478,13 +479,15 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame(270, $cupo('costado'));
         $this->assertSame(240, $cupo('pico'));
 
-        // Sin pedir nada, la pantalla responde DE PIE.
+        // Sin pedir nada, la pantalla responde en AUTOMÁTICO — que en un pack de
+        // orientación fija ES de pie, así que el 420 verificado no se mueve.
         $sinPedir = $this->actingAs($this->vendedor)
             ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
             ->assertOk();
 
         $this->assertSame(420, $sinPedir->viewData('resultado')['unidades']);
-        $this->assertSame('pie', $sinPedir->viewData('estiba'));
+        $this->assertSame('auto', $sinPedir->viewData('estiba'));
+        $this->assertSame(420, $calculo->cupo($camion, $this->bolsa->paraCalculo('auto'))['unidades']);
     }
 
     public function test_la_pantalla_calcula_la_estiba_pedida_y_dice_cual_uso(): void
@@ -523,18 +526,41 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame(0.26, $porNombre[$this->bolsa->nombre]['orientacion']['alto']);
     }
 
-    public function test_un_bulto_que_el_motor_ya_rota_no_ofrece_la_opcion_y_la_ignora(): void
+    public function test_forzar_la_estiba_de_un_bulto_libre_le_saca_la_rotacion_al_motor(): void
     {
-        // La caja NO es de orientación fija: el motor le prueba las 6 rotaciones y se
-        // queda con la mejor. Ofrecerle «acostado» sería ofrecer empeorar el resultado,
-        // y forzarlo por URL no debe cambiar nada.
-        $this->assertFalse($this->caja->puedeAcostarse());
-        $this->assertTrue($this->bolsa->puedeAcostarse());
+        // REGLA DADA VUELTA por el dueño (06-08): «que los dispensadores, cualesquiera
+        // que sea, tengan la opción de pie y acostado». Antes a los bultos libres no se
+        // les ofrecía estiba (el motor ya rotaba); ahora forzarla significa exactamente
+        // sacarle esa libertad — un dispensador viaja PARADO aunque tumbado entren más.
+        //
+        // Lo que protege el número verificado es el default: en `auto` el bulto libre
+        // sigue libre, idéntico a como era.
+        $auto = $this->caja->paraCalculo();
 
-        $this->assertSame(
-            $this->caja->paraCalculo(),
-            $this->caja->paraCalculo('costado'),
-            'Acostar un bulto que el motor ya rota le cambió las medidas.',
+        $this->assertFalse($auto['orientacion_fija'], 'En auto, el bulto libre sigue libre.');
+        $this->assertSame([46, 37, 42], [$auto['largo'], $auto['ancho'], $auto['alto']]);
+
+        $forzada = $this->caja->paraCalculo('costado');
+
+        $this->assertTrue($forzada['orientacion_fija'], 'Forzar la estiba fija la orientación.');
+        $this->assertSame([46, 42, 37], [$forzada['largo'], $forzada['ancho'], $forzada['alto']]);
+
+        // Y el efecto es medible: de pie FORZADO el dispensador de 87 cm solo apila 2 en
+        // 220 cm de alto; en auto el motor lo tumba y aprovecha mejor. Que den distinto
+        // es la prueba de que la opción hace algo.
+        $alto = TipoBulto::create([
+            'nombre' => 'Dispensador de prueba', 'categoria' => 'maquinas',
+            'largo_cm' => 29, 'ancho_cm' => 33, 'alto_cm' => 87, 'peso_kg' => 8,
+            'unidades' => 1, 'apilable_max' => 10, 'soporta_peso_encima' => true,
+            'orientacion_fija' => false, 'activo' => true,
+        ]);
+        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $camion = $this->hd35->paraCalculo();
+
+        $this->assertGreaterThan(
+            $calculo->cupo($camion, $alto->paraCalculo('pie'))['bultos'],
+            $calculo->cupo($camion, $alto->paraCalculo('auto'))['bultos'],
+            'Forzar de pie tiene que dar menos que dejar rotar al motor.',
         );
     }
 
@@ -611,7 +637,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ['tipo' => $this->caja->id, 'cantidad' => 20],
         ])->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'Cubicaje</p>'), 3000);
+        $panel = substr($html, strpos($html, 'Cubicaje'), 3000);
 
         $this->assertStringContainsString('200/200', $panel);
         $this->assertStringContainsString('20/20', $panel);
@@ -626,7 +652,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
             ->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'Cubicaje</p>'), 3000);
+        $panel = substr($html, strpos($html, 'Cubicaje'), 3000);
 
         $this->assertStringContainsString('420/600', $panel);
         $this->assertStringContainsString('bg-red-500', $panel);
@@ -678,9 +704,9 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         foreach ([
             'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
             'carga3dMenos', 'carga3dMas', 'carga3dReset',
-            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dSuma1', 'carga3dSuma5',
-            'carga3dSuma10', 'carga3dTodo', 'carga3dCodigos', 'carga3dNombres',
-            'carga3dImportar',
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dQuita5', 'carga3dQuita10',
+            'carga3dSuma1', 'carga3dSuma5', 'carga3dSuma10', 'carga3dTodo',
+            'carga3dCodigos', 'carga3dNombres', 'carga3dImportar',
         ] as $control) {
             $this->assertStringContainsString(
                 'id="'.$control.'"', $menu,
@@ -692,6 +718,44 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // (`flex` + `shrink-0`), no un panel flotante encima del camión.
         $this->assertStringContainsString('shrink-0', $menu);
         $this->assertStringNotContainsString('absolute', $menu);
+
+        // Las secciones son DESPLEGABLES (pedido del dueño 06-08: «que se puedan
+        // desplegar como dropdown») — <details> nativos, sin JS.
+        $this->assertGreaterThanOrEqual(5, substr_count($menu, '<details'));
+
+        // Y el PALLET también se ofrece desde el menú, con los dos tipos estándar.
+        $this->assertStringContainsString('Industrial 120 × 100', $menu);
+        $this->assertStringContainsString('EUR/EPAL 120 × 80', $menu);
+        $this->assertStringContainsString('sobre_pallet=1', $menu);
+    }
+
+    public function test_la_cantidad_a_probar_capa_el_resultado_y_el_dibujo(): void
+    {
+        // Pedido del dueño 06-08: «me falta la opción de cuánto cargo, 1, 20, 50, para
+        // realizar la prueba». No toca el motor: capa el dibujo a lo pedido y el
+        // veredicto sale de comparar contra el máximo.
+        $ver = fn (?int $c) => $this->actingAs($this->vendedor)->get(route('admin.carga.index', array_filter([
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->bolsa->id,
+            'cantidad' => $c,
+        ])))->assertOk();
+
+        // 50 botellones = 10 bolsas: entran (el máximo es 420) y el dibujo muestra 10.
+        $conPrueba = $ver(50);
+        $this->assertTrue($conPrueba->viewData('prueba')['caben']);
+        $this->assertSame(10, $conPrueba->viewData('escena')['tope']);
+        $conPrueba->assertSee('Tus 50 entran');
+
+        // 600 no entran: el veredicto dice cuántas sí, y el dibujo muestra el máximo.
+        $sinCupo = $ver(600);
+        $this->assertFalse($sinCupo->viewData('prueba')['caben']);
+        $this->assertSame(420, $sinCupo->viewData('prueba')['cargadas']);
+        $this->assertSame(84, $sinCupo->viewData('escena')['tope']);
+
+        // Sin cantidad, todo sigue como siempre: máximo y sin veredicto de prueba.
+        $sinPrueba = $ver(null);
+        $this->assertNull($sinPrueba->viewData('prueba'));
+        $this->assertSame(84, $sinPrueba->viewData('escena')['tope']);
     }
 
     public function test_importar_de_excel_esta_ofrecido_y_dice_que_no_lee_facturas(): void

@@ -43,27 +43,21 @@
             </x-list-card>
         @else
             @php
-                // «acuesta»: si a este producto tiene sentido ofrecerle la estiba. Solo
-                // los de orientación fija — al resto el motor ya le prueba las 6
-                // rotaciones y elige la mejor.
-                //
                 // Comentario de PHP y no de Blade: dentro de @php un {{-- --}} NO se
                 // procesa y sale tal cual al PHP compilado.
                 $bultosJson = $bultos->map(fn ($b) => [
                     'id' => $b->id, 'nombre' => $b->nombre, 'unidades' => $b->unidades,
-                    'acuesta' => $b->puedeAcostarse(),
                 ])->values();
                 $lineasIniciales = $lineasSel->isNotEmpty()
                     ? $lineasSel
-                    : collect([['tipo' => $bultos->first()?->id, 'cantidad' => 100, 'estiba' => 'pie']]);
+                    : collect([['tipo' => $bultos->first()?->id, 'cantidad' => 100, 'estiba' => 'auto']]);
             @endphp
 
             <div x-data="{
                     modo: '{{ $mixta !== null ? 'mixta' : ($enPallet !== null ? 'pallet' : 'maximo') }}',
                     lineas: {{ $lineasIniciales->toJson() }},
                     bultos: {{ $bultosJson->toJson() }},
-                    agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'pie' }); },
-                    acuesta(tipo) { return this.bultos.find(b => b.id === tipo)?.acuesta ?? false; },
+                    agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto' }); },
                     quitar(i) { this.lineas.splice(i, 1); },
                     // Mover un producto en la lista es la forma honesta de «mover la carga»:
                     // con el orden en «Como armé la lista», el primero va al FONDO. Se
@@ -101,7 +95,7 @@
                                 || this.bultos.find((x) => norm(x.nombre).includes(norm(nombre)) && norm(nombre).length > 3);
 
                             if (!b || !(cant > 0)) { noLeidas.push(fila.trim()); continue; }
-                            nuevas.push({ tipo: b.id, cantidad: cant, estiba: 'pie' });
+                            nuevas.push({ tipo: b.id, cantidad: cant, estiba: 'auto' });
                         }
 
                         this.impNoLeidas = noLeidas;
@@ -285,7 +279,7 @@
                                                 {{-- La estiba cambia el número, así que el resultado tiene que
                                                      decir con cuál se calculó: leer «entran 270» sin saber que
                                                      fue acostado invita a compararlo con los 420 de pie. --}}
-                                                @if ($fila['estiba'] !== 'pie')
+                                                @if (in_array($fila['estiba'], ['pie', 'costado', 'pico'], true) && $fila['estiba'] !== 'pie')
                                                     <x-badge>{{ \App\Models\TipoBulto::ESTIBAS[$fila['estiba']] }}</x-badge>
                                                 @endif
                                             </div>
@@ -317,6 +311,19 @@
                                 @endphp
 
                                 <div x-show="modo === 'maximo'" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                    {{-- LA PRUEBA: el veredicto de la cantidad pedida, ANTES del máximo.
+                                         Si preguntó «¿me entran 50?», la respuesta a eso es lo primero. --}}
+                                    @if ($prueba !== null)
+                                        <div class="mb-4 rounded-lg px-3 py-2 text-sm {{ $prueba['caben'] ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700' }}">
+                                            @if ($prueba['caben'])
+                                                <strong>Tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran ✓</strong>
+                                                — y el dibujo muestra esa cantidad, no el máximo.
+                                            @else
+                                                <strong>De tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran {{ number_format($prueba['cargadas'], 0, ',', '.') }}.</strong>
+                                                Quedan {{ number_format($prueba['pedidas'] - $prueba['cargadas'], 0, ',', '.') }} afuera.
+                                            @endif
+                                        </div>
+                                    @endif
                                     <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
                                     <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
                                     <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
@@ -334,7 +341,7 @@
                                                  se compara contra los 420 de pie y parece un error. --}}
                                             <div class="flex justify-between py-1">
                                                 <span class="text-neutral-500">Cómo viaja</span>
-                                                <span class="font-medium text-neutral-900">{{ \App\Models\TipoBulto::ESTIBAS[$estiba] ?? 'De pie' }}</span>
+                                                <span class="font-medium text-neutral-900">{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$estiba] ?? 'Automático' }}</span>
                                             </div>
                                         @endif
                                         <div class="flex justify-between py-1">
@@ -486,7 +493,7 @@
                         <div class="sm:w-36">
                             <x-input-label for="estiba" value="Cómo viaja" />
                             <x-select id="estiba" name="estiba" class="mt-1.5" onchange="this.form.submit()">
-                                @foreach (\App\Models\TipoBulto::ESTIBAS as $clave => $nombre)
+                                @foreach (\App\Models\TipoBulto::ESTIBAS_ELEGIBLES as $clave => $nombre)
                                     <option value="{{ $clave }}" @selected($estiba === $clave)>{{ $nombre }}</option>
                                 @endforeach
                             </x-select>
@@ -505,6 +512,16 @@
                                           title="Cuántos se apilan uno sobre otro. El catálogo dice {{ $bulto->apilable_max }}." />
                         </div>
                     @endif
+                    {{-- CANTIDAD A PROBAR (pedido del dueño 06-08: «me falta la opción de
+                         cuánto cargo, 1, 20, 50, para realizar la prueba»). Vacío = el
+                         máximo, que era el único comportamiento hasta ahora. --}}
+                    <div class="sm:w-36">
+                        <x-input-label for="cantidad" value="Cantidad a probar" />
+                        <x-text-input id="cantidad" name="cantidad" type="number" min="1" max="100000"
+                                      class="mt-1.5 w-full" inputmode="numeric"
+                                      value="{{ $cantidad }}" placeholder="Máximo"
+                                      title="¿Te entran 50? Escribí 50 y calculá. Vacío calcula el máximo." />
+                    </div>
                     <div><x-primary-button>Calcular</x-primary-button></div>
                 </form>
 
@@ -542,15 +559,15 @@
                                                class="block w-32 rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                         <span class="w-16 text-xs text-neutral-400"
                                               x-text="(bultos.find(b => b.id === linea.tipo)?.unidades ?? 1) > 1 ? 'unidades' : 'bultos'"></span>
-                                        {{-- CÓMO VIAJA el pack: de pie, acostado de costado o acostado con
-                                             el pico a la puerta (pedido del dueño 05 y 06-08). Solo aparece
-                                             donde cambia algo; en el resto el motor ya elige la orientación
-                                             que más entra. --}}
+                                        {{-- CÓMO VIAJA: automático o una estiba forzada. Está en TODOS los
+                                             productos (pedido del dueño 06-08: «que los dispensadores,
+                                             cualesquiera que sea, tengan la opción») — en la práctica un
+                                             dispensador viaja parado aunque el motor pudiera tumbarlo. El
+                                             default `auto` es lo que protege el número verificado. --}}
                                         <select :name="`lineas[${i}][estiba]`" x-model="linea.estiba"
-                                                x-show="acuesta(linea.tipo)" x-cloak
                                                 title="Cómo viaja el pack"
                                                 class="block w-40 rounded-lg border border-neutral-300 bg-white px-2.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                            @foreach (\App\Models\TipoBulto::ESTIBAS as $clave => $nombre)
+                                            @foreach (\App\Models\TipoBulto::ESTIBAS_ELEGIBLES as $clave => $nombre)
                                                 <option value="{{ $clave }}">{{ $nombre }}</option>
                                             @endforeach
                                         </select>
@@ -692,7 +709,7 @@
                             <div class="flex items-center gap-2">
                                 <label for="estiba_pallet" class="text-xs text-neutral-500">Cómo viaja</label>
                                 <x-select id="estiba_pallet" name="estiba" class="w-44">
-                                    @foreach (\App\Models\TipoBulto::ESTIBAS as $clave => $nombre)
+                                    @foreach (\App\Models\TipoBulto::ESTIBAS_ELEGIBLES as $clave => $nombre)
                                         <option value="{{ $clave }}" @selected($estiba === $clave)>{{ $nombre }}</option>
                                     @endforeach
                                 </x-select>
