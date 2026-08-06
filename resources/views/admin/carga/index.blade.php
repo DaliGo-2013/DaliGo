@@ -148,65 +148,48 @@
                     {{-- ① EL CAMIÓN, a todo el ancho y arriba de todo. --}}
                     @include('admin.carga._visor')
 
-                    {{-- ② Los datos: el camión en números | el veredicto y el detalle. --}}
-                    <div class="grid gap-4 lg:grid-cols-3">
+                    {{-- ② Los datos: el camión en UNA FRANJA horizontal + el veredicto y el
+                         detalle a todo el ancho.
 
-                        {{-- Columna 1 · el camión en números. Antes estas medidas solo
-                             existían dentro del selector del formulario, que ahora quedó
-                             al final de la pantalla. --}}
-                        <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">El camión</p>
-                            <p class="mt-1 text-lg font-semibold leading-tight text-neutral-900">{{ $camion->nombre }}</p>
-
-                            <div class="mt-3 border-t border-neutral-100 pt-3 text-sm">
-                                <div class="flex justify-between gap-3 py-1">
-                                    <span class="text-neutral-500">Medidas útiles</span>
-                                    <span class="text-right font-medium tabular-nums text-neutral-900">
-                                        {{ number_format($camion->largo_cm / 100, 2, ',', '.') }} ×
-                                        {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} ×
-                                        {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m
-                                    </span>
-                                </div>
-                                <div class="flex justify-between gap-3 py-1">
-                                    <span class="text-neutral-500">Volumen</span>
-                                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
-                                </div>
-                                <div class="flex justify-between gap-3 py-1">
-                                    <span class="text-neutral-500">Carga máxima</span>
-                                    <span class="font-medium tabular-nums text-neutral-900">
-                                        @if ($camion->peso_max_kg)
-                                            {{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg
-                                        @else
-                                            <span class="font-normal text-neutral-400">sin dato</span>
-                                        @endif
-                                    </span>
-                                </div>
-                                @if ($camion->pasillo_cm > 0)
-                                    <div class="flex justify-between gap-3 py-1">
-                                        <span class="text-neutral-500">Pasillo reservado</span>
-                                        <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
-                                    </div>
+                         Era una tarjeta vertical en una grilla de 3 columnas (pedido del dueño
+                         06-08: «la columna vertical ocupa mucho espacio»): cinco filas
+                         etiqueta-valor más un párrafo, y en el modo pallet —que no tiene
+                         columna de veredicto al lado— dejaba dos tercios de la pantalla en
+                         blanco. Los mismos cinco datos caben en un renglón, y la nota sobre
+                         medidas interiores vive en el ⓘ (title) en vez de ocupar cuatro
+                         líneas siempre visibles. --}}
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1.5 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm shadow-sm">
+                            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
+                            <span class="text-neutral-500">Medidas útiles
+                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
+                                <span class="cursor-help text-neutral-300"
+                                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
+                            </span>
+                            <span class="text-neutral-500">Volumen
+                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
+                            </span>
+                            <span class="text-neutral-500">Carga máxima
+                                @if ($camion->peso_max_kg)
+                                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
+                                @else
+                                    <span class="text-neutral-400">sin dato</span>
                                 @endif
-                                {{-- Los metros de piso que quedan contra la puerta: el «Free meters» de
-                                     EasyCargo. Dice más que el porcentaje de ocupación para la pregunta
-                                     que se hace todos los días («¿le sumo algo más a este viaje?»). --}}
-                                <div class="flex justify-between gap-3 py-1">
-                                    <span class="text-neutral-500">Piso libre en la puerta</span>
-                                    <span class="font-medium tabular-nums text-neutral-900">
-                                        {{ number_format($escena['libre_m'], 2, ',', '.') }} m
-                                    </span>
-                                </div>
-                            </div>
-
-                            <p class="mt-4 text-xs leading-relaxed text-neutral-400">
-                                Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e
-                                interior hay 10 a 20% de volumen, que es la diferencia entre que la carga
-                                entre o quede en el andén.
-                            </p>
+                            </span>
+                            @if ($camion->pasillo_cm > 0)
+                                <span class="text-neutral-500">Pasillo reservado
+                                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
+                                </span>
+                            @endif
+                            {{-- El «Free meters» de EasyCargo: más accionable que el % de
+                                 ocupación para «¿le sumo algo más a este viaje?». --}}
+                            <span class="text-neutral-500">Piso libre en la puerta
+                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
+                            </span>
                         </div>
 
-                        {{-- Columna 2 · el veredicto, la ocupación y el detalle. --}}
-                        <div class="space-y-4 lg:col-span-2">
+                        {{-- El veredicto, la ocupación y el detalle, a todo el ancho. --}}
+                        <div class="space-y-4">
 
                             {{-- RESULTADO · carga mixta --}}
                             @if ($mixta !== null)
