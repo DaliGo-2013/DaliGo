@@ -306,9 +306,18 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // quede pegada o se ponga lento». Los botones + / − viven en un contenedor
         // oculto hasta `lg`; si alguien los saca de ahí, esto se pone rojo y
         // obliga a leer el porqué antes de exponerlos en el teléfono.
+        //
+        // La aserción mira el bloque de `Acercar` dentro del menú lateral: al pasar los
+        // controles al menú (06-08) el contenedor cambió de clases pero NO la regla.
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
 
-        $this->assertStringContainsString('hidden items-center gap-1.5 text-xs lg:flex', $html);
+        $zoom = strpos($html, 'id="carga3dMenos"');
+        $this->assertNotFalse($zoom, 'Desapareció el control de zoom.');
+
+        // El envoltorio `hidden lg:block` tiene que estar ANTES del primer botón de zoom y
+        // después del bloque de vistas: si no, el zoom quedaría visible en celular.
+        $antes = substr($html, strpos($html, 'id="carga3dVistapuerta"'), $zoom - strpos($html, 'id="carga3dVistapuerta"'));
+        $this->assertStringContainsString('hidden lg:block', $antes);
     }
 
     public function test_el_visor_no_registra_gestos_tactiles(): void
@@ -586,7 +595,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ['tipo' => $this->caja->id, 'cantidad' => 20],
         ])->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'La carga</p>'), 1400);
+        $panel = substr($html, strpos($html, 'Cubicaje</p>'), 3000);
 
         $this->assertStringContainsString('200/200', $panel);
         $this->assertStringContainsString('20/20', $panel);
@@ -601,7 +610,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
             ->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'La carga</p>'), 1400);
+        $panel = substr($html, strpos($html, 'Cubicaje</p>'), 3000);
 
         $this->assertStringContainsString('420/600', $panel);
         $this->assertStringContainsString('bg-red-500', $panel);
@@ -629,6 +638,57 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
                 "La cabina [{$cabina}] no dibuja los detalles del costado.",
             );
         }
+    }
+
+    public function test_los_controles_viven_en_un_solo_menu_y_no_en_las_cuatro_esquinas(): void
+    {
+        // Pedido del dueño 06-08: «organizá los botones en un menú, en un lateral… y que no
+        // tenga tantos botones por toda la pantalla, siento que genera confusión». Antes
+        // los controles estaban repartidos en las cuatro esquinas del lienzo y cada pedido
+        // nuevo sumaba una esquina.
+        //
+        // El candado mira que TODOS los controles estén dentro del <aside> del menú, que es
+        // lo que se rompe sin darse cuenta al agregar el próximo botón «rápido» en una
+        // esquina.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
+
+        // Se ancla en el rótulo «Herramientas» y NO en el primer `<aside>`: el layout de la
+        // app tiene su propio aside (el menú de navegación) y la rebanada caía ahí.
+        $desde = strpos($html, 'Herramientas');
+        $this->assertNotFalse($desde, 'Ya no hay menú lateral en el visor.');
+        $hasta = strpos($html, '</aside>', $desde);
+        $menu = substr($html, $desde, $hasta - $desde);
+
+        foreach ([
+            'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
+            'carga3dMenos', 'carga3dMas', 'carga3dReset',
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dSuma1', 'carga3dSuma5',
+            'carga3dSuma10', 'carga3dTodo', 'carga3dCodigos', 'carga3dNombres',
+            'carga3dImportar',
+        ] as $control) {
+            $this->assertStringContainsString(
+                'id="'.$control.'"', $menu,
+                "El control [{$control}] quedó fuera del menú lateral.",
+            );
+        }
+
+        // Y el lienzo NO puede quedar tapado: el menú es una barra que le come ancho
+        // (`flex` + `shrink-0`), no un panel flotante encima del camión.
+        $this->assertStringContainsString('shrink-0', $menu);
+        $this->assertStringNotContainsString('absolute', $menu);
+    }
+
+    public function test_importar_de_excel_esta_ofrecido_y_dice_que_no_lee_facturas(): void
+    {
+        // El dueño lo pidió para «generar una ruta con facturas, cargar y hacer una prueba
+        // si alcanza todo o no». Lo que entró lee productos y cantidades pegados de la
+        // planilla; las facturas y la ruta son otra pieza. La pantalla lo DICE, porque un
+        // botón que promete más de lo que hace se descubre en el peor momento.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="carga3dImportar"', $html);
+        $this->assertStringContainsString('Traer la carga de una planilla', $html);
+        $this->assertStringContainsString('Todavía no lee facturas ni arma la ruta', $html);
     }
 
     public function test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre(): void

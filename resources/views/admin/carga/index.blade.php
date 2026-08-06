@@ -74,7 +74,49 @@
                         if (j < 0 || j >= this.lineas.length) return;
                         const t = this.lineas[i]; this.lineas[i] = this.lineas[j]; this.lineas[j] = t;
                     },
-                 }" class="space-y-6">
+
+                    /* ── IMPORTAR DE EXCEL (pedido del dueño 06-08) ──────────────────
+                       Se PEGA lo copiado de la planilla en vez de subir un archivo: al
+                       copiar de Excel las columnas llegan separadas por tabuladores, así
+                       que se puede leer sin parsear .xlsx ni pedirle al usuario que
+                       guarde y busque el archivo. Es el camino más corto a lo que él
+                       quiere hacer con esto — «cargar y hacer una prueba si alcanza todo
+                       o no». */
+                    impAbierto: false, impTexto: '', impNoLeidas: [], impLeidas: 0,
+                    importar() {
+                        // Sin tildes, sin mayúsculas y sin dobles espacios: lo que se
+                        // tipea en una planilla nunca coincide carácter a carácter con
+                        // el catálogo.
+                        const norm = (s) => (s || '').toLowerCase().normalize('NFD')
+                            .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+                        const nuevas = [], noLeidas = [];
+
+                        for (const fila of this.impTexto.split(/\r?\n/)) {
+                            if (!fila.trim()) continue;
+                            // Tabulador (Excel), punto y coma, coma o dos espacios.
+                            const partes = fila.split(/\t|;|,|\s{2,}/).map((p) => p.trim()).filter(Boolean);
+                            const cant = parseInt((partes[partes.length - 1] || '').replace(/[^\d]/g, ''), 10);
+                            const nombre = partes.slice(0, -1).join(' ');
+                            const b = this.bultos.find((x) => norm(x.nombre) === norm(nombre))
+                                || this.bultos.find((x) => norm(x.nombre).includes(norm(nombre)) && norm(nombre).length > 3);
+
+                            if (!b || !(cant > 0)) { noLeidas.push(fila.trim()); continue; }
+                            nuevas.push({ tipo: b.id, cantidad: cant, acostado: 0 });
+                        }
+
+                        this.impNoLeidas = noLeidas;
+                        this.impLeidas = nuevas.length;
+                        if (!nuevas.length) return;
+
+                        // El tope de 8 líneas es el del formulario y del validador.
+                        this.lineas = nuevas.slice(0, 8);
+                        this.modo = 'mixta';
+                        this.impAbierto = false;
+                        // `$nextTick`: los inputs de las líneas nuevas todavía no existen
+                        // en el DOM cuando esto corre, y enviar antes mandaría los viejos.
+                        this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
+                    },
+                 }" x-on:abrir-importar="impAbierto = true" class="space-y-6">
 
                 {{-- Las dos preguntas, como conmutador --}}
                 <div class="inline-flex rounded-xl border border-neutral-200 bg-white p-1 shadow-sm" role="tablist">
@@ -97,6 +139,10 @@
                         Sobre pallet
                     </button>
                 </div>
+
+                {{-- Traer la carga desde una planilla. Vive acá y no en el partial del visor
+                     porque escribe en `lineas`, que es estado de esta pantalla. --}}
+                @include('admin.carga._importar')
 
                 @if ($escena)
                     {{-- ① EL CAMIÓN, a todo el ancho y arriba de todo. --}}
@@ -480,6 +526,7 @@
 
                 {{-- MODO 2 · carga mixta: armá la carga producto por producto --}}
                 <form x-show="modo === 'mixta'" @if ($mixta === null) x-cloak @endif
+                      x-ref="formMixta"
                       method="GET" action="{{ route('admin.carga.index') }}"
                       class="space-y-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <div class="sm:max-w-md">

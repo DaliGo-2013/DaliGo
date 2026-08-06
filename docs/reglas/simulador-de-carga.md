@@ -482,6 +482,66 @@ suaves, texturas y reflejos — el visor son quads planos con sombreado por cara
 canvas 2D. Si algún día se pide realismo fotográfico hay que discutir Three.js otra vez,
 con el costo en la mano (~150 KB gzip en una PWA contra los 7,8 KB de hoy).
 
+### 4.1nonies UN MENÚ LATERAL, no botones por toda la pantalla (06-08-2026)
+
+Pedido del dueño: *«organizá los botones en un menú, como las imágenes de EasyCargo, en un
+lateral… y que no tenga tantos botones por toda la pantalla, siento que genera confusión»*.
+
+Los controles vivían en las **cuatro esquinas** del lienzo (vistas arriba a la izquierda,
+zoom arriba a la derecha, pasos de carga abajo a la izquierda, códigos y nombres abajo a la
+derecha) más el cubicaje flotando. Cada pedido nuevo sumaba una esquina — el problema no era
+ningún botón en particular, era que no había **un lugar** donde ponerlos.
+
+Ahora hay un `<aside>` con secciones: Vista · Acercar · Cargar · Rótulos · Cubicaje · Traer
+carga. Decisiones que importan:
+
+1. **Es una barra que le COME ANCHO al lienzo, no un panel flotante encima.** Flotando
+   taparía el camión, y agrandar el camión fue justamente el pedido de dos días antes.
+2. **En celular arranca cerrado** (14 rem sobre 342 px serían media pantalla) y lo abre un
+   ☰. En escritorio arranca abierto.
+3. **El lienzo se reacomoda al abrir y cerrar.** Un `resize` de window no se enteraría, así
+   que hay un `ResizeObserver` sobre el lienzo. Reencuadra en los **ángulos actuales** y no
+   en los de la vista fija: si el usuario venía girando a mano, volver a la vista le pegaría
+   un salto de cámara solo por abrir el menú.
+4. **`reacomodar()` es SÍNCRONO, sin `requestAnimationFrame`.** La primera versión coalescía
+   con rAF y tenía un modo de falla feo: en una pestaña que no está pintando el rAF no corre
+   nunca, el flag de «ya hay uno agendado» quedaba puesto para siempre y el visor no volvía
+   a reencuadrar jamás. Coalescer no hacía falta — un `ResizeObserver` ya avisa como máximo
+   una vez por frame.
+5. El zoom sigue viviendo en un envoltorio `hidden lg:block`: **la regla de «zoom solo en
+   escritorio» no cambió**, solo se mudó de esquina.
+
+Candado: `test_los_controles_viven_en_un_solo_menu_y_no_en_las_cuatro_esquinas`, que exige
+que **todos** los ids `carga3d*` estén dentro del `<aside>` y que el menú no sea `absolute`.
+Es lo que se rompe sin darse cuenta cuando alguien agrega «rápido» el próximo botón en una
+esquina.
+
+> Nota para quien verifique esto en el navegador de las herramientas: con la pestaña oculta
+> **ni `requestAnimationFrame` ni `ResizeObserver` corren** (no hay ciclo de pintado). Para
+> probar el reencuadre hay que disparar `window.dispatchEvent(new Event('resize'))` a mano
+> después de abrir o cerrar el menú, y esperar un tick a que Alpine aplique el `x-show`.
+
+### 4.1decies Traer la carga de una planilla (06-08-2026)
+
+Pedido: *«un botón de importar en Excel para que se pueda generar una ruta con facturas,
+cargar y hacer una prueba si alcanza todo o no»*.
+
+**Se PEGA, no se sube un archivo.** Al copiar celdas de Excel el portapapeles trae las
+columnas separadas por tabuladores, así que se lee sin parsear `.xlsx` y sin pedirle al
+usuario que guarde el archivo, lo busque y lo suba. Todo el trabajo es en el cliente
+(`importar()` en el `x-data` de la pantalla): normaliza sin tildes ni mayúsculas, busca el
+producto en el catálogo, arma las líneas y envía el formulario de carga mixta.
+
+Dos reglas:
+
+- **Lo que no se pudo leer se MUESTRA tal cual vino.** Descartarlo en silencio dejaría al
+  usuario creyendo que cargó todo, con un veredicto calculado de menos — el peor error
+  posible acá.
+- **La pantalla dice lo que NO hace todavía**: no lee facturas ni arma la ruta. Eso engancha
+  con Hojas de ruta y es otra pieza. Un botón que promete más de lo que hace se descubre en
+  el peor momento. Candado:
+  `test_importar_de_excel_esta_ofrecido_y_dice_que_no_lee_facturas`.
+
 ### 4.1octies El encuadre mide el DIBUJO, y el recuadro toma la forma del camión
 
 Reporte del dueño: «se sigue viendo apretado o pequeño» y «se ve muy hacia la derecha».

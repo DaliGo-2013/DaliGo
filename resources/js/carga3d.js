@@ -1768,16 +1768,32 @@ export default function iniciarCarga3d(canvas, datos) {
      * ventana el evento llega decenas de veces por segundo, y remedir el encuadre en
      * cada uno sería trabajo tirado.
      */
-    let pendiente = null;
-    window.addEventListener('resize', () => {
-        if (pendiente) return;
-        pendiente = requestAnimationFrame(() => {
-            pendiente = null;
-            if (!ajustarLienzo()) return;
-            vista(vistaActual);
-            dibujar();
-        });
-    });
+    /**
+     * El recuadro cambió de tamaño: se ajusta el mapa de bits y se vuelve a encuadrar.
+     *
+     * SÍNCRONO, sin `requestAnimationFrame`. La primera versión coalescía con rAF y tenía
+     * un modo de falla feo: en una pestaña que no está pintando (en segundo plano) el rAF
+     * no corre nunca, el flag de «ya hay uno agendado» quedaba puesto para siempre y el
+     * visor no volvía a reencuadrar jamás. Coalescer no hacía falta: un ResizeObserver ya
+     * avisa como máximo una vez por frame, y el trabajo es medir la silueta y redibujar,
+     * que es lo mismo que hace un arrastre.
+     *
+     * Se reencuadra en los ÁNGULOS ACTUALES y no en los de la vista fija: si el usuario
+     * venía girando a mano, volver a `vista(vistaActual)` le pegaría un salto de cámara
+     * solo por abrir el menú.
+     */
+    const reacomodar = () => {
+        if (!ajustarLienzo()) return;
+        aplicar(medirEncuadre(yaw, pitch));
+        dibujar();
+    };
+
+    window.addEventListener('resize', reacomodar);
+
+    // El recuadro también cambia sin que cambie la ventana: al abrir o cerrar el MENÚ de
+    // herramientas, que le come ancho al lienzo. Un `resize` de window no se enteraría, y
+    // el camión quedaría dibujado a la medida vieja (cortado o chico).
+    if (window.ResizeObserver) new ResizeObserver(reacomodar).observe(canvas);
 
     encuadrar();
     dibujar();
