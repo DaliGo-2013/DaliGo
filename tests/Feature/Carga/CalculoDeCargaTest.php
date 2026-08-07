@@ -20,8 +20,14 @@ class CalculoDeCargaTest extends TestCase
 {
     private CalculoDeCarga $calc;
 
-    /** Hyundai HD35: 4,30 × 2,00 × 2,20 m (medidas del dueño). */
-    private const HD35 = ['largo' => 430, 'ancho' => 200, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
+    /**
+     * Hyundai HD35: 4,30 × 2,04 × 2,20 m. El ancho se corrigió de 200 a 204 el
+     * 07-08-2026 (ver el comentario de CamionesSimulacionSeeder): con 200 el
+     * acostado daba 360 botellones contra los 480 que el dueño carga a mano.
+     * Espeja el catálogo a propósito — si este número y el del seeder se
+     * separan, los candados dejan de proteger lo que la pantalla muestra.
+     */
+    private const HD35 = ['largo' => 430, 'ancho' => 204, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
 
     /** HINO 500: 7,97 × 2,60 × 2,66 m. */
     private const HINO = ['largo' => 797, 'ancho' => 260, 'alto' => 266, 'peso_max_kg' => null, 'pasillo' => 0];
@@ -54,6 +60,36 @@ class CalculoDeCargaTest extends TestCase
         $this->assertSame(420, $r['unidades']);
         $this->assertGreaterThan($r['bultos'], $porVolumen, 'La división de volúmenes SIEMPRE exagera.');
         $this->assertSame(['largo' => 3, 'ancho' => 7, 'alto' => 4], $r['rejilla']);
+    }
+
+    /**
+     * Los DOS cupos de referencia del HD35 salen de la MISMA caja.
+     *
+     * Es el candado que fija la corrección de ancho del 07-08: el dueño reportó
+     * que a mano carga 480 acostados, y con el ancho viejo (200) el cálculo daba
+     * 360 — porque a lo ancho entraban 3 bolsas acostadas y no 4. Con 204 dan los
+     * dos números suyos a la vez, que es lo que vuelve creíble la corrección: un
+     * ancho elegido para arreglar un número y que rompiera el otro sería un
+     * ajuste a medida, no una medida.
+     *
+     * Mutado en los dos sentidos: con 200 este test se pone rojo en el acostado
+     * (360 ≠ 480) y con 208 se pone rojo en el de pie (480 ≠ 420, porque entraría
+     * una octava columna parada).
+     */
+    public function test_el_hd35_da_420_de_pie_y_480_acostado_con_la_misma_caja(): void
+    {
+        $dePie = $this->calc->cupo(self::HD35, self::BOLSA20);
+        $this->assertSame(420, $dePie['unidades'], 'El cupo de pie que el dueño verificó el 04-08.');
+        $this->assertSame(['largo' => 3, 'ancho' => 7, 'alto' => 4], $dePie['rejilla']);
+
+        // Acostada de costado (130 × 51 × 26) y apilando hasta el techo: es como
+        // se carga a mano, «se ocupa todo el espacio» (dueño, 07-08). El tope 8
+        // sale de la altura (8 × 26 = 208 de 220), no de una preferencia.
+        $acostada = ['largo' => 130, 'ancho' => 51, 'alto' => 26, 'unidades' => 5, 'apilable_max' => 8];
+        $r = $this->calc->cupo(self::HD35, $acostada + ['orientacion_fija' => true]);
+
+        $this->assertSame(480, $r['unidades'], 'Los 480 botellones que el dueño carga a mano.');
+        $this->assertSame(['largo' => 3, 'ancho' => 4, 'alto' => 8], $r['rejilla']);
     }
 
     /** Segundo caso real, para que el primero no pase por casualidad. */

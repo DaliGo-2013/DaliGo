@@ -29,7 +29,11 @@ class CamionesSimulacionSeederTest extends TestCase
         $esperado = [
             "Contenedor 40'" => [1203, 235, 239, 28800],
             'HINO 500 (FC 1118)' => [797, 260, 266, 11000],
-            'Hyundai HD35' => [430, 200, 220, 1500],
+            // Ancho 204 y no 200 desde el 07-08-2026: con 200 entraban 3 bolsas
+            // acostadas a lo ancho y el cupo daba 360 contra los 480 que el dueño
+            // carga a mano. Ver el comentario del seeder y
+            // CalculoDeCargaTest::test_el_hd35_da_420_de_pie_y_480_acostado_con_la_misma_caja.
+            'Hyundai HD35' => [430, 204, 220, 1500],
         ];
 
         $this->assertSame(count($esperado), CamionSimulacion::count());

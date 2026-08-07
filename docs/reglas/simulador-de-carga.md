@@ -238,6 +238,53 @@ verificaron los cupos de referencia. Cuántas aguanta la bolsa de abajo es dato 
 no de geometría, así que la decisión es suya y no del código. Candado:
 `test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre`.
 
+## 3.5 El ancho del HD35: 204 y no 200 (07-08-2026)
+
+Reporte del dueño mirando el hueco de arriba de la carga: *«ahí se pueda cargar
+bidones… en el HD35 ingresan acostados y en total 480 en el camión completo»*.
+El cálculo daba **360**. La diferencia no era del motor: era el **ancho del
+catálogo**.
+
+Una bolsa acostada de costado ocupa 51 cm de ancho. Con **200 cm** entran **3** a
+lo ancho (153, sobran 47); con **204** entran **4** (204 justos). **Cuatro
+centímetros valen 120 botellones**, porque hacen entrar una columna entera — es la
+naturaleza de la rejilla exacta, y la razón por la que una medida «casi bien» no
+sirve.
+
+**De dónde sale el 204, que no es una ficha ni un número inventado.** Se buscaron
+por fuerza bruta todas las cajas enteras que reproducen **a la vez** sus dos cupos
+de terreno —420 de pie y 480 acostado—. El resultado acota el ancho a **204–207**
+y deja largo (430) y alto (220) del catálogo **dentro** de su rango: el único dato
+que estaba afuera era el ancho. Se toma el **extremo bajo (204)** porque todo el
+rango da los mismos cupos de botellones y, para los demás productos, es el que
+menos promete (§2, el credo).
+
+Es el mismo método con el que se verificaron los otros dos camiones: **contra sus
+cupos, no contra una ficha**. Y hay que insistir en eso porque la ficha de fábrica
+del HD35 *parece* contradecirlo y no lo hace: sus **1,76 m son el ancho de la
+CABINA**, y el furgón carrozado la desborda por los costados (se ve en las fotos
+del propio dueño — §4.1quinquies). Sus 5,31 m son el chasis entero y sus «3,4–3,7 m
+carrozables» son largo de bastidor, no interior de caja. **Ninguna medida de esa
+hoja es el interior del furgón**, que es carrozado aparte.
+
+**Por qué la corrección es creíble y no un ajuste a medida:** un ancho elegido para
+arreglar un número habría roto el otro. Con 204 salen los dos. El candado
+`CalculoDeCargaTest::test_el_hd35_da_420_de_pie_y_480_acostado_con_la_misma_caja`
+lo fija por los dos lados, y está mutado: con **200** se pone rojo en el acostado
+(360 ≠ 480) y con **208** se pone rojo en el de pie (480 ≠ 420, entraría una octava
+columna parada).
+
+**Para llegar a 480 hay que apilar 8, no 6.** El tope del catálogo sigue siendo 6
+(§3.4): son 8 × 26 = 208 cm de 220, así que la altura da — lo que no da el código
+es la respuesta a «¿aguanta la bolsa de abajo?», que es dato de terreno. Se sube
+desde el control de apilado de la simulación.
+
+**Pendiente de confirmar con huincha:** el ancho interior real, de pared a pared.
+Cualquier valor entre 204 y 207 da los mismos cupos de botellones, pero **sí cambia
+para los demás productos** (una caja de 46 cm entra 4 veces en 204 y en 207 igual,
+pero otras medidas no). Si la medición da menos de 204, los 480 no son alcanzables
+y hay que volver a 200 — y entonces el número de terreno es el que hay que revisar.
+
 ## 4. El visor 3D y sus colores
 
 La escena viaja SIEMPRE como **lista de bloques** (posición, orientación,

@@ -56,7 +56,26 @@ class CamionesSimulacionSeeder extends Seeder
             ],
             [
                 'nombre' => 'Hyundai HD35',
-                'largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220,
+                // ANCHO CORREGIDO 200 -> 204 (07-08-2026). El dueño reportó que el
+                // camión cargado a mano lleva 480 botellones acostados y con 200 el
+                // cálculo daba 360: con 200 cm entran 3 bolsas acostadas a lo ancho
+                // (3 × 51 = 153) y con 204 entran 4 (204 justos). Cuatro centímetros
+                // valen 120 botellones, porque hacen entrar una columna entera.
+                //
+                // El 204 no es un número inventado ni una medida de ficha: sale de
+                // sus DOS cupos de referencia. Buscando todas las cajas enteras que
+                // reproducen a la vez 420 de pie y 480 acostado, el ancho queda
+                // acotado a 204-207 y el largo/alto del catálogo caen dentro de su
+                // rango — o sea que el único dato que estaba fuera era este. Se toma
+                // el EXTREMO BAJO (204) porque todo el rango da los mismos cupos de
+                // botellones y, para los demás productos, 204 es el que menos promete
+                // (§2, el credo). Es el mismo método con el que se verificaron los
+                // otros dos camiones: contra sus cupos, no contra una ficha.
+                //
+                // Coherente con la ficha de fábrica: el 1,76 de ancho de esa hoja es
+                // la CABINA, y el furgón carrozado la desborda por los costados (se
+                // ve en las fotos del dueño; §4.1quinquies de las reglas).
+                'largo_cm' => 430, 'ancho_cm' => 204, 'alto_cm' => 220,
                 'peso_max_kg' => 1500,
                 'silueta' => 'camion_liviano',
                 'notas' => 'La misma caja en los tres HD35 de la flota.',
