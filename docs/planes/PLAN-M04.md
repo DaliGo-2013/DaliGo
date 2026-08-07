@@ -108,13 +108,18 @@ confirmadas). Después manda la UI.
       operación (dadas de baja vía el flujo real, no por seeder).
 - [x] Sucursales: eliminar con bodegas/hojas asignadas bloquea con mensaje útil —
       **QA del dueño en producción (06-ago, celular): funcionando**.
-- [ ] Una bodega con stock NO se puede dar de baja sin orden de traslado; una con stock 0
-      sí, al tiro; el cierre automático post-sync funciona (probado con sync simulado).
-- [ ] Bodega nueva en Bsale aparece sola con su badge y su notificación.
-- [ ] M11 y M13 registran movimientos contra bodega real (select), no texto.
+- [x] Una bodega con stock NO se puede dar de baja sin orden de traslado; una con stock 0
+      sí, al tiro; el cierre automático post-sync funciona (candados en verde + **QA del
+      dueño del wizard en producción: APROBADO 07-ago, celular, «todo funcionando»**).
+- [ ] Bodega nueva en Bsale aparece sola con su badge y su notificación (código en
+      producción con candados; la prueba de campo —crear bodega real en Bsale— es
+      opcional y quedó en pausa).
+- [ ] M11 y M13 registran movimientos contra bodega real (select), no texto — es F3
+      (kardex), EN PAUSA por orden del dueño (07-ago).
 - [x] QA del dueño (parte F1): clasificación en producción probada desde el celular —
-      **APROBADO 06-ago, «todo funcionando»**. Quedan para F2 los tramos del wizard
-      (dar de baja con/sin stock) y la prueba opcional de crear bodega en Bsale.
+      **APROBADO 06-ago, «todo funcionando»**.
+- [x] QA del dueño (parte F2): wizard de baja probado en producción desde el celular —
+      **APROBADO 07-ago, «todo funcionando»**.
 
 ## 5. Preguntas abiertas
 
