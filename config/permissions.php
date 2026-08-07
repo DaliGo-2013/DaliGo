@@ -101,6 +101,11 @@ return [
         // Devoluciones (M13): sin esta categoría, sus permisos caerían en
         // "Generales" (el fallback) — gotcha documentado en PLAN-M13 §3.
         'Devoluciones' => ['devoluciones'],
+        // Facturación electrónica (M05): sin esta categoría sus dos permisos
+        // caían en "Generales" — detectado en la auditoría del 05-08. Keywords
+        // completos, no 'documentos' ni 'credito' a secas: 'documentos' se
+        // comería un permiso futuro de otro dominio.
+        'Facturación' => ['documentos tributarios', 'nota de credito'],
         'Comercial' => ['clientes', 'productos'],
         'Usuarios y accesos' => ['users', 'roles'],
         'Aprobaciones' => ['aprobaciones', 'solicitudes'],
