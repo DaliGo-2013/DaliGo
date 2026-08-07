@@ -1,36 +1,54 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-07 (v39 — F2 DE M04 EN PRODUCCIÓN; PAUSA TOTAL de la flota por orden del dueño). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-07 (v40 — PAUSA LEVANTADA por el dueño: GO P-M11-10, receta + backflush de preformas). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ F2 está EN PRODUCCIÓN (merge `237185b`, doble llave 07-ago)
+## La pausa se levantó — nueva prioridad del dueño (vía Luis): M11 Producción, versión final
 
-Verificación del Director sobre el árbol unión: **suite 1655 verdes / 12.067 aserciones,
-cero rojos** — cuadre exacto (tus 1635 + los 20 de la cotización de Marcos posteriores a
-tu base). Tu claim del bundle byte-idéntico se verificó por rebuild propio: 0 diff, tal
-cual dijiste. Merge sin conflictos, Deploy y Tests de CI verdes, rama borrada tras
-ancestría.
+**Lee primero `docs/planes/PLAN-M11-FINAL.md` (VIGENTE, visto bueno del dueño 07-ago)**
+y su insumo `docs/investigacion/2026-08-07--BENCHMARK-M11-RECONCILIADO.md` (benchmark de
+doble vía: 14+ sistemas; nuestras ventajas y gaps verificados por dos investigaciones
+independientes).
 
-**M04 pasó de «pospuesto sin fecha» a 40 % en dos días** — F1 y F2, ambas con el mismo
-estándar: parte honesto, candados mutados, cifra prometida = cifra entregada. El
-«eliminar jamás pierde stock ni da 500» quedó exactamente como el dueño lo pidió, y tu
-decisión del scope-como-contrato (anular revive sin adivinar estados) es la lectura
-correcta del plan.
+Tu stream es **A (backend/kardex)**: recetas, backflush, OEE, moldes. Max-2 lleva el
+stream B (PWA/soplador) EN PARALELO — territorio en PLAN §3. **Frontera caliente:**
+`ProduccionReporte` lo toca primero Max-2 (campos de paradas); tú lo LEES, no le agregues
+columnas en este lote. Lotes cortos, push temprano, re-fetch religioso: somos DOS
+forjadores activos + Marcos.
 
-## ⏸️ PAUSA TOTAL — orden del dueño (vía Luis, 07-ago)
+## 🟢 GO — P-M11-10 · Receta paramétrica + backflush al aprobar (F1, stream A)
 
-**La planificación completa queda congelada hasta nueva orden.** Esto NO es la pausa de
-siempre entre lotes: el dueño pidió explícitamente detener el avance del plan. En
-concreto:
-- **F3 de M04 (kardex unificado): NO arrancar** aunque el plan lo tenga diseñado.
-- Ronda 2 con Luis: congelada (el xlsx sigue en su poder).
-- Ningún GO nuevo hasta dictado v40.
+El pendiente nº1 histórico del tracker («descuento de preforma»), diseñado en PLAN §4:
 
-Si abres sesión y este dictado sigue en v39: cierra sesión sin gastar ventana. No hay
-excepciones esta vez — ni «cierres baratos».
+- **Tabla `recetas`**: producto_id (botellón) → componentes (preforma, tapa) con
+  cantidad decimal(14,4), editable en UI (permiso de producción/admin EXISTENTE — cero
+  permisos nuevos), `confirmada` boolean. **Seeder con la hipótesis [B]: 1 preforma +
+  1 tapa = 1 botellón, confirmada=false** — la respuesta de Luis será un ajuste de datos
+  vía UI, no de código (mismo patrón que la clasificación de bodegas D-003).
+- **La regla**: al APROBAR un reporte (`ProduccionController::aprobar`) → movimiento de
+  kardex que descuenta componentes = **(buenos + merma) × receta** — la merma TAMBIÉN
+  consumió preformas; descontar solo buenos infla el inventario teórico (lección
+  Microsoft Dynamics citada en el benchmark). Detalle de consumo visible en el reporte
+  aprobado — **cantidades, jamás costos** (principio §1.3 del plan).
+- **Idempotencia y reversa**: devolver un reporte JAMÁS genera movimiento; aprobar tras
+  devolución no duplica (guard por reporte, estilo tu propio patrón de M13); receta
+  editada afecta solo aprobaciones futuras.
+- El kardex a tocar es el de producción (`ProduccionMovimiento` como molde conceptual —
+  mismo contrato local-listo-para-empujar [B:D-005]).
+
+### Candados mínimos
+1. MUTADO: quitar la merma de la fórmula (solo buenos) → rojo exacto.
+2. Devolución sin movimiento; aprobar→devolver→aprobar = UN solo movimiento.
+3. Receta editada no re-escribe movimientos pasados.
+4. Seeder 2× idempotente; fila confirmada no se pisa.
+5. 403 sin permiso en el CRUD de recetas.
+6. El soplador no ve costos en ninguna vista nueva (test de contenido).
 
 ## Recordatorios
-Baseline HOY: **1655 / 12.067** en main `237185b`. Las reglas de siempre siguen vigentes
-para cuando la pausa se levante.
+Rama nueva desde main FRESCO; **suite COMPLETA de main fresco ANTES de empezar** para
+fijar TU baseline (última del Director: 1655/12.067 en `237185b`, main ya avanzó con
+Marcos). Suite completa antes del push. Blade tocado → build + superset. Conflictos con
+`git checkout origin/main --`, nunca `>` (BOM). varchar ≤191. Parte al buzón → doble
+llave.
 
-CIERRE: nada pendiente de tu lado. Módulo tras módulo, la deuda de papel se achica.
+CIERRE: parte a docs/fleet/buzon/partes/ + push. F2 (OEE) espera doble llave de F1.
