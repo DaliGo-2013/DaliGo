@@ -26,6 +26,9 @@
             <p class="mt-5 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-700">
                 @if ($cotizacion->estado === 'aceptada')
                     Nuestro equipo ya fue avisado y comenzará el trabajo. Te contactaremos cuando el equipo esté listo.
+                @elseif ($cotizacion->retiro_avisado_at)
+                    {{-- La cita salió sola al registrar el rechazo (dueño 07-08). --}}
+                    Te enviamos un correo con el día y el lugar para retirar tu equipo sin reparar.
                 @else
                     Nuestro equipo ya fue avisado. Te contactaremos para coordinar el retiro del equipo.
                 @endif

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Publico;
 
 use App\Http\Controllers\Controller;
+use App\Mail\RetiroSinReparacion;
 use App\Models\OrdenServicioCotizacion;
+use App\Support\DiasHabiles;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -22,6 +25,10 @@ use Illuminate\View\View;
  *
  * La respuesta NO cambia el estado de la orden: se registra y se avisa a los
  * roles internos (después del commit: si el aviso falla, la respuesta ya quedó).
+ *
+ * Si la respuesta es NO ACEPTO, en el mismo momento sale SOLO el correo que
+ * cita al cliente a retirar su equipo el día hábil siguiente (dueño 07-08: el
+ * técnico no envía nada, solo recibe la campanita de que el ciclo se cerró).
  */
 class CotizacionPublicoController extends Controller
 {
@@ -73,9 +80,49 @@ class CotizacionPublicoController extends Controller
                 // en la campanita (regla de avisarInternos).
                 'motivo' => $motivo !== null ? 'Motivo del cliente: «'.$motivo.'»' : 'El cliente no indicó el motivo.',
             ]);
+
+            if ($data['respuesta'] === 'rechazada') {
+                $this->citarRetiroAutomatico($cotizacion);
+            }
         }
 
         return redirect()->to(URL::signedRoute('cotizacion.gracias', ['cotizacion' => $cotizacion->token]));
+    }
+
+    /**
+     * NO ACEPTO → sale al tiro la cita de retiro para el día hábil siguiente
+     * (dueño 07-08: automático, sin pasar por el técnico, para que los equipos
+     * no se acumulen). Al taller le llega la campanita del ciclo cerrado.
+     *
+     * Si el correo falla, NO se estampa nada: la ficha de la orden sigue
+     * ofreciendo el botón manual como respaldo. Y nunca tumba la respuesta del
+     * cliente, que ya quedó registrada (por eso corre después del commit).
+     */
+    private function citarRetiroAutomatico(OrdenServicioCotizacion $cotizacion): void
+    {
+        if (blank($cotizacion->cliente_email)) {
+            return; // sin correo no hay cita: al cliente lo llama ventas.
+        }
+
+        $retiro = DiasHabiles::siguiente();
+
+        try {
+            Mail::to($cotizacion->cliente_email)->send(new RetiroSinReparacion($cotizacion->load('orden'), $retiro));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return;
+        }
+
+        $cotizacion->update([
+            'retiro_avisado_at' => now(),
+            'retiro_avisado_por' => null, // null = lo mandó el sistema, no una persona
+        ]);
+
+        $cotizacion->avisarInternos('cotizacion.retiro_avisado', [
+            'retiro_dia' => DiasHabiles::rotulo($retiro),
+            'avisado_por' => 'el sistema, automáticamente al registrarse el rechazo',
+        ]);
     }
 
     public function gracias(OrdenServicioCotizacion $cotizacion): View

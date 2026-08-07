@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\RetiroSinReparacion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\OrdenServicioCotizacion;
@@ -9,6 +10,8 @@ use App\Models\User;
 use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
@@ -27,6 +30,7 @@ class CotizacionPublicoTest extends TestCase
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->seed(ConfiguracionSeeder::class);
+        Mail::fake(); // el NO ACEPTO dispara la cita de retiro por correo (07-08)
     }
 
     private function cotizacion(array $overrides = []): OrdenServicioCotizacion
@@ -189,6 +193,85 @@ class CotizacionPublicoTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame('enviada', $c->fresh()->estado);
+    }
+
+    // --- Cita de retiro automática tras el NO ACEPTO (dueño 07-08) ---
+
+    public function test_al_rechazar_la_cita_de_retiro_sale_sola_para_el_dia_habil_siguiente(): void
+    {
+        $tecnico = tap(User::factory()->create())->assignRole('tecnico');
+        $c = $this->cotizacion();
+
+        // Rechaza un VIERNES por la tarde → la cita salta el fin de semana.
+        $this->travelTo(Carbon::parse('2026-08-07 16:04'));
+        $this->responder($c, 'rechazada')->assertRedirect();
+
+        // El correo salió SOLO (nadie del taller tocó nada) citando al lunes.
+        Mail::assertSent(RetiroSinReparacion::class, fn ($m) => $m->hasTo('cliente@example.com')
+            && $m->retiroDesde->toDateString() === '2026-08-10');
+
+        // Queda cerrado el ciclo: estampado como enviado por el sistema.
+        $c->refresh();
+        $this->assertNotNull($c->retiro_avisado_at);
+        $this->assertNull($c->retiro_avisado_por); // null = automático, no una persona
+
+        // Y el técnico se entera por la campanita, con el día citado.
+        $notif = Notificacion::where('user_id', $tecnico->id)
+            ->where('evento', 'cotizacion.retiro_avisado')
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+        $this->assertNotNull($notif, 'Falta la campanita del ciclo cerrado para el técnico.');
+        $this->assertStringContainsString('lunes 10-08-2026', $notif->cuerpo);
+        $this->assertStringContainsString('automáticamente', $notif->cuerpo);
+        $this->assertStringContainsString('Ciclo cerrado', $notif->cuerpo);
+        $this->assertStringNotContainsString('{retiro_dia}', $notif->cuerpo);
+    }
+
+    public function test_al_aceptar_no_sale_ninguna_cita_de_retiro(): void
+    {
+        $c = $this->cotizacion();
+
+        $this->responder($c, 'aceptada')->assertRedirect();
+
+        Mail::assertNotSent(RetiroSinReparacion::class);
+        $this->assertNull($c->fresh()->retiro_avisado_at);
+    }
+
+    public function test_la_carta_de_la_cita_es_automatica_y_no_invita_a_responder(): void
+    {
+        // Estilo banco (dueño 07-08): se genera sola y el cliente no puede
+        // responderla — antes decía «si cambias de opinión, responde este correo».
+        $c = $this->cotizacion();
+
+        $html = (new RetiroSinReparacion($c->load('orden'), Carbon::parse('2026-08-10')))->render();
+
+        $this->assertStringContainsString('lunes 10-08-2026', $html);
+        $this->assertStringContainsString('generó automáticamente', $html);
+        $this->assertStringContainsString('no lo respondas', $html);
+        $this->assertStringNotContainsString('responde este correo', $html);
+    }
+
+    public function test_si_la_cita_automatica_falla_la_respuesta_queda_y_el_respaldo_manual_sigue(): void
+    {
+        $c = $this->cotizacion();
+
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('SMTP caído'));
+        $this->responder($c, 'rechazada')->assertRedirect();
+
+        $c->refresh();
+        $this->assertSame('rechazada', $c->estado);      // la respuesta nunca se pierde
+        $this->assertNull($c->retiro_avisado_at);         // sin estampar → botón manual visible
+        $this->assertSame(0, Notificacion::where('evento', 'cotizacion.retiro_avisado')->count());
+    }
+
+    public function test_la_pagina_de_gracias_del_rechazo_dice_que_la_cita_ya_viajo(): void
+    {
+        $c = $this->cotizacion();
+
+        $this->responder($c, 'rechazada');
+
+        $this->get(URL::signedRoute('cotizacion.gracias', ['cotizacion' => $c->token]))
+            ->assertOk()
+            ->assertSee('Te enviamos un correo con el día y el lugar para retirar tu equipo');
     }
 
     // --- No respondibles ---

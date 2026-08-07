@@ -94,6 +94,9 @@ class OneShotPlantillasCandadoTest extends TestCase
             'migrations/2026_08_06_140100_agrega_motivo_a_plantilla_cotizacion_respondida.php',
             // 07-08: cotizacion.autorizada deja de hablarle al técnico (aviso de plata).
             'migrations/2026_08_07_150200_saca_el_tecnico_de_la_plantilla_de_autorizacion.php',
+            // 07-08 (tarde): el retiro tras un NO ACEPTO cita el día hábil siguiente
+            // y se dispara solo al momento del rechazo.
+            'migrations/2026_08_07_170000_retiro_avisado_cita_el_dia_habil.php',
         ];
 
         /** @var array<string, list<array{archivo: string, old: string, new: string}>> */

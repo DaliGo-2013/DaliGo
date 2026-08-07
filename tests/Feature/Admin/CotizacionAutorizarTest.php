@@ -185,6 +185,26 @@ class CotizacionAutorizarTest extends TestCase
         $this->assertSame(0, $orden->cotizaciones()->whereNotNull('autorizada_at')->count());
     }
 
+    public function test_una_aceptada_vieja_no_se_autoriza_si_despues_el_cliente_rechazo(): void
+    {
+        // QA 07-08: aceptó la 1ª, se re-cotizó (más daño) y rechazó la 2ª. La
+        // aceptada vieja queda de histórico, no de luz verde: ni el pago se
+        // registra sobre ella ni la ficha dice «ya puedes reparar».
+        $orden = $this->ordenConCotizacionAceptada();
+        $nueva = OrdenServicioCotizacion::crearDesde($orden->load('repuestos'), $this->conRol('tecnico'));
+        $nueva->update(['estado' => 'rechazada', 'respondida_at' => now()]);
+
+        $this->autorizar($orden)->assertRedirect();
+        $this->assertSame(0, $orden->cotizaciones()->whereNotNull('autorizada_at')->count());
+
+        $html = $this->actingAs($this->conRol('tecnico'))
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertDontSee('ya puedes reparar')
+            ->getContent();
+        $this->assertStringNotContainsString('Forma de pago', $html);
+    }
+
     public function test_no_re_autoriza_una_ya_autorizada(): void
     {
         $orden = $this->ordenConCotizacionAceptada();

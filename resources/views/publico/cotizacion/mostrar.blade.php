@@ -110,6 +110,7 @@
                 </div>
                 <p class="mt-3 text-center text-xs text-neutral-400">
                     Tu respuesta queda registrada al instante y le avisa a nuestro equipo.
+                    Si no aceptas, te llegará un correo con el día para retirar tu equipo.
                     @if ($cotizacion->vence_at) Cotización válida hasta el {{ $cotizacion->vence_at->format('d-m-Y') }}. @endif
                 </p>
             </form>

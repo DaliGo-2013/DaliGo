@@ -998,12 +998,14 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * El cliente NO aceptó la cotización: se le avisa por correo que puede pasar
-     * a retirar su equipo sin reparar (pedido del dueño 06-08). Un solo aviso
-     * por cotización (queda registrado quién y cuándo), y solo si el rechazo
-     * sigue siendo la última palabra — si después se envió una cotización más
-     * nueva, la conversación es otra. Al salir el correo se avisa a los roles
-     * internos por la campanita ('cotizacion.retiro_avisado').
+     * RESPALDO del aviso de retiro tras un NO ACEPTO. Desde el 07-08 la cita
+     * sale AUTOMÁTICA al momento del rechazo (CotizacionPublicoController::
+     * citarRetiroAutomatico); este botón queda para cuando ese correo falló
+     * (SMTP caído) o para rechazos anteriores al cambio. Un solo aviso por
+     * cotización (queda registrado quién y cuándo), y solo si el rechazo sigue
+     * siendo la última palabra — si después se envió una cotización más nueva,
+     * la conversación es otra. Al salir el correo se avisa a los roles internos
+     * por la campanita ('cotizacion.retiro_avisado').
      */
     public function avisarRetiroSinReparar(Request $request, OrdenServicio $orden, int $cotizacionId): RedirectResponse
     {
@@ -1024,8 +1026,11 @@ class ServicioTecnicoController extends Controller
             return back()->with('status', 'La cotización no tiene correo del cliente: hay que llamarlo.');
         }
 
+        // Misma carta que el aviso automático: cita al día hábil siguiente.
+        $retiro = \App\Support\DiasHabiles::siguiente();
+
         try {
-            Mail::to($cotizacion->cliente_email)->send(new RetiroSinReparacion($cotizacion->load('orden')));
+            Mail::to($cotizacion->cliente_email)->send(new RetiroSinReparacion($cotizacion->load('orden'), $retiro));
             $ok = true;
         } catch (\Throwable $e) {
             report($e);
@@ -1038,6 +1043,7 @@ class ServicioTecnicoController extends Controller
                 'retiro_avisado_por' => $request->user()->id,
             ]);
             $cotizacion->avisarInternos('cotizacion.retiro_avisado', [
+                'retiro_dia' => \App\Support\DiasHabiles::rotulo($retiro),
                 'avisado_por' => $request->user()->name,
             ]);
         }
@@ -1199,6 +1205,12 @@ class ServicioTecnicoController extends Controller
 
         if (! $cotizacion) {
             return back()->with('status', 'No hay una cotización aceptada por el cliente para autorizar.');
+        }
+        // La aceptada debe ser la ÚLTIMA palabra (QA 07-08): si después se
+        // re-cotizó, lo que vale es la respuesta a esa cotización más nueva —
+        // autorizar la vieja cobraría un trato que el cliente ya no tiene.
+        if (OrdenServicioCotizacion::where('orden_servicio_id', $orden->id)->where('id', '>', $cotizacion->id)->exists()) {
+            return back()->with('status', 'Hay una cotización más reciente que esa aceptación: lo que vale es la respuesta del cliente a la última.');
         }
         if ($cotizacion->esta_autorizada) {
             return back()->with('status', 'Esta reparación ya estaba autorizada.');

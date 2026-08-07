@@ -14,11 +14,14 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * «Pase a retirar su equipo» (dueño 06-08): cuando el cliente NO acepta la
- * cotización, el taller ('manage servicio tecnico') o ventas ('autorizar
- * reparacion') le avisa por correo que puede retirar su máquina sin reparar —
- * no es plata, es coordinar el retiro. Un solo aviso por cotización, solo si el
- * rechazo sigue siendo la última palabra, y con campanita interna al salir.
+ * RESPALDO del aviso de retiro tras un NO ACEPTO. Desde el 07-08 la cita sale
+ * AUTOMÁTICA al momento del rechazo (ver CotizacionPublicoTest); este botón —
+ * del taller ('manage servicio tecnico') o ventas ('autorizar reparacion') —
+ * queda para cuando ese correo falló o para rechazos anteriores al cambio.
+ * Un solo aviso por cotización, solo si el rechazo sigue siendo la última
+ * palabra, y con campanita interna al salir. Las cotizaciones de acá se
+ * rechazan por BD directa (sin pasar por el endpoint público), así que el
+ * automático nunca corrió: el escenario de respaldo queda puro.
  */
 class CotizacionRetiroTest extends TestCase
 {
@@ -159,6 +162,34 @@ class CotizacionRetiroTest extends TestCase
             ->get(route('admin.servicio-tecnico.show', $c->orden_servicio_id))
             ->assertOk()
             ->assertDontSee('Avisar: pasar a retirar')
-            ->assertSee('Retiro avisado');
+            ->assertSee('Retiro citado');
+    }
+
+    public function test_la_constancia_de_la_cita_automatica_dice_que_fue_el_sistema(): void
+    {
+        // retiro_avisado_por null = salió sola al registrarse el rechazo.
+        $tecnico = $this->tecnico();
+        $c = $this->rechazada(['retiro_avisado_at' => now(), 'retiro_avisado_por' => null]);
+
+        $this->actingAs($tecnico)
+            ->get(route('admin.servicio-tecnico.show', $c->orden_servicio_id))
+            ->assertOk()
+            ->assertSee('el sistema, automáticamente');
+    }
+
+    public function test_el_correo_manual_tambien_cita_el_dia_habil_y_lo_dice_la_campanita(): void
+    {
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $c = $this->rechazada();
+
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-07 10:00')); // viernes
+        $this->avisar($c)->assertRedirect();
+
+        Mail::assertSent(RetiroSinReparacion::class, fn ($m) => $m->retiroDesde->toDateString() === '2026-08-10');
+
+        $notif = Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'cotizacion.retiro_avisado')
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+        $this->assertStringContainsString('lunes 10-08-2026', $notif->cuerpo);
     }
 }

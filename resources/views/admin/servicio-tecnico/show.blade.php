@@ -272,8 +272,12 @@
              todo el que ve la orden (transparencia pedida por el dueño). --}}
         @php
             $dgCotizaciones = $orden->cotizaciones()->latest('id')->get();
-            // Cotización ACEPTADA por el cliente (candidata a autorizar / mostrar el pago).
-            $dgAceptada = $dgCotizaciones->firstWhere('estado', 'aceptada');
+            // La palabra que MANDA es la de la ÚLTIMA cotización (QA 07-08): una
+            // aceptada vieja no puede seguir diciendo «ya puedes reparar» cuando
+            // después se re-cotizó y el cliente rechazó — el histórico queda en
+            // la lista de arriba, la acción sale solo de la más reciente.
+            $dgUltima = $dgCotizaciones->first();
+            $dgAceptada = $dgUltima && $dgUltima->estado === 'aceptada' ? $dgUltima : null;
         @endphp
         @if ($dgCotizaciones->isNotEmpty())
             <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
@@ -368,25 +372,27 @@
                     </p>
                 @endif
 
-                {{-- El otro desenlace: la ÚLTIMA cotización fue rechazada → avisar al
-                     cliente que pase a retirar sin reparar (dueño 06-08). Solo la
+                {{-- El otro desenlace: la ÚLTIMA cotización fue rechazada → la cita
+                     de retiro (dueño 06-08; automática desde el 07-08). Solo la
                      última: si después se envió otra, la conversación sigue abierta. --}}
-                @php $dgUltima = $dgCotizaciones->first(); @endphp
-                @if (! $dgAceptada && $dgUltima && $dgUltima->estado === 'rechazada')
+                @if ($dgUltima && $dgUltima->estado === 'rechazada')
                     <div class="mt-4 border-t border-neutral-100 pt-4">
                         @if ($dgUltima->retiro_avisado_at)
                             <div class="rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
-                                <p class="font-semibold text-neutral-700">Retiro avisado</p>
+                                <p class="font-semibold text-neutral-700">Retiro citado — ciclo cerrado</p>
                                 <p class="mt-0.5">
-                                    A {{ $dgUltima->cliente_email }} se le avisó el {{ $dgUltima->retiro_avisado_at->format('d-m-Y H:i') }}
-                                    que puede pasar a retirar su equipo sin reparar
-                                    (avisó {{ $dgUltima->retiroAvisadoPor?->name ?? '—' }}).
+                                    A {{ $dgUltima->cliente_email }} se le citó el {{ $dgUltima->retiro_avisado_at->format('d-m-Y H:i') }}
+                                    a retirar su equipo sin reparar
+                                    {{-- Sin retiro_avisado_por = salió solo al registrarse el rechazo (07-08). --}}
+                                    (avisó {{ $dgUltima->retiroAvisadoPor?->name ?? 'el sistema, automáticamente' }}).
                                 </p>
                             </div>
                         @elseif (auth()->user()->canAny(['manage servicio tecnico', 'autorizar reparacion']))
                             {{-- No es plata: coordinar el retiro lo hace el taller o ventas
-                                 (mismo gate que la ruta), quien llegue primero del aviso. --}}
-                            <p class="text-sm font-medium text-neutral-700">El cliente no aceptó la reparación. Avísale por correo que puede pasar a retirar su equipo:</p>
+                                 (mismo gate que la ruta). Normalmente la cita sale SOLA al
+                                 momento del rechazo (07-08): si este botón está visible es
+                                 porque ese correo falló, o el rechazo es anterior al cambio. --}}
+                            <p class="text-sm font-medium text-neutral-700">El cliente no aceptó y la cita de retiro automática no salió. Envíala por correo:</p>
                             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.avisar-retiro', [$orden, $dgUltima->id]) }}"
                                   class="mt-3" data-una-vez
                                   onsubmit="return confirm('Se le enviará a {{ $dgUltima->cliente_email }} un correo avisando que puede pasar a retirar su equipo sin reparar. ¿Continuar?');">

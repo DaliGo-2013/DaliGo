@@ -29,6 +29,27 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'cotizaciones',
                 'descripcion' => 'Días de vigencia por defecto de una cotización.',
             ],
+            // Feriados de Chile para calcular días hábiles (App\Support\DiasHabiles):
+            // hoy los usa la cita de retiro tras un rechazo (dueño 07-08). 2026 está
+            // completo; de 2027 van los de fecha fija + Semana Santa — los MOVIBLES
+            // de 2027 (Pueblos Indígenas, San Pedro y San Pablo, Encuentro de Dos
+            // Mundos, Iglesias Evangélicas) hay que cargarlos cuando se publiquen
+            // (feriados.cl). Si la lista envejece, solo se saltan fines de semana.
+            [
+                'clave' => 'feriados_chile',
+                'valor' => json_encode([
+                    '2026-01-01', '2026-04-03', '2026-04-04', '2026-05-01', '2026-05-21',
+                    '2026-06-21', '2026-06-29', '2026-07-16', '2026-08-15', '2026-09-18',
+                    '2026-09-19', '2026-10-12', '2026-10-31', '2026-11-01', '2026-12-08',
+                    '2026-12-25',
+                    '2027-01-01', '2027-03-26', '2027-03-27', '2027-05-01', '2027-05-21',
+                    '2027-07-16', '2027-08-15', '2027-09-18', '2027-09-19', '2027-11-01',
+                    '2027-12-08', '2027-12-25',
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'general',
+                'descripcion' => 'Feriados de Chile (YYYY-MM-DD) para días hábiles. Renovar cada año con los movibles (feriados.cl).',
+            ],
             // --- M15 · Notificaciones (PLAN-M15 §1.3) ---
             // Plantillas por evento: clave = notif_plantilla_{evento con . → _}.
             // El dispatcher las lee y reemplaza {placeholders} desde el payload.
@@ -213,17 +234,19 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno cuando el cliente acepta o no acepta la cotización; el asunto distingue la respuesta.',
             ],
-            // El cliente NO aceptó y alguien del equipo le avisó por correo que
-            // puede pasar a retirar su equipo sin reparar (pedido del dueño 06-08).
+            // El cliente NO aceptó → se le citó por correo a retirar su equipo sin
+            // reparar el día hábil siguiente. Desde el 07-08 sale AUTOMÁTICO al
+            // momento del rechazo ({avisado_por} = «el sistema…»); el botón manual
+            // quedó de respaldo. Cambiar este default exige one-shot (2026_08_07_170000).
             [
                 'clave' => 'notif_plantilla_cotizacion_retiro_avisado',
                 'valor' => json_encode([
-                    'asunto' => 'Retiro avisado — Orden {folio} ({cliente})',
-                    'cuerpo' => "A {cliente} se le avisó por correo que puede pasar a retirar su equipo sin reparar (orden {folio}).\nEquipo: {equipo}\nAvisó: {avisado_por}.",
+                    'asunto' => 'Retiro citado — Orden {folio} ({cliente})',
+                    'cuerpo' => "A {cliente} se le citó por correo a retirar su equipo sin reparar el {retiro_dia} (orden {folio}).\nEquipo: {equipo}\nAvisó: {avisado_por}.\nCiclo cerrado: no hay que enviarle nada más.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
-                'descripcion' => 'Aviso interno cuando, tras un NO ACEPTO, se le avisa al cliente que retire su equipo sin reparar.',
+                'descripcion' => 'Aviso interno cuando, tras un NO ACEPTO, se cita al cliente a retirar su equipo sin reparar (automático al rechazo).',
             ],
             // El técnico avisó al cliente que su equipo está listo. Le importa a
             // SALA DE VENTAS: el cliente llega al mostrador a pagar y retirar.
