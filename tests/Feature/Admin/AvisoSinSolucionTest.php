@@ -312,7 +312,7 @@ class AvisoSinSolucionTest extends TestCase
     /** Y en un guardado normal el mensaje NO habla del cliente. */
     public function test_un_guardado_normal_no_menciona_al_cliente(): void
     {
-        $this->cerrar($this->tecnico(), $this->orden(), 'esperando_repuesto')
+        $this->cerrar($this->tecnico(), $this->orden(), 'en_revision')
             ->assertSessionHas('status', fn ($s) => ! str_contains($s, 'llamarlo') && ! str_contains($s, 'avisó'));
     }
 }

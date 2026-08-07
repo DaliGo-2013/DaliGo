@@ -119,15 +119,21 @@ class OrdenServicio extends Model implements AuditableContract
 
     // Lista simple (NO transiciones): el formulario las ofrece en un <select>.
     // 'cotizacion' = se le paso presupuesto al cliente y se espera su aprobacion
-    // del arreglo (va despues de la revision, antes de pedir repuestos/reparar).
-    public const ESTADOS = ['recibido', 'en_revision', 'cotizacion', 'esperando_repuesto', 'reparado', 'entregado', 'sin_solucion'];
+    // del arreglo (va despues de la revision, antes de reparar).
+    //
+    // NO existe un estado de espera de repuesto (regla del dueño, 07-08-2026): el
+    // taller no es bodega de acopio y un repuesto importado puede tardar hasta un
+    // año, asi que la maquina no se queda esperando. El tecnico define EN EL
+    // MOMENTO, contra el stock que hay: si el repuesto esta, se repara; si no
+    // esta, se le dice al cliente (sin_solucion). Ver la migracion
+    // 2026_08_07_120000_quita_estado_esperando_repuesto_de_ordenes_servicio.
+    public const ESTADOS = ['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado', 'sin_solucion'];
 
     // Color del badge por etapa (variantes de x-badge), para leer el estado de un vistazo.
     public const ESTADO_VARIANTES = [
         'recibido' => 'brand',
         'en_revision' => 'info',
         'cotizacion' => 'warning',
-        'esperando_repuesto' => 'warning',
         'reparado' => 'success',
         'entregado' => 'neutral',
         'sin_solucion' => 'danger',
@@ -759,7 +765,7 @@ class OrdenServicio extends Model implements AuditableContract
     // Estados "activos" para el contador de la barra: TODO lo que sigue en el
     // taller, desde que se recibe hasta antes de cerrarse. Deja fuera solo los
     // dos estados terminales (entregado, sin_solucion).
-    public const ESTADOS_PENDIENTES_TECNICO = ['recibido', 'en_revision', 'cotizacion', 'esperando_repuesto', 'reparado'];
+    public const ESTADOS_PENDIENTES_TECNICO = ['recibido', 'en_revision', 'cotizacion', 'reparado'];
 
     /**
      * Ordenes activas (aun en el taller): cualquier estado salvo entregado /

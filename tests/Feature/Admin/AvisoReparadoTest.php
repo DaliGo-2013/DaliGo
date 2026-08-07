@@ -228,7 +228,7 @@ class AvisoReparadoTest extends TestCase
     {
         $this->jefeVentas();
 
-        $this->guardar($this->tecnico(), $this->orden(), 'esperando_repuesto');
+        $this->guardar($this->tecnico(), $this->orden(), 'en_revision');
 
         $this->assertSame([], $this->avisados());
     }
@@ -241,7 +241,7 @@ class AvisoReparadoTest extends TestCase
         $orden = $this->orden();
 
         $this->guardar($tecnico, $orden, 'reparado');
-        $this->guardar($tecnico, $orden->fresh(), 'esperando_repuesto');
+        $this->guardar($tecnico, $orden->fresh(), 'en_revision');
         $this->guardar($tecnico, $orden->fresh(), 'reparado');
 
         $this->assertCount(2, $this->avisados());

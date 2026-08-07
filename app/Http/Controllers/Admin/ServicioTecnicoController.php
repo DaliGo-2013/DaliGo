@@ -458,9 +458,9 @@ class ServicioTecnicoController extends Controller
     public function seguimientoDemo(): View
     {
         return view('admin.servicio-tecnico.seguimiento-demo', [
-            // "esperando_repuesto" NO va en el seguimiento del cliente: muchas
-            // veces el técnico define en el momento si hay o no repuesto, así que
-            // no es una etapa útil de cara al cliente (el estado interno sigue en ST).
+            // No hay etapa de espera de repuesto en ninguna de las dos puntas: el
+            // técnico define en el momento si hay o no repuesto (regla del dueño
+            // 07-08-2026), así que tampoco existe como estado interno.
             'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
             'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
             // Variante para las máquinas recibidas en Abate o Coquimbo: llevan el
@@ -487,7 +487,6 @@ class ServicioTecnicoController extends Controller
             'en_traslado' => 'Tu equipo va en camino al taller.',
             'en_revision' => 'El técnico está revisando la falla.',
             'cotizacion' => 'Te enviamos el presupuesto y esperamos tu aprobación.',
-            'esperando_repuesto' => 'Pedimos el repuesto necesario para la reparación.',
             'reparado' => 'Tu equipo quedó reparado y probado.',
             'entregado' => 'Retiraste tu equipo. ¡Gracias!',
             'sin_solucion' => 'Lamentablemente el equipo no tiene reparación.',

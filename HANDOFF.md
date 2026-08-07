@@ -425,7 +425,11 @@ boleta rápida (dependen de M05), cron de sync.
   fecha_entrega/aviso/retiro, trabajo_realizado, mano_obra, `facturacion` garantia|reparacion,
   garantía por documento: tipo/número/fecha — vigencia 6 meses desde compra) y
   `OrdenServicioRepuesto` (producto, cantidad, precio_unitario, subtotal).
-- **Estados:** `recibido → en_revision → cotizacion → esperando_repuesto → reparado → entregado | sin_solucion`.
+- **Estados:** `recibido → en_revision → cotizacion → reparado → entregado | sin_solucion`.
+  **No hay estado de espera de repuesto** (regla del dueño 07-08-2026): el taller no es bodega de acopio
+  y un repuesto importado puede tardar hasta un año, así que el técnico define en el momento —contra el
+  stock que hay— si se repara o si se le dice al cliente que no tiene arreglo. Las órdenes que estaban en
+  `esperando_repuesto` pasaron a `en_revision` (migración `2026_08_07_120000`, con rastro en `audits`).
 - **Controller:** `Admin\ServicioTecnicoController` (12 métodos: CRUD + `reparacion`/`guardarReparacion` +
   buscadores AJAX `buscarCliente`/`buscarProducto`/`buscarRepuesto`). Permisos: `view servicio tecnico`
   (jefes/vendedores, lectura), `manage servicio tecnico` (técnico, gestión completa) y
