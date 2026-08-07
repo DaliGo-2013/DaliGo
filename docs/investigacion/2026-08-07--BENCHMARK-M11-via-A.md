@@ -1,5 +1,10 @@
 # Benchmark M11 Producción — Vía A (investigación del Director) · 2026-08-07
 
+> ⚠️ **RECONCILIADO el 07-ago con la vía B** — el documento vigente es
+> `2026-08-07--BENCHMARK-M11-RECONCILIADO.md` (valida este backlog, corrige el precio de
+> Fusion Operations a US$173/mes oficial y suma 8 aportes). Este archivo queda como
+> registro de la vía A.
+
 > Insumo para la «versión final» del módulo de producción (orden de Luis). Investigados
 > **14 sistemas** (MES/MRP livianos, ERPs chilenos, MES de plásticos) + **8 marcos de
 > KPI** con fuentes URL por cada claim. Pendiente reconciliar con la vía B (Chrome
