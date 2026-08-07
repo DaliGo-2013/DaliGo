@@ -213,8 +213,14 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
      * @param  array<string, mixed>  $extra  placeholders adicionales (ej. respuesta, enviada_por)
      * @param  list<string>|null  $roles  a quién avisar (por defecto ROLES_AVISO;
      *   los avisos de plata usan ROLES_AVISO_PAGO, que excluye al técnico)
+     * @param  bool  $porCartera  si true, cada destinatario pasa por `esVisiblePara`
+     *   —el MISMO filtro de la ficha, así el aviso no llega a quien no puede
+     *   abrirlo—: el vendedor del cliente si lo tiene, sala de ventas si no. El
+     *   técnico y jefatura lo pasan solos porque tienen 'ver todo servicio tecnico';
+     *   para el taller un ACEPTO es su luz verde para reparar, y
+     *   `AvisoCarteraSalaDeVentasTest` lo fija por si ese permiso cambia.
      */
-    public function avisarInternos(string $evento, array $extra = [], ?array $roles = null): void
+    public function avisarInternos(string $evento, array $extra = [], ?array $roles = null, bool $porCartera = false): void
     {
         $orden = $this->orden;
         // Qué máquina es (tipo + modelo si lo hay): identifica el equipo cotizado.
@@ -231,6 +237,7 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
         User::role($roles ?? self::ROLES_AVISO)->get()->unique('id')
+            ->filter(fn (User $u) => ! $porCartera || $orden->esVisiblePara($u))
             ->each(fn (User $u) => $dispatcher->despachar($evento, $orden, $u, $datos));
     }
 

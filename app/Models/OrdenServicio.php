@@ -479,7 +479,13 @@ class OrdenServicio extends Model implements AuditableContract
      * SU cartera: órdenes cuyo cliente (por RUT) está asignado a él o a un
      * vendedor a su cargo. El enlace es por `cliente_rut` porque `cliente_id` no
      * se popula al ingresar (mostrador ni QR); ambos RUT están normalizados
-     * (Cliente::normalizarRut). Sin cartera asignada, no ve nada.
+     * (Cliente::normalizarRut).
+     *
+     * Y lo que NADIE tiene asignado es de SALA DE VENTAS: ver el encabezado de
+     * `esVisiblePara`, que es la misma regla. OJO: la regla vive DOS veces —acá en
+     * SQL para el listado y allá en PHP para la ficha— y si divergen la ficha deja
+     * entrar a algo que el listado esconde (o al revés). `ServicioTecnicoVisibilidadTest`
+     * las compara caso por caso justamente por eso.
      */
     public function scopeVisiblePara(Builder $query, User $user): Builder
     {
@@ -489,17 +495,45 @@ class OrdenServicio extends Model implements AuditableContract
 
         $vendedorIds = $user->idsCarteraServicioTecnico();
 
-        return $query->whereIn('cliente_rut', function ($sub) use ($vendedorIds) {
-            $sub->select('rut')
-                ->from('clientes')
-                ->whereIn('vendedor_id', $vendedorIds)
-                ->whereNotNull('rut');
+        return $query->where(function (Builder $q) use ($vendedorIds) {
+            // Las de MI cartera…
+            $q->whereIn('cliente_rut', function ($sub) use ($vendedorIds) {
+                $sub->select('rut')
+                    ->from('clientes')
+                    ->whereIn('vendedor_id', $vendedorIds)
+                    ->whereNotNull('rut');
+            })
+                // …más las que nadie tiene asignadas (sala de ventas). La orden sin
+                // RUT entra acá: no hay ficha de cliente que se pueda asignar.
+                ->orWhereNull('cliente_rut')
+                ->orWhereNotIn('cliente_rut', function ($sub) {
+                    $sub->select('rut')
+                        ->from('clientes')
+                        ->whereNotNull('vendedor_id')
+                        ->whereNotNull('rut');
+                });
         });
     }
 
     /**
      * ¿Este usuario puede ver esta orden? Misma regla que scopeVisiblePara, para
      * proteger las páginas de detalle por URL (show/foto/comprobante).
+     *
+     * Regla del dueño (07-08-2026): si el cliente tiene vendedor asignado, la orden
+     * es de ESE vendedor (y de jefatura, que ve todo). Si NO lo tiene, el cliente es
+     * de SALA DE VENTAS —donde se atiende a todo público—, y ellas la monitorean
+     * hasta que se le asigne un vendedor o quede fijo en sala; en el sistema eso son
+     * todos los `vendedor`, porque sala de ventas no es un rol aparte.
+     *
+     * Por qué el respaldo tiene que estar ACÁ y no solo en el reparto de avisos:
+     * este método gobierna la ficha (`abort_unless(..., 403)`), las fotos, el
+     * comprobante Y el link de la campanita (`Notificacion::urlDestinoPara` no
+     * enlaza lo que el usuario no puede abrir). Avisarle a alguien que después no
+     * puede entrar es un aviso muerto — el defecto que ya se corrigió una vez.
+     *
+     * Consecuencia HOY: el sync de Bsale no llena `clientes.vendedor_id`, así que
+     * TODO cliente cae en sala de ventas y todo vendedor ve todo. El día que se
+     * carguen las carteras cada orden se acota sola, sin tocar código.
      */
     public function esVisiblePara(User $user): bool
     {
@@ -507,13 +541,21 @@ class OrdenServicio extends Model implements AuditableContract
             return true;
         }
 
-        if (blank($this->cliente_rut)) {
-            return false;
+        // Cliente que nadie tiene asignado (o orden sin RUT) → sala de ventas.
+        if (! $this->clienteTieneVendedor()) {
+            return true;
         }
 
         return Cliente::whereIn('vendedor_id', $user->idsCarteraServicioTecnico())
             ->where('rut', $this->cliente_rut)
             ->exists();
+    }
+
+    /** ¿El cliente de esta orden ya tiene un vendedor asignado en su ficha? */
+    public function clienteTieneVendedor(): bool
+    {
+        return filled($this->cliente_rut)
+            && Cliente::where('rut', $this->cliente_rut)->whereNotNull('vendedor_id')->exists();
     }
 
     /**
@@ -593,16 +635,14 @@ class OrdenServicio extends Model implements AuditableContract
      * reparto: duplicarla era garantizar que un dia divergieran.
      *
      * El reparto lo define `esVisiblePara()`, el MISMO filtro que gobierna el
-     * listado y la ficha, y de ahi salen solas las dos mitades de la regla del
-     * dueño (30-07): el jefe de ventas tiene 'ver todo servicio tecnico', asi que
-     * recibe TODAS las ordenes —las de todos sus vendedores—; un vendedor no lo
-     * tiene, asi que recibe solo las de SU cartera (`clientes.vendedor_id`, mas la
-     * de su equipo via `users.jefe_id`).
+     * listado y la ficha —asi el aviso nunca llega a quien despues no puede
+     * abrirlo—, y de ahi salen solas las tres mitades de la regla: jefatura tiene
+     * 'ver todo servicio tecnico' y recibe TODAS; un vendedor recibe las de SU
+     * cartera (`clientes.vendedor_id`, mas la de su equipo via `users.jefe_id`); y
+     * lo que nadie tiene asignado cae en SALA DE VENTAS (dueño 07-08).
      *
-     * Consecuencia a tener presente HOY: mientras no haya carteras asignadas,
-     * `esVisiblePara` es false para todo vendedor, asi que el aviso llega solo a
-     * jefatura. El dia que se asignen, cada vendedor empieza a recibir lo suyo
-     * SIN tocar este codigo — que es justo lo que se pidio.
+     * Antes de ese respaldo estos avisos no le llegaban a NINGUN vendedor, porque
+     * no hay carteras cargadas y el filtro se construyo antes que las carteras.
      *
      * Notificar a alguien que despues no puede ABRIR la orden seria el defecto que
      * ya se corrigio en la campanita (`Notificacion::urlDestinoPara`): un aviso que

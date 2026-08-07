@@ -74,12 +74,18 @@ class CotizacionPublicoController extends Controller
         });
 
         if ($notificar) {
+            // Reparto POR CARTERA (dueño 07-08): la respuesta del cliente es la
+            // noticia comercial de la orden, así que va al vendedor de ESE cliente
+            // —no a los nueve— y si el cliente todavía no tiene vendedor asignado
+            // cae en sala de ventas, que lo monitorea. El técnico y jefatura la
+            // reciben igual porque tienen 'ver todo servicio tecnico': para el taller
+            // un ACEPTO es su luz verde para reparar.
             $cotizacion->refresh()->avisarInternos('cotizacion.respondida', [
                 'respuesta' => $data['respuesta'] === 'aceptada' ? 'ACEPTADA' : 'NO ACEPTADA',
                 // {motivo} SIEMPRE relleno: un placeholder sin dato queda crudo
                 // en la campanita (regla de avisarInternos).
                 'motivo' => $motivo !== null ? 'Motivo del cliente: «'.$motivo.'»' : 'El cliente no indicó el motivo.',
-            ]);
+            ], porCartera: true);
 
             if ($data['respuesta'] === 'rechazada') {
                 $this->citarRetiroAutomatico($cotizacion);

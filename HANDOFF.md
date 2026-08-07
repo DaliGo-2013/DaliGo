@@ -430,6 +430,12 @@ boleta rápida (dependen de M05), cron de sync.
   y un repuesto importado puede tardar hasta un año, así que el técnico define en el momento —contra el
   stock que hay— si se repara o si se le dice al cliente que no tiene arreglo. Las órdenes que estaban en
   `esperando_repuesto` pasaron a `en_revision` (migración `2026_08_07_120000`, con rastro en `audits`).
+- **A quién le llegan los avisos de una orden** (regla del dueño 07-08-2026, en `OrdenServicio::esDeLaCarteraDe`):
+  al **vendedor del cliente** si la ficha tiene `clientes.vendedor_id`; si no lo tiene, a **SALA DE VENTAS**
+  (todos los `vendedor` — sala no es un rol aparte), que monitorea hasta que se le asigne uno o quede fijo
+  ahí. Jefatura y el técnico pasan siempre porque tienen `ver todo servicio tecnico`. Aplica a
+  `cotizacion.respondida`, `taller.reparado` y `taller.sin_solucion`. **Hoy el sync de Bsale no llena
+  `vendedor_id`, así que TODO cae en sala de ventas**; el día que se carguen las carteras filtra solo.
 - **Controller:** `Admin\ServicioTecnicoController` (12 métodos: CRUD + `reparacion`/`guardarReparacion` +
   buscadores AJAX `buscarCliente`/`buscarProducto`/`buscarRepuesto`). Permisos: `view servicio tecnico`
   (jefes/vendedores, lectura), `manage servicio tecnico` (técnico, gestión completa) y

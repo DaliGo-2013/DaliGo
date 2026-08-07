@@ -148,12 +148,17 @@ class AvisoReparadoTest extends TestCase
     }
 
     /**
-     * Estado de HOY del negocio: sin carteras asignadas ningun vendedor recibe
-     * nada (y no debe, porque tampoco puede abrir la ficha). El aviso llega solo
-     * a jefatura. Este test documenta ese estado; el dia que se asignen carteras
-     * lo cubre `test_el_vendedor_recibe_la_orden_de_su_cartera`.
+     * REGLA NUEVA (dueño 07-08-2026): un cliente que nadie tiene asignado es de
+     * SALA DE VENTAS, así que el aviso SÍ le llega a los vendedores — y lo pueden
+     * abrir, porque `esVisiblePara` ahora los deja entrar (sin eso el aviso moría
+     * en un 403, que es lo que este test protegía cuando la regla era otra).
+     *
+     * Antes acá se afirmaba lo contrario, y era correcto para su época: el reparto
+     * por cartera se construyó antes de que existieran las carteras, así que sin
+     * `clientes.vendedor_id` cargado el aviso no llegaba a NINGÚN vendedor. El
+     * detalle de la regla y sus dos mitades está en `AvisoCarteraSalaDeVentasTest`.
      */
-    public function test_sin_cartera_asignada_el_vendedor_no_recibe_nada(): void
+    public function test_sin_cartera_asignada_el_aviso_cae_en_sala_de_ventas(): void
     {
         $vendedor = tap(User::factory()->create())->assignRole('vendedor');
         $jefe = $this->jefeVentas();
@@ -163,7 +168,7 @@ class AvisoReparadoTest extends TestCase
 
         $avisados = $this->avisados();
         $this->assertContains($jefe->id, $avisados);
-        $this->assertNotContains($vendedor->id, $avisados);
+        $this->assertContains($vendedor->id, $avisados, 'Sala de ventas no se enteró del cierre.');
     }
 
     /** Una jefatura de vendedores (users.jefe_id) suma la cartera de su equipo. */
@@ -312,6 +317,10 @@ class AvisoReparadoTest extends TestCase
      * Y NO lleva a ningun lado para quien no puede abrirla: si un vendedor pierde
      * la cartera despues de recibir el aviso, la fila queda sin enlace en vez de
      * mandarlo a un 403 (mismo criterio que cotizacion.*).
+     *
+     * Perder la cartera es que el cliente pase a OTRO vendedor. Dejarlo sin asignar
+     * no sirve para probar esto desde la regla del 07-08: un cliente sin vendedor es
+     * de sala de ventas, asi que este vendedor lo seguiria viendo (y con razon).
      */
     public function test_la_campanita_no_enlaza_para_quien_perdio_la_cartera(): void
     {
@@ -323,8 +332,9 @@ class AvisoReparadoTest extends TestCase
         $aviso = Notificacion::where('evento', 'taller.reparado')->where('user_id', $vendedor->id)
             ->where('canal', Notificacion::CANAL_DATABASE)->firstOrFail();
 
-        // Le quitan el cliente de la cartera.
-        Cliente::where('rut', '11111111-1')->update(['vendedor_id' => null]);
+        // El cliente pasa a la cartera de otro vendedor.
+        $otro = tap(User::factory()->create())->assignRole('vendedor');
+        Cliente::where('rut', '11111111-1')->update(['vendedor_id' => $otro->id]);
 
         $this->assertNull($aviso->fresh()->load('notificable')->urlDestinoPara($vendedor->fresh()));
     }
