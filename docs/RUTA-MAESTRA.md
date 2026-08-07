@@ -17,7 +17,7 @@
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
-| **Avance global** | **≈ 56 %** sobre base 108 (tracker actualizado el 2026-08-06 en §10: **M04 destrabado, F1 de PLAN-M04 en producción** —bodegas full paramétricas, M04 30 %—; el 05-ago: F2 de PLAN-DESPACHOS-V2 completa —M08 75 %— y E6 Devoluciones COMPLETA —M13 85 %—). **Del ciclo de la factura —35 puntos, el objetivo central— hay 50 % justo, y por primera vez con avance en su inicio; pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6) |
+| **Avance global** | **≈ 57 %** sobre base 108 (tracker actualizado el 2026-08-07 en §10: **F1+F2 de PLAN-M04 en producción en dos días** —bodegas full paramétricas + wizard de baja, M04 40 %—; el 05-ago: F2 de PLAN-DESPACHOS-V2 completa —M08 75 %— y E6 Devoluciones COMPLETA —M13 85 %—). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 53 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6). **FLOTA EN PAUSA desde el 07-ago por orden del dueño** |
 
 **Hecho:** M01 Core · M02 Catálogo+Precios · M03 Clientes · M11 Producción F1 · Taller ST básico (subset de M12) · Espejo inventario read-only (base de M04) · **M15 Notificaciones (E1, cerrada 2026-07-08)**
 **En curso:** E0 (esta consolidación)
@@ -341,6 +341,12 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 > porque entra **M17 Servicio en terreno**, construido en julio y ahora sí en la
 > biblia. Cada % corregido lleva su fundamento en la columna de la derecha.
 >
+> **Actualización · 2026-08-07.** **F2 de M04 en producción** (`237185b`, doble llave):
+> el wizard de baja — vacía muere al tiro, con stock exige orden de traslado con foto +
+> Excel + cierre automático post-sync. M04 → 40 %; ciclo de la factura ≈ 53 %. **La
+> flota entera queda EN PAUSA por orden del dueño (vía Luis)**: F3, ronda 2 y todo GO
+> congelados hasta nueva orden (dictados v39/v18).
+>
 > **Actualización · 2026-08-06.** **M04 Inventario se destraba tras 24 días pospuesto**
 > (R-002): D-003 resuelta parcial en la mañana (Excel Ricardo+Luis) y **F1 de PLAN-M04 en
 > producción el mismo día** (`276a54f`, doble llave) — bodegas full paramétricas por
@@ -378,7 +384,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M01 Core | 6 | 100 % | 6.0 | — |
 | M02 Catálogo+precios | 5 | 90 % | 4.5 | faltan webhooks y el enlace con M04 |
 | M03 Clientes | 4 | 70 % | 2.8 | boleta rápida es de M05; historial post-M05 |
-| M04 Inventario | 9 | **30 %** | 2.70 | **subido desde 15 % (06-ago)**: F1 de PLAN-M04 en producción (`276a54f`) — clasificación local EDITABLE (bodega↔sucursal, propósito, operación; D-003 pre-cargada), guardas completas de sucursales y adopción automática de bodegas nuevas. **QA del dueño aprobado el mismo día (celular, producción)**. Falta el grueso: wizard de baja/traslado (F2), kardex unificado (F3), y el empuje a Bsale [B:D-005] |
+| M04 Inventario | 9 | **40 %** | 3.60 | **subido desde 30 % (07-ago)**: F2 de PLAN-M04 en producción (`237185b`) — **wizard de baja con orden de traslado**: bodega vacía muere al tiro, con stock exige destino + orden con foto denormalizada + Excel, cierre automático cuando el sync confirma stock 0, anulación que revive. F1 (06-ago, `276a54f`): clasificación editable, guardas, adopción automática — QA del dueño aprobado. Falta: kardex unificado (F3, EN PAUSA por orden del dueño) y el empuje a Bsale [B:D-005] |
 | M05 Ciclo factura | 10 | **30 %** | 3.0 | **corregido desde 0 % (30-jul)**: andamiaje DTE completo y probado —puerto emisor Bsale, servicios, config, candados—, pero **NO EMITE**: `config/dte.php` con los 3 mapas vacíos, `emision_habilitada=false`, sin ruta de emisión ni comando `dte:emitir-prueba` (B6). Marcos activo aquí |
 | M07 QR retiro | 4 | **70 %** | 2.8 | **corregido desde 0 % (30-jul)**: P-DSP-00..04 **en producción** — QR firmado de retiro, validación en puesto de bodega, doble-retiro cerrado (lock + candado a nivel grammar). NO cierra «retirar carga ajena» (decisión de producto reportada) y falta QA de bodega con papel impreso |
 | M08 Despacho+PWA | 12 | **75 %** | 9.0 | **subido desde 65 % (05-ago tarde)**: P-DSP-09 en producción (`f3be802`) — **F2 de PLAN-DESPACHOS-V2 completa**: la PWA sobre la hoja (dirección/comuna/teléfono por parada, receptor obligatorio, cobro en entrega, rechazo en puerta + aviso M15). Antes ese día: hoja de ruta digital (`b9d89a3`); el 04-ago la PWA base (`d7803f9`). Falta: P-DSP-10 (cierre+bono, bloqueado por la ronda 2 con Luis) y el QA de campo punta a punta |
@@ -393,7 +399,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | F3 Piloto (hardening/migración/capacitación) | 7 | 0 % | 0 | — |
 | F4 Rollout Abate | 5 | 0 % | 0 | — |
 | F5 Coquimbo + cierre | 3 | 0 % | 0 | — |
-| **TOTAL** | **108** | | **60.95** | **≈ 56 %** |
+| **TOTAL** | **108** | | **61.85** | **≈ 57 %** |
 
 > **Lo que el número no dice, y hay que decir:** el ciclo de la factura
 > (M04 → M05 → M07 → M08, **35 de los 105 puntos**, el objetivo central del
