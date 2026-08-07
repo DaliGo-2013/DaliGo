@@ -359,4 +359,128 @@ class BsaleStockSyncTest extends TestCase
         $this->assertSame(1, $stats['nuevas']);
         $this->assertSame(0, Notificacion::where('evento', 'bodega.nueva')->count());
     }
+
+    // ── M04-F2 · el sync CIERRA las bajas pendientes y vigila el stock nuevo ──
+
+    /**
+     * Arma el escenario F2: bodega espejada (office 9) con UN producto en
+     * $cantidad, en baja `pendiente_traslado` con su orden (foto = 40).
+     * Devuelve [orden, solicitante].
+     */
+    private function bajaPendiente(float $cantidadFoto = 40): array
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $solicitante = User::factory()->create();
+        $solicitante->assignRole('admin');
+
+        $producto = $this->producto(979);
+        $bodega = Bodega::factory()->clasificada()->create([
+            'bsale_office_id' => 9,
+            'nombre' => 'SERAFIN ZAMORA',
+            'estado_baja' => Bodega::BAJA_PENDIENTE_TRASLADO,
+        ]);
+        \App\Models\Stock::factory()->create([
+            'bodega_id' => $bodega->id, 'producto_id' => $producto->id,
+            'stock_real' => $cantidadFoto, 'stock_reservado' => 0, 'stock_disponible' => $cantidadFoto,
+        ]);
+
+        $orden = \App\Models\BodegaTraslado::factory()->create([
+            'bodega_id' => $bodega->id,
+            'solicitante_id' => $solicitante->id,
+            'solicitante_nombre' => $solicitante->name,
+        ]);
+        $orden->items()->create([
+            'producto_id' => $producto->id, 'nombre' => 'Botellón 20L', 'sku' => 'BOT-20',
+            'cantidad' => $cantidadFoto,
+        ]);
+
+        return [$orden, $solicitante];
+    }
+
+    /** Candado 3 (dictado v38): el cierre automático, simulado 2× (MUTADO). */
+    public function test_sync_con_stock_cero_completa_la_baja_sola_y_avisa_una_vez(): void
+    {
+        Queue::fake();
+        [$orden, $solicitante] = $this->bajaPendiente(40);
+
+        // Bsale confirma el traslado: el snapshot trae la combinación EN CERO.
+        $this->fakeBsale([$this->office(9, 'SERAFIN ZAMORA')], [$this->stock(1, 9, 979, 0)]);
+        $stats = $this->sync();
+
+        $this->assertSame(1, $stats['bajas_completadas']);
+        $orden->refresh();
+        $this->assertSame(\App\Models\BodegaTraslado::COMPLETADO, $orden->estado);
+        $this->assertNotNull($orden->completado_at);
+        $bodega = $orden->bodega->fresh();
+        $this->assertSame(Bodega::BAJA_DADA_DE_BAJA, $bodega->estado_baja);
+        $this->assertFalse($bodega->en_operacion);
+        $this->assertSame(1, Notificacion::where('evento', 'bodega.baja_completada')
+            ->where('canal', Notificacion::CANAL_DATABASE)
+            ->where('user_id', $solicitante->id)->count());
+
+        // La corrida siguiente del cron: nada que hacer, nada que repetir.
+        $stats = $this->sync();
+        $this->assertSame(0, $stats['bajas_completadas'], 'La orden completada no se vuelve a mirar (idempotencia por estado).');
+        $this->assertSame(1, Notificacion::where('evento', 'bodega.baja_completada')->where('canal', Notificacion::CANAL_DATABASE)->count());
+    }
+
+    /** Candado 4 (dictado v38): stock nuevo avisa UNA vez y NO revive (MUTADO). */
+    public function test_stock_nuevo_en_bodega_en_baja_avisa_una_vez_y_no_la_revive(): void
+    {
+        Queue::fake();
+        [$orden, $solicitante] = $this->bajaPendiente(40);
+
+        // Llegó MÁS stock que la foto (40 → 50): alguien siguió recibiendo ahí.
+        $this->fakeBsale([$this->office(9, 'SERAFIN ZAMORA')], [$this->stock(1, 9, 979, 50)]);
+        $stats = $this->sync();
+
+        $this->assertSame(1, $stats['avisos_stock_baja']);
+        $orden->refresh();
+        $this->assertSame(\App\Models\BodegaTraslado::PENDIENTE, $orden->estado, 'La orden sigue pendiente.');
+        $this->assertNotNull($orden->aviso_stock_nuevo_at);
+        $this->assertSame(Bodega::BAJA_PENDIENTE_TRASLADO, $orden->bodega->fresh()->estado_baja,
+            'La bodega NO revive sola: sigue en baja.');
+        $this->assertSame(1, Notificacion::where('evento', 'bodega.stock_en_baja')
+            ->where('canal', Notificacion::CANAL_DATABASE)
+            ->where('user_id', $solicitante->id)->count());
+
+        // El cron vuelve a correr con el mismo stock: sin segundo aviso.
+        $stats = $this->sync();
+        $this->assertSame(0, $stats['avisos_stock_baja'], 'El aviso es UNA sola vez por orden.');
+        $this->assertSame(1, Notificacion::where('evento', 'bodega.stock_en_baja')->where('canal', Notificacion::CANAL_DATABASE)->count());
+    }
+
+    /** Drenar NO es stock nuevo: bajar de la foto no dispara el aviso. */
+    public function test_drenar_el_stock_no_dispara_el_aviso_de_stock_nuevo(): void
+    {
+        Queue::fake();
+        [$orden] = $this->bajaPendiente(40);
+
+        // El traslado va a medias: 40 → 15 (por DEBAJO de la foto).
+        $this->fakeBsale([$this->office(9, 'SERAFIN ZAMORA')], [$this->stock(1, 9, 979, 15)]);
+        $stats = $this->sync();
+
+        $this->assertSame(0, $stats['avisos_stock_baja']);
+        $this->assertSame(0, $stats['bajas_completadas']);
+        $this->assertNull($orden->fresh()->aviso_stock_nuevo_at);
+        $this->assertSame(0, Notificacion::where('evento', 'bodega.stock_en_baja')->count());
+    }
+
+    /** Solicitante eliminado → el aviso cae a quienes administran sucursales. */
+    public function test_sin_solicitante_el_aviso_del_cierre_cae_a_manage_sucursales(): void
+    {
+        Queue::fake();
+        [$orden, $solicitante] = $this->bajaPendiente(40);
+        $otroAdmin = User::factory()->create();
+        $otroAdmin->assignRole('admin');
+        $solicitante->delete(); // nullOnDelete deja la orden sin usuario
+
+        $this->fakeBsale([$this->office(9, 'SERAFIN ZAMORA')], [$this->stock(1, 9, 979, 0)]);
+        $stats = $this->sync();
+
+        $this->assertSame(1, $stats['bajas_completadas']);
+        $this->assertSame(1, Notificacion::where('evento', 'bodega.baja_completada')
+            ->where('canal', Notificacion::CANAL_DATABASE)
+            ->where('user_id', $otroAdmin->id)->count());
+    }
 }

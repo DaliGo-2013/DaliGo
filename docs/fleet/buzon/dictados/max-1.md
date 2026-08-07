@@ -1,64 +1,36 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-06 (v38 — GO F2 de PLAN-M04: wizard de baja con orden de traslado). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-07 (v39 — F2 DE M04 EN PRODUCCIÓN; PAUSA TOTAL de la flota por orden del dueño). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## Antes de nada: tu F1 tiene QA del dueño APROBADO
+## ✅ F2 está EN PRODUCCIÓN (merge `237185b`, doble llave 07-ago)
 
-Probó la clasificación en producción desde su celular el mismo día del merge: «todo
-funcionando». F1 cerrada de punta a punta en un día. El GO de F2 vino con la opción
-explícita del dueño de NO esperar la ronda 2 de Luis — el wizard no depende de qué
-bodega muera.
+Verificación del Director sobre el árbol unión: **suite 1655 verdes / 12.067 aserciones,
+cero rojos** — cuadre exacto (tus 1635 + los 20 de la cotización de Marcos posteriores a
+tu base). Tu claim del bundle byte-idéntico se verificó por rebuild propio: 0 diff, tal
+cual dijiste. Merge sin conflictos, Deploy y Tests de CI verdes, rama borrada tras
+ancestría.
 
-## 🟢 GO — P-M04-20 · el wizard de baja (F2 de PLAN-M04, el pedido literal del dueño)
+**M04 pasó de «pospuesto sin fecha» a 40 % en dos días** — F1 y F2, ambas con el mismo
+estándar: parte honesto, candados mutados, cifra prometida = cifra entregada. El
+«eliminar jamás pierde stock ni da 500» quedó exactamente como el dueño lo pidió, y tu
+decisión del scope-como-contrato (anular revive sin adivinar estados) es la lectura
+correcta del plan.
 
-**Lee `docs/planes/PLAN-M04.md` §3-F2** (VIGENTE). El corazón: «eliminar» una bodega
-jamás pierde stock ni da 500 — o está vacía y muere al tiro, o el sistema te obliga a
-decidir a dónde va lo que contiene.
+## ⏸️ PAUSA TOTAL — orden del dueño (vía Luis, 07-ago)
 
-### Comportamiento
-- **Stock 0 en todos los productos** → baja inmediata: `estado_baja='dada_de_baja'` +
-  `en_operacion=false`. (La columna ya existe — tu migración F1 la creó; NO hay migración
-  nueva salvo las 2 tablas de traslados.)
-- **Stock ≠ 0** → wizard:
-  1. Lista los ítems con existencias (desde el espejo `stocks`: real/reservado/disponible).
-  2. Exige bodega DESTINO viva (scope `enOperacion()`, excluida la propia).
-  3. Crea la **orden de traslado**: `bodega_traslados` (origen, destino, estado
-     `pendiente|completado|anulado`, solicitante, timestamps) + `bodega_traslado_items`
-     (producto, cantidad AL MOMENTO de la orden — foto, no referencia viva). Varchar ≤191.
-  4. Deja la bodega `estado_baja='pendiente_traslado'`: fuera de selectores operativos,
-     visible en admin con su badge «EN BAJA» (el badge ya existe de F1).
-  5. Orden imprimible/exportable — **reusa el escritor Excel de la casa** (el de Marcos,
-     el mismo de los informes).
-- **Cierre automático**: cuando un sync posterior confirme stock 0 en la bodega
-  `pendiente_traslado` → baja se completa SOLA (`dada_de_baja`) + orden a `completado` +
-  notificación M15 al solicitante. Evento nuevo o reuso de `bodega.nueva` como molde — a
-  tu criterio declarado (sweep + alternativa nombrada, como siempre).
-- **Stock nuevo llegando a una `pendiente_traslado`** → NO la revive: notificación
-  «llegó stock a una bodega en baja» (mismo destino M15).
-- El traslado FÍSICO hoy se ejecuta en Bsale (D-005 pendiente) — la orden es el puente.
-  Cuando D-005 habilite push, el mismo wizard ejecutará por API (F4, no tuyo).
+**La planificación completa queda congelada hasta nueva orden.** Esto NO es la pausa de
+siempre entre lotes: el dueño pidió explícitamente detener el avance del plan. En
+concreto:
+- **F3 de M04 (kardex unificado): NO arrancar** aunque el plan lo tenga diseñado.
+- Ronda 2 con Luis: congelada (el xlsx sigue en su poder).
+- Ningún GO nuevo hasta dictado v40.
 
-### Candados mínimos
-1. Bodega con stock NO puede saltarse el wizard (MUTADO: quitar el check → rojo).
-2. Baja con stock 0 funciona al tiro y no toca `stocks` ni históricos.
-3. Cierre automático post-sync: simulado 2× (idempotente, notifica UNA vez).
-4. Stock nuevo en bodega en baja → notifica, no revive (mutado si es barato).
-5. 403 sin `manage sucursales` en todo el flujo de baja.
-6. Orden con foto de cantidades: cambiar el stock DESPUÉS de la orden no altera la orden.
-7. Destino no puede ser bodega muerta/en baja ni la misma origen.
-
-## Territorio
-- **Marcos MUY activo** (3+ pushes hoy, simulador; hubo outage de GitHub Actions — lee
-  I-09 del tablero: rojos con «job not acquired by Runner» = infra, no código; máx 1
-  re-run en cola).
-- **Max-2** en pausa — sin cruce.
+Si abres sesión y este dictado sigue en v39: cierra sesión sin gastar ventana. No hay
+excepciones esta vez — ni «cierres baratos».
 
 ## Recordatorios
-Rama nueva desde main FRESCO. **Suite COMPLETA de main fresco ANTES de empezar** para
-fijar TU baseline (la última del Director fue 1614/11.676 en `276a54f` y main ya avanzó
-con Marcos — la cifra del día la fijas tú). Suite completa de nuevo antes del push. Blade
-tocado → build + grep superset. Conflictos con `git checkout origin/main -- <archivo>`,
-nunca con `>` (BOM de PS 5.1). Parte al buzón → doble llave.
+Baseline HOY: **1655 / 12.067** en main `237185b`. Las reglas de siempre siguen vigentes
+para cuando la pausa se levante.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+CIERRE: nada pendiente de tu lado. Módulo tras módulo, la deuda de papel se achica.
