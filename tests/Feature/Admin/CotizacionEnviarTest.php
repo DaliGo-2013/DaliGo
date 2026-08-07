@@ -38,9 +38,17 @@ class CotizacionEnviarTest extends TestCase
         return tap(User::factory()->create())->assignRole('tecnico');
     }
 
-    /** Orden cotizable: reparación (se cobra), en etapa cotización, con email y costo. */
+    /**
+     * Orden cotizable: reparación (se cobra), en etapa cotización, con email y costo.
+     * La mano de obra guardada ($10.000) tiene detrás el catálogo que la explica
+     * (2,5 h × $4.000): sin eso el envío se bloquea, porque una cotización cuya mano
+     * de obra el catálogo no puede calcular cobraría de menos (ver
+     * CotizacionGuardarTest, «mano de obra sin tiempo estándar»).
+     */
     private function ordenCotizable(array $overrides = []): OrdenServicio
     {
+        $this->conCatalogoDeManoObra();
+
         $orden = OrdenServicio::factory()->create(array_merge([
             'estado' => 'cotizacion',
             'facturacion' => 'reparacion',
@@ -52,6 +60,23 @@ class CotizacionEnviarTest extends TestCase
         $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 4000]);
 
         return $orden;
+    }
+
+    /** Valor hora + tiempo estándar que explican los $10.000 (idempotente). */
+    private function conCatalogoDeManoObra(): void
+    {
+        $producto = Producto::firstOrCreate(
+            ['sku' => config('servicio_tecnico.sku_hora_servicio')],
+            Producto::factory()->raw(['sku' => config('servicio_tecnico.sku_hora_servicio')]),
+        );
+        if (! $producto->precios()->exists()) {
+            Precio::factory()->create(['producto_id' => $producto->id, 'precio_con_iva' => 4000]);
+        }
+
+        TiempoReparacion::firstOrCreate(
+            ['trabajo' => 'Cambio de caldera — funciona normal'],
+            ['horas' => 2.5, 'activo' => true],
+        );
     }
 
     private function enviar(OrdenServicio $orden, ?User $user = null)
@@ -162,12 +187,13 @@ class CotizacionEnviarTest extends TestCase
         $orden = $this->ordenCotizable();
         $orden->repuestos()->delete();
         $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 4000]);
-        // Mano de obra fija del catálogo (como en producción): 1,5 h × $4.000.
-        Precio::factory()->create([
-            'producto_id' => Producto::factory()->create(['sku' => config('servicio_tecnico.sku_hora_servicio')])->id,
-            'precio_con_iva' => 4000,
-        ]);
-        TiempoReparacion::create(['trabajo' => $orden->trabajo_realizado, 'horas' => 1.5, 'activo' => true]);
+        // Mano de obra fija del catálogo (como en producción): 1,5 h × $4.000. El
+        // valor hora ya lo sembró ordenCotizable() —sin catálogo no se puede
+        // enviar—, así que acá solo se ajustan las horas de este caso.
+        TiempoReparacion::updateOrCreate(
+            ['trabajo' => $orden->trabajo_realizado],
+            ['horas' => 1.5, 'activo' => true],
+        );
 
         $this->actingAs($this->tecnico())
             ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [

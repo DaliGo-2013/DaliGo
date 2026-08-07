@@ -607,6 +607,15 @@ class ServicioTecnicoController extends Controller
             // Horas estándar del trabajo de esta orden (null si el trabajo no está
             // en el catálogo): la mano de obra se muestra de solo lectura.
             'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
+            // Mano de obra que el catálogo calcula HOY = exactamente lo que va a
+            // quedar al guardar. La pantalla muestra ESTO y no `$orden->mano_obra`:
+            // si difieren (jefatura cambió o desactivó el tiempo estándar, o el SKU
+            // de la hora perdió precio) el guardado manda, así que mostrar el monto
+            // viejo sería prometer un total que el guardado va a bajar.
+            'manoObraVigente' => $this->manoObraDe($orden->trabajo_realizado),
+            // Por qué el catálogo NO puede calcularla (null si puede): candado del
+            // envío al cliente. Ver faltaManoObra().
+            'faltaManoObra' => $this->faltaManoObra($orden),
         ]);
     }
 
@@ -734,6 +743,34 @@ class ServicioTecnicoController extends Controller
         $valor = $this->precioHoraServicio();
 
         return ($horas !== null && $valor) ? (int) round($horas * $valor) : 0;
+    }
+
+    /**
+     * Por qué el catálogo NO puede calcular la mano de obra de esta orden, o null
+     * si sí puede. Es el candado del ENVÍO al cliente (regla del dueño, 07-08-2026):
+     * una cotización que sale con la mano de obra en $0 por un HUECO DE DATOS cobra
+     * de menos y nadie se entera. GUARDAR sigue permitido a propósito — el técnico
+     * tiene que poder seguir poniéndole precio a los repuestos mientras jefatura
+     * carga el tiempo estándar que falta.
+     *
+     * OJO: 0 horas fijadas a propósito por jefatura (el catálogo acepta `min:0`)
+     * NO son un hueco: ahí la mano de obra es $0 legítima y el envío pasa.
+     */
+    private function faltaManoObra(OrdenServicio $orden): ?string
+    {
+        if (blank($orden->trabajo_realizado)) {
+            return 'elige el «Trabajo realizado» en «Parte del técnico» y guarda (de ahí sale la mano de obra)';
+        }
+
+        if (TiempoReparacion::horasDe($orden->trabajo_realizado) === null) {
+            return "el trabajo «{$orden->trabajo_realizado}» no tiene tiempo estándar: jefatura debe cargarlo en «Costos generales de reparación»";
+        }
+
+        if (! $this->precioHoraServicio()) {
+            return 'el código de hora de servicio técnico ('.config('servicio_tecnico.sku_hora_servicio').') no tiene precio en la lista oficial de ventas';
+        }
+
+        return null;
     }
 
     public function guardarReparacion(Request $request, OrdenServicio $orden): RedirectResponse
@@ -921,6 +958,11 @@ class ServicioTecnicoController extends Controller
         }
         if ((int) $orden->costo_total <= 0) {
             return $volver('La cotización está en $0: pon los precios de los repuestos y vuelve a enviar.');
+        }
+        // No sale una cotización cuya mano de obra el catálogo no puede calcular:
+        // el cliente recibiría un total sin mano de obra (cobro de menos silencioso).
+        if ($falta = $this->faltaManoObra($orden)) {
+            return $volver('No se puede enviar la cotización: '.$falta.'.');
         }
 
         $cotizacion = OrdenServicioCotizacion::crearDesde($orden->load('repuestos'), $request->user());

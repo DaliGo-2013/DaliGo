@@ -5,10 +5,12 @@ namespace Tests\Feature\Admin;
 use App\Mail\DetalleTrabajoCliente;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
+use App\Models\OrdenServicioCotizacion;
 use App\Models\Precio;
 use App\Models\Producto;
 use App\Models\TiempoReparacion;
 use App\Models\User;
+use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -229,6 +231,123 @@ class CotizacionGuardarTest extends TestCase
             ->assertOk()
             ->assertDontSee('Solo jefatura de ventas aplica descuentos')
             ->assertSee('name="descuento_pct"', false);
+    }
+
+    // --- Mano de obra que el catálogo no puede calcular (regla del dueño 07-08-2026) ---
+    //
+    // La mano de obra es DERIVADA del catálogo, así que la pantalla muestra la
+    // VIGENTE (lo que va a quedar al guardar), nunca la guardada: prometer un monto
+    // que el guardado baja a $0 es lo que hacía antes. Y como el guardado la baja a
+    // $0, lo que protege al cliente de un cobro de menos es el candado del ENVÍO —
+    // no conservar un monto fósil que nadie puede explicar.
+
+    public function test_la_pantalla_muestra_la_mano_de_obra_vigente_no_la_guardada(): void
+    {
+        $this->conValorHora(4000);
+        // Orden con $8.000 GUARDADOS pero cuyo trabajo no tiene tiempo estándar
+        // (jefatura lo desactivó, o es un texto histórico fuera del catálogo).
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de manilla a medida', 'mano_obra' => 8000]);
+
+        $res = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('no tiene tiempo estándar');
+
+        // El panel «Costo total a pagar» se siembra con lo que se va a guardar ($0),
+        // no con los $8.000 viejos (si se refactoriza la siembra de Alpine, lo que
+        // hay que conservar es que el total mostrado sea el vigente).
+        $res->assertSee('manoObra: 0', false);
+        $res->assertDontSee('manoObra: 8000', false);
+    }
+
+    public function test_desactivar_el_tiempo_estandar_baja_la_mano_de_obra_al_guardar(): void
+    {
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
+        $repuestos = [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]];
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), ['repuestos' => $repuestos]);
+        $this->assertSame(6000, $orden->fresh()->mano_obra);   // 1,5 h × 4000
+
+        // Jefatura saca ese trabajo del catálogo (no se borra: se desactiva)…
+        TiempoReparacion::where('trabajo', 'Cambio de caldera — funciona normal')->update(['activo' => false]);
+
+        // …y al re-guardar la mano de obra baja a $0: NO se conserva el monto viejo.
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), ['repuestos' => $repuestos]);
+        $this->assertSame(0, $orden->fresh()->mano_obra);
+        $this->assertSame(30000, (int) $orden->fresh()->costo_total);
+    }
+
+    public function test_no_se_envia_la_cotizacion_si_el_trabajo_no_tiene_tiempo_estandar(): void
+    {
+        $this->conValorHora(4000);
+        // Trabajo fuera del catálogo: hay costo (repuestos), así que el bloqueo por
+        // «suma $0» no aplica — lo que frena el envío es la mano de obra sin calcular.
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de manilla a medida', 'mano_obra' => 8000]);
+        $orden->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]);
+
+        $this->actingAs($this->tecnico())
+            ->post(route('admin.servicio-tecnico.cotizacion.enviar', $orden))
+            ->assertRedirect();
+
+        $this->assertSame(0, OrdenServicioCotizacion::count());
+        Mail::assertNothingSent();
+
+        // Y la pantalla dice lo mismo que el servidor: la falta se lista donde
+        // vive el botón «Enviar» (misma fila que «Guardar»), que no se dibuja.
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertSee('Para enviarla al cliente')
+            ->assertSee('no tiene tiempo estándar')
+            ->assertDontSee('name="enviar"', false);
+    }
+
+    public function test_no_se_envia_la_cotizacion_sin_valor_hora(): void
+    {
+        // Tiempo estándar cargado, pero el SKU de la hora no tiene precio en la
+        // lista oficial (sin conValorHora) → tampoco se puede calcular.
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal', 'mano_obra' => 6000]);
+        $orden->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]);
+
+        $this->actingAs($this->tecnico())
+            ->post(route('admin.servicio-tecnico.cotizacion.enviar', $orden))
+            ->assertRedirect();
+
+        $this->assertSame(0, OrdenServicioCotizacion::count());
+        Mail::assertNothingSent();
+
+        // La pantalla nombra el código de la hora en vez de mostrar «1,5 h × —»
+        // junto a un monto que el guardado ya no puede sostener.
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertSee('no tiene precio en la lista oficial de ventas')
+            ->assertSee('manoObra: 0', false);
+    }
+
+    public function test_cero_horas_fijadas_por_jefatura_si_se_puede_enviar(): void
+    {
+        // El catálogo acepta 0 h: es una decisión de jefatura («este trabajo no se
+        // cobra»), NO un hueco de datos. La mano de obra es $0 legítima y el envío
+        // pasa — el candado es «no se puede calcular», no «da $0».
+        $this->seed(ConfiguracionSeeder::class);
+        $this->conValorHora(4000);
+        $this->tiempo('Revisión general, se deja en observación y no presenta fallas — funciona normal', 0);
+        $orden = $this->reparacion([
+            'trabajo_realizado' => 'Revisión general, se deja en observación y no presenta fallas — funciona normal',
+        ]);
+        $orden->repuestos()->create(['nombre' => 'Filtro', 'cantidad' => 1, 'precio_unitario' => 12000]);
+
+        $this->actingAs($this->tecnico())
+            ->post(route('admin.servicio-tecnico.cotizacion.enviar', $orden))
+            ->assertRedirect();
+
+        $this->assertSame(1, OrdenServicioCotizacion::count());
+        $this->assertSame(0, (int) OrdenServicioCotizacion::first()->mano_obra);
+        $this->assertSame(12000, (int) OrdenServicioCotizacion::first()->costo_total);
     }
 
     public function test_garantia_no_se_puede_cotizar(): void

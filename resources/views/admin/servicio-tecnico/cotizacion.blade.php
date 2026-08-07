@@ -104,12 +104,19 @@
                 $faltas = collect([
                     in_array($orden->estado, ['recibido', 'en_revision', 'cotizacion'], true) ? null : 'la orden ya pasó la etapa de cotización (para re-cotizar, vuélvela a «Cotización» en Parte del técnico)',
                     blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
+                    // Sin mano de obra calculable no sale al cliente: el total le
+                    // cobraría de menos sin que nadie lo note. Guardar sigue libre.
+                    $faltaManoObra,
                 ])->filter();
             @endphp
             {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
                   class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8" data-una-vez
-                  x-data="reparacionForm({ repuestos: @js($repInit), manoObra: {{ (int) old('mano_obra', $orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
+                  {{-- `manoObra` se siembra con la VIGENTE del catálogo (lo que va a
+                       quedar al guardar), no con `$orden->mano_obra`: si el trabajo
+                       perdió su tiempo estándar, el total no puede prometer un monto
+                       que el guardado baja a $0. --}}
+                  x-data="reparacionForm({ repuestos: @js($repInit), manoObra: {{ (int) $manoObraVigente }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
                 @csrf
                 @method('PUT')
 
@@ -214,17 +221,23 @@
                         <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                             <p class="text-xs text-neutral-500">Mano de obra (fijada por el trabajo)</p>
                             <p class="mt-0.5 text-lg font-semibold text-neutral-900" x-text="clp(manoObra)"></p>
-                            @if ($orden->trabajo_realizado && $horasTrabajo !== null)
+                            {{-- El monto de arriba es el que el catálogo calcula HOY, así
+                                 que la nota explica por qué es ese — y cuando es $0 por un
+                                 hueco de datos, lo dice en vez de dejarlo a la imaginación
+                                 (el envío al cliente queda bloqueado hasta que se cierre). --}}
+                            @if (blank($orden->trabajo_realizado))
+                                <p class="mt-0.5 text-xs text-neutral-400">Elige el «Trabajo realizado» en Parte del técnico para fijar la mano de obra.</p>
+                            @elseif ($horasTrabajo === null)
+                                <p class="mt-0.5 text-xs text-amber-700">El trabajo «{{ $orden->trabajo_realizado }}» no tiene tiempo estándar, así que la mano de obra queda en $0. Jefatura lo agrega en «Costos generales de reparación».</p>
+                            @elseif (! $precioHoraServicio)
+                                <p class="mt-0.5 text-xs text-amber-700">El código de hora de servicio técnico ({{ config('servicio_tecnico.sku_hora_servicio') }}) no tiene precio en la lista oficial de ventas, así que la mano de obra queda en $0.</p>
+                            @else
                                 <p class="mt-0.5 text-xs text-neutral-500">
                                     {{ rtrim(rtrim(number_format((float) $horasTrabajo, 1, ',', ''), '0'), ',') }} h
-                                    × {{ $precioHoraServicio ? '$'.number_format($precioHoraServicio, 0, ',', '.') : '—' }}
+                                    × ${{ number_format($precioHoraServicio, 0, ',', '.') }}
                                     · «{{ $orden->trabajo_realizado }}»
                                 </p>
                                 <p class="mt-1 text-xs text-neutral-400">La define jefatura en «Costos generales de reparación»; el técnico no la modifica.</p>
-                            @elseif ($orden->trabajo_realizado)
-                                <p class="mt-0.5 text-xs text-amber-700">El trabajo «{{ $orden->trabajo_realizado }}» no tiene tiempo estándar. Agrégalo en «Costos generales de reparación».</p>
-                            @else
-                                <p class="mt-0.5 text-xs text-neutral-400">Elige el «Trabajo realizado» en Parte del técnico para fijar la mano de obra.</p>
                             @endif
                         </div>
                         {{-- El descuento es decisión COMERCIAL: solo jefatura de ventas
