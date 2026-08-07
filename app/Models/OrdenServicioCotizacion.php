@@ -15,10 +15,17 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  * la página pública se renderizan SIEMPRE desde estas columnas, nunca desde la
  * orden (lo que el cliente aceptó es exactamente lo que se le mostró).
  *
- * El cliente responde ACEPTO / NO ACEPTO por un link firmado con el `token`
- * (sin comentario: decisión del dueño). Un re-envío crea fila nueva y marca la
- * anterior 'reemplazada'; las respondidas nunca se tocan (histórico de
- * autorizaciones). La respuesta NO cambia el estado de la orden.
+ * El cliente responde ACEPTO / NO ACEPTO por un link firmado con el `token`,
+ * con un «¿por qué?» opcional (`respuesta_motivo`). OJO: el 30-07 el dueño había
+ * pedido SIN comentario; el 06-08 dio vuelta esa decisión — quiere leer el
+ * motivo del cliente en la campanita. Sigue siendo de UNA pasada (no abre
+ * conversación). Un re-envío crea fila nueva y marca la anterior 'reemplazada';
+ * las respondidas nunca se tocan (histórico de autorizaciones). La respuesta NO
+ * cambia el estado de la orden.
+ *
+ * Si la respuesta fue NO ACEPTO, el equipo puede avisarle al cliente por correo
+ * que pase a retirar su equipo sin reparar (`retiro_avisado_at/_por`, dueño
+ * 06-08): un solo aviso por cotización, con registro de quién lo mandó.
  */
 class OrdenServicioCotizacion extends Model implements AuditableContract
 {
@@ -70,6 +77,9 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
         'respondida_at',
         'respuesta_ip',
         'respuesta_user_agent',
+        'respuesta_motivo',
+        'retiro_avisado_at',
+        'retiro_avisado_por',
         'enviada_por',
         'pago_forma',
         'pago_comprobante_ruta',
@@ -100,6 +110,7 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
             'correo_enviado_at' => 'datetime',
             'respondida_at' => 'datetime',
             'autorizada_at' => 'datetime',
+            'retiro_avisado_at' => 'datetime',
         ];
     }
 
@@ -151,6 +162,12 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
     public function autorizadaPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'autorizada_por');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function retiroAvisadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'retiro_avisado_por');
     }
 
     /** ¿El cliente todavía puede responder? (enviada y no vencida). */

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\CotizacionCliente;
 use App\Mail\DetalleTrabajoCliente;
+use App\Mail\RetiroSinReparacion;
 use App\Mail\SinSolucionCliente;
 use App\Mail\IngresoTallerRecibido;
 use App\Models\AgendaTrabajo;
@@ -17,6 +18,8 @@ use App\Models\OrdenServicioRepuesto;
 use App\Models\Producto;
 use App\Models\TiempoReparacion;
 use App\Models\Sucursal;
+use App\Models\User;
+use App\Services\Notificaciones\NotificacionDispatcher;
 use App\Rules\RutChileno;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -883,8 +886,15 @@ class ServicioTecnicoController extends Controller
         if ($orden->condicion_efectiva !== 'reparacion') {
             return back()->with('status', 'Equipo en garantía vigente: no se cotiza (no hay cobro).');
         }
+        // Etapas PREVIAS: enviar la cotización ES pasar el presupuesto, así que
+        // la orden salta sola a «Cotización» (dueño 06-08: antes había que
+        // peregrinar por Parte del técnico solo para cambiar la etapa). Las
+        // etapas POSTERIORES se respetan: re-cotizar ahí es decisión del técnico.
+        if (in_array($orden->estado, ['recibido', 'en_revision'], true)) {
+            $orden->update(['estado' => 'cotizacion']);
+        }
         if ($orden->estado !== 'cotizacion') {
-            return back()->with('status', 'Pon la orden en etapa «Cotización» (y guarda) antes de enviar.');
+            return back()->with('status', 'La orden ya pasó la etapa de cotización: para re-cotizar, vuélvela a «Cotización» en Parte del técnico.');
         }
         if (blank($orden->cliente_email)) {
             return back()->with('status', 'La orden no tiene correo del cliente: agrégalo en los datos de recepción.');
@@ -927,6 +937,56 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * El cliente NO aceptó la cotización: se le avisa por correo que puede pasar
+     * a retirar su equipo sin reparar (pedido del dueño 06-08). Un solo aviso
+     * por cotización (queda registrado quién y cuándo), y solo si el rechazo
+     * sigue siendo la última palabra — si después se envió una cotización más
+     * nueva, la conversación es otra. Al salir el correo se avisa a los roles
+     * internos por la campanita ('cotizacion.retiro_avisado').
+     */
+    public function avisarRetiroSinReparar(Request $request, OrdenServicio $orden, int $cotizacionId): RedirectResponse
+    {
+        // Id plano, igual que reintentar: el route key del modelo es el token.
+        $cotizacion = OrdenServicioCotizacion::findOrFail($cotizacionId);
+        abort_unless($cotizacion->orden_servicio_id === $orden->id, 404);
+
+        if ($cotizacion->estado !== 'rechazada') {
+            return back()->with('status', 'Ese aviso es solo para cotizaciones que el cliente NO aceptó.');
+        }
+        if ($cotizacion->retiro_avisado_at) {
+            return back()->with('status', 'Al cliente ya se le avisó que puede pasar a retirar (el '.$cotizacion->retiro_avisado_at->format('d-m-Y H:i').').');
+        }
+        if (OrdenServicioCotizacion::where('orden_servicio_id', $orden->id)->where('id', '>', $cotizacion->id)->exists()) {
+            return back()->with('status', 'Hay una cotización más reciente para esta orden: espera la respuesta del cliente a esa.');
+        }
+        if (blank($cotizacion->cliente_email)) {
+            return back()->with('status', 'La cotización no tiene correo del cliente: hay que llamarlo.');
+        }
+
+        try {
+            Mail::to($cotizacion->cliente_email)->send(new RetiroSinReparacion($cotizacion->load('orden')));
+            $ok = true;
+        } catch (\Throwable $e) {
+            report($e);
+            $ok = false;
+        }
+
+        if ($ok) {
+            $cotizacion->update([
+                'retiro_avisado_at' => now(),
+                'retiro_avisado_por' => $request->user()->id,
+            ]);
+            $cotizacion->avisarInternos('cotizacion.retiro_avisado', [
+                'avisado_por' => $request->user()->name,
+            ]);
+        }
+
+        return back()->with('status', $ok
+            ? "Se le avisó a {$cotizacion->cliente_email} que puede pasar a retirar su equipo (orden {$orden->folio})."
+            : 'No se pudo enviar el correo ahora. Revisa el correo del cliente o inténtalo más tarde.');
+    }
+
+    /**
      * Garantía: envía al cliente el DETALLE del trabajo realizado, SIN cobro.
      * Reemplaza a la cotización cuando el equipo está en garantía vigente: el
      * cliente no paga, solo recibe el resumen de lo que se hizo (trabajo, causa y
@@ -951,6 +1011,23 @@ class ServicioTecnicoController extends Controller
         } catch (\Throwable $e) {
             report($e);
             $ok = false;
+        }
+
+        // Salió el correo → campanita a los mismos roles que en 'cotizacion.enviada'
+        // (dueño 06-08: la ruta de la máquina debe verse también cuando es garantía
+        // y no hay cobro). Misma audiencia de "ruta completa": ROLES_AVISO.
+        if ($ok) {
+            $equipo = trim($orden->tipo_equipo_label.' '.($orden->modelo ?? ''));
+            $datos = [
+                'folio' => $orden->folio,
+                'cliente' => $orden->cliente_nombre,
+                'equipo' => $equipo !== '' ? $equipo : '—',
+                'enviado_por' => request()->user()->name,
+                'url' => route('admin.servicio-tecnico.show', $orden),
+            ];
+            $dispatcher = app(NotificacionDispatcher::class);
+            User::role(OrdenServicioCotizacion::ROLES_AVISO)->get()->unique('id')
+                ->each(fn (User $u) => $dispatcher->despachar('garantia.detalle_enviado', $orden, $u, $datos));
         }
 
         return back()->with('status', $ok

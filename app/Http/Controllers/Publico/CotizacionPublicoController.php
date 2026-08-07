@@ -14,9 +14,11 @@ use Illuminate\View\View;
 /**
  * Respuesta PÚBLICA del cliente a una cotización del taller (P-M12-02): abre el
  * link firmado del correo, ve la carta (desde el SNAPSHOT, nunca la orden viva)
- * y responde solo ACEPTO / NO ACEPTO — sin campo de comentario (decisión del
- * dueño: evitar el ida y vuelta). Sin login: la seguridad es la firma de la URL
- * (GET y POST) + token no enumerable + throttle + honeypot, como el flujo QR.
+ * y responde ACEPTO / NO ACEPTO con un «¿por qué?» opcional. OJO: el 30-07 el
+ * dueño había pedido sin comentario; el 06-08 dio vuelta esa decisión — quiere
+ * leer el motivo en la campanita. Sigue siendo UNA pasada, no una conversación.
+ * Sin login: la seguridad es la firma de la URL (GET y POST) + token no
+ * enumerable + throttle + honeypot, como el flujo QR.
  *
  * La respuesta NO cambia el estado de la orden: se registra y se avisa a los
  * roles internos (después del commit: si el aviso falla, la respuesta ya quedó).
@@ -40,11 +42,13 @@ class CotizacionPublicoController extends Controller
 
         $data = $request->validate([
             'respuesta' => ['required', Rule::in(['aceptada', 'rechazada'])],
+            'motivo' => ['nullable', 'string', 'max:1000'],
         ]);
+        $motivo = trim((string) ($data['motivo'] ?? '')) ?: null;
 
         // Primera respuesta gana: lock + recheck dentro de la transacción para
         // absorber doble clic o dos pestañas (patrón confirmar() del taller).
-        $notificar = DB::transaction(function () use ($cotizacion, $data, $request) {
+        $notificar = DB::transaction(function () use ($cotizacion, $data, $motivo, $request) {
             $fresca = OrdenServicioCotizacion::whereKey($cotizacion->id)->lockForUpdate()->first();
 
             if (! $fresca->esRespondible()) {
@@ -56,6 +60,7 @@ class CotizacionPublicoController extends Controller
                 'respondida_at' => now(),
                 'respuesta_ip' => (string) $request->ip(),
                 'respuesta_user_agent' => (string) $request->userAgent(),
+                'respuesta_motivo' => $motivo,
             ]);
 
             return true;
@@ -64,6 +69,9 @@ class CotizacionPublicoController extends Controller
         if ($notificar) {
             $cotizacion->refresh()->avisarInternos('cotizacion.respondida', [
                 'respuesta' => $data['respuesta'] === 'aceptada' ? 'ACEPTADA' : 'NO ACEPTADA',
+                // {motivo} SIEMPRE relleno: un placeholder sin dato queda crudo
+                // en la campanita (regla de avisarInternos).
+                'motivo' => $motivo !== null ? 'Motivo del cliente: «'.$motivo.'»' : 'El cliente no indicó el motivo.',
             ]);
         }
 

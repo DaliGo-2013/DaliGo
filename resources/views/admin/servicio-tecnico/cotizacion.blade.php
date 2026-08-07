@@ -312,6 +312,10 @@
                         a {{ $ultima->cliente_email }} por
                         <span class="font-semibold">${{ number_format((int) $ultima->costo_total, 0, ',', '.') }}</span>@if ($ultima->respondida_at) · respondida el {{ $ultima->respondida_at->format('d-m-Y H:i') }}@endif.
                     </p>
+                    {{-- El «¿por qué?» que escribió el cliente al responder (dueño 06-08). --}}
+                    @if (filled($ultima->respuesta_motivo))
+                        <p class="mt-1 text-sm italic text-neutral-500">Motivo del cliente: «{{ $ultima->respuesta_motivo }}»</p>
+                    @endif
                     @if (! $ultima->correo_enviado_at && $ultima->esRespondible())
                         <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.reintentar', [$orden, $ultima->id]) }}" class="mt-3" data-una-vez>
                             @csrf
@@ -323,8 +327,10 @@
 
                 @php
                     // Qué falta para poder enviar (espejo de la validación del server).
+                    // Etapas previas ya NO bloquean: al enviar, la orden pasa sola a
+                    // «Cotización» (dueño 06-08). Solo frenan las etapas posteriores.
                     $faltas = collect([
-                        $orden->estado !== 'cotizacion' ? 'pon la orden en etapa «Cotización» (en Parte del técnico) y guarda' : null,
+                        in_array($orden->estado, ['recibido', 'en_revision', 'cotizacion'], true) ? null : 'la orden ya pasó la etapa de cotización (para re-cotizar, vuélvela a «Cotización» en Parte del técnico)',
                         blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
                         (int) $orden->costo_total <= 0 ? 'lo guardado suma $0 (pon precios arriba y guarda la cotización)' : null,
                     ])->filter();
@@ -340,7 +346,8 @@
                         </form>
                         <p class="mt-2 text-xs text-neutral-400">
                             Se envía lo último <span class="font-medium">guardado</span> (guarda arriba antes de enviar).
-                            El cliente responde ACEPTO / NO ACEPTO por un link y el aviso llega a taller y ventas.
+                            El cliente responde ACEPTO / NO ACEPTO por un link — puede escribir el porqué — y el aviso llega a taller y ventas.
+                            @if (in_array($orden->estado, ['recibido', 'en_revision'], true)) Al enviar, la orden pasa sola a etapa «Cotización». @endif
                             @if ($ultima && $ultima->estado === 'enviada') Enviar una nueva reemplaza la anterior. @endif
                         </p>
                     @else
@@ -355,7 +362,7 @@
                         <ul class="mt-1.5 space-y-1">
                             @foreach ($cotizaciones->slice(1) as $c)
                                 <li class="text-xs text-neutral-500">
-                                    {{ $c->created_at->format('d-m-Y H:i') }} · ${{ number_format((int) $c->costo_total, 0, ',', '.') }} · {{ $c->estado_label }}@if ($c->respondida_at) ({{ $c->respondida_at->format('d-m-Y H:i') }})@endif
+                                    {{ $c->created_at->format('d-m-Y H:i') }} · ${{ number_format((int) $c->costo_total, 0, ',', '.') }} · {{ $c->estado_label }}@if ($c->respondida_at) ({{ $c->respondida_at->format('d-m-Y H:i') }})@endif @if (filled($c->respuesta_motivo))· «{{ $c->respuesta_motivo }}»@endif
                                 </li>
                             @endforeach
                         </ul>

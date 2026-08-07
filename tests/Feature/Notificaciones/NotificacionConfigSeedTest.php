@@ -25,6 +25,9 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_plantilla_cotizacion_enviada',
         'notif_plantilla_cotizacion_respondida',
         'notif_plantilla_cotizacion_autorizada',
+        // Dueño 06-08 · retiro sin reparar + detalle de garantía
+        'notif_plantilla_cotizacion_retiro_avisado',
+        'notif_plantilla_garantia_detalle_enviado',
         // Agenda de terreno · solicitud por coordinar + confirmación del cliente
         'notif_plantilla_terreno_solicitada',
         'notif_plantilla_terreno_confirmada',
@@ -117,9 +120,16 @@ class NotificacionConfigSeedTest extends TestCase
             $this->assertStringContainsString($ph, $rechazada, "terreno.rechazada debe usar {$ph}");
         }
 
-        foreach (['enviada', 'respondida', 'autorizada'] as $evento) {
+        foreach (['enviada', 'respondida', 'autorizada', 'retiro_avisado'] as $evento) {
             $cuerpo = Configuracion::get("notif_plantilla_cotizacion_{$evento}")['cuerpo'];
             $this->assertStringContainsString('{equipo}', $cuerpo, "cotizacion.{$evento} debe usar {equipo}");
         }
+
+        // El «¿por qué?» del cliente viaja en la campanita (dueño 06-08).
+        $this->assertStringContainsString(
+            '{motivo}',
+            Configuracion::get('notif_plantilla_cotizacion_respondida')['cuerpo'],
+            'cotizacion.respondida debe usar {motivo}'
+        );
     }
 }

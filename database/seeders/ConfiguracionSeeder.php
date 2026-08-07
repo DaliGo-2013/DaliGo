@@ -204,11 +204,39 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_cotizacion_respondida',
                 'valor' => json_encode([
                     'asunto' => 'Cotización {respuesta} — Orden {folio} ({cliente})',
-                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nEquipo: {equipo} · Monto: {total}.",
+                    // {motivo} llega SIEMPRE relleno desde CotizacionPublicoController
+                    // (el «¿por qué?» del cliente, o «El cliente no indicó el motivo.»).
+                    // Cambiar este default exige migración (ver 2026_08_06_140100).
+                    'cuerpo' => "El cliente {cliente} respondió la cotización de la orden {folio}: {respuesta}.\nEquipo: {equipo} · Monto: {total}.\n{motivo}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno cuando el cliente acepta o no acepta la cotización; el asunto distingue la respuesta.',
+            ],
+            // El cliente NO aceptó y alguien del equipo le avisó por correo que
+            // puede pasar a retirar su equipo sin reparar (pedido del dueño 06-08).
+            [
+                'clave' => 'notif_plantilla_cotizacion_retiro_avisado',
+                'valor' => json_encode([
+                    'asunto' => 'Retiro avisado — Orden {folio} ({cliente})',
+                    'cuerpo' => "A {cliente} se le avisó por correo que puede pasar a retirar su equipo sin reparar (orden {folio}).\nEquipo: {equipo}\nAvisó: {avisado_por}.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno cuando, tras un NO ACEPTO, se le avisa al cliente que retire su equipo sin reparar.',
+            ],
+            // Garantía: salió el correo con el detalle del trabajo (sin cobro).
+            // Es el equivalente de 'cotizacion.enviada' para el caso garantía,
+            // así toda la ruta de la máquina queda en la campanita (dueño 06-08).
+            [
+                'clave' => 'notif_plantilla_garantia_detalle_enviado',
+                'valor' => json_encode([
+                    'asunto' => 'Garantía: detalle enviado — Orden {folio} ({cliente})',
+                    'cuerpo' => "Se le envió a {cliente} el detalle del trabajo por garantía (sin cobro) de la orden {folio}.\nEquipo: {equipo}\nEnvió: {enviado_por}.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso interno cuando se envía al cliente el detalle del trabajo en garantía (sin cobro).',
             ],
             [
                 'clave' => 'notif_plantilla_cotizacion_autorizada',

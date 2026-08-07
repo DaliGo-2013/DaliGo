@@ -57,11 +57,11 @@ class CotizacionPublicoTest extends TestCase
         return URL::signedRoute('cotizacion.mostrar', ['cotizacion' => $c->token]);
     }
 
-    private function responder(OrdenServicioCotizacion $c, string $respuesta)
+    private function responder(OrdenServicioCotizacion $c, string $respuesta, ?string $motivo = null)
     {
         return $this->post(
             URL::signedRoute('cotizacion.responder', ['cotizacion' => $c->token]),
-            ['respuesta' => $respuesta]
+            array_filter(['respuesta' => $respuesta, 'motivo' => $motivo])
         );
     }
 
@@ -88,7 +88,10 @@ class CotizacionPublicoTest extends TestCase
             ->assertSee('$14.000')                // total del snapshot
             ->assertSee('ACEPTO')
             ->assertSee('NO ACEPTO')
-            ->assertDontSee('<textarea', false);  // SIN campo de comentario (decisión del dueño)
+            // CON campo «¿por qué?» opcional: el 06-08 el dueño dio vuelta su
+            // decisión del 30-07 (antes este test exigía que NO hubiera textarea).
+            ->assertSee('name="motivo"', false)
+            ->assertSee('(opcional)');
     }
 
     // --- Respuesta ---
@@ -121,6 +124,38 @@ class CotizacionPublicoTest extends TestCase
                 ->where('evento', 'cotizacion.respondida')
                 ->where('canal', Notificacion::CANAL_DATABASE)->count());
         }
+    }
+
+    public function test_el_motivo_del_cliente_queda_guardado_y_viaja_en_el_aviso(): void
+    {
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $c = $this->cotizacion();
+
+        $this->responder($c, 'rechazada', 'Muy caro, prefiero comprar uno nuevo')->assertRedirect();
+
+        $this->assertSame('Muy caro, prefiero comprar uno nuevo', $c->fresh()->respuesta_motivo);
+
+        // El «¿por qué?» llega DENTRO de la campanita (no hay que abrir la orden).
+        $notif = Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'cotizacion.respondida')
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+        $this->assertStringContainsString('Muy caro, prefiero comprar uno nuevo', $notif->cuerpo);
+    }
+
+    public function test_sin_motivo_el_aviso_dice_que_no_lo_indico(): void
+    {
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        $c = $this->cotizacion();
+
+        $this->responder($c, 'aceptada')->assertRedirect();
+
+        $this->assertNull($c->fresh()->respuesta_motivo);
+        $notif = Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'cotizacion.respondida')
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+        // Placeholder SIEMPRE relleno: sin motivo no queda «{motivo}» crudo.
+        $this->assertStringContainsString('no indicó el motivo', $notif->cuerpo);
+        $this->assertStringNotContainsString('{motivo}', $notif->cuerpo);
     }
 
     public function test_la_primera_respuesta_gana_y_no_se_renotifica(): void

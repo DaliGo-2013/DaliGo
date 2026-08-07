@@ -131,8 +131,9 @@ class CotizacionEnviarTest extends TestCase
     {
         // Sin email.
         $this->enviar($this->ordenCotizable(['cliente_email' => null]));
-        // Etapa distinta de cotización.
-        $this->enviar($this->ordenCotizable(['estado' => 'en_revision']));
+        // Etapa POSTERIOR a cotización (las previas ya no bloquean: ver el test
+        // de abajo — dueño 06-08).
+        $this->enviar($this->ordenCotizable(['estado' => 'reparado']));
         // Garantía vigente (no se cobra).
         $this->enviar($this->ordenCotizable([
             'facturacion' => 'garantia', 'garantia_doc_tipo' => 'boleta',
@@ -147,6 +148,26 @@ class CotizacionEnviarTest extends TestCase
 
         $this->assertSame(0, OrdenServicioCotizacion::count());
         Mail::assertNothingSent();
+    }
+
+    public function test_enviar_desde_una_etapa_previa_pasa_la_orden_a_cotizacion(): void
+    {
+        // Dueño 06-08: enviar la carta ES pasar el presupuesto — la orden salta
+        // sola a «Cotización» sin peregrinar por Parte del técnico. Antes este
+        // caso ('en_revision') estaba en el test de bloqueos.
+        $orden = $this->ordenCotizable(['estado' => 'en_revision']);
+
+        $this->enviar($orden)->assertRedirect();
+
+        $this->assertSame('cotizacion', $orden->fresh()->estado);
+        $this->assertSame(1, OrdenServicioCotizacion::count());
+        Mail::assertSent(CotizacionCliente::class, fn ($m) => $m->hasTo('cliente@example.com'));
+
+        // La etapa que ya pasó de largo NO retrocede sola.
+        $reparado = $this->ordenCotizable(['estado' => 'reparado']);
+        $this->enviar($reparado);
+        $this->assertSame('reparado', $reparado->fresh()->estado);
+        $this->assertSame(1, OrdenServicioCotizacion::count());
     }
 
     // --- Fallo SMTP ---

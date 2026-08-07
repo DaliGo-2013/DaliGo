@@ -90,6 +90,8 @@ class OneShotPlantillasCandadoTest extends TestCase
         $enOrden = [
             'migrations/2026_07_22_180000_enriquecer_plantillas_notificaciones_internas.php',
             'migrations/2026_07_30_100000_limpia_plantillas_taller_terreno_auditoria.php',
+            // 06-08: suma {motivo} a cotizacion.respondida (el «¿por qué?» del cliente).
+            'migrations/2026_08_06_140100_agrega_motivo_a_plantilla_cotizacion_respondida.php',
         ];
 
         /** @var array<string, list<array{archivo: string, old: string, new: string}>> */

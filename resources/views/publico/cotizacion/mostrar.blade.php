@@ -1,8 +1,9 @@
 {{--
     Página PÚBLICA de la cotización (link firmado del correo). Muestra la carta
-    desde el SNAPSHOT y, si sigue vigente, los botones ACEPTO / NO ACEPTO — sin
-    campo de comentario (decisión del dueño: evitar el ida y vuelta). Si ya se
-    respondió / reemplazó / venció, muestra el estado en vez de los botones.
+    desde el SNAPSHOT y, si sigue vigente, los botones ACEPTO / NO ACEPTO más un
+    «¿por qué?» opcional (el 06-08 el dueño dio vuelta su decisión del 30-07 de
+    no llevar comentario: quiere leer el motivo del cliente en la campanita).
+    Si ya se respondió / reemplazó / venció, muestra el estado en vez de los botones.
 --}}
 @php
     $orden = $cotizacion->orden;
@@ -82,12 +83,20 @@
         </div>
 
         @if ($cotizacion->esRespondible())
-            {{-- Respuesta: SOLO dos botones (sin comentario). --}}
+            {{-- Respuesta: dos botones + el «¿por qué?» opcional. --}}
             <form method="POST" action="{{ $urlRespuesta }}" class="mt-5" data-una-vez>
                 @csrf
                 {{-- Honeypot anti-bots (oculto; humanos no lo ven ni llenan). --}}
                 <input type="text" name="sitio_web" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
                 <p class="mb-3 text-center text-sm text-neutral-600">¿Autorizas este trabajo por el valor indicado?</p>
+                <div class="mb-3 text-left">
+                    <label for="motivo" class="block text-sm font-medium text-neutral-700">
+                        ¿Por qué? <span class="font-normal text-neutral-400">(opcional)</span>
+                    </label>
+                    <textarea id="motivo" name="motivo" rows="2" maxlength="1000"
+                              class="mt-1.5 block w-full rounded-xl border-neutral-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                              placeholder="Cuéntanos el motivo de tu decisión.">{{ old('motivo') }}</textarea>
+                </div>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button type="submit" name="respuesta" value="aceptada"
                             class="inline-flex h-12 items-center justify-center rounded-xl bg-brand-600 px-4 text-base font-semibold text-white transition hover:bg-brand-700">
@@ -111,6 +120,9 @@
                 @if (in_array($cotizacion->estado, ['aceptada', 'rechazada'], true))
                     Ya registramos tu respuesta el {{ $cotizacion->respondida_at?->format('d-m-Y H:i') }}:
                     <span class="font-semibold">{{ $cotizacion->estado === 'aceptada' ? 'ACEPTASTE' : 'NO ACEPTASTE' }}</span> esta cotización.
+                    @if (filled($cotizacion->respuesta_motivo))
+                        <span class="mt-1 block">Tu motivo: «{{ $cotizacion->respuesta_motivo }}»</span>
+                    @endif
                 @elseif ($cotizacion->estado === 'reemplazada')
                     Hay una cotización más reciente para esta orden: revisa el último correo que te enviamos.
                 @else

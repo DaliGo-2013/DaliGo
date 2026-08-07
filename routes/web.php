@@ -237,6 +237,11 @@ Route::middleware('auth')
         Route::middleware('permission:autorizar reparacion')->group(function () {
             Route::post('servicio-tecnico/{orden}/cotizacion/autorizar', [ServicioTecnicoController::class, 'autorizarReparacion'])
                 ->whereNumber('orden')->name('servicio-tecnico.cotizacion.autorizar');
+            // El otro desenlace de la respuesta del cliente: NO aceptó → avisarle
+            // por correo que puede pasar a retirar sin reparar (dueño 06-08).
+            // Misma audiencia que autorizar: es quien cierra la conversación.
+            Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/avisar-retiro', [ServicioTecnicoController::class, 'avisarRetiroSinReparar'])
+                ->whereNumber('orden')->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.avisar-retiro');
         });
 
         // Confirmar la recepcion de lo que llego por QR: lo AUTORIZA el jefe de

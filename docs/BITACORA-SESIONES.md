@@ -21,6 +21,20 @@
 
 ## Sesiones
 
+### [2026-08-06] La respuesta del cliente deja de ser un sí/no mudo: el «¿por qué?» y la carta de retiro cierran el círculo de la cotización
+- **Quién:** Marcos + Claude (Fable 5)
+- **Objetivo declarado:** ampliación de `P-M12-02` pedida por el dueño en la pantalla de Cotización. Cuatro cosas: que el cliente pueda escribir **por qué** acepta o no; que un **NO ACEPTO** habilite avisarle por correo que **pase a retirar** su equipo sin reparar; que **garantía** también suene en la campanita; y que enviar la cotización no exija ir a otra pestaña a mover la etapa.
+- **Qué se hizo:**
+  - **El «¿por qué?» (`respuesta_motivo`).** Textarea opcional en la página pública, junto a ACEPTO / NO ACEPTO. **Da vuelta la decisión del 30-07** («sin comentario, para evitar el ida y vuelta»): el dueño quiere leerlo. Sigue siendo de UNA pasada — no abre conversación. El motivo viaja **dentro** de la campanita (`{motivo}` en la plantilla de `cotizacion.respondida`), así nadie tiene que abrir la orden para enterarse, y se muestra en la ficha y en la pestaña Cotización.
+  - **Carta «pase a retirar su equipo».** `RetiroSinReparacion` + botón en la ficha, visible solo cuando la ÚLTIMA cotización quedó rechazada. Cortés, **sin montos** (mismo criterio que `SinSolucionCliente`: si hay costo de revisión lo define ventas, no un correo automático) y deja la puerta abierta a renovar. Un aviso por cotización, con `retiro_avisado_at/_por`; si el correo falla no se estampa nada y se puede reintentar. Permiso `autorizar reparacion` — la misma gente que cierra el otro desenlace.
+  - **Garantía en la campanita** (`garantia.detalle_enviado`): el par de `cotizacion.enviada` para el caso sin cobro. Solo se avisa **si el correo salió** (un aviso que dice «se envió» cuando no salió es el defecto que se corrigió en terreno el 30-07).
+  - **Etapa automática al enviar:** desde `recibido`/`en_revision` la orden pasa sola a `cotizacion` (enviar la carta ES pasar el presupuesto). Las etapas **posteriores** siguen frenando: re-cotizar algo ya reparado es decisión del técnico, no un efecto colateral.
+- **Cómo se entregó a producción sin romper el patrón de plantillas:** el texto nuevo de `cotizacion.respondida` viaja en una one-shot (`2026_08_06_140100`) que solo pisa si el cuerpo sigue siendo el default anterior, y se **sumó a la cadena** de `OneShotPlantillasCandadoTest` — que fue justamente el test que se puso rojo al cambiar solo el seeder, probando que el candado sirve. Claves nuevas (`retiro_avisado`, `garantia_detalle_enviado`) van por seeder: no existen en prod, así que `firstOrCreate` sí las crea.
+- **Tests:** `CotizacionRetiroTest` nuevo (7: acceso, aviso + campanita, no-dos-veces, solo rechazadas, no si hay una más reciente, SMTP caído, la ficha muestra botón vs constancia) + `MotivoPlantillaMigrationTest` (4) + casos en `CotizacionPublicoTest` (motivo guardado y en la campanita; sin motivo no queda `{motivo}` crudo), `CotizacionEnviarTest` (la etapa previa salta sola; la posterior no retrocede) y `CotizacionGuardarTest` (campanita de garantía, y que no suene si el correo no salió). El test que exigía «SIN textarea» se **reemplazó a propósito**: la regla la dio vuelta el dueño.
+- **Pasos marcados:** `P-M12-02` sigue [EN CURSO] (falta el `wa.me`, bloqueado por D-007), con la ampliación anotada en `docs/RUTA-MAESTRA.md`.
+- **Decisiones:** ninguna nueva del proceso; una **reversión** de la del 30-07 (el «sin comentario») registrada en los encabezados de `OrdenServicioCotizacion` y `CotizacionPublicoController` para que nadie la «arregle» de vuelta.
+- **Próximo paso:** el `wa.me` con el mismo link firmado cuando se resuelva D-007.
+
 ### [2026-08-04] Se paga la deuda del esqueleto OOXML: un escritor .xlsx compartido, con la salida verificada byte a byte
 - **Quién:** Marcos + Claude (Opus 5)
 - **Objetivo declarado:** extraer el escritor común que la cabecera de `FlotaExcel` anotaba como deuda («no se hizo ahora para no meter un refactor en la clase que genera el Excel que la gerencia usa en reuniones»). Ningún paso `P-xxx`.

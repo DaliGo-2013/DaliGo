@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Mail\DetalleTrabajoCliente;
+use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\Precio;
 use App\Models\Producto;
@@ -276,6 +277,35 @@ class CotizacionGuardarTest extends TestCase
             ->assertRedirect();
 
         Mail::assertSent(DetalleTrabajoCliente::class, fn ($m) => $m->hasTo('cliente@example.com'));
+    }
+
+    public function test_garantia_avisa_por_la_campanita_al_enviar_el_detalle(): void
+    {
+        // Dueño 06-08: la ruta de la máquina debe quedar en la campanita también
+        // cuando es garantía (el par de 'cotizacion.enviada' sin cobro).
+        $jefe = $this->jefeVentas();
+        $orden = $this->garantiaVigente(['tipo_equipo' => 'lavadora', 'modelo' => 'LB-07B']);
+
+        $this->actingAs($this->tecnico())
+            ->post(route('admin.servicio-tecnico.detalle-trabajo.enviar', $orden))
+            ->assertRedirect();
+
+        $notif = Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'garantia.detalle_enviado')
+            ->where('canal', Notificacion::CANAL_DATABASE)->first();
+        $this->assertNotNull($notif, 'Falta la campanita de garantía para jefatura de ventas.');
+        $this->assertStringContainsString('LB-07B', $notif->payload['equipo']);
+    }
+
+    public function test_si_el_detalle_no_sale_no_hay_campanita_de_garantia(): void
+    {
+        // Sin correo del cliente el detalle no se envía → tampoco se avisa que
+        // «se envió» (el aviso mentiría, defecto ya corregido en terreno el 30-07).
+        $this->actingAs($this->tecnico())
+            ->post(route('admin.servicio-tecnico.detalle-trabajo.enviar', $this->garantiaVigente(['cliente_email' => null])))
+            ->assertRedirect();
+
+        $this->assertSame(0, Notificacion::where('evento', 'garantia.detalle_enviado')->count());
     }
 
     public function test_reparacion_no_envia_detalle_de_garantia(): void

@@ -286,6 +286,10 @@
                                 {{ $c->created_at->format('d-m-Y H:i') }} · ${{ number_format((int) $c->costo_total, 0, ',', '.') }}
                                 · a {{ $c->cliente_email }}@if ($c->respondida_at) · respondida el {{ $c->respondida_at->format('d-m-Y H:i') }}@endif
                             </span>
+                            {{-- El «¿por qué?» que escribió el cliente al responder (dueño 06-08). --}}
+                            @if (filled($c->respuesta_motivo))
+                                <span class="w-full pl-1 text-xs italic text-neutral-500">Motivo del cliente: «{{ $c->respuesta_motivo }}»</span>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -346,6 +350,36 @@
                             </form>
                         @else
                             <p class="text-sm text-neutral-500">El cliente aceptó. Pendiente de que ventas coordine el pago y autorice la reparación.</p>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- El otro desenlace: la ÚLTIMA cotización fue rechazada → avisar al
+                     cliente que pase a retirar sin reparar (dueño 06-08). Solo la
+                     última: si después se envió otra, la conversación sigue abierta. --}}
+                @php $dgUltima = $dgCotizaciones->first(); @endphp
+                @if (! $dgAceptada && $dgUltima && $dgUltima->estado === 'rechazada')
+                    <div class="mt-4 border-t border-neutral-100 pt-4">
+                        @if ($dgUltima->retiro_avisado_at)
+                            <div class="rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+                                <p class="font-semibold text-neutral-700">Retiro avisado</p>
+                                <p class="mt-0.5">
+                                    A {{ $dgUltima->cliente_email }} se le avisó el {{ $dgUltima->retiro_avisado_at->format('d-m-Y H:i') }}
+                                    que puede pasar a retirar su equipo sin reparar
+                                    (avisó {{ $dgUltima->retiroAvisadoPor?->name ?? '—' }}).
+                                </p>
+                            </div>
+                        @elseif (auth()->user()->can('autorizar reparacion'))
+                            <p class="text-sm font-medium text-neutral-700">El cliente no aceptó la reparación. Avísale por correo que puede pasar a retirar su equipo:</p>
+                            <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.avisar-retiro', [$orden, $dgUltima->id]) }}"
+                                  class="mt-3" data-una-vez
+                                  onsubmit="return confirm('Se le enviará a {{ $dgUltima->cliente_email }} un correo avisando que puede pasar a retirar su equipo sin reparar. ¿Continuar?');">
+                                @csrf
+                                <x-primary-button type="submit">Avisar: pasar a retirar</x-primary-button>
+                                <span class="ml-2 text-xs text-neutral-400">Carta cortés, sin montos. Queda registrado quién avisó.</span>
+                            </form>
+                        @else
+                            <p class="text-sm text-neutral-500">El cliente no aceptó. Pendiente de avisarle que puede pasar a retirar su equipo.</p>
                         @endif
                     </div>
                 @endif

@@ -65,6 +65,13 @@ class Notificacion extends Model
         'cotizacion.enviada' => 'Cotización enviada al cliente',
         'cotizacion.respondida' => 'El cliente respondió la cotización',
         'cotizacion.autorizada' => 'Reparación autorizada (pago coordinado)',
+        // Tras un NO ACEPTO: se le avisó al cliente que retire sin reparar
+        // (pedido del dueño 06-08, junto con el «¿por qué?» de la respuesta).
+        'cotizacion.retiro_avisado' => 'Se avisó al cliente: retirar sin reparar',
+        // Garantía: salió el correo con el detalle del trabajo (sin cobro) —
+        // el par de 'cotizacion.enviada' para que la ruta completa quede en
+        // la campanita también cuando no hay cobro (dueño 06-08).
+        'garantia.detalle_enviado' => 'Detalle de garantía enviado al cliente',
         // Agenda de terreno · solicitud del cliente (QR) por coordinar
         'terreno.solicitada' => 'Solicitud del cliente por coordinar (terreno)',
         // Agenda de terreno · el cliente respondió a la cita agendada
@@ -160,7 +167,8 @@ class Notificacion extends Model
                 && (! $this->notificable instanceof OrdenServicio || $this->notificable->esVisiblePara($user)),
             // Detalle de una orden: permiso Y scope de cartera del vendedor.
             'taller.reparado', 'taller.sin_solucion',
-            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
+            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada',
+            'cotizacion.retiro_avisado', 'garantia.detalle_enviado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
@@ -234,7 +242,8 @@ class Notificacion extends Model
                 : route('admin.servicio-tecnico.index'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
             'taller.reparado', 'taller.sin_solucion',
-            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada' => $this->notificable_id
+            'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada',
+            'cotizacion.retiro_avisado', 'garantia.detalle_enviado' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : null,
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
