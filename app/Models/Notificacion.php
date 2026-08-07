@@ -68,6 +68,10 @@ class Notificacion extends Model
         // Tras un NO ACEPTO: se le avisó al cliente que retire sin reparar
         // (pedido del dueño 06-08, junto con el «¿por qué?» de la respuesta).
         'cotizacion.retiro_avisado' => 'Se avisó al cliente: retirar sin reparar',
+        // El equipo quedó listo y el TÉCNICO ya le avisó al cliente por correo
+        // (dueño 07-08). Le importa sobre todo a SALA DE VENTAS: el cliente va a
+        // llegar al mostrador a pagar y retirar.
+        'taller.listo_para_retiro' => 'Se avisó al cliente: equipo listo para retirar',
         // Garantía: salió el correo con el detalle del trabajo (sin cobro) —
         // el par de 'cotizacion.enviada' para que la ruta completa quede en
         // la campanita también cuando no hay cobro (dueño 06-08).
@@ -166,7 +170,7 @@ class Notificacion extends Model
             'taller.ingresado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && (! $this->notificable instanceof OrdenServicio || $this->notificable->esVisiblePara($user)),
             // Detalle de una orden: permiso Y scope de cartera del vendedor.
-            'taller.reparado', 'taller.sin_solucion',
+            'taller.reparado', 'taller.sin_solucion', 'taller.listo_para_retiro',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada',
             'cotizacion.retiro_avisado', 'garantia.detalle_enviado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
@@ -241,7 +245,7 @@ class Notificacion extends Model
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)
                 : route('admin.servicio-tecnico.index'),
             // El origen (morph) es la OrdenServicio: se aterriza en su detalle.
-            'taller.reparado', 'taller.sin_solucion',
+            'taller.reparado', 'taller.sin_solucion', 'taller.listo_para_retiro',
             'cotizacion.enviada', 'cotizacion.respondida', 'cotizacion.autorizada',
             'cotizacion.retiro_avisado', 'garantia.detalle_enviado' => $this->notificable_id
                 ? route('admin.servicio-tecnico.show', $this->notificable_id)

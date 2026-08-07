@@ -92,6 +92,8 @@ class OneShotPlantillasCandadoTest extends TestCase
             'migrations/2026_07_30_100000_limpia_plantillas_taller_terreno_auditoria.php',
             // 06-08: suma {motivo} a cotizacion.respondida (el «¿por qué?» del cliente).
             'migrations/2026_08_06_140100_agrega_motivo_a_plantilla_cotizacion_respondida.php',
+            // 07-08: cotizacion.autorizada deja de hablarle al técnico (aviso de plata).
+            'migrations/2026_08_07_150200_saca_el_tecnico_de_la_plantilla_de_autorizacion.php',
         ];
 
         /** @var array<string, list<array{archivo: string, old: string, new: string}>> */

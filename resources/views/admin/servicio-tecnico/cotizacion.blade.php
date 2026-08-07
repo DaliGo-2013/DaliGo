@@ -91,6 +91,8 @@
                     @endif
                 </div>
             </div>
+
+            @include('admin.servicio-tecnico._listo-retiro')
         @else
             @php
                 $ultima = $cotizaciones->first();
@@ -377,6 +379,8 @@
                 @endif
             </div>
             @endif
+
+            @include('admin.servicio-tecnico._listo-retiro')
         @endif
     </div>
 </x-app-layout>

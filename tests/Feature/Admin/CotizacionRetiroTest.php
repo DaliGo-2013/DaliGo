@@ -15,8 +15,9 @@ use Tests\TestCase;
 
 /**
  * «Pase a retirar su equipo» (dueño 06-08): cuando el cliente NO acepta la
- * cotización, alguien con 'autorizar reparacion' le avisa por correo que puede
- * retirar su máquina sin reparar. Un solo aviso por cotización, solo si el
+ * cotización, el taller ('manage servicio tecnico') o ventas ('autorizar
+ * reparacion') le avisa por correo que puede retirar su máquina sin reparar —
+ * no es plata, es coordinar el retiro. Un solo aviso por cotización, solo si el
  * rechazo sigue siendo la última palabra, y con campanita interna al salir.
  */
 class CotizacionRetiroTest extends TestCase

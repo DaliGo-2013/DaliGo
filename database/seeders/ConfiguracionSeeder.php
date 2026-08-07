@@ -225,6 +225,18 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno cuando, tras un NO ACEPTO, se le avisa al cliente que retire su equipo sin reparar.',
             ],
+            // El técnico avisó al cliente que su equipo está listo. Le importa a
+            // SALA DE VENTAS: el cliente llega al mostrador a pagar y retirar.
+            [
+                'clave' => 'notif_plantilla_taller_listo_para_retiro',
+                'valor' => json_encode([
+                    'asunto' => 'Listo para retirar — Orden {folio} ({cliente})',
+                    'cuerpo' => "A {cliente} se le avisó por correo que su equipo está listo para retirar (orden {folio}).\nEquipo: {equipo}\n{cobro}\nAvisó: {avisado_por}.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a ventas/taller cuando el técnico le dice al cliente que su equipo está listo para retirar (el cobro es en sala de ventas).',
+            ],
             // Garantía: salió el correo con el detalle del trabajo (sin cobro).
             // Es el equivalente de 'cotizacion.enviada' para el caso garantía,
             // así toda la ruta de la máquina queda en la campanita (dueño 06-08).
@@ -246,7 +258,11 @@ class ConfiguracionSeeder extends Seeder
                     // reparacion' lo tienen tambien el tecnico y el vendedor, asi que
                     // atribuia mal la decision. Y «Técnico: puedes proceder» era una
                     // segunda persona dirigida a UNO de los cuatro destinatarios.
-                    'cuerpo' => "{autorizada_por} autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nEquipo: {equipo}\nPago: {pago}.\nEl técnico ya puede proceder con la reparación.",
+                    // Sin la línea «El técnico ya puede proceder»: este aviso es de
+                    // PLATA y va a ventas/admin (ROLES_AVISO_PAGO), y el taller no
+                    // espera esta autorización — repara con la aceptación del
+                    // cliente (dueño 07-08; migración 2026_08_07_150200).
+                    'cuerpo' => "{autorizada_por} autorizó la reparación de la orden {folio} ({cliente}) por {total}.\nEquipo: {equipo}\nPago: {pago}.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',

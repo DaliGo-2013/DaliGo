@@ -57,6 +57,14 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
      */
     public const ROLES_AVISO = ['tecnico', 'jefe_ventas', 'vendedor', 'admin'];
 
+    /**
+     * Avisos de PLATA (el pago de una cotización): sin el técnico. Desde el
+     * 07-08 el taller no coordina cobros —repara con la sola aceptación del
+     * cliente y avisa cuando el equipo está listo—, así que el aviso de
+     * «reparación autorizada / pago registrado» era ruido en su campanita.
+     */
+    public const ROLES_AVISO_PAGO = ['jefe_ventas', 'vendedor', 'admin'];
+
     protected $fillable = [
         'orden_servicio_id',
         'token',
@@ -203,8 +211,10 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
      * su detalle). Los {placeholders} calzan con las plantillas del seeder.
      *
      * @param  array<string, mixed>  $extra  placeholders adicionales (ej. respuesta, enviada_por)
+     * @param  list<string>|null  $roles  a quién avisar (por defecto ROLES_AVISO;
+     *   los avisos de plata usan ROLES_AVISO_PAGO, que excluye al técnico)
      */
-    public function avisarInternos(string $evento, array $extra = []): void
+    public function avisarInternos(string $evento, array $extra = [], ?array $roles = null): void
     {
         $orden = $this->orden;
         // Qué máquina es (tipo + modelo si lo hay): identifica el equipo cotizado.
@@ -220,7 +230,7 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO)->get()->unique('id')
+        User::role($roles ?? self::ROLES_AVISO)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar($evento, $orden, $u, $datos));
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\CotizacionCliente;
 use App\Mail\DetalleTrabajoCliente;
+use App\Mail\EquipoListoParaRetiro;
 use App\Mail\RetiroSinReparacion;
 use App\Mail\SinSolucionCliente;
 use App\Mail\IngresoTallerRecibido;
@@ -1006,6 +1007,80 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * «Tu equipo está listo, pásalo a retirar» (dueño 07-08): el TÉCNICO cierra
+     * su parte avisándole al cliente por correo, con el monto que el cliente
+     * aceptó y la instrucción de pagar en SALA DE VENTAS al retirar. El taller no
+     * coordina plata: manda la cotización, repara si el cliente acepta y avisa.
+     *
+     * Exige la orden en etapa «Reparado»: «está listo» significa trabajo cerrado
+     * con su diagnóstico (eso lo garantiza guardarReparacion). Un aviso por orden
+     * —queda registrado quién y cuándo—, y si el SMTP falla no se estampa nada,
+     * así se puede reintentar.
+     */
+    public function avisarListoParaRetiro(Request $request, OrdenServicio $orden): RedirectResponse
+    {
+        $volver = fn (string $mensaje) => redirect()
+            ->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->with('status', $mensaje);
+
+        if ($orden->estado !== 'reparado') {
+            return $volver('Marca la orden como «Reparado» en Parte del técnico (con la causa de la falla) antes de avisarle al cliente.');
+        }
+        if ($orden->listo_avisado_at) {
+            return $volver('Al cliente ya se le avisó que puede retirar (el '.$orden->listo_avisado_at->format('d-m-Y H:i').').');
+        }
+        if (blank($orden->cliente_email)) {
+            return $volver('La orden no tiene correo del cliente: hay que llamarlo.');
+        }
+
+        // El monto que se cobra es el que el cliente ACEPTÓ (snapshot), no el de
+        // la orden viva. En garantía no hay cobro y la carta lo dice.
+        $aceptada = $orden->cotizaciones()->where('estado', 'aceptada')->latest('id')->first();
+
+        try {
+            Mail::to($orden->cliente_email)->send(new EquipoListoParaRetiro($orden, $aceptada));
+            $ok = true;
+        } catch (\Throwable $e) {
+            report($e);
+            $ok = false;
+        }
+
+        if (! $ok) {
+            return $volver('No se pudo enviar el correo ahora. Revisa el correo del cliente o inténtalo más tarde.');
+        }
+
+        $orden->update([
+            'listo_avisado_at' => now(),
+            'listo_avisado_por' => $request->user()->id,
+            // «Fecha de aviso al cliente» del parte: si estaba vacía, la llena
+            // este aviso (un solo dato, sin escribirlo dos veces).
+            'fecha_aviso' => $orden->fecha_aviso ?? now()->toDateString(),
+        ]);
+
+        // A ventas sobre todo: el cliente va a llegar al mostrador a pagar.
+        $esGarantia = $orden->condicion_efectiva === 'garantia';
+        $equipo = trim($orden->tipo_equipo_label.' '.($orden->modelo ?? ''));
+        $datos = [
+            'folio' => $orden->folio,
+            'cliente' => $orden->cliente_nombre,
+            'equipo' => $equipo !== '' ? $equipo : '—',
+            // {cobro} SIEMPRE relleno: un placeholder sin dato queda crudo.
+            'cobro' => match (true) {
+                $esGarantia => 'Sin costo (garantía).',
+                $aceptada !== null => 'Cobrar en sala de ventas al retiro: $'.number_format((int) $aceptada->costo_total, 0, ',', '.').'.',
+                default => 'Sin cotización aceptada: el cobro se coordina en sala de ventas.',
+            },
+            'avisado_por' => $request->user()->name,
+            'url' => route('admin.servicio-tecnico.show', $orden),
+        ];
+        $dispatcher = app(NotificacionDispatcher::class);
+        User::role(OrdenServicioCotizacion::ROLES_AVISO)->get()->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar('taller.listo_para_retiro', $orden, $u, $datos));
+
+        return $volver("Se le avisó a {$orden->cliente_email} que su equipo está listo para retirar (orden {$orden->folio}).");
+    }
+
+    /**
      * Garantía: envía al cliente el DETALLE del trabajo realizado, SIN cobro.
      * Reemplaza a la cotización cuando el equipo está en garantía vigente: el
      * cliente no paga, solo recibe el resumen de lo que se hizo (trabajo, causa y
@@ -1106,12 +1181,14 @@ class ServicioTecnicoController extends Controller
             'autorizada_por' => $request->user()->id,
         ]);
 
+        // Aviso de PLATA: va a ventas/admin, NO al técnico (dueño 07-08: el taller
+        // no coordina cobros y repara con la sola aceptación del cliente).
         $cotizacion->refresh()->avisarInternos('cotizacion.autorizada', [
             'pago' => $cotizacion->pago_forma_label,
             'autorizada_por' => $request->user()->name,
-        ]);
+        ], OrdenServicioCotizacion::ROLES_AVISO_PAGO);
 
-        return back()->with('status', "Reparación autorizada (orden {$orden->folio}). Se avisó al técnico para proceder.");
+        return back()->with('status', "Pago registrado y reparación autorizada (orden {$orden->folio}).");
     }
 
     /**

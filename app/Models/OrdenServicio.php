@@ -211,6 +211,9 @@ class OrdenServicio extends Model implements AuditableContract
         'descuento_motivo',
         'fecha_aviso',
         'fecha_retiro',
+        // El técnico le avisó al cliente que su equipo está listo (dueño 07-08).
+        'listo_avisado_at',
+        'listo_avisado_por',
         'fuente',
         'confirmada_at',
         'recibida_por',
@@ -224,6 +227,7 @@ class OrdenServicio extends Model implements AuditableContract
             'garantia_doc_fecha' => 'date',
             'fecha_aviso' => 'date',
             'fecha_retiro' => 'date',
+            'listo_avisado_at' => 'datetime',
             'confirmada_at' => 'datetime',
             'traslado_recibida_at' => 'datetime',
             'mano_obra' => 'integer',
@@ -441,6 +445,16 @@ class OrdenServicio extends Model implements AuditableContract
     public function getUltimaCotizacionAttribute(): ?OrdenServicioCotizacion
     {
         return $this->cotizaciones()->latest('id')->first();
+    }
+
+    /**
+     * Quien le aviso al cliente que su equipo estaba listo para retirar.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function listoAvisadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'listo_avisado_por');
     }
 
     /**

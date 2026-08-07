@@ -232,14 +232,20 @@ Route::middleware('auth')
                 ->name('servicio-tecnico.informe.industrial');
         });
 
-        // Autorizar la reparación tras coordinar el pago: vendedor/jefe_ventas/
-        // tecnico/admin (permiso propio; NO exige 'manage', que es solo del taller).
+        // Registrar el pago y autorizar: SOLO quien coordina plata — vendedor/
+        // jefe_ventas/admin (permiso propio). El técnico ya no lo tiene (dueño
+        // 07-08): el taller repara con la aceptación del cliente y el cobro es
+        // en sala de ventas al retiro.
         Route::middleware('permission:autorizar reparacion')->group(function () {
             Route::post('servicio-tecnico/{orden}/cotizacion/autorizar', [ServicioTecnicoController::class, 'autorizarReparacion'])
                 ->whereNumber('orden')->name('servicio-tecnico.cotizacion.autorizar');
-            // El otro desenlace de la respuesta del cliente: NO aceptó → avisarle
-            // por correo que puede pasar a retirar sin reparar (dueño 06-08).
-            // Misma audiencia que autorizar: es quien cierra la conversación.
+        });
+
+        // El otro desenlace de la respuesta del cliente: NO aceptó → avisarle por
+        // correo que puede pasar a retirar sin reparar (dueño 06-08). No es plata,
+        // es coordinar el retiro: lo manda el taller ('manage') o ventas
+        // ('autorizar reparacion'), quien llegue primero desde la campanita.
+        Route::middleware('permission:manage servicio tecnico|autorizar reparacion')->group(function () {
             Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/avisar-retiro', [ServicioTecnicoController::class, 'avisarRetiroSinReparar'])
                 ->whereNumber('orden')->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.avisar-retiro');
         });
@@ -398,6 +404,11 @@ Route::middleware('auth')
             // Garantía: enviar al cliente el DETALLE del trabajo (sin cobro).
             Route::post('servicio-tecnico/{orden}/detalle-trabajo', [ServicioTecnicoController::class, 'enviarDetalleTrabajo'])
                 ->whereNumber('orden')->name('servicio-tecnico.detalle-trabajo.enviar');
+            // El técnico cierra su parte: le avisa al cliente que su equipo está
+            // listo y que pague en sala de ventas al retirar (dueño 07-08). Va en
+            // 'manage' —es del taller—, NO en 'autorizar reparacion' (plata).
+            Route::post('servicio-tecnico/{orden}/listo-para-retiro', [ServicioTecnicoController::class, 'avisarListoParaRetiro'])
+                ->whereNumber('orden')->name('servicio-tecnico.listo-para-retiro');
 
             // Registrar ingreso (crear) queda en 'manage': el técnico SÍ registra
             // equipos. Editar la recepción y eliminar se separan abajo.

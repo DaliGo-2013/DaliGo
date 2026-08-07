@@ -148,8 +148,13 @@ class RolesAndPermissionsSeeder extends Seeder
             ->givePermissionTo(['crear lote servicio', 'confirmar entrega']);
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
         // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
+        // NO lleva 'autorizar reparacion' (decision del dueño 07-08): el taller no
+        // coordina plata — manda la cotizacion, repara si el cliente acepta y avisa
+        // que el equipo esta listo; el cobro es en sala de ventas al retiro. Sacarlo
+        // de esta lista NO revoca nada en una base ya sembrada: eso lo hace la
+        // migracion 2026_08_07_150100.
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores']);
+            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'ver informe dispensadores']);
         // El tecnico INDUSTRIAL trabaja en terreno (plantas de osmosis,
         // llenadoras, lavadoras en el cliente): gestiona su agenda (agenda,
         // edita y marca lo realizado desde el calendario) e instalaciones. Es un

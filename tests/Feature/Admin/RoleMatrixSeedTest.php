@@ -52,7 +52,10 @@ class RoleMatrixSeedTest extends TestCase
             'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'despachar traslado servicio'],
             'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio', 'manage devoluciones', 'simular carga', 'autorizar carga'],
             'conductor' => ['crear lote servicio', 'confirmar entrega'],
-            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'autorizar reparacion', 'ver informe dispensadores'],
+            // Sin 'autorizar reparacion' (dueño 07-08): el taller no coordina plata
+            // — manda la cotización, repara si el cliente acepta y avisa que el
+            // equipo está listo; el cobro es en sala de ventas al retiro.
+            'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'ver informe dispensadores'],
             'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
             'soplador' => ['report production'],
             // Jefe de logística (2026-08-04): nace con el módulo LOGÍSTICA.

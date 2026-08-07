@@ -294,8 +294,12 @@
                     @endforeach
                 </ul>
 
-                {{-- Pago + autorización de la reparación (cotización aceptada). --}}
-                @if ($dgAceptada)
+                {{-- Pago + autorización de la reparación (cotización aceptada).
+                     SOLO para quien coordina plata (ventas/admin): desde el 07-08 el
+                     técnico no ve pagos —manda la cotización, repara si el cliente
+                     acepta y avisa que está listo—, y el cobro es en sala de ventas
+                     al retiro. El permiso 'autorizar reparacion' ya no lo tiene. --}}
+                @if ($dgAceptada && auth()->user()->can('autorizar reparacion'))
                     <div class="mt-4 border-t border-neutral-100 pt-4">
                         @if ($dgAceptada->esta_autorizada)
                             {{-- Ya autorizada: info del pago visible para todo el equipo. --}}
@@ -312,9 +316,11 @@
                                        class="mt-1 inline-block font-medium text-brand-600 underline">Ver comprobante de pago</a>
                                 @endif
                             </div>
-                        @elseif (auth()->user()->can('autorizar reparacion'))
-                            {{-- Pendiente de autorizar: ventas coordina el pago y autoriza. --}}
-                            <p class="text-sm font-medium text-neutral-700">El cliente aceptó. Coordina el pago y autoriza la reparación:</p>
+                        @else
+                            {{-- Pendiente: ventas registra el pago cuando lo cobra. NO es
+                                 una llave para el taller — el técnico repara con la sola
+                                 aceptación del cliente (dueño 07-08). --}}
+                            <p class="text-sm font-medium text-neutral-700">El cliente aceptó. Registra el pago cuando lo cobres:</p>
                             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.autorizar', $orden) }}"
                                   enctype="multipart/form-data" class="mt-3 space-y-3" data-una-vez>
                                 @csrf
@@ -344,14 +350,22 @@
                                                 placeholder="Ej. pagó 50% ahora, resto al retiro">{{ old('pago_nota') }}</x-textarea>
                                 </div>
                                 <div>
-                                    <x-primary-button>Autorizar reparación</x-primary-button>
-                                    <span class="ml-2 text-xs text-neutral-400">Avisa al técnico para proceder. La info del pago la verá todo el equipo.</span>
+                                    <x-primary-button>Registrar pago y autorizar</x-primary-button>
+                                    <span class="ml-2 text-xs text-neutral-400">Queda como respaldo del cobro; el taller no espera este paso.</span>
                                 </div>
                             </form>
-                        @else
-                            <p class="text-sm text-neutral-500">El cliente aceptó. Pendiente de que ventas coordine el pago y autorice la reparación.</p>
                         @endif
                     </div>
+                @endif
+
+                {{-- Para el TALLER (sin permiso de plata): la aceptación del cliente ES
+                     la luz verde. Antes decía «pendiente de que ventas coordine el pago
+                     y autorice», y el técnico se quedaba esperando de gusto. --}}
+                @if ($dgAceptada && ! auth()->user()->can('autorizar reparacion'))
+                    <p class="mt-4 border-t border-neutral-100 pt-4 text-sm text-neutral-600">
+                        <span class="font-medium text-neutral-800">El cliente aceptó: ya puedes reparar.</span>
+                        El pago lo cobra sala de ventas cuando venga a retirar.
+                    </p>
                 @endif
 
                 {{-- El otro desenlace: la ÚLTIMA cotización fue rechazada → avisar al
@@ -369,7 +383,9 @@
                                     (avisó {{ $dgUltima->retiroAvisadoPor?->name ?? '—' }}).
                                 </p>
                             </div>
-                        @elseif (auth()->user()->can('autorizar reparacion'))
+                        @elseif (auth()->user()->canAny(['manage servicio tecnico', 'autorizar reparacion']))
+                            {{-- No es plata: coordinar el retiro lo hace el taller o ventas
+                                 (mismo gate que la ruta), quien llegue primero del aviso. --}}
                             <p class="text-sm font-medium text-neutral-700">El cliente no aceptó la reparación. Avísale por correo que puede pasar a retirar su equipo:</p>
                             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.avisar-retiro', [$orden, $dgUltima->id]) }}"
                                   class="mt-3" data-una-vez

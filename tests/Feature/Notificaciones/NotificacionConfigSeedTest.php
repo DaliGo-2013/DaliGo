@@ -28,6 +28,8 @@ class NotificacionConfigSeedTest extends TestCase
         // Dueño 06-08 · retiro sin reparar + detalle de garantía
         'notif_plantilla_cotizacion_retiro_avisado',
         'notif_plantilla_garantia_detalle_enviado',
+        // Dueño 07-08 · el técnico avisa que el equipo está listo (cobra ventas)
+        'notif_plantilla_taller_listo_para_retiro',
         // Agenda de terreno · solicitud por coordinar + confirmación del cliente
         'notif_plantilla_terreno_solicitada',
         'notif_plantilla_terreno_confirmada',

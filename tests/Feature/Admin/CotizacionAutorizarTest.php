@@ -67,13 +67,47 @@ class CotizacionAutorizarTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_vendedor_jefe_ventas_y_tecnico_pueden_autorizar(): void
+    public function test_ventas_puede_autorizar(): void
     {
-        foreach (['vendedor', 'jefe_ventas', 'tecnico'] as $rol) {
+        foreach (['vendedor', 'jefe_ventas'] as $rol) {
             $orden = $this->ordenConCotizacionAceptada();
             $this->autorizar($orden, user: $this->conRol($rol))->assertRedirect();
             $this->assertTrue($orden->cotizaciones()->where('estado', 'aceptada')->first()->esta_autorizada, "falló para {$rol}");
         }
+    }
+
+    public function test_el_tecnico_ya_no_coordina_plata(): void
+    {
+        // Dueño 07-08: el taller no toca pagos — manda la cotización, repara si el
+        // cliente acepta y avisa que el equipo está listo. El cobro es en sala de
+        // ventas al retiro, así que 'autorizar reparacion' se le quitó al rol.
+        // (Antes este mismo caso estaba en la lista de roles que SÍ podían.)
+        $orden = $this->ordenConCotizacionAceptada();
+
+        $this->autorizar($orden, user: $this->conRol('tecnico'))->assertForbidden();
+
+        $this->assertSame(0, $orden->cotizaciones()->whereNotNull('autorizada_at')->count());
+    }
+
+    public function test_la_ficha_no_le_muestra_pagos_al_tecnico_y_le_dice_que_ya_puede_reparar(): void
+    {
+        $orden = $this->ordenConCotizacionAceptada();
+
+        // El técnico: cero plata en pantalla, y la luz verde explícita.
+        $this->actingAs($this->conRol('tecnico'))
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('El cliente aceptó: ya puedes reparar')
+            ->assertDontSee('Forma de pago')
+            ->assertDontSee('Comprobante');
+
+        // Ventas: sí ve el bloque para registrar el pago. Se usa jefatura porque
+        // el vendedor solo ve las órdenes de SU cartera (esta no tiene vendedor).
+        $this->actingAs($this->conRol('jefe_ventas'))
+            ->get(route('admin.servicio-tecnico.show', $orden))
+            ->assertOk()
+            ->assertSee('Forma de pago')
+            ->assertDontSee('El cliente aceptó: ya puedes reparar');
     }
 
     // --- Registro del pago ---
@@ -118,19 +152,22 @@ class CotizacionAutorizarTest extends TestCase
 
     // --- Aviso interno ---
 
-    public function test_autorizar_avisa_al_tecnico_y_a_ventas(): void
+    public function test_el_aviso_del_pago_va_a_ventas_y_no_al_tecnico(): void
     {
+        // Es un aviso de PLATA (ROLES_AVISO_PAGO): al técnico le era ruido, y su
+        // texto decía «el técnico ya puede proceder» cuando en realidad ya podía
+        // desde que el cliente aceptó (dueño 07-08).
         $tecnico = $this->conRol('tecnico');
         $jefe = $this->conRol('jefe_ventas');
         $orden = $this->ordenConCotizacionAceptada();
 
         $this->autorizar($orden, user: $this->conRol('vendedor'));
 
-        foreach ([$tecnico, $jefe] as $u) {
-            $this->assertSame(1, Notificacion::where('user_id', $u->id)
-                ->where('evento', 'cotizacion.autorizada')
-                ->where('canal', Notificacion::CANAL_DATABASE)->count(), "falta campanita de {$u->name}");
-        }
+        $this->assertSame(1, Notificacion::where('user_id', $jefe->id)
+            ->where('evento', 'cotizacion.autorizada')
+            ->where('canal', Notificacion::CANAL_DATABASE)->count(), 'jefatura de ventas debe enterarse del pago');
+        $this->assertSame(0, Notificacion::where('user_id', $tecnico->id)
+            ->where('evento', 'cotizacion.autorizada')->count(), 'el técnico no recibe avisos de plata');
     }
 
     // --- Guardas ---
