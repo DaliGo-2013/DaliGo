@@ -6,6 +6,9 @@ use App\Mail\CotizacionCliente;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\OrdenServicioCotizacion;
+use App\Models\Precio;
+use App\Models\Producto;
+use App\Models\TiempoReparacion;
 use App\Models\User;
 use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -148,6 +151,102 @@ class CotizacionEnviarTest extends TestCase
 
         $this->assertSame(0, OrdenServicioCotizacion::count());
         Mail::assertNothingSent();
+    }
+
+    public function test_el_boton_enviar_guarda_los_precios_de_la_pantalla_y_manda_eso(): void
+    {
+        // Dueño 07-08: «Enviar» quedó al lado de «Guardar», así que es un submit
+        // del MISMO formulario (enviar=1). Tiene que guardar primero: lo que sale
+        // al cliente es lo de la pantalla, no el snapshot viejo — con los botones
+        // pegados, mandar precios viejos sin darse cuenta era demasiado fácil.
+        $orden = $this->ordenCotizable();
+        $orden->repuestos()->delete();
+        $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 4000]);
+        // Mano de obra fija del catálogo (como en producción): 1,5 h × $4.000.
+        Precio::factory()->create([
+            'producto_id' => Producto::factory()->create(['sku' => config('servicio_tecnico.sku_hora_servicio')])->id,
+            'precio_con_iva' => 4000,
+        ]);
+        TiempoReparacion::create(['trabajo' => $orden->trabajo_realizado, 'horas' => 1.5, 'activo' => true]);
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
+                'enviar' => '1',
+                'descuento_pct' => 0,
+                // El técnico acaba de corregir el precio en pantalla: 4000 → 7000.
+                'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
+            ])
+            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
+
+        $c = OrdenServicioCotizacion::first();
+        $this->assertNotNull($c, 'El botón «Enviar» debe crear la cotización, no solo guardar.');
+        $this->assertSame(7000, $c->repuestos[0]['precio_unitario']); // el precio NUEVO, no el viejo
+        $this->assertSame(6000, (int) $c->mano_obra);                 // la mano de obra fija sobrevive
+        $this->assertSame(13000, (int) $c->costo_total);
+        Mail::assertSent(CotizacionCliente::class, fn ($m) => $m->hasTo('cliente@example.com'));
+    }
+
+    public function test_guardar_sin_el_boton_enviar_no_manda_nada(): void
+    {
+        // El mismo formulario sin enviar=1 solo guarda: dos botones vecinos, dos
+        // efectos bien distintos.
+        $orden = $this->ordenCotizable();
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
+                'descuento_pct' => 0,
+                'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(0, OrdenServicioCotizacion::count());
+        Mail::assertNothingSent();
+    }
+
+    public function test_enviar_con_todo_en_cero_no_crea_cotizacion_y_lo_guardado_queda(): void
+    {
+        // Sin repuestos ni mano de obra el envío no procede, pero el guardado sí:
+        // el técnico no pierde lo que escribió (mensaje explicativo en pantalla).
+        $orden = OrdenServicio::factory()->create([
+            'estado' => 'cotizacion', 'facturacion' => 'reparacion',
+            'cliente_email' => 'x@example.com', 'mano_obra' => 0,
+        ]);
+
+        $this->actingAs($this->tecnico())
+            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), ['enviar' => '1', 'descuento_pct' => 0])
+            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertSessionHas('status', fn (string $s) => str_contains($s, '$0'));
+
+        $this->assertSame(0, OrdenServicioCotizacion::count());
+        Mail::assertNothingSent();
+    }
+
+    public function test_los_dos_botones_van_juntos_y_la_tarjeta_de_envio_no_ocupa_espacio_de_mas(): void
+    {
+        // Candado de layout (dueño 07-08): «Enviar» y «Guardar» en la MISMA fila
+        // del formulario, y sin nada enviado la tarjeta de constancia no se dibuja.
+        $orden = $this->ordenCotizable();
+
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('Enviar cotización')
+            ->assertDontSee('Enviada al cliente')   // nada enviado todavía → sin tarjeta
+            ->getContent();
+
+        // El botón de enviar es un submit del formulario que GUARDA (el del
+        // @method PUT), no un <form> aparte: si alguien lo vuelve a separar en su
+        // propia tarjeta, esto se cae.
+        $enviar = strpos($html, 'name="enviar"');
+        $this->assertNotFalse($enviar, 'Falta el botón «Enviar» dentro del formulario de guardar.');
+
+        $abre = strrpos(substr($html, 0, $enviar), '<form');
+        $tramo = substr($html, $abre, $enviar - $abre);
+        $this->assertStringContainsString('PUT', $tramo, 'El botón «Enviar» debe vivir en el formulario que guarda (PUT).');
+        $this->assertStringNotContainsString('</form>', $tramo, 'Volvieron a separar el botón en su propio formulario.');
+
+        $guardar = strpos($html, 'Guardar cotización');
+        $this->assertGreaterThan($enviar, $guardar, '«Enviar» va a la izquierda de «Guardar», en la misma fila.');
     }
 
     public function test_enviar_desde_una_etapa_previa_pasa_la_orden_a_cotizacion(): void

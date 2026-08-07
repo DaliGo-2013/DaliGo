@@ -92,6 +92,18 @@
                 </div>
             </div>
         @else
+            @php
+                $ultima = $cotizaciones->first();
+                // Qué falta para poder enviar (espejo de la validación del server).
+                // Las etapas PREVIAS ya no bloquean: al enviar, la orden pasa sola a
+                // «Cotización» (dueño 06-08). El total en $0 tampoco: el botón vive
+                // dentro del formulario y se habilita con el total EN PANTALLA
+                // (x-bind:disabled), porque enviar guarda primero.
+                $faltas = collect([
+                    in_array($orden->estado, ['recibido', 'en_revision', 'cotizacion'], true) ? null : 'la orden ya pasó la etapa de cotización (para re-cotizar, vuélvela a «Cotización» en Parte del técnico)',
+                    blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
+                ])->filter();
+            @endphp
             {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
             <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
                   class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8" data-una-vez
@@ -288,76 +300,71 @@
                     </div>
                 @endif
 
-                <div class="mt-5 flex items-center justify-end border-t border-neutral-100 pt-5">
-                    <x-primary-button>
-                        <x-icon.check class="h-4 w-4" /> Guardar cotización
-                    </x-primary-button>
+                {{-- Los dos botones en la MISMA fila (dueño 07-08: no gastar una
+                     tarjeta entera en el envío). «Enviar» es submit de ESTE
+                     formulario con enviar=1: guarda y manda en un paso, así lo que
+                     sale es lo que está en pantalla — pegado a «Guardar», mandar el
+                     snapshot viejo sin darse cuenta era demasiado fácil. Queda
+                     secundario a propósito: sale un correo al cliente, no debe
+                     pesar lo mismo que guardar. --}}
+                <div class="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-neutral-100 pt-5">
+                    {{-- La ayuda ocupa el hueco de la izquierda (mr-auto): si no cabe,
+                         se parte ELLA. Los dos botones van en su propio flex para que
+                         nunca se separen — es justo lo que pidió el dueño. --}}
+                    <p class="mr-auto max-w-sm text-xs text-neutral-400">
+                        @if ($faltas->isEmpty())
+                            «Enviar» guarda y manda la carta a {{ $orden->cliente_email }}.
+                            @if ($ultima && $ultima->estado === 'enviada') Reemplaza la anterior. @endif
+                        @else
+                            Para enviarla al cliente: {{ $faltas->implode('; ') }}.
+                        @endif
+                    </p>
+                    <div class="flex items-center gap-2">
+                        @if ($faltas->isEmpty())
+                            <x-secondary-button type="submit" name="enviar" value="1"
+                                                x-bind:disabled="total <= 0"
+                                                x-bind:title="total <= 0 ? 'Pon precios antes de enviar' : ''"
+                                                x-on:click="if (! confirm('Se guardará y se enviará la cotización por ' + clp(total) + ' a ' + {{ Js::from($orden->cliente_email) }} + '. ¿Continuar?')) $event.preventDefault()">
+                                {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Enviar cotización nueva' : 'Enviar cotización' }}
+                            </x-secondary-button>
+                        @endif
+                        <x-primary-button>
+                            <x-icon.check class="h-4 w-4" /> Guardar cotización
+                        </x-primary-button>
+                    </div>
                 </div>
             </form>
 
-            {{-- ===== Envío al cliente + historial (P-M12-02) =====
-                 Usa lo GUARDADO (snapshot), no lo que esté a medio editar. --}}
-            @php $ultima = $cotizaciones->first(); @endphp
-            <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="text-sm font-semibold text-neutral-900">Cotización al cliente</h3>
-                    @if ($ultima)
-                        <x-badge :variant="$ultima->estado_variante">{{ $ultima->estado_label }}</x-badge>
-                    @endif
+            {{-- ===== Lo ya enviado al cliente (P-M12-02) =====
+                 El botón de enviar vive arriba, junto a «Guardar»: esta tarjeta es
+                 solo la constancia de lo que salió, así que si nunca se envió nada
+                 NO se dibuja (dueño 07-08: la pantalla no debe ser tan extensa). --}}
+            @if ($ultima)
+            <div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-sm font-semibold text-neutral-900">Enviada al cliente</h3>
+                    <x-badge :variant="$ultima->estado_variante">{{ $ultima->estado_label }}</x-badge>
+                    <span class="text-sm text-neutral-600">
+                        {{ $ultima->created_at->format('d-m-Y H:i') }} · ${{ number_format((int) $ultima->costo_total, 0, ',', '.') }}
+                        · {{ $ultima->cliente_email }}@if ($ultima->respondida_at) · respondida el {{ $ultima->respondida_at->format('d-m-Y H:i') }}@endif
+                    </span>
                 </div>
 
-                @if ($ultima)
-                    <p class="mt-2 text-sm text-neutral-600">
-                        Última: enviada el {{ $ultima->created_at->format('d-m-Y H:i') }}
-                        a {{ $ultima->cliente_email }} por
-                        <span class="font-semibold">${{ number_format((int) $ultima->costo_total, 0, ',', '.') }}</span>@if ($ultima->respondida_at) · respondida el {{ $ultima->respondida_at->format('d-m-Y H:i') }}@endif.
-                    </p>
-                    {{-- El «¿por qué?» que escribió el cliente al responder (dueño 06-08). --}}
-                    @if (filled($ultima->respuesta_motivo))
-                        <p class="mt-1 text-sm italic text-neutral-500">Motivo del cliente: «{{ $ultima->respuesta_motivo }}»</p>
-                    @endif
-                    @if (! $ultima->correo_enviado_at && $ultima->esRespondible())
-                        <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.reintentar', [$orden, $ultima->id]) }}" class="mt-3" data-una-vez>
-                            @csrf
-                            <x-secondary-button type="submit">Reintentar correo</x-secondary-button>
-                            <span class="ml-2 text-xs text-red-600">El correo no salió al enviarla.</span>
-                        </form>
-                    @endif
+                {{-- El «¿por qué?» que escribió el cliente al responder (dueño 06-08). --}}
+                @if (filled($ultima->respuesta_motivo))
+                    <p class="mt-1.5 text-sm italic text-neutral-500">Motivo del cliente: «{{ $ultima->respuesta_motivo }}»</p>
                 @endif
-
-                @php
-                    // Qué falta para poder enviar (espejo de la validación del server).
-                    // Etapas previas ya NO bloquean: al enviar, la orden pasa sola a
-                    // «Cotización» (dueño 06-08). Solo frenan las etapas posteriores.
-                    $faltas = collect([
-                        in_array($orden->estado, ['recibido', 'en_revision', 'cotizacion'], true) ? null : 'la orden ya pasó la etapa de cotización (para re-cotizar, vuélvela a «Cotización» en Parte del técnico)',
-                        blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
-                        (int) $orden->costo_total <= 0 ? 'lo guardado suma $0 (pon precios arriba y guarda la cotización)' : null,
-                    ])->filter();
-                @endphp
-                <div class="mt-4">
-                    @if ($faltas->isEmpty())
-                        <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.enviar', $orden) }}" data-una-vez
-                              onsubmit="return confirm('Se enviará la cotización GUARDADA por ${{ number_format((int) $orden->costo_total, 0, ',', '.') }} a {{ $orden->cliente_email }}. ¿Continuar?');">
-                            @csrf
-                            <x-primary-button type="submit">
-                                {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Enviar cotización nueva' : 'Enviar cotización' }}
-                            </x-primary-button>
-                        </form>
-                        <p class="mt-2 text-xs text-neutral-400">
-                            Se envía lo último <span class="font-medium">guardado</span> (guarda arriba antes de enviar).
-                            El cliente responde ACEPTO / NO ACEPTO por un link — puede escribir el porqué — y el aviso llega a taller y ventas.
-                            @if (in_array($orden->estado, ['recibido', 'en_revision'], true)) Al enviar, la orden pasa sola a etapa «Cotización». @endif
-                            @if ($ultima && $ultima->estado === 'enviada') Enviar una nueva reemplaza la anterior. @endif
-                        </p>
-                    @else
-                        <p class="text-sm text-neutral-500">Para enviar la cotización: {{ $faltas->implode('; ') }}.</p>
-                    @endif
-                </div>
+                @if (! $ultima->correo_enviado_at && $ultima->esRespondible())
+                    <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.reintentar', [$orden, $ultima->id]) }}" class="mt-3" data-una-vez>
+                        @csrf
+                        <x-secondary-button type="submit">Reintentar correo</x-secondary-button>
+                        <span class="ml-2 text-xs text-red-600">El correo no salió al enviarla.</span>
+                    </form>
+                @endif
 
                 {{-- Historial (re-envíos y respuestas anteriores) --}}
                 @if ($cotizaciones->count() > 1)
-                    <div class="mt-4 border-t border-neutral-100 pt-3">
+                    <div class="mt-3 border-t border-neutral-100 pt-3">
                         <p class="text-xs font-medium uppercase tracking-wide text-neutral-400">Historial</p>
                         <ul class="mt-1.5 space-y-1">
                             @foreach ($cotizaciones->slice(1) as $c)
@@ -369,6 +376,7 @@
                     </div>
                 @endif
             </div>
+            @endif
         @endif
     </div>
 </x-app-layout>

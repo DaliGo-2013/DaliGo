@@ -689,6 +689,17 @@ class ServicioTecnicoController extends Controller
             ]);
         }
 
+        // El botón «Enviar cotización» vive DENTRO de este formulario (dueño
+        // 07-08: los dos botones en la misma fila), así que envía con enviar=1 y
+        // aquí se guarda primero y se manda después: lo que sale al cliente es lo
+        // que estaba en pantalla. Pegado a «Guardar», mandar el snapshot anterior
+        // sin darse cuenta era demasiado fácil. Si el envío no procede (etapa
+        // posterior, sin correo, total $0), enviarCotizacion lo explica y lo
+        // guardado no se pierde.
+        if ($request->boolean('enviar')) {
+            return $this->enviarCotizacion($request, $orden->fresh());
+        }
+
         $total = '$'.number_format((int) $orden->fresh()->costo_total, 0, ',', '.');
 
         return redirect()->route('admin.servicio-tecnico.cotizacion', $orden)
@@ -879,12 +890,20 @@ class ServicioTecnicoController extends Controller
      * firmado de respuesta y avisa a los roles internos. El correo es acción
      * secundaria (try/catch): si el SMTP falla, la cotización queda registrada
      * con `correo_enviado_at` null y aparece el botón "Reintentar".
+     *
+     * Aterriza SIEMPRE en la pestaña Cotización (no `back()`): desde 07-08 el
+     * botón es un submit del formulario de guardar, y ese POST puede llegar sin
+     * cabecera Referer — con `back()` el usuario caería en el Inicio.
      */
     public function enviarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        $volver = fn (string $mensaje) => redirect()
+            ->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->with('status', $mensaje);
+
         // Mismas condiciones que habilitan el botón (defensa server-side).
         if ($orden->condicion_efectiva !== 'reparacion') {
-            return back()->with('status', 'Equipo en garantía vigente: no se cotiza (no hay cobro).');
+            return $volver('Equipo en garantía vigente: no se cotiza (no hay cobro).');
         }
         // Etapas PREVIAS: enviar la cotización ES pasar el presupuesto, así que
         // la orden salta sola a «Cotización» (dueño 06-08: antes había que
@@ -894,13 +913,13 @@ class ServicioTecnicoController extends Controller
             $orden->update(['estado' => 'cotizacion']);
         }
         if ($orden->estado !== 'cotizacion') {
-            return back()->with('status', 'La orden ya pasó la etapa de cotización: para re-cotizar, vuélvela a «Cotización» en Parte del técnico.');
+            return $volver('La orden ya pasó la etapa de cotización: para re-cotizar, vuélvela a «Cotización» en Parte del técnico.');
         }
         if (blank($orden->cliente_email)) {
-            return back()->with('status', 'La orden no tiene correo del cliente: agrégalo en los datos de recepción.');
+            return $volver('La orden no tiene correo del cliente: agrégalo en los datos de recepción.');
         }
         if ((int) $orden->costo_total <= 0) {
-            return back()->with('status', 'La cotización guardada está en $0: registra repuestos o mano de obra y guarda.');
+            return $volver('La cotización está en $0: pon los precios de los repuestos y vuelve a enviar.');
         }
 
         $cotizacion = OrdenServicioCotizacion::crearDesde($orden->load('repuestos'), $request->user());
@@ -909,7 +928,7 @@ class ServicioTecnicoController extends Controller
 
         $cotizacion->avisarInternos('cotizacion.enviada', ['enviada_por' => $request->user()->name]);
 
-        return back()->with('status', $correoOk
+        return $volver($correoOk
             ? "Cotización enviada a {$cotizacion->cliente_email} (orden {$orden->folio})."
             : 'La cotización quedó registrada, pero el correo NO salió. Usa «Reintentar correo».');
     }
