@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Aprobacion;
 use App\Models\Bodega;
+use App\Models\BodegaTraslado;
 use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\Despacho;
@@ -38,6 +39,7 @@ class AuditController extends Controller
         Cliente::class => 'Cliente',
         ListaPrecio::class => 'Lista de precios',
         Bodega::class => 'Bodega',
+        BodegaTraslado::class => 'Orden de traslado de bodega',
         ProduccionReporte::class => 'Reporte de producción',
         Maquina::class => 'Máquina',
         TipoBotellon::class => 'Tipo de botellón',

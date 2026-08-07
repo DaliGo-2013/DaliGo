@@ -180,6 +180,23 @@ Route::middleware('auth')
         // sucursales` — administrar la estructura de bodegas es el mismo acto
         // que administrar sucursales, sin permiso nuevo (leccion M13: la
         // matriz de roles no se toca).
+        // El wizard de baja + la orden de traslado (M04-F2, P-M04-20) van con
+        // el MISMO permiso que la clasificacion. Las rutas con literal
+        // ('traslados', 'baja') se declaran ANTES del resource y las
+        // parametricas llevan whereNumber — doble candado idiomatico
+        // (vehiculos/excel).
+        Route::middleware('permission:manage sucursales')->group(function () {
+            Route::get('bodegas/traslados/{traslado}', [\App\Http\Controllers\Admin\BodegaTrasladoController::class, 'show'])
+                ->whereNumber('traslado')->name('bodegas.traslados.show');
+            Route::get('bodegas/traslados/{traslado}/excel', [\App\Http\Controllers\Admin\BodegaTrasladoController::class, 'excel'])
+                ->whereNumber('traslado')->name('bodegas.traslados.excel');
+            Route::post('bodegas/traslados/{traslado}/anular', [\App\Http\Controllers\Admin\BodegaTrasladoController::class, 'anular'])
+                ->whereNumber('traslado')->name('bodegas.traslados.anular');
+            Route::get('bodegas/{bodega}/baja', [BodegaController::class, 'baja'])
+                ->whereNumber('bodega')->name('bodegas.baja');
+            Route::post('bodegas/{bodega}/baja', [BodegaController::class, 'bajaStore'])
+                ->whereNumber('bodega')->name('bodegas.baja.store');
+        });
         Route::resource('bodegas', BodegaController::class)
             ->middleware('permission:manage productos')
             ->only(['index', 'show']);

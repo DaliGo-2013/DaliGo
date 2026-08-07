@@ -443,6 +443,28 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso interno (quienes administran sucursales) cuando el sync adopta una bodega creada en Bsale (M04).',
             ],
+            // M04-F2 (P-M04-20): el ciclo de la baja con traslado. Claves
+            // nuevas → firstOrCreate en el deploy, sin one-shot.
+            [
+                'clave' => 'notif_plantilla_bodega_baja_completada',
+                'valor' => json_encode([
+                    'asunto' => 'Baja completada: {bodega} quedó vacía',
+                    'cuerpo' => "El espejo confirmó stock 0 en {bodega}: la baja que pediste se completó sola.\nLa orden de traslado #{orden} (hacia {destino}) quedó marcada como completada.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al solicitante cuando el sync confirma stock 0 en una bodega en baja y la orden de traslado se completa sola (M04-F2).',
+            ],
+            [
+                'clave' => 'notif_plantilla_bodega_stock_en_baja',
+                'valor' => json_encode([
+                    'asunto' => 'Llegó stock a {bodega}, que está en baja',
+                    'cuerpo' => "{bodega} está en proceso de baja (orden #{orden} hacia {destino}) y el espejo detectó stock NUEVO por encima de la foto de la orden.\nLa bodega NO vuelve a operación sola: revisa la orden y decide si trasladas también lo nuevo o anulas la baja.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al solicitante cuando llega stock a una bodega en proceso de baja (una sola vez por orden; M04-F2).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

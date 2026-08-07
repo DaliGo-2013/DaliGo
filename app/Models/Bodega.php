@@ -72,17 +72,24 @@ class Bodega extends Model implements AuditableContract
 
     /**
      * El contrato para todo selector/pantalla OPERATIVA futura: las bodegas
-     * dadas de baja o fuera de operación (las 6 muertas de D-003) no aparecen.
-     * La pantalla admin de bodegas NO lo usa: ahí se administran todas.
+     * dadas de baja, EN PROCESO de baja (F2) o fuera de operación (las 6
+     * muertas de D-003) no aparecen. `pendiente_traslado` sale por
+     * `estado_baja` sin tocar `en_operacion`: si la orden se anula, la
+     * bodega vuelve sola. La pantalla admin NO lo usa: ahí se administran todas.
      */
     public function scopeEnOperacion($query)
     {
-        return $query->where('en_operacion', true);
+        return $query->where('en_operacion', true)->whereNull('estado_baja');
     }
 
     public function scopeDeSucursal($query, int $sucursalId)
     {
         return $query->where('sucursal_id', $sucursalId);
+    }
+
+    public function enBaja(): bool
+    {
+        return $this->estado_baja !== null;
     }
 
     public function sucursal(): BelongsTo
@@ -94,5 +101,11 @@ class Bodega extends Model implements AuditableContract
     public function stocks(): HasMany
     {
         return $this->hasMany(Stock::class, 'bodega_id');
+    }
+
+    /** Órdenes de traslado donde esta bodega es el ORIGEN (wizard de baja, F2). */
+    public function traslados(): HasMany
+    {
+        return $this->hasMany(BodegaTraslado::class, 'bodega_id');
     }
 }

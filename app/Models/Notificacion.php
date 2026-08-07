@@ -99,6 +99,13 @@ class Notificacion extends Model
         // — llega sin clasificar y alguien con `manage sucursales` tiene que
         // asignarle sucursal y propósito. Lo dispara StockSync, no un usuario.
         'bodega.nueva' => 'Bodega nueva en Bsale (por clasificar)',
+        // M04-F2 (P-M04-20): el sync confirmó stock 0 en una bodega
+        // `pendiente_traslado` → la baja se completó SOLA; se le avisa al
+        // solicitante de la orden. Lo dispara StockSync vía BajaDeBodegas.
+        'bodega.baja_completada' => 'Baja de bodega completada (quedó vacía)',
+        // M04-F2: llegó stock a una bodega en proceso de baja — la bodega NO
+        // revive; el solicitante decide qué hacer. Una sola vez por orden.
+        'bodega.stock_en_baja' => 'Llegó stock a una bodega en baja',
     ];
 
     protected $fillable = [
@@ -184,6 +191,8 @@ class Notificacion extends Model
             'despacho.parada_rechazada' => $user->canAny(['manage hojas ruta', 'autorizar pagos ruta', 'autorizar ruta', 'autorizar carga']),
             // La ficha de clasificación: mismo gate que bodegas.edit (M04-F1).
             'bodega.nueva' => $user->can('manage sucursales'),
+            // La ficha de la orden de traslado: mismo gate que su ruta (F2).
+            'bodega.baja_completada', 'bodega.stock_en_baja' => $user->can('manage sucursales'),
             default => false,
         };
 
@@ -273,6 +282,11 @@ class Notificacion extends Model
             // pendiente es asignarle sucursal y propósito (M04-F1).
             'bodega.nueva' => $this->notificable_id
                 ? route('admin.bodegas.edit', $this->notificable_id)
+                : route('admin.bodegas.index'),
+            // El cierre de la baja y el stock nuevo aterrizan en la ORDEN de
+            // traslado (el morph es la orden): ahí está la foto y el estado.
+            'bodega.baja_completada', 'bodega.stock_en_baja' => $this->notificable_id
+                ? route('admin.bodegas.traslados.show', $this->notificable_id)
                 : route('admin.bodegas.index'),
             default => null,
         };

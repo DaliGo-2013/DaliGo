@@ -55,6 +55,9 @@ class BodegaController extends Controller
             'bodega' => $bodega->loadCount('stocks')->load('sucursal'),
             'stocks' => $stocks,
             'filtros' => $request->only(['q', 'con_stock']),
+            // Las órdenes de baja de ESTA bodega (F2): el descubrimiento vive
+            // acá — no hay index de órdenes a propósito (YAGNI hasta F3).
+            'traslados' => $bodega->traslados()->with('destino')->latest()->get(),
         ]);
     }
 
@@ -85,5 +88,55 @@ class BodegaController extends Controller
 
         return redirect()->route('admin.bodegas.show', $bodega)
             ->with('status', "Bodega {$bodega->nombre} clasificada.");
+    }
+
+    /**
+     * El wizard de baja (M04-F2, P-M04-20): una sola pantalla con dos
+     * estados — vacia (baja inmediata) o con stock (exige destino y crea la
+     * orden de traslado). La decision REAL la toma el servicio en el POST;
+     * este GET solo pinta lo que el espejo dice ahora.
+     */
+    public function baja(Bodega $bodega): View|RedirectResponse
+    {
+        if ($bodega->enBaja()) {
+            return redirect()->route('admin.bodegas.show', $bodega)
+                ->with('status', "La bodega {$bodega->nombre} ya está en proceso de baja.");
+        }
+
+        $conStock = $bodega->stocks()
+            ->where('stocks.stock_real', '!=', 0)
+            ->join('productos', 'productos.id', '=', 'stocks.producto_id')
+            ->orderBy('productos.nombre')
+            ->get(['stocks.*', 'productos.nombre AS producto_nombre', 'productos.sku AS producto_sku']);
+
+        return view('admin.bodegas.baja', [
+            'bodega' => $bodega,
+            'conStock' => $conStock,
+            'destinos' => Bodega::enOperacion()->whereKeyNot($bodega->id)->orderBy('nombre')->get(),
+        ]);
+    }
+
+    public function bajaStore(Request $request, Bodega $bodega, \App\Services\Inventario\BajaDeBodegas $servicio): RedirectResponse
+    {
+        // Espejo de validacion para el mensaje amable; la regla dura (con
+        // stock ⇒ destino valido) vive en el SERVICIO (patron M13).
+        $validated = $request->validate([
+            'bodega_destino_id' => ['nullable', 'integer'],
+        ]);
+
+        try {
+            $resultado = $servicio->solicitar($bodega, $request->user(), $validated['bodega_destino_id'] ?? null);
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('status', $e->getMessage());
+        }
+
+        // El flash se bifurca por lo que el DOMINIO decidio (patron M14).
+        if ($resultado instanceof \App\Models\BodegaTraslado) {
+            return redirect()->route('admin.bodegas.traslados.show', $resultado)
+                ->with('status', "Orden de traslado creada: {$bodega->nombre} queda en baja pendiente hasta que el stock llegue a cero.");
+        }
+
+        return redirect()->route('admin.bodegas.show', $bodega)
+            ->with('status', "Bodega {$bodega->nombre} dada de baja (estaba vacía).");
     }
 }
