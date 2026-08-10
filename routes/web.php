@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProductoController;
+use App\Http\Controllers\Admin\RecetaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\ServicioTerrenoController;
@@ -486,6 +487,16 @@ Route::middleware('auth')
             Route::resource('tipos-botellon', TipoBotellonController::class)
                 ->parameters(['tipos-botellon' => 'tipoBotellon'])
                 ->except(['show']);
+
+            // Recetas de botellon (P-M11-10): que componentes consume UNA
+            // unidad; el backflush del kardex las lee al aprobar. Nombres
+            // FUERA del prefijo admin.produccion.* que el item del menu
+            // enumera (candado de doble aria-current, gate 28-07).
+            Route::get('recetas', [RecetaController::class, 'index'])->name('recetas.index');
+            Route::get('recetas/{producto}/edit', [RecetaController::class, 'edit'])
+                ->whereNumber('producto')->name('recetas.edit');
+            Route::put('recetas/{producto}', [RecetaController::class, 'update'])
+                ->whereNumber('producto')->name('recetas.update');
         });
 
         // Despachos (Jefe de Bodega): crear despacho desde un documento

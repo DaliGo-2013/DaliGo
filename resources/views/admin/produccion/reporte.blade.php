@@ -197,19 +197,32 @@
                 <div class="border-b border-brand-100 bg-brand-50 px-6 py-3">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-brand-700">Al aprobar se registrará en el kardex</h3>
                 </div>
+                {{-- Las MISMAS líneas que escribirá generarParaReporte(): la
+                     fuente es planParaReporte(), así el preview no puede
+                     divergir del kardex real (P-M11-10). El consumo sale de la
+                     receta del botellón: (buenos + merma) × cantidad. --}}
                 <ul class="divide-y divide-neutral-100 text-sm">
-                    <li class="flex items-center justify-between px-6 py-3">
-                        <span class="text-neutral-700">Consumo de preforma{{ $reporte->asignacion?->preforma ? ' · '.$reporte->asignacion->preforma->nombre : ' (sin preforma asignada)' }}</span>
-                        <span class="font-medium text-neutral-900">−{{ number_format($reporte->total, 0, ',', '.') }}</span>
-                    </li>
-                    <li class="flex items-center justify-between px-6 py-3">
-                        <span class="text-neutral-700">Producción 1ª + 2ª (vendible)</span>
-                        <span class="font-medium text-brand-600">+{{ number_format($reporte->producido, 0, ',', '.') }}</span>
-                    </li>
-                    <li class="flex items-center justify-between px-6 py-3">
-                        <span class="text-neutral-700">Merma (malos + dañadas)</span>
-                        <span class="font-medium text-neutral-700">{{ number_format($reporte->merma, 0, ',', '.') }}</span>
-                    </li>
+                    @forelse ($planKardex as $linea)
+                        @php
+                            $esConsumo = in_array($linea['tipo'], [\App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA, \App\Models\ProduccionMovimiento::TIPO_CONSUMO_TAPA], true);
+                            $esMerma = $linea['tipo'] === \App\Models\ProduccionMovimiento::TIPO_MERMA;
+                            $nombre = $linea['producto_id'] ? ($nombresPlan[$linea['producto_id']] ?? null) : null;
+                            // La señal de consumo sin producto es ACCIONABLE por
+                            // tipo: la preforma se corrige en la asignación, la
+                            // tapa se enlaza en la receta.
+                            $sinProducto = ! $esConsumo ? '' : ($linea['tipo'] === \App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA ? ' (sin preforma asignada)' : ' (sin producto enlazado)');
+                        @endphp
+                        <li class="flex items-center justify-between gap-4 px-6 py-3">
+                            <span class="text-neutral-700">
+                                {{ \App\Models\ProduccionMovimiento::ETIQUETAS[$linea['tipo']] ?? $linea['tipo'] }}{{ $nombre ? ' · '.$nombre : $sinProducto }}
+                            </span>
+                            <span class="font-medium {{ $esConsumo ? 'text-neutral-900' : ($esMerma ? 'text-neutral-500' : 'text-brand-600') }}">
+                                {{ $esConsumo ? '−' : ($esMerma ? '' : '+') }}{{ number_format($linea['cantidad'], 0, ',', '.') }}
+                            </span>
+                        </li>
+                    @empty
+                        <li class="px-6 py-3 text-neutral-500">Sin tandas registradas: no se generarán movimientos.</li>
+                    @endforelse
                 </ul>
             </div>
         @elseif ($reporte->movimientos->isNotEmpty())
@@ -227,7 +240,7 @@
                                     · <span class="text-neutral-500">{{ $movimiento->producto->nombre }}</span>
                                 @endif
                             </span>
-                            <span class="font-medium {{ $movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA ? 'text-neutral-900' : ($movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_MERMA ? 'text-neutral-500' : 'text-brand-600') }}">
+                            <span class="font-medium {{ in_array($movimiento->tipo, [\App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA, \App\Models\ProduccionMovimiento::TIPO_CONSUMO_TAPA], true) ? 'text-neutral-900' : ($movimiento->tipo === \App\Models\ProduccionMovimiento::TIPO_MERMA ? 'text-neutral-500' : 'text-brand-600') }}">
                                 {{ number_format($movimiento->cantidad, 0, ',', '.') }}
                             </span>
                         </li>

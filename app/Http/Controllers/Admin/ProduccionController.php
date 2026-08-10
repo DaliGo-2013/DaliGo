@@ -549,7 +549,22 @@ class ProduccionController extends Controller
             'movimientos.producto',
         ]);
 
-        return view('admin.produccion.reporte', ['reporte' => $reporte]);
+        // Preview del kardex («al aprobar se registrara»): las MISMAS lineas
+        // que escribira generarParaReporte() — una sola fuente, sin divergencia
+        // posible entre lo prometido y lo persistido (P-M11-10).
+        $planKardex = $reporte->esPendienteDeRevision()
+            ? ProduccionMovimiento::planParaReporte($reporte)
+            : [];
+        $nombresPlan = Producto::whereIn(
+            'id',
+            collect($planKardex)->pluck('producto_id')->filter()->unique(),
+        )->pluck('nombre', 'id');
+
+        return view('admin.produccion.reporte', [
+            'reporte' => $reporte,
+            'planKardex' => $planKardex,
+            'nombresPlan' => $nombresPlan,
+        ]);
     }
 
     /**
