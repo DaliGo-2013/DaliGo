@@ -76,7 +76,7 @@ class MenuPrincipal
                 // para no comerse lote/qr/informe. Lo vigila
                 // SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item,
                 // que falla tanto si dos ítems colisionan como si una ruta queda sin dueño.
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*', 'admin.produccion.vivo'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
                 // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
                 // perdieron su «Volver» (doctrina P-NAV-08).
                 'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],

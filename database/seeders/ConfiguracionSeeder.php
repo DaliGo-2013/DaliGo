@@ -387,6 +387,27 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Motivos frecuentes del ajuste de un reporte de producción (chips del form de ajustar). Lista JSON de textos; «Otro» permite texto libre siempre.',
             ],
+            // --- M11 · Corte SIC (P-M11-21): horarios de turno + umbral ---
+            // HIPOTESIS editable (patron D-003): las horas reales las confirma
+            // el dueño/Luis como ajuste de DATOS desde la UI, no de codigo. El
+            // turno noche cruza medianoche a proposito (inicio > fin).
+            [
+                'clave' => 'produccion_turnos',
+                'valor' => json_encode([
+                    'dia' => ['inicio' => '08:00', 'fin' => '20:00'],
+                    'noche' => ['inicio' => '20:00', 'fin' => '08:00'],
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Horarios de los turnos (hora chilena, HH:MM). Los usa el corte SIC para proyectar; un turno con inicio > fin cruza la medianoche. HIPÓTESIS: confirmar horas reales.',
+            ],
+            [
+                'clave' => 'produccion_umbral_proyeccion',
+                'valor' => '85',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'produccion',
+                'descripcion' => 'Proyección mínima del turno (% de la meta asignada) bajo la cual el corte SIC avisa al jefe. El 2º corte consecutivo bajo el umbral llega URGENTE; el 3º ya no repite.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',
@@ -503,6 +524,20 @@ class ConfiguracionSeeder extends Seeder
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso al solicitante cuando llega stock a una bodega en proceso de baja (una sola vez por orden; M04-F2).',
+            ],
+            // M11 · Corte SIC (P-M11-21). Clave nueva → firstOrCreate en el
+            // deploy, sin one-shot. {urgencia} SIEMPRE viaja en el payload:
+            // '' en el primer aviso y '⚠ URGENTE: ' en el segundo corte
+            // consecutivo (no existe flag urgente; el asunto ES la señal).
+            [
+                'clave' => 'notif_plantilla_produccion_meta_en_riesgo',
+                'valor' => json_encode([
+                    'asunto' => '{urgencia}Meta en riesgo: {soplador} proyecta {proyeccion}%',
+                    'cuerpo' => "La producción de {soplador} (turno {turno}) va más lento que la meta.\nProducido hasta ahora: {producido} de {meta} asignadas · proyección del turno: {proyeccion}%.\nMáquinas del turno: {maquinas}\nParadas abiertas:\n{paradas_abiertas}\nRevisa el reporte y coordina con el soplador antes de que termine el turno.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al jefe de producción cuando el corte SIC proyecta el turno bajo el umbral (M11; el 2º corte consecutivo llega con asunto ⚠ URGENTE).',
             ],
         ];
 
