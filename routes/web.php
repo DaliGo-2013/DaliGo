@@ -634,6 +634,10 @@ Route::middleware(['auth', 'permission:report production'])
         Route::patch('mi-reporte/{reporte}', [MiProduccionController::class, 'update'])->whereNumber('reporte')->name('mi.update');
         Route::post('mi-reporte/{reporte}/registros', [MiProduccionController::class, 'registroStore'])->whereNumber('reporte')->name('mi.registros.store');
         Route::delete('mi-reporte/{reporte}/registros/{registro}', [MiProduccionController::class, 'registroDestroy'])->whereNumber(['reporte', 'registro'])->name('mi.registros.destroy');
+        // Paradas del turno (P-M11-20): que detuvo la produccion + horas.
+        // Mismo contrato offline que los registros (cliente_uuid idempotente).
+        Route::post('mi-reporte/{reporte}/paradas', [MiProduccionController::class, 'paradaStore'])->whereNumber('reporte')->name('mi.paradas.store');
+        Route::delete('mi-reporte/{reporte}/paradas/{parada}', [MiProduccionController::class, 'paradaDestroy'])->whereNumber(['reporte', 'parada'])->name('mi.paradas.destroy');
     });
 
 // Mis entregas (Conductor, P-DSP-05): SU hoja de ruta del dia y la confirmacion

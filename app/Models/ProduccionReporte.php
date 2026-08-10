@@ -71,6 +71,7 @@ class ProduccionReporte extends Model implements AuditableContract
         'segunda',
         'malo',
         'danada',
+        'cavidades_activas',
         'motivo',
         'obs',
         'estado',
@@ -90,6 +91,7 @@ class ProduccionReporte extends Model implements AuditableContract
             'segunda' => 'integer',
             'malo' => 'integer',
             'danada' => 'integer',
+            'cavidades_activas' => 'integer',
             'enviado_at' => 'datetime',
             'revisado_at' => 'datetime',
         ];
@@ -115,6 +117,14 @@ class ProduccionReporte extends Model implements AuditableContract
     public function registros(): HasMany
     {
         return $this->hasMany(ProduccionRegistro::class, 'reporte_id');
+    }
+
+    /**
+     * Paradas del turno (P-M11-20): que detuvo la produccion y por cuanto.
+     */
+    public function paradas(): HasMany
+    {
+        return $this->hasMany(ProduccionParada::class, 'reporte_id');
     }
 
     /**

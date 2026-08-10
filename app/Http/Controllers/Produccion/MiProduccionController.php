@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Produccion;
 
 use App\Http\Controllers\Controller;
 use App\Models\Maquina;
+use App\Models\ProduccionParada;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\TipoBotellon;
@@ -284,6 +285,97 @@ class MiProduccionController extends Controller
     }
 
     /**
+     * Registra una parada del turno: que detuvo la produccion (motivo
+     * tipificado), de que recurso (maquina|operario) y entre que horas.
+     * Mismo contrato que registroStore: sirve al submit nativo y al drenado
+     * de la cola offline (cliente_uuid idempotente; 403/422 = permanentes).
+     */
+    public function paradaStore(Request $request, ProduccionReporte $reporte): RedirectResponse|JsonResponse
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+        abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
+
+        $maquinas = Maquina::paraSoplador($request->user());
+
+        // Campos PREFIJADOS parada_*: este form convive en el mismo Blade con
+        // el de la tanda y el de envio; sin prefijo, un rechazo del servidor
+        // contaminaria old('motivo')/old('maquina_id') de los otros forms (el
+        // peor caso precargaba el motivo de la parada como texto de "Otro" en
+        // el motivo de diferencia y terminaba mutando reporte.motivo).
+        $validated = $request->validate([
+            'cliente_uuid' => ['nullable', 'uuid'],
+            'parada_maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
+            'parada_motivo' => ['required', Rule::in(ProduccionParada::MOTIVOS)],
+            'parada_origen' => ['required', Rule::in(ProduccionParada::ORIGENES)],
+            'parada_inicio' => ['required', 'date_format:H:i'],
+            // Cronologia: fin >= inicio (candado 2 del dictado). Una parada
+            // que cruza la medianoche se deja ABIERTA: el cierre al enviar le
+            // pone la hora real y la duracion modulo-1440 la endereza.
+            'parada_fin' => ['nullable', 'date_format:H:i', 'after_or_equal:parada_inicio'],
+        ], [
+            'parada_maquina_id.required' => 'Selecciona la máquina de la parada.',
+            'parada_maquina_id.in' => 'Selecciona una máquina válida.',
+            'parada_motivo.required' => 'Selecciona qué detuvo la producción.',
+            'parada_motivo.in' => 'Selecciona un motivo válido.',
+            'parada_origen.required' => 'Indica qué se detuvo: la máquina o el operario.',
+            'parada_origen.in' => 'Indica qué se detuvo: la máquina o el operario.',
+            'parada_inicio.required' => 'Indica a qué hora empezó la parada.',
+            'parada_inicio.date_format' => 'La hora de inicio no es válida.',
+            'parada_fin.date_format' => 'La hora de término no es válida.',
+            'parada_fin.after_or_equal' => 'El término no puede ser antes del inicio. Si la parada cruzó la medianoche, déjala abierta.',
+        ]);
+
+        DB::transaction(function () use ($reporte, $validated) {
+            // Lock del reporte como serializador del check-then-act del uuid
+            // (doble tap / reintento del drenado); el unique compuesto
+            // [reporte_id, cliente_uuid] es la red final. Aqui no hay totales
+            // que recalcular (a diferencia de las tandas).
+            ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
+
+            $uuid = $validated['cliente_uuid'] ?? null;
+            if ($uuid && $reporte->paradas()->where('cliente_uuid', $uuid)->exists()) {
+                return;
+            }
+
+            $reporte->paradas()->create([
+                'cliente_uuid' => $uuid,
+                'maquina_id' => $validated['parada_maquina_id'] ?? null,
+                'motivo' => $validated['parada_motivo'],
+                // La clase la deriva SIEMPRE el servidor a partir del motivo;
+                // el request no puede imponerla.
+                'clase' => ProduccionParada::claseDe($validated['parada_motivo']),
+                'origen' => $validated['parada_origen'],
+                'inicio' => $validated['parada_inicio'],
+                'fin' => $validated['parada_fin'] ?? null,
+            ]);
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return redirect()->to($this->rutaDelReporte($reporte))
+            ->with('status', 'Parada registrada.');
+    }
+
+    /**
+     * Elimina una parada del reporte (correccion del soplador).
+     */
+    public function paradaDestroy(Request $request, ProduccionReporte $reporte, ProduccionParada $parada): RedirectResponse
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+        abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
+        abort_unless($parada->reporte_id === $reporte->id, 404);
+
+        // Sin transaccion ni lock: no hay totales denormalizados que
+        // recalcular (el lock de registroDestroy existe por eso).
+        $parada->delete();
+
+        return redirect()->to($this->rutaDelReporte($reporte))
+            ->with('status', 'Parada eliminada.');
+    }
+
+    /**
      * Guarda motivo/observaciones y envia el reporte (segun el flag 'enviar').
      * Las cantidades ya no entran por aqui: viven en los registros (tandas).
      */
@@ -306,6 +398,12 @@ class MiProduccionController extends Controller
         $validated = $request->validate([
             'motivo' => ['nullable', 'string', 'max:255'],
             'obs' => ['nullable', 'string', 'max:1000'],
+            // Cavidades del molde con las que se trabajo el turno; vacio =
+            // todas (NULL). El tope 64 es holgura: no existe molde con mas.
+            'cavidades_activas' => ['nullable', 'integer', 'min:1', 'max:64'],
+        ], [
+            'cavidades_activas.min' => 'Las cavidades activas deben ser al menos 1.',
+            'cavidades_activas.max' => 'Revisa el número de cavidades: parece demasiado grande.',
         ]);
 
         $enviar = $request->boolean('enviar');
@@ -330,7 +428,20 @@ class MiProduccionController extends Controller
             $reporte->devuelto_motivo = null;
         }
 
-        $reporte->save();
+        DB::transaction(function () use ($reporte, $enviar) {
+            $reporte->save();
+
+            // Una parada sin fin no bloquea el envio: se cierra con el
+            // reporte a la hora chilena del momento y queda marcada. En la
+            // misma transaccion que el save: sin ella, un fallo intermedio
+            // dejaria paradas "cerradas al envio" en un reporte aun borrador.
+            if ($enviar) {
+                $reporte->paradas()->whereNull('fin')->update([
+                    'fin' => \App\Support\FechaNegocio::ahora()->format('H:i'),
+                    'cerrada_al_envio' => true,
+                ]);
+            }
+        });
 
         // Al enviar, volver a la lista de producciones del dia (el reporte ya
         // queda en solo lectura y puede haber otra produccion que reportar). Al
@@ -352,6 +463,8 @@ class MiProduccionController extends Controller
             'registros' => fn ($query) => $query->latest('id'),
             'registros.maquina',
             'registros.tipoBotellon',
+            'paradas' => fn ($query) => $query->latest('id'),
+            'paradas.maquina',
         ]);
 
         $maquinas = Maquina::paraSoplador($user);
