@@ -678,6 +678,41 @@ Detalles de implementación que importan:
 - Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
   «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
 
+### 4.1nonies-quater El plan de carga se BAJA (10-08-2026)
+
+Pedido del dueño: que el resultado deje de vivir solo en la pantalla y sirva para el
+andén, el conductor y la cotización. Botón **Plan de carga (Excel)** en la sección
+**Descargar** del menú.
+
+**Lo que justifica la planilla no son los números** —esos ya están en pantalla— **sino el
+ORDEN DE CARGA**: qué bloque va contra la cabina y cuál contra la puerta. Es el dato que
+el andén no puede deducir sin mirar el dibujo, y el que convierte una simulación en una
+instrucción. Sale de los bloques de la escena, que ya vienen ordenados fondo → puerta, así
+que la planilla **numera lo que el motor decidió**, no reordena nada.
+
+**Sale del MISMO cálculo que la pantalla, literalmente.** `excel()` invoca a `index()` y
+lee los datos que le pasó a la vista, sin renderizarla. Es la lección del Excel de la
+flota —«el listado y la descarga por el MISMO método»— llevada al extremo que este caso
+permite: no hay «un método compartido» que alguien pueda dejar de usar, hay **una sola
+ruta de cálculo**. Se puede porque `index()` es una calculadora: valida, calcula y no
+escribe nada, así que invocarla no tiene efectos.
+
+Y el enlace **arrastra la query actual entera**, así que baja exactamente lo que se está
+mirando: camión, producto, estiba, apilado y las líneas de la carga mixta.
+
+**Sin librerías nuevas**: se apoya en `App\Services\Excel\EscritorXlsx` + `FilasXlsx`, el
+escritor compartido extraído el 04-08. Es el tercer Excel que sale de ahí.
+
+La planilla **repite el aviso de que el cupo es un techo** (pasillo 0, factor 1, sin
+calibrar). Sacarlo del papel sería prometer, fuera de la app, más de lo que el propio
+motor dice que sabe — y el papel es justamente lo que circula por correo.
+
+Candados en `PlanDeCargaExcelTest` (9): permiso, nombre y content-type, partes mínimas,
+**XML bien formado en TODAS las partes** con caracteres a escapar, que el cupo coincida
+con el de la pantalla, que la mixta viaje con lo que falta **y por qué**, el orden de
+carga, el aviso del techo, y que el botón esté DENTRO del menú lateral. Verificado además
+**abriendo el archivo con Excel de verdad** (COM): abre sin reparaciones.
+
 ### 4.1nonies-ter «¿En cuál conviene?» — multi-camión (10-08-2026)
 
 La pregunta real de Comercial no es *«¿entra en este camión?»* sino **«¿en cuál conviene

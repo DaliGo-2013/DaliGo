@@ -558,6 +558,9 @@ Route::middleware('auth')
         // administra la flota) y solo por GET.
         Route::middleware('permission:simular carga')->group(function () {
             Route::get('carga', [SimuladorCargaController::class, 'index'])->name('carga.index');
+            // El plan de carga como .xlsx. Lleva los MISMOS parametros que la
+            // pantalla en la query, asi que baja exactamente lo que se esta mirando.
+            Route::get('carga/excel', [SimuladorCargaController::class, 'excel'])->name('carga.excel');
         });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');

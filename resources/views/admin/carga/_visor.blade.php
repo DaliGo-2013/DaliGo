@@ -153,6 +153,26 @@
                 </div>
             </details>
 
+            {{-- DESCARGAR: el plan de carga como .xlsx. El enlace arrastra la query
+                 actual entera, así que baja EXACTAMENTE lo que se está mirando —
+                 camión, producto, estiba, apilado y las líneas de la carga mixta. Si
+                 armara su propia URL, la planilla empezaría a diferir de la pantalla,
+                 que es el defecto clásico de este tipo de botón. --}}
+            <details class="group">
+                <summary class="{{ $titulo }} flex cursor-pointer select-none list-none items-center justify-between rounded hover:text-neutral-600 [&::-webkit-details-marker]:hidden">
+                    Descargar <span class="transition group-open:rotate-180">▾</span>
+                </summary>
+                <div class="pt-1">
+                    <a href="{{ route('admin.carga.excel', request()->query()) }}"
+                       class="{{ $btn }} flex w-full items-center justify-center gap-1.5">
+                        Plan de carga (Excel)
+                    </a>
+                    <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                        Incluye el orden de carga, del fondo hacia la puerta.
+                    </p>
+                </div>
+            </details>
+
             {{-- ¿EN CUÁL CONVIENE? La misma pregunta que se está haciendo, resuelta
                  para toda la flota. Va en el menú y no suelta en la pantalla, como el
                  resto de los controles (doctrina del 06-08). Cada fila es un enlace

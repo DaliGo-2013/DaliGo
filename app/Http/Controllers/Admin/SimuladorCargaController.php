@@ -7,7 +7,9 @@ use App\Models\CamionSimulacion;
 use App\Models\TipoBulto;
 use App\Services\Carga\CalculoDeCarga;
 use App\Services\Carga\PalletSimulado;
+use App\Services\Carga\PlanDeCargaExcel;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -323,6 +325,34 @@ class SimuladorCargaController extends Controller
             'cabeTodo' => $resultado['cabe_todo'],
             'peligrosas' => array_values(array_filter($modelos, fn (TipoBulto $m) => $m->peligrosa)),
         ];
+    }
+
+    /**
+     * El plan de carga como .xlsx (pedido del dueño 10-08-2026): que el resultado
+     * deje de vivir solo en la pantalla y se pueda bajar para el andén, el
+     * conductor o la cotización.
+     *
+     * SALE DEL MISMO CÁLCULO QUE LA PANTALLA, literalmente: se invoca `index()` y
+     * se leen los datos que le pasó a la vista, sin renderizarla. Es la lección ya
+     * documentada del Excel de la flota —«el listado y la descarga filtran por el
+     * MISMO método»—, llevada al extremo que este caso permite: acá no hay «un
+     * método compartido» que alguien pueda dejar de usar, hay UNA sola ruta de
+     * cálculo. Si mañana cambia el motor, la planilla cambia con él o no cambia
+     * ninguno de los dos.
+     *
+     * Se puede hacer porque `index()` es una CALCULADORA: valida, calcula y no
+     * escribe nada (lo dice el comentario de su grupo de rutas). Invocarla no
+     * tiene efectos.
+     */
+    public function excel(Request $request, PlanDeCargaExcel $excel): Response
+    {
+        return response($excel->generar($this->index($request)->getData()), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.PlanDeCargaExcel::nombreArchivo().'"',
+            // Se arma con los números del momento: que no quede cacheado ni en el
+            // navegador ni en un proxy.
+            'Cache-Control' => 'no-store, private',
+        ]);
     }
 
     /**
