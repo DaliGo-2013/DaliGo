@@ -200,9 +200,14 @@
                     agregarParada(e) {
                         const form = e.target;
                         if (! form.querySelector('input[name=parada_motivo]:checked')) { e.preventDefault(); this.paneles.paradas = true; this.$nextTick(() => this.$destacar(this.$refs.grupoParadaMotivo)); return; }
+                        /* Sin esta guarda, una parada sin máquina se encola offline y el
+                           drenado la pierde en silencio (422 permanente sin UI de rechazadas). */
+                        if (form.querySelector('input[name=parada_maquina_id]') && ! form.querySelector('input[name=parada_maquina_id]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaMaquina); return; }
                         if (! this.paradaInicio) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaHoras); return; }
                         /* Cortesía en cliente; el servidor valida igual (after_or_equal).
-                           Comparación lexicográfica válida para "HH:MM" con cero inicial. */
+                           Comparación lexicográfica válida para HH:MM con cero inicial.
+                           OJO: nada de comillas dobles dentro de este x-data (cortan
+                           el atributo HTML y rompen TODO el componente Alpine). */
                         if (this.paradaFin && this.paradaFin < this.paradaInicio) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaHoras); return; }
                         if (window.dgCola && this.$store.red && ! this.$store.red.online) {
                             e.preventDefault();
@@ -381,7 +386,7 @@
                             </div>
 
                             @if ($maquinas->isNotEmpty())
-                                <div>
+                                <div x-ref="grupoParadaMaquina">
                                     <x-input-label value="Máquina" />
                                     <div class="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
                                         @foreach ($maquinas as $maquina)
