@@ -134,7 +134,21 @@ export default function iniciarCarga3d(canvas, datos) {
     // coordenadas, no en las del mapa de bits (ver `ajustarLienzo`): así una pantalla
     // de alta densidad se ve nítida sin que las letras salgan a la mitad de tamaño.
     let AW = canvas.width, AH = canvas.height;
-    const ZOOM_MIN = 0.7, ZOOM_MAX = 4;
+    /**
+     * Cuánto se puede alejar y acercar, respecto del encuadre automático (zoom 1).
+     *
+     * ALEJARSE llegaba solo a 0,7 — o sea, un 30% más chico que el encuadre, que es
+     * casi nada. El dueño lo pidió explícito (10-08): «el zoom está bien, pero el
+     * lejos es lo que más quiero, para ver más posibilidades de cargar». Tiene
+     * sentido: acercarse sirve para mirar UN bulto, alejarse sirve para pensar la
+     * carga entera y ver dónde queda hueco.
+     *
+     * A 0,25 el camión entra cuatro veces en el ancho del recuadro. No se baja más
+     * porque a esa escala la silueta ya mide ~90 px y deja de distinguirse de un
+     * rectángulo; y los códigos sobre los bultos se apagan solos mucho antes, por
+     * el LOD de CODIGO_MIN, así que alejarse tampoco cuesta rendimiento.
+     */
+    const ZOOM_MIN = 0.25, ZOOM_MAX = 4;
     // Hasta cuántas bolsas se dibujan como BIDONES antes de caer al bulto rectangular
     // (ver `bultos`). Medido sobre los polígonos por frame, no elegido a ojo.
     const TOPE_BIDONES = 150;
