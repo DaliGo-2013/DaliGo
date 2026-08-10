@@ -1,32 +1,62 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-08 (v41 — P-M11-10 EN PRODUCCIÓN; espera corta hasta que landee el stream B). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-10 (v42 — F1 COMPLETA; GO P-M11-11: OEE + Pareto). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ P-M11-10 está EN PRODUCCIÓN (merge `3cc708f`, doble llave 08-ago)
+## ✅ F1 de PLAN-M11-FINAL COMPLETA — el stream B ya está en producción
 
-Verificación del Director sobre el árbol unión: **suite 1731 verdes / 12.479 aserciones,
-cero rojos** — cuadre exacto (tus 1729 + 2 del simulador de Marcos posteriores a tu
-base). Bundle: superset 0 pérdidas, tu `lg:grid-cols-5` en uso. Spot-checks 7/7. Deploy
-y Tests de CI verdes. Rama borrada tras ancestría.
+P-M11-20 de Max-2 entró con doble llave (`1c040c3`, 10-ago): tabla `produccion_paradas`
+(motivo en lista cerrada de 7, clase `planificada|no_planificada` derivada server-side
+con `ProduccionParada::claseDe()`, origen `maquina|operario`, inicio/fin `time` con
+módulo 1440 para turno noche, `cerrada_al_envio`) + `cavidades_activas` tinyint nullable
+en `ProduccionReporte`. **Tu esquema de consumo YA convive con el suyo en main** — el
+suelo para tu OEE está firme. Baseline HOY: **1771 / 12.661** en main `1c040c3`.
 
-**El pendiente nº1 histórico del tracker está construido y desplegado.** Tres cosas de
-tu parte que quedan como estándar de la casa: el fallback que reproduce el comportamiento
-histórico BYTE A BYTE (14 tests viejos verdes sin tocarlos = la prueba de que no hay
-rama legacy paralela), la divergencia preexistente del preview cazada y fijada de pasada,
-y la decisión asignación-gana-en-preforma con la alternativa nombrada. La frontera de
-streams se respetó al milímetro — cero roce con Max-2.
+## 🟢 GO — P-M11-11 · OEE por máquina/molde + Pareto de paradas (F2, stream A)
 
-## ⏸️ ESPERA CORTA — F2 (P-M11-11 OEE) necesita el stream B
+PLAN-M11-FINAL §4-F2. Con las paradas de Max-2 y tu backflush, los 3 factores existen:
 
-Tu OEE consume las paradas-con-duración que Max-2 está forjando AHORA (P-M11-20). El GO
-de P-M11-11 sale cuando su lote pase la doble llave — no antes, porque construirías
-contra un esquema que aún puede moverse.
+- **OEE = Disponibilidad × Rendimiento × Calidad**, por máquina, semana/mes:
+  - **Disponibilidad**: tiempo del turno − Σ duración de paradas NO planificadas (las
+    planificadas —cambio de molde, mantención— dentro del tiempo planificado, doctrina
+    del benchmark/OEE.com). Las abiertas-cerradas-al-envío cuentan por su duración real.
+  - **Rendimiento**: producción real vs teórica. Teórica = tiempo disponible / ciclo
+    ideal. **El ciclo ideal por tipo de botellón AÚN NO EXISTE como dato** — agrégalo a
+    la RECETA (columna `ciclo_ideal_seg` decimal nullable, tu tabla, tu stream); NULL =
+    rendimiento «sin ciclo cargado» (se muestra el dato faltante, no un 100 % falso).
+    Considera `cavidades_activas` del reporte si viene (NULL = todas → factor 1).
+  - **Calidad**: buenos / (buenos + merma) — ya lo tienes por tanda.
+- **OEE target por máquina** (aporte B4 del benchmark): columna en `maquinas`
+  (`oee_target` tinyint nullable %), editable donde se edita la máquina; el informe
+  pinta contra el target.
+- **Pareto de paradas**: por motivo, con duración acumulada y conteo, filtro
+  mes/máquina, separando clase — los 3 no planificados top concentran ~80 %.
+- **% merma con «scrap de arranque» separado** (el motivo ya existe en las paradas y en
+  MOTIVOS_DEFECTO de las tandas).
+- Superficie: pestaña/sección en los informes de producción existentes, idioma mes/año
+  de la casa, permisos existentes de informes — cero permisos nuevos.
 
-Si abres sesión y este dictado sigue en v41: revisa el buzón por si hay v42, y si no lo
-hay, cierra sesión sin gastar ventana.
+### Candados mínimos
+1. MUTADO: paradas planificadas descontando disponibilidad → rojo (deben NO descontarla).
+2. Ciclo ideal NULL → el informe declara «sin ciclo cargado», jamás rendimiento 100 %.
+3. OEE nunca > 100 % (rendimiento capado por validación de datos, no por clamp del
+   informe — si pasa de 100 es señal de ciclo ideal mal cargado y se muestra el aviso).
+4. Pareto cuadra: Σ duraciones del Pareto == Σ paradas del período.
+5. Medianoche: parada 23:40→06:30 aporta 410 min, no negativos.
+6. El soplador no ve el informe (permiso de informes) ni costos en ninguna parte.
+
+## Territorio
+- **Max-2** arranca P-M11-21 (alertas SIC + panel vivo) EN PARALELO — él consume tus
+  MISMOS datos pero en superficies distintas (jobs/M15/panel «hoy»); tú eres informes
+  históricos. Frontera: `ProduccionParada` (modelo) es de Max-2 — tú LEES; si necesitas
+  un scope nuevo, pídelo por parte, no lo agregues tú.
+- **Marcos** sigue a toda máquina en el simulador. Re-fetch religioso — la carrera del
+  10-ago la perdió el DIRECTOR esta vez (I-08 funcionó: re-merge + suite entera).
 
 ## Recordatorios
-Baseline HOY: **1731 / 12.479** en main `3cc708f`. Las reglas de siempre siguen.
+Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (fija tu
+baseline; la del Director: 1771/12.661). Suite completa antes del push. Blade → build +
+superset. `git checkout origin/main --` para conflictos. varchar ≤191. Parte al buzón →
+doble llave.
 
-CIERRE: nada pendiente de tu lado. El kardex por fin sabe lo que consume la planta.
+CIERRE: parte a docs/fleet/buzon/partes/ + push.

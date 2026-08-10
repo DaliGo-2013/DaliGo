@@ -1,58 +1,64 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-07 (v19 — PAUSA LEVANTADA por el dueño: GO P-M11-20, paradas con duración en la PWA). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-10 (v20 — P-M11-20 EN PRODUCCIÓN; GO P-M11-21: alertas SIC + panel vivo del jefe). Manda sobre lo anterior.
 
 MODELO: el que fije el dueño en tu asiento · high.
 
-## La pausa se levantó — nueva prioridad del dueño (vía Luis): M11 Producción, versión final
+## ✅ P-M11-20 está EN PRODUCCIÓN (merge `1c040c3`, doble llave 10-ago) — F1 COMPLETA
 
-**Lee primero `docs/planes/PLAN-M11-FINAL.md` (VIGENTE, visto bueno del dueño 07-ago)**
-y su insumo `docs/investigacion/2026-08-07--BENCHMARK-M11-RECONCILIADO.md`. Dato que te
-va a gustar: el benchmark confirmó con DOS investigaciones independientes que tu cola
-offline es mejor que la de sistemas de US$12.000/año (Tulip pierde datos con cortes >50
-segundos; la doc oficial de Fusion admite que sin conexión no corre). Tu P-DSP-05 es el
-estándar de la casa — y este lote lo extiende.
+Verificación del Director: **suite 1771 verdes / 12.661 aserciones, cero rojos** —
+corrida DOS veces porque el primer push perdió la carrera contra el visor de Marcos
+(I-08 aplicada: re-merge + suite entera; el drift era solo carga3d.js). Spot-checks 6/6;
+tu desviación de los 7 motivos quedó **ACEPTADA** con tu propio razonamiento en el
+mensaje del merge: «Preformas defectuosas» habría duplicado la pérdida de calidad como
+downtime en el Pareto — exactamente el tipo de lectura que hace confiable una lista
+cerrada. Y tu gate E2E cazando el atributo Alpine cortado por comillas y la parada sin
+máquina que se perdía EN SILENCIO: eso es cazar ANTES del parte, el estándar de la casa.
+Rama borrada tras ancestría.
 
-Tu stream es **B (PWA/experiencia del soplador y del jefe)**: paradas, alertas, panel
-vivo, semáforo. Max-1 lleva el stream A (recetas/backflush/kardex) EN PARALELO —
-territorio en PLAN §3. **Frontera caliente:** `ProduccionReporte` lo tocas TÚ primero
-(campos de paradas van en tu lote); Max-1 solo lo lee. Lotes cortos, push temprano,
-re-fetch religioso: son DOS forjadores activos + Marcos.
+## 🟢 GO — P-M11-21 · Alertas SIC + panel vivo del jefe (F2, stream B)
 
-## 🟢 GO — P-M11-20 · Paradas con duración en la PWA (F1, stream B)
+PLAN-M11-FINAL §4-F2. La captura ya existe (tus paradas + los reportes); ahora la
+información PERSIGUE al jefe en vez de esperarlo:
 
-Hoy los motivos de diferencia son un chip sin tiempo. Este lote los convierte en el dato
-que desbloquea OEE, MTBF y el Pareto de «qué nos detiene» (PLAN §4):
-
-- **Tabla `produccion_paradas`**: reporte_id, motivo (los 5 de la casa + nuevo **«scrap
-  de arranque»** — los botellones malos post-cambio-de-molde son pérdida distinta),
-  clase (`planificada` = cambio de molde/mantención · `no_planificada` = falla, faltaron
-  preformas, molde dañado), origen (`maquina|operario` — hallazgo del benchmark: la
-  parada puede ser del trabajador, patrón «No Machine» de Fusion), inicio, fin,
-  maquina_id. varchar ≤191.
-- **En mi-reporte**: registrar N paradas del turno con hora inicio/fin (UX táctil de la
-  casa, 44px+); parada sin fin al enviar = se cierra con el reporte y queda marcada
-  «cerrada al envío». Campo nuevo del turno: **cavidades activas** del molde (numérico
-  chico, default = todas).
-- **Etiquetas FÁCTICAS, jamás culposas** (principio §1.4 del plan): «qué detuvo la
-  producción», nunca «error de alguien» — el que reporta es el mismo soplador.
-- **Offline**: los campos nuevos viajan en el MISMO payload de la cola existente (tu
-  patrón P-DSP-09: un solo camino, uuid + capturado_at intactos).
-- **Para el jefe**: el detalle de paradas visible en la pantalla de aprobación (duración
-  calculada, clase y origen con badge).
+- **Corte SIC cada 2 horas** (comando programado en el scheduler, horario de turno):
+  por máquina con asignación activa hoy, proyección lineal del día (producido hasta
+  ahora / horas transcurridas × horas del turno) vs meta asignada. Bajo umbral
+  (constante de la casa, p.ej. 85 % proyectado) → **notificación M15 al jefe de
+  producción** (evento nuevo `produccion.meta_en_riesgo`, molde de tus eventos de M04):
+  máquina, producido/meta, proyección, y paradas ABIERTAS si las hay.
+- **Escalamiento simple**: segundo corte consecutivo bajo umbral → el aviso se marca
+  urgente (asunto/badge), no spamea — máximo 1 aviso por máquina por corte.
+- **Panel «Hoy en vivo»** para el jefe (ruta bajo producción, permiso existente del
+  jefe): por máquina — avance/meta con barra, proyección, paradas abiertas con
+  duración corriendo, último reporte parcial recibido, semáforo simple
+  (verde/amarillo/rojo por proyección). Auto-refresh liviano (poll con el patrón de la
+  campanita/cola de bodega — SIN websockets nuevos).
+- **WhatsApp queda [B:D-007]** — canal email + campanita por ahora; el evento queda
+  listo para cuando el canal exista.
+- Zona horaria: TODO en hora de negocio (`FechaNegocio`) — el corte de las 14:00 es de
+  Chile, no UTC (lección E-TZ).
 
 ### Candados mínimos
-1. Cola offline drena 2× sin duplicar paradas (idempotencia con los campos nuevos).
-2. MUTADO: permitir fin < inicio → rojo (validación de cronología).
-3. Parada sin fin no bloquea el envío; queda cerrada-al-envío con marca.
-4. El detalle llega ÍNTEGRO a la vista de aprobación del jefe.
-5. 403 de siempre; el reporte ajeno no muestra paradas de otro.
-6. «Scrap de arranque» y «cavidades activas» persisten y se ven en el show.
+1. Corte 2× seguidos bajo umbral → 2º aviso urgente; 3º corte igual NO duplica si nada
+   cambió (guard por máquina+corte).
+2. Máquina sin asignación hoy → ni corte ni aviso (silencio correcto).
+3. Proyección con 0 horas transcurridas no divide por cero (primer corte del turno).
+4. MUTADO: quitar el guard anti-spam → segundo aviso idéntico → rojo.
+5. El panel respeta permisos (soplador no lo ve); paradas abiertas muestran duración
+   corriendo server-side (sin JS que calcule mal la medianoche).
+6. Los cortes usan FechaNegocio (test con hora frontera, molde de E-TZ).
+
+## Territorio
+- **Max-1** arranca P-M11-11 (OEE + Pareto, informes históricos) EN PARALELO — consume
+  los mismos datos en superficie distinta. `ProduccionParada` es TUYO: si él necesita
+  un scope, lo pide por parte. Tú no tocas informes históricos ni recetas.
+- **Marcos** a toda máquina en el simulador (la carrera del 10-ago la perdió el
+  Director — re-fetch religioso).
 
 ## Recordatorios
-Rama nueva desde main FRESCO; **suite COMPLETA de main fresco ANTES de empezar** (última
-del Director: 1655/12.067 en `237185b`; fija la tuya del día). Suite completa antes del
-push. Blade tocado → build + superset. `git checkout origin/main --` para conflictos,
-nunca `>` (BOM). Parte al buzón → doble llave.
+Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (baseline
+del Director: **1771/12.661** en `1c040c3`). Suite completa antes del push. Blade →
+build + superset. `git checkout origin/main --`. varchar ≤191. Parte al buzón → doble
+llave.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push. F2 (alertas SIC + panel vivo + semáforo
-de preformas) espera doble llave de F1.
+CIERRE: parte a docs/fleet/buzon/partes/ + push.
