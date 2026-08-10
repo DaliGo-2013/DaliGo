@@ -213,6 +213,7 @@ class SimuladorCargaController extends Controller
         // siempre y no detrás de un botón.
         $comparativa = $this->compararCamiones(
             $camiones, $camion, $bulto, $bultos, $datos, $estiba, $apilado, $pallet, $sobrePallet, $enOrdenDeLista,
+            $aprovechar,
         );
 
         // La PRUEBA: «¿me entran 50?» encima del cupo máximo. No toca el motor — capa
@@ -387,6 +388,7 @@ class SimuladorCargaController extends Controller
     private function compararCamiones(
         $camiones, ?CamionSimulacion $actual, ?TipoBulto $bulto, $bultos, array $datos,
         string $estiba, ?int $apilado, PalletSimulado $pallet, bool $sobrePallet, bool $enOrdenDeLista,
+        bool $aprovechar = false,
     ): ?array {
         $hayLineas = isset($datos['lineas']) && $datos['lineas'] !== [];
         if ($camiones->count() < 2 || (! $bulto && ! $hayLineas)) {

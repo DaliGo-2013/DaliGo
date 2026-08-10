@@ -51,14 +51,55 @@
                 $lineasIniciales = $lineasSel->isNotEmpty()
                     ? $lineasSel
                     : collect([['tipo' => $bultos->first()?->id, 'cantidad' => 100, 'estiba' => 'auto']]);
+                // Los MISMOS colores que el lienzo (COLORES_3D). El chip de cada línea
+                // tiene que ser el color de su bloque en el dibujo: si divergieran, la
+                // lista mentiría sobre cuál es cuál — que es justo lo que el color
+                // resuelve. Misma razón por la que la constante es pública.
+                $coloresPanel = collect(\App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D)
+                    ->map(fn ($c) => sprintf('#%02x%02x%02x', ...$c));
             @endphp
 
             <div x-data="{
                     modo: '{{ $mixta !== null ? 'mixta' : ($enPallet !== null ? 'pallet' : 'maximo') }}',
                     lineas: {{ $lineasIniciales->toJson() }},
                     bultos: {{ $bultosJson->toJson() }},
-                    agregar() { if (this.lineas.length < 8) this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto' }); },
-                    quitar(i) { this.lineas.splice(i, 1); },
+                    colores: {{ $coloresPanel->toJson() }},
+
+                    /* PANEL DE CARGA (pedido del dueño 10-08, sobre la referencia de
+                       EasyCargo): la lista deja de ser una fila plana y pasa a ser una
+                       tarjeta por producto que se ABRE para editarla. Lo que se gana no
+                       es estética: en la fila plana no cabía nada más, y por eso el
+                       bulto a medida —que el motor soporta desde el 07-08— no tenía
+                       dónde vivir. Acá sí. */
+                    expandido: null,
+
+                    /* ESTADO SUCIO. Editar NO recalcula: mientras haya cambios sin
+                       enviar, el botón se pone en ámbar. Es deliberado — el dibujo de
+                       al lado sigue mostrando el último resultado del servidor, y sin
+                       marcarlo alguien leería un dibujo que ya no corresponde a los
+                       números que está viendo. Antes disimularlo que mentir. */
+                    sucio: false,
+                    ensuciar() { this.sucio = true; },
+
+                    /* Una línea es «a medida» cuando no apunta al catálogo: tipo 0.
+                       Es el mismo contrato que ya valida el controlador — una línea
+                       vale si trae UNA de las dos cosas, producto o medidas. */
+                    aMedida(l) { return ! l.tipo; },
+                    letra(i) { return String.fromCharCode(65 + (i % 26)); },
+                    color(i) { return this.colores[i % this.colores.length]; },
+                    resumen(l) {
+                        if (this.aMedida(l)) {
+                            const d = [l.medida_largo, l.medida_ancho, l.medida_alto].filter(Boolean);
+                            return d.length === 3 ? d.join(' × ') + ' cm' : 'Falta alguna medida';
+                        }
+                        const b = this.bultos.find(b => b.id === l.tipo);
+                        return b ? b.nombre : '—';
+                    },
+
+                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    agregarMedida() { if (this.lineas.length < 8) { this.lineas.push({ tipo: 0, cantidad: 1, estiba: 'auto', medida_nombre: '', medida_largo: '', medida_ancho: '', medida_alto: '', medida_peso: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    duplicar(i) { if (this.lineas.length < 8) { this.lineas.splice(i + 1, 0, { ...this.lineas[i] }); this.ensuciar(); } },
+                    quitar(i) { this.lineas.splice(i, 1); if (this.expandido === i) this.expandido = null; this.ensuciar(); },
                     // Mover un producto en la lista es la forma honesta de «mover la carga»:
                     // con el orden en «Como armé la lista», el primero va al FONDO. Se
                     // recalcula todo, así que el acomodo sigue siendo uno que el motor
@@ -545,48 +586,127 @@
                     <div>
                         <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">La carga</p>
                         <div class="mt-2 space-y-2">
+                            {{-- UNA TARJETA POR PRODUCTO, que se abre para editarla.
+                                 Cerrada muestra lo que hace falta para reconocerla (letra,
+                                 color del bloque en el dibujo, qué es y cuántos); abierta,
+                                 todo lo editable. La fila plana de antes no tenía dónde
+                                 poner las medidas del bulto a medida, y por eso esa
+                                 función existía solo en el motor. --}}
                             <template x-for="(linea, i) in lineas" :key="i">
-                                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <select :name="`lineas[${i}][tipo]`" x-model.number="linea.tipo"
-                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 sm:flex-1">
-                                        <template x-for="b in bultos" :key="b.id">
-                                            <option :value="b.id" x-text="b.nombre" :selected="b.id === linea.tipo"></option>
-                                        </template>
-                                    </select>
-                                    <div class="flex items-center gap-2">
-                                        <input type="number" :name="`lineas[${i}][cantidad]`" x-model.number="linea.cantidad"
-                                               min="1" max="100000" inputmode="numeric" required
-                                               class="block w-32 rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                        <span class="w-16 text-xs text-neutral-400"
-                                              x-text="(bultos.find(b => b.id === linea.tipo)?.unidades ?? 1) > 1 ? 'unidades' : 'bultos'"></span>
-                                        {{-- CÓMO VIAJA: automático o una estiba forzada. Está en TODOS los
-                                             productos (pedido del dueño 06-08: «que los dispensadores,
-                                             cualesquiera que sea, tengan la opción») — en la práctica un
-                                             dispensador viaja parado aunque el motor pudiera tumbarlo. El
-                                             default `auto` es lo que protege el número verificado. --}}
-                                        <select :name="`lineas[${i}][estiba]`" x-model="linea.estiba"
-                                                title="Cómo viaja el pack"
-                                                class="block w-40 rounded-lg border border-neutral-300 bg-white px-2.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                            @foreach (\App\Models\TipoBulto::ESTIBAS_ELEGIBLES as $clave => $nombre)
-                                                <option value="{{ $clave }}">{{ $nombre }}</option>
-                                            @endforeach
-                                        </select>
-                                        {{-- Mover el producto en la lista. Con el orden en «Como armé la
-                                             lista», el primero es el que va al FONDO del camión: es
-                                             mover la carga sin dejar de recalcular. --}}
-                                        <div class="flex items-center" x-show="lineas.length > 1">
-                                            <button type="button" @click="mover(i, -1)" :disabled="i === 0"
-                                                    class="rounded-lg px-1.5 py-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-30"
-                                                    title="Mover hacia el fondo del camión">▲<span class="sr-only">Mover hacia el fondo</span></button>
-                                            <button type="button" @click="mover(i, 1)" :disabled="i === lineas.length - 1"
-                                                    class="rounded-lg px-1.5 py-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-30"
-                                                    title="Mover hacia la puerta">▼<span class="sr-only">Mover hacia la puerta</span></button>
+                                <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+
+                                    {{-- Cabecera: clic para abrir --}}
+                                    <div class="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 transition hover:bg-neutral-50"
+                                         @click="expandido = expandido === i ? null : i">
+                                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
+                                              :style="`background:${color(i)}`" x-text="letra(i)"></span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate text-sm font-medium text-neutral-900" x-text="resumen(linea)"></p>
+                                            <p class="text-xs text-neutral-500">
+                                                <span x-text="linea.cantidad"></span>
+                                                <span x-text="(bultos.find(b => b.id === linea.tipo)?.unidades ?? 1) > 1 ? ' unidades' : ' bultos'"></span>
+                                                <template x-if="linea.estiba && linea.estiba !== 'auto'">
+                                                    <span> · <span x-text="{{ Js::from(\App\Models\TipoBulto::ESTIBAS_ELEGIBLES) }}[linea.estiba]"></span></span>
+                                                </template>
+                                            </p>
                                         </div>
-                                        <button type="button" @click="quitar(i)" x-show="lineas.length > 1"
-                                                class="rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-red-50 hover:text-red-600"
-                                                title="Quitar producto">
-                                            <x-icon.trash class="h-4 w-4" /><span class="sr-only">Quitar producto</span>
-                                        </button>
+                                        <span class="shrink-0 text-neutral-400 transition" :class="expandido === i && 'rotate-180'">▾</span>
+                                    </div>
+
+                                    {{-- Cuerpo editable --}}
+                                    <div x-show="expandido === i" x-cloak
+                                         class="space-y-3 border-t border-neutral-100 bg-neutral-50/60 px-3 py-3">
+
+                                        <div>
+                                            <label class="text-xs font-medium text-neutral-600">Qué se carga</label>
+                                            <select :name="`lineas[${i}][tipo]`" x-model.number="linea.tipo" @change="ensuciar()"
+                                                    class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                <template x-for="b in bultos" :key="b.id">
+                                                    <option :value="b.id" x-text="b.nombre" :selected="b.id === linea.tipo"></option>
+                                                </template>
+                                                {{-- Valor 0 = bulto a medida. Es el contrato que el
+                                                     controlador ya valida desde el 07-08. --}}
+                                                <option :value="0">— Bulto a medida —</option>
+                                            </select>
+                                        </div>
+
+                                        {{-- CUBICAR: las medidas a mano. Solo aparecen cuando la
+                                             línea es «a medida», porque para un producto del
+                                             catálogo serían campos que contradicen su ficha. --}}
+                                        <div x-show="aMedida(linea)" x-cloak class="space-y-2 rounded-lg border border-brand-200 bg-brand-50/50 p-2.5">
+                                            <input type="text" :name="`lineas[${i}][medida_nombre]`" x-model="linea.medida_nombre" @input="ensuciar()"
+                                                   maxlength="60" placeholder="Nombre (ej. Heladera exhibidora)"
+                                                   class="block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            <div class="grid grid-cols-3 gap-2">
+                                                @foreach (['largo' => 'Largo', 'ancho' => 'Ancho', 'alto' => 'Alto'] as $campo => $rotulo)
+                                                    <div>
+                                                        <label class="text-[11px] text-neutral-500">{{ $rotulo }} (cm)</label>
+                                                        <input type="number" :name="`lineas[${i}][medida_{{ $campo }}]`"
+                                                               x-model.number="linea.medida_{{ $campo }}" @input="ensuciar()"
+                                                               min="1" max="{{ $campo === 'largo' ? 1500 : 300 }}" inputmode="numeric"
+                                                               class="mt-0.5 block w-full rounded-lg border-neutral-300 px-2 py-1.5 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            <div>
+                                                <label class="text-[11px] text-neutral-500">Peso por bulto (kg, opcional)</label>
+                                                <input type="number" :name="`lineas[${i}][medida_peso]`" x-model.number="linea.medida_peso" @input="ensuciar()"
+                                                       min="0" max="30000" step="0.1" inputmode="decimal"
+                                                       class="mt-0.5 block w-full rounded-lg border-neutral-300 px-2 py-1.5 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
+                                            <p class="text-[11px] leading-snug text-neutral-500">
+                                                Vive solo en esta simulación: no se guarda en el catálogo.
+                                            </p>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label class="text-xs font-medium text-neutral-600">Cuántos</label>
+                                                <div class="mt-1 flex items-stretch rounded-lg border border-neutral-300 bg-white">
+                                                    <button type="button" @click="linea.cantidad = Math.max(1, (linea.cantidad || 1) - 1); ensuciar()"
+                                                            class="px-2.5 text-neutral-500 transition hover:text-neutral-900" aria-label="Uno menos">−</button>
+                                                    <input type="number" :name="`lineas[${i}][cantidad]`" x-model.number="linea.cantidad" @input="ensuciar()"
+                                                           min="1" max="100000" inputmode="numeric" required
+                                                           class="w-full min-w-0 border-0 bg-transparent px-1 py-2 text-center text-base sm:text-sm tabular-nums focus:ring-0">
+                                                    <button type="button" @click="linea.cantidad = (linea.cantidad || 0) + 1; ensuciar()"
+                                                            class="px-2.5 text-neutral-500 transition hover:text-neutral-900" aria-label="Uno más">+</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {{-- CÓMO VIAJA: automático o una estiba forzada. Está en TODOS los
+                                                     productos (pedido del dueño 06-08) — en la práctica un
+                                                     dispensador viaja parado aunque el motor pudiera tumbarlo.
+                                                     El default `auto` es lo que protege el número verificado. --}}
+                                                <label class="text-xs font-medium text-neutral-600">Cómo viaja</label>
+                                                <select :name="`lineas[${i}][estiba]`" x-model="linea.estiba" @change="ensuciar()"
+                                                        class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-2 py-2 text-base sm:text-sm text-neutral-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                    @foreach (\App\Models\TipoBulto::ESTIBAS_ELEGIBLES as $clave => $nombre)
+                                                        <option value="{{ $clave }}">{{ $nombre }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center gap-1 border-t border-neutral-200 pt-2.5 text-xs">
+                                            {{-- Mover el producto en la lista. Con el orden en «Como armé la
+                                                 lista», el primero es el que va al FONDO del camión: es
+                                                 mover la carga sin dejar de recalcular. --}}
+                                            <template x-if="lineas.length > 1">
+                                                <div class="flex items-center gap-1">
+                                                    <button type="button" @click="mover(i, -1); ensuciar()" :disabled="i === 0"
+                                                            class="rounded-lg px-2 py-1.5 text-neutral-500 transition hover:bg-neutral-200 disabled:opacity-30"
+                                                            title="Mover hacia el fondo del camión">▲ Al fondo</button>
+                                                    <button type="button" @click="mover(i, 1); ensuciar()" :disabled="i === lineas.length - 1"
+                                                            class="rounded-lg px-2 py-1.5 text-neutral-500 transition hover:bg-neutral-200 disabled:opacity-30"
+                                                            title="Mover hacia la puerta">▼ A la puerta</button>
+                                                </div>
+                                            </template>
+                                            <button type="button" @click="duplicar(i)" x-show="lineas.length < 8"
+                                                    class="rounded-lg px-2 py-1.5 text-neutral-500 transition hover:bg-neutral-200">Duplicar</button>
+                                            <button type="button" @click="quitar(i)" x-show="lineas.length > 1"
+                                                    class="ml-auto rounded-lg px-2 py-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+                                                    title="Quitar producto">Quitar</button>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
@@ -596,6 +716,14 @@
                             <x-secondary-button type="button" @click="agregar()" x-show="lineas.length < 8">
                                 <x-icon.plus class="h-4 w-4" />
                                 Agregar producto
+                            </x-secondary-button>
+                            {{-- CUBICAR: el motor acepta bultos a medida desde el 07-08, pero
+                                 hasta ahora solo se llegaba por URL porque la fila plana no
+                                 tenía dónde poner las medidas. Con el panel, sí. --}}
+                            <x-secondary-button type="button" @click="agregarMedida()" x-show="lineas.length < 8"
+                                                title="Cubicar algo que no está en el catálogo">
+                                <x-icon.plus class="h-4 w-4" />
+                                Bulto a medida
                             </x-secondary-button>
                             {{-- QUIÉN DECIDE el orden de estiba. En automático el motor pone lo
                                  grande al fondo, que es como se carga en la práctica; en «Como
@@ -609,7 +737,15 @@
                                     <option value="lista" @selected($orden === 'lista')>Como armé la lista</option>
                                 </x-select>
                             </div>
-                            <x-primary-button>Calcular la carga</x-primary-button>
+                            {{-- ESTADO SUCIO: mientras haya cambios sin enviar, el botón lo
+                                 dice. El dibujo de al lado sigue mostrando el último
+                                 resultado del servidor, y sin esta señal alguien leería un
+                                 camión que ya no corresponde a los números que acaba de
+                                 tipear. Antes avisar que disimular. --}}
+                            <x-primary-button ::class="sucio && 'ring-2 ring-amber-400 ring-offset-1'">
+                                <span x-show="! sucio">Calcular la carga</span>
+                                <span x-show="sucio" x-cloak>Recalcular ·  hay cambios</span>
+                            </x-primary-button>
                         </div>
                         <p class="mt-2 text-xs text-neutral-400">
                             Las cantidades van en unidades sueltas (botellones, cajas, equipos). Los botellones

@@ -505,6 +505,69 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'La comparativa de camiones quedó fuera del menú lateral.');
     }
 
+    /**
+     * CARGA MIXTA con VARIOS camiones — la combinación que faltaba.
+     *
+     * Este candado nace de un 500 en producción (10-08). La comparativa llamaba a
+     * `calcularMixta` con una variable que su método no recibía, y no lo cazó
+     * ningún test porque los dos casos estaban cubiertos POR SEPARADO: el de
+     * varios camiones usaba producto único, y los de líneas tenían un solo camión.
+     * El cruce de los dos no lo probaba nadie, y es justo el caso de producción —
+     * donde hay tres camiones sembrados.
+     *
+     * La lección que deja: cuando dos features tienen cada una su test, el que
+     * falta es el de las dos juntas.
+     */
+    public function test_la_carga_mixta_con_varios_camiones_no_revienta(): void
+    {
+        CamionSimulacion::create([
+            'nombre' => 'HINO 500 (FC 1118)',
+            'largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266,
+            'peso_max_kg' => 11000, 'pasillo_cm' => 0, 'activo' => true,
+        ]);
+
+        foreach ([[], ['aprovechar' => 1]] as $extra) {
+            $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', $extra + [
+                'camion_id' => $this->hd35->id,
+                'lineas' => [
+                    ['tipo' => $this->bolsa->id, 'cantidad' => 200],
+                    ['tipo' => $this->caja->id, 'cantidad' => 30],
+                ],
+            ]))->assertOk();
+
+            // Y la comparativa se calculó de verdad para los dos camiones.
+            $this->assertCount(2, $res->viewData('comparativa'));
+        }
+    }
+
+    /**
+     * EL PANEL: una tarjeta por producto, con el bulto a medida adentro.
+     *
+     * Lo que se fija es lo que hace útil al panel, no su estética: que la línea
+     * traiga los campos de CUBICAR. El motor los acepta desde el 07-08 pero hasta
+     * el 10-08 solo se llegaba por URL, porque la fila plana anterior no tenía
+     * dónde ponerlos. Si alguien vuelve a la fila plana, esa función se pierde
+     * otra vez en silencio.
+     */
+    public function test_el_panel_trae_los_campos_del_bulto_a_medida(): void
+    {
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])
+            ->assertOk()->getContent();
+
+        // El botón que crea la línea a medida.
+        $this->assertStringContainsString('Bulto a medida', $html);
+        // Y los cinco campos que el controlador valida, con su nombre exacto.
+        foreach (['medida_nombre', 'medida_largo', 'medida_ancho', 'medida_alto', 'medida_peso'] as $campo) {
+            $this->assertStringContainsString('medida_'.explode('_', $campo)[1], $html,
+                "El panel no ofrece el campo [{$campo}] del bulto a medida.");
+        }
+
+        // El chip de color de cada línea usa la MISMA paleta que el lienzo: si
+        // divergieran, la lista mentiría sobre cuál bloque es cuál.
+        $primerColor = sprintf('#%02x%02x%02x', ...SimuladorCargaController::COLORES_3D[0]);
+        $this->assertStringContainsString($primerColor, $html);
+    }
+
     /** Con un solo camión no hay nada que comparar: la sección no se dibuja. */
     public function test_con_un_solo_camion_no_se_muestra_la_comparativa(): void
     {
