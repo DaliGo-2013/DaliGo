@@ -35,6 +35,13 @@
 --}}
 @php
     $ctrl = \App\Http\Controllers\Admin\SimuladorCargaController::class;
+    // MODO PÚBLICO: el mismo visor servido por un link compartido, sin login.
+    // Se apagan las secciones que NAVEGAN hacia adentro de la app (comparar
+    // camiones, bajar el Excel, armar pallets, importar). Sin esto el link sería
+    // una puerta a rutas que piden permiso: rebotarían igual, pero mostrarle al
+    // cliente que existen no aporta nada. Lo que queda —vistas, cargar, rótulos—
+    // es mirar el dibujo, que es para lo que se comparte.
+    $publico = $publico ?? false;
     // Clases compartidas por los botones del menú: se repiten en cinco grupos y
     // escribirlas a mano dejaba unos con `py-1` y otros con `py-1.5`.
     $btn = 'rounded-lg border border-neutral-300 bg-white px-2 py-1.5 font-medium text-neutral-700 transition hover:bg-neutral-50';
@@ -153,6 +160,10 @@
                 </div>
             </details>
 
+            {{-- Todo lo que sigue navega hacia adentro de la app, así que no va en el
+                 link compartido. Ver la nota de `$publico` arriba. --}}
+            @if (! $publico)
+
             {{-- DESCARGAR: el plan de carga como .xlsx. El enlace arrastra la query
                  actual entera, así que baja EXACTAMENTE lo que se está mirando —
                  camión, producto, estiba, apilado y las líneas de la carga mixta. Si
@@ -169,6 +180,29 @@
                     </a>
                     <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
                         Incluye el orden de carga, del fondo hacia la puerta.
+                    </p>
+
+                    {{-- LINK COMPARTIBLE: la URL firmada se genera en el servidor y se
+                         copia al portapapeles. No se muestra escrita porque es larga
+                         (lleva el escenario entero) y nadie la va a tipear. --}}
+                    @php
+                        $linkCompartir = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                            'publico.plan-carga',
+                            now()->addDays(\App\Http\Controllers\Publico\PlanCargaPublicoController::DIAS_VIGENCIA),
+                            request()->query(),
+                        );
+                    @endphp
+                    <button type="button" class="{{ $btn }} mt-2 w-full"
+                            x-data="{ copiado: false }"
+                            @click="navigator.clipboard.writeText(@js($linkCompartir)).then(() => {
+                                        copiado = true; setTimeout(() => copiado = false, 2500);
+                                    })">
+                        <span x-show="! copiado">Copiar link para compartir</span>
+                        <span x-show="copiado" x-cloak class="font-semibold text-brand-700">¡Copiado!</span>
+                    </button>
+                    <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                        Abre el 3D sin cuenta. Vence en
+                        {{ \App\Http\Controllers\Publico\PlanCargaPublicoController::DIAS_VIGENCIA }} días.
                     </p>
                 </div>
             </details>
@@ -207,6 +241,8 @@
                 </details>
             @endif
 
+            @endif {{-- fin de lo que no va en el link compartido (Descargar · Camiones) --}}
+
             {{-- Nombres de los productos sobre su bloque, y la LETRA de cada producto
                  escrita sobre sus cajas. Los dos se pueden apagar: con un solo producto
                  no distinguen nada y tapan carga. --}}
@@ -219,6 +255,8 @@
                     <button type="button" id="carga3dNombres" aria-pressed="true" class="{{ $btn }}">Nombres</button>
                 </div>
             </details>
+
+            @if (! $publico)
 
             {{-- PALLET, también desde el menú (pedido del dueño 06-08: «la opción de
                  agregar un pallet esté ahí también, con el estándar y el otro»). Los dos
@@ -274,6 +312,8 @@
                 <button type="button" id="carga3dImportar" @click="$dispatch('abrir-importar')"
                         class="{{ $btn }} mt-1 w-full">Importar de Excel</button>
             </details>
+
+            @endif {{-- fin de lo que no va en el link compartido (Pallet · Traer carga) --}}
         </aside>
 
         {{-- ═══ EL LIENZO ═══ --}}

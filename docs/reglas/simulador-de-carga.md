@@ -678,6 +678,48 @@ Detalles de implementación que importan:
 - Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
   «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
 
+### 4.1nonies-quinquies El plan se COMPARTE por link, sin login (10-08-2026)
+
+Pedido del dueño mirando el link compartible de EasyCargo: mandarle al cliente o al
+conductor una URL con el 3D, sin darle una cuenta. Botón **Copiar link para compartir**
+en la sección Descargar.
+
+**No hay tabla ni token guardado, y es la decisión que lo hace barato.** El simulador es
+una **función pura de su query string**: los mismos parámetros dan siempre el mismo plan.
+Así que **el link ES el escenario**, firmado con la app key. Eso evita una migración, un
+modelo, y sobre todo una tabla de links viejos que hay que limpiar y que nadie limpia.
+
+Es la **única pantalla del simulador que se sirve sin login**, así que lo que importa no
+es que funcione sino que no se convierta en una puerta:
+
+1. **Firmado** (`signed`, el mismo mecanismo del QR del taller). Sin firma no se puede
+   fabricar, y **retocar un parámetro invalida la URL entera** — nadie convierte el link
+   de un cliente en otra simulación.
+2. **Vence** a los 7 días (`PlanCargaPublicoController::DIAS_VIGENCIA`). Un link eterno es
+   una filtración esperando su turno; siete días cubren el ciclo de una cotización.
+3. **Solo lectura**: el simulador es una calculadora, no escribe nada.
+4. **Sin los controles que navegan hacia adentro.** La bandera `$publico` del partial del
+   visor apaga Descargar, Camiones, Pallet y Traer carga. Rebotarían por permiso igual,
+   pero mostrarle al cliente que existen no aporta nada. Lo que queda —vistas, cargar,
+   rótulos— es mirar el dibujo, que es para lo que se comparte.
+5. Con `throttle`, como el resto de lo público.
+
+**Sale del MISMO cálculo que la pantalla interna** (invoca `index()` y lee sus datos), por
+el mismo motivo que el Excel: un plan público que difiere del que el vendedor miró antes
+de mandarlo es exactamente lo que no puede pasar.
+
+`guest-layout` estrenó un **ancho por token** (`formulario` por defecto, `listado` para
+esto): un visor 3D dentro de los 448 px del card de invitado no se puede mirar. Un token
+desconocido **revienta**, igual que en `app-layout`.
+
+Y la página **dice que es una referencia y cuándo vence**: afuera de la app, un número sin
+contexto se lee como una promesa.
+
+Candados en `PlanCargaCompartidoTest` (8), la mitad de ellos sobre la seguridad: sin firma
+no entra, un link retocado deja de valer, el link vence, y la página no ofrece controles
+internos. **Verificado además en el navegador** contra el servidor local: el menú público
+trae solo Vista · Acercar · Cargar · Rótulos, y la consola sale limpia.
+
 ### 4.1nonies-quater El plan de carga se BAJA (10-08-2026)
 
 Pedido del dueño: que el resultado deje de vivir solo en la pantalla y sirva para el

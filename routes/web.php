@@ -37,6 +37,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Publico\CotizacionPublicoController;
 use App\Http\Controllers\Publico\DevolucionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
+use App\Http\Controllers\Publico\PlanCargaPublicoController;
 use App\Http\Controllers\Publico\VisitaConfirmacionController;
 use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
@@ -675,6 +676,15 @@ Route::get('offline', fn () => view('offline'))->name('offline');
 // cliente escanea el QR del mostrador y llena el formulario en su celular. El
 // GET (link del QR) va firmado (lleva la sucursal); throttle en todo el grupo.
 // Ver App\Http\Controllers\Publico\IngresoTallerPublicoController.
+// Plan de carga en 3D compartible, SIN login (pedido del dueño 10-08). El link ES
+// el escenario —el simulador es una funcion pura de su query— y va FIRMADO y con
+// VENCIMIENTO, asi que no se puede fabricar ni retocar y no vive para siempre. Es
+// solo lectura: el simulador es una calculadora y no escribe nada.
+// Ver App\Http\Controllers\Publico\PlanCargaPublicoController.
+Route::middleware(['throttle:30,1', 'signed'])
+    ->get('plan-de-carga', [PlanCargaPublicoController::class, 'show'])
+    ->name('publico.plan-carga');
+
 Route::middleware('throttle:6,1')->group(function () {
     Route::get('ingreso-taller', [IngresoTallerPublicoController::class, 'create'])
         ->middleware('signed')->name('ingreso-taller.create');

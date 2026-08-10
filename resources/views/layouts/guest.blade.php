@@ -34,7 +34,24 @@
                 <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
             </a>
 
-            <div class="dg-enter mt-8 w-full sm:max-w-md rounded-2xl border border-neutral-200 bg-white px-4 py-6 shadow-sm sm:px-8 sm:py-8">
+            @php
+                // El ancho del card es un TOKEN validado, igual que en app-layout: uno
+                // desconocido REVIENTA en vez de caer al default en silencio (un
+                // `ancho="ancha"` se vería idéntico al correcto y nadie lo notaría).
+                //
+                // `formulario` es el de siempre y el predeterminado — login, QR público,
+                // confirmaciones. `listado` existe desde el 10-08 para el plan de carga
+                // compartido: un visor 3D dentro de 448 px no se puede mirar.
+                //
+                // Las clases literales van ACÁ y no en una clase PHP: Tailwind v4 solo
+                // barre resources/**, así que un max-w-* escrito en app/ se purgaría del
+                // bundle y la página perdería el tope (gotcha del 25-07).
+                $anchos = ['formulario' => 'sm:max-w-md', 'listado' => 'max-w-6xl'];
+                $token = $ancho ?? 'formulario';
+                throw_unless(isset($anchos[$token]), \InvalidArgumentException::class,
+                    "Ancho de guest-layout desconocido: [{$token}]. Válidos: ".implode(', ', array_keys($anchos)));
+            @endphp
+            <div class="dg-enter mt-8 w-full {{ $anchos[$token] }} rounded-2xl border border-neutral-200 bg-white px-4 py-6 shadow-sm sm:px-8 sm:py-8">
                 {{-- Mismo canal que el layout autenticado: sin esto, un back()->with('aviso')
              que aterrice en una pantalla de invitado se perderia en silencio (el bug
              que este lote arreglo para session('status') en el dashboard). --}}
