@@ -387,6 +387,16 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Motivos frecuentes del ajuste de un reporte de producción (chips del form de ajustar). Lista JSON de textos; «Otro» permite texto libre siempre.',
             ],
+            // La duración del turno NO existía como dato en ninguna parte
+            // (verificado P-M11-11): el OEE la necesita para la Disponibilidad.
+            // 720 = 12 h (día/noche cubren las 24). Hipótesis [B] editable acá.
+            [
+                'clave' => 'produccion_minutos_turno',
+                'valor' => '720',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'produccion',
+                'descripcion' => 'Minutos que dura un turno de producción (día o noche). Lo usa el OEE como tiempo planificado por turno trabajado.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',

@@ -39,6 +39,7 @@ class Receta extends Model implements AuditableContract
         'componente_id',
         'cantidad',
         'confirmada',
+        'ciclo_ideal_seg',
     ];
 
     protected function casts(): array
@@ -46,6 +47,9 @@ class Receta extends Model implements AuditableContract
         return [
             'cantidad' => 'decimal:4',
             'confirmada' => 'boolean',
+            // Segundos por ciclo de soplado (OEE, P-M11-11). Vive SOLO en la
+            // fila ROL_PREFORMA (la portadora); NULL = sin ciclo cargado.
+            'ciclo_ideal_seg' => 'integer',
         ];
     }
 
