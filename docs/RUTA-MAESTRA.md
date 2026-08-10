@@ -284,6 +284,18 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 > Candidato para v2 (del escaneo de Luis, `docs/CORRECCIONES-LUIS.md`): reporte "pedidos de repuestos de servicio técnico" (la función operativa vive en M12; el listado/reporte iría en M16-v2).
 
+### PLAN-M11-FINAL · M11 Producción versión definitiva (plan: `docs/planes/PLAN-M11-FINAL.md`, GO del dueño 07-ago; 2 streams paralelos, fuera de la E-numeración)
+
+**Objetivo:** la información capturada VUELVE procesada a cada rol y producción se conecta al kardex (recetas/backflush) y a los moldes. F1: recetas+backflush (Max-1) ∥ paradas PWA (Max-2) · F2: OEE + alertas SIC · F3: moldes + kaizen. Insumo: benchmark de doble vía reconciliado (07-ago).
+
+- [x] **P-M11-10 (F1, stream A)** · Receta paramétrica + backflush al aprobar: tabla `recetas` (producto botellón → rol preforma/tapa, cantidad decimal(14,4), `confirmada` estilo D-003) + seeder hipótesis [B] 1+1 que jamás pisa lo editado + CRUD `admin.recetas.*` con ítem de menú; el kardex descuenta **(buenos + merma) × receta** con tipo nuevo `consumo_tapa`; preview del reporte = `planParaReporte()` (la MISMA fuente que persiste — murió la divergencia preview/kardex); fallback sin receta = comportamiento histórico EXACTO (`ProduccionKardexTest` verde sin tocar) — rama `feature/m11-recetas-backflush` `f654a23`; candados del dictado v40 con 3 mutaciones rojas; `RecetaBackflushTest` (9) + `RecetaSeederTest` (2) + `RecetaCrudTest` (7)
+- [ ] **P-M11-20 (F1, stream B — Max-2)** · Paradas con duración en la PWA (motivo tipificado + clase + origen + inicio/fin, por la MISMA cola offline)
+- [ ] **P-M11-11 (F2, stream A)** · OEE por máquina/molde + Pareto de paradas (tras doble llave de F1)
+- [ ] **P-M11-21 (F2, stream B)** · Alertas SIC (corte cada 2h) + panel vivo del jefe
+- [ ] **P-M11-22 (F2, stream B)** · Semáforo de preformas + notas del jefe en mi-reporte
+- [ ] **P-M11-12 (F3, stream A)** · Molde como entidad (ficha tipo M18, ciclos, umbral de mantención)
+- [ ] **P-M11-23 (F3, stream B)** · Kaizen digital (proponer mejora → cola del jefe)
+
 ---
 
 ## 6. F3 · Piloto Mirador (E11) → **H5' go-live 11-ene-2027**
@@ -388,7 +400,7 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 | M05 Ciclo factura | 10 | **30 %** | 3.0 | **corregido desde 0 % (30-jul)**: andamiaje DTE completo y probado —puerto emisor Bsale, servicios, config, candados—, pero **NO EMITE**: `config/dte.php` con los 3 mapas vacíos, `emision_habilitada=false`, sin ruta de emisión ni comando `dte:emitir-prueba` (B6). Marcos activo aquí |
 | M07 QR retiro | 4 | **70 %** | 2.8 | **corregido desde 0 % (30-jul)**: P-DSP-00..04 **en producción** — QR firmado de retiro, validación en puesto de bodega, doble-retiro cerrado (lock + candado a nivel grammar). NO cierra «retirar carga ajena» (decisión de producto reportada) y falta QA de bodega con papel impreso |
 | M08 Despacho+PWA | 12 | **75 %** | 9.0 | **subido desde 65 % (05-ago tarde)**: P-DSP-09 en producción (`f3be802`) — **F2 de PLAN-DESPACHOS-V2 completa**: la PWA sobre la hoja (dirección/comuna/teléfono por parada, receptor obligatorio, cobro en entrega, rechazo en puerta + aviso M15). Antes ese día: hoja de ruta digital (`b9d89a3`); el 04-ago la PWA base (`d7803f9`). Falta: P-DSP-10 (cierre+bono, bloqueado por la ronda 2 con Luis) y el QA de campo punta a punta |
-| M11 Producción | 6 | 75 % | 4.5 | faltan descuento de preforma, meta del día y GP |
+| M11 Producción | 6 | 75 % | 4.5 | **descuento de preforma HECHO (08-ago)**: P-M11-10 en doble llave (`feature/m11-recetas-backflush` `f654a23`) — receta paramétrica + backflush (buenos+merma)×cantidad con tapa. El % lo recalcula el Director al landear F1 COMPLETA (falta P-M11-20 de Max-2). Faltan además meta del día y GP |
 | M12 Servicio técnico | 8 | **60 %** | 4.8 | **corregido desde 25 %**: taller completo + portal QR + cotización al cliente con respuesta + lotes en ruta + informes (E9: 2 pasos en curso de 5; faltan alertas 3/6/12m, sugerencia de repuestos y cobro) |
 | M13 Devoluciones | 4 | **85 %** | 3.4 | **E6 COMPLETA (05-ago)**: lote 1 (`7750951`, QA del dueño aprobado) **+ informe por causa/canal y badge (`6c91f94`) en producción** — módulo de cero a completo en 6 días. Resta el QA de staging del informe y el empuje del kardex a stock real (espera M04/D-003) |
 | M14 Aprobaciones | 5 | **90 %** | 4.5 | **corregido desde 0 %**: E2 cerrada 17-jul, QA 8/8 en producción. Descuenta que hay **una sola acción cableada** (ajuste de producción) |

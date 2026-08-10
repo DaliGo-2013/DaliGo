@@ -21,12 +21,14 @@ class ProduccionMovimiento extends Model
 
     // Tipos de movimiento (constantes de clase, NO enum MySQL: MySQL 5.7-safe).
     public const TIPO_CONSUMO_PREFORMA = 'consumo_preforma';
+    public const TIPO_CONSUMO_TAPA = 'consumo_tapa';
     public const TIPO_PRODUCCION_PRIMERA = 'produccion_primera';
     public const TIPO_PRODUCCION_SEGUNDA = 'produccion_segunda';
     public const TIPO_MERMA = 'merma';
 
     public const TIPOS = [
         self::TIPO_CONSUMO_PREFORMA,
+        self::TIPO_CONSUMO_TAPA,
         self::TIPO_PRODUCCION_PRIMERA,
         self::TIPO_PRODUCCION_SEGUNDA,
         self::TIPO_MERMA,
@@ -34,6 +36,7 @@ class ProduccionMovimiento extends Model
 
     public const ETIQUETAS = [
         self::TIPO_CONSUMO_PREFORMA => 'Consumo de preforma',
+        self::TIPO_CONSUMO_TAPA => 'Consumo de tapa',
         self::TIPO_PRODUCCION_PRIMERA => 'Producción 1ª',
         self::TIPO_PRODUCCION_SEGUNDA => 'Producción 2ª',
         self::TIPO_MERMA => 'Merma',
@@ -71,55 +74,102 @@ class ProduccionMovimiento extends Model
     }
 
     /**
-     * Genera el kardex de un reporte aprobado. Idempotencia y transaccion son
-     * responsabilidad del llamador (ProduccionController::aprobar). Reglas:
-     *  - consumo_preforma = total contado (cada unidad contada consumio una
-     *    preforma), contra la preforma de la asignacion.
-     *  - por cada tanda: produccion_primera, produccion_segunda y merma
-     *    (malo + danada) contra el producto del tipo de botellon.
-     *  - solo se crean movimientos con cantidad > 0.
+     * Calcula las lineas del kardex de un reporte SIN persistirlas: la fuente
+     * UNICA que consumen el preview del reporte («al aprobar se registrara»)
+     * y generarParaReporte() — asi el preview y el kardex real no pueden
+     * divergir por construccion. Reglas (P-M11-10, PLAN-M11-FINAL F1):
+     *
+     *  - El consumo sale de la RECETA del producto del botellon: componentes
+     *    = (buenos + merma) x cantidad — la merma TAMBIEN consumio preformas;
+     *    descontar solo buenos infla el inventario teorico (benchmark M11).
+     *  - Sin receta rige la receta IMPLICITA {preforma: 1} — el comportamiento
+     *    historico EXACTO. Un solo camino de computo por tanda: el doble
+     *    conteo es imposible por construccion (no hay rama legacy paralela).
+     *  - El producto del consumo de preforma es la preforma REAL del turno
+     *    (asignacion.preforma_id); la receta aporta solo la cantidad. La tapa
+     *    va contra el componente de la receta (null = movimiento sin
+     *    producto, degradacion con gracia).
+     *  - La base es la suma de las TANDAS, jamas el total denormalizado del
+     *    reporte (ajustable por el jefe sin recalcular tandas): el kardex es
+     *    la verdad fisica de lo soplado. Ver bitacora M-1.
+     *  - El redondeo es UNO por movimiento AGREGADO ((int) round(...)), nunca
+     *    por tanda (no acumula error). La columna `cantidad` sigue integer a
+     *    proposito: preformas y tapas son unidades fisicas; el decimal(14,4)
+     *    de la receta es el parametro. No "arreglar" el (int) sin leer esto.
+     *  - Por cada tanda: produccion 1a/2a y merma contra el producto del tipo
+     *    (sin cambios respecto del kardex historico). Solo lineas > 0.
+     *
+     * @return array<int, array{tipo: string, producto_id: int|null, cantidad: int}>
      */
-    public static function generarParaReporte(ProduccionReporte $reporte): void
+    public static function planParaReporte(ProduccionReporte $reporte): array
     {
         $reporte->loadMissing(['asignacion', 'registros.tipoBotellon']);
 
-        $fecha = $reporte->fecha->toDateString();
+        $recetas = Receta::whereIn(
+            'producto_id',
+            $reporte->registros->map(fn ($r) => $r->tipoBotellon?->producto_id)->filter()->unique()->values(),
+        )->get()->groupBy('producto_id');
 
-        // 1) Consumo de preforma = suma de las TANDAS (1a + 2a + malo + danada),
-        // NO el total denormalizado del reporte. Asi el kardex queda internamente
-        // consistente (consumo == produccion + merma) aunque el admin haya editado
-        // los totales del reporte via ajustar() sin recalcular las tandas: el
-        // kardex es la verdad fisica de lo soplado; el ajuste del jefe es una capa
-        // de reporte (queda marcado con motivo_ajuste). Ver bitacora M-1.
-        $total = (int) $reporte->registros->sum(
-            fn ($r) => (int) $r->primera + (int) $r->segunda + (int) $r->malo + (int) $r->danada
-        );
-        if ($total > 0) {
-            static::registrar($reporte, $reporte->asignacion?->preforma_id, self::TIPO_CONSUMO_PREFORMA, $total, $fecha);
+        $preformas = 0.0;
+        $tapas = [];    // componente_id (0 = sin enlazar) => unidades acumuladas
+
+        foreach ($reporte->registros as $registro) {
+            $unidades = (int) $registro->primera + (int) $registro->segunda + (int) $registro->malo + (int) $registro->danada;
+            $porRol = $recetas->get($registro->tipoBotellon?->producto_id ?? 0, collect())->keyBy('rol');
+
+            $preformas += $unidades * (float) ($porRol[Receta::ROL_PREFORMA]->cantidad ?? 1);
+
+            if ($tapa = $porRol[Receta::ROL_TAPA] ?? null) {
+                $clave = $tapa->componente_id ?? 0;
+                $tapas[$clave] = ($tapas[$clave] ?? 0.0) + $unidades * (float) $tapa->cantidad;
+            }
         }
 
-        // 2) Por tanda: produccion 1a/2a y merma, contra el producto del tipo.
+        // La preforma fisica del turno manda; el componente de la receta es
+        // solo el respaldo cuando la asignacion no la trae.
+        $productoPreforma = $reporte->asignacion?->preforma_id
+            ?? $recetas->collapse()->firstWhere('rol', Receta::ROL_PREFORMA)?->componente_id;
+
+        $lineas = [];
+
+        if ((int) round($preformas) > 0) {
+            $lineas[] = ['tipo' => self::TIPO_CONSUMO_PREFORMA, 'producto_id' => $productoPreforma, 'cantidad' => (int) round($preformas)];
+        }
+
+        foreach ($tapas as $componenteId => $total) {
+            if ((int) round($total) > 0) {
+                $lineas[] = ['tipo' => self::TIPO_CONSUMO_TAPA, 'producto_id' => $componenteId ?: null, 'cantidad' => (int) round($total)];
+            }
+        }
+
         foreach ($reporte->registros as $registro) {
             $productoId = $registro->tipoBotellon?->producto_id;
 
-            static::registrar($reporte, $productoId, self::TIPO_PRODUCCION_PRIMERA, (int) $registro->primera, $fecha);
-            static::registrar($reporte, $productoId, self::TIPO_PRODUCCION_SEGUNDA, (int) $registro->segunda, $fecha);
-            static::registrar($reporte, $productoId, self::TIPO_MERMA, (int) $registro->malo + (int) $registro->danada, $fecha);
+            foreach ([
+                [self::TIPO_PRODUCCION_PRIMERA, (int) $registro->primera],
+                [self::TIPO_PRODUCCION_SEGUNDA, (int) $registro->segunda],
+                [self::TIPO_MERMA, (int) $registro->malo + (int) $registro->danada],
+            ] as [$tipo, $cantidad]) {
+                if ($cantidad > 0) {
+                    $lineas[] = ['tipo' => $tipo, 'producto_id' => $productoId, 'cantidad' => $cantidad];
+                }
+            }
         }
+
+        return $lineas;
     }
 
-    private static function registrar(ProduccionReporte $reporte, ?int $productoId, string $tipo, int $cantidad, string $fecha): void
+    /**
+     * Genera el kardex de un reporte aprobado: persiste planParaReporte().
+     * Idempotencia y transaccion son responsabilidad del llamador
+     * (ProduccionController::aprobar, con lock + guard movimientos()->exists()).
+     */
+    public static function generarParaReporte(ProduccionReporte $reporte): void
     {
-        if ($cantidad <= 0) {
-            return;
-        }
+        $fecha = $reporte->fecha->toDateString();
 
-        static::create([
-            'reporte_id' => $reporte->id,
-            'producto_id' => $productoId,
-            'tipo' => $tipo,
-            'cantidad' => $cantidad,
-            'fecha' => $fecha,
-        ]);
+        foreach (static::planParaReporte($reporte) as $linea) {
+            static::create($linea + ['reporte_id' => $reporte->id, 'fecha' => $fecha]);
+        }
     }
 }

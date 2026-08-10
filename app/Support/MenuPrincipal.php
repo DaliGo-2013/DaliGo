@@ -80,6 +80,10 @@ class MenuPrincipal
                 // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
                 // perdieron su «Volver» (doctrina P-NAV-08).
                 'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
+                // Recetas (P-M11-10): rutas con prefijo propio admin.recetas.*
+                // — fuera de la enumeración del ítem `produccion`, cero riesgo
+                // de doble aria-current.
+                'recetas' => ['label' => 'Recetas', 'route' => 'admin.recetas.index', 'activo' => ['admin.recetas.*'], 'permiso' => 'manage production'],
                 'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
                 'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
                 // Despachos se fue a LOGÍSTICA el 05-08 (pedido del dueño).

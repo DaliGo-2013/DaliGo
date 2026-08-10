@@ -9,10 +9,11 @@
         <x-status-alert :status="session('status')" />
 
         {{-- Resumen del filtro actual --}}
-        <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             @php
                 $chips = [
                     ['Consumo preforma', $resumen[\App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA] ?? 0],
+                    ['Consumo tapa', $resumen[\App\Models\ProduccionMovimiento::TIPO_CONSUMO_TAPA] ?? 0],
                     ['Producción 1ª', $resumen[\App\Models\ProduccionMovimiento::TIPO_PRODUCCION_PRIMERA] ?? 0],
                     ['Producción 2ª', $resumen[\App\Models\ProduccionMovimiento::TIPO_PRODUCCION_SEGUNDA] ?? 0],
                     ['Merma', $resumen[\App\Models\ProduccionMovimiento::TIPO_MERMA] ?? 0],
