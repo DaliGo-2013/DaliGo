@@ -408,6 +408,20 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Proyección mínima del turno (% de la meta asignada) bajo la cual el corte SIC avisa al jefe. El 2º corte consecutivo bajo el umbral llega URGENTE; el 3º ya no repite.',
             ],
+            // La duración del turno NO existía como dato en ninguna parte
+            // (verificado P-M11-11): el OEE la necesita para la Disponibilidad.
+            // 720 = 12 h (día/noche cubren las 24). Hipótesis [B] editable acá.
+            // OJO (merge del Director, 10-ago): produccion_turnos (arriba) y esta
+            // clave son DOS hipótesis del mismo hecho — hoy coherentes (12 h).
+            // Si Luis confirma horarios distintos, ajustar AMBAS; unificarlas es
+            // pulido pendiente de F3 (derivar minutos de los horarios).
+            [
+                'clave' => 'produccion_minutos_turno',
+                'valor' => '720',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'produccion',
+                'descripcion' => 'Minutos que dura un turno de producción (día o noche). Lo usa el OEE como tiempo planificado por turno trabajado. Mantener coherente con produccion_turnos.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',

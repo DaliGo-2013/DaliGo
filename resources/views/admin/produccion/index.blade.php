@@ -148,6 +148,44 @@
             </div>
         </div>
 
+        {{-- OEE por máquina del periodo (P-M11-11): la comparativa contra la
+             meta de cada máquina; el detalle (factores + Pareto) vive en el
+             informe por máquina, al que enlaza cada fila con el mismo rango. --}}
+        @if ($oeePorMaquina->isNotEmpty())
+            <div class="dg-enter mb-6 rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">OEE por máquina · periodo</h3>
+                    <x-info-tip>Disponibilidad × Rendimiento × Calidad de cada máquina en el rango, contra su meta. Un guion significa que falta un dato (ciclo ideal sin cargar, sin turnos): el informe declara lo que falta, no lo inventa. Toca una máquina para ver el detalle y su Pareto de paradas.</x-info-tip>
+                </div>
+                <ul class="divide-y divide-neutral-100">
+                    @foreach ($oeePorMaquina as $fila)
+                        <li class="px-4 py-3 hover:bg-neutral-50 sm:px-6">
+                            <a href="{{ route('admin.produccion.maquina', ['maquina' => $fila['maquina']] + $linkRango) }}" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium text-neutral-900">{{ $fila['maquina']->nombre }}</p>
+                                    @php
+                                        // Cadena armada en @php (gotcha @endif@if, bitácora 2026-06-15).
+                                        $notaOee = $fila['cicloSospechoso'] ? 'ciclo ideal por revisar' : ($fila['sinCiclo'] !== [] ? 'sin ciclo cargado' : null);
+                                        $detalleOee = collect([$fila['maquina']->sucursal?->nombre, $notaOee])->filter()->implode(' · ');
+                                    @endphp
+                                    @if ($detalleOee !== '')
+                                        <p class="truncate text-xs text-neutral-500">{{ $detalleOee }}</p>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-x-4 text-sm text-neutral-600">
+                                    <x-produccion.metrica label="D" w="w-16">{{ $fila['disponibilidad'] !== null ? $fila['disponibilidad'].'%' : '—' }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="R" w="w-16">{{ $fila['rendimiento'] !== null ? $fila['rendimiento'].'%' : '—' }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="Q" w="w-16">{{ $fila['calidad'] !== null ? $fila['calidad'].'%' : '—' }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="OEE" w="w-20" :tone="$fila['oee'] !== null && $fila['maquina']->oee_target && $fila['oee'] >= $fila['maquina']->oee_target ? 'brand' : null">{{ $fila['oee'] !== null ? $fila['oee'].'%' : '—' }}</x-produccion.metrica>
+                                    <x-produccion.metrica label="Meta" w="w-16">{{ $fila['maquina']->oee_target ? $fila['maquina']->oee_target.'%' : '—' }}</x-produccion.metrica>
+                                </div>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         {{-- Producción del día por máquina (incluye reportes sin aprobar) --}}
         @if ($porMaquina->isNotEmpty())
             <div class="dg-enter mb-6 rounded-2xl border border-neutral-200 bg-white shadow-sm">

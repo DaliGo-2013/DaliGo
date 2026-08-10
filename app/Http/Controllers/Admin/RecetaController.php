@@ -53,18 +53,23 @@ class RecetaController extends Controller
             'cantidad_tapa' => ['nullable', 'required_with:componente_tapa', 'numeric', 'min:0.0001', 'max:1000'],
             // MISMO scope que el selector (regla M-3): activo y sin dañadas.
             'componente_tapa' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinDanadas())],
+            // Segundos por ciclo de soplado (OEE, P-M11-11). NULL legítimo:
+            // el informe declara «sin ciclo cargado» hasta que Luis lo cargue.
+            'ciclo_ideal_seg' => ['nullable', 'integer', 'min:1', 'max:600'],
         ], [], [
             'cantidad_preforma' => 'cantidad de preformas',
             'cantidad_tapa' => 'cantidad de tapas',
             'componente_tapa' => 'tapa',
+            'ciclo_ideal_seg' => 'ciclo ideal',
         ]);
 
         // Guardar = confirmar (D-003). La fila preforma NO gestiona componente
         // desde la UI: el producto del movimiento es la preforma de la
-        // asignación del turno; la receta solo aporta la cantidad.
+        // asignación del turno; la receta solo aporta la cantidad. El ciclo
+        // ideal vive en ESTA fila (la portadora: única obligatoria y permanente).
         Receta::updateOrCreate(
             ['producto_id' => $producto->id, 'rol' => Receta::ROL_PREFORMA],
-            ['cantidad' => $data['cantidad_preforma'], 'confirmada' => true],
+            ['cantidad' => $data['cantidad_preforma'], 'confirmada' => true, 'ciclo_ideal_seg' => $data['ciclo_ideal_seg'] ?? null],
         );
 
         if ($data['cantidad_tapa'] ?? null) {
