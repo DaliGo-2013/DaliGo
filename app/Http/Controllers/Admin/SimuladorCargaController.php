@@ -10,6 +10,7 @@ use App\Services\Carga\PalletSimulado;
 use App\Services\Carga\PlanDeCargaExcel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -127,6 +128,15 @@ class SimuladorCargaController extends Controller
             // la opción de cuánto cargo, 1, 20, 50, para realizar la prueba»). En
             // unidades sueltas, como todo el formulario. Vacío = el máximo, como antes.
             'cantidad' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            // APROVECHAR EL ESPACIO QUE SOBRA (pedido del dueño 10-08: «que se pueda
+            // cargar el camión completo hasta la puerta y que se ocupe todo el
+            // espacio posible»). Deja que el motor GIRE el bulto en las regiones que
+            // sobraron, que es lo que se hace a mano: el grueso acostado y, en la
+            // franja de la puerta, las bolsas paradas y cruzadas.
+            //
+            // Opt-in, como el tope de apilado: apagado no mueve ni un número de los
+            // verificados, y el candado de consistencia entre pestañas sigue en pie.
+            'aprovechar' => ['nullable', 'boolean'],
         ]);
 
         // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
@@ -166,9 +176,10 @@ class SimuladorCargaController extends Controller
         // cupo máximo de un solo producto («¿cuánto entra?»). La misma pantalla
         // responde las dos preguntas, que son distintas.
         $enOrdenDeLista = ($datos['orden'] ?? 'auto') === 'lista';
+        $aprovechar = (bool) ($datos['aprovechar'] ?? false);
 
         $mixta = ($camion && isset($datos['lineas']) && $datos['lineas'] !== [])
-            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista)
+            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista, $aprovechar)
             : null;
 
         $estiba = $datos['estiba'] ?? 'auto';
@@ -233,6 +244,7 @@ class SimuladorCargaController extends Controller
             'mixta' => $mixta,
             'estiba' => $estiba,
             'orden' => $enOrdenDeLista ? 'lista' : 'auto',
+            'aprovechar' => $aprovechar,
             'pallet' => $pallet,
             'enPallet' => $enPallet,
             'apilado' => $apilado,
@@ -272,10 +284,10 @@ class SimuladorCargaController extends Controller
      * motivo de lo que quedó afuera.
      *
      * @param  array<int, array{tipo: int|string, cantidad: int|string}>  $lineasInput
-     * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
+     * @param  Collection<int, TipoBulto>  $bultos
      * @return array{resultado: array, lineas: list<array<string, mixed>>, cabeTodo: bool, peligrosas: list<TipoBulto>}
      */
-    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false): array
+    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false, bool $aprovechar = false): array
     {
         $modelos = [];
         $estibas = [];
@@ -299,7 +311,7 @@ class SimuladorCargaController extends Controller
             ];
         }
 
-        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas, $enOrdenDeLista);
+        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas, $enOrdenDeLista, $aprovechar);
 
         $filas = [];
         foreach ($modelos as $i => $modelo) {
@@ -367,8 +379,8 @@ class SimuladorCargaController extends Controller
      * Devuelve `null` cuando no hay nada que comparar (sin producto, o una sola caja
      * de carga en el catálogo): una tabla de una fila no ayuda a elegir.
      *
-     * @param  \Illuminate\Support\Collection<int, CamionSimulacion>  $camiones
-     * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
+     * @param  Collection<int, CamionSimulacion>  $camiones
+     * @param  Collection<int, TipoBulto>  $bultos
      * @param  array<string, mixed>  $datos
      * @return ?list<array<string, mixed>>
      */
@@ -384,7 +396,7 @@ class SimuladorCargaController extends Controller
         $filas = [];
         foreach ($camiones as $c) {
             if ($hayLineas) {
-                $m = $this->calcularMixta($c, $datos['lineas'], $bultos, $enOrdenDeLista);
+                $m = $this->calcularMixta($c, $datos['lineas'], $bultos, $enOrdenDeLista, $aprovechar);
                 $unidades = array_sum(array_column($m['lineas'], 'cargadas_unidades'));
                 $cabe = $m['cabeTodo'];
             } elseif ($sobrePallet) {
@@ -429,7 +441,7 @@ class SimuladorCargaController extends Controller
      * Candado: `test_el_bulto_a_medida_no_se_guarda_en_el_catalogo`.
      *
      * @param  array<string, mixed>  $l
-     * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
+     * @param  Collection<int, TipoBulto>  $bultos
      */
     private function modeloDeLinea(array $l, $bultos): ?TipoBulto
     {

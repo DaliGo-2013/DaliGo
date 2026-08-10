@@ -16,6 +16,60 @@ use PHPUnit\Framework\TestCase;
  */
 class CargaMixtaTest extends TestCase
 {
+    /**
+     * USAR TODO EL ESPACIO: el motor gira el bulto en lo que sobra.
+     *
+     * Pedido del dueño (10-08): «que se pueda cargar el camión completo hasta la
+     * puerta y que se ocupe todo el espacio posible». A mano él pone el grueso
+     * acostado y, en la franja de 40 cm de la puerta, las bolsas paradas y
+     * cruzadas — de largo no entran.
+     *
+     * El PRIMER bloque conserva siempre la estiba pedida (es la que reproduce los
+     * cupos verificados); solo los bloques que van en las regiones sobrantes
+     * pueden girar. Y no relaja el credo: cada bloque extra sigue saliendo de una
+     * rejilla exacta sobre una región real.
+     */
+    public function test_usar_todo_el_espacio_llena_lo_que_sobra_girando_el_bulto(): void
+    {
+        $hd35 = ['largo' => 430, 'ancho' => 204, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
+        // Bolsa ACOSTADA de costado, apilando hasta el techo y sin rotación propia.
+        $acostada = ['largo' => 130, 'ancho' => 51, 'alto' => 26, 'unidades' => 5,
+            'apilable_max' => 8, 'orientacion_fija' => true];
+        $linea = [['bulto' => $acostada, 'cantidad' => 400]];
+
+        $sin = (new CalculoDeCarga)->carga($hd35, $linea);
+        $con = (new CalculoDeCarga)->carga($hd35, $linea, false, true);
+
+        // 96 bolsas es el bloque limpio (3 × 4 × 8); girando el sobrante entran más.
+        $this->assertSame(96, $sin['lineas'][0]['colocados']);
+        $this->assertGreaterThan($sin['lineas'][0]['colocados'], $con['lineas'][0]['colocados'],
+            'Con «usar todo el espacio» no entró ni un bulto más.');
+
+        // Y aparecen bloques EXTRA: son las regiones sobrantes, no un bloque inflado.
+        $this->assertCount(1, $sin['bloques']);
+        $this->assertGreaterThan(1, count($con['bloques']));
+    }
+
+    /**
+     * APAGADO NO MUEVE NADA. Es lo que protege todos los números verificados y el
+     * candado de consistencia entre las dos pestañas: la opción es opt-in, así que
+     * quien no la toca ve exactamente lo de siempre.
+     */
+    public function test_apagado_da_el_mismo_resultado_de_siempre(): void
+    {
+        $hd35 = ['largo' => 430, 'ancho' => 204, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
+        $bolsa = ['largo' => 130, 'ancho' => 26, 'alto' => 51, 'unidades' => 5,
+            'apilable_max' => 6, 'orientacion_fija' => true];
+        $linea = [['bulto' => $bolsa, 'cantidad' => 500]];
+
+        $porDefecto = (new CalculoDeCarga)->carga($hd35, $linea);
+        $explicito = (new CalculoDeCarga)->carga($hd35, $linea, false, false);
+
+        $this->assertSame($porDefecto, $explicito);
+        // Y sigue siendo el cupo máximo de pie: 84 bolsas = 420 botellones.
+        $this->assertSame(84, $porDefecto['lineas'][0]['colocados']);
+    }
+
     private CalculoDeCarga $calc;
 
     /** Hyundai HD35: 4,30 × 2,00 × 2,20 m (medidas del dueño). */

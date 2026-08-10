@@ -168,7 +168,7 @@ class CalculoDeCarga
      * @param  bool  $enOrdenDeLista  respeta el orden dado en vez de ordenar por volumen
      * @return array{lineas: array<int, array{pedidos:int,colocados:int,unidades_colocadas:int,motivo:?string}>, bloques: list<array{linea:int,x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>, cabe_todo:bool, peso_kg:float, volumen_ocupado_m3:float, volumen_vehiculo_m3:float, ocupacion:float}
      */
-    public function carga(array $vehiculo, array $lineas, bool $enOrdenDeLista = false): array
+    public function carga(array $vehiculo, array $lineas, bool $enOrdenDeLista = false, bool $aprovechar = false): array
     {
         $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
         $W = (int) $vehiculo['ancho'];
@@ -209,6 +209,7 @@ class CalculoDeCarga
             $pesoUnit = (float) ($bulto['peso'] ?? 0);
             $restan = $pedidos;
             $capadoPorPeso = false;
+            $primerBloque = true;
 
             while ($restan > 0) {
                 // El tope de peso es GLOBAL a la carga: se evalúa antes de cada
@@ -221,10 +222,29 @@ class CalculoDeCarga
                     break;
                 }
 
-                $puesto = $this->colocarBloque($regiones, $bulto, min($restan, $topeBultos), $H);
+                // APROVECHAR EL ESPACIO QUE SOBRA (pedido del dueño 10-08: «que se
+                // pueda cargar el camión completo hasta la puerta y que se ocupe todo
+                // el espacio posible»).
+                //
+                // El PRIMER bloque de cada línea va siempre con la estiba elegida: es
+                // la que el usuario pidió y la que reproduce los cupos verificados.
+                // A partir del SEGUNDO —o sea, ya en las regiones que sobraron— el
+                // bulto puede GIRAR, que es exactamente lo que se hace a mano: el
+                // grueso acostado, y en la franja de 40 cm de la puerta las bolsas
+                // paradas y cruzadas, porque de largo no entran.
+                //
+                // Es opt-in y por eso no mueve ningún número existente. Y no relaja el
+                // credo: cada bloque extra sigue saliendo de una rejilla exacta sobre
+                // una región real, así que se puede verificar a mano igual que antes.
+                $paraColocar = ($aprovechar && ! $primerBloque)
+                    ? ['orientacion_fija' => false] + $bulto
+                    : $bulto;
+
+                $puesto = $this->colocarBloque($regiones, $paraColocar, min($restan, $topeBultos), $H);
                 if ($puesto === null) {
                     break;   // no cabe ni uno en ninguna región
                 }
+                $primerBloque = false;
 
                 $bloques[] = $puesto + ['linea' => $i];
                 $restan -= $puesto['cantidad'];
@@ -347,7 +367,7 @@ class CalculoDeCarga
     /**
      * Las 6 rotaciones del bulto, o solo la cargada si la orientación es fija.
      *
-     * @return list<array{int,int,int}>  (largo, ancho, alto) en cm
+     * @return list<array{int,int,int}> (largo, ancho, alto) en cm
      */
     private function orientaciones(array $bulto): array
     {

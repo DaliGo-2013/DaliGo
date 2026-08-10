@@ -157,6 +157,28 @@
                         <button type="button" id="carga3dTodo" class="{{ $btn }}">Todo</button>
                         <button type="button" id="carga3dVaciar" class="{{ $btn }}">Vaciar</button>
                     </div>
+
+                    {{-- APROVECHAR EL ESPACIO QUE SOBRA. Recalcula en el servidor (no es
+                         un control del lienzo): deja que el motor GIRE el bulto en las
+                         regiones sobrantes, que es lo que se hace a mano — el grueso
+                         acostado y, en la franja de la puerta, las bolsas paradas y
+                         cruzadas. Solo aplica a la carga mixta, que es donde el motor
+                         reparte el piso en regiones. --}}
+                    @if (! $publico && ($mixta ?? null) !== null)
+                        <a href="{{ request()->fullUrlWithQuery(['aprovechar' => ($aprovechar ?? false) ? null : 1]) }}"
+                           @class([
+                               'mt-2 flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 transition',
+                               'border-brand-300 bg-brand-50 font-semibold text-brand-700' => $aprovechar ?? false,
+                               'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50' => ! ($aprovechar ?? false),
+                           ])
+                           aria-pressed="{{ ($aprovechar ?? false) ? 'true' : 'false' }}">
+                            <span>Usar todo el espacio</span>
+                            <span class="shrink-0 text-[11px]">{{ ($aprovechar ?? false) ? 'ON' : 'OFF' }}</span>
+                        </a>
+                        <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                            Gira los bultos en lo que sobra: la franja de la puerta y el costado.
+                        </p>
+                    @endif
                 </div>
             </details>
 

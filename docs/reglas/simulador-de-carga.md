@@ -67,6 +67,37 @@ hacia abajo. Reglas del motor mixto, deliberadamente conservadoras:
 5. **CENTÍMETROS ENTEROS**, nunca metros con coma flotante (regla heredada de
    cupo(): `2.00 // 0.40` da 4 en binario, y eso son 125 botellones fantasma).
 
+### 2.2bis «Usar todo el espacio»: el motor gira el bulto en lo que sobra (10-08-2026)
+
+Pedido del dueño: *«que se pueda cargar el camión completo hasta la puerta y que se ocupe
+todo el espacio posible»*. A mano él pone el grueso acostado y, en la franja de 40 cm que
+queda contra la puerta, **bolsas paradas y cruzadas** — de largo no entran.
+
+El motor no lo hacía por un motivo concreto: un pack de **orientación fija** se calcula con
+UNA sola orientación, así que en las regiones sobrantes probaba la misma que no entraba y
+las dejaba vacías.
+
+Ahora hay un interruptor **Usar todo el espacio** (opt-in) con una regla precisa:
+
+> El **primer** bloque de cada línea conserva **siempre** la estiba elegida. Solo del
+> segundo en adelante —o sea, ya en las regiones que sobraron— el bulto puede girar.
+
+Eso es lo que hace que la opción no toque nada de lo verificado: el bloque principal sigue
+siendo el mismo de siempre, y lo que aparece es carga en piso que antes se regalaba.
+
+**No relaja el credo.** Cada bloque extra sigue saliendo de una **rejilla exacta sobre una
+región real**, así que se verifica a mano igual que antes; no hay heurística nueva. Medido
+en el HD35 con la bolsa acostada y apilado 8: **480 → 505 botellones**, en 3 bloques.
+
+**Apagado no mueve ni un número**, y eso es lo que protege §2.1: el candado de consistencia
+entre pestañas compara sin la opción, así que sigue en pie. Candados:
+`test_usar_todo_el_espacio_llena_lo_que_sobra_girando_el_bulto` y
+`test_apagado_da_el_mismo_resultado_de_siempre`.
+
+**Por ahora es solo de la carga mixta**, que es donde el motor reparte el piso en regiones.
+`cupo()` es una rejilla única sobre la caja entera y devolver varias rejillas rompería su
+contrato; extenderlo es un paso aparte.
+
 ### 2.1 El candado de consistencia
 
 **Una carga de UN solo tipo, pedida de sobra, da EXACTAMENTE el cupo máximo.**
