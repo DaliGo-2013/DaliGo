@@ -450,6 +450,41 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
      * dibujaría otro, que es el defecto que nadie reporta pero que hace desconfiar
      * de la herramienta.
      */
+    /**
+     * EN PALLET SOLO VAN CAJAS (dueño, 07-08-2026: «los botellones nunca van a ir en
+     * pallet, solo cajas»).
+     *
+     * Las dos mitades importan y por eso van juntas. Que el selector no OFREZCA una
+     * bolsa es la mitad visible; la que de verdad arregla el defecto es la segunda:
+     * a este modo se llega desde los otros dos con un `tipo_bulto_id` ya puesto en la
+     * URL, así que sin corregir el producto elegido el pallet se seguía calculando
+     * con la bolsa y devolvía «0 pallets» — que se lee como que la app falló, cuando
+     * en realidad ese producto no va en pallet (mide 130 cm y el pallet 120).
+     */
+    public function test_en_pallet_solo_se_ofrecen_cajas_y_una_bolsa_se_corrige_sola(): void
+    {
+        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'sobre_pallet' => 1,
+            // Se llega con la BOLSA elegida, que es como pasa en la pantalla real.
+            'tipo_bulto_id' => $this->bolsa->id,
+        ]))->assertOk();
+
+        // El selector solo trae cajas.
+        $paletizables = $res->viewData('paletizables');
+        $this->assertTrue($paletizables->isNotEmpty(), 'No quedó ninguna caja paletizable.');
+        foreach ($paletizables as $b) {
+            $this->assertSame('cajas', $b->categoria, "[{$b->nombre}] no es una caja y se ofrece para paletizar.");
+        }
+
+        // Y el producto elegido se corrigió a una caja: el resultado ya no es 0.
+        $this->assertSame('cajas', $res->viewData('bulto')->categoria);
+        $enPallet = $res->viewData('enPallet');
+        $this->assertTrue($enPallet['entraEnPallet'], 'El producto elegido sigue sin entrar en el pallet.');
+        $this->assertGreaterThan(0, $enPallet['unidadesTotales'],
+            'El pallet sigue dando 0: no se corrigió el producto que no va en pallet.');
+    }
+
     public function test_los_tres_controles_de_cantidad_mueven_el_mismo_numero(): void
     {
         $js = file_get_contents(resource_path('js/carga3d.js'));

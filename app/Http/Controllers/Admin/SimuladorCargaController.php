@@ -145,6 +145,21 @@ class SimuladorCargaController extends Controller
             ? $bultos->firstWhere('id', (int) $datos['tipo_bulto_id'])
             : $bultos->first();
 
+        // EN PALLET SOLO VAN CAJAS (dueño, 07-08-2026: «los botellones nunca van a ir
+        // en pallet, solo cajas»). No es un límite del motor —palletiza cualquier
+        // bulto que quepa— sino cómo se trabaja en bodega.
+        //
+        // El selector se arma con esta lista, y además hay que CORREGIR el producto
+        // elegido: se llega a este modo desde los otros dos con un `tipo_bulto_id` ya
+        // puesto, así que sin esto el pallet se calculaba con la bolsa de botellones
+        // y devolvía «0 pallets» — que se lee como que la app falló, cuando en
+        // realidad ese producto no va en pallet (mide 130 cm y el pallet 120).
+        $paletizables = $bultos->where('categoria', 'cajas')->values();
+        $sobrePallet = (bool) ($datos['sobre_pallet'] ?? false);
+        if ($sobrePallet && ($bulto === null || $bulto->categoria !== 'cajas')) {
+            $bulto = $paletizables->first();
+        }
+
         // Modo: con líneas es CARGA MIXTA («¿cabe esta carga?»); sin líneas es el
         // cupo máximo de un solo producto («¿cuánto entra?»). La misma pantalla
         // responde las dos preguntas, que son distintas.
@@ -167,7 +182,7 @@ class SimuladorCargaController extends Controller
 
         $apilado = isset($datos['apilado']) ? (int) $datos['apilado'] : null;
 
-        $enPallet = ($camion && $bulto && $mixta === null && ($datos['sobre_pallet'] ?? false))
+        $enPallet = ($camion && $bulto && $mixta === null && $sobrePallet)
             ? $this->calcularEnPallet($camion, $bulto, $pallet, $estiba, $apilado)
             : null;
 
@@ -193,6 +208,9 @@ class SimuladorCargaController extends Controller
         return view('admin.carga.index', [
             'camiones' => $camiones,
             'bultos' => $bultos,
+            // Lo que se puede paletizar: solo cajas. Va aparte de `bultos` para que
+            // los otros dos modos sigan ofreciendo el catálogo completo.
+            'paletizables' => $paletizables,
             'camion' => $camion,
             'bulto' => $bulto,
             'resultado' => $resultado,
