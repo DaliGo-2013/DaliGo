@@ -55,6 +55,7 @@
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de segunda</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_segunda }}%</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de malas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_malo }}%</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de dañadas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_danada }}%</dd></div>
+                    <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Cavidades activas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->cavidades_activas ?? 'Todas' }}</dd></div>
                 </dl>
 
                 @if ($reporte->registros->isNotEmpty())
@@ -75,6 +76,25 @@
                                     @if ($motivosTanda)
                                         <p class="text-xs text-neutral-400">{{ $motivosTanda }}</p>
                                     @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if ($reporte->paradas->isNotEmpty())
+                    <div class="border-t border-neutral-100">
+                        <h3 class="px-4 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500 sm:px-6">Paradas del turno</h3>
+                        <ul class="divide-y divide-neutral-100">
+                            @foreach ($reporte->paradas as $parada)
+                                <li class="px-4 py-3 sm:px-6">
+                                    <p class="truncate text-sm font-medium text-neutral-900">{{ $parada->motivo }}{{ $parada->maquina ? ' · '.$parada->maquina->nombre : '' }}</p>
+                                    <p class="text-xs text-neutral-500">
+                                        {{ $parada->inicio_corta }} a {{ $parada->fin_corta ?? 'sin término' }}{{ $parada->duracion_label ? ' · '.$parada->duracion_label : '' }}
+                                        @if ($parada->cerrada_al_envio)
+                                            · cerrada al envío
+                                        @endif
+                                    </p>
                                 </li>
                             @endforeach
                         </ul>
@@ -113,11 +133,21 @@
                     tipoId: '{{ $tipoPreseleccionado ?: '' }}',
                     maquinas: {{ Js::from($etiquetasMaquinas) }},
                     tipos: {{ Js::from($etiquetasTipos) }},
+                    /* Estado PROPIO de la parada (no reusar maquinaId: un x-model
+                       compartido sincronizaría los chips de la tanda con los de la
+                       parada). Los campos van prefijados parada_* por lo mismo. */
+                    paradaMaquinaId: '{{ old('parada_maquina_id', $maquinaPreseleccionada ?: '') }}',
+                    paradaInicio: '{{ old('parada_inicio', '') }}',
+                    paradaFin: '{{ old('parada_fin', '') }}',
+                    registrandoParada: false,
+                    cavidades: '{{ old('cavidades_activas', $reporte->cavidades_activas ?? '') }}',
                     paneles: {
                         maquina: {{ $errors->has('maquina_id') ? 'true' : 'false' }},
                         tipo: {{ $errors->has('tipo_botellon_id') ? 'true' : 'false' }},
                         motivo: {{ $errors->has('motivo') ? 'true' : 'false' }},
                         obs: {{ $errors->has('obs') ? 'true' : 'false' }},
+                        paradas: {{ $errors->hasAny(['parada_motivo', 'parada_origen', 'parada_inicio', 'parada_fin', 'parada_maquina_id']) ? 'true' : 'false' }},
+                        cavidades: {{ $errors->has('cavidades_activas') ? 'true' : 'false' }},
                     },
                     agregando: false,
                     avisoTanda: false,
@@ -162,6 +192,32 @@
                         this.guardado += this.tanda;
                         await window.dgCola.encolar({ uuid, url: form.action, campos });
                         this.primera = 0; this.segunda = 0; this.malo = 0; this.danada = 0;
+                        this.pendientesOffline = await window.dgCola.pendientes();
+                    },
+                    /* Parada del turno (P-M11-20): mismas guardas señalar-no-narrar y
+                       misma bifurcación offline que la tanda; el form es hermano y
+                       viaja por la MISMA cola (window.dgCola). */
+                    agregarParada(e) {
+                        const form = e.target;
+                        if (! form.querySelector('input[name=parada_motivo]:checked')) { e.preventDefault(); this.paneles.paradas = true; this.$nextTick(() => this.$destacar(this.$refs.grupoParadaMotivo)); return; }
+                        if (! this.paradaInicio) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaHoras); return; }
+                        /* Cortesía en cliente; el servidor valida igual (after_or_equal).
+                           Comparación lexicográfica válida para "HH:MM" con cero inicial. */
+                        if (this.paradaFin && this.paradaFin < this.paradaInicio) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaHoras); return; }
+                        if (window.dgCola && this.$store.red && ! this.$store.red.online) {
+                            e.preventDefault();
+                            this.guardarParadaOffline(form);
+                            return;
+                        }
+                        this.registrandoParada = true;
+                    },
+                    async guardarParadaOffline(form) {
+                        const fd = new FormData(form);
+                        fd.delete('_token'); /* el token se lee fresco al drenar; no encolar uno stale */
+                        const campos = Object.fromEntries(fd.entries());
+                        const uuid = (crypto.randomUUID && crypto.randomUUID()) || (Date.now() + '-' + Math.random());
+                        await window.dgCola.encolar({ uuid, url: form.action, campos });
+                        this.paradaInicio = ''; this.paradaFin = '';
                         this.pendientesOffline = await window.dgCola.pendientes();
                     },
                     enviar(e) {
@@ -293,6 +349,102 @@
                     </div>
                 @endif
 
+                {{-- Paradas del turno (P-M11-20): qué detuvo la producción + horas.
+                     Form HERMANO del de la tanda (jamás anidado); campos prefijados
+                     parada_* para no contaminar old() de los otros forms. --}}
+                <div class="border-t border-neutral-100 p-4 sm:p-6">
+                    <x-collapsible label="Paradas del turno" model="paneles.paradas">
+                        <x-slot:summary>
+                            {{ $reporte->paradas->isNotEmpty()
+                                ? $reporte->paradas->count().' '.\Illuminate\Support\Str::plural('registrada', $reporte->paradas->count())
+                                : '¿Se detuvo la producción? Regístralo aquí' }}
+                        </x-slot:summary>
+                        <form method="POST" action="{{ route('produccion.mi.paradas.store', $reporte) }}"
+                              class="space-y-4" x-on:submit="agregarParada($event)">
+                            @csrf
+
+                            <div x-ref="grupoParadaMotivo">
+                                <x-reason-chips name="parada_motivo" label="¿Qué detuvo la producción?"
+                                                :options="\App\Models\ProduccionParada::MOTIVOS"
+                                                :selected="old('parada_motivo')" />
+                            </div>
+
+                            <div>
+                                <x-input-label value="¿Qué se detuvo?" />
+                                <div class="mt-1.5 grid grid-cols-2 gap-2">
+                                    <x-chip-radio name="parada_origen" value="maquina" label="La máquina"
+                                                  :checked="old('parada_origen', 'maquina') === 'maquina'" />
+                                    <x-chip-radio name="parada_origen" value="operario" label="El operario"
+                                                  :checked="old('parada_origen') === 'operario'" />
+                                </div>
+                                <x-input-error :messages="$errors->get('parada_origen')" class="mt-2" />
+                            </div>
+
+                            @if ($maquinas->isNotEmpty())
+                                <div>
+                                    <x-input-label value="Máquina" />
+                                    <div class="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                        @foreach ($maquinas as $maquina)
+                                            <x-chip-radio name="parada_maquina_id" :value="$maquina->id"
+                                                          :label="$etiquetasMaquinas[$maquina->id]"
+                                                          :checked="(string) old('parada_maquina_id', $maquinaPreseleccionada ?: '') === (string) $maquina->id"
+                                                          x-model="paradaMaquinaId" />
+                                        @endforeach
+                                    </div>
+                                    <x-input-error :messages="$errors->get('parada_maquina_id')" class="mt-2" />
+                                </div>
+                            @endif
+
+                            <div x-ref="grupoParadaHoras" class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <x-input-label for="parada_inicio" value="Empezó" />
+                                    <x-text-input id="parada_inicio" name="parada_inicio" type="time"
+                                                  class="mt-1.5 h-12 w-full" x-model="paradaInicio" required />
+                                    <x-input-error :messages="$errors->get('parada_inicio')" class="mt-2" />
+                                </div>
+                                <div>
+                                    <x-input-label for="parada_fin" value="Terminó" />
+                                    <x-text-input id="parada_fin" name="parada_fin" type="time"
+                                                  class="mt-1.5 h-12 w-full" x-model="paradaFin" />
+                                    <x-input-hint>Déjala abierta si sigue detenida.</x-input-hint>
+                                    <x-input-error :messages="$errors->get('parada_fin')" class="mt-2" />
+                                </div>
+                            </div>
+
+                            <x-secondary-button type="submit" class="h-12 w-full justify-center"
+                                                x-bind:disabled="registrandoParada">
+                                Registrar parada
+                            </x-secondary-button>
+                        </form>
+                    </x-collapsible>
+
+                    @if ($reporte->paradas->isNotEmpty())
+                        <ul class="mt-3 divide-y divide-neutral-100 rounded-lg border border-neutral-200">
+                            @foreach ($reporte->paradas as $parada)
+                                <li class="flex items-center gap-3 px-3 py-2.5">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-medium text-neutral-900">{{ $parada->motivo }}{{ $parada->maquina ? ' · '.$parada->maquina->nombre : '' }}</p>
+                                        <p class="text-xs text-neutral-500">
+                                            {{ $parada->inicio_corta }} a {{ $parada->fin_corta ?? 'en curso' }}{{ $parada->duracion_label ? ' · '.$parada->duracion_label : '' }}
+                                            @if ($parada->cerrada_al_envio)
+                                                · cerrada al envío
+                                            @endif
+                                        </p>
+                                    </div>
+                                    <form method="POST" action="{{ route('produccion.mi.paradas.destroy', [$reporte, $parada]) }}"
+                                          onsubmit="return confirm('¿Eliminar esta parada?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <x-icon-button type="submit" variant="danger" label="Eliminar parada" title="Eliminar parada">
+                                            <x-icon.trash class="h-5 w-5" />
+                                        </x-icon-button>
+                                    </form>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+
                 {{-- Resumen en vivo --}}
                 <div class="border-t border-neutral-100 bg-neutral-50 px-4 py-3 text-sm sm:px-6">
                     <div class="flex items-center justify-between">
@@ -330,6 +482,16 @@
                                             :selected="old('motivo', $reporte->motivo)" />
                         </x-collapsible>
                     </div>
+
+                    <x-collapsible label="Cavidades activas del molde" model="paneles.cavidades">
+                        <x-slot:summary><span x-text="cavidades ? cavidades + ' activas' : 'Todas'"></span></x-slot:summary>
+                        <x-input-label for="cavidades_activas" value="¿Con cuántas cavidades trabajaste?" />
+                        <x-text-input id="cavidades_activas" name="cavidades_activas" type="number"
+                                      inputmode="numeric" min="1" max="64"
+                                      class="mt-1.5 h-12 w-full sm:w-40" x-model="cavidades" />
+                        <x-input-hint>Déjalo vacío si trabajaste con todas las cavidades.</x-input-hint>
+                        <x-input-error :messages="$errors->get('cavidades_activas')" class="mt-2" />
+                    </x-collapsible>
 
                     <x-collapsible label="Observaciones (opcional)" model="paneles.obs">
                         <x-slot:summary><span x-text="obs ? obs : 'Toca para agregar una nota'"></span></x-slot:summary>

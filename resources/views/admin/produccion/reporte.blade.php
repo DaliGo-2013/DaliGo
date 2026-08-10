@@ -83,6 +83,10 @@
                     <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de dañadas</dt>
                     <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_danada }}%</dd>
                 </div>
+                <div>
+                    <dt class="text-xs uppercase tracking-wide text-neutral-400">Cavidades activas</dt>
+                    <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->cavidades_activas ?? 'Todas' }}</dd>
+                </div>
             </dl>
 
             @if ($reporte->registros->isNotEmpty())
@@ -114,6 +118,38 @@
                                     <x-produccion.metrica label="2ª" w="w-16">{{ $registro->segunda }}</x-produccion.metrica>
                                     <x-produccion.metrica label="Malos" w="w-24">{{ $registro->malo }}</x-produccion.metrica>
                                     <x-produccion.metrica label="Dañadas" w="w-28">{{ $registro->danada }}</x-produccion.metrica>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- Paradas del turno (P-M11-20): qué detuvo la producción, entre qué
+                 horas y por cuánto. Clase por relleno (paleta de 4): no planificada
+                 = brand (requiere atención), planificada = neutral (agendada). --}}
+            @if ($reporte->paradas->isNotEmpty())
+                <div class="border-t border-neutral-100">
+                    <h3 class="px-6 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Paradas del turno</h3>
+                    <ul class="divide-y divide-neutral-100">
+                        @foreach ($reporte->paradas as $parada)
+                            <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 py-3">
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium text-neutral-900">
+                                        {{ $parada->motivo }}@if ($parada->maquina) · <a href="{{ route('admin.produccion.maquina', $parada->maquina) }}" class="transition duration-150 hover:text-brand-600">{{ $parada->maquina->nombre }}</a>@endif
+                                    </p>
+                                    <p class="text-xs text-neutral-400">
+                                        {{ $parada->inicio_corta }} a {{ $parada->fin_corta ?? 'sin término' }}{{ $parada->duracion_label ? ' · '.$parada->duracion_label : '' }}
+                                    </p>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <x-badge :variant="$parada->clase === \App\Models\ProduccionParada::CLASE_PLANIFICADA ? 'neutral' : 'brand'">
+                                        {{ $parada->clase === \App\Models\ProduccionParada::CLASE_PLANIFICADA ? 'Planificada' : 'No planificada' }}
+                                    </x-badge>
+                                    <x-badge variant="neutral">{{ $parada->origen === 'maquina' ? 'Máquina' : 'Operario' }}</x-badge>
+                                    @if ($parada->cerrada_al_envio)
+                                        <x-badge variant="neutral">Cerrada al envío</x-badge>
+                                    @endif
                                 </div>
                             </li>
                         @endforeach

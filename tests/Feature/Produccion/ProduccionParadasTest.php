@@ -38,6 +38,11 @@ class ProduccionParadasTest extends TestCase
         return tap(User::factory()->create(['sucursal_id' => $sucursal?->id]))->assignRole('soplador');
     }
 
+    private function jefe(): User
+    {
+        return tap(User::factory()->create())->assignRole('jefe_bodega');
+    }
+
     private function sucursal(string $codigo = 'MIRADOR'): Sucursal
     {
         return Sucursal::firstOrCreate(['codigo' => $codigo], ['nombre' => ucfirst(strtolower($codigo))]);
@@ -443,5 +448,97 @@ class ProduccionParadasTest extends TestCase
             'motivo' => 'Scrap de arranque',
             'clase' => ProduccionParada::CLASE_NO_PLANIFICADA,
         ]);
+    }
+
+    // --- Superficies (candados 4 y 6: el detalle se VE) ---
+
+    public function test_jefe_ve_el_detalle_integro_de_paradas(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, estado: ProduccionReporte::ENVIADO);
+        $maquina = $this->maquina('Sopladora 7');
+
+        $reporte->cavidades_activas = 12;
+        $reporte->save();
+
+        $reporte->paradas()->create([
+            'maquina_id' => $maquina->id,
+            'motivo' => 'Falla de máquina',
+            'clase' => ProduccionParada::claseDe('Falla de máquina'),
+            'origen' => 'maquina',
+            'inicio' => '07:00',
+            'fin' => '09:15',
+            'cerrada_al_envio' => true,
+        ]);
+        $reporte->paradas()->create([
+            'maquina_id' => $maquina->id,
+            'motivo' => 'Cambio de molde',
+            'clase' => ProduccionParada::claseDe('Cambio de molde'),
+            'origen' => 'operario',
+            'inicio' => '10:00',
+            'fin' => '10:30',
+        ]);
+
+        $respuesta = $this->actingAs($this->jefe())
+            ->get(route('admin.produccion.reporte.show', $reporte))
+            ->assertOk()
+            // Motivo, rango horario y duracion calculada.
+            ->assertSee('Falla de máquina')
+            ->assertSee('07:00 a 09:15')
+            ->assertSee('2 h 15 min')
+            ->assertSee('Cambio de molde')
+            ->assertSee('30 min')
+            // Clase y origen como badges; marca del cierre automatico.
+            ->assertSee('No planificada')
+            ->assertSee('Planificada')
+            ->assertSee('Cerrada al envío')
+            ->assertSee('Operario')
+            // Cavidades activas del turno.
+            ->assertSeeInOrder(['Cavidades activas', '12']);
+
+        // La maquina de la parada enlaza a su drill-down (marcador por RUTA).
+        $respuesta->assertSee(route('admin.produccion.maquina', $maquina), false);
+    }
+
+    public function test_scrap_y_cavidades_se_ven_en_el_show_del_soplador(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, estado: ProduccionReporte::ENVIADO);
+
+        $reporte->cavidades_activas = 8;
+        $reporte->save();
+
+        $reporte->paradas()->create([
+            'motivo' => 'Scrap de arranque',
+            'clase' => ProduccionParada::claseDe('Scrap de arranque'),
+            'origen' => 'maquina',
+            'inicio' => '06:00',
+            'fin' => '06:40',
+        ]);
+
+        $this->actingAs($soplador)
+            ->get(route('produccion.mi.show', $reporte))
+            ->assertOk()
+            ->assertSee('Paradas del turno')
+            ->assertSee('Scrap de arranque')
+            ->assertSee('06:00 a 06:40')
+            ->assertSee('40 min')
+            ->assertSeeInOrder(['Cavidades activas', '8']);
+    }
+
+    public function test_mi_reporte_editable_muestra_la_seccion_de_paradas(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador);
+        $this->maquina();
+
+        // Por RUTA y por marcador de campo, no por markup pegado.
+        $this->actingAs($soplador)
+            ->get(route('produccion.mi.show', $reporte))
+            ->assertOk()
+            ->assertSee(route('produccion.mi.paradas.store', $reporte), false)
+            ->assertSee('name="parada_motivo"', false)
+            ->assertSee('name="parada_inicio"', false)
+            ->assertSee('name="cavidades_activas"', false);
     }
 }
