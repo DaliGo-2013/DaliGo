@@ -34,6 +34,22 @@ use Illuminate\Support\Carbon;
  */
 class PlanDeCargaExcel
 {
+    /**
+     * Por qué quedó carga afuera, en castellano. El motor los emite como códigos
+     * (`espacio`, `pallet_vacio`) y esto es lo que se imprime.
+     *
+     * @var array<string, string>
+     */
+    private const MOTIVOS = [
+        'espacio' => 'No queda espacio con el resto de la carga',
+        'peso' => 'Se pasa de la carga máxima en kilos',
+        'largo' => 'No entra por el largo de la caja',
+        'ancho' => 'No entra por el ancho de la caja',
+        'alto' => 'No entra por la altura de la caja',
+        'pallet_vacio' => 'No entra ni una encima del pallet',
+        'ninguno' => 'No entra en esta caja de carga',
+    ];
+
     /** @var array<int, string> nombres de las 8 columnas de la tabla de productos */
     private const COLUMNAS = [
         ['Cód.', 6],
@@ -134,7 +150,9 @@ class PlanDeCargaExcel
                     [5, $l['cargadas_unidades'], 'numero'],
                     [6, $faltan ?: null, $faltan ? 'falta' : 'numero'],
                     [7, $l['bultos_colocados'], 'numero'],
-                    [8, $l['motivo'], 'ajustado'],
+                    // El motivo va en castellano y no con el código del motor: la planilla
+                    // circula por correo, así que la lee gente que nunca vio la pantalla.
+                    [8, self::MOTIVOS[$l['motivo']] ?? $l['motivo'], 'ajustado'],
                 ]);
             }
 

@@ -281,6 +281,67 @@ verificaron los cupos de referencia. Cuántas aguanta la bolsa de abajo es dato 
 no de geometría, así que la decisión es suya y no del código. Candado:
 `test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre`.
 
+### 3.3bis UN PALLET ES UNA LÍNEA MÁS DE LA CARGA MIXTA (10-08-2026)
+
+Pedido del dueño: *«si cargo botellones y tapas, también tengo que tener la opción de poder
+cargar pallets, porque en la vida real cargamos a veces pallets y de paso bidones o
+dispensadores. Dame la chance de cargar cosas mixtas sin sacarme de la interfaz o sacarme
+todo del camión sin dejarme hacer la prueba»*.
+
+**«Sobre pallet» era un MODO que se comía el camión entero.** Para ver tres pallets de tapas
+y cien botellones sueltos había que elegir uno de los dos, y al cambiar de pestaña el camión
+quedaba vacío. No es un caso raro: es cómo se carga.
+
+Ahora cada línea de «¿Cabe esta carga?» tiene un **«Cómo va»**: *Suelto* (lo de siempre) o
+*Sobre pallet* con uno de los dos estándar. Con pallet, `tipo` pasa a ser **lo que va encima**
+y `cantidad` cuenta **pallets**.
+
+**No hay motor nuevo, y ese es el punto.** Vuelve a aplicarse la idea de §3.3: un pallet es
+una caja de carga. Se le pregunta al mismo `cupo()` cuántas cajas entran encima, y el pallet
+ARMADO entra a la carga mixta como **un bulto más** (`PalletSimulado::comoBulto()`, rotación
+solo horizontal, sin apilar uno sobre otro). El acomodo por zonas lo reparte junto a los
+bultos sueltos sin enterarse de que es un pallet. El modelo que viaja es un `TipoBulto`
+**sin guardar** — el mismo truco del bulto a medida, y por eso la fila, la letra, el color y
+el Excel siguen andando sin un solo `if`.
+
+Decisiones que importan:
+
+1. **La línea habla en PALLETS** (`unidadesEncima: 1` a propósito). «3 de 3 pallets · 18 por
+   pallet = 54 en total». Si el bulto viajara con sus 18 unidades, «cargadas 54 de 3» sería
+   un número sin sentido.
+2. **El selector de producto solo ofrece cajas** (§3.3.6), y al pasar una línea a pallet el
+   producto **se corrige** en vez de solo esconderse: si no, la línea quedaba apuntando a la
+   bolsa de botellones —que no entra en un pallet, mide 130 y la tarima 120— y el resultado
+   era un «no cabe» que el usuario no había pedido.
+3. **Un pallet sin ni una caja encima no se sube vacío** (§3.3.5). El motor no puede verlo
+   solo: para él la línea pidió cero pallets y los colocó todos, así que **el veredicto
+   `cabeTodo` se arma con las filas** y no con `cabe_todo` del motor. La fila dice «no entra
+   ni una encima del pallet» y el camión queda sin tarimas fantasma.
+4. **«Apilar hasta» apunta a las cajas DE ARRIBA del pallet**, no a los pallets: un pallet no
+   se apila sobre otro (§3.3.4), así que ahí el número siempre sería 1. Es el mismo control
+   señalando el único lugar donde sirve, y los dos números del aviso salen del cupo INTERIOR.
+5. **Se dibuja como pallet**, con el mismo `forma: 'pallet'` + `interior` que ya usaba el modo
+   dedicado: **cero JS nuevo**. La rotación de 90° del interior se resolvía en
+   `escenaEnPallet()` y se extrajo a `interiorDelPallet()`, que ahora usan las dos pantallas —
+   dos copias de esa lógica es exactamente como se desincronizan el dibujo y el cálculo.
+6. **El modo «Sobre pallet» se queda.** Responde otra pregunta —«¿cuántas unidades me llevo si
+   lleno el camión de pallets?»— y es el único que deja **editar las medidas** del pallet y
+   verlo armarse en el piso. La línea mixta ofrece los dos estándar y la altura; para un
+   pallet a medida, el modo dedicado sigue estando.
+
+**Un `+` que casi lo rompe en silencio:** el bloque del pallet se armaba con
+`$bloque + ['forma' => 'pallet', …]`, y el operador `+` de PHP **conserva la clave de la
+izquierda** — `forma` seguía valiendo `'caja'` y el pallet se dibujaba como un cajón liso, sin
+error ni aviso. Va con `array_merge`. Lo cazó
+`test_el_pallet_de_la_carga_mixta_se_dibuja_como_pallet_y_no_como_un_cajon`.
+
+De paso, el Excel imprime el motivo **en castellano** (`PlanDeCargaExcel::MOTIVOS`) en vez del
+código del motor: la planilla circula por correo y la lee gente que nunca vio la pantalla.
+
+Candados: `test_un_pallet_es_una_linea_mas_de_la_carga_mixta` (con los 18 por pallet y los
+205 kg verificados a mano), el del dibujo, y
+`test_un_pallet_donde_no_entra_ni_una_caja_no_se_sube_vacio`.
+
 ### 3.4bis El tope de apilado también se elige POR LÍNEA (10-08-2026)
 
 Reporte del dueño mirando el HINO cargado: *«necesito que los bidones también lleguen hasta
@@ -983,6 +1044,36 @@ caras), nunca en los bultos (miles).
 leyenda de la lista «producto por producto» pinta el MISMO color
 (`SimuladorCargaController::COLORES_3D`, pública justo por eso). Es la excepción
 sancionada tipo D-013 — fuera del canvas rige la paleta de 4.
+
+### 4.3 Dónde vive cada texto de la pantalla (10-08-2026)
+
+Pedido del dueño, dibujado con marcador sobre una captura: **«la descripción del
+camión la quiero adentro del cuadrado donde está el camión, para poder usar mejor
+el espacio y mejorar la interfaz con tanto texto»**, y el resultado partido en
+**dos tarjetas**.
+
+1. **Los datos del camión son una franja AL PIE del recuadro del visor**, no una
+   tarjeta aparte debajo. Adentro se ahorran un borde, una sombra y el hueco entre
+   tarjetas, y los datos quedan pegados al dibujo que describen. Va como franja y
+   **no flotando sobre el lienzo**: un panel encima taparía el camión — la misma
+   doctrina del menú lateral (§4.1nonies). Fondo `neutral-50/70`, el del menú, para
+   que se lea como parte del visor y no como contenido metido adentro.
+2. **Nada se dice dos veces.** El rótulo del lienzo repetía el nombre del camión y
+   el piso libre, que ya están en la franja: quedó solo la ayuda de manejo
+   («arrastrá para girar»). En el plan compartido por link pasaba lo mismo con el
+   encabezado, y también se recortó.
+3. **El cupo máximo son DOS tarjetas**: a la izquierda **el número** que se vino a
+   buscar (entran N, unidades, ocupación con su barra), a la derecha **de dónde
+   sale** (cómo viaja, qué se agota primero, rejilla, peso, el aire que queda
+   arriba). En una sola tarjeta el dato principal encabezaba seis filas
+   etiqueta-valor en una columna angosta, y al lado de un dibujo que ocupa todo el
+   ancho se veía como una tira de texto. La **ocupación se fue con el número**
+   —la barra es el camión llenándose— y de paso dejó de estar escrita dos veces
+   (una fila con el % y abajo una barra sin rótulo).
+
+La lección, que ya se repitió en esta pantalla: cuando el dueño dice «hay mucho
+texto» casi nunca sobra un dato, sobra una **repetición** o falta una **agrupación**.
+Antes de borrar información, buscar qué está dicho dos veces.
 
 ## 5. Mercancía peligrosa
 

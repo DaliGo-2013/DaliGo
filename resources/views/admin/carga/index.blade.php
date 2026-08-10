@@ -47,6 +47,8 @@
                 // procesa y sale tal cual al PHP compilado.
                 $bultosJson = $bultos->map(fn ($b) => [
                     'id' => $b->id, 'nombre' => $b->nombre, 'unidades' => $b->unidades,
+                    // Para filtrar el selector de una línea EN PALLET: ahí solo van cajas.
+                    'categoria' => $b->categoria,
                     // Para el marcador del campo «Apilar hasta»: el tope del catálogo es
                     // lo que se aplica si no se escribe nada, así que hay que poder verlo
                     // sin abrir la ficha del producto.
@@ -68,6 +70,7 @@
                     lineas: {{ $lineasIniciales->toJson() }},
                     bultos: {{ $bultosJson->toJson() }},
                     colores: {{ $coloresPanel->toJson() }},
+                    pallets: {{ Js::from(collect(\App\Services\Carga\PalletSimulado::TIPOS)->map(fn ($t) => $t['nombre'])) }},
 
                     /* PANEL DE CARGA (pedido del dueño 10-08, sobre la referencia de
                        EasyCargo): la lista deja de ser una fila plana y pasa a ser una
@@ -88,7 +91,24 @@
                     /* Una línea es «a medida» cuando no apunta al catálogo: tipo 0.
                        Es el mismo contrato que ya valida el controlador — una línea
                        vale si trae UNA de las dos cosas, producto o medidas. */
-                    aMedida(l) { return ! l.tipo; },
+                    aMedida(l) { return ! l.tipo && ! this.enPallet(l); },
+
+                    /* ── LÍNEAS SOBRE PALLET ──────────────────────────────────────────
+                       Una línea puede ir SUELTA o sobre un pallet armado. Con pallet, el
+                       producto es lo que va ENCIMA y la cantidad cuenta PALLETS. */
+                    enPallet(l) { return !! l.pallet; },
+                    /* Solo cajas van en pallet. Al cambiar a pallet hay que CORREGIR el
+                       producto elegido, no solo esconderlo: sin esto la línea queda
+                       apuntando a la bolsa de botellones —que no entra en un pallet— y el
+                       resultado sería un «no cabe» que el usuario no pidió. */
+                    opciones(l) {
+                        return this.enPallet(l) ? this.bultos.filter(b => b.categoria === 'cajas') : this.bultos;
+                    },
+                    alCambiarPallet(i) {
+                        const l = this.lineas[i], ops = this.opciones(l);
+                        if (! ops.some(b => b.id === l.tipo)) l.tipo = ops[0]?.id ?? 0;
+                        this.ensuciar();
+                    },
                     letra(i) { return String.fromCharCode(65 + (i % 26)); },
                     color(i) { return this.colores[i % this.colores.length]; },
                     resumen(l) {
@@ -97,6 +117,7 @@
                             return d.length === 3 ? d.join(' × ') + ' cm' : 'Falta alguna medida';
                         }
                         const b = this.bultos.find(b => b.id === l.tipo);
+                        if (this.enPallet(l)) return 'Pallet ' + this.pallets[l.pallet] + ' · ' + (b ? b.nombre : '—');
                         return b ? b.nombre : '—';
                     },
 
@@ -120,8 +141,19 @@
                         this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
                     },
 
-                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
-                    agregarMedida() { if (this.lineas.length < 8) { this.lineas.push({ tipo: 0, cantidad: 1, estiba: 'auto', medida_nombre: '', medida_largo: '', medida_ancho: '', medida_alto: '', medida_peso: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    agregarMedida() { if (this.lineas.length < 8) { this.lineas.push({ tipo: 0, cantidad: 1, estiba: 'auto', pallet: '', medida_nombre: '', medida_largo: '', medida_ancho: '', medida_alto: '', medida_peso: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    /* Un botón propio y no «elegí pallet en el desplegable de la tarjeta»:
+                       la lección de la pestaña que nadie encontró (10-08) es que una
+                       función que existe pero no se ve, no existe. Arranca con la primera
+                       caja del catálogo, que es lo único que va en pallet. */
+                    agregarPallet() {
+                        if (this.lineas.length >= 8) return;
+                        const caja = this.bultos.find(b => b.categoria === 'cajas');
+                        this.lineas.push({ tipo: caja?.id ?? 0, cantidad: 2, estiba: 'auto', pallet: Object.keys(this.pallets)[0], pallet_alto: '' });
+                        this.expandido = this.lineas.length - 1;
+                        this.ensuciar();
+                    },
                     duplicar(i) { if (this.lineas.length < 8) { this.lineas.splice(i + 1, 0, { ...this.lineas[i] }); this.ensuciar(); } },
                     quitar(i) { this.lineas.splice(i, 1); if (this.expandido === i) this.expandido = null; this.ensuciar(); },
                     // Mover un producto en la lista es la forma honesta de «mover la carga»:
@@ -331,7 +363,15 @@
                                                 'largo' => 'no entra por el largo de la caja',
                                                 'ancho' => 'no entra por el ancho de la caja',
                                                 'alto' => 'no entra por la altura de la caja',
+                                                // Un pallet en el que no entra ni una caja no se sube vacío
+                                                // (§3.3.5): pasa de verdad con la bolsa de botellones, que
+                                                // mide 130 cm contra los 120 del pallet.
+                                                'pallet_vacio' => 'no entra ni una encima del pallet',
                                             ][$fila['motivo']] ?? null;
+                                            $pal = $fila['pallet'];
+                                            // En una línea EN PALLET la cuenta va en pallets, no en unidades
+                                            // sueltas: «3 de 3 pallets», y las cajas se dicen aparte.
+                                            $sustantivo = $pal ? \Illuminate\Support\Str::plural('pallet', $fila['pedidas_unidades']) : null;
                                         @endphp
                                         <x-list-row>
                                             {{-- La LETRA del producto sobre su color: la misma que va escrita
@@ -359,9 +399,22 @@
                                                 @endif
                                             </div>
                                             <p class="text-sm text-neutral-500">
-                                                Cargadas <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}</span>
-                                                de {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}
-                                                @if ($fila['modelo']->unidades > 1)
+                                                {{ $pal ? 'Cargados' : 'Cargadas' }}
+                                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}</span>
+                                                de {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}{{ $pal ? ' '.$sustantivo : '' }}
+                                                @if ($pal)
+                                                    {{-- Cuántas cajas lleva cada uno y cuántas son en total: es la
+                                                         cuenta que el vendedor necesita para cotizar, y la que se
+                                                         perdía cuando el pallet era un modo aparte. --}}
+                                                    {{-- Sin pluralizar el nombre del producto: «18 caja de tapas»
+                                                         se lee mal y pluralizarlo a mano acierta en unos nombres
+                                                         y falla en otros. El producto ya está en el título de la
+                                                         fila, así que acá alcanza con el número. --}}
+                                                    · <span class="tabular-nums">{{ number_format($pal['por_pallet'], 0, ',', '.') }}</span> por pallet
+                                                    @if ($fila['cargadas_unidades'] > 0)
+                                                        = <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'] * $pal['por_pallet'], 0, ',', '.') }}</span> en total
+                                                    @endif
+                                                @elseif ($fila['modelo']->unidades > 1)
                                                     ({{ $fila['bultos_colocados'] }} {{ \Illuminate\Support\Str::plural('bolsa', $fila['bultos_colocados']) }})
                                                 @endif
                                                 @if ($motivoTexto)
@@ -380,7 +433,8 @@
                                                 <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
                                                     <span>
                                                         Van <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apiladas'] }}</span> de alto
-                                                        y la caja da para <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apilables_por_alto'] }}</span>.
+                                                        y {{ $pal ? 'el pallet' : 'la caja' }} da para
+                                                        <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apilables_por_alto'] }}</span>.
                                                     </span>
                                                     <button type="button"
                                                             @click="apilarHasta({{ $i }}, {{ $fila['apilables_por_alto'] }})"
@@ -696,7 +750,9 @@
                                             <p class="truncate text-sm font-medium text-neutral-900" x-text="resumen(linea)"></p>
                                             <p class="text-xs text-neutral-500">
                                                 <span x-text="linea.cantidad"></span>
-                                                <span x-text="(bultos.find(b => b.id === linea.tipo)?.unidades ?? 1) > 1 ? ' unidades' : ' bultos'"></span>
+                                                <span x-text="enPallet(linea)
+                                                    ? (linea.cantidad == 1 ? ' pallet' : ' pallets')
+                                                    : ((bultos.find(b => b.id === linea.tipo)?.unidades ?? 1) > 1 ? ' unidades' : ' bultos')"></span>
                                                 <template x-if="linea.estiba && linea.estiba !== 'auto'">
                                                     <span> · <span x-text="{{ Js::from(\App\Models\TipoBulto::ESTIBAS_ELEGIBLES) }}[linea.estiba]"></span></span>
                                                 </template>
@@ -709,16 +765,42 @@
                                     <div x-show="expandido === i" x-cloak
                                          class="space-y-3 border-t border-neutral-100 bg-neutral-50/60 px-3 py-3">
 
+                                        {{-- SUELTO O SOBRE PALLET, por línea (pedido del dueño 10-08:
+                                             «en la vida real cargamos a veces pallets y de paso
+                                             bidones o dispensadores»). Antes «Sobre pallet» era un
+                                             MODO que se comía el camión entero: para ver tres pallets
+                                             de tapas y cien botellones sueltos había que elegir uno
+                                             de los dos. --}}
                                         <div>
-                                            <label class="text-xs font-medium text-neutral-600">Qué se carga</label>
+                                            <label class="text-xs font-medium text-neutral-600">Cómo va</label>
+                                            <select :name="`lineas[${i}][pallet]`" x-model="linea.pallet" @change="alCambiarPallet(i)"
+                                                    class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-2 py-2 text-base sm:text-sm text-neutral-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                <option value="">Suelto</option>
+                                                @foreach (\App\Services\Carga\PalletSimulado::TIPOS as $clave => $tipo)
+                                                    <option value="{{ $clave }}">Sobre pallet {{ $tipo['nombre'] }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label class="text-xs font-medium text-neutral-600"
+                                                   x-text="enPallet(linea) ? 'Qué va encima del pallet' : 'Qué se carga'"></label>
                                             <select :name="`lineas[${i}][tipo]`" x-model.number="linea.tipo" @change="ensuciar()"
                                                     class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                                <template x-for="b in bultos" :key="b.id">
+                                                {{-- EN PALLET SOLO VAN CAJAS (§3.3.6, dueño 07-08). No es un
+                                                     límite del motor sino cómo se trabaja en bodega, y
+                                                     ofrecer la bolsa de botellones acá devolvería «0 cajas
+                                                     por pallet» —mide 130 cm y el pallet 120— que se lee
+                                                     como que la app falló. --}}
+                                                <template x-for="b in opciones(linea)" :key="b.id">
                                                     <option :value="b.id" x-text="b.nombre" :selected="b.id === linea.tipo"></option>
                                                 </template>
                                                 {{-- Valor 0 = bulto a medida. Es el contrato que el
-                                                     controlador ya valida desde el 07-08. --}}
-                                                <option :value="0">— Bulto a medida —</option>
+                                                     controlador ya valida desde el 07-08. Sobre pallet no
+                                                     se ofrece: un pallet se arma con un producto medido. --}}
+                                                <template x-if="! enPallet(linea)">
+                                                    <option :value="0">— Bulto a medida —</option>
+                                                </template>
                                             </select>
                                         </div>
 
@@ -753,7 +835,8 @@
 
                                         <div class="grid grid-cols-2 gap-2">
                                             <div>
-                                                <label class="text-xs font-medium text-neutral-600">Cuántos</label>
+                                                <label class="text-xs font-medium text-neutral-600"
+                                                       x-text="enPallet(linea) ? 'Cuántos pallets' : 'Cuántos'"></label>
                                                 <div class="mt-1 flex items-stretch rounded-lg border border-neutral-300 bg-white">
                                                     <button type="button" @click="linea.cantidad = Math.max(1, (linea.cantidad || 1) - 1); ensuciar()"
                                                             class="px-2.5 text-neutral-500 transition hover:text-neutral-900" aria-label="Uno menos">−</button>
@@ -784,12 +867,28 @@
                                                  techo y seis bolsas acostadas de 26 llegan a media caja.
                                                  Cuántas aguanta la de abajo es dato de terreno, así que la
                                                  decisión es del dueño y el vacío deja el del catálogo. --}}
+                                            {{-- La altura del pallet ARMADO. Decide cuántas cajas entran
+                                                 encima y cuántos pallets entran a lo alto del camión, así
+                                                 que no puede ser un valor fijo: el rango real es 1,60 a
+                                                 2,20 m. Vive en esta grilla —y no arriba, al lado de
+                                                 «Cómo va»— porque acá cae en su propia celda sin pedirle
+                                                 al layout una clase de span. --}}
+                                            <div x-show="enPallet(linea)" x-cloak>
+                                                <label class="text-xs font-medium text-neutral-600">Alto del pallet (cm)</label>
+                                                <input type="number" :name="`lineas[${i}][pallet_alto]`" x-model="linea.pallet_alto" @input="ensuciar()"
+                                                       min="{{ \App\Services\Carga\PalletSimulado::ALTO_MIN }}" max="{{ \App\Services\Carga\PalletSimulado::ALTO_MAX }}" inputmode="numeric"
+                                                       placeholder="{{ \App\Services\Carga\PalletSimulado::ALTO_DEFECTO }}"
+                                                       class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
                                             <div>
-                                                <label class="text-xs font-medium text-neutral-600">Apilar hasta</label>
+                                                <label class="text-xs font-medium text-neutral-600"
+                                                       x-text="enPallet(linea) ? 'Apilar en el pallet' : 'Apilar hasta'"></label>
                                                 <input type="number" :name="`lineas[${i}][apilado]`" x-model="linea.apilado" @input="ensuciar()"
                                                        min="1" max="30" inputmode="numeric"
                                                        :placeholder="topeDeCatalogo(linea)"
-                                                       :title="`Cuántos se apilan uno sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`"
+                                                       :title="enPallet(linea)
+                                                           ? `Cuántas cajas se apilan ENCIMA del pallet. Un pallet no se apila sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`
+                                                           : `Cuántos se apilan uno sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`"
                                                        class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                                             </div>
                                         </div>
@@ -827,6 +926,11 @@
                             {{-- CUBICAR: el motor acepta bultos a medida desde el 07-08, pero
                                  hasta ahora solo se llegaba por URL porque la fila plana no
                                  tenía dónde poner las medidas. Con el panel, sí. --}}
+                            <x-secondary-button type="button" @click="agregarPallet()" x-show="lineas.length < 8"
+                                                title="Sumar pallets armados a esta misma carga, junto con lo suelto">
+                                <x-icon.plus class="h-4 w-4" />
+                                Pallet
+                            </x-secondary-button>
                             <x-secondary-button type="button" @click="agregarMedida()" x-show="lineas.length < 8"
                                                 title="Cubicar algo que no está en el catálogo">
                                 <x-icon.plus class="h-4 w-4" />

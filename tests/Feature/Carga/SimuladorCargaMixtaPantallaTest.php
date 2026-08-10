@@ -963,6 +963,91 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame($this->bolsa->nombre, $lineas[1]['modelo']->nombre);
     }
 
+    public function test_un_pallet_es_una_linea_mas_de_la_carga_mixta(): void
+    {
+        // Pedido del dueño (10-08): «si cargo botellones y tapas, también tengo que tener
+        // la opción de poder cargar pallets, porque en la vida real cargamos a veces
+        // pallets y de paso bidones o dispensadores… dame la chance de cargar cosas mixtas
+        // sin sacarme de la interfaz». Antes «Sobre pallet» era un MODO que se comía el
+        // camión entero y había que elegir uno de los dos.
+        $r = $this->verMixta([
+            ['tipo' => $this->caja->id, 'cantidad' => 2, 'pallet' => 'industrial', 'pallet_alto' => 180],
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'costado'],
+        ])->assertOk();
+
+        $lineas = $r->viewData('mixta')['lineas'];
+        $this->assertCount(2, $lineas, 'Las dos conviven en la misma carga.');
+
+        // La línea EN PALLET cuenta PALLETS, no cajas sueltas: «2 de 2», y las cajas de
+        // arriba se informan aparte. Si el bulto viajara con sus 18 unidades, «cargadas 36
+        // de 2» sería un número sin sentido.
+        $this->assertSame(2, $lineas[0]['pedidas_unidades']);
+        $this->assertSame(2, $lineas[0]['cargadas_unidades']);
+        $this->assertNotNull($lineas[0]['pallet']);
+        $this->assertSame('Industrial 120 × 100', $lineas[0]['pallet']['nombre']);
+        $this->assertSame($this->caja->nombre, $lineas[0]['pallet']['producto']->nombre);
+
+        // 18 cajas por pallet, a mano: la caja mide 46 × 37 × 42 y el pallet deja
+        // 120 × 100 × 165 de útil (180 menos los 15 de tarima). La mejor de las seis
+        // rotaciones es 37 × 46 × 42 → 3 × 2 × 3.
+        $this->assertSame(18, $lineas[0]['pallet']['por_pallet']);
+
+        // Y la línea suelta de al lado sigue siendo lo de siempre.
+        $this->assertNull($lineas[1]['pallet']);
+        $this->assertSame(100, $lineas[1]['cargadas_unidades']);
+
+        // El peso del pallet ARMADO es la madera más su carga, y entra al cálculo: un
+        // camión se puede llenar por kilos antes que por espacio. 25 kg de madera más
+        // 18 cajas de 10 kg.
+        $this->assertSame(205.0, $lineas[0]['pallet']['peso_armado_kg']);
+    }
+
+    public function test_el_pallet_de_la_carga_mixta_se_dibuja_como_pallet_y_no_como_un_cajon(): void
+    {
+        // El visor ya sabía dibujar tarima + carga (`forma: 'pallet'` con su `interior`).
+        // Que la línea mixta emita el MISMO contrato es lo que evitó tocar el JS — y lo
+        // que hace que el dibujo no pueda contradecir al cálculo, porque el interior sale
+        // del cupo que se calculó y no de una rejilla aparte.
+        $escena = $this->verMixta([
+            ['tipo' => $this->caja->id, 'cantidad' => 2, 'pallet' => 'industrial'],
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'estiba' => 'costado'],
+        ])->assertOk()->viewData('escena');
+
+        $porForma = collect($escena['bloques'])->keyBy('forma');
+        $this->assertTrue($porForma->has('pallet'), 'El bloque del pallet se dibuja como pallet.');
+        $this->assertTrue($porForma->has('botellones'), 'Y la bolsa suelta sigue siendo bidones.');
+
+        $pallet = $porForma['pallet'];
+        $this->assertSame(0.15, $pallet['base'], 'La tarima, en metros.');
+        $this->assertGreaterThan(0, $pallet['interior']['cantidad'], 'Lleva carga encima.');
+        $this->assertSame('caja', $pallet['interior']['forma']);
+        // El interior se pinta del color del bloque: es el mismo producto.
+        $this->assertSame($pallet['color'], $pallet['interior']['color']);
+    }
+
+    public function test_un_pallet_donde_no_entra_ni_una_caja_no_se_sube_vacio(): void
+    {
+        // §3.3.5: pasa de verdad —la bolsa de botellones mide 130 cm y el pallet 120— y un
+        // «2 pallets» de tarimas vacías se leería como que la carga entra. El motor no
+        // puede verlo solo: para él la línea pidió cero pallets y los colocó todos, así
+        // que el veredicto se arma con las filas.
+        //
+        // El selector de la pantalla solo ofrece cajas, pero un link viejo o retocado
+        // puede traer cualquier producto y la respuesta tiene que ser honesta igual.
+        $r = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 2, 'pallet' => 'industrial'],
+        ])->assertOk();
+
+        $fila = $r->viewData('mixta')['lineas'][0];
+        $this->assertSame(0, $fila['cargadas_unidades']);
+        $this->assertSame('pallet_vacio', $fila['motivo']);
+        $this->assertFalse($r->viewData('mixta')['cabeTodo'], 'No puede decir «cabe todo».');
+
+        // Y NO hay tarimas vacías en el camión.
+        $this->assertSame([], $r->viewData('escena')['bloques']);
+        $this->assertStringContainsString('no entra ni una encima del pallet', $r->getContent());
+    }
+
     public function test_forzar_la_estiba_de_un_bulto_libre_le_saca_la_rotacion_al_motor(): void
     {
         // REGLA DADA VUELTA por el dueño (06-08): «que los dispensadores, cualesquiera
