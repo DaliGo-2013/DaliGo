@@ -541,6 +541,30 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
     }
 
     /**
+     * CADA PESTAÑA DICE CUÁNTOS PRODUCTOS ACEPTA.
+     *
+     * Nace de una pregunta del dueño (10-08): «¿y dónde agrego otro bulto?»,
+     * estando en «¿Cuánto entra?», que es de UN producto. El nombre decía la
+     * PREGUNTA pero no la CAPACIDAD, así que desde ahí no había forma de saber que
+     * lo de varios productos vivía en la pestaña de al lado.
+     *
+     * Es un candado de DESCUBRIBILIDAD y por eso vale escribirlo: la función
+     * existía y funcionaba, y aun así el usuario no la encontraba. Eso no lo
+     * detecta ningún test de comportamiento.
+     */
+    public function test_las_pestanas_dicen_cuantos_productos_acepta_cada_una(): void
+    {
+        $html = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('un producto', $html);
+        $this->assertStringContainsString('varios productos', $html);
+        // Y desde el modo de un producto hay un camino explícito al de varios.
+        $this->assertStringContainsString('más de un producto', $html);
+    }
+
+    /**
      * EL PANEL: una tarjeta por producto, con el bulto a medida adentro.
      *
      * Lo que se fija es lo que hace útil al panel, no su estética: que la línea

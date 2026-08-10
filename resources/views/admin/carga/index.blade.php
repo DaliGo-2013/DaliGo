@@ -153,25 +153,35 @@
                     },
                  }" x-on:abrir-importar="impAbierto = true" class="space-y-6">
 
-                {{-- Las dos preguntas, como conmutador --}}
+                {{-- Las dos preguntas, como conmutador.
+
+                     CADA PESTAÑA DICE CUÁNTOS PRODUCTOS ACEPTA (10-08). El dueño
+                     preguntó «¿y dónde agrego otro bulto?» estando en «¿Cuánto entra?»,
+                     que es de UN producto. El nombre decía la PREGUNTA pero no la
+                     CAPACIDAD, así que desde acá no había forma de saber que lo de
+                     varios productos existía en la pestaña de al lado. Dos palabras
+                     debajo del título lo resuelven sin agregar un control. --}}
                 <div class="inline-flex rounded-xl border border-neutral-200 bg-white p-1 shadow-sm" role="tablist">
                     <button type="button" @click="modo = 'maximo'" role="tab" :aria-selected="modo === 'maximo'"
                             :class="modo === 'maximo' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
-                            class="rounded-lg px-4 py-2 text-sm font-semibold transition duration-150">
+                            class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
                         ¿Cuánto entra?
+                        <span class="block text-[10px] font-normal opacity-75">un producto</span>
                     </button>
                     <button type="button" @click="modo = 'mixta'" role="tab" :aria-selected="modo === 'mixta'"
                             :class="modo === 'mixta' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
-                            class="rounded-lg px-4 py-2 text-sm font-semibold transition duration-150">
+                            class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
                         ¿Cabe esta carga?
+                        <span class="block text-[10px] font-normal opacity-75">varios productos</span>
                     </button>
                     {{-- Tercer modo: armar un pallet y subirlo. Es una pregunta DISTINTA de
                          las otras dos («¿cuántas unidades me llevo paletizadas?») y tiene su
                          propio flujo, así que va como modo y no como una casilla. --}}
                     <button type="button" @click="modo = 'pallet'" role="tab" :aria-selected="modo === 'pallet'"
                             :class="modo === 'pallet' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
-                            class="rounded-lg px-4 py-2 text-sm font-semibold transition duration-150">
+                            class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
                         Sobre pallet
+                        <span class="block text-[10px] font-normal opacity-75">solo cajas</span>
                     </button>
                 </div>
 
@@ -564,6 +574,18 @@
                                       title="¿Te entran 50? Escribí 50 y calculá. Vacío calcula el máximo." />
                     </div>
                     <div><x-primary-button>Calcular</x-primary-button></div>
+                    {{-- El atajo desde donde falta. Este modo es de UN producto, y el
+                         dueño buscó acá el botón para agregar otro (10-08). En vez de
+                         duplicar el panel en los dos modos —que sería tener dos listas
+                         que se contradicen— se ofrece el camino: cambiar de pregunta
+                         llevándose el camión y el producto ya elegidos, para no volver
+                         a armar la pantalla del otro lado. --}}
+                    <div class="basis-full">
+                        <button type="button" @click="modo = 'mixta'"
+                                class="text-xs text-neutral-500 underline-offset-2 transition hover:text-brand-700 hover:underline">
+                            ¿Necesitás cargar más de un producto? Pasá a «¿Cabe esta carga?»
+                        </button>
+                    </div>
                 </form>
 
                 {{-- MODO 2 · carga mixta: armá la carga producto por producto --}}
