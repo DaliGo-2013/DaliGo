@@ -544,6 +544,8 @@ class ProduccionController extends Controller
             'registros' => fn ($query) => $query->latest('id'),
             'registros.maquina',
             'registros.tipoBotellon.producto',
+            'paradas' => fn ($query) => $query->latest('id'),
+            'paradas.maquina',
             'movimientos.producto',
         ]);
 
