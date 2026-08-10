@@ -28,10 +28,6 @@
                         <a href="{{ url('/dashboard') }}" class="rounded-lg bg-brand-600 px-6 py-3 font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">Ir al panel</a>
                     @else
                         <a href="{{ route('login') }}" class="rounded-lg bg-brand-600 px-6 py-3 font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">{{ __('Log in') }}</a>
-                        {{-- TEMPORAL-AUDITORIA-RESPONSIVE: NO COMMITEAR --}}
-                        @if (app()->environment('local'))
-                            <a href="{{ url('/dev-login-auditoria') }}" class="rounded-lg border border-neutral-300 px-6 py-3 font-semibold text-neutral-700">Entrar (auditoría local)</a>
-                        @endif
                     @endauth
                 </div>
 
