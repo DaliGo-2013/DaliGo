@@ -153,6 +153,40 @@
                 </div>
             </details>
 
+            {{-- ¿EN CUÁL CONVIENE? La misma pregunta que se está haciendo, resuelta
+                 para toda la flota. Va en el menú y no suelta en la pantalla, como el
+                 resto de los controles (doctrina del 06-08). Cada fila es un enlace
+                 que cambia de camión conservando todo lo demás: producto, estiba,
+                 apilado y las líneas de la carga mixta. --}}
+            @if (! empty($comparativa))
+                <details class="group">
+                    <summary class="{{ $titulo }} flex cursor-pointer select-none list-none items-center justify-between rounded hover:text-neutral-600 [&::-webkit-details-marker]:hidden">
+                        Camiones <span class="transition group-open:rotate-180">▾</span>
+                    </summary>
+                    <div class="space-y-1 pt-1">
+                        @foreach ($comparativa as $fila)
+                            <a href="{{ request()->fullUrlWithQuery(['camion_id' => $fila['camion']->id]) }}"
+                               @class([
+                                   'flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 transition',
+                                   'border-brand-300 bg-brand-50' => $fila['actual'],
+                                   'border-neutral-200 bg-white hover:bg-neutral-50' => ! $fila['actual'],
+                               ])
+                               @if ($fila['actual']) aria-current="true" @endif>
+                                <span class="min-w-0 truncate {{ $fila['actual'] ? 'font-semibold text-brand-700' : 'text-neutral-700' }}">
+                                    {{ $fila['camion']->nombre }}
+                                </span>
+                                <span class="shrink-0 tabular-nums {{ $fila['cabe'] ? 'font-semibold text-neutral-900' : 'text-neutral-400' }}">
+                                    {{ $fila['cabe'] ? number_format($fila['unidades'], 0, ',', '.') : '—' }}
+                                </span>
+                            </a>
+                        @endforeach
+                        <p class="px-1 pt-0.5 text-[11px] leading-snug text-neutral-500">
+                            Unidades que entran en cada uno, de mayor a menor. Tocá uno para cambiar.
+                        </p>
+                    </div>
+                </details>
+            @endif
+
             {{-- Nombres de los productos sobre su bloque, y la LETRA de cada producto
                  escrita sobre sus cajas. Los dos se pueden apagar: con un solo producto
                  no distinguen nada y tapan carga. --}}

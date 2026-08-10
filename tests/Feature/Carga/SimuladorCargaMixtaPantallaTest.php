@@ -461,6 +461,62 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
      * con la bolsa y devolvía «0 pallets» — que se lee como que la app falló, cuando
      * en realidad ese producto no va en pallet (mide 130 cm y el pallet 120).
      */
+    /**
+     * MULTI-CAMIÓN: la misma pregunta, respondida para toda la flota.
+     *
+     * La pregunta real de Comercial no es «¿entra en este?» sino «¿en cuál conviene
+     * mandarlo?». Hasta ahora había que cambiar de camión y recalcular de a uno.
+     *
+     * Lo que se fija: que compare TODOS los camiones activos, que ordene de mayor a
+     * menor —que es el orden en que se toma la decisión—, que marque el actual, y
+     * que la tabla viva DENTRO del menú lateral y no suelta en la pantalla (doctrina
+     * del 06-08, la misma que vigila `test_los_controles_viven_en_un_solo_menu…`).
+     */
+    public function test_compara_todos_los_camiones_y_ordena_por_lo_que_entra(): void
+    {
+        $hino = CamionSimulacion::create([
+            'nombre' => 'HINO 500 (FC 1118)',
+            'largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266,
+            'peso_max_kg' => 11000, 'pasillo_cm' => 0, 'activo' => true,
+        ]);
+
+        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->bolsa->id,
+        ]))->assertOk();
+
+        $comparativa = $res->viewData('comparativa');
+        $this->assertNotNull($comparativa, 'No se comparó nada habiendo dos camiones.');
+        $this->assertCount(2, $comparativa);
+
+        // El HINO lleva más que el HD35, así que va primero.
+        $this->assertSame($hino->id, $comparativa[0]['camion']->id, 'No ordenó por lo que entra.');
+        $this->assertGreaterThan($comparativa[1]['unidades'], $comparativa[0]['unidades']);
+
+        // El camión elegido queda marcado, para no perderse en la lista.
+        $this->assertFalse($comparativa[0]['actual']);
+        $this->assertTrue($comparativa[1]['actual']);
+
+        // Y la tabla vive dentro del menú lateral.
+        $html = $res->getContent();
+        $desde = strpos($html, 'Herramientas');
+        $menu = substr($html, $desde, strpos($html, '</aside>', $desde) - $desde);
+        $this->assertStringContainsString('HINO 500 (FC 1118)', $menu,
+            'La comparativa de camiones quedó fuera del menú lateral.');
+    }
+
+    /** Con un solo camión no hay nada que comparar: la sección no se dibuja. */
+    public function test_con_un_solo_camion_no_se_muestra_la_comparativa(): void
+    {
+        $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id,
+                'tipo_bulto_id' => $this->bolsa->id,
+            ]))
+            ->assertOk()
+            ->assertViewHas('comparativa', null);
+    }
+
     public function test_en_pallet_solo_se_ofrecen_cajas_y_una_bolsa_se_corrige_sola(): void
     {
         $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [

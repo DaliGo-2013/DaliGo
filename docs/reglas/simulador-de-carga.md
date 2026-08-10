@@ -678,6 +678,40 @@ Detalles de implementación que importan:
 - Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
   «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
 
+### 4.1nonies-ter «¿En cuál conviene?» — multi-camión (10-08-2026)
+
+La pregunta real de Comercial no es *«¿entra en este camión?»* sino **«¿en cuál conviene
+mandarlo?»**, y hasta ahora había que cambiar de camión y recalcular de a uno para
+saberlo. Ahora una sección **Camiones** del menú responde la MISMA pregunta que se está
+haciendo, para toda la flota a la vez:
+
+| Modo | Qué compara |
+|---|---|
+| ¿Cuánto entra? | unidades que entran en cada camión |
+| ¿Cabe esta carga? | si cabe todo, y cuántas unidades entraron |
+| Sobre pallet | unidades totales apilando pallets |
+
+**Cada modo compara lo suyo a propósito**: son preguntas distintas y mezclarlas daría una
+tabla que no significa nada.
+
+**No hay motor nuevo.** Es el mismo `cupo()`/`carga()` verificado corrido N veces; con tres
+camiones y rejilla entera cuesta microsegundos, así que se calcula siempre y no detrás de
+un botón. Hoy da: Contenedor 40' 1.620 · HINO 500 1.500 · HD35 420.
+
+Tres decisiones:
+
+1. **Ordenado de mayor a menor**, que es el orden en que se toma la decisión. A igual
+   número gana el camión **más chico**: mandar el grande a medio llenar es peor negocio
+   aunque quepa lo mismo.
+2. **Cada fila es un enlace que conserva todo lo demás** (producto, estiba, apilado y las
+   líneas de la carga mixta), así comparar no cuesta rearmar la pantalla.
+3. **Con un solo camión no se dibuja.** Una tabla de una fila no ayuda a elegir.
+
+Va **en el menú lateral** y no suelta en la pantalla, como el resto de los controles
+(§4.1nonies). Candados: `test_compara_todos_los_camiones_y_ordena_por_lo_que_entra`
+—que además exige que la tabla esté DENTRO del `<aside>`— y
+`test_con_un_solo_camion_no_se_muestra_la_comparativa`.
+
 ### 4.1decies Traer la carga de una planilla (06-08-2026)
 
 Pedido: *«un botón de importar en Excel para que se pueda generar una ruta con facturas,

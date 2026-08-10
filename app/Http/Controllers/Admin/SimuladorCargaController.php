@@ -190,6 +190,18 @@ class SimuladorCargaController extends Controller
             ? $this->calculo->cupo($camion->paraCalculo(), $bulto->paraCalculo($estiba, $apilado))
             : null;
 
+        // MULTI-CAMIÓN: la MISMA pregunta que se está haciendo, respondida para
+        // todos los camiones a la vez. La pregunta real de Comercial no es «¿entra
+        // en este?» sino «¿en cuál conviene mandarlo?», y hasta ahora había que
+        // cambiar de camión y recalcular de a uno para saberlo.
+        //
+        // No hay motor nuevo: es el mismo cálculo verificado corrido N veces. Con
+        // tres camiones y rejilla entera cuesta microsegundos, así que se hace
+        // siempre y no detrás de un botón.
+        $comparativa = $this->compararCamiones(
+            $camiones, $camion, $bulto, $bultos, $datos, $estiba, $apilado, $pallet, $sobrePallet, $enOrdenDeLista,
+        );
+
         // La PRUEBA: «¿me entran 50?» encima del cupo máximo. No toca el motor — capa
         // el resultado y el dibujo a lo pedido, y el veredicto sale de comparar.
         $cantidad = isset($datos['cantidad']) ? (int) $datos['cantidad'] : null;
@@ -211,6 +223,8 @@ class SimuladorCargaController extends Controller
             // Lo que se puede paletizar: solo cajas. Va aparte de `bultos` para que
             // los otros dos modos sigan ofreciendo el catálogo completo.
             'paletizables' => $paletizables,
+            // «¿En cuál conviene?»: la misma pregunta resuelta para toda la flota.
+            'comparativa' => $comparativa,
             'camion' => $camion,
             'bulto' => $bulto,
             'resultado' => $resultado,
@@ -309,6 +323,65 @@ class SimuladorCargaController extends Controller
             'cabeTodo' => $resultado['cabe_todo'],
             'peligrosas' => array_values(array_filter($modelos, fn (TipoBulto $m) => $m->peligrosa)),
         ];
+    }
+
+    /**
+     * La misma pregunta, respondida para TODOS los camiones.
+     *
+     * Cada modo compara lo suyo, porque son preguntas distintas y mezclarlas daría
+     * una tabla que no significa nada:
+     *   - cupo máximo  → cuántas unidades entran
+     *   - carga mixta  → si cabe todo, y cuántas unidades entraron
+     *   - sobre pallet → cuántas unidades en total, apilando pallets
+     *
+     * Devuelve `null` cuando no hay nada que comparar (sin producto, o una sola caja
+     * de carga en el catálogo): una tabla de una fila no ayuda a elegir.
+     *
+     * @param  \Illuminate\Support\Collection<int, CamionSimulacion>  $camiones
+     * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
+     * @param  array<string, mixed>  $datos
+     * @return ?list<array<string, mixed>>
+     */
+    private function compararCamiones(
+        $camiones, ?CamionSimulacion $actual, ?TipoBulto $bulto, $bultos, array $datos,
+        string $estiba, ?int $apilado, PalletSimulado $pallet, bool $sobrePallet, bool $enOrdenDeLista,
+    ): ?array {
+        $hayLineas = isset($datos['lineas']) && $datos['lineas'] !== [];
+        if ($camiones->count() < 2 || (! $bulto && ! $hayLineas)) {
+            return null;
+        }
+
+        $filas = [];
+        foreach ($camiones as $c) {
+            if ($hayLineas) {
+                $m = $this->calcularMixta($c, $datos['lineas'], $bultos, $enOrdenDeLista);
+                $unidades = array_sum(array_column($m['lineas'], 'cargadas_unidades'));
+                $cabe = $m['cabeTodo'];
+            } elseif ($sobrePallet) {
+                $p = $this->calcularEnPallet($c, $bulto, $pallet, $estiba, $apilado);
+                $unidades = $p['unidadesTotales'];
+                $cabe = $p['entraEnPallet'];
+            } else {
+                $unidades = $this->calculo->cupo($c->paraCalculo(), $bulto->paraCalculo($estiba, $apilado))['unidades'];
+                $cabe = $unidades > 0;
+            }
+
+            $filas[] = [
+                'camion' => $c,
+                'unidades' => $unidades,
+                'cabe' => $cabe,
+                'actual' => $actual && $c->id === $actual->id,
+            ];
+        }
+
+        // De mayor a menor: el que más lleva va primero, que es el orden en que se
+        // toma la decisión. A igual número, el más chico primero — mandar el camión
+        // grande a medio llenar es peor negocio aunque quepa lo mismo.
+        usort($filas, fn (array $a, array $b) => $b['unidades'] <=> $a['unidades']
+            ?: $a['camion']->largo_cm * $a['camion']->ancho_cm * $a['camion']->alto_cm
+               <=> $b['camion']->largo_cm * $b['camion']->ancho_cm * $b['camion']->alto_cm);
+
+        return $filas;
     }
 
     /**
