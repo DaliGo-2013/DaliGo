@@ -213,6 +213,18 @@ el resultado hereda rejilla exacta, centímetros enteros y redondeo hacia abajo.
    Pasa de verdad: la bolsa de botellones mide 130 cm y un pallet estándar tiene 120, así
    que sobresale. La pantalla dice el motivo y la medida que falta — un «0» pelado se lee
    como que la app se equivocó.
+6. **EL PALLET ES PARA CAJAS, y solo para cajas** (dueño, 07-08-2026: *«el pallet va a ser
+   para cargar cajas, solamente cajas»*). No es una limitación técnica —el motor palletiza
+   cualquier bulto que quepa— sino cómo se trabaja en bodega. Explica de paso el «0» que
+   el dueño vio en pantalla: había elegido la bolsa de botellones, que no va en pallet.
+
+   **Las medidas de las cajas están PENDIENTES** — bodega las está tomando (07-08). Hoy el
+   catálogo tiene dos ya medidas y con ellas el modo funciona: *Caja de soportes*
+   (79 × 24 × 43) da **20 por pallet** y *Caja de tapas* (46 × 37 × 42) da **18**. Las que
+   falten **se siembran cuando lleguen las medidas reales**, nunca con números estimados:
+   misma regla que las jaulas de máquinas (ver el bloque «PENDIENTE DE MEDIR» de
+   `TiposBultoSeeder`). Un bulto con medida inventada es peor que un bulto ausente, porque
+   el ausente se nota y el inventado se cotiza.
 
 El visor dibuja el pallet **en el piso al lado del camión** mientras se arma (tarima de
 madera con tablas, tacos y patines) y el botón **«Subir al camión»** lo mete: ahí cada

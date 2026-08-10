@@ -645,8 +645,15 @@
                         </div>
                         <div>
                             <x-input-label for="tipo_bulto_id_pallet" value="Qué se paletiza" />
+                            {{-- SOLO CAJAS (dueño, 07-08-2026: «los botellones nunca van a
+                                 ir en pallet, solo cajas»). No es un límite del motor —
+                                 palletiza cualquier bulto que quepa— sino cómo se trabaja
+                                 en bodega. Ofrecer las bolsas acá devolvía un «0 pallets»
+                                 que se lee como que la app falló, cuando en realidad el
+                                 producto no va en pallet: la bolsa mide 130 cm y el pallet
+                                 120. --}}
                             <x-select id="tipo_bulto_id_pallet" name="tipo_bulto_id" class="mt-1.5">
-                                @foreach ($bultos as $b)
+                                @foreach ($paletizables as $b)
                                     <option value="{{ $b->id }}" @selected($bulto?->id === $b->id)>{{ $b->nombre }}</option>
                                 @endforeach
                             </x-select>
