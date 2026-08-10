@@ -207,8 +207,12 @@ class ProduccionTest extends TestCase
     {
         // Hallazgo de la revisión: elegir procedencia SIN preforma no debe
         // enmascarar la señal "(sin preforma asignada)" del preview del kardex.
+        // Desde P-M11-10 el preview pinta las líneas REALES del plan
+        // (planParaReporte), así que la señal vive en la línea de consumo y
+        // necesita al menos una tanda para existir.
         $reporte = $this->reporteDe($this->soplador(), 100, ProduccionReporte::ENVIADO);
         $reporte->asignacion->update(['procedencia' => 'saco']);
+        $reporte->registros()->create(['primera' => 100, 'segunda' => 0, 'malo' => 0, 'danada' => 0]);
 
         $this->actingAs($this->jefe())->get(route('admin.produccion.reporte.show', $reporte))
             ->assertOk()

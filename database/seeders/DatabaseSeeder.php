@@ -33,6 +33,10 @@ class DatabaseSeeder extends Seeder
             ConductoresSeeder::class,
             // Despues de TipoBotellonSeeder: enlaza los tipos a sus productos.
             ProduccionTesteoSeeder::class,
+            // Despues de ProduccionTesteoSeeder: la hipotesis [B] de recetas
+            // (1 preforma + 1 tapa por botellon) para los botellones ya
+            // enlazados. JAMAS pisa una fila existente (editable via UI, D-003).
+            RecetaSeeder::class,
             // DESPACHOS-v1: catalogo de zonas comerciales (D-006).
             ZonaSeeder::class,
             // Bultos del simulador de carga (medidas reales, idempotente).
