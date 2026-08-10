@@ -591,7 +591,8 @@ esquina.
 - **Cada sección es un DESPLEGABLE** (`<details>` nativo, sin JS): Vista y Cargar abren
   abiertos —son los que se tocan todo el tiempo—, el resto cerrado.
 - **Pasos de carga simétricos**: −10/−5/−1 y +1/+5/+10, más Todo y Vaciar. Con −1 solo,
-  bajar de a mucho era un botón repetido veinte veces.
+  bajar de a mucho era un botón repetido veinte veces. **Reducidos a dos el 07-08 — ver
+  §4.1nonies-bis.**
 - **Sección Pallet en el menú**, con los dos tipos estándar (Industrial 120 × 100 y
   EUR/EPAL 120 × 80) como enlaces al modo Sobre pallet conservando camión y producto.
 - **Cantidad a probar** en «¿Cuánto entra?»: *«¿me entran 50?»* además del máximo. No toca
@@ -603,6 +604,36 @@ esquina.
 > **ni `requestAnimationFrame` ni `ResizeObserver` corren** (no hay ciclo de pintado). Para
 > probar el reencuadre hay que disparar `window.dispatchEvent(new Event('resize'))` a mano
 > después de abrir o cerrar el menú, y esperar un tick a que Alpine aplique el `x-show`.
+
+### 4.1nonies-bis Los pasos de carga son DOS (07-08-2026)
+
+Pedido del dueño mirando el menú: *«cambiar esos botones de carga, dejar dos que sea
+para + (agregar) y − (sacar), porque es mucho número»*. Salen los seis
+(−10/−5/−1/+1/+5/+10) y quedan **− y +**, más Todo y Vaciar.
+
+**Esto revierte lo del 06-08, y hay que entender por qué se puede.** Los seis pasos
+existían por un problema real: con un paso fijo de a uno, llenar el contenedor de 324
+bultos era repetir el clic 324 veces. Lo que hace que ahora sobren no es que el problema
+desapareciera, sino que **− y + se pueden MANTENER APRETADOS y aceleran**: el paso arranca
+en 1, sube a 5 y después a 10. El recorrido largo se hace igual de rápido y el corto sigue
+siendo exacto.
+
+**Sin la repetición, esto sería un retroceso — no la saques.** El candado
+`test_los_pasos_de_carga_son_dos_y_se_mantienen_apretados` vigila las dos mitades juntas:
+que los cuatro botones viejos no vuelvan al HTML **y** que sigan estando `pasoRepetible`,
+el `pointerdown` y los tres cortes.
+
+Detalles de implementación que importan:
+
+- **`pointerdown` y no `mousedown`**: un solo handler sirve para dedo y para mouse.
+- **El primer paso se aplica AL APRETAR**, no al soltar: un toque suelto tiene que mover
+  exactamente uno.
+- **Se corta con `pointerup`, `pointercancel` y `pointerleave`.** Sin el `leave`, sacar el
+  dedo del botón sin levantarlo dejaba el contador corriendo solo.
+- **No se usa `setPointerCapture`**: capturaría el puntero y `pointerleave` no dispararía
+  nunca.
+- Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
+  «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
 
 ### 4.1decies Traer la carga de una planilla (06-08-2026)
 

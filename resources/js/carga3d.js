@@ -1752,14 +1752,63 @@ export default function iniciarCarga3d(canvas, datos) {
 
     boton('carga3dVaciar', () => fijar(0));
     boton('carga3dTodo', () => fijar(TOPE));
-    // Pasos simétricos para poner y sacar (los de restar los pidió el dueño 06-08:
-    // con −1 solo, bajar de a mucho era un botón repetido veinte veces).
-    boton('carga3dQuita1', () => fijar(cant - 1));
-    boton('carga3dQuita5', () => fijar(cant - 5));
-    boton('carga3dQuita10', () => fijar(cant - 10));
-    boton('carga3dSuma1', () => fijar(cant + 1));
-    boton('carga3dSuma5', () => fijar(cant + 5));
-    boton('carga3dSuma10', () => fijar(cant + 10));
+
+    /**
+     * Un botón de paso que se puede MANTENER APRETADO y acelera.
+     *
+     * Es lo que permitió pasar de seis botones (−10/−5/−1/+1/+5/+10) a dos, sin
+     * volver al problema que los había creado: con un paso fijo de a uno, llenar
+     * un contenedor de 324 bultos era repetir el clic 324 veces. Manteniendo
+     * apretado, el paso arranca en 1 y sube a 5 y después a 10, así que el
+     * recorrido largo se hace igual de rápido y el corto sigue siendo exacto.
+     *
+     * Detalles que importan:
+     * - `pointerdown` y no `mousedown`: el mismo handler sirve para dedo y mouse.
+     * - El primer paso se aplica AL APRETAR, no al soltar: un toque suelto tiene
+     *   que mover exactamente uno.
+     * - Se corta con pointerup, pointercancel y pointerleave. Sin el leave, sacar
+     *   el dedo del botón sin levantarlo dejaba el contador corriendo solo.
+     * - `setPointerCapture` no se usa a propósito: capturaría el puntero y
+     *   `pointerleave` no dispararía nunca.
+     */
+    const pasoRepetible = (id, signo) => {
+        const el = document.getElementById(id);
+        if (! el) return;
+
+        let repetir = null;
+        let acelerar = null;
+
+        const frenar = () => {
+            clearInterval(repetir);
+            clearTimeout(acelerar);
+            repetir = acelerar = null;
+        };
+
+        el.addEventListener('pointerdown', (e) => {
+            e.preventDefault();          // que no arrastre ni seleccione el texto del botón
+            frenar();
+            fijar(cant + signo);         // el toque suelto mueve exactamente 1
+
+            // 400 ms de gracia: recién ahí se entiende que lo está manteniendo.
+            acelerar = setTimeout(() => {
+                let paso = 1;
+                let vueltas = 0;
+                repetir = setInterval(() => {
+                    vueltas++;
+                    if (vueltas === 8) paso = 5;
+                    if (vueltas === 20) paso = 10;
+                    fijar(cant + signo * paso);
+                }, 90);
+            }, 400);
+        });
+
+        for (const evento of ['pointerup', 'pointercancel', 'pointerleave']) {
+            el.addEventListener(evento, frenar);
+        }
+    };
+
+    pasoRepetible('carga3dQuita1', -1);
+    pasoRepetible('carga3dSuma1', +1);
 
     /**
      * SUBIR / BAJAR el pallet del camión (pedido del dueño 06-08: «con la opción de

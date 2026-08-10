@@ -163,6 +163,72 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->assertSessionHasErrors('lineas.0.cantidad');
     }
 
+    /**
+     * CUBICAR: un bulto escrito a mano entra en la carga como cualquier producto.
+     *
+     * Pedido del dueño 07-08 mirando EasyCargo: escribir L × An × Al de algo que no
+     * está en el catálogo y ver si entra.
+     */
+    public function test_un_bulto_a_medida_se_cubica_como_cualquier_producto(): void
+    {
+        // Una caja de 100 × 100 × 100 en el HD35 (430 × 204 × 220): 4 × 2 × 2 = 16.
+        $html = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id,
+                'lineas' => [[
+                    'cantidad' => 16,
+                    'medida_nombre' => 'Heladera exhibidora',
+                    'medida_largo' => 100, 'medida_ancho' => 100, 'medida_alto' => 100,
+                    'medida_peso' => 40,
+                ]],
+            ]))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('Heladera exhibidora', $html,
+            'El bulto a medida no aparece en el detalle de la carga.');
+    }
+
+    /**
+     * EL CANDADO DE LA DECISIÓN: el bulto a medida NO se guarda.
+     *
+     * Es descartable por elección del dueño (07-08). Importa porque el catálogo es
+     * de donde salen los cupos que se le prometen a un cliente: si cada prueba
+     * sembrara una fila, en un mes el catálogo sería medidas tipeadas al voleo y la
+     * regla «no se inventan números» quedaría en la nada.
+     */
+    public function test_el_bulto_a_medida_no_se_guarda_en_el_catalogo(): void
+    {
+        $antes = TipoBulto::count();
+
+        $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id,
+                'lineas' => [[
+                    'cantidad' => 5,
+                    'medida_nombre' => 'Prueba que no debe quedar',
+                    'medida_largo' => 80, 'medida_ancho' => 60, 'medida_alto' => 50,
+                ]],
+            ]))
+            ->assertOk();
+
+        $this->assertSame($antes, TipoBulto::count(), 'El bulto a medida se guardó en el catálogo.');
+        $this->assertDatabaseMissing('tipos_bulto', ['nombre' => 'Prueba que no debe quedar']);
+    }
+
+    /** Una línea sin producto NI medidas no es una línea: se ignora, no revienta. */
+    public function test_una_linea_vacia_no_rompe_la_pantalla(): void
+    {
+        $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id,
+                'lineas' => [
+                    ['tipo' => $this->bolsa->id, 'cantidad' => 10],
+                    ['cantidad' => 3],   // sin tipo y sin medidas
+                ],
+            ]))
+            ->assertOk();
+    }
+
     public function test_sin_permiso_no_se_entra(): void
     {
         $ajeno = User::factory()->create();
@@ -248,10 +314,11 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'carga3dMas', 'carga3dMenos', 'carga3dReset', 'carga3dNombres', 'carga3dCodigos',
             // Vistas fijas (el panel «Views» de EasyCargo, pedido del dueño 05-08).
             'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
-            // Cuánto se ve cargado: animación + pasos a mano SIMÉTRICOS (los de restar
-            // en tandas los pidió el dueño 06-08).
-            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dQuita5', 'carga3dQuita10',
-            'carga3dSuma1', 'carga3dSuma5', 'carga3dSuma10', 'carga3dTodo',
+            // Cuánto se ve cargado: animación + DOS pasos a mano. Eran seis
+            // (−10/−5/−1/+1/+5/+10) hasta el 07-08: el dueño pidió dejar solo + y −
+            // («es mucho número») y el recorrido largo lo cubre el mantener
+            // apretado, que acelera.
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dSuma1', 'carga3dTodo',
         ];
 
         foreach (['mixta' => $mixta, 'cupo máximo' => $cupo] as $modo => $html) {
@@ -331,6 +398,44 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString("addEventListener('wheel'", $js);
         foreach (['touchstart', 'touchmove', 'gesturestart', 'gesturechange'] as $gesto) {
             $this->assertStringNotContainsString($gesto, $js, "El visor registra [{$gesto}]: el zoom era solo de escritorio.");
+        }
+    }
+
+    /**
+     * Los pasos de carga son DOS, y se pueden mantener apretados.
+     *
+     * Las dos mitades van juntas en un solo candado a propósito. El dueño pidió
+     * bajar de seis botones a dos el 07-08 («es mucho número»), pero los seis
+     * existían por un motivo real: con un paso fijo de a uno, llenar el
+     * contenedor de 324 bultos era repetir el clic 324 veces. Lo que hace que la
+     * simplificación no sea un retroceso es la REPETICIÓN AL MANTENER APRETADO.
+     * Si alguien la saca «porque no se usa», vuelve el problema de 2026-08-06 y
+     * este test es lo único que lo dice.
+     *
+     * Los handlers son `pointer*` y van sobre los BOTONES, no sobre el lienzo:
+     * no contradicen test_el_visor_no_registra_gestos_tactiles, que protege que
+     * el zoom no entre por gestos en el canvas.
+     */
+    public function test_los_pasos_de_carga_son_dos_y_se_mantienen_apretados(): void
+    {
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('pasoRepetible', $js, 'Se perdió la repetición al mantener apretado.');
+        $this->assertStringContainsString("addEventListener('pointerdown'", $js);
+        foreach (['pointerup', 'pointercancel', 'pointerleave'] as $corte) {
+            $this->assertStringContainsString($corte, $js,
+                "Sin [{$corte}] el contador sigue corriendo solo después de soltar.");
+        }
+
+        // Y los cuatro pasos viejos ya no existen: si vuelven, es que alguien
+        // deshizo el pedido sin enterarse.
+        $html = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->assertOk()->getContent();
+
+        foreach (['carga3dQuita5', 'carga3dQuita10', 'carga3dSuma5', 'carga3dSuma10'] as $viejo) {
+            $this->assertStringNotContainsString('id="'.$viejo.'"', $html,
+                "Volvió el botón [{$viejo}]: el dueño pidió dejar solo + y −.");
         }
     }
 
@@ -704,8 +809,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         foreach ([
             'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
             'carga3dMenos', 'carga3dMas', 'carga3dReset',
-            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dQuita5', 'carga3dQuita10',
-            'carga3dSuma1', 'carga3dSuma5', 'carga3dSuma10', 'carga3dTodo',
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dSuma1', 'carga3dTodo',
             'carga3dCodigos', 'carga3dNombres', 'carga3dImportar',
         ] as $control) {
             $this->assertStringContainsString(

@@ -93,9 +93,15 @@
             </details>
 
             {{-- Cuánto se ve cargado. «▶» reproduce la estiba de a poco (para mirar en
-                 qué ORDEN va la carga) y los pasos permiten armarla a mano — para los
-                 dos lados: −10/−5/−1 para sacar y +1/+5/+10 para poner (los de restar
-                 los pidió el dueño 06-08). --}}
+                 qué ORDEN va la carga) y los pasos permiten armarla a mano.
+
+                 DOS botones y no seis (pedido del dueño 07-08: «es mucho número»).
+                 Reemplazan a −10/−5/−1/+1/+5/+10, que existían desde el 06-08 porque
+                 con un paso de a uno bajar de a mucho era repetir el botón veinte
+                 veces. Ese problema NO volvió: ahora + y − se pueden MANTENER
+                 APRETADOS y aceleran solos, así que se cubre el mismo recorrido con
+                 un tercio de los controles. Sin la repetición, esto sería un
+                 retroceso — no quitarla. --}}
             <details open class="group">
                 <summary class="{{ $titulo }} flex cursor-pointer select-none list-none items-center justify-between rounded hover:text-neutral-600 [&::-webkit-details-marker]:hidden">
                     Cargar <span class="transition group-open:rotate-180">▾</span>
@@ -112,19 +118,19 @@
                     @endif
                     <button type="button" id="carga3dPlay"
                             class="w-full rounded-lg bg-brand-600 px-2 py-1.5 font-semibold text-white transition hover:bg-brand-700">▶ Cargar de a poco</button>
-                    <div class="mt-1 grid grid-cols-3 gap-1">
-                        @foreach ([
-                            'carga3dQuita10' => '−10',
-                            'carga3dQuita5' => '−5',
-                            'carga3dQuita1' => '−1',
-                            'carga3dSuma1' => '+1',
-                            'carga3dSuma5' => '+5',
-                            'carga3dSuma10' => '+10',
-                            'carga3dTodo' => 'Todo',
-                            'carga3dVaciar' => 'Vaciar',
-                        ] as $id => $texto)
-                            <button type="button" id="{{ $id }}" class="{{ $btn }}">{{ $texto }}</button>
-                        @endforeach
+                    {{-- − y + van GRANDES (h-11, objetivo táctil) porque son los que se
+                         usan todo el tiempo; Todo y Vaciar quedan chicos debajo. --}}
+                    <div class="mt-1 grid grid-cols-2 gap-1">
+                        <button type="button" id="carga3dQuita1" aria-label="Sacar (mantené apretado para sacar de a muchos)"
+                                title="Sacar · mantené apretado"
+                                class="{{ $btn }} h-11 text-lg font-semibold">−</button>
+                        <button type="button" id="carga3dSuma1" aria-label="Agregar (mantené apretado para agregar de a muchos)"
+                                title="Agregar · mantené apretado"
+                                class="{{ $btn }} h-11 text-lg font-semibold">+</button>
+                    </div>
+                    <div class="mt-1 grid grid-cols-2 gap-1">
+                        <button type="button" id="carga3dTodo" class="{{ $btn }}">Todo</button>
+                        <button type="button" id="carga3dVaciar" class="{{ $btn }}">Vaciar</button>
                     </div>
                 </div>
             </details>

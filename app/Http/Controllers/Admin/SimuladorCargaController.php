@@ -79,8 +79,27 @@ class SimuladorCargaController extends Controller
             // líneas: una carga real de Dali son 3-4 tipos; más que eso es un
             // error de tipeo, no un pedido.
             'lineas' => ['nullable', 'array', 'max:8'],
-            'lineas.*.tipo' => ['required_with:lineas', 'integer', 'exists:tipos_bulto,id'],
+            // El producto sale del catálogo… O es un BULTO A MEDIDA («cubicar»,
+            // pedido del dueño 07-08 mirando EasyCargo): se escriben las medidas a
+            // mano y entra en la carga como cualquier otro. Por eso `tipo` pasa a
+            // ser nullable y lo exige una regla condicional: una línea es válida si
+            // trae UNA de las dos cosas, nunca ninguna.
+            'lineas.*.tipo' => ['nullable', 'integer', 'exists:tipos_bulto,id'],
             'lineas.*.cantidad' => ['required_with:lineas', 'integer', 'min:1', 'max:100000'],
+            // --- Bulto a medida. DESCARTABLE a propósito (decisión del dueño
+            // 07-08): vive solo en esta simulación y NO se guarda en el catálogo.
+            // El catálogo es de donde salen los cupos que se le prometen a un
+            // cliente, y dejar que cualquier prueba siembre medidas ahí es
+            // exactamente lo que la regla «no se inventan números» evita.
+            //
+            // Los topes no son decorativos: en centímetros enteros (§2.5) y con un
+            // máximo que ningún camión del catálogo supera, para que un cero de más
+            // no genere un bulto de 30 m que el motor tenga que descartar igual.
+            'lineas.*.medida_nombre' => ['nullable', 'string', 'max:60'],
+            'lineas.*.medida_largo' => ['nullable', 'integer', 'min:1', 'max:1500'],
+            'lineas.*.medida_ancho' => ['nullable', 'integer', 'min:1', 'max:300'],
+            'lineas.*.medida_alto' => ['nullable', 'integer', 'min:1', 'max:300'],
+            'lineas.*.medida_peso' => ['nullable', 'numeric', 'min:0', 'max:30000'],
             // Cómo viaja el pack: de pie, acostado de costado, o acostado con el pico a
             // la puerta (ver TipoBulto::ESTIBAS). Es una elección de ESTIBA y no un dato
             // del producto: el mismo pack viaja de las tres formas según el camión.
@@ -189,11 +208,20 @@ class SimuladorCargaController extends Controller
             // cual tras el GET (y como semilla del Alpine).
             'lineasSel' => collect($datos['lineas'] ?? [])
                 ->map(fn (array $l) => [
-                    'tipo' => (int) $l['tipo'],
+                    // 0 = bulto a medida: el <select> del formulario usa ese valor
+                    // para mostrar los campos de medidas en vez del catálogo.
+                    'tipo' => (int) ($l['tipo'] ?? 0),
                     'cantidad' => (int) $l['cantidad'],
                     // 0/1 y no true/false: es el valor del <select> del formulario, y
                     // Alpine lo compara con las opciones tal cual viene.
                     'estiba' => isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto',
+                    // Las medidas escritas a mano vuelven al formulario tal cual, para
+                    // que un recálculo no le borre al usuario lo que acaba de tipear.
+                    'medida_nombre' => (string) ($l['medida_nombre'] ?? ''),
+                    'medida_largo' => $l['medida_largo'] ?? '',
+                    'medida_ancho' => $l['medida_ancho'] ?? '',
+                    'medida_alto' => $l['medida_alto'] ?? '',
+                    'medida_peso' => $l['medida_peso'] ?? '',
                 ])
                 ->values(),
             // La escena 3D se arma en el cliente con estos números: no hay ningún
@@ -219,7 +247,10 @@ class SimuladorCargaController extends Controller
         $estibas = [];
         $lineas = [];
         foreach (array_values($lineasInput) as $i => $l) {
-            $modelo = $bultos->firstWhere('id', (int) $l['tipo']);
+            $modelo = $this->modeloDeLinea($l, $bultos);
+            if ($modelo === null) {
+                continue;   // línea sin producto ni medidas: no es una línea
+            }
             $modelos[$i] = $modelo;
             // La estiba se elige POR LÍNEA: en la misma carga puede ir un pack de
             // botellones acostado, otro de pie y una caja en automático. Un valor
@@ -260,6 +291,61 @@ class SimuladorCargaController extends Controller
             'cabeTodo' => $resultado['cabe_todo'],
             'peligrosas' => array_values(array_filter($modelos, fn (TipoBulto $m) => $m->peligrosa)),
         ];
+    }
+
+    /**
+     * El producto de una línea: del catálogo, o un BULTO A MEDIDA («cubicar»).
+     *
+     * El bulto a medida es un `TipoBulto` **sin guardar** — un modelo de Eloquent
+     * recién construido funciona perfecto sin tocar la base. Esa es la idea que
+     * evitó una segunda abstracción: como es la MISMA clase, todo lo que viene
+     * después sigue andando sin enterarse (`paraCalculo()`, la forma del visor, el
+     * color, la letra, la fila del detalle). Un «BultoAMedida» aparte habría
+     * obligado a duplicar cada uno de esos caminos o a poner un `if` en todos.
+     *
+     * Nunca se llama a `save()`: es descartable por decisión del dueño (07-08) y
+     * porque el catálogo alimenta los cupos que se le prometen a un cliente.
+     * Candado: `test_el_bulto_a_medida_no_se_guarda_en_el_catalogo`.
+     *
+     * @param  array<string, mixed>  $l
+     * @param  \Illuminate\Support\Collection<int, TipoBulto>  $bultos
+     */
+    private function modeloDeLinea(array $l, $bultos): ?TipoBulto
+    {
+        if (! empty($l['tipo'])) {
+            return $bultos->firstWhere('id', (int) $l['tipo']);
+        }
+
+        // Las tres medidas son obligatorias juntas: con una sola no hay bulto que
+        // calcular, y adivinar la que falta sería inventar un número.
+        foreach (['medida_largo', 'medida_ancho', 'medida_alto'] as $campo) {
+            if (empty($l[$campo])) {
+                return null;
+            }
+        }
+
+        return new TipoBulto([
+            'nombre' => trim((string) ($l['medida_nombre'] ?? '')) ?: 'Bulto a medida',
+            'categoria' => 'cajas',
+            'largo_cm' => (int) $l['medida_largo'],
+            'ancho_cm' => (int) $l['medida_ancho'],
+            'alto_cm' => (int) $l['medida_alto'],
+            'peso_kg' => (float) ($l['medida_peso'] ?? 0),
+            // Se cubica el bulto tal cual se escribió: UNA unidad por bulto. Si
+            // fueran packs, la cantidad ya se pide en unidades y el vendedor
+            // escribe las que son.
+            'unidades' => 1,
+            // Sin dato de terreno sobre cuántos aguanta apilados, el tope lo pone
+            // la altura del camión y no un número inventado. El control de apilado
+            // de la simulación lo puede bajar.
+            'apilable_max' => 30,
+            'soporta_peso_encima' => true,
+            // Rota libre: es una caja cualquiera, no un pack con orientación
+            // dictada. Si el usuario quiere fijarla, el selector de estiba de la
+            // línea ya lo hace (le saca la rotación al motor, §3.1).
+            'orientacion_fija' => false,
+            'peligrosa' => false,
+        ]);
     }
 
     /**
