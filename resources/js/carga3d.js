@@ -975,41 +975,12 @@ export default function iniciarCarga3d(canvas, datos) {
             for (const z of [0.01, W - 0.09]) prisma(-0.02, H - 0.13, z, 0.05, 0.08, 0.07, [226, 148, 38]);
         }
         paredes(L, W, H);
-        // Puerta lateral: la pidió el dueño (06-08, «el lateral, ¿hay chance de ponerle
-        // puertas?»). Solo en los furgones — un contenedor 40' no tiene puerta al costado,
-        // y dibujársela sería mostrar algo que su contenedor no tiene; ahí el detalle del
-        // costado es la corrugación (ver `paredes`).
-        if (!M.semi) puertaLateral(L, W, H);
+        // SIN puerta lateral. La pidió el dueño el 06-08 y la mandó sacar el 07-08
+        // («sacame la puerta de la caja que no queda bien»). El motivo se ve en el
+        // lienzo: dibujada translúcida sobre una pared que ya deja ver la carga, no
+        // se leía como una puerta sino como una mancha sobre los bultos. El detalle
+        // del costado lo siguen dando los nervios de `paredes()`.
         chapa();
-    }
-
-    /**
-     * Puerta de servicio en el costado del furgón: marco, hoja y manija.
-     *
-     * Va en z = 0, que es el costado que MIRA A LA CÁMARA en el ángulo de apertura (con
-     * yaw −0,85 la profundidad crece con z, así que z = 0 es el lado cercano). Puesta en
-     * el otro costado quedaría escondida detrás de la carga justo en la vista por defecto.
-     *
-     * Se dibuja translúcida con borde, no opaca: la pared del furgón deja ver la carga a
-     * propósito, y una puerta sólida taparía justo lo que se vino a mirar.
-     */
-    function puertaLateral(L, W, H) {
-        const x0 = L * 0.50, ancho = Math.min(1.10, L * 0.22);
-        const y0 = 0.10, alto = Math.min(H * 0.78, 1.95);
-        const z = -0.006;   // apenas afuera de la pared, para que no compitan al dibujar
-
-        panel([[x0, y0, z], [x0 + ancho, y0, z], [x0 + ancho, y0 + alto, z], [x0, y0 + alto, z]],
-            [232, 234, 238], { alpha: 0.16, borde: 'rgba(60,62,70,.55)' });
-        // Junta central: es una puerta de dos hojas.
-        panel([[x0 + ancho / 2, y0, z], [x0 + ancho / 2 + 0.012, y0, z],
-            [x0 + ancho / 2 + 0.012, y0 + alto, z], [x0 + ancho / 2, y0 + alto, z]],
-            [90, 93, 100], { alpha: 0.5 });
-        // Manijas de barra, verticales, una por hoja.
-        for (const dx of [ancho / 2 - 0.14, ancho / 2 + 0.10]) {
-            panel([[x0 + dx, y0 + alto * 0.34, z], [x0 + dx + 0.035, y0 + alto * 0.34, z],
-                [x0 + dx + 0.035, y0 + alto * 0.62, z], [x0 + dx, y0 + alto * 0.62, z]],
-                [64, 66, 74], { alpha: 0.85 });
-        }
     }
 
     /**
@@ -1651,6 +1622,21 @@ export default function iniciarCarga3d(canvas, datos) {
 
         const n = document.getElementById('carga3dN');
         if (n) n.textContent = cant;
+
+        // La caja de cantidad refleja el número REAL, venga de donde venga (los
+        // pasos, Todo/Vaciar o la animación). Se actualiza acá, en el único lugar
+        // por el que pasa todo dibujado, así que no puede quedar desfasada.
+        //
+        // Salvo mientras la están tipeando: pisarle el valor al usuario en medio de
+        // un número lo vuelve inusable (escribe «1» de «150» y se lo reemplazan).
+        const caja = document.getElementById('carga3dCantidad');
+        if (caja && document.activeElement !== caja) caja.value = cant;
+
+        // La barra también sigue al número real. Acá NO hace falta la guarda del
+        // foco: una barra no se «escribe a medias», su valor ya ES el que el
+        // usuario dejó, así que reescribirlo con el mismo número no molesta.
+        const barra = document.getElementById('carga3dBarra');
+        if (barra) barra.value = cant;
     }
 
     // ---------------------------------------------------------------- controles
@@ -1809,6 +1795,42 @@ export default function iniciarCarga3d(canvas, datos) {
 
     pasoRepetible('carga3dQuita1', -1);
     pasoRepetible('carga3dSuma1', +1);
+
+    /**
+     * Escribir la cantidad exacta (pedido del dueño 07-08: «dame la opción de agregar
+     * números para hacer más exacta la carga»). Con solo + y −, llegar a 137 eran 137
+     * toques; los pasos siguen sirviendo para ajustar de a poco.
+     *
+     * Se escucha `input` y no `change`: con `change` el dibujo recién se movería al
+     * salir del campo, y lo que se quiere es ver la carga mientras se tipea.
+     *
+     * `fijar` ya capa contra 0 y TOPE, así que un 9999 se convierte en el máximo en
+     * vez de romper nada. El campo vacío NO se fuerza a 0 mientras se edita —
+     * borrarlo para escribir otro número es normal—; se acomoda al salir (`blur`).
+     */
+    const caja = document.getElementById('carga3dCantidad');
+    if (caja) {
+        caja.value = cant;
+        caja.addEventListener('input', () => {
+            if (caja.value.trim() === '') return;
+            fijar(parseInt(caja.value, 10) || 0);
+        });
+        caja.addEventListener('blur', () => { caja.value = cant; });
+    }
+
+    /**
+     * La BARRA: el tercer control del mismo número (pedido del dueño 07-08 mirando el
+     * pallet cargado de EasyCargo). Arrastrar da el barrido rápido y la sensación de
+     * «llenar»; el campo da el número exacto y los pasos ajustan de a uno.
+     *
+     * `input` y no `change`: la carga se dibuja MIENTRAS se arrastra, que es todo el
+     * valor de tener una barra. Con `change` recién se movería al soltar.
+     */
+    const barra = document.getElementById('carga3dBarra');
+    if (barra) {
+        barra.value = cant;
+        barra.addEventListener('input', () => fijar(parseInt(barra.value, 10) || 0));
+    }
 
     /**
      * SUBIR / BAJAR el pallet del camión (pedido del dueño 06-08: «con la opción de

@@ -318,7 +318,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             // (−10/−5/−1/+1/+5/+10) hasta el 07-08: el dueño pidió dejar solo + y −
             // («es mucho número») y el recorrido largo lo cubre el mantener
             // apretado, que acelera.
-            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dSuma1', 'carga3dTodo',
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dCantidad', 'carga3dSuma1', 'carga3dBarra', 'carga3dTodo',
         ];
 
         foreach (['mixta' => $mixta, 'cupo máximo' => $cupo] as $modo => $html) {
@@ -437,6 +437,39 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             $this->assertStringNotContainsString('id="'.$viejo.'"', $html,
                 "Volvió el botón [{$viejo}]: el dueño pidió dejar solo + y −.");
         }
+    }
+
+    /**
+     * Los TRES controles de cantidad mueven el MISMO número.
+     *
+     * Pasos (− +), campo escrito y barra deslizante son tres formas de tocar `cant`,
+     * no tres estados. Lo que se vigila es que los tres entren por `fijar()` —que es
+     * quien capa contra 0 y el tope y corta la animación— y que los dos que muestran
+     * valor se sincronicen dentro de `dibujar()`, el único lugar por el que pasa
+     * todo. Si alguno se cableara por su cuenta, la pantalla mostraría un número y
+     * dibujaría otro, que es el defecto que nadie reporta pero que hace desconfiar
+     * de la herramienta.
+     */
+    public function test_los_tres_controles_de_cantidad_mueven_el_mismo_numero(): void
+    {
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        // Los tres entran por fijar(), no tocan `cant` a mano.
+        $this->assertMatchesRegularExpression('/carga3dCantidad[\s\S]{0,600}?fijar\(/', $js);
+        $this->assertMatchesRegularExpression('/carga3dBarra[\s\S]{0,600}?fijar\(/', $js);
+        $this->assertStringContainsString('pasoRepetible', $js);
+
+        // Y los dos que muestran valor se sincronizan al dibujar.
+        foreach (['carga3dCantidad', 'carga3dBarra'] as $id) {
+            $this->assertMatchesRegularExpression(
+                '/'.$id.'[\s\S]{0,300}?\.value = cant/', $js,
+                "El control [{$id}] no se sincroniza con el número real.",
+            );
+        }
+
+        // La barra escucha `input`: la carga se dibuja MIENTRAS se arrastra, que es
+        // todo el valor de tener una barra. Con `change` recién se movería al soltar.
+        $this->assertMatchesRegularExpression("/barra\.addEventListener\('input'/", $js);
     }
 
     public function test_una_silueta_que_el_visor_no_conoce_cae_a_la_deducida(): void
@@ -809,7 +842,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         foreach ([
             'carga3dVista3d', 'carga3dVistacostado', 'carga3dVistaplanta', 'carga3dVistapuerta',
             'carga3dMenos', 'carga3dMas', 'carga3dReset',
-            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dSuma1', 'carga3dTodo',
+            'carga3dPlay', 'carga3dVaciar', 'carga3dQuita1', 'carga3dCantidad', 'carga3dSuma1', 'carga3dBarra', 'carga3dTodo',
             'carga3dCodigos', 'carga3dNombres', 'carga3dImportar',
         ] as $control) {
             $this->assertStringContainsString(
@@ -1024,17 +1057,25 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         );
     }
 
-    public function test_la_puerta_lateral_es_del_furgon_y_no_del_contenedor(): void
+    /**
+     * NO se dibuja puerta lateral. El candado quedó dado vuelta a propósito.
+     *
+     * La pidió el dueño el 06-08 («el lateral, ¿hay chance de ponerle puertas?») y la
+     * mandó sacar el 07-08 («sacame la puerta de la caja que no queda bien»). El
+     * motivo se ve en el lienzo: dibujada translúcida sobre una pared que ya deja ver
+     * la carga, no se leía como puerta sino como una mancha sobre los bultos.
+     *
+     * Se vigila que no vuelva sola —es el tipo de detalle que alguien reintroduce
+     * «para que se vea más real»— y que el costado NO quede liso: el detalle de la
+     * pared lo siguen dando los nervios, que sí se quedan.
+     */
+    public function test_el_costado_no_lleva_puerta_pero_si_nervios(): void
     {
-        // Pedido del dueño: «el lateral, ¿hay chance de ponerle puertas?». Va en los
-        // furgones. Un contenedor 40' NO tiene puerta al costado —dibujársela sería
-        // mostrarle algo que su contenedor no tiene—; ahí el detalle del costado es la
-        // corrugación de la pared.
         $js = file_get_contents(resource_path('js/carga3d.js'));
 
-        $this->assertStringContainsString('function puertaLateral', $js);
-        $this->assertStringContainsString('if (!M.semi) puertaLateral(', $js);
-        // Y la pared lleva nervios: de costado era una sábana lisa de punta a punta.
+        $this->assertStringNotContainsString('puertaLateral', $js,
+            'Volvió la puerta lateral: el dueño la mandó sacar el 07-08.');
+        // La pared lleva nervios: de costado era una sábana lisa de punta a punta.
         $this->assertStringContainsString('const nervio = M.semi', $js);
     }
 

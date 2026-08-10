@@ -532,12 +532,17 @@ Dos detalles de implementación que importan:
 **El costado de la CAJA (06-08).** También era una sábana lisa de punta a punta. Ahora los
 tramos de pared van con el tono **alternado** —nervios—, más marcados en el contenedor
 (es corrugado) que en el furgón (paneles con junta). Sale gratis: los tramos ya existían
-por el orden de dibujo. Y el furgón lleva **puerta lateral** de dos hojas con manijas
-(`puertaLateral`), pedida por el dueño; **el contenedor no**, porque un 40' no tiene puerta
-al costado y dibujársela sería mostrarle algo que su contenedor no tiene. Va translúcida
-con borde, no opaca: la pared deja ver la carga a propósito y una puerta sólida taparía
-justo lo que se vino a mirar. Va en `z = 0`, el costado que mira a la cámara en el ángulo de
-apertura. Candado: `test_la_puerta_lateral_es_del_furgon_y_no_del_contenedor`.
+por el orden de dibujo. El furgón llevó **puerta lateral** de dos hojas entre el 06 y el 07-08, y **se sacó**:
+*«sacame la puerta de la caja que no queda bien»* (dueño, 07-08). El motivo se ve en el
+lienzo y vale como aprendizaje: dibujada **translúcida sobre una pared que ya deja ver la
+carga**, no se leía como una puerta sino como una mancha sobre los bultos. Opaca habría
+sido peor —taparía justo lo que se vino a mirar—, así que no había versión buena: en un
+visor donde las paredes son transparentes a propósito, un detalle plano sobre la pared
+compite con la carga en vez de ambientarla. El detalle del costado lo dan los **nervios**,
+que sí se quedan. El candado quedó **dado vuelta**
+(`test_el_costado_no_lleva_puerta_pero_si_nervios`): vigila que la puerta no vuelva sola
+—es el tipo de detalle que alguien reintroduce «para que se vea más real»— y que el
+costado no quede liso.
 
 **El eje delantero (06-08).** En el tracto estaba al 60% de la cabina y quedaba a 19 cm del
 tándem: se veían las tres ruedas juntas y ninguna parecía el eje delantero (reporte del
@@ -622,6 +627,32 @@ siendo exacto.
 `test_los_pasos_de_carga_son_dos_y_se_mantienen_apretados` vigila las dos mitades juntas:
 que los cuatro botones viejos no vuelvan al HTML **y** que sigan estando `pasoRepetible`,
 el `pointerdown` y los tres cortes.
+
+**Y en el medio se ESCRIBE la cantidad** (pedido del dueño el mismo día: *«dame la opción
+de agregar números para hacer más exacta la carga»*). Queda `− [caja] +`: los pasos
+ajustan de a poco y para llegar a 137 se tipea, que con toques eran 137. Dos detalles:
+
+- La caja refleja el número **venga de donde venga** (pasos, Todo/Vaciar, la animación)
+  porque se actualiza dentro de `dibujar()`, el único lugar por el que pasa todo. **Salvo
+  mientras la están tipeando**: pisarle el valor al usuario en medio de un número la
+  vuelve inusable (escribe el «1» de «150» y se lo reemplazan por el valor actual).
+- Escucha `input` y no `change`: con `change` el dibujo recién se movería al salir del
+  campo, y lo que se quiere es ver la carga mientras se escribe. El campo vacío **no** se
+  fuerza a 0 mientras se edita —borrarlo para escribir otro número es normal—; se acomoda
+  al salir.
+
+**Y una BARRA DESLIZANTE** (pedido del dueño 07-08 mirando el pallet cargado de
+EasyCargo). Quedan **tres controles del MISMO número, no tres estados**: arrastrar da el
+barrido rápido y la sensación de «llenar», el campo da el número exacto, los pasos ajustan
+de a uno. Los tres entran por `fijar()` —que capa contra 0 y el tope y corta la
+animación— y los dos que muestran valor se sincronizan dentro de `dibujar()`, el único
+lugar por el que pasa todo. Si alguno se cableara por su cuenta, la pantalla mostraría un
+número y dibujaría otro: el defecto que nadie reporta pero que hace desconfiar de la
+herramienta. Candado: `test_los_tres_controles_de_cantidad_mueven_el_mismo_numero`.
+
+La barra **se deshabilita con tope 0**, que pasa de verdad: en Sobre pallet con la bolsa de
+botellones no entra ni un bulto (mide 130 cm y el pallet 120, §3.3 punto 5), y una barra
+que no se puede mover confunde más de lo que informa.
 
 Detalles de implementación que importan:
 

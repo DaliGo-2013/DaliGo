@@ -118,17 +118,35 @@
                     @endif
                     <button type="button" id="carga3dPlay"
                             class="w-full rounded-lg bg-brand-600 px-2 py-1.5 font-semibold text-white transition hover:bg-brand-700">▶ Cargar de a poco</button>
-                    {{-- − y + van GRANDES (h-11, objetivo táctil) porque son los que se
-                         usan todo el tiempo; Todo y Vaciar quedan chicos debajo. --}}
-                    <div class="mt-1 grid grid-cols-2 gap-1">
+                    {{-- − [caja] + : los pasos van GRANDES (h-11, objetivo táctil) y en
+                         el medio se puede ESCRIBIR la cantidad exacta (pedido del dueño
+                         07-08: «dame la opción de agregar números para hacer más exacta
+                         la carga»). Con solo + y − llegar a 137 eran 137 toques; ahora se
+                         tipea. Los tres controles mueven el MISMO número, así que la caja
+                         también refleja lo que hacen los botones y la animación. --}}
+                    <div class="mt-1 flex items-stretch gap-1">
                         <button type="button" id="carga3dQuita1" aria-label="Sacar (mantené apretado para sacar de a muchos)"
                                 title="Sacar · mantené apretado"
-                                class="{{ $btn }} h-11 text-lg font-semibold">−</button>
+                                class="{{ $btn }} h-11 w-11 shrink-0 text-lg font-semibold">−</button>
+                        <input type="number" id="carga3dCantidad" min="0" max="{{ $escena['tope'] }}" step="1"
+                               inputmode="numeric" aria-label="Cantidad cargada"
+                               class="h-11 w-full min-w-0 rounded-lg border-neutral-300 text-center text-sm tabular-nums focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                         <button type="button" id="carga3dSuma1" aria-label="Agregar (mantené apretado para agregar de a muchos)"
                                 title="Agregar · mantené apretado"
-                                class="{{ $btn }} h-11 text-lg font-semibold">+</button>
+                                class="{{ $btn }} h-11 w-11 shrink-0 text-lg font-semibold">+</button>
                     </div>
-                    <div class="mt-1 grid grid-cols-2 gap-1">
+                    {{-- Barra deslizante para la cantidad (pedido del dueño 07-08 mirando
+                         el pallet cargado de EasyCargo). Es un TERCER control del MISMO
+                         número, no un modo aparte: arrastrar da el barrido rápido y la
+                         sensación de «llenar», el campo da el número exacto y los pasos
+                         ajustan de a uno. Se deshabilita con tope 0 — pasa de verdad
+                         cuando el producto no entra en el pallet (la bolsa mide 130 y el
+                         pallet 120), y una barra que no puede moverse confunde. --}}
+                    <input type="range" id="carga3dBarra" min="0" max="{{ max(1, $escena['tope']) }}" step="1" value="0"
+                           @disabled(($escena['tope'] ?? 0) < 1)
+                           aria-label="Cantidad cargada"
+                           class="mt-2 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-neutral-200 accent-brand-600 disabled:cursor-not-allowed disabled:opacity-40">
+                    <div class="mt-2 grid grid-cols-2 gap-1">
                         <button type="button" id="carga3dTodo" class="{{ $btn }}">Todo</button>
                         <button type="button" id="carga3dVaciar" class="{{ $btn }}">Vaciar</button>
                     </div>
