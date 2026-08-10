@@ -47,6 +47,10 @@
                 // procesa y sale tal cual al PHP compilado.
                 $bultosJson = $bultos->map(fn ($b) => [
                     'id' => $b->id, 'nombre' => $b->nombre, 'unidades' => $b->unidades,
+                    // Para el marcador del campo «Apilar hasta»: el tope del catálogo es
+                    // lo que se aplica si no se escribe nada, así que hay que poder verlo
+                    // sin abrir la ficha del producto.
+                    'apilable_max' => $b->apilable_max,
                 ])->values();
                 $lineasIniciales = $lineasSel->isNotEmpty()
                     ? $lineasSel
@@ -94,6 +98,26 @@
                         }
                         const b = this.bultos.find(b => b.id === l.tipo);
                         return b ? b.nombre : '—';
+                    },
+
+                    /* El tope de apilado que se aplica si el campo queda vacío. Se muestra
+                       como marcador porque es el número que MANDA cuando no se toca nada, y
+                       hasta ahora había que abrir la ficha del producto para conocerlo. Un
+                       bulto a medida no tiene ficha: ahí el tope lo pone la altura del
+                       camión (el controlador le pasa 30). */
+                    topeDeCatalogo(l) {
+                        if (this.aMedida(l)) return 'lo que dé el alto';
+                        return String(this.bultos.find(b => b.id === l.tipo)?.apilable_max ?? 1);
+                    },
+                    /* Subir el tope DESDE EL RESULTADO, que es donde se ve el hueco. Sin
+                       esto el camino era: leer el aviso, buscar la tarjeta, abrirla, tipear
+                       el número. El botón lo hace de un toque y recalcula, así que lo que
+                       queda en pantalla lo sigue verificando el motor. */
+                    apilarHasta(i, n) {
+                        if (! this.lineas[i]) return;
+                        this.lineas[i].apilado = n;
+                        this.ensuciar();
+                        this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
                     },
 
                     agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
@@ -344,6 +368,28 @@
                                                     · <span class="text-red-600">quedan {{ number_format($pendientes, 0, ',', '.') }} afuera: {{ $motivoTexto }}</span>
                                                 @endif
                                             </p>
+
+                                            {{-- EL AIRE QUE QUEDA ARRIBA DE ESTE PRODUCTO.
+                                                 Pedido del dueño (10-08): «necesito que los bidones también
+                                                 lleguen hasta el techo». El hueco no era del dibujo ni del
+                                                 acomodo — era el tope de apilado del catálogo. Y no se
+                                                 explicaba solo: dos productos apilados los MISMOS 6 llegan a
+                                                 alturas distintas según cuánto mida cada uno, así que en
+                                                 pantalla parecía un error. Se dice, y se arregla de un toque. --}}
+                                            @if ($fila['apiladas'] && $fila['apilables_por_alto'] > $fila['apiladas'])
+                                                <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
+                                                    <span>
+                                                        Van <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apiladas'] }}</span> de alto
+                                                        y la caja da para <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apilables_por_alto'] }}</span>.
+                                                    </span>
+                                                    <button type="button"
+                                                            @click="apilarHasta({{ $i }}, {{ $fila['apilables_por_alto'] }})"
+                                                            class="min-h-8 rounded-lg bg-brand-50 px-2 py-1 font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
+                                                            title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
+                                                        Apilar {{ $fila['apilables_por_alto'] }}
+                                                    </button>
+                                                </p>
+                                            @endif
                                         </x-list-row>
                                     @endforeach
                                 </x-list-card>
@@ -403,6 +449,30 @@
                                             <span class="text-neutral-500">Rejilla</span>
                                             <span class="font-medium tabular-nums text-neutral-900">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
                                         </div>
+                                        {{-- EL AIRE QUE QUEDA ARRIBA. El mismo aviso que la carga mixta, por el
+                                             mismo motivo: el tope de apilado corta antes que la altura y el hueco
+                                             no se explica solo. Acá el campo ya está a la vista con el número del
+                                             catálogo, pero cuántas CABRÍAN no se decía en ninguna parte. --}}
+                                        @php
+                                            $apiladasCupo = $resultado['rejilla']['alto'];
+                                            $techoCupo = $resultado['orientacion']['alto'] > 0
+                                                ? intdiv($camion->alto_cm, $resultado['orientacion']['alto'])
+                                                : 0;
+                                        @endphp
+                                        @if ($apiladasCupo > 0 && $techoCupo > $apiladasCupo)
+                                            <div class="flex flex-wrap items-center justify-between gap-2 py-1">
+                                                <span class="text-neutral-500">Queda aire arriba</span>
+                                                <span class="flex items-center gap-2">
+                                                    <span class="text-xs text-neutral-500">la caja da para <span class="tabular-nums">{{ $techoCupo }}</span></span>
+                                                    <button type="button"
+                                                            @click="$refs.apilado.value = {{ $techoCupo }}; $refs.apilado.form.requestSubmit()"
+                                                            class="min-h-8 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
+                                                            title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
+                                                        Apilar {{ $techoCupo }}
+                                                    </button>
+                                                </span>
+                                            </div>
+                                        @endif
                                         <div class="flex justify-between py-1">
                                             <span class="text-neutral-500">Ocupación</span>
                                             <span class="font-medium tabular-nums text-neutral-900">{{ round($resultado['ocupacion'] * 100) }}%</span>
@@ -558,7 +628,7 @@
                         <div class="sm:w-32">
                             <x-input-label for="apilado" value="Apilar hasta" />
                             <x-text-input id="apilado" name="apilado" type="number" min="1" max="30"
-                                          class="mt-1.5 w-full" inputmode="numeric"
+                                          class="mt-1.5 w-full" inputmode="numeric" x-ref="apilado"
                                           value="{{ $apilado ?: $bulto->apilable_max }}"
                                           title="Cuántos se apilan uno sobre otro. El catálogo dice {{ $bulto->apilable_max }}." />
                         </div>
@@ -706,6 +776,21 @@
                                                         <option value="{{ $clave }}">{{ $nombre }}</option>
                                                     @endforeach
                                                 </select>
+                                            </div>
+                                            {{-- APILAR HASTA, por línea. Es el control que faltaba acá: el modo
+                                                 de un producto lo tiene desde el 06-08, y en la carga mixta cada
+                                                 producto se quedaba con el tope de su catálogo. Se nota cuando
+                                                 dos productos apilan los MISMOS 6: seis cajas de 42 cm tocan el
+                                                 techo y seis bolsas acostadas de 26 llegan a media caja.
+                                                 Cuántas aguanta la de abajo es dato de terreno, así que la
+                                                 decisión es del dueño y el vacío deja el del catálogo. --}}
+                                            <div>
+                                                <label class="text-xs font-medium text-neutral-600">Apilar hasta</label>
+                                                <input type="number" :name="`lineas[${i}][apilado]`" x-model="linea.apilado" @input="ensuciar()"
+                                                       min="1" max="30" inputmode="numeric"
+                                                       :placeholder="topeDeCatalogo(linea)"
+                                                       :title="`Cuántos se apilan uno sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`"
+                                                       class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                                             </div>
                                         </div>
 

@@ -107,6 +107,11 @@ class SimuladorCargaController extends Controller
             // la puerta (ver TipoBulto::ESTIBAS). Es una elección de ESTIBA y no un dato
             // del producto: el mismo pack viaja de las tres formas según el camión.
             'lineas.*.estiba' => ['nullable', 'in:'.implode(',', array_keys(TipoBulto::ESTIBAS_ELEGIBLES))],
+            // Tope de apilado POR LÍNEA, igual que la estiba. Es lo que dejaba el hueco
+            // arriba de los bidones: el catálogo dice 6 y una bolsa acostada mide 26 cm,
+            // así que seis son 156 de los 266 del HINO — media caja de aire. Vacío = el
+            // del catálogo, que es el comportamiento verificado.
+            'lineas.*.apilado' => ['nullable', 'integer', 'min:1', 'max:30'],
             'estiba' => ['nullable', 'in:'.implode(',', array_keys(TipoBulto::ESTIBAS_ELEGIBLES))],
             // Quién decide qué producto va al fondo: el motor por volumen (auto) o el
             // orden en que el usuario armó la lista.
@@ -138,6 +143,22 @@ class SimuladorCargaController extends Controller
             // verificados, y el candado de consistencia entre pestañas sigue en pie.
             'aprovechar' => ['nullable', 'boolean'],
         ]);
+
+        // EL ORDEN DE LAS LÍNEAS SE RESTAURA POR ÍNDICE.
+        //
+        // `validate()` no devuelve las líneas en el orden en que se enviaron: arma el
+        // resultado recorriendo REGLA por regla, así que la primera línea que aparece es
+        // la que tiene la primera clave con la que se topó. Una línea a la que le falta
+        // una clave opcional queda DETRÁS de las completas — con dos líneas y la primera
+        // sin `tipo`, salen en el orden 1, 0.
+        //
+        // No es cosmético: con «Como armé la lista» el primero de la lista es el que va
+        // al FONDO del camión, y de esa misma posición salen la letra y el color con que
+        // el producto aparece en el lienzo. Las claves son los índices del formulario, así
+        // que ordenar por clave devuelve el orden que armó el usuario.
+        if (isset($datos['lineas'])) {
+            ksort($datos['lineas']);
+        }
 
         // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
         // carga TIPO sembradas por el deploy, NO los vehículos de la flota. La
@@ -262,6 +283,10 @@ class SimuladorCargaController extends Controller
                     // 0/1 y no true/false: es el valor del <select> del formulario, y
                     // Alpine lo compara con las opciones tal cual viene.
                     'estiba' => isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto',
+                    // Vacío y no el número del catálogo: así «no lo toqué» se distingue
+                    // de «pedí justo 6», y cambiar de producto no arrastra un tope que
+                    // era del anterior.
+                    'apilado' => $l['apilado'] ?? '',
                     // Las medidas escritas a mano vuelven al formulario tal cual, para
                     // que un recálculo no le borre al usuario lo que acaba de tipear.
                     'medida_nombre' => (string) ($l['medida_nombre'] ?? ''),
@@ -292,6 +317,7 @@ class SimuladorCargaController extends Controller
     {
         $modelos = [];
         $estibas = [];
+        $apilados = [];
         $lineas = [];
         foreach (array_values($lineasInput) as $i => $l) {
             $modelo = $this->modeloDeLinea($l, $bultos);
@@ -303,11 +329,17 @@ class SimuladorCargaController extends Controller
             // botellones acostado, otro de pie y una caja en automático. Un valor
             // inventado cae a `auto`, que es el comportamiento verificado.
             $estibas[$i] = isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto';
+            // Y el tope de apilado TAMBIÉN por línea, por el mismo motivo: una bolsa
+            // acostada y una caja de tapas no aguantan lo mismo encima. Vacío = el del
+            // catálogo.
+            $apilados[$i] = ($l['apilado'] ?? null) !== null && $l['apilado'] !== ''
+                ? max(1, (int) $l['apilado'])
+                : null;
             // El vendedor habla en UNIDADES (200 botellones); el motor en BULTOS
             // (bolsas de 5). Se redondea HACIA ARRIBA: 198 botellones son 40
             // bolsas — la bolsa viaja completa o no viaja.
             $lineas[$i] = [
-                'bulto' => $modelo->paraCalculo($estibas[$i]),
+                'bulto' => $modelo->paraCalculo($estibas[$i], $apilados[$i]),
                 'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
             ];
         }
@@ -319,9 +351,46 @@ class SimuladorCargaController extends Controller
             $r = $resultado['lineas'][$i];
             $pedidasUnidades = (int) $lineasInput[array_keys($lineasInput)[$i]]['cantidad'];
 
-            $filas[] = [
+            // POR QUÉ QUEDÓ AIRE ARRIBA DE ESTE PRODUCTO (pedido del dueño 10-08:
+            // «necesito que los bidones también lleguen hasta el techo»).
+            //
+            // El hueco no se explicaba solo: dos productos apilados los MISMOS 6 del
+            // catálogo llegan a alturas distintas —seis cajas de 42 cm tocan el techo y
+            // seis bolsas acostadas de 26 se quedan a media caja—, así que en pantalla
+            // parecía un error del dibujo. Ahora la fila dice cuántas van de alto y
+            // cuántas daría la altura, y el botón de al lado sube el tope de un toque.
+            //
+            // Los dos números salen del bloque que el motor YA colocó (su rejilla y la
+            // orientación con que lo puso), no de un cálculo paralelo: si divergieran, la
+            // pantalla estaría explicando una carga que no es la que dibujó.
+            $bloque = null;
+            foreach ($resultado['bloques'] as $b) {
+                if ($b['linea'] === $i) {
+                    $bloque = $b;
+                    break;
+                }
+            }
+
+            // SE INDEXA POR EL ÍNDICE DE LA LÍNEA, no por la posición en esta lista.
+            //
+            // Una línea sin producto ni medidas no llega hasta acá, así que las de abajo
+            // corrían un lugar y esta lista dejaba de coincidir con los bloques, que
+            // viajan con el índice ORIGINAL (`$b['linea']`). Las consecuencias no eran
+            // cosméticas: `escena()` resuelve el nombre de cada bloque con
+            // `$mixta['lineas'][$b['linea']]` y reventaba con «Undefined array key», y la
+            // letra y el color —que salen de esta clave en la lista, en el panel de
+            // cubicaje y en el Excel— señalaban al producto de al lado.
+            //
+            // Con la clave puesta, los cuatro lugares hablan del mismo producto por
+            // construcción, y el botón «Apilar N» le escribe a la tarjeta correcta.
+            $filas[$i] = [
                 'modelo' => $modelo,
                 'estiba' => $estibas[$i],
+                'apilado' => $apilados[$i],
+                'apiladas' => $bloque['rejilla']['alto'] ?? null,
+                'apilables_por_alto' => $bloque !== null && $bloque['orientacion']['alto'] > 0
+                    ? intdiv($camion->alto_cm, $bloque['orientacion']['alto'])
+                    : null,
                 'pedidas_unidades' => $pedidasUnidades,
                 // Cargadas se reporta capado a lo pedido: si pidió 198 y la
                 // última bolsa completa las 200, decir «cargadas 200» confunde.

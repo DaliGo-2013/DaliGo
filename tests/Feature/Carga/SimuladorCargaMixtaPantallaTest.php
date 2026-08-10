@@ -842,6 +842,127 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame(0.26, $porNombre[$this->bolsa->nombre]['orientacion']['alto']);
     }
 
+    public function test_el_tope_de_apilado_se_elige_por_linea_y_vacio_deja_el_del_catalogo(): void
+    {
+        // Reporte del dueño (10-08) mirando el HINO cargado: «necesito que los bidones
+        // también lleguen hasta el techo, ahí solo veo las cajas de tapas que llegan».
+        //
+        // No era el dibujo ni el acomodo: era que el tope de apilado se podía pisar en el
+        // modo de UN producto (§3.4) y en la carga mixta NO, así que cada línea se quedaba
+        // con el 6 de su catálogo. Con productos de distinto alto ese mismo 6 llega a
+        // alturas muy distintas: seis cajas de 42 cm tocan el techo y seis bolsas
+        // acostadas de 26 se quedan a media caja. De ahí el hueco que él vio.
+        $bolsas = fn ($r) => $r->assertOk()->viewData('mixta')['lineas'][0]['cargadas_unidades'];
+
+        // Acostada, la bolsa mide 26 cm: en 220 de caja entran 8 capas y el tope de 6
+        // muerde. Es exactamente el caso del reporte.
+        $catalogo = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 5000, 'estiba' => 'costado'],
+        ]);
+        $hastaElTecho = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 5000, 'estiba' => 'costado', 'apilado' => 8],
+        ]);
+
+        $this->assertSame(270, $bolsas($catalogo), '6 capas de 26 cm dejan 64 cm de aire.');
+        $this->assertSame(360, $bolsas($hastaElTecho), '8 capas llenan los 220 cm.');
+
+        // POR LÍNEA: subirle el tope a un producto no puede tocarle el suyo al de al lado.
+        // Sin esto el control sería de pantalla y prometería en la caja de tapas una
+        // altura que nadie pidió.
+        $solas = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'estiba' => 'costado'],
+            ['tipo' => $this->caja->id, 'cantidad' => 40],
+        ])->assertOk()->viewData('mixta')['lineas'];
+        $conTope = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'estiba' => 'costado', 'apilado' => 8],
+            ['tipo' => $this->caja->id, 'cantidad' => 40],
+        ])->assertOk()->viewData('mixta')['lineas'];
+
+        $this->assertSame(6, $solas[0]['apiladas']);
+        $this->assertSame(8, $conTope[0]['apiladas'], 'La línea que pidió 8 apila 8.');
+        $this->assertSame(
+            $solas[1]['apiladas'],
+            $conTope[1]['apiladas'],
+            'La caja de tapas no pidió nada: su tope no se mueve.',
+        );
+    }
+
+    public function test_la_fila_dice_cuanto_aire_queda_arriba_y_ofrece_llenarlo(): void
+    {
+        // El hueco no se explicaba solo, y ese era el defecto de fondo: dos productos
+        // apilados los MISMOS 6 del catálogo llegan a alturas distintas, así que en
+        // pantalla parecía un error del dibujo. Ahora la fila dice los dos números —los
+        // que van y los que darían— y el botón sube el tope de un toque.
+        $conAire = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'costado'],
+        ])->assertOk();
+
+        $fila = $conAire->viewData('mixta')['lineas'][0];
+        $this->assertSame(6, $fila['apiladas'], 'El tope del catálogo.');
+        $this->assertSame(8, $fila['apilables_por_alto'], '220 / 26 = 8 capas.');
+
+        $html = $conAire->getContent();
+        $this->assertStringContainsString('la caja da para', $html);
+        $this->assertStringContainsString('Apilar 8', $html);
+
+        // MUTADO: pedido el tope que la altura permite, el aviso NO tiene por qué seguir
+        // ahí. Un aviso que no se apaga al resolverlo deja de leerse.
+        $lleno = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'costado', 'apilado' => 8],
+        ])->assertOk();
+
+        $this->assertSame(8, $lleno->viewData('mixta')['lineas'][0]['apilables_por_alto']);
+        $this->assertStringNotContainsString('Apilar 8', $lleno->getContent());
+    }
+
+    public function test_una_linea_descartada_no_le_corre_la_letra_a_las_de_abajo(): void
+    {
+        // Una línea sin producto ni medidas NO llega al resultado, así que la lista de
+        // productos perdía un lugar mientras los bloques seguían viajando con el índice
+        // original. Los cuatro lugares que resuelven «de quién es este bloque» —el nombre
+        // en el lienzo, la letra, el color y el Excel— se desalineaban, y `escena()`
+        // directamente reventaba con «Undefined array key».
+        //
+        // Mutado: con la lista reindexada, esta petición devuelve 500.
+        $r = $this->verMixta([
+            ['cantidad' => 3],   // sin tipo y sin medidas: no es una línea
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'costado'],
+        ])->assertOk();
+
+        $lineas = $r->viewData('mixta')['lineas'];
+        $this->assertSame([1], array_keys($lineas), 'La bolsa es la SEGUNDA línea y lo sigue siendo.');
+
+        // Y el bloque del lienzo resuelve su producto por esa misma clave.
+        $bloques = $r->viewData('escena')['bloques'];
+        $this->assertNotEmpty($bloques);
+        $this->assertSame($this->bolsa->nombre, $bloques[0]['nombre']);
+        $this->assertSame(SimuladorCargaController::letra(1), $bloques[0]['letra']);
+    }
+
+    public function test_las_lineas_se_calculan_en_el_orden_en_que_se_enviaron(): void
+    {
+        // `validate()` NO devuelve las líneas en el orden en que llegaron: arma el
+        // resultado recorriendo REGLA por regla, así que la primera línea que aparece es
+        // la que trae la primera clave con la que se topó. Una línea SIN `tipo` —un bulto
+        // a medida— queda detrás de las del catálogo aunque se haya escrito antes.
+        //
+        // No es cosmético: con «Como armé la lista» el primero va al FONDO del camión, y
+        // de esa posición salen la letra y el color de cada producto en el lienzo. Mutado:
+        // sin el `ksort` del controlador, la bolsa se adelanta y se lleva el fondo y la A.
+        $lineas = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'orden' => 'lista',
+            'lineas' => [
+                ['medida_nombre' => 'Heladera exhibidora', 'medida_largo' => 60,
+                    'medida_ancho' => 60, 'medida_alto' => 150, 'cantidad' => 2],
+                ['tipo' => $this->bolsa->id, 'cantidad' => 50, 'estiba' => 'costado'],
+            ],
+        ]))->assertOk()->viewData('mixta')['lineas'];
+
+        $this->assertSame('Heladera exhibidora', $lineas[0]['modelo']->nombre, 'Se escribió primera.');
+        $this->assertSame($this->bolsa->nombre, $lineas[1]['modelo']->nombre);
+    }
+
     public function test_forzar_la_estiba_de_un_bulto_libre_le_saca_la_rotacion_al_motor(): void
     {
         // REGLA DADA VUELTA por el dueño (06-08): «que los dispensadores, cualesquiera

@@ -281,6 +281,77 @@ verificaron los cupos de referencia. Cuántas aguanta la bolsa de abajo es dato 
 no de geometría, así que la decisión es suya y no del código. Candado:
 `test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre`.
 
+### 3.4bis El tope de apilado también se elige POR LÍNEA (10-08-2026)
+
+Reporte del dueño mirando el HINO cargado: *«necesito que los bidones también lleguen hasta
+el techo de la caja; ahí solo veo las cajas de tapas que llegan hasta el techo y necesito
+ocupar todo el espacio del camión»*.
+
+**El control de §3.4 existía solo en «¿Cuánto entra?».** En la carga mixta cada línea se
+quedaba con el `apilable_max` de su catálogo, y ahí está lo que hacía que el hueco no se
+entendiera: **los dos productos apilaban los MISMOS 6 y llegaban a alturas muy distintas**,
+porque el 6 se aplica a bultos de distinto alto.
+
+| Producto | Alto del bulto | 6 de alto | De los 266 del HINO |
+|---|---|---|---|
+| Caja de tapas | 42 cm | 252 cm | toca el techo |
+| Bolsa 5× botellón, acostada | 26 cm | 156 cm | **110 cm de aire** |
+
+Por eso en pantalla parecía un error del dibujo: dos columnas al lado, una llena y la otra a
+media caja, sin nada que explicara la diferencia. Tres cambios:
+
+1. **`lineas.*.apilado`**, con el mismo contrato que la estiba: se elige por línea (una bolsa
+   y una caja no aguantan lo mismo encima) y **vacío deja el del catálogo**, que es el
+   comportamiento verificado. El campo muestra ese número como marcador, así que se sabe cuál
+   manda sin abrir la ficha del producto.
+2. **La fila del resultado dice los dos números**: «Van 6 de alto y la caja da para 10». Los
+   saca del bloque que el motor YA colocó —su rejilla y la orientación con que lo puso—, no de
+   un cálculo paralelo: si divergieran, la pantalla estaría explicando una carga distinta de
+   la que dibujó.
+3. **Un botón «Apilar 10»** al lado del aviso, que escribe el tope y recalcula. Sin él el
+   camino era leer el aviso, buscar la tarjeta, abrirla y tipear. Está también en «¿Cuánto
+   entra?», donde el número que la altura permite tampoco se decía en ninguna parte.
+
+**El aviso solo aparece cuando subir el tope SIRVE**, y esa distinción es el punto. La caja de
+tapas del ejemplo deja 36 cm de aire y NO lo muestra: el motor la giró y apiló 5 de 46 cm, que
+es todo lo que dan 266 — ahí el que corta es el alto, no el tope, y ofrecer «apilar más» sería
+prometer una fila que no entra.
+
+Medido en el HINO con la bolsa acostada: **900 → 1.500 botellones** y la ocupación de 56% a
+94%; en la carga mixta del reporte, el bloque pasa de 156 a **260 cm de los 266**.
+
+**Lo que NO cambió: el default sigue siendo el del catálogo.** Cuántas aguanta la bolsa de
+abajo es dato de terreno y no de geometría (§3.4), así que la decisión es del dueño y el
+código no la toma solo. Candados:
+`test_el_tope_de_apilado_se_elige_por_linea_y_vacio_deja_el_del_catalogo`,
+`test_la_fila_dice_cuanto_aire_queda_arriba_y_ofrece_llenarlo` (mutado: pedido el tope, el
+aviso se apaga).
+
+**Pendiente de terreno:** si la bolsa de abajo aguanta 9 encima, el tope del catálogo debería
+pasar de 6 a 10 y este aviso dejaría de aparecer en el caso más común. Hasta que él lo
+confirme, el 6 se queda.
+
+### 3.4ter Las líneas se ordenan por índice, no por lo que devuelve `validate()` (10-08-2026)
+
+Encontrado al escribir el candado del botón «Apilar N», que necesita saber a qué tarjeta del
+formulario le escribe. **`validate()` no devuelve los elementos de un array en el orden en que
+llegaron**: arma el resultado recorriendo REGLA por regla, así que la primera línea que
+aparece es la que trae la primera clave con la que se topó. Una línea **sin `tipo`** —un bulto
+a medida— salía DETRÁS de las del catálogo aunque se hubiera escrito antes.
+
+No es cosmético en esta pantalla: con «Como armé la lista» el primero va al **fondo** del
+camión (§2.3), y de esa misma posición salen la **letra y el color** con que el producto
+aparece en el lienzo. Se restaura con un `ksort` sobre las claves, que son los índices del
+formulario. Candado: `test_las_lineas_se_calculan_en_el_orden_en_que_se_enviaron`.
+
+**Y la lista de resultados se indexa por el índice de la línea**, no por su posición en la
+lista. Una línea sin producto ni medidas no llega al resultado, así que las de abajo corrían
+un lugar mientras los bloques seguían viajando con el índice original (`$b['linea']`):
+`escena()` resuelve el nombre de cada bloque con `$mixta['lineas'][$b['linea']]` y **reventaba
+con «Undefined array key»**; la letra, el color y el Excel señalaban al producto de al lado.
+Con la clave puesta, los cuatro lugares hablan del mismo producto por construcción. Candado:
+`test_una_linea_descartada_no_le_corre_la_letra_a_las_de_abajo`.
+
 ## 3.5 El ancho del HD35: 204 y no 200 (07-08-2026)
 
 Reporte del dueño mirando el hueco de arriba de la carga: *«ahí se pueda cargar
