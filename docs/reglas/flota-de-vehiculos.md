@@ -303,6 +303,68 @@ circulación y SOAP— sin poder mover una fecha.
 **Pendiente (04-08-2026):** el perfil de **cobranzas** no existe todavía. No se
 creó un rol vacío; cuando exista, recibe `ver vehiculos` desde la UI de Roles.
 
+**El rol `conductor` gana `ver vehiculos` (11-08-2026)** con el respaldo digital de
+los documentos (§4quater): el módulo existe para que él muestre el permiso en un
+control de ruta. Es consulta y nada más — subir sigue siendo de `manage vehiculos`.
+
+## 4quater. Respaldo digital de los documentos (11-08-2026)
+
+Pedido del dueño: *«que tenga un botón con la opción de cargar documentos, que se
+pueda ver todas las veces que uno quiera como respaldo, que pese lo más liviano en
+KB si se puede, y que sea cómodo de ver en móvil iPhone y Android para los
+conductores, por si los controlan en un reparto de ruta»*.
+
+**La escena manda el diseño:** el conductor parado en un control, con el teléfono
+y la señal que haya. De ahí sale todo lo demás.
+
+### Lo liviano lo garantiza el SERVIDOR
+
+`CompresorDeDocumentos` recomprime **todo** lo que se suba a un JPEG de 1600 px de
+lado y calidad 72 (~100-250 KB desde una foto de teléfono de 3-8 MB). Nadie tiene
+que saber comprimir: el que sube saca la foto y listo.
+
+Tres cosas que el compresor resuelve y que no son obvias:
+
+1. **El reencode borra el EXIF**, y con él la coordenada **GPS** que el teléfono
+   graba en cada foto. En un archivo que lleva la patente y se le muestra a un
+   tercero, esa coordenada no puede viajar (Ley 21.719).
+2. **Fondo blanco explícito** bajo transparencias: JPEG no tiene canal alfa, y sin
+   esto una captura de pantalla en PNG sale con el fondo **negro** — el documento
+   queda ilegible. Con candado.
+3. **PDF necesita Imagick, que puede no estar en el hosting.** Si no está, el PDF
+   se **rechaza diciendo qué hacer** («sacale una foto o una captura») en vez de
+   guardarse tal cual: 5 MB con visor distinto en cada teléfono es exactamente lo
+   que este servicio existe para evitar. Con candado.
+
+Siempre **JPEG** y no WebP/AVIF: es lo que cualquier teléfono de los conductores
+abre sin sorpresas, y a esta calidad la diferencia de peso no cambia nada.
+
+### El archivo NO tiene URL pública
+
+Vive en `storage/app/private/` —fuera del docroot y fuera del repo (D-012)— y se
+sirve **solo** por una ruta autenticada. Sin login redirige al login; sin permiso
+los bytes no salen. Va con `Cache-Control: private, max-age=86400`: lo cachea el
+teléfono del conductor (la segunda vez abre al toque aunque la señal sea mala) y
+ningún proxy intermedio.
+
+### Nada se pisa
+
+Cada subida es una fila. El **vigente** es el más nuevo por (vehículo, documento) y
+lo anterior queda como historial — es lo que el dueño pidió con «como respaldo».
+En la pantalla el historial va **plegado**: no es parte de la escena del control.
+
+### La pantalla del control
+
+Arriba, en un renglón: **documento · patente · vence dd-mm-aaaa · estado**. Después
+la foto a todo el ancho, y **tocarla abre el JPEG pelado**, así el pellizco para
+agrandar es el **nativo** del teléfono en vez de JS propio que pueda trabarse.
+Verificado a 375 px: sin scroll horizontal.
+
+**Gotcha del build:** el visor usa `max-h-[80vh]` —la misma clase del visor 3D— y
+no un valor nuevo, justo para no obligar a reconstruir `public/build` por una
+pantalla (R-33). Al escribir esta vista salió una clase nueva (`max-h-[75vh]`) que
+el CSS commiteado no tenía; se cambió por la que ya existía.
+
 ## 6. Fuera de alcance (decidido, no olvidado)
 
 La planilla tiene tres bloques a medio usar que **no** se trajeron (decisión del

@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\CargaRealController;
 use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
+use App\Http\Controllers\Admin\VehiculoDocumentoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
@@ -560,6 +561,11 @@ Route::middleware('auth')
                 ->whereNumber('vehiculo')->name('vehiculos.update');
             Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
                 ->whereNumber('vehiculo')->name('vehiculos.destroy');
+            // Respaldo digital de un documento (11-08): SUBIR es de quien
+            // gestiona la flota — los papeles oficiales los maneja quien los
+            // renueva. El servidor comprime; el que sube no tiene que saber.
+            Route::post('vehiculos/{vehiculo}/documentos/{documento}', [VehiculoDocumentoController::class, 'store'])
+                ->whereNumber('vehiculo')->name('vehiculos.documentos.store');
         });
         // LOGISTICA · simulador de carga. Es una CALCULADORA: no escribe nada
         // operativo, asi que va con su propio permiso (lo usa ventas, que no
@@ -583,6 +589,14 @@ Route::middleware('auth')
             // La descarga va ANTES del show: 'excel' no es numérico, así que el
             // whereNumber ya lo protege, pero el orden lo deja explícito.
             Route::get('vehiculos/excel', [VehiculoController::class, 'excel'])->name('vehiculos.excel');
+            // Respaldo digital de un documento (11-08): VER es de 'ver vehiculos',
+            // que ahora también lo tiene el rol conductor — el caso de uso es el
+            // control en ruta, con el teléfono. El archivo se sirve SOLO por acá
+            // (autenticado): lleva la patente, dato personal bajo la 21.719.
+            Route::get('vehiculos/documento-archivo/{doc}', [VehiculoDocumentoController::class, 'archivo'])
+                ->whereNumber('doc')->name('vehiculos.documentos.archivo');
+            Route::get('vehiculos/{vehiculo}/documentos/{documento}', [VehiculoDocumentoController::class, 'show'])
+                ->whereNumber('vehiculo')->name('vehiculos.documentos.show');
             Route::get('vehiculos/{vehiculo}', [VehiculoController::class, 'show'])
                 ->whereNumber('vehiculo')->name('vehiculos.show');
         });

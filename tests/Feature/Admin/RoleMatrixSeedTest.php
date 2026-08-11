@@ -51,7 +51,10 @@ class RoleMatrixSeedTest extends TestCase
             // persona pudiera cerrar las dos puntas anularía la cadena de custodia.
             'jefe_sucursal' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'aprobar solicitudes', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'despachar traslado servicio'],
             'jefe_bodega' => ['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'recibir traslado servicio', 'manage devoluciones', 'simular carga', 'autorizar carga'],
-            'conductor' => ['crear lote servicio', 'confirmar entrega'],
+            // + 'ver vehiculos' (11-08-2026): el respaldo digital de los documentos
+            // del vehículo existe PARA el conductor (mostrarlos en un control de
+            // ruta). Solo consulta — subir sigue siendo de 'manage vehiculos'.
+            'conductor' => ['crear lote servicio', 'confirmar entrega', 'ver vehiculos'],
             // Sin 'autorizar reparacion' (dueño 07-08): el taller no coordina plata
             // — manda la cotización, repara si el cliente acepta y avisa que el
             // equipo está listo; el cobro es en sala de ventas al retiro.

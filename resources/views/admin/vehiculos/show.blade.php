@@ -29,34 +29,77 @@
         @endunless
 
         {{-- Documentos: el corazón de la ficha. Es lo que en la planilla son las
-             celdas pintadas a mano. --}}
+             celdas pintadas a mano.
+
+             RESPALDO DIGITAL (pedido del dueño 11-08): cada documento puede llevar
+             la foto del papel, comprimida por el servidor a ~100-250 KB, para que
+             el conductor la muestre desde el teléfono si lo controlan en ruta.
+             «Ver» lo tiene cualquiera con acceso a la flota (el conductor
+             incluido); subir es de quien gestiona. El input de archivo se envía
+             SOLO (onchange): elegir la foto en el teléfono ya es la acción — un
+             segundo botón de «enviar» sería un paso más parado en la vereda. --}}
+        @php
+            $respaldos = $vehiculo->respaldos->sortByDesc('id')->groupBy('documento');
+        @endphp
         <x-seccion titulo="Documentos y vencimientos">
             <ul role="list" class="divide-y divide-neutral-100">
                 @foreach ($vehiculo->documentos() as $doc)
-                    <li class="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-medium text-neutral-900">{{ $doc['label'] }}</p>
-                            <p class="text-xs text-neutral-500">
-                                @if ($doc['estado'] === \App\Models\Vehiculo::DOC_NO_APLICA)
-                                    No aplica a un {{ mb_strtolower($vehiculo->tipo_label) }}
-                                @elseif ($doc['vence'])
-                                    {{ $doc['vence']->format('d-m-Y') }}
-                                @else
-                                    Sin fecha cargada
+                    @php $respaldo = $respaldos->get($doc['clave'])?->first(); @endphp
+                    <li class="py-2.5 first:pt-0 last:pb-0">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium text-neutral-900">{{ $doc['label'] }}</p>
+                                <p class="text-xs text-neutral-500">
+                                    @if ($doc['estado'] === \App\Models\Vehiculo::DOC_NO_APLICA)
+                                        No aplica a un {{ mb_strtolower($vehiculo->tipo_label) }}
+                                    @elseif ($doc['vence'])
+                                        {{ $doc['vence']->format('d-m-Y') }}
+                                    @else
+                                        Sin fecha cargada
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="shrink-0 text-right">
+                                <x-badge :variant="\App\Models\Vehiculo::variante($doc['estado'])">
+                                    {{ \App\Models\Vehiculo::estadoDocumentalLabel($doc['estado']) }}
+                                </x-badge>
+                                @if ($doc['dias'] !== null)
+                                    <p class="mt-0.5 text-xs text-neutral-500">{{ \App\Models\Vehiculo::plazoLabel($doc['dias']) }}</p>
                                 @endif
-                            </p>
+                            </div>
                         </div>
-                        <div class="shrink-0 text-right">
-                            <x-badge :variant="\App\Models\Vehiculo::variante($doc['estado'])">
-                                {{ \App\Models\Vehiculo::estadoDocumentalLabel($doc['estado']) }}
-                            </x-badge>
-                            @if ($doc['dias'] !== null)
-                                <p class="mt-0.5 text-xs text-neutral-500">{{ \App\Models\Vehiculo::plazoLabel($doc['dias']) }}</p>
-                            @endif
-                        </div>
+                        @if ($doc['estado'] !== \App\Models\Vehiculo::DOC_NO_APLICA)
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                                @if ($respaldo)
+                                    <a href="{{ route('admin.vehiculos.documentos.show', [$vehiculo, $doc['clave']]) }}"
+                                       class="min-h-8 inline-flex items-center gap-1 font-medium text-brand-700 hover:text-brand-600">
+                                        Ver el documento
+                                        <span class="font-normal text-neutral-400">· {{ $respaldo->tamano_kb }} KB</span>
+                                    </a>
+                                @endif
+                                @can('manage vehiculos')
+                                    <form method="POST" enctype="multipart/form-data"
+                                          action="{{ route('admin.vehiculos.documentos.store', [$vehiculo, $doc['clave']]) }}">
+                                        @csrf
+                                        <label class="min-h-8 inline-flex cursor-pointer items-center gap-1 font-medium text-neutral-500 transition hover:text-neutral-700">
+                                            {{ $respaldo ? 'Reemplazar' : 'Subir el documento' }}
+                                            <input type="file" name="archivo" class="sr-only"
+                                                   accept="image/jpeg,image/png,image/webp,application/pdf"
+                                                   onchange="this.form.submit()">
+                                        </label>
+                                    </form>
+                                @endcan
+                                @unless ($respaldo || auth()->user()->can('manage vehiculos'))
+                                    <span class="text-neutral-400">Sin respaldo digital</span>
+                                @endunless
+                            </div>
+                        @endif
                     </li>
                 @endforeach
             </ul>
+            @error('archivo')
+                <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{{ $message }}</p>
+            @enderror
 
             @if ($vehiculo->es_activo)
                 <p class="text-xs text-neutral-400">

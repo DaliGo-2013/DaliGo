@@ -162,6 +162,17 @@ class Vehiculo extends Model implements AuditableContract
         return $this->hasMany(VehiculoAviso::class);
     }
 
+    /**
+     * Respaldos digitales de los documentos (la foto del SOAP, del permiso…).
+     * El vigente de cada documento es el más nuevo; el resto es historial.
+     *
+     * @return HasMany<VehiculoDocumento>
+     */
+    public function respaldos(): HasMany
+    {
+        return $this->hasMany(VehiculoDocumento::class);
+    }
+
     /** @param  Builder<Vehiculo>  $query */
     public function scopeActivos(Builder $query): Builder
     {
