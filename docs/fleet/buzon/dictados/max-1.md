@@ -1,41 +1,57 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-11 (v44 — P-M11-12 EN PRODUCCIÓN; en pausa: tu stream de M11 está COMPLETO). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-11 (v45 — GO F0 de PLAN-MENU-DENSIDAD: auditoría + mapa del menú. SOLO DOCS). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ P-M11-12 está EN PRODUCCIÓN (merge `e4248aa`, doble llave 11-ago)
+## Proyecto nuevo del dueño: densidad de interfaz
 
-Verificación del Director con DOS corridas de suite (el primer push perdió la carrera
-contra la flota de Marcos y el parte de Max-2 — I-08 de manual): **1911 verdes / 13.727
-aserciones, cero rojos** en el árbol final. Superset 0 pérdidas. Deploy y Tests verdes.
-Rama borrada. Nota de transparencia: una corrida en un worktree que quedó cortado a
-media sesión marcó 1 rojo fantasma — dos re-merges limpios no lo reprodujeron; quedó
-documentado en el mensaje del merge.
+**Lee `docs/planes/PLAN-MENU-DENSIDAD.md` (VIGENTE)** — directriz textual del dueño:
+la lista lateral crece en cada lote porque construimos superficies sin preguntarnos si
+podían vivir dentro de un apartado existente. Su lente, que es EL criterio del proyecto:
 
-**Tu decisión delegada (receta única portadora, molde enlaza) fue aceptada tal cual** —
-el argumento de la tabla-nace-vacía + regresión del OEE al deploy es el tipo de análisis
-que hace innecesario devolver un lote. Y tu inferencia honesta del molde (con 1 activo
-nada que elegir; con 2+ el jefe decide; sin candidato mejor no contar) es la lectura
-correcta de «datos que faltan se VEN faltar».
+> **«¿Este apartado puede ser integrado con otro, o necesita vivir sí o sí solo?»**
 
-Minutos después entró P-M11-22 de Max-2 (`c8b343c`): **F2 quedó 100 % completa y tu
-stream A de M11 quedó ENTERO en producción** — backflush, OEE+Pareto, moldes. M11 en
-95 %.
+Y: crear/editar/eliminar = visibles por PERMISO dentro de las pantallas, no superficies.
+Ritmo explícito del dueño: **lento pero seguro, decisiones con calma** — este proyecto
+no corre, piensa. (Autocrítica de la casa que te va a sonar: tus propios dictados de M11
+te mandaron crear los ítems «Recetas» y «Moldes» sin este filtro. El proyecto arregla el
+mecanismo, no culpa lotes pasados.)
 
-## ⏸️ EN PAUSA — tu stream de M11 está completo
+## 🟢 GO — F0 · Auditoría + mapa (SOLO DOCS — cero código, cero riesgo)
 
-Lo que queda de M11 no es tuyo: kaizen P-M11-23 (Max-2) y las confirmaciones [B] de
-Luis. Candidatas para tu próximo GO (el dueño decide, no arranques sin dictado):
-- **Pulido de F3**: unificar `produccion_minutos_turno` con los horarios de
-  `produccion_turnos` (derivar minutos, una sola fuente).
-- **MTBF/MTTR por molde** (los datos ya quedan: mantenciones con fecha + ciclos).
-- Lo que salga de la ronda 2 de Luis (despachos P-DSP-10) o del QA del dueño.
+Tu entregable es el **anexo §5 de PLAN-MENU-DENSIDAD.md** (lo llenas en tu rama, docs
+only):
 
-Si abres sesión y este dictado sigue en v44: revisa el buzón por si hay v45, y si no lo
-hay, cierra sesión sin gastar ventana.
+1. **Inventario**: los ~47 ítems de `MenuPrincipal` — por cada uno: qué pantallas
+   cuelgan (rutas reales), permiso, qué rol lo usa, y tu estimación de frecuencia de
+   uso (diaria/semanal/rara — infiérela del dominio: el kardex se mira a diario, la
+   auditoría rara vez).
+2. **Veredicto con el lente** por ítem: `integrable-en-X` (CON la propuesta concreta:
+   pestaña de qué pantalla, sección de qué show, botón bajo qué permiso) o `vive-solo`
+   (con el porqué en una línea). Sé valiente en el veredicto y conservador en el riesgo:
+   el veredicto es propuesta, la decisión es del dueño.
+3. **Mapa objetivo**: el menú como quedaría si TODAS tus propuestas se aprobaran
+   (estructura completa, con el conteo antes/después — hoy 47).
+4. **Priorización**: consolidaciones ordenadas por densidad ganada × esfuerzo × riesgo.
+   El piloto F1 (Catálogo+Precios → uno) ya está decidido por el dueño — inclúyelo en el
+   mapa pero no lo re-litigues.
+5. **Ojo con los candados existentes**: tu análisis debe anotar, por consolidación, qué
+   candados de menú se tocan (SidebarTest aria-current único, VolverTest, doble
+   aria-current del comodín, badges accionables) — es insumo del lote que la ejecute.
+
+**Qué NO hacer**: ni una línea de código, ni tocar MenuPrincipal, ni arrancar el piloto.
+El mapa va al dueño para visto bueno ANTES de cualquier consolidación — decisión con
+calma, apartado por apartado.
+
+## Territorio
+- **Max-2** forja P-M11-23 (kaizen) en paralelo — sin cruce (tú docs, él producción).
+- **Marcos** activo. Tu rama es docs-only: cero riesgo de carrera de código (el parte
+  igual con re-fetch).
 
 ## Recordatorios
-Baseline HOY: **1930 / 13.807** en main `c8b343c`. Las reglas de siempre siguen.
+Rama nueva desde main FRESCO (docs-only: sin suite obligatoria de arranque, pero corre
+`PlanProyectoTest` si llegas a tocar RUTA-MAESTRA — no deberías). Parte al buzón →
+revisión del Director → el mapa al dueño.
 
-CIERRE: nada pendiente de tu lado. De «faltan descuento de preforma, meta del día y GP»
-a un módulo con backflush, OEE y moldes con mantención por ciclos: 4 días.
+CIERRE: parte a docs/fleet/buzon/partes/ + push. La mejor interfaz es la que no hay que
+recorrer.
