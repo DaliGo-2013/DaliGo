@@ -121,6 +121,17 @@ class TipoBulto extends Model implements AuditableContract
      */
     public const ESTIBAS_ELEGIBLES = [
         'auto' => 'Automático (la que más entra)',
+        // NO SE TUMBA: gira 90° sobre el piso pero no se acuesta (dueño, 11-08-2026,
+        // mostrando cómo EasyCargo deja declarar cómo puede girar cada bulto).
+        //
+        // No es una cuarta estiba del pack de botellones: es una RESTRICCIÓN de giro, y
+        // por eso vive acá y no en ESTIBAS. Es la que hacía falta para cubicar cajas de
+        // distintos tamaños: una caja marcada «este lado arriba» se puede poner a lo largo
+        // o a lo ancho, pero tumbarla vuelca el contenido. Sin esto había que elegir entre
+        // dos mentiras — dejarla libre (el motor la tumba y promete un acomodo que nadie
+        // hace) o fijarla de pie (pierde el giro válido de 90° y el cupo sale más bajo del
+        // real). Es exactamente la regla que ya usaba el pallet desde el 06-08.
+        'horizontal' => 'No se tumba (gira en el piso)',
         'pie' => 'De pie',
         'costado' => 'Acostado de costado',
         'pico' => 'Acostado, pico a la puerta',
@@ -145,8 +156,14 @@ class TipoBulto extends Model implements AuditableContract
         if (! isset(self::ESTIBAS_ELEGIBLES[$estiba])) {
             $estiba = 'auto';
         }
-        $forzada = $estiba !== 'auto';
-        if (! $forzada && $this->orientacion_fija) {
+
+        // «No se tumba» NO es una estiba forzada: es una restricción de giro. Viaja con
+        // sus medidas naturales y el motor todavía puede girarlo 90° sobre el piso, que es
+        // lo que separa esta opción de `pie` (donde no puede hacer nada).
+        $horizontal = $estiba === 'horizontal';
+
+        $forzada = $estiba !== 'auto' && ! $horizontal;
+        if (! $forzada && ! $horizontal && $this->orientacion_fija) {
             $estiba = 'pie';
         }
 
@@ -176,6 +193,10 @@ class TipoBulto extends Model implements AuditableContract
             // terreno, no de geometría.
             'apilable_max' => max(1, $apilado ?: $this->apilable_max),
             'orientacion_fija' => $forzada ? true : $this->orientacion_fija,
+            // `rotacion: horizontal` GANA sobre `orientacion_fija` en el motor (ver
+            // CalculoDeCarga::orientaciones), y está bien que gane: pedirlo es decir «este
+            // sí puede girar en el piso», que es más información que el dato de catálogo.
+            ...($horizontal ? ['rotacion' => 'horizontal'] : []),
         ];
     }
 

@@ -963,6 +963,64 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame($this->bolsa->nombre, $lineas[1]['modelo']->nombre);
     }
 
+    public function test_no_se_tumba_conserva_el_giro_de_90_que_de_pie_pierde(): void
+    {
+        // Pedido del dueño (11-08) mirando cómo EasyCargo deja declarar el giro de cada
+        // bulto: para cubicar cajas de distintos tamaños hace falta poder decir «esta gira
+        // en el piso pero no se acuesta».
+        //
+        // Es la diferencia con `pie`, y no es cosmética: una caja marcada «este lado
+        // arriba» puesta a lo ancho puede entrar donde a lo largo no. Sin esta opción
+        // había que elegir entre dos mentiras — libre (el motor la tumba y promete un
+        // acomodo que nadie hace) o de pie (pierde el giro válido y el cupo sale bajo).
+        //
+        // Caja de 90 × 60 × 120 en el HD35 (430 × 200 × 220). Las tres respuestas son
+        // distintas y se verifican a mano:
+        //   de pie          4 × 3 de piso × 1 de alto (120 de 220)      = 12
+        //   no se tumba     7 × 2 girada  × 1                           = 14
+        //   automático      la acuesta: 3 × 2 × 3 capas de 60           = 18
+        $caja = TipoBulto::create([
+            'nombre' => 'Caja alta de prueba', 'categoria' => 'cajas',
+            'largo_cm' => 90, 'ancho_cm' => 60, 'alto_cm' => 120, 'peso_kg' => 1,
+            'unidades' => 1, 'apilable_max' => 5, 'soporta_peso_encima' => true,
+            'orientacion_fija' => false, 'activo' => true,
+        ]);
+
+        $cupo = fn (string $estiba) => $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $caja->id, 'estiba' => $estiba,
+        ]))->assertOk()->viewData('resultado');
+
+        $dePie = $cupo('pie');
+        $noSeTumba = $cupo('horizontal');
+        $libre = $cupo('auto');
+
+        // LA CAJA SIGUE PARADA en las dos primeras: 120 cm de alto en las dos. Es lo que
+        // separa «no se tumba» de «automático», que sí la acuesta a 60.
+        $this->assertSame(120, $dePie['orientacion']['alto']);
+        $this->assertSame(120, $noSeTumba['orientacion']['alto'], 'No se tumba: sigue parada.');
+        $this->assertSame(60, $libre['orientacion']['alto'], 'La libre sí la acuesta.');
+
+        // Y las tres dan números distintos, en ese orden. Mutado por los dos lados: si
+        // «no se tumba» se tratara como estiba forzada daría 12, y si se tratara como
+        // automático daría 18.
+        $this->assertSame(12, $dePie['bultos'], '4 × 3 de piso × 1 de alto.');
+        $this->assertSame(14, $noSeTumba['bultos'], 'Girada 90°: 7 × 2 de piso × 1 de alto.');
+        $this->assertSame(18, $libre['bultos'], 'Acostada: 3 × 2 × 3 capas de 60.');
+
+        // Sigue siendo CONSERVADORA: nunca promete más que la libre. Es lo que la hace
+        // segura de ofrecer.
+        $this->assertLessThanOrEqual($libre['bultos'], $noSeTumba['bultos']);
+
+        // Y el CONTRATO con el motor, aparte del número: «no se tumba» NO es una estiba
+        // forzada. Se fija acá porque en el resultado no se nota —`rotacion` le gana a
+        // `orientacion_fija` en el motor, así que marcarla como forzada sería inerte
+        // hoy—, pero dejaría la bandera mintiendo para el próximo que la lea.
+        $paraMotor = $caja->paraCalculo('horizontal');
+        $this->assertSame('horizontal', $paraMotor['rotacion']);
+        $this->assertFalse($paraMotor['orientacion_fija'], 'No es una estiba forzada.');
+        $this->assertSame([90, 60, 120], [$paraMotor['largo'], $paraMotor['ancho'], $paraMotor['alto']]);
+    }
+
     public function test_un_pallet_es_una_linea_mas_de_la_carga_mixta(): void
     {
         // Pedido del dueño (10-08): «si cargo botellones y tapas, también tengo que tener

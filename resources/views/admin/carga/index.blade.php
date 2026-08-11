@@ -93,6 +93,41 @@
                        vale si trae UNA de las dos cosas, producto o medidas. */
                     aMedida(l) { return ! l.tipo && ! this.enPallet(l); },
 
+                    /* LA CAJA A MEDIDA, DIBUJADA. Proyección isométrica a mano: el largo
+                       va hacia la derecha-abajo, el ancho hacia la izquierda-abajo y el
+                       alto hacia arriba. Se devuelven las tres caras visibles —techo,
+                       frente y costado— y se pintan con la misma opacidad decreciente que
+                       usa el lienzo 3D, así el bulto se reconoce como el mismo objeto.
+                       Devuelve null mientras falte una medida: media caja dibujada
+                       mentiría sobre la forma. */
+                    vistaPrevia(l) {
+                        const L = +l.medida_largo, W = +l.medida_ancho, H = +l.medida_alto;
+                        if (!(L > 0 && W > 0 && H > 0)) return null;
+
+                        const cos = 0.866, sen = 0.5;
+                        // Escala para que la pieza más grande entre en el cuadro con aire.
+                        const k = 84 / Math.max((L + W) * cos, H + (L + W) * sen);
+                        const ux = L * k * cos, uy = L * k * sen;   // eje largo
+                        const vx = -W * k * cos, vy = W * k * sen;  // eje ancho
+                        const h = H * k;                            // eje alto
+
+                        // Origen: la esquina de arriba-adelante, centrada en el cuadro.
+                        const ox = 50 + (W * k * cos - L * k * cos) / 2;
+                        const oy = 50 - (h + (L + W) * k * sen) / 2 + h;
+                        const p = (x, y) => `${(ox + x).toFixed(1)},${(oy + y).toFixed(1)}`;
+
+                        const m3 = (L * W * H) / 1e6;
+                        return {
+                            techo:   [p(0, -h), p(ux, uy - h), p(ux + vx, uy + vy - h), p(vx, vy - h)].join(' '),
+                            frente:  [p(0, -h), p(ux, uy - h), p(ux, uy), p(0, 0)].join(' '),
+                            costado: [p(0, -h), p(vx, vy - h), p(vx, vy), p(0, 0)].join(' '),
+                            medidas: `${L} × ${W} × ${H} cm`,
+                            volumen: m3 >= 0.01
+                                ? m3.toFixed(2).replace('.', ',') + ' m³ por bulto'
+                                : Math.round(m3 * 1e6 / 1e3) + ' litros por bulto',
+                        };
+                    },
+
                     /* ── LÍNEAS SOBRE PALLET ──────────────────────────────────────────
                        Una línea puede ir SUELTA o sobre un pallet armado. Con pallet, el
                        producto es lo que va ENCIMA y la cantidad cuenta PALLETS. */
@@ -394,8 +429,12 @@
                                                 {{-- La estiba cambia el número, así que el resultado tiene que
                                                      decir con cuál se calculó: leer «entran 270» sin saber que
                                                      fue acostado invita a compararlo con los 420 de pie. --}}
-                                                @if (in_array($fila['estiba'], ['pie', 'costado', 'pico'], true) && $fila['estiba'] !== 'pie')
-                                                    <x-badge>{{ \App\Models\TipoBulto::ESTIBAS[$fila['estiba']] }}</x-badge>
+                                                {{-- `pie` queda afuera a propósito: es lo que hace el motor
+                                                     por su cuenta con un pack de orientación fija, así que
+                                                     mostrarlo sería ruido. `horizontal` sí entra — cambia
+                                                     el número igual que las acostadas. --}}
+                                                @if (in_array($fila['estiba'], ['horizontal', 'costado', 'pico'], true))
+                                                    <x-badge>{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$fila['estiba']] }}</x-badge>
                                                 @endif
                                             </div>
                                             <p class="text-sm text-neutral-500">
@@ -828,9 +867,42 @@
                                                        min="0" max="30000" step="0.1" inputmode="decimal"
                                                        class="mt-0.5 block w-full rounded-lg border-neutral-300 px-2 py-1.5 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                                             </div>
-                                            <p class="text-[11px] leading-snug text-neutral-500">
-                                                Vive solo en esta simulación: no se guarda en el catálogo.
-                                            </p>
+                                            {{-- LA CAJA, DIBUJADA MIENTRAS SE TIPEA (pedido del dueño 11-08,
+                                                 sobre las capturas de EasyCargo: «un tablero donde se pueda
+                                                 simular el tamaño de una caja para agregarla al camión»).
+                                                 Tres números sueltos no dan idea de la forma; el dibujo sí, y
+                                                 delata al toque un cero de más o dos medidas cambiadas. Es
+                                                 SVG isométrico calculado acá mismo — no toca el lienzo 3D ni
+                                                 el motor: es la misma caja que se va a cubicar, nada más. --}}
+                                            <template x-if="vistaPrevia(linea)">
+                                                <div class="mt-1 flex items-center gap-3 rounded-lg bg-white p-2">
+                                                    {{-- Tamaño por ATRIBUTO y no por clase de utilidad: la que
+                                                         correspondía no está en el bundle compilado y hoy no se
+                                                         puede recompilar (hay trabajo de otra sesión sin
+                                                         commitear en el árbol). Un thumbnail de 80 px no
+                                                         necesita ser responsive.
+
+                                                         Y ojo: Tailwind escanea TEXTO PLANO, así que nombrar la
+                                                         clase acá adentro —aunque sea un comentario de Blade que
+                                                         nunca llega al HTML— la vuelve a meter en el bundle. --}}
+                                                    <svg viewBox="0 0 100 100" width="80" height="80" class="shrink-0" aria-hidden="true">
+                                                        <polygon :points="vistaPrevia(linea).techo" :fill="color(i)" opacity="0.95" />
+                                                        <polygon :points="vistaPrevia(linea).frente" :fill="color(i)" opacity="0.75" />
+                                                        <polygon :points="vistaPrevia(linea).costado" :fill="color(i)" opacity="0.55" />
+                                                    </svg>
+                                                    <div class="min-w-0 text-[11px] leading-snug text-neutral-600">
+                                                        <p class="font-medium text-neutral-900" x-text="vistaPrevia(linea).medidas"></p>
+                                                        <p x-text="vistaPrevia(linea).volumen"></p>
+                                                        <p class="text-neutral-400">Vive solo en esta simulación: no se guarda en el catálogo.</p>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <template x-if="! vistaPrevia(linea)">
+                                                <p class="text-[11px] leading-snug text-neutral-500">
+                                                    Escribí las tres medidas y la caja se dibuja acá. Vive solo en
+                                                    esta simulación: no se guarda en el catálogo.
+                                                </p>
+                                            </template>
                                         </div>
 
                                         <div class="grid grid-cols-2 gap-2">

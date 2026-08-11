@@ -413,6 +413,92 @@ con «Undefined array key»**; la letra, el color y el Excel señalaban al produ
 Con la clave puesta, los cuatro lugares hablan del mismo producto por construcción. Candado:
 `test_una_linea_descartada_no_le_corre_la_letra_a_las_de_abajo`.
 
+### 3.4quater La bolsa apila 10, no 6 — y eso cierra el hueco solo (11-08-2026)
+
+Dato de terreno del dueño, que era lo único que faltaba: *«si las bolsas aguantan 9 encima
+porque están vacías, nada se rompe»*. **Nueve encima de la de abajo son DIEZ de alto.**
+
+El 6 del catálogo era un número prudente puesto sin medir, y era **la causa** del hueco que
+se venía parcheando desde el 06-08 con el control de apilado (§3.4) y el aviso de la fila
+(§3.4bis). Con el dato real, el parche deja de hacer falta en el caso común: **el camión sale
+lleno por defecto**, sin que nadie toque un control.
+
+| | Antes (tope 6) | Ahora (tope 10) |
+|---|---|---|
+| HD35 de pie | 420 | **420** — igual |
+| HD35 acostada | 480 *pisando el tope a 8* | **480** — sin pisar nada |
+| HINO acostada | 900 | **1.500** (56% → 94% de ocupación) |
+
+**Por qué el HD35 no se mueve, que es lo que hace segura la corrección:** sus 220 cm de alto
+solo dan para 4 capas de pie (4 × 51 = 204) y 8 acostadas (8 × 26 = 208). Ahí manda la
+ALTURA, no el tope. Donde cambia es en los camiones altos —HINO 266, contenedor 239—, que es
+exactamente donde el dueño veía el aire.
+
+Va en el **seeder** y no en la pantalla porque el catálogo es fuente de verdad del repo (§0)
+y esto vale para toda simulación. Estrena candado —`TiposBultoSeederTest`, que el seeder no
+tenía— y ata el número a los tres cupos de arriba: si alguien lo cambia, se entera por qué no
+puede.
+
+**El control por línea y el aviso NO se sacan.** Siguen sirviendo para el resto del catálogo
+(las cajas siguen en 6, sin medir) y para probar «¿y si apilo 12?». Lo que cambió es que el
+producto que se carga todos los días ya no los necesita.
+
+### 3.1bis «No se tumba»: la cuarta opción del selector (11-08-2026)
+
+Pedido del dueño mostrando las capturas del panel de EasyCargo, donde cada bulto declara cómo
+puede girar: *«para las otras cajas que hay que cubicar… a veces se cargan cajas de diferentes
+tamaños»* + la imagen de una caja girando.
+
+**No es una cuarta estiba del pack de botellones** —por eso vive en `ESTIBAS_ELEGIBLES` y no
+en `ESTIBAS`—: es una **restricción de giro**. La caja viaja con sus medidas naturales y el
+motor todavía puede girarla 90° sobre el piso, pero no acostarla.
+
+Sin ella había que elegir entre dos mentiras, que es el mismo argumento que ya justificaba
+`rotacion: 'horizontal'` en el pallet (§3.3.3):
+
+- **Libre** → el motor la tumba y promete un acomodo que en la vida se hace con una caja
+  marcada «este lado arriba».
+- **De pie** → pierde el giro válido de 90° y el cupo sale **más bajo que el real**.
+
+Medido con una caja de 90 × 60 × 120 en el HD35: **de pie 12, no se tumba 14, automático 18**
+(la automática la acuesta a 60 y gana). Las tres respuestas son distintas y las tres son
+correctas para preguntas distintas.
+
+Dos detalles de implementación:
+
+1. **`rotacion` le GANA a `orientacion_fija`** en el motor, y está bien que gane: pedir «no se
+   tumba» es aportar información que el catálogo no tenía. Por eso la opción también sirve
+   para la bolsa de botellones, que es de orientación fija.
+2. `orientacion_fija` queda en **false**, porque no es una estiba forzada. En el resultado no
+   se nota —la bandera nunca se consulta cuando hay `rotacion`—, así que el candado lo fija
+   sobre el contrato de `paraCalculo()` y no sobre el número. Sin eso, marcarla como forzada
+   pasaba la prueba y dejaba la bandera mintiendo para el próximo que la lea.
+
+Candado: `test_no_se_tumba_conserva_el_giro_de_90_que_de_pie_pierde`, mutado por los dos lados.
+
+### 3.1ter El bulto a medida se DIBUJA mientras se tipea (11-08-2026)
+
+Pedido del mismo mensaje: *«un tablero donde se pueda simular el tamaño de una caja para
+agregarla al camión»*, sobre la captura del panel de ítems de EasyCargo.
+
+El motor aceptaba bultos a medida desde el 07-08 y el panel los dejaba cargar desde el 10-08,
+pero eran **tres números sueltos**: nada decía si la caja que uno acaba de escribir tiene la
+forma que uno tenía en la cabeza. Ahora se dibuja en isométrico al lado de los campos, con sus
+medidas y su volumen, y **se redibuja mientras se tipea**.
+
+- Es **SVG calculado en la vista**, no el lienzo 3D: son tres polígonos: techo, frente y
+  costado, con la misma opacidad decreciente que usa el visor para que se lea como el mismo
+  objeto. No toca el motor ni el canvas.
+- **Con una medida faltante no dibuja nada** y lo dice: media caja mentiría sobre la forma.
+- Lo que aporta de verdad es delatar el **cero de más** y las dos medidas cambiadas de lugar,
+  que en tres `<input>` no se ven y sí cambian el cupo.
+
+**Gotcha que costó un rebuild:** el `<svg>` lleva su tamaño por **atributo** (`width`/`height`)
+y no por clase de utilidad, porque la clase que correspondía no estaba en el bundle compilado
+y no se podía recompilar sin arrastrar trabajo ajeno sin commitear. Y de paso: **Tailwind
+escanea texto plano**, así que nombrar la clase dentro de un comentario de Blade —que nunca
+llega al HTML— alcanza para volver a meterla en el bundle.
+
 ## 3.5 El ancho del HD35: 204 y no 200 (07-08-2026)
 
 Reporte del dueño mirando el hueco de arriba de la carga: *«ahí se pueda cargar

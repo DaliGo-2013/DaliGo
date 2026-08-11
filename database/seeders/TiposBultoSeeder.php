@@ -27,15 +27,29 @@ class TiposBultoSeeder extends Seeder
                 'nombre' => 'Bolsa 5× botellón 20 L (vacío)',
                 'categoria' => 'botellones',
                 'largo_cm' => 130, 'ancho_cm' => 26, 'alto_cm' => 51,
-                'unidades' => 5, 'apilable_max' => 6, 'soporta_peso_encima' => true,
+                // APILA 10, NO 6 (dato de terreno del dueño, 11-08-2026: «las bolsas
+                // aguantan 9 encima porque están vacías, nada se rompe»). Nueve encima de
+                // la de abajo son DIEZ de alto.
+                //
+                // El 6 era un número prudente puesto sin medir, y era el que dejaba medio
+                // camión de aire: acostada la bolsa mide 26 cm, así que seis son 156 de
+                // los 266 del HINO. Se cambia acá y no en la pantalla porque el catálogo
+                // es la fuente de verdad del repo (§0) y esto vale para toda simulación.
+                //
+                // NO mueve los cupos verificados del HD35: sus 220 cm de alto solo dan
+                // para 8 acostadas (8 × 26 = 208) y 4 de pie (4 × 51 = 204), así que ahí
+                // manda la altura y no el tope. Donde sí cambia es en el HINO y el
+                // contenedor, que son más altos. Candado: TiposBultoSeederTest.
+                'unidades' => 5, 'apilable_max' => 10, 'soporta_peso_encima' => true,
                 'orientacion_fija' => true,
-                'observaciones' => 'Medida del dueño 04-08-2026. Botellones SIEMPRE vacíos: el límite es volumen, no peso.',
+                'observaciones' => 'Medida del dueño 04-08-2026. Botellones SIEMPRE vacíos: el límite es volumen, no peso. Apila 10 (dueño, 11-08-2026).',
             ],
             [
                 'nombre' => 'Bolsa 5× botellón 10 L (vacío)',
                 'categoria' => 'botellones',
                 'largo_cm' => 110, 'ancho_cm' => 21, 'alto_cm' => 40,
-                'unidades' => 5, 'apilable_max' => 6, 'soporta_peso_encima' => true,
+                // Mismo dato de terreno que la de 20 L: la bolsa va vacía y no se aplasta.
+                'unidades' => 5, 'apilable_max' => 10, 'soporta_peso_encima' => true,
                 'orientacion_fija' => true,
                 'observaciones' => 'Rinde casi el doble que el de 20 L: 54% del espacio por botellón.',
             ],
