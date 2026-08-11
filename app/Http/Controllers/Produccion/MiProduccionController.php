@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Produccion;
 
 use App\Http\Controllers\Controller;
 use App\Models\Maquina;
+use App\Models\ProduccionMejora;
 use App\Models\ProduccionParada;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
@@ -373,6 +374,52 @@ class MiProduccionController extends Controller
 
         return redirect()->to($this->rutaDelReporte($reporte))
             ->with('status', 'Parada eliminada.');
+    }
+
+    /**
+     * Propuesta de mejora del soplador (P-M11-23, kaizen). NO cuelga de un
+     * reporte a proposito: se puede proponer incluso sin asignacion del dia.
+     * Mismo contrato que paradaStore para la cola offline (cliente_uuid
+     * idempotente; 403/422 = permanentes). El autor SIEMPRE es el usuario
+     * autenticado: un payload manipulado no propone a nombre de otro.
+     */
+    public function mejoraStore(Request $request): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_uuid' => ['nullable', 'uuid'],
+            'texto' => ['required', 'string', 'max:191'],
+        ], [
+            'texto.required' => 'Escribe tu propuesta antes de enviarla.',
+            'texto.max' => 'La propuesta no puede superar los 191 caracteres.',
+        ]);
+
+        $user = $request->user();
+
+        DB::transaction(function () use ($user, $validated) {
+            // Lock de la fila del User como serializador del check-then-act
+            // del uuid (la mejora no tiene fila padre natural; el usuario es
+            // el ancla — mismo idioma que el lock del reporte en paradaStore).
+            // El unique [soplador_id, cliente_uuid] es la red final.
+            User::whereKey($user->id)->lockForUpdate()->first();
+
+            $uuid = $validated['cliente_uuid'] ?? null;
+            if ($uuid && ProduccionMejora::where('soplador_id', $user->id)->where('cliente_uuid', $uuid)->exists()) {
+                return;
+            }
+
+            ProduccionMejora::create([
+                'soplador_id' => $user->id,
+                'cliente_uuid' => $uuid,
+                'texto' => $validated['texto'],
+                'estado' => ProduccionMejora::PENDIENTE,
+            ]);
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back()->with('status', 'Propuesta enviada. El jefe la verá en su panel.');
     }
 
     /**
