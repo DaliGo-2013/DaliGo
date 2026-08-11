@@ -11,20 +11,46 @@
 <x-guest-layout ancho="listado">
     <div class="mb-4">
         <h1 class="text-xl font-semibold text-neutral-900">Plan de carga</h1>
+        {{-- El camión y sus medidas NO se repiten acá: desde el 10-08 van en la franja
+             de datos que vive dentro del recuadro del visor, y escritas dos veces en la
+             misma pantalla eran justo el exceso de texto que el dueño pidió recortar. --}}
         <p class="mt-1 text-sm text-neutral-500">
             @if ($camion)
-                {{ $camion->nombre }} ·
-                {{ number_format($camion->largo_cm / 100, 2, ',', '.') }} ×
-                {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} ×
-                {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m
+                Cómo va cargado el camión, bulto por bulto.
             @else
                 Sin camión seleccionado.
             @endif
         </p>
     </div>
 
+    {{-- ═══ LA VISTA DE JEFATURA ═══
+         El mismo link, dos vistas (pedido del dueño 11-08). El cliente ve la página de
+         solo mirar de siempre; quien TIENE el permiso ve además que está mirando la
+         versión del cliente y el atajo para abrirla adentro y tocarla.
+
+         La diferencia la hace quién abre, NO la URL: un segundo link «editable» sería
+         una puerta al simulador sin login para cualquiera que tenga la dirección. Acá el
+         botón lleva a la ruta interna, donde el permiso se vuelve a chequear. --}}
+    @if ($puedeEditar)
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+            <p class="text-sm text-brand-800">
+                <strong>Así lo ve el cliente.</strong> Esta página es de solo mirar.
+            </p>
+            <a href="{{ $urlEditar }}"
+               class="inline-flex min-h-12 items-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.98]">
+                Abrir en el simulador para editar
+            </a>
+        </div>
+    @endif
+
     @if ($escena)
         @include('admin.carga._visor', ['publico' => true])
+        {{-- LOS DATOS DE LA ESCENA. Sin esto el lienzo queda EN BLANCO: `montarCarga3d`
+             (app.js) sale sin hacer nada si no encuentra este <script>, así que el link
+             compartido mostraba el recuadro vacío desde que se publicó (10-08) — la
+             pantalla interna sí lo emitía y acá se olvidó. Encontrado al abrir el link
+             para revisar el rompeviento del HINO (11-08). --}}
+        <script type="application/json" id="carga3d-datos">@json($escena)</script>
     @else
         <p class="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
             Este plan no tiene carga que mostrar.

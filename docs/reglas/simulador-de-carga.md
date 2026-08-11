@@ -598,6 +598,27 @@ razones:
 **Pendiente:** que el dueño confirme cuál se midió por dentro. Si es el grande, se sube — el
 error queda del lado seguro mientras tanto.
 
+### La rueda de repuesto viaja ADENTRO de la caja (11-08-2026, pendiente)
+
+Las primeras fotos del **interior** del Chevy 3 muestran la rueda de repuesto parada y
+amarrada en el rincón derecho del fondo. Son unos **28 cm de ancho**, y en este camión el
+ancho no tiene ese margen:
+
+| Ancho útil | Bolsas a lo ancho | Cupo de pie |
+|---|---|---|
+| 2,20 m (caja vacía) | 8 (208 cm) | **960** |
+| 1,92 m (con la rueda) | 7 (182 cm) | **840** |
+
+**No se descuenta todavía**, y el motivo es que los dos datos se contradicen: los 960 los
+dictó el dueño como cupo **real** el 04-08, así que o la rueda sale para cargar, o el 960 es
+teórico. Es una pregunta abierta, no un dato — y descontar 120 botellones por una foto sería
+el error simétrico al del §2: quedarse corto también hace perder viajes. Si confirma que la
+rueda va siempre, el camino ya existe (`pasillo_cm` reserva espacio) y el cupo pasa a 840.
+
+Los **listones de madera** de las paredes, en cambio, **no cuestan nada**: con 2,12 m de ancho
+útil el cupo no se mueve (960 de pie y 525 cajas de tapas, idénticos). Verificado con el motor,
+no supuesto.
+
 Con sus fotos estrenó `camion_nqr` (§4.1decies), así que el catálogo vuelve a cumplir §4.1sexies
 **entero**: cuatro camiones, cuatro cabinas propias, ninguna compartida. La genérica `camion`
 queda de respaldo para uno que llegue sin fotos — como estuvo este unas horas.
@@ -1267,10 +1288,55 @@ desconocido **revienta**, igual que en `app-layout`.
 Y la página **dice que es una referencia y cuándo vence**: afuera de la app, un número sin
 contexto se lee como una promesa.
 
-Candados en `PlanCargaCompartidoTest` (8), la mitad de ellos sobre la seguridad: sin firma
+Candados en `PlanCargaCompartidoTest` (13), la mitad de ellos sobre la seguridad: sin firma
 no entra, un link retocado deja de valer, el link vence, y la página no ofrece controles
-internos. **Verificado además en el navegador** contra el servidor local: el menú público
-trae solo Vista · Acercar · Cargar · Rótulos, y la consola sale limpia.
+internos.
+
+### 4.1nonies-quinquies-bis El link se compartía ROTO, y los 8 candados no lo vieron (11-08-2026)
+
+Reporte del dueño con captura: *«cuando comparto el link no se ve el detalle específico de
+lo que se cargó, no se ve el camión»*. **Dos defectos independientes, apilados, con el mismo
+síntoma** — y el link estuvo así desde el día que se publicó.
+
+1. **Faltaba el `<script>` con la escena.** `montarCarga3d` (app.js) sale sin hacer nada si
+   no encuentra `#carga3d-datos`; la pantalla interna lo emitía y la pública se olvidó. El
+   recuadro salía **vacío**.
+2. **El card salía en 448 px.** `GuestLayout` no declaraba la propiedad `$ancho`, así que
+   Blade trataba `ancho="listado"` como un **atributo HTML suelto**, la variable nunca
+   llegaba al layout, y su `?? 'formulario'` la resolvía al default **en silencio** —
+   exactamente lo que el `throw_unless` de al lado decía evitar. El token, el mapa de clases
+   y el guard estaban escritos desde el 10-08; lo que faltaba era el enchufe.
+
+**Por qué ninguno de los 8 candados lo vio, que es la lección:** todos preguntaban por
+TEXTO —que el título esté, que el aviso de vencimiento esté, que los controles internos no
+estén— y el texto estaba perfecto. Ninguno preguntaba si la página podía **dibujar**. Un
+test de «la pantalla responde 200 y dice lo que tiene que decir» no prueba una pantalla
+cuyo único contenido es un dibujo.
+
+Los dos candados nuevos van contra el mecanismo y no contra el texto: que el JSON de la
+escena viaje **y traiga el vehículo adentro** (comparado contra la pantalla interna, para
+que no se pueda satisfacer con un `<script>` vacío), y que el card rendee `max-w-6xl` sin
+ensanchar de paso el login. Medido en el navegador: **de 33.519 píxeles dibujados a
+428.549**.
+
+### 4.1nonies-quinquies-ter Dos vistas del mismo link (11-08-2026)
+
+Pedido del dueño: *«que la otra persona lo pueda ver pero no editar, y si jefatura lo pueda
+editar»*.
+
+**La diferencia la hace QUIÉN abre, no la URL**, y eso es lo que la mantiene segura: un
+segundo link «editable» sería una puerta al simulador sin login para cualquiera que tenga la
+dirección, y tiraría abajo los cinco puntos que protegen el link. El cliente ve exactamente
+la página de siempre; quien **tiene el permiso** ve además una banda que le avisa «así lo ve
+el cliente» y el atajo **Abrir en el simulador para editar**, que lleva el mismo escenario a
+la ruta interna — donde el permiso se vuelve a chequear.
+
+Dos detalles: se pregunta por el **permiso** y no por «estar logueado» (un técnico con
+cuenta no puede editar planes y el botón lo mandaría a un 403), y el atajo **no arrastra la
+firma** — pegada a una URL interna no sirve, y en un historial compartido es el secreto del
+link viajando de más. Candados: `test_quien_no_tiene_permiso_solo_mira`,
+`test_quien_puede_simular_ve_el_atajo_para_editarlo` y
+`test_el_atajo_lleva_a_una_ruta_que_sigue_pidiendo_permiso`.
 
 ### 4.1nonies-quater El plan de carga se BAJA (10-08-2026)
 

@@ -353,18 +353,61 @@
             <canvas id="carga3d" width="1240" height="660" style="aspect-ratio: 1240 / 660"
                     class="block max-h-[80vh] min-h-[18rem] w-full cursor-grab"></canvas>
 
+            {{-- Solo la AYUDA de manejo. El nombre del camión y el piso libre estaban
+                 también acá y volvían a aparecer en la franja de datos: ahora que la
+                 franja vive dentro de este mismo recuadro (abajo), repetirlos era
+                 justo el exceso de texto que el dueño pidió recortar (10-08). --}}
             <div class="absolute left-3 top-3 flex items-center gap-2">
                 {{-- El ☰ abre el menú cuando está cerrado (siempre, en celular al arrancar). --}}
                 <button type="button" x-show="!menu" @click="menu = true"
                         class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-50"
                         title="Abrir el menú de herramientas">☰ Menú</button>
                 <span class="text-xs font-medium text-neutral-500">
-                    {{ $escena['vehiculo']['nombre'] }} · arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>
-                    @if ($escena['libre_m'] > 0.05)
-                        · <span class="text-neutral-400">quedan {{ number_format($escena['libre_m'], 2, ',', '.') }} m libres en la puerta</span>
-                    @endif
+                    Arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>
                 </span>
             </div>
         </div>
     </div>
+
+    {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
+         Pedido del dueño (10-08, dibujado sobre la pantalla): «la descripción del
+         camión la quiero adentro del cuadrado donde está el camión, para poder usar
+         mejor el espacio». Era una tarjeta aparte debajo del visor: su propio borde,
+         su propia sombra y el hueco entre las dos. Adentro se ahorran los tres, y los
+         datos quedan pegados al dibujo que describen.
+
+         Va como FRANJA AL PIE y no flotando sobre el lienzo: un panel encima taparía
+         el camión, que es la doctrina del 06-08 anotada arriba en este mismo archivo.
+         Con `bg-neutral-50/70` —el mismo fondo del menú lateral— se lee como parte del
+         visor y no como una tarjeta de contenido metida adentro. --}}
+    @if ($camion ?? null)
+        <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-t border-neutral-200 bg-neutral-50/70 px-4 py-2.5 text-sm">
+            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
+            <span class="text-neutral-500">Medidas útiles
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
+                <span class="cursor-help text-neutral-300"
+                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
+            </span>
+            <span class="text-neutral-500">Volumen
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
+            </span>
+            <span class="text-neutral-500">Carga máxima
+                @if ($camion->peso_max_kg)
+                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
+                @else
+                    <span class="text-neutral-400">sin dato</span>
+                @endif
+            </span>
+            @if ($camion->pasillo_cm > 0)
+                <span class="text-neutral-500">Pasillo reservado
+                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
+                </span>
+            @endif
+            {{-- El «Free meters» de EasyCargo: más accionable que el % de ocupación
+                 para «¿le sumo algo más a este viaje?». --}}
+            <span class="text-neutral-500">Piso libre en la puerta
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
+            </span>
+        </div>
+    @endif
 </div>

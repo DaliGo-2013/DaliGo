@@ -284,47 +284,14 @@
                     {{-- ① EL CAMIÓN, a todo el ancho y arriba de todo. --}}
                     @include('admin.carga._visor')
 
-                    {{-- ② Los datos: el camión en UNA FRANJA horizontal + el veredicto y el
-                         detalle a todo el ancho.
+                    {{-- ② El veredicto, la ocupación y el detalle, a todo el ancho.
 
-                         Era una tarjeta vertical en una grilla de 3 columnas (pedido del dueño
-                         06-08: «la columna vertical ocupa mucho espacio»): cinco filas
-                         etiqueta-valor más un párrafo, y en el modo pallet —que no tiene
-                         columna de veredicto al lado— dejaba dos tercios de la pantalla en
-                         blanco. Los mismos cinco datos caben en un renglón, y la nota sobre
-                         medidas interiores vive en el ⓘ (title) en vez de ocupar cuatro
-                         líneas siempre visibles. --}}
-                    <div class="space-y-4">
-                        <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1.5 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm shadow-sm">
-                            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
-                            <span class="text-neutral-500">Medidas útiles
-                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
-                                <span class="cursor-help text-neutral-300"
-                                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
-                            </span>
-                            <span class="text-neutral-500">Volumen
-                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
-                            </span>
-                            <span class="text-neutral-500">Carga máxima
-                                @if ($camion->peso_max_kg)
-                                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
-                                @else
-                                    <span class="text-neutral-400">sin dato</span>
-                                @endif
-                            </span>
-                            @if ($camion->pasillo_cm > 0)
-                                <span class="text-neutral-500">Pasillo reservado
-                                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
-                                </span>
-                            @endif
-                            {{-- El «Free meters» de EasyCargo: más accionable que el % de
-                                 ocupación para «¿le sumo algo más a este viaje?». --}}
-                            <span class="text-neutral-500">Piso libre en la puerta
-                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
-                            </span>
-                        </div>
-
-                        {{-- El veredicto, la ocupación y el detalle, a todo el ancho. --}}
+                         LOS DATOS DEL CAMIÓN YA NO ESTÁN ACÁ. Eran una franja horizontal
+                         propia —con su borde, su sombra y el hueco entre tarjetas— justo
+                         debajo del visor, y desde el 10-08 viven DENTRO del recuadro del
+                         visor: «la descripción del camión la quiero adentro del cuadrado
+                         donde está el camión, para poder usar mejor el espacio» (dueño,
+                         dibujado sobre la pantalla). Ver `_visor.blade.php`. --}}
                         <div class="space-y-4">
 
                             {{-- RESULTADO · carga mixta --}}
@@ -545,7 +512,18 @@
                                 </x-list-card>
                             @endif
 
-                            {{-- RESULTADO · cupo máximo --}}
+                            {{-- RESULTADO · cupo máximo. DOS TARJETAS, no una columna larga
+                                 (pedido del dueño 10-08, dibujado sobre la pantalla): a la
+                                 izquierda EL NÚMERO que se vino a buscar, a la derecha DE DÓNDE
+                                 SALE. En una sola tarjeta el «550 bultos» encabezaba seis filas
+                                 etiqueta-valor: el dato y su letra chica compartían una columna
+                                 angosta, y al lado de un dibujo que ocupa todo el ancho la
+                                 tarjeta se veía como una tira de texto.
+
+                                 La OCUPACIÓN se fue con el número y no con el detalle: la barra
+                                 es el camión llenándose, se lee junto al «entran». Estaba
+                                 escrita dos veces —una fila con el % y abajo una barra sin
+                                 rótulo—; ahora es un solo bloque. --}}
                             @if ($resultado)
                                 @php
                                     $lim = [
@@ -555,21 +533,32 @@
                                         'peso' => 'la carga máxima en kilos',
                                         'ninguno' => '—',
                                     ][$resultado['limite']] ?? '—';
-                                    // EL PESO CORTÓ ANTES QUE EL ESPACIO. `cupo()` calcula primero la rejilla
-                                    // y DESPUÉS recorta por kilos, así que la rejilla que devuelve sigue siendo
-                                    // la del ESPACIO: multiplicarla da cuántos habrían entrado si el camión
-                                    // aguantara. Es el número que convierte «entran 63» en «entran 63 de los
-                                    // 192 que caben, porque te quedaste sin kilos».
+                                    $ocupacionCupo = round($resultado['ocupacion'] * 100);
+                                    // EL AIRE QUE QUEDA ARRIBA. El mismo aviso que la carga mixta,
+                                    // por el mismo motivo: el tope de apilado corta antes que la
+                                    // altura y el hueco no se explica solo. Acá el campo ya está a
+                                    // la vista con el número del catálogo, pero cuántas CABRÍAN no
+                                    // se decía en ninguna parte.
+                                    $apiladasCupo = $resultado['rejilla']['alto'];
+                                    $techoCupo = $resultado['orientacion']['alto'] > 0
+                                        ? intdiv($camion->alto_cm, $resultado['orientacion']['alto'])
+                                        : 0;
+                                    // EL PESO CORTÓ ANTES QUE EL ESPACIO. `cupo()` calcula primero
+                                    // la rejilla y después recorta por kilos, así que la rejilla
+                                    // que devuelve sigue siendo la del ESPACIO: multiplicarla da
+                                    // cuántos habrían entrado si el camión aguantara. Es el número
+                                    // que convierte «entran 154» en «entran 154 de los 324 que
+                                    // caben, porque te quedaste sin kilos».
                                     $porEspacioCupo = $resultado['rejilla']['largo'] * $resultado['rejilla']['ancho'] * $resultado['rejilla']['alto'];
                                     $cortoPorPeso = $resultado['limite'] === 'peso' && $porEspacioCupo > $resultado['bultos'];
                                 @endphp
 
-                                {{-- ═══ SE LLENA DE KILOS ANTES QUE DE ESPACIO ═══
-                                     El hermano del cartel de la carga mixta (pedido del dueño 11-08), acá
-                                     con la comparación que este modo permite. Sin esto, «entran 63» se lee
-                                     como que el camión es chico, y la decisión que sale de ahí —mandar uno
-                                     más grande— es la equivocada: el problema son los kilos, y el camión
-                                     grande también los tiene. --}}
+                                {{-- ═══ SE LLENA DE KILOS ANTES QUE DE METROS ═══
+                                     El mismo aviso que la carga mixta (pedido del dueño 11-08), acá
+                                     con la comparación que este modo permite: cuántos habrían
+                                     entrado por espacio contra cuántos deja el peso. Va ARRIBA de
+                                     las dos tarjetas y a todo el ancho, porque el número grande de
+                                     al lado —«entran 154»— es justo el que se lee sin contexto. --}}
                                 @if ($cortoPorPeso)
                                     <div x-show="modo === 'maximo'" class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
                                         <p class="text-lg font-semibold text-red-700">⚠ Se llena de kilos antes que de espacio</p>
@@ -586,132 +575,138 @@
                                     </div>
                                 @endif
 
-                                <div x-show="modo === 'maximo'" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                    {{-- LA PRUEBA: el veredicto de la cantidad pedida, ANTES del máximo.
-                                         Si preguntó «¿me entran 50?», la respuesta a eso es lo primero. --}}
-                                    @if ($prueba !== null)
-                                        <div class="mb-4 rounded-lg px-3 py-2 text-sm {{ $prueba['caben'] ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700' }}">
-                                            @if ($prueba['caben'])
-                                                <strong>Tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran ✓</strong>
-                                                — y el dibujo muestra esa cantidad, no el máximo.
-                                            @else
-                                                <strong>De tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran {{ number_format($prueba['cargadas'], 0, ',', '.') }}.</strong>
-                                                Quedan {{ number_format($prueba['pedidas'] - $prueba['cargadas'], 0, ',', '.') }} afuera.
+                                <div x-show="modo === 'maximo'" class="grid gap-4 lg:grid-cols-2">
+
+                                    {{-- ① EL NÚMERO --}}
+                                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                        {{-- LA PRUEBA: el veredicto de la cantidad pedida, ANTES del máximo.
+                                             Si preguntó «¿me entran 50?», la respuesta a eso es lo primero. --}}
+                                        @if ($prueba !== null)
+                                            <div class="mb-4 rounded-lg px-3 py-2 text-sm {{ $prueba['caben'] ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700' }}">
+                                                @if ($prueba['caben'])
+                                                    <strong>Tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran ✓</strong>
+                                                    — y el dibujo muestra esa cantidad, no el máximo.
+                                                @else
+                                                    <strong>De tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran {{ number_format($prueba['cargadas'], 0, ',', '.') }}.</strong>
+                                                    Quedan {{ number_format($prueba['pedidas'] - $prueba['cargadas'], 0, ',', '.') }} afuera.
+                                                @endif
+                                            </div>
+                                        @endif
+                                        <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
+                                        <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
+                                        <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
+
+                                        @if ($bulto->unidades > 1)
+                                            <p class="mt-3 text-2xl font-semibold text-brand-600 tabular-nums">
+                                                {{ number_format($resultado['unidades'], 0, ',', '.') }}
+                                            </p>
+                                            <p class="text-sm text-neutral-500">unidades ({{ $bulto->unidades }} por bulto)</p>
+                                        @endif
+
+                                        <div class="mt-4 border-t border-neutral-100 pt-3">
+                                            <div class="flex items-baseline justify-between text-sm">
+                                                <span class="text-neutral-500">Ocupación</span>
+                                                <span class="font-medium tabular-nums text-neutral-900">{{ $ocupacionCupo }}%</span>
+                                            </div>
+                                            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                                                <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, $ocupacionCupo) }}%"></div>
+                                            </div>
+                                        </div>
+
+                                        @if ($bulto->peligrosa)
+                                            <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                                                <strong>Mercancía peligrosa{{ $bulto->peligrosa_codigo ? ' ('.$bulto->peligrosa_codigo.')' : '' }}.</strong>
+                                                El cupo es solo de espacio: el transporte tiene reglas propias de rotulado y segregación.
+                                                Que quepa no significa que se pueda cargar así.
+                                            </p>
+                                        @endif
+
+                                        {{-- ═══ LO QUE ENTRÓ DE VERDAD ═══
+                                             El lazo de vuelta del historial (lote 4). Esta tarjeta
+                                             viene diciendo desde el día uno que su número es un
+                                             TECHO y que «se calibra contando una carga real»; acá
+                                             aparece esa carga, cuando existe.
+
+                                             NO corrige el cupo, lo acompaña. Reemplazarlo por el
+                                             medido sería cambiar un número verificable por un
+                                             promedio de dos anécdotas; mostrar los dos deja ver el
+                                             hueco, que es la información. --}}
+                                        @if (! empty($medido))
+                                            <div class="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm">
+                                                <p class="font-medium text-neutral-900">
+                                                    En terreno entraron
+                                                    <span class="tabular-nums">{{ number_format($medido['promedio'], 0, ',', '.') }}</span>
+                                                    <span class="font-normal text-neutral-500">
+                                                        ({{ round($medido['factor'] * 100) }}% de lo calculado)
+                                                    </span>
+                                                </p>
+                                                <p class="mt-0.5 text-xs text-neutral-500">
+                                                    {{ $medido['veces'] === 1 ? 'Una sola carga anotada,' : 'Promedio de '.$medido['veces'].' cargas anotadas,' }}
+                                                    la última el {{ $medido['ultima'] }} ·
+                                                    <a href="{{ route('admin.cargas-reales.index') }}"
+                                                       class="font-medium text-brand-700 hover:text-brand-600">ver el historial</a>
+                                                </p>
+                                            </div>
+                                        @endif
+
+                                        {{-- El enlace va dentro del párrafo y sin `@if` en línea: una
+                                             directiva partida entre dos líneas de texto rompe el parser
+                                             («unexpected token endif»), y el punto final pegado al
+                                             `@endif` era lo que dejaba « real .» con el espacio de más. --}}
+                                        <p class="mt-4 text-xs leading-relaxed text-neutral-400">
+                                            Capacidad práctica, no promesa: la estiba real no es una rejilla perfecta (amarres, hilera del
+                                            piso girada). Se calibra contando una carga real{!! empty($medido)
+                                                ? ' — <a href="'.route('admin.cargas-reales.index').'" class="font-medium text-neutral-500 hover:text-neutral-700">anotá una en Cargas reales</a>'
+                                                : '' !!}.
+                                        </p>
+                                    </div>
+
+                                    {{-- ② DE DÓNDE SALE ESE NÚMERO. Las filas van separadas por
+                                         línea (`divide-y`) y no por aire: son pares
+                                         etiqueta-valor, y con el ojo entrenado en la tabla de
+                                         un Excel se leen más rápido así. --}}
+                                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">De dónde sale ese número</p>
+
+                                        <div class="mt-2 divide-y divide-neutral-100 text-sm">
+                                            @if ($bulto->puedeAcostarse())
+                                                {{-- Con qué estiba salió este número: sin decirlo, «entran 270»
+                                                     se compara contra los 420 de pie y parece un error. --}}
+                                                <div class="flex justify-between gap-3 py-2">
+                                                    <span class="text-neutral-500">Cómo viaja</span>
+                                                    <span class="text-right font-medium text-neutral-900">{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$estiba] ?? 'Automático' }}</span>
+                                                </div>
+                                            @endif
+                                            <div class="flex justify-between gap-3 py-2">
+                                                <span class="text-neutral-500">Se agota primero</span>
+                                                <span class="text-right font-medium text-neutral-900">{{ $lim }}</span>
+                                            </div>
+                                            <div class="flex justify-between gap-3 py-2">
+                                                <span class="text-neutral-500">Rejilla</span>
+                                                <span class="text-right font-medium tabular-nums text-neutral-900">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
+                                            </div>
+                                            @if ($resultado['peso_kg'] > 0)
+                                                <div class="flex justify-between gap-3 py-2">
+                                                    <span class="text-neutral-500">Peso</span>
+                                                    <span class="text-right font-medium tabular-nums text-neutral-900">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
+                                                </div>
+                                            @endif
+                                            @if ($apiladasCupo > 0 && $techoCupo > $apiladasCupo)
+                                                <div class="flex flex-wrap items-center justify-between gap-2 py-2">
+                                                    <span class="text-neutral-500">Queda aire arriba</span>
+                                                    <span class="flex items-center gap-2">
+                                                        <span class="text-xs text-neutral-500">la caja da para <span class="tabular-nums">{{ $techoCupo }}</span></span>
+                                                        <button type="button"
+                                                                @click="$refs.apilado.value = {{ $techoCupo }}; $refs.apilado.form.requestSubmit()"
+                                                                class="min-h-8 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
+                                                                title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
+                                                            Apilar {{ $techoCupo }}
+                                                        </button>
+                                                    </span>
+                                                </div>
                                             @endif
                                         </div>
-                                    @endif
-                                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
-                                    <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
-                                    <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
-
-                                    @if ($bulto->unidades > 1)
-                                        <p class="mt-3 text-2xl font-semibold text-brand-600 tabular-nums">
-                                            {{ number_format($resultado['unidades'], 0, ',', '.') }}
-                                        </p>
-                                        <p class="text-sm text-neutral-500">unidades ({{ $bulto->unidades }} por bulto)</p>
-                                    @endif
-
-                                    <div class="mt-4 border-t border-neutral-100 pt-3 text-sm">
-                                        @if ($bulto->puedeAcostarse())
-                                            {{-- Con qué estiba salió este número: sin decirlo, «entran 270»
-                                                 se compara contra los 420 de pie y parece un error. --}}
-                                            <div class="flex justify-between py-1">
-                                                <span class="text-neutral-500">Cómo viaja</span>
-                                                <span class="font-medium text-neutral-900">{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$estiba] ?? 'Automático' }}</span>
-                                            </div>
-                                        @endif
-                                        <div class="flex justify-between py-1">
-                                            <span class="text-neutral-500">Se agota primero</span>
-                                            <span class="font-medium text-neutral-900">{{ $lim }}</span>
-                                        </div>
-                                        <div class="flex justify-between py-1">
-                                            <span class="text-neutral-500">Rejilla</span>
-                                            <span class="font-medium tabular-nums text-neutral-900">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
-                                        </div>
-                                        {{-- EL AIRE QUE QUEDA ARRIBA. El mismo aviso que la carga mixta, por el
-                                             mismo motivo: el tope de apilado corta antes que la altura y el hueco
-                                             no se explica solo. Acá el campo ya está a la vista con el número del
-                                             catálogo, pero cuántas CABRÍAN no se decía en ninguna parte. --}}
-                                        @php
-                                            $apiladasCupo = $resultado['rejilla']['alto'];
-                                            $techoCupo = $resultado['orientacion']['alto'] > 0
-                                                ? intdiv($camion->alto_cm, $resultado['orientacion']['alto'])
-                                                : 0;
-                                        @endphp
-                                        @if ($apiladasCupo > 0 && $techoCupo > $apiladasCupo)
-                                            <div class="flex flex-wrap items-center justify-between gap-2 py-1">
-                                                <span class="text-neutral-500">Queda aire arriba</span>
-                                                <span class="flex items-center gap-2">
-                                                    <span class="text-xs text-neutral-500">la caja da para <span class="tabular-nums">{{ $techoCupo }}</span></span>
-                                                    <button type="button"
-                                                            @click="$refs.apilado.value = {{ $techoCupo }}; $refs.apilado.form.requestSubmit()"
-                                                            class="min-h-8 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
-                                                            title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
-                                                        Apilar {{ $techoCupo }}
-                                                    </button>
-                                                </span>
-                                            </div>
-                                        @endif
-                                        <div class="flex justify-between py-1">
-                                            <span class="text-neutral-500">Ocupación</span>
-                                            <span class="font-medium tabular-nums text-neutral-900">{{ round($resultado['ocupacion'] * 100) }}%</span>
-                                        </div>
-                                        @if ($resultado['peso_kg'] > 0)
-                                            <div class="flex justify-between py-1">
-                                                <span class="text-neutral-500">Peso</span>
-                                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
-                                            </div>
-                                        @endif
                                     </div>
-
-                                    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                                        <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, round($resultado['ocupacion'] * 100)) }}%"></div>
-                                    </div>
-
-                                    @if ($bulto->peligrosa)
-                                        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                                            <strong>Mercancía peligrosa{{ $bulto->peligrosa_codigo ? ' ('.$bulto->peligrosa_codigo.')' : '' }}.</strong>
-                                            El cupo es solo de espacio: el transporte tiene reglas propias de rotulado y segregación.
-                                            Que quepa no significa que se pueda cargar así.
-                                        </p>
-                                    @endif
-
-                                    {{-- ═══ LO QUE ENTRÓ DE VERDAD ═══
-                                         El lazo de vuelta del historial (§3.7). Esta tarjeta viene diciendo
-                                         desde el día uno que su número es un TECHO y que «se calibra contando
-                                         una carga real»; acá aparece esa carga, cuando existe.
-
-                                         NO corrige el cupo, lo acompaña. Reemplazarlo por el medido sería
-                                         cambiar un número verificable por el promedio de dos anécdotas;
-                                         mostrar los dos deja ver el hueco, que es la información. --}}
-                                    @if (! empty($medido))
-                                        <div class="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm">
-                                            <p class="font-medium text-neutral-900">
-                                                En terreno entraron
-                                                <span class="tabular-nums">{{ number_format($medido['promedio'], 0, ',', '.') }}</span>
-                                                <span class="font-normal text-neutral-500">
-                                                    ({{ round($medido['factor'] * 100) }}% de lo calculado)
-                                                </span>
-                                            </p>
-                                            <p class="mt-0.5 text-xs text-neutral-500">
-                                                {{ $medido['veces'] === 1 ? 'Una sola carga anotada,' : 'Promedio de '.$medido['veces'].' cargas anotadas,' }}
-                                                la última el {{ $medido['ultima'] }} ·
-                                                <a href="{{ route('admin.cargas-reales.index') }}"
-                                                   class="font-medium text-brand-700 hover:text-brand-600">ver el historial</a>
-                                            </p>
-                                        </div>
-                                    @endif
-
-                                    {{-- El enlace del pie va con un ternario y NO con un `@if` en línea: una
-                                         directiva partida entre dos líneas de texto rompe el parser
-                                         («unexpected token endif»), y el punto pegado al `@endif` dejaba
-                                         « real .» con un espacio de más. --}}
-                                    <p class="mt-4 text-xs leading-relaxed text-neutral-400">
-                                        Capacidad práctica, no promesa: la estiba real no es una rejilla perfecta (amarres, hilera del
-                                        piso girada). Se calibra contando una carga real{!! empty($medido)
-                                            ? ' — <a href="'.route('admin.cargas-reales.index').'" class="font-medium text-neutral-500 hover:text-neutral-700">anotá una en Cargas reales</a>'
-                                            : '' !!}.
-                                    </p>
                                 </div>
                             @endif
 
@@ -788,7 +783,6 @@
                                 </div>
                             @endif
                         </div>
-                    </div>
                 @endif
 
                 {{-- ③ El formulario, al final: el dueño quiso el 3D lo más grande
