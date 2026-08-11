@@ -78,15 +78,22 @@
                                     </a>
                                 @endif
                                 @can('manage vehiculos')
-                                    <form method="POST" enctype="multipart/form-data"
+                                    {{-- <x-archivo-input> y NO un input nativo: el navegador
+                                         recorta su rótulo y en 375 px no se entiende (candado
+                                         ArchivoInputTest). `capture="environment"` abre la
+                                         cámara de atrás directo, que es como se saca la foto
+                                         del papel. Se envía SOLO al elegir el archivo: en el
+                                         teléfono, elegir la foto YA es la acción — un segundo
+                                         botón de «enviar» sería un paso más de más. --}}
+                                    <form method="POST" enctype="multipart/form-data" class="w-full sm:w-64"
                                           action="{{ route('admin.vehiculos.documentos.store', [$vehiculo, $doc['clave']]) }}">
                                         @csrf
-                                        <label class="min-h-8 inline-flex cursor-pointer items-center gap-1 font-medium text-neutral-500 transition hover:text-neutral-700">
-                                            {{ $respaldo ? 'Reemplazar' : 'Subir el documento' }}
-                                            <input type="file" name="archivo" class="sr-only"
-                                                   accept="image/jpeg,image/png,image/webp,application/pdf"
-                                                   onchange="this.form.submit()">
-                                        </label>
+                                        <x-archivo-input name="archivo" required
+                                                         accept="image/jpeg,image/png,image/webp,application/pdf"
+                                                         capture="environment"
+                                                         :texto="$respaldo ? 'Reemplazar el documento' : 'Subir el documento'"
+                                                         vacio="Se comprime solo, queda liviano"
+                                                         @change="$el.form.submit()" />
                                     </form>
                                 @endcan
                                 @unless ($respaldo || auth()->user()->can('manage vehiculos'))
