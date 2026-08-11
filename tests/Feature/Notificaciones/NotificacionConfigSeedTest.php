@@ -44,6 +44,8 @@ class NotificacionConfigSeedTest extends TestCase
         // M04-F2 · ciclo de la baja con traslado (P-M04-20)
         'notif_plantilla_bodega_baja_completada',
         'notif_plantilla_bodega_stock_en_baja',
+        // M11 · corte SIC: meta del turno en riesgo (P-M11-21)
+        'notif_plantilla_produccion_meta_en_riesgo',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

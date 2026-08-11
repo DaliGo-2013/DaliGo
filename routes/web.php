@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
+use App\Http\Controllers\Admin\ProduccionVivoController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\RecetaController;
 use App\Http\Controllers\Admin\RoleController;
@@ -467,6 +468,11 @@ Route::middleware('auth')
         // Produccion (Jefe de Bodega): asignar y revisar reportes.
         Route::middleware('permission:manage production')->group(function () {
             Route::get('produccion', [ProduccionController::class, 'index'])->name('produccion.index');
+            // Panel «Hoy en vivo» (P-M11-21): monitor con poll de firma. El
+            // conteo va ANTES de cualquier ruta con parámetro por doctrina
+            // (idioma de despachos/cola).
+            Route::get('produccion/vivo', [ProduccionVivoController::class, 'vivo'])->name('produccion.vivo');
+            Route::get('produccion/vivo/conteo', [ProduccionVivoController::class, 'conteo'])->name('produccion.vivo.conteo');
             Route::get('produccion/dia', [ProduccionController::class, 'diaDetalle'])->name('produccion.dia');
             Route::get('produccion/maquina/{maquina}', [ProduccionController::class, 'maquinaRendimiento'])->name('produccion.maquina');
             Route::get('produccion/tipo/{tipoBotellon}', [ProduccionController::class, 'tipoRendimiento'])->name('produccion.tipo');
