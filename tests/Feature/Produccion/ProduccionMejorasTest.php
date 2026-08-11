@@ -3,9 +3,12 @@
 namespace Tests\Feature\Produccion;
 
 use App\Http\Controllers\Admin\AuditController;
+use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionMejora;
 use App\Models\ProduccionNota;
+use App\Models\ProduccionReporte;
 use App\Models\User;
+use App\Support\FechaNegocio;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -42,6 +45,21 @@ class ProduccionMejorasTest extends TestCase
             'soplador_id' => $soplador->id,
             'texto' => 'Mover el rack de preformas mas cerca de la M2',
         ], $attrs));
+    }
+
+    private function reporteDe(User $soplador): ProduccionReporte
+    {
+        $fecha = FechaNegocio::hoy();
+
+        $asignacion = ProduccionAsignacion::create([
+            'soplador_id' => $soplador->id, 'fecha' => $fecha, 'turno' => 'dia', 'asignadas' => 100,
+        ]);
+
+        return ProduccionReporte::create([
+            'asignacion_id' => $asignacion->id, 'soplador_id' => $soplador->id,
+            'fecha' => $fecha, 'turno' => 'dia', 'asignadas' => 100,
+            'estado' => ProduccionReporte::BORRADOR,
+        ]);
     }
 
     // ---------------------------------------------------------------
@@ -214,6 +232,83 @@ class ProduccionMejorasTest extends TestCase
         $this->actingAs($soplador)
             ->patch(route('admin.produccion.mejoras.update', $mejora), ['estado' => ProduccionMejora::APLICADA])
             ->assertForbidden();
+    }
+
+    // ---------------------------------------------------------------
+    // Superficie (candados 1, 2 y 5)
+    // ---------------------------------------------------------------
+
+    public function test_el_historial_muestra_estado_y_respuesta_solo_al_autor(): void
+    {
+        $soplador = $this->soplador();
+        $otro = $this->soplador();
+
+        $this->mejora($soplador, [
+            'texto' => 'Mi propuesta del rack',
+            'estado' => ProduccionMejora::APLICADA,
+            'respuesta' => 'Buena idea: se movio esta semana',
+        ]);
+        $this->mejora($otro, ['texto' => 'Propuesta ajena que no debo ver']);
+
+        $this->actingAs($soplador)
+            ->get(route('produccion.mi.show', $this->reporteDe($soplador)))
+            ->assertOk()
+            ->assertSee('Mi propuesta del rack')
+            ->assertSee('Buena idea: se movio esta semana')
+            ->assertSee('Aplicada')
+            ->assertDontSee('Propuesta ajena que no debo ver');
+    }
+
+    public function test_la_bandeja_del_jefe_lista_solo_las_abiertas(): void
+    {
+        $soplador = $this->soplador();
+        $this->mejora($soplador, ['texto' => 'Idea recien llegada']);
+        $this->mejora($soplador, ['texto' => 'Idea en evaluacion', 'estado' => ProduccionMejora::REVISADA]);
+        $this->mejora($soplador, ['texto' => 'Idea ya cerrada hace un mes', 'estado' => ProduccionMejora::DESCARTADA]);
+
+        $this->actingAs($this->jefe())
+            ->get(route('admin.produccion.index'))
+            ->assertOk()
+            ->assertSee('Propuestas de mejora')
+            ->assertSee('Idea recien llegada')
+            ->assertSee('Idea en evaluacion')
+            ->assertDontSee('Idea ya cerrada hace un mes')
+            ->assertSee('2 abiertas');
+    }
+
+    public function test_el_soplador_no_ve_la_bandeja_del_panel(): void
+    {
+        // GET navegable sin permiso = redirect + aviso (contrato de la casa).
+        $this->actingAs($this->soplador())
+            ->get(route('admin.produccion.index'))
+            ->assertRedirect(route('dashboard'));
+    }
+
+    public function test_mi_reporte_sigue_sin_costos_con_mejora_respondida(): void
+    {
+        $soplador = $this->soplador();
+        $this->mejora($soplador, [
+            'estado' => ProduccionMejora::APLICADA,
+            'respuesta' => 'Se aplico: el rack quedo junto a la M2',
+        ]);
+
+        $html = $this->actingAs($soplador)
+            ->get(route('produccion.mi.show', $this->reporteDe($soplador)))
+            ->assertOk()
+            ->getContent();
+
+        // Regla Katana (candado 5): jamas un costo en la pantalla del
+        // operario. Texto percibido (sin scripts/tags: los magics de Alpine
+        // llevan '$' legitimos) + regex de monto — forma de RecetaCrudTest.
+        $texto = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/si', ' ', $html);
+        $texto = preg_replace('/<[^>]+>/', ' ', $texto);
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/(?<![\p{L}])(precio|precios|costo|costos|CLP|UF)(?![\p{L}])/iu',
+            $texto,
+            'La pantalla del soplador menciona costos/precios con el historial de mejoras visible.',
+        );
+        $this->assertDoesNotMatchRegularExpression('/\$\s?\d/', $texto, 'Hay un monto en pesos a la vista del soplador.');
     }
 
     // ---------------------------------------------------------------

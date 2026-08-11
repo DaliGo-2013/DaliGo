@@ -541,7 +541,15 @@ class MiProduccionController extends Controller
             ->orderByDesc('fecha')
             ->get();
 
+        // Historial de MIS propuestas de mejora (P-M11-23): el estado y la
+        // respuesta del jefe se ven aqui — y SOLO las del autor.
+        $misMejoras = ProduccionMejora::where('soplador_id', $user->id)
+            ->latest()
+            ->limit(10)
+            ->get();
+
         return view('produccion.mi-reporte', [
+            'misMejoras' => $misMejoras,
             'reporte' => $reporte,
             'maquinas' => $maquinas,
             'tipos' => $tipos,
