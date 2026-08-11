@@ -112,7 +112,7 @@ Por **volumen de bulto descendente** (lo grande primero, como en la práctica),
 sin importar el orden en que se escribieron las líneas — pero el reporte respeta
 el orden escrito. Determinista: a igual volumen, el orden de entrada.
 
-### 2.3 «Mover la carga»: se reordena la lista, no se arrastran bloques (06-08-2026)
+### 2.3 «Mover la carga»: se reordena la lista, no se arrastran bloques (06-08-2026) — SUPERADO por §2.3bis
 
 El dueño pidió lo que vio en EasyCargo: *«me interesa el tema de la última foto donde se
 puede mover la carga»*. Ahí se arrastran los bultos con el mouse. **Acá se resolvió
@@ -130,6 +130,62 @@ predeterminado** porque es el que reproduce las cargas verificadas contra fotos;
 de `orden` inventado se rechaza en la validación en vez de caer en silencio. Candados:
 `test_el_orden_de_la_lista_decide_que_producto_va_al_fondo` y
 `test_el_orden_automatico_sigue_siendo_el_predeterminado`.
+
+> **Esto quedó SUPERADO el 11-08-2026.** El reordenamiento sigue existiendo y sigue siendo
+> el camino verificado, pero ya no es la única respuesta: ver §2.3bis. El razonamiento de
+> arriba se conserva porque explica de dónde sale el cartel de advertencia.
+
+### 2.3bis SE ACOMODA A MANO, con el cartel puesto (11-08-2026)
+
+El dueño lo pidió **tres veces**. La tercera, textual: *«Te lo pido encarecidamente… que te
+dé la opción de dar vuelta la caja y acomodar como uno quiero. ¿Se entiende o es muy
+difícil?»*. Las dos anteriores la respuesta fue el §2.3 de arriba.
+
+**Se hace.** El reparo del §2.3 es cierto y no cambió —arrastrar deja armar en pantalla una
+carga que el cálculo dice que no cabe—, pero la decisión es de quien carga los camiones, no
+del programa. Lo que sí queda del reparo es la honestidad del resultado, y eso son cuatro
+reglas que el código sostiene (`App\Services\Carga\AcomodoManual`):
+
+1. **Un acomodo NO cambia las cuentas.** Mover un bloque cambia dónde va, no cuántos
+   entran. Si mover subiera el cupo, el tablero sería una forma de sacarle al motor un
+   número que no calculó. Candado: `test_acomodar_no_cambia_cuantos_entran`.
+2. **Lo que quedó mal se DICE, no se corrige.** Bloques encimados o fuera de la caja se
+   reportan (`choques`, `fuera`) y salen en rojo. No se reacomodan solos: separarlos sería
+   volver a decidir por el usuario. Tocarse **no** es pisarse — así dos bloques pegados,
+   que es como se carga, no salen marcados.
+3. **Un acomodo viejo se descarta ENTERO.** Viaja con `acomodo_de` (para cuántos bloques se
+   armó); si el resultado cambió de tamaño, aplicar las primeras posiciones pondría carga
+   ajena en el lugar equivocado, en silencio y con cara de verificada.
+4. **El cartel viaja con el plan.** «Acomodo a mano · el cálculo no verificó estas
+   posiciones» sale en la pantalla, en el **link compartido** y en el **Excel** — que es la
+   hoja que se imprime y se le da al chofer.
+
+**Girar es sobre el PISO, no volcar.** Se intercambian largo↔ancho del bulto y de la
+rejilla a la vez (el bloque rota 90° con las cajas adentro) y el alto no se toca, así el
+tope de apilado que calculó el motor sigue valiendo. Volcar una caja cambia cuántas se
+apilan: eso es una pregunta para el motor («Cómo viaja»), no para el mouse.
+
+**Se mueven BLOQUES, no cajas sueltas** — que es la unidad con la que el motor coloca y con
+la que se carga de verdad (una estiba entera, no una caja). La caja suelta igual se puede:
+una línea de UNA unidad es un bloque de uno, y ahí está el «cargar de a un bulto» del
+pedido.
+
+**Cómo está hecho.** Un tablero de **vista de planta** debajo del lienzo (`_acomodo.blade
+.php`), no un editor 3D: el motor razona en huellas sobre el piso, así que la planta habla
+el mismo idioma que el cálculo; arrastrar en perspectiva obliga a adivinar la profundidad
+con el mouse. Los bloques se **imantan** a las paredes y a los cantos de los vecinos (4 cm)
+porque si no quedan huecos de 2 o 3 cm que se acumulan hasta un «no entra» que no existe.
+
+**Viaja en la URL** (`acomodo[i]=x,y[,g]` en centímetros + `acomodo_de`), como todo lo demás:
+el link ES el escenario, así que un plan acomodado a mano se comparte y se baja a Excel sin
+tabla nueva ni migración. Se aplica **en centímetros y antes de pasar a metros**, por dos
+razones: comparar huellas en metros haría que `0,44 × 3 = 1,3199999999999998` se «pise» con
+un vecino en 1,32 y la pantalla marcaría en rojo una carga perfecta; y así el giro de un
+pallet arrastra su carga de arriba por el mismo camino que ya usaba el giro del motor
+(`interiorDelPallet`), sin código nuevo.
+
+Aplica a los **tres modos** (cupo máximo, carga mixta y sobre pallet). Candados en
+`AcomodoManualTest` (13) y `PlanDeCargaExcelTest::test_avisa_cuando_los_bloques_se_acomodaron_a_mano`.
 
 ## 3. Unidades: el vendedor habla en botellones, el motor en bolsas
 

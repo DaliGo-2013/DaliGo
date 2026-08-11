@@ -211,6 +211,27 @@ class PlanDeCargaExcelTest extends TestCase
             'Se perdió el aviso de que el cupo es un techo sin calibrar.');
     }
 
+    /**
+     * Y si alguien movió los bloques a mano, la planilla lo dice.
+     *
+     * Es la hoja que se imprime y se le da al chofer: el orden de carga de más abajo sale
+     * de esas posiciones, así que sin el aviso se lee como un plan que el motor verificó.
+     * Las cantidades sí son las del cálculo — acomodar no descubre lugar nuevo.
+     */
+    public function test_avisa_cuando_los_bloques_se_acomodaron_a_mano(): void
+    {
+        $sinTocar = $this->partes($this->bajar(['tipo_bulto_id' => $this->bolsa->id]))['xl/worksheets/sheet1.xml'];
+        $this->assertStringNotContainsString('A MANO', $sinTocar);
+
+        $aMano = $this->partes($this->bajar([
+            'tipo_bulto_id' => $this->bolsa->id,
+            'acomodo' => ['0' => '100,20'],
+            'acomodo_de' => 1,
+        ]))['xl/worksheets/sheet1.xml'];
+
+        $this->assertStringContainsString('acomodaron A MANO', $aMano);
+    }
+
     public function test_el_boton_esta_en_el_menu_del_visor(): void
     {
         // Regla del dueño: todo lo nuevo va en el menú lateral, no suelto.
