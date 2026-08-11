@@ -963,6 +963,92 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame($this->bolsa->nombre, $lineas[1]['modelo']->nombre);
     }
 
+    public function test_avisa_cuando_se_pasa_de_peso_aunque_sobre_espacio(): void
+    {
+        // Pedido del dueño (11-08): «que cuando se pase el límite de carga aparezca un
+        // cartel de advertencia, aunque el camión no esté lleno completamente».
+        //
+        // El motor YA recortaba por kilos, así que el resultado nunca se pasaba y no había
+        // nada que gritar: la pantalla mostraba 30% de ocupación, un renglón de peso
+        // discreto y un «quedan N afuera». Con carga pesada eso se lee como que sobra
+        // camión — y sobra, pero no sirve.
+        //
+        // Caja chica y MUY pesada: 40 × 40 × 40 a 300 kg. En el HD35 del fixture (1.400 kg) el espacio
+        // daría para decenas y el peso deja 4.
+        $plomo = TipoBulto::create([
+            'nombre' => 'Caja de plomo', 'categoria' => 'cajas',
+            'largo_cm' => 40, 'ancho_cm' => 40, 'alto_cm' => 40, 'peso_kg' => 300,
+            'unidades' => 1, 'apilable_max' => 4, 'soporta_peso_encima' => true,
+            'orientacion_fija' => false, 'activo' => true,
+        ]);
+
+        $r = $this->verMixta([['tipo' => $plomo->id, 'cantidad' => 20]])->assertOk();
+        $peso = $r->viewData('mixta')['peso'];
+
+        // El dato que no existía: cuánto pesa lo PEDIDO. Es lo único que dice de cuánto
+        // te pasaste, porque lo cargado siempre entra.
+        $this->assertSame(6000.0, $peso['pedido_kg'], '20 cajas de 300 kg.');
+        $this->assertSame(1400, $peso['tope_kg'], 'El tope del fixture.');
+        $this->assertTrue($peso['se_pasa']);
+        $this->assertTrue($peso['recorto'], 'El motor recortó por kilos, no por espacio.');
+        $this->assertLessThanOrEqual(1400.0, $peso['cargado_kg'], 'Nunca devuelve una carga pasada.');
+
+        $html = $r->getContent();
+        $this->assertStringContainsString('Se pasa de la carga máxima', $html);
+        $this->assertStringContainsString('4.600 kg de más', $html);
+
+        // Y el «aunque no esté lleno», que es el corazón del pedido: el cartel sale con el
+        // camión casi vacío.
+        $this->assertLessThan(
+            0.25,
+            $r->viewData('mixta')['resultado']['ocupacion'],
+            'Si esto se llenara, el caso no probaría lo que dice probar.',
+        );
+    }
+
+    public function test_sin_pasarse_de_peso_no_hay_cartel(): void
+    {
+        // Mutado del anterior: el cartel tiene que APAGARSE. Un aviso que está siempre
+        // deja de leerse, y en este módulo el rojo significa «no lo podés llevar».
+        $r = $this->verMixta([
+            ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'costado'],
+        ])->assertOk();
+
+        $this->assertFalse($r->viewData('mixta')['peso']['se_pasa']);
+        $this->assertFalse($r->viewData('mixta')['peso']['recorto']);
+        $this->assertStringNotContainsString('Se pasa de la carga máxima', $r->getContent());
+        $this->assertStringNotContainsString('Al filo de la carga máxima', $r->getContent());
+    }
+
+    public function test_el_cupo_maximo_dice_cuantos_entrarian_si_el_peso_no_cortara(): void
+    {
+        // En «¿Cuánto entra?» el número grande es lo único que se lee. «Entran 5» sin
+        // decir que por espacio entrarían 55 se interpreta como que el camión es chico, y
+        // la decisión que sale de ahí (mandar otro camión más grande) es la equivocada:
+        // el problema son los kilos, y el camión grande también los tiene.
+        $plomo = TipoBulto::create([
+            'nombre' => 'Caja de plomo', 'categoria' => 'cajas',
+            'largo_cm' => 40, 'ancho_cm' => 40, 'alto_cm' => 40, 'peso_kg' => 300,
+            'unidades' => 1, 'apilable_max' => 4, 'soporta_peso_encima' => true,
+            'orientacion_fija' => false, 'activo' => true,
+        ]);
+
+        $r = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $plomo->id,
+        ]))->assertOk();
+
+        $resultado = $r->viewData('resultado');
+        $porEspacio = $resultado['rejilla']['largo'] * $resultado['rejilla']['ancho'] * $resultado['rejilla']['alto'];
+
+        $this->assertSame('peso', $resultado['limite']);
+        $this->assertSame(4, $resultado['bultos'], '1.400 kg del fixture / 300 kg por caja.');
+        $this->assertGreaterThan($resultado['bultos'], $porEspacio, 'Por espacio entrarían muchas más.');
+
+        $html = $r->getContent();
+        $this->assertStringContainsString('Se llena de kilos antes que de espacio', $html);
+        $this->assertStringContainsString(number_format($porEspacio, 0, ',', '.'), $html);
+    }
+
     public function test_no_se_tumba_conserva_el_giro_de_90_que_de_pie_pierde(): void
     {
         // Pedido del dueño (11-08) mirando cómo EasyCargo deja declarar el giro de cada
@@ -1238,7 +1324,39 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('bg-red-500', $panel);
     }
 
-    public function test_las_tres_cabinas_llevan_los_detalles_del_costado(): void
+    public function test_toda_silueta_declarada_tiene_su_rama_en_el_visor_y_sus_ejes(): void
+    {
+        // Una silueta se declara en TRES lugares que tienen que coincidir: la constante
+        // del modelo, el mapa de ejes del controlador y la rama del visor. Si falta la
+        // del visor no pasa nada visible —el bloque cae en la cabina genérica— y el
+        // camión se dibuja como cualquier otro, que es justo lo que el dueño pidió
+        // arreglar el 05-08 («que se vean más reales y no cuadrados»).
+        //
+        // El candado del seeder ya exige que la silueta sembrada esté en la constante;
+        // este exige que la constante esté CABLEADA. Se agregó al estrenar `camion_nqr`
+        // (11-08), que es cuando se vio que los tres lugares podían separarse en silencio.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+        $ejes = (new \ReflectionClass(SimuladorCargaController::class))
+            ->getReflectionConstant('EJES_POR_SILUETA')->getValue();
+
+        foreach (array_keys(CamionSimulacion::SILUETAS) as $silueta) {
+            // `camion` es la genérica y NO tiene rama propia a propósito: es el `else`
+            // del despacho, el respaldo para un camión sin silueta o sin fotos todavía.
+            // Exigirle una la volvería una silueta más y dejaría al visor sin default.
+            if ($silueta !== 'camion') {
+                $this->assertStringContainsString(
+                    "veh.silueta === '{$silueta}'", $js,
+                    "El visor no tiene rama para la silueta «{$silueta}»: se dibujaría como la genérica.",
+                );
+            }
+            $this->assertArrayHasKey(
+                $silueta, $ejes,
+                "La silueta «{$silueta}» no declara cuántos ejes dibuja.",
+            );
+        }
+    }
+
+    public function test_las_cabinas_propias_llevan_los_detalles_del_costado(): void
     {
         // Pedido del dueño 05-08: «la cabina del camión, ¿no hay chance de dejarla un
         // poco más real o con más detalle?». De frente ya tenían parrilla, faros,
@@ -1253,11 +1371,22 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('function costadoDeCabina', $js);
         $this->assertStringContainsString('function visera', $js);
 
-        foreach (['cabinaHino', 'cabinaLiviana', 'cabinaTracto'] as $cabina) {
+        foreach (['cabinaHino', 'cabinaLiviana', 'cabinaTracto', 'cabinaNqr'] as $cabina) {
             $cuerpo = $this->cuerpoDeFuncion($js, $cabina);
             $this->assertStringContainsString(
                 'costadoDeCabina(', $cuerpo,
                 "La cabina [{$cabina}] no dibuja los detalles del costado.",
+            );
+        }
+
+        // La VISERA no la llevan todas, y es a propósito: el tracto ya tiene el deflector
+        // rompiendo el plano, y el NQR de las fotos tiene el techo liso. Inventársela
+        // sería agregar algo que las fotos no muestran — el mismo criterio que sacó la
+        // puerta lateral del furgón (§4.1septies-bis).
+        foreach (['cabinaTracto', 'cabinaNqr'] as $sinVisera) {
+            $this->assertStringNotContainsString(
+                'visera(', $this->cuerpoDeFuncion($js, $sinVisera),
+                "La cabina [{$sinVisera}] no debería llevar visera: sus fotos no la muestran.",
             );
         }
     }

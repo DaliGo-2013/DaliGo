@@ -21,13 +21,14 @@ class CalculoDeCargaTest extends TestCase
     private CalculoDeCarga $calc;
 
     /**
-     * Hyundai HD35: 4,30 × 2,04 × 2,20 m. El ancho se corrigió de 200 a 204 el
-     * 07-08-2026 (ver el comentario de CamionesSimulacionSeeder): con 200 el
-     * acostado daba 360 botellones contra los 480 que el dueño carga a mano.
-     * Espeja el catálogo a propósito — si este número y el del seeder se
+     * Hyundai HD35: 4,30 × 2,00 × 2,20 m, MEDIDO CON HUINCHA (dueño, 11-08-2026).
+     *
+     * Estuvo en 204 entre el 07 y el 11-08: un ancho DEDUCIDO para que cerraran a la
+     * vez sus dos cupos de terreno. La huincha dio 200 y se volvió — ver §3.5 de las
+     * reglas. Espeja el catálogo a propósito: si este número y el del seeder se
      * separan, los candados dejan de proteger lo que la pantalla muestra.
      */
-    private const HD35 = ['largo' => 430, 'ancho' => 204, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
+    private const HD35 = ['largo' => 430, 'ancho' => 200, 'alto' => 220, 'peso_max_kg' => null, 'pasillo' => 0];
 
     /** HINO 500: 7,97 × 2,60 × 2,66 m. */
     private const HINO = ['largo' => 797, 'ancho' => 260, 'alto' => 266, 'peso_max_kg' => null, 'pasillo' => 0];
@@ -63,33 +64,48 @@ class CalculoDeCargaTest extends TestCase
     }
 
     /**
-     * Los DOS cupos de referencia del HD35 salen de la MISMA caja.
+     * EL HD35 MEDIDO DA 420 DE PIE Y 360 ACOSTADO, y el 480 que el dueño reportó a
+     * mano NO es alcanzable con esta caja. Los dos números conviven acá a propósito.
      *
-     * Es el candado que fija la corrección de ancho del 07-08: el dueño reportó
-     * que a mano carga 480 acostados, y con el ancho viejo (200) el cálculo daba
-     * 360 — porque a lo ancho entraban 3 bolsas acostadas y no 4. Con 204 dan los
-     * dos números suyos a la vez, que es lo que vuelve creíble la corrección: un
-     * ancho elegido para arreglar un número y que rompiera el otro sería un
-     * ajuste a medida, no una medida.
+     * Historia corta, porque explica por qué el test dice lo que dice. El 04-08 el
+     * dueño dictó cuatro cupos de referencia (1.620 / 1.500 / 960 / 420) y las medidas
+     * del catálogo los reproducían exactos. El 07-08 reportó además **480 acostados**
+     * en este camión, y con 200 de ancho el cálculo daba 360. Se buscó por fuerza bruta
+     * la caja entera que cerrara los DOS a la vez: el ancho quedaba acotado a 204-207,
+     * y se tomó 204 dejando escrito que faltaba la huincha.
      *
-     * Mutado en los dos sentidos: con 200 este test se pone rojo en el acostado
-     * (360 ≠ 480) y con 208 se pone rojo en el de pie (480 ≠ 420, porque entraría
-     * una octava columna parada).
+     * El 11-08 llegó la huincha: **200**. Así que el ancho vuelve, el acostado vuelve a
+     * 360, y el 480 queda como un número de terreno **sin explicar** — no como una meta
+     * que el simulador deba alcanzar. Prometer 480 en una caja que mide 200 sería
+     * exactamente el pecado del §2: mandar al vendedor a comprometerse con carga que se
+     * queda en el andén.
+     *
+     * La hipótesis más probable, para cuando se vuelva a contar: que esos 480 se hayan
+     * cargado con una estiba MIXTA (parte de pie, parte acostada) y no todos acostados,
+     * o que la cuenta incluyera una hilera fuera del furgón. El motor no puede
+     * adivinarlo y no debe.
+     *
+     * Mutado: con el 204 viejo, el acostado da 480 y este test se pone rojo.
      */
-    public function test_el_hd35_da_420_de_pie_y_480_acostado_con_la_misma_caja(): void
+    public function test_el_hd35_medido_da_420_de_pie_y_360_acostado(): void
     {
         $dePie = $this->calc->cupo(self::HD35, self::BOLSA20);
         $this->assertSame(420, $dePie['unidades'], 'El cupo de pie que el dueño verificó el 04-08.');
         $this->assertSame(['largo' => 3, 'ancho' => 7, 'alto' => 4], $dePie['rejilla']);
 
-        // Acostada de costado (130 × 51 × 26) y apilando hasta el techo: es como
-        // se carga a mano, «se ocupa todo el espacio» (dueño, 07-08). El tope 8
-        // sale de la altura (8 × 26 = 208 de 220), no de una preferencia.
-        $acostada = ['largo' => 130, 'ancho' => 51, 'alto' => 26, 'unidades' => 5, 'apilable_max' => 8];
+        // Acostada de costado (130 × 51 × 26) y apilando hasta el techo: es como se
+        // carga a mano. El tope 8 sale de la ALTURA (8 × 26 = 208 de 220), no de una
+        // preferencia — la bolsa aguanta 10 desde el 11-08.
+        $acostada = ['largo' => 130, 'ancho' => 51, 'alto' => 26, 'unidades' => 5, 'apilable_max' => 10];
         $r = $this->calc->cupo(self::HD35, $acostada + ['orientacion_fija' => true]);
 
-        $this->assertSame(480, $r['unidades'], 'Los 480 botellones que el dueño carga a mano.');
-        $this->assertSame(['largo' => 3, 'ancho' => 4, 'alto' => 8], $r['rejilla']);
+        $this->assertSame(360, $r['unidades'], 'Con 200 de ancho entran 3 columnas acostadas, no 4.');
+        $this->assertSame(['largo' => 3, 'ancho' => 3, 'alto' => 8], $r['rejilla']);
+
+        // Y se deja fijado POR QUÉ no llega a 480: son los 47 cm que sobran a lo ancho
+        // (3 × 51 = 153 de 200). Es espacio muerto, no una cuarta columna.
+        $this->assertSame(51, $r['orientacion']['ancho']);
+        $this->assertSame(3, intdiv(200, 51), 'Cuatro columnas necesitarían 204 cm.');
     }
 
     /** Segundo caso real, para que el primero no pase por casualidad. */

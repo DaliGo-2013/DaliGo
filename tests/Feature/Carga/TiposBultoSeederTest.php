@@ -52,22 +52,25 @@ class TiposBultoSeederTest extends TestCase
 
     public function test_el_tope_nuevo_llena_el_hino_y_no_toca_los_cupos_del_hd35(): void
     {
-        $hd35 = new CamionSimulacion(['largo_cm' => 430, 'ancho_cm' => 204, 'alto_cm' => 220, 'pasillo_cm' => 0]);
+        $hd35 = new CamionSimulacion(['largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220, 'pasillo_cm' => 0]);
         $hino = new CamionSimulacion(['largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266, 'pasillo_cm' => 0]);
         $bolsa = $this->bolsa();
 
-        // EN EL HD35 NO CAMBIA NADA, y eso es lo que protege las referencias de terreno
-        // del 04 y el 07-08: sus 220 cm solo dan para 4 capas de pie (4 × 51 = 204) y 8
-        // acostadas (8 × 26 = 208), así que ahí manda la ALTURA y no el tope.
+        // EN EL HD35 NO CAMBIA NADA, y eso es lo que protege su referencia de terreno:
+        // sus 220 cm solo dan para 4 capas de pie (4 × 51 = 204) y 8 acostadas
+        // (8 × 26 = 208), así que ahí manda la ALTURA y no el tope.
         $this->assertSame(
             420,
             $this->calc->cupo($hd35->paraCalculo(), $bolsa->paraCalculo())['unidades'],
             'Los 420 de pie que el dueño verificó.',
         );
+        // Acostado da 360 con el ancho MEDIDO de 200 (11-08). No son los 480 que él
+        // reportó el 07-08 — ese número quedó sin explicar y el simulador no lo persigue:
+        // ver CalculoDeCargaTest::test_el_hd35_medido_da_420_de_pie_y_360_acostado.
         $this->assertSame(
-            480,
+            360,
             $this->calc->cupo($hd35->paraCalculo(), $bolsa->paraCalculo('costado'))['unidades'],
-            'Los 480 acostados que carga a mano — ahora SIN tener que pisar el tope.',
+            '3 columnas acostadas de 51 en 200 cm; la cuarta pediría 204.',
         );
 
         // EN EL HINO SÍ: es más alto, así que el tope era el que cortaba. Es el hueco que

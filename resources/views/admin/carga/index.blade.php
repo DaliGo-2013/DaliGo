@@ -346,6 +346,51 @@
                                     </div>
                                 @endif
 
+                                {{-- ═══ SE PASA DE PESO ═══
+                                     Pedido del dueño (11-08): «que cuando se pase el límite de
+                                     carga aparezca un cartel de advertencia, aunque el camión no
+                                     esté lleno completamente».
+
+                                     El «aunque no esté lleno» es EL punto: con carga pesada el
+                                     camión se llena de kilos mucho antes que de metros, y la
+                                     pantalla mostraba 30% de ocupación y un renglón de peso que
+                                     no gritaba nada. Un vendedor mira el dibujo medio vacío y
+                                     promete el resto.
+
+                                     Va SEPARADO del veredicto y antes de los números, porque no
+                                     es lo mismo «no te entra» que «no lo podés llevar»: lo
+                                     primero se negocia partiendo el viaje, lo segundo es una
+                                     multa. --}}
+                                @php $p = $mixta['peso']; @endphp
+                                @if ($p['se_pasa'] || $p['recorto'])
+                                    <div class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
+                                        <p class="text-lg font-semibold text-red-700">⚠ Se pasa de la carga máxima</p>
+                                        <p class="mt-1 text-sm text-red-700">
+                                            Lo que pediste pesa
+                                            <span class="font-semibold tabular-nums">{{ number_format($p['pedido_kg'], 0, ',', '.') }} kg</span>
+                                            y {{ $escena['vehiculo']['nombre'] }} aguanta
+                                            <span class="font-semibold tabular-nums">{{ number_format($p['tope_kg'], 0, ',', '.') }} kg</span>:
+                                            <span class="font-semibold tabular-nums">{{ number_format($p['pedido_kg'] - $p['tope_kg'], 0, ',', '.') }} kg de más</span>.
+                                        </p>
+                                        <p class="mt-2 text-sm text-red-700">
+                                            El límite lo pone el PESO, no el espacio — por eso queda camión libre
+                                            ({{ round($mixta['resultado']['ocupacion'] * 100) }}% ocupado). Cargar hasta
+                                            arriba igual es ir sobrecargado.
+                                        </p>
+                                    </div>
+                                @elseif ($p['tope_kg'] && $p['cargado_kg'] >= $p['tope_kg'] * 0.9)
+                                    {{-- Todavía entra, pero al filo. Vale avisar: una caja más y
+                                         el viaje pasa a ser ilegal, y eso no se ve en el dibujo. --}}
+                                    <div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <p class="text-sm font-semibold text-red-700">Al filo de la carga máxima</p>
+                                        <p class="mt-1 text-sm text-neutral-600">
+                                            Va con <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($p['cargado_kg'], 0, ',', '.') }} kg</span>
+                                            de los {{ number_format($p['tope_kg'], 0, ',', '.') }} que aguanta
+                                            ({{ round($p['cargado_kg'] / $p['tope_kg'] * 100) }}%). Queda poco margen.
+                                        </p>
+                                    </div>
+                                @endif
+
                                 <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
                                     <div class="text-sm">
                                         <div class="flex justify-between py-1">
@@ -366,6 +411,18 @@
                                                     {{ number_format($mixta['resultado']['peso_kg'], 0, ',', '.') }} kg{{ $camion->peso_max_kg ? ' de '.number_format($camion->peso_max_kg, 0, ',', '.') : '' }}
                                                 </span>
                                             </div>
+                                            {{-- El peso también con BARRA, como la ocupación. Antes era el
+                                                 único número sin una: dos cifras juntas no dicen si vas al
+                                                 30% o al 95%, y con carga pesada ese es el dato que manda.
+                                                 En rojo cuando pasa el 90%, que es donde deja de haber
+                                                 margen para un error de tara. --}}
+                                            @if ($p['tope_kg'])
+                                                @php $usoPeso = min(100, round($p['cargado_kg'] / $p['tope_kg'] * 100)); @endphp
+                                                <div class="h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                                                    <div class="h-1.5 rounded-full {{ $usoPeso >= 90 ? 'bg-red-500' : 'bg-brand-600' }}"
+                                                         style="width: {{ $usoPeso }}%"></div>
+                                                </div>
+                                            @endif
                                         @endif
                                     </div>
 
@@ -498,7 +555,36 @@
                                         'peso' => 'la carga máxima en kilos',
                                         'ninguno' => '—',
                                     ][$resultado['limite']] ?? '—';
+                                    // EL PESO CORTÓ ANTES QUE EL ESPACIO. `cupo()` calcula primero la rejilla
+                                    // y DESPUÉS recorta por kilos, así que la rejilla que devuelve sigue siendo
+                                    // la del ESPACIO: multiplicarla da cuántos habrían entrado si el camión
+                                    // aguantara. Es el número que convierte «entran 63» en «entran 63 de los
+                                    // 192 que caben, porque te quedaste sin kilos».
+                                    $porEspacioCupo = $resultado['rejilla']['largo'] * $resultado['rejilla']['ancho'] * $resultado['rejilla']['alto'];
+                                    $cortoPorPeso = $resultado['limite'] === 'peso' && $porEspacioCupo > $resultado['bultos'];
                                 @endphp
+
+                                {{-- ═══ SE LLENA DE KILOS ANTES QUE DE ESPACIO ═══
+                                     El hermano del cartel de la carga mixta (pedido del dueño 11-08), acá
+                                     con la comparación que este modo permite. Sin esto, «entran 63» se lee
+                                     como que el camión es chico, y la decisión que sale de ahí —mandar uno
+                                     más grande— es la equivocada: el problema son los kilos, y el camión
+                                     grande también los tiene. --}}
+                                @if ($cortoPorPeso)
+                                    <div x-show="modo === 'maximo'" class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
+                                        <p class="text-lg font-semibold text-red-700">⚠ Se llena de kilos antes que de espacio</p>
+                                        <p class="mt-1 text-sm text-red-700">
+                                            Por espacio entrarían
+                                            <span class="font-semibold tabular-nums">{{ number_format($porEspacioCupo, 0, ',', '.') }}</span>,
+                                            pero la carga máxima de
+                                            <span class="font-semibold tabular-nums">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
+                                            deja solo
+                                            <span class="font-semibold tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</span>.
+                                            El camión va a quedar <strong>por la mitad y aun así al tope</strong>: lo que
+                                            sobra es lugar, no capacidad.
+                                        </p>
+                                    </div>
+                                @endif
 
                                 <div x-show="modo === 'maximo'" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
                                     {{-- LA PRUEBA: el veredicto de la cantidad pedida, ANTES del máximo.

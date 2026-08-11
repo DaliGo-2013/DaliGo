@@ -32,6 +32,7 @@ class CamionSimulacion extends Model implements AuditableContract
         'camion_hino' => 'HINO 500 (cabina propia)',
         'camion' => 'Camión de reparto genérico (cabina + caja)',
         'camion_liviano' => 'Hyundai HD35 (cabina propia)',
+        'camion_nqr' => 'Chevrolet NQR / Isuzu N-Series (cabina propia)',
     ];
 
     protected $fillable = [

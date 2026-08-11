@@ -11,9 +11,10 @@
 **Decisión del dueño, 05-08-2026** («yo no quiero que esté enlazado con los
 vehículos de la flota»). El simulador tiene su **catálogo propio**:
 `camiones_simulacion` (`App\Models\CamionSimulacion`), sembrado por
-`CamionesSimulacionSeeder` en cada deploy con las medidas que él dictó —
-Contenedor 40', HINO 500 y HD35, verificadas contra sus cupos de
-referencia. Son cajas de carga **TIPO** («un HD35»), no patentes.
+`CamionesSimulacionSeeder` en cada deploy. Son cajas de carga **TIPO** («un HD35»), no
+patentes. Desde el **11-08-2026** las medidas son **de huincha** —el dueño midió el interior
+de las cuatro cajas— y el catálogo tiene **cinco**: Contenedor 40', HINO 500, Chevy 3, H3 y
+HD35. Ver §3.5bis, que es donde vive la tabla.
 
 La lección que motivó el cambio, para no repetirla: la primera versión leía las
 medidas desde los vehículos de la flota, y cargarlas era un `.sql` manual por
@@ -196,7 +197,7 @@ cilindro, no dos cuerpos disfrazados de uno. Si el lienzo mostrara los botellone
 mientras el cálculo dice «pico a la puerta», dejaría de ser la prueba de lo que el motor
 hizo — que es todo lo que aporta. Candado: `test_el_visor_dibuja_la_estiba_que_se_calculo`.
 
-## 3.2 El Chevy 3 se vendió (05-08-2026)
+## 3.2 El Chevy 3 se vendió (05-08-2026) — y volvió el 11-08 (ver §3.5bis)
 
 Aviso del dueño: *«el chevy 3 no está más, lo vendieron»*. Quedan **tres** camiones.
 
@@ -499,7 +500,141 @@ y no se podía recompilar sin arrastrar trabajo ajeno sin commitear. Y de paso: 
 escanea texto plano**, así que nombrar la clase dentro de un comentario de Blade —que nunca
 llega al HTML— alcanza para volver a meterla en el bundle.
 
-## 3.5 El ancho del HD35: 204 y no 200 (07-08-2026)
+## 3.5bis LLEGÓ LA HUINCHA: las cuatro cajas medidas, y el 204 vuelve a 200 (11-08-2026)
+
+El dueño midió el **interior** de las cuatro cajas de carga y pidió sembrar dos camiones que
+faltaban. Esto reemplaza en la práctica a §3.5, que queda abajo como historia de cómo se
+llegó al 204 y por qué se lo dejó marcado como pendiente.
+
+| Camión | Medidas útiles (m) | De pie | Estado |
+|---|---|---|---|
+| Contenedor 40' | 12,03 × 2,35 × 2,39 | 1.620 | sin cambios |
+| HINO 500 (FC 1118) | 7,97 × 2,60 × 2,66 | 1.500 | **confirmado** por huincha |
+| Chevy 3 (NQR 919 · H3) | 7,90 × 2,20 × 2,30 | 960 | **vuelve al catálogo** |
+| Hyundai HD35 | 4,30 × **2,00** × 2,20 | 420 | ancho **corregido de vuelta** |
+
+**Los CUATRO cupos de referencia del 04-08 salen exactos** — 1.620 / 1.500 / 960 / 420 — con
+las medidas de cinta. Es la validación más fuerte que tiene el módulo: dos fuentes
+independientes (lo que él contó cargando y lo que dio la huincha) llegando al mismo número por
+cuatro caminos distintos. Y el **960 del Chevy 3 estaba huérfano** desde la venta: era un cupo
+de la lista original sin camión al que corresponder. Que al volver dé exactamente 960 confirma
+que la lista estaba bien tomada.
+
+### El 480 acostado queda SIN EXPLICAR, y no se persigue
+
+La huincha dio **200**, así que el ancho vuelve y el cupo acostado del HD35 baja de 480 a
+**360**. Era la salida escrita de antemano en §3.5: *«si la medición da menos de 204, los 480
+no son alcanzables y hay que volver a 200 — y entonces el número de terreno es el que hay que
+revisar»*.
+
+Con 200 entran **3** columnas acostadas (3 × 51 = 153, sobran 47 cm) y no 4. **Prometer 480 en
+una caja que mide 200 sería exactamente el pecado del §2.** El 480 pasa a ser un dato de
+terreno pendiente de revisar, no una meta que el motor deba alcanzar. Hipótesis para cuando se
+vuelva a contar: que esa carga fuera **mixta** (parte de pie, parte acostada) y no toda
+acostada. El motor no puede adivinarlo y no debe.
+
+Es un buen recordatorio de por qué el 204 se documentó como provisorio: **una deducción que
+reproduce los datos no es una medición.** Reproducía los dos números y aun así estaba mal.
+
+### «Chevy 3» y «H3» son EL MISMO CAMIÓN
+
+Entró como dos filas y se unificó el mismo día, antes de llegar a producción. Lo destaparon
+las fotos: el camión que el dueño mandó como «H3» lleva pintado **NQR 919** —el identificador
+del `Chevy 3 (NQR 919)` que se había dado por vendido el 05-08— y él lo confirmó con el jefe:
+*«es el mismo camión, solo que le dicen de las dos formas»*. **Nunca se vendió.**
+
+**El nombre lleva los dos**: `Chevy 3 (NQR 919 · H3)`. El selector es la única parte buscable
+de la pantalla, y quien lo conoce como «H3» no reconocería una fila que dice solo «Chevy 3».
+El paréntesis respeta la convención del catálogo (`HINO 500 (FC 1118)`) y el visor lo descarta
+para la chapa trasera, que queda en «CHEVY 3».
+
+**Y la constante `VENDIDOS` pasó a llamarse `FUERA_DEL_CATALOGO`**, porque quedarse con el
+nombre viejo era afirmar en el código que este camión se vendió — lo que resultó falso. Sigue
+borrando la fila `Chevy 3 (NQR 919)`, pero ahora por otro motivo: si sobrevive, el **mismo
+furgón aparece dos veces** en el selector, con dos nombres y dos juegos de medidas, y el
+vendedor no sabe cuál es el bueno. Candado:
+`test_la_fila_con_el_nombre_viejo_se_borra_y_no_deja_el_camion_duplicado`.
+
+**LAS DOS MEDIDAS NO PUEDEN SER LAS DOS.** Vinieron como «chevy 3: 8,00 × 2,30 × 2,45» y «h3:
+7,90 × 2,20 × 2,30», las dos presentadas como interiores. Se toma **el juego menor**, por dos
+razones:
+
+1. La diferencia es uniforme —10 cm en largo y ancho, 15 en alto—, que es exactamente lo que
+   se espera entre **exterior e interior**. El juego chico es el que parece medido por dentro.
+2. Y aunque no lo fuera, manda el credo (§2). Los dos reproducen igual el cupo de referencia de
+   **960 de pie**, así que no se pierde nada verificado; para el resto del catálogo el chico es
+   el que menos promete — con el grande serían **570 cajas de tapas contra 525**, y **1.080
+   bolsas acostadas contra 960**.
+
+**Pendiente:** que el dueño confirme cuál se midió por dentro. Si es el grande, se sube — el
+error queda del lado seguro mientras tanto.
+
+Con sus fotos estrenó `camion_nqr` (§4.1decies), así que el catálogo vuelve a cumplir §4.1sexies
+**entero**: cuatro camiones, cuatro cabinas propias, ninguna compartida. La genérica `camion`
+queda de respaldo para uno que llegue sin fotos — como estuvo este unas horas.
+
+### 3.5ter Los tonelajes oficiales, y el único que NO se tomó (11-08-2026)
+
+| Camión | Carga máxima | |
+|---|---|---|
+| Contenedor 40' | **28.800 kg** | de la placa — el dueño pasó 30.000, ver abajo |
+| HINO 500 | 11.000 kg | coincide con el catálogo |
+| Chevy 3 (NQR 919 · H3) | **6.430 kg** | dato nuevo: estuvo unas horas en «sin dato» |
+| Hyundai HD35 | 1.500 kg | coincide con el catálogo |
+
+Tres de los cuatro confirmaron lo que ya había. El Chevy cerró el único hueco donde **el error
+iba hacia arriba**: sin tonelaje el motor no recorta por peso y decía que entraba carga que el
+camión no puede llevar.
+
+**El contenedor se deja en 28.800 y no en los 30.000 que él pasó**, hasta que lo confirme:
+
+1. La **placa** (42G1, NET 28.800 kg) es una fuente física y específica de ESE contenedor; el
+   30.000 es un número redondo que puede ser de otro o de memoria.
+2. Un 40' típico tiene bruto máximo ~30.480 kg y tara ~3.700, así que **30.000 se parece al
+   BRUTO** (contenedor + carga), no a la carga sola, que es lo que este campo significa.
+   Tomarlo prometería ~1.200 kg de más — y en peso pasarse no es un viaje a medias: es una
+   multa.
+
+## 3.6 EL CARTEL DE SOBREPESO (11-08-2026)
+
+Pedido del dueño: *«que cuando se pase el límite de carga aparezca un cartel de advertencia que
+indique límite de carga o sobrepasa la carga, aunque el camión no esté lleno completamente»*.
+
+**Por qué no existía, que es lo interesante:** el motor ya recortaba por kilos desde el primer
+día, así que el resultado **nunca** se pasa. Mirando la pantalla, el peso cargado siempre entra
+— y el aviso parecía innecesario. Lo que faltaba no era el control, era **decirlo**.
+
+Con carga pesada el camión se llena de kilos mucho antes que de metros, y ahí la pantalla
+mostraba: 27% de ocupación, un dibujo con el furgón casi vacío, un renglón de peso discreto y
+un «quedan N afuera». **Todo eso se lee como que sobra camión.** Y sobra, pero no sirve.
+
+Dos carteles, uno por modo:
+
+- **Carga mixta** — «Se pasa de la carga máxima»: *lo que pediste pesa 8.160 kg y el camión
+  aguanta 6.430: 1.730 kg de más*, más la frase que el dueño pidió explícitamente («por eso
+  queda camión libre, 27% ocupado»).
+- **¿Cuánto entra?** — «Se llena de kilos antes que de espacio»: *por espacio entrarían 192,
+  el peso deja 63*. Sin eso, «entran 63» se lee como que el camión es chico y la decisión que
+  sale de ahí —mandar uno más grande— es la equivocada: el problema son los kilos.
+
+**El dato que hubo que agregar es el PESO DE LO PEDIDO** (`mixta.peso.pedido_kg`). Lo cargado
+siempre entra, así que es el único número que dice de cuánto te pasaste. Se calcula sobre las
+cantidades pedidas y no sobre las colocadas.
+
+En el modo de un producto no hizo falta ningún dato nuevo: `cupo()` calcula la rejilla y
+**después** recorta por kilos, así que la rejilla que devuelve sigue siendo la del espacio y
+multiplicarla da los «192 que habrían entrado».
+
+Y hay un tercer estado, más suave: **«Al filo de la carga máxima»** cuando va sobre el 90% sin
+pasarse. Una caja más y el viaje es ilegal, y eso tampoco se ve en el dibujo. La barra del peso
+—que hasta ahora era el único número sin barra— se pone roja en ese punto.
+
+Candados: `test_avisa_cuando_se_pasa_de_peso_aunque_sobre_espacio` (con la ocupación por debajo
+del 25%, o el caso no probaría lo que dice probar), `test_sin_pasarse_de_peso_no_hay_cartel`
+—un aviso que está siempre deja de leerse— y
+`test_el_cupo_maximo_dice_cuantos_entrarian_si_el_peso_no_cortara`.
+
+## 3.5 El ancho del HD35: 204 y no 200 (07-08-2026) — SUPERADO por §3.5bis
 
 Reporte del dueño mirando el hueco de arriba de la carga: *«ahí se pueda cargar
 bidones… en el HD35 ingresan acostados y en total 480 en el camión completo»*.
@@ -926,6 +1061,43 @@ Detalles de implementación que importan:
   nunca.
 - Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
   «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
+
+### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
+
+Cuarta cabina propia. Las fotos son de un **Chevrolet NQR (Isuzu N-Series)** con furgón, y lo
+que hay que capturar es que es un **cab-over puro**: no tiene morro ni cuña, la cara es un
+plano vertical. Lo que lo distingue de las otras tres, en orden de cuánto se nota:
+
+1. **Parabrisas de una pieza, enorme** — se come el 44% de la cara y baja hasta cerca del
+   paragolpes. En el HINO y el HD35 el vidrio es una franja con panel y parrilla debajo; acá
+   el panel es finito.
+2. **La cara es LISA**: ni marco plateado ni parrilla de listones. Solo el moño dorado al
+   centro y una ranura negra angosta.
+3. **Dos espejos por lado**: la paleta rectangular sobre brazo tubular Y un **convexo redondo
+   adelantado**, a la altura del capó. Ese redondo asomando por delante de la cara es la firma
+   del camión de frente.
+4. **Techo liso, SIN visera** — el HINO y el HD35 sí la llevan. No se le pone porque las fotos
+   no la muestran, mismo criterio que sacó la puerta lateral del furgón (§4.1septies-bis).
+5. Faros grandes y claros integrados abajo, en las esquinas del paragolpes.
+
+Verificado por **diferencia de render**: mismo encuadre de costado, el H3 contra el Chevy 3
+(que sigue con la genérica) → **17,6% de los píxeles del tercio delantero difieren**. Si la
+cabina no se hubiera cableado, caería en la genérica y la diferencia sería ~0.
+
+**Candado nuevo, y es el que faltaba:** una silueta se declara en TRES lugares que tienen que
+coincidir —la constante del modelo, el mapa de ejes del controlador y la rama del visor— y si
+falta la del visor **no pasa nada visible**: el camión cae en la cabina genérica y se dibuja
+como cualquier otro. `test_toda_silueta_declarada_tiene_su_rama_en_el_visor_y_sus_ejes` exige
+las tres. (La genérica `camion` se exceptúa a propósito: es el `else` del despacho.)
+
+**Estas fotos resolvieron el enredo de nombres.** Llegaron rotuladas como «H3» y el camión
+lleva pintado **«NQR 919»** (patente SXDB-69), que era el identificador del `Chevy 3 (NQR 919)`
+dado por vendido el 05-08. En vez de deducir, se preguntó — y el dueño lo confirmó con el jefe:
+es **un solo camión con dos nombres**, y nunca se vendió. Ver §3.5bis.
+
+Vale como método: la contradicción se **anotó y se preguntó** en lugar de resolverse a ojo. Es
+el reverso del error que costó el ancho del HD35, donde una deducción que reproducía los datos
+se tomó por medida.
 
 ### 4.1nonies-quinquies El plan se COMPARTE por link, sin login (10-08-2026)
 

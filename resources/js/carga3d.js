@@ -178,17 +178,21 @@ export default function iniciarCarga3d(canvas, datos) {
         const semi = veh.silueta === 'semirremolque';
         const liviano = veh.silueta === 'camion_liviano';
         const hino = veh.silueta === 'camion_hino';
+        const nqr = veh.silueta === 'camion_nqr';
         const chas = semi ? 0.24 : (liviano ? 0.14 : 0.20);
         const r = semi ? 0.46 : (liviano ? 0.32 : 0.46);
         const rw = semi ? 0.24 : (liviano ? 0.17 : 0.22);
         const sep = semi ? 0.35 : 0;   // hueco entre el tracto y el frente del acoplado
-        const largoCab = Math.min(semi ? 2.6 : (liviano ? 1.45 : (hino ? 1.95 : 2.15)), veh.largo * (semi ? 0.25 : 0.42));
+        // El NQR es un cab-over corto: la cabina mide menos que la del HINO y, en las
+        // fotos, el furgón le saca bastante en alto (el techo de la cabina queda a ~7/10).
+        const largoCab = Math.min(semi ? 2.6 : (liviano ? 1.45 : (hino ? 1.95 : (nqr ? 1.85 : 2.15))), veh.largo * (semi ? 0.25 : 0.42));
         const altoCab = semi
             ? Math.min(veh.alto * 1.05, 2.35)
             : (liviano ? Math.min(veh.alto * 0.60, 1.35)
-                : (hino ? Math.min(veh.alto * 0.68, 1.95) : Math.min(veh.alto * 0.78, 2.05)));
+                : (hino ? Math.min(veh.alto * 0.68, 1.95)
+                    : (nqr ? Math.min(veh.alto * 0.70, 1.90) : Math.min(veh.alto * 0.78, 2.05))));
         return {
-            semi, liviano, hino, chas, r, rw, sep, largoCab, altoCab,
+            semi, liviano, hino, nqr, chas, r, rw, sep, largoCab, altoCab,
             // Dónde va el EJE DELANTERO, medido desde el frente de la caja hacia atrás.
             //
             // En el tracto estaba al 60% de la cabina y quedaba casi pegado al tándem
@@ -911,9 +915,79 @@ export default function iniciarCarga3d(canvas, datos) {
         }
     }
 
-    /** Cabina del camión de reparto GENÉRICO. Desde que se vendió el Chevy 3 (05-08) no
-     *  la usa ningún camión del catálogo: queda de respaldo para uno que llegue sin
-     *  silueta declarada, para que el lienzo nunca se quede sin dibujo. */
+    /**
+     * Cabina del Chevrolet NQR (Isuzu N-Series), moldeada sobre las fotos del dueño
+     * (11-08-2026). Es un CAB-OVER puro y eso es lo que hay que capturar: no tiene morro
+     * ni cuña, la cara es un plano vertical.
+     *
+     * Lo que la distingue de las otras tres, en orden de cuánto se nota en las fotos:
+     *
+     * 1. **Parabrisas de una pieza, enorme**: se come casi la mitad de la cara y baja
+     *    hasta muy cerca del paragolpes. En el HINO y el HD35 el vidrio es una franja
+     *    con panel y parrilla debajo; acá el panel es finito.
+     * 2. **La cara es LISA**: nada de marco plateado ni parrilla de listones. Solo el
+     *    moño dorado al centro y una ranura negra angosta debajo.
+     * 3. **Dos espejos por lado**: la paleta rectangular grande sobre brazo tubular Y un
+     *    CONVEXO REDONDO adelantado, a la altura del capó. Ese redondo asomando por
+     *    delante de la cara es la firma del camión.
+     * 4. **Techo liso, sin visera** — a diferencia del HINO y del HD35, que sí la tienen.
+     * 5. Faros grandes y claros integrados abajo, en las esquinas del paragolpes.
+     */
+    function cabinaNqr() {
+        const largo = M.largoCab, alto = M.altoCab;
+        const anchoCab = Math.max(1.86, veh.ancho - 0.14);
+        const z0 = (veh.ancho - anchoCab) / 2;
+        const x0 = -largo, y0 = -M.chas, h = alto - y0;
+
+        // Cuerpo: frente PLANO. El recorte de 2% es casi nada, apenas para que la arista
+        // de arriba no quede viva — un cab-over no tiene cuña.
+        cuerpo(cuna(x0, y0, z0, largo, anchoCab, h, largo * 0.02, 0), CABINA, G);
+        prisma(x0 + 0.01, alto, z0 + 0.02, largo * 0.96, anchoCab - 0.04, 0.05, CABINA, G);
+
+        // Parabrisas de una pieza: 44% de la cara y arranca al 50%. Es el rasgo #1.
+        cuerpo(cuna(x0 - 0.02, y0 + h * 0.50, z0 + 0.07, largo * 0.06, anchoCab - 0.14,
+            h * 0.44, largo * 0.02, 0), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.35)' });
+
+        // Los dos limpiaparabrisas, apoyados abajo del vidrio.
+        for (const z of [z0 + anchoCab * 0.16, z0 + anchoCab * 0.52]) {
+            prisma(x0 - 0.045, y0 + h * 0.505, z, 0.02, anchoCab * 0.30, 0.028, [30, 32, 36]);
+        }
+
+        // Moño dorado al centro del panel liso. Sin parrilla de listones: solo la ranura.
+        prisma(x0 - 0.032, y0 + h * 0.36, z0 + anchoCab * 0.43, 0.03, anchoCab * 0.14, h * 0.05, [204, 166, 58], G);
+        prisma(x0 - 0.035, y0 + h * 0.26, z0 + 0.18, 0.04, anchoCab - 0.36, h * 0.04, [36, 38, 42]);
+
+        // Paragolpes claro alto, con dos tomas negras y el faldón oscuro abajo.
+        prisma(x0 - 0.09, y0 + h * 0.04, z0 + 0.01, 0.11, anchoCab - 0.02, h * 0.17, CABINA, G);
+        for (const z of [z0 + anchoCab * 0.28, z0 + anchoCab * 0.54]) {
+            prisma(x0 - 0.10, y0 + h * 0.07, z, 0.03, anchoCab * 0.16, h * 0.06, [44, 46, 51]);
+        }
+        prisma(x0 - 0.10, y0 - 0.03, z0 + 0.01, 0.12, anchoCab - 0.02, h * 0.07, [46, 48, 53]);
+
+        // Faros grandes y claros en las esquinas BAJAS (no a media altura como el HD35).
+        for (const z of [z0 + 0.02, z0 + anchoCab - 0.30]) {
+            prisma(x0 - 0.085, y0 + h * 0.09, z, 0.05, 0.28, h * 0.13, [242, 243, 236], { borde: 'rgba(0,0,0,.3)' });
+        }
+
+        // ESPEJOS, rasgo #3: paleta grande sobre brazo + el convexo REDONDO adelantado.
+        for (const z of [z0 - 0.24, z0 + anchoCab + 0.04]) {
+            prisma(x0 + largo * 0.05, alto - h * 0.18, z > z0 ? z - 0.20 : z + 0.04, largo * 0.08, 0.22, 0.045, [38, 40, 46]);
+            prisma(x0 + largo * 0.08, alto - h * 0.46, z, 0.05, 0.20, 0.42, [44, 46, 52], G);
+            prisma(x0 - 0.07, alto - h * 0.64, z, 0.05, 0.13, 0.13, [40, 42, 48], G);
+        }
+
+        for (const z of [z0 - 0.03, z0 + anchoCab - 0.20]) {
+            prisma(x0 + largo * 0.42, y0 - 0.05, z, largo * 0.44, 0.23, 0.06, [88, 91, 98], G);
+        }
+
+        // Costado. La puerta arranca temprano porque el cab-over pone al chofer adelante
+        // del eje. SIN visera (rasgo #4): el techo de este camión es liso.
+        costadoDeCabina(x0, y0, z0, largo, anchoCab, h, { puerta: 0.28, vidrioDe: 0.38, arriba: 0.88 });
+    }
+
+    /** Cabina del camión de reparto GENÉRICO. Queda de respaldo para un camión sin
+     *  silueta declarada —o sin fotos todavía—, para que el lienzo nunca se quede sin
+     *  dibujo. Hoy la usa el Chevy 3, a la espera de las suyas. */
     function cabina() {
         const x0 = -M.delante, w = veh.ancho - 0.06, z0 = 0.03;
         const alto = M.altoCab, cuerpoBajo = alto * 0.52, largo = M.largoCab;
@@ -1039,7 +1113,7 @@ export default function iniciarCarga3d(canvas, datos) {
         // caja van largueros angostos.
         tira(-M.delante, -M.chas, 0.02, M.delante, veh.ancho - 0.04, M.chas - 0.05, GRIS, G);
         largueros(0, veh.largo);
-        if (M.liviano) cabinaLiviana(); else if (M.hino) cabinaHino(); else cabina();
+        if (M.liviano) cabinaLiviana(); else if (M.hino) cabinaHino(); else if (M.nqr) cabinaNqr(); else cabina();
         cajaDeCarga();
 
         // Rueda delantera SIMPLE y trasera DOBLE en los dos: el HD35 también lleva

@@ -69,6 +69,7 @@ class SimuladorCargaController extends Controller
         'camion_hino' => 2,
         'camion' => 2,
         'camion_liviano' => 2,
+        'camion_nqr' => 2,
     ];
 
     public function __construct(private CalculoDeCarga $calculo) {}
@@ -471,9 +472,34 @@ class SimuladorCargaController extends Controller
             ];
         }
 
+        // EL PESO, PARA PODER AVISAR (pedido del dueño 11-08: «que cuando se pase el
+        // límite de carga aparezca un cartel de advertencia, aunque el camión no esté
+        // lleno completamente»).
+        //
+        // El motor YA recorta por kilos —nunca devuelve una carga que se pase—, y por eso
+        // hasta ahora el aviso no existía: mirando el resultado, el peso cargado siempre
+        // entra. Lo que faltaba es el número con el que se avisa: **cuánto pesa lo
+        // PEDIDO**, que es lo único que dice de cuánto te pasaste. Se calcula sobre las
+        // cantidades pedidas, no sobre las colocadas.
+        $topePeso = $camion->peso_max_kg;
+        $pedidoKg = 0.0;
+        foreach ($lineas as $l) {
+            $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0)) * $l['cantidad'];
+        }
+
         return [
             'resultado' => $resultado,
             'lineas' => $filas,
+            'peso' => [
+                'tope_kg' => $topePeso,
+                'cargado_kg' => $resultado['peso_kg'],
+                'pedido_kg' => round($pedidoKg, 1),
+                // Se pasa: lo pedido no entra por kilos. Es el caso del cartel.
+                'se_pasa' => $topePeso !== null && $pedidoKg > $topePeso,
+                // Y el motivo con el que el motor recortó, que es lo que distingue
+                // «te falta espacio» de «te pasás de kilos».
+                'recorto' => array_filter($filas, fn (array $f) => $f['motivo'] === 'peso') !== [],
+            ],
             // El veredicto sale de las FILAS y no de `cabe_todo` del motor, porque un
             // pallet vacío es un «no cabe» que el motor no puede ver: para él la línea
             // pidió cero pallets y los colocó todos.
