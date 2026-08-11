@@ -1,64 +1,59 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-10 (v20 — P-M11-20 EN PRODUCCIÓN; GO P-M11-21: alertas SIC + panel vivo del jefe). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-10 (v21 — P-M11-21 EN PRODUCCIÓN; GO P-M11-22: semáforo de preformas + notas del jefe, cierra F2). Manda sobre lo anterior.
 
 MODELO: el que fije el dueño en tu asiento · high.
 
-## ✅ P-M11-20 está EN PRODUCCIÓN (merge `1c040c3`, doble llave 10-ago) — F1 COMPLETA
+## ✅ P-M11-21 está EN PRODUCCIÓN (merge `3fbc7cd`, doble llave 10-ago)
 
-Verificación del Director: **suite 1771 verdes / 12.661 aserciones, cero rojos** —
-corrida DOS veces porque el primer push perdió la carrera contra el visor de Marcos
-(I-08 aplicada: re-merge + suite entera; el drift era solo carga3d.js). Spot-checks 6/6;
-tu desviación de los 7 motivos quedó **ACEPTADA** con tu propio razonamiento en el
-mensaje del merge: «Preformas defectuosas» habría duplicado la pérdida de calidad como
-downtime en el Pareto — exactamente el tipo de lectura que hace confiable una lista
-cerrada. Y tu gate E2E cazando el atributo Alpine cortado por comillas y la parada sin
-máquina que se perdía EN SILENCIO: eso es cazar ANTES del parte, el estándar de la casa.
-Rama borrada tras ancestría.
+Verificación del Director: **suite 1795/12.803, cuadre EXACTO con tu cifra**. Deploy y
+Tests verdes. Tus 3 desviaciones ACEPTADAS con tu propio razonamiento en el mensaje del
+merge (el corte por REPORTE es la lectura correcta: proyectar contra una meta que no
+existe sería inventar el denominador). El slot UTC anti-DST y los tests con fechas fijas
+de invierno aplicando la lección del 31-07 EN LA PRIMERA PASADA: eso es doctrina
+absorbida, no repetida. Tu hallazgo del bundle sucio (11 clases xl:* huérfanas) quedó en
+el mensaje del merge para el canal directo del dueño con Marcos. Rama borrada.
 
-## 🟢 GO — P-M11-21 · Alertas SIC + panel vivo del jefe (F2, stream B)
+Minutos después entró también el OEE de Max-1 (`2264e8c`, suite 1806/12.867): el
+conflicto de ConfiguracionSeeder lo resolví manteniendo AMBAS claves de turno con nota
+de coherencia — quedaron dos hipótesis del mismo hecho (tus horarios, sus minutos), hoy
+coherentes en 12 h. Unificarlas es pulido de F3 (probablemente tuyo o mío, se verá).
 
-PLAN-M11-FINAL §4-F2. La captura ya existe (tus paradas + los reportes); ahora la
-información PERSIGUE al jefe en vez de esperarlo:
+## 🟢 GO — P-M11-22 · El soplador RECIBE: semáforo de preformas + notas del jefe (cierra F2)
 
-- **Corte SIC cada 2 horas** (comando programado en el scheduler, horario de turno):
-  por máquina con asignación activa hoy, proyección lineal del día (producido hasta
-  ahora / horas transcurridas × horas del turno) vs meta asignada. Bajo umbral
-  (constante de la casa, p.ej. 85 % proyectado) → **notificación M15 al jefe de
-  producción** (evento nuevo `produccion.meta_en_riesgo`, molde de tus eventos de M04):
-  máquina, producido/meta, proyección, y paradas ABIERTAS si las hay.
-- **Escalamiento simple**: segundo corte consecutivo bajo umbral → el aviso se marca
-  urgente (asunto/badge), no spamea — máximo 1 aviso por máquina por corte.
-- **Panel «Hoy en vivo»** para el jefe (ruta bajo producción, permiso existente del
-  jefe): por máquina — avance/meta con barra, proyección, paradas abiertas con
-  duración corriendo, último reporte parcial recibido, semáforo simple
-  (verde/amarillo/rojo por proyección). Auto-refresh liviano (poll con el patrón de la
-  campanita/cola de bodega — SIN websockets nuevos).
-- **WhatsApp queda [B:D-007]** — canal email + campanita por ahora; el evento queda
-  listo para cuando el canal exista.
-- Zona horaria: TODO en hora de negocio (`FechaNegocio`) — el corte de las 14:00 es de
-  Chile, no UTC (lección E-TZ).
+PLAN-M11-FINAL §4-F2, el lote chico que faltaba del stream B:
+
+- **Semáforo de preformas en mi-reporte**: con la asignación del turno (preforma_id ya
+  existe en la asignación) y el stock del espejo M04 (`stocks` por bodega de SU
+  sucursal): verde = alcanza para la meta · amarillo = alcanza parcial · rojo = sin
+  stock visible. Solo LECTURA del espejo — cero escrituras, cero costos visibles
+  (principio §1.3). Si el producto no tiene stock espejado o la asignación no tiene
+  preforma: el semáforo NO se muestra (silencio correcto, nada de rojo falso).
+- **Notas del jefe**: entidad mínima (`produccion_notas`: texto ≤191, vigente_desde/
+  hasta nullable, autor, opcional soplador_id NULL = para todos) + CRUD chico en el
+  panel del jefe (permiso existente) + las vigentes se pintan en mi-reporte del
+  asignado (banner sobrio paleta-4). Molde conceptual: «important notes» de MRPeasy
+  (benchmark). Sin M15: la nota vive en la pantalla, no persigue a nadie.
+- **Offline**: el semáforo y las notas se renderizan server-side con la página — si el
+  soplador abre sin señal, ve lo del último load (comportamiento natural de la PWA);
+  NO agregues cache extra ni toques offline-queue.js.
 
 ### Candados mínimos
-1. Corte 2× seguidos bajo umbral → 2º aviso urgente; 3º corte igual NO duplica si nada
-   cambió (guard por máquina+corte).
-2. Máquina sin asignación hoy → ni corte ni aviso (silencio correcto).
-3. Proyección con 0 horas transcurridas no divide por cero (primer corte del turno).
-4. MUTADO: quitar el guard anti-spam → segundo aviso idéntico → rojo.
-5. El panel respeta permisos (soplador no lo ve); paradas abiertas muestran duración
-   corriendo server-side (sin JS que calcule mal la medianoche).
-6. Los cortes usan FechaNegocio (test con hora frontera, molde de E-TZ).
+1. Semáforo: verde/amarillo/rojo exactos con stock 500/80/0 contra meta 100 (fixture).
+2. Sin espejo o sin preforma asignada → sin semáforo (mutado si es barato).
+3. Nota vencida o de otro soplador NO se pinta; la global sí.
+4. 403 del CRUD de notas sin permiso del jefe.
+5. El soplador sigue sin ver costos (test de contenido en mi-reporte con semáforo).
+6. varchar ≤191 en la nota.
 
 ## Territorio
-- **Max-1** arranca P-M11-11 (OEE + Pareto, informes históricos) EN PARALELO — consume
-  los mismos datos en superficie distinta. `ProduccionParada` es TUYO: si él necesita
-  un scope, lo pide por parte. Tú no tocas informes históricos ni recetas.
-- **Marcos** a toda máquina en el simulador (la carrera del 10-ago la perdió el
-  Director — re-fetch religioso).
+- **Max-1** recibe GO de F3 (moldes) en paralelo — él en fichas/contadores/backend, tú
+  en mi-reporte y panel del jefe. Cero cruce esperado; si necesitas algo de `Receta` o
+  `Molde`, pídelo por parte.
+- **Marcos** sigue en el simulador. Re-fetch religioso.
 
 ## Recordatorios
 Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (baseline
-del Director: **1771/12.661** en `1c040c3`). Suite completa antes del push. Blade →
-build + superset. `git checkout origin/main --`. varchar ≤191. Parte al buzón → doble
-llave.
+del Director: **1806/12.867** en `2264e8c`). Suite completa antes del push. Blade →
+build + superset. `git checkout origin/main --`. Parte al buzón → doble llave.
 
 CIERRE: parte a docs/fleet/buzon/partes/ + push.

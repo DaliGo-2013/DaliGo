@@ -31,6 +31,10 @@ class ProduccionRegistro extends Model
         'Material quemado',
         'Espesor irregular',
         'Rayas o marcas',
+        // Unidades perdidas al partir/re-partir la máquina (P-M11-11): el
+        // MISMO string que ProduccionParada::MOTIVOS para que el informe de
+        // merma pueda separar el scrap de arranque del resto.
+        'Scrap de arranque',
     ];
 
     protected $fillable = [

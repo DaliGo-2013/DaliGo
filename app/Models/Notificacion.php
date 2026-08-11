@@ -110,6 +110,10 @@ class Notificacion extends Model
         // M04-F2: llegó stock a una bodega en proceso de baja — la bodega NO
         // revive; el solicitante decide qué hacer. Una sola vez por orden.
         'bodega.stock_en_baja' => 'Llegó stock a una bodega en baja',
+        // M11 · Corte SIC (P-M11-21): la proyección del turno va bajo la meta.
+        // Lo dispara el comando `produccion:corte-sic` cada 2 h, no un usuario.
+        // El 2º corte consecutivo bajo umbral llega con asunto «⚠ URGENTE».
+        'produccion.meta_en_riesgo' => 'Meta de producción en riesgo',
     ];
 
     protected $fillable = [
@@ -197,6 +201,8 @@ class Notificacion extends Model
             'bodega.nueva' => $user->can('manage sucursales'),
             // La ficha de la orden de traslado: mismo gate que su ruta (F2).
             'bodega.baja_completada', 'bodega.stock_en_baja' => $user->can('manage sucursales'),
+            // El reporte en riesgo: mismo gate que admin.produccion.reporte.show.
+            'produccion.meta_en_riesgo' => $user->can('manage production'),
             default => false,
         };
 
@@ -292,6 +298,11 @@ class Notificacion extends Model
             'bodega.baja_completada', 'bodega.stock_en_baja' => $this->notificable_id
                 ? route('admin.bodegas.traslados.show', $this->notificable_id)
                 : route('admin.bodegas.index'),
+            // La meta en riesgo aterriza en el REPORTE (el morph): ahí el jefe
+            // ve las tandas, las paradas abiertas y coordina con el soplador.
+            'produccion.meta_en_riesgo' => $this->notificable_id
+                ? route('admin.produccion.reporte.show', $this->notificable_id)
+                : route('admin.produccion.index'),
             default => null,
         };
     }

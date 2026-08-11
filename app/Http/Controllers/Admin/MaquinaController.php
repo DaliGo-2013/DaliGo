@@ -89,8 +89,12 @@ class MaquinaController extends Controller
                     ->ignore($maquina),
             ],
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')],
+            // Meta de OEE en % (B4 del benchmark). NULL = sin meta declarada.
+            'oee_target' => ['nullable', 'integer', 'min:1', 'max:100'],
         ], [
             'nombre.unique' => 'Ya existe una máquina con ese nombre en esa sucursal.',
+        ], [
+            'oee_target' => 'meta de OEE',
         ]);
 
         $validated['activa'] = $request->boolean('activa');
