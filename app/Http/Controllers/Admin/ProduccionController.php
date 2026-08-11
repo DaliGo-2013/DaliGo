@@ -88,7 +88,12 @@ class ProduccionController extends Controller
         $porMaquina = $this->porMaquinaEntre($hoy, $hoy);
         $porMaquinaMultiSucursal = $porMaquina->whereNotNull('sucursal')->pluck('sucursal')->unique()->count() > 1;
 
+        // --- OEE por maquina del periodo (P-M11-11): comparativa contra la
+        // meta de cada maquina; el detalle vive en el informe por maquina. ---
+        $oeePorMaquina = app(\App\Services\Produccion\Oee::class)->porMaquina($desde, $hasta);
+
         return view('admin.produccion.index', [
+            'oeePorMaquina' => $oeePorMaquina,
             'reportes' => $reportes,
             'pendientesOtrosDias' => $pendientesOtrosDias,
             'alertas' => $alertas,
@@ -294,6 +299,8 @@ class ProduccionController extends Controller
 
         $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'maquina_id', $maquina->id));
 
+        $oee = app(\App\Services\Produccion\Oee::class);
+
         return view('admin.produccion.maquina', [
             'maquina' => $maquina->load('sucursal'),
             'desde' => $desde,
@@ -302,7 +309,29 @@ class ProduccionController extends Controller
             'tendencia' => $tendencia,
             'porTipo' => $this->desgloseRegistros($desde, $hasta, 'tipo_botellon_id', 'tipos_botellon', 'maquina_id', $maquina->id),
             'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'maquina_id', $maquina->id),
+            // OEE + Pareto del período (P-M11-11). Mismo desde/hasta que el
+            // resto de la página: un solo estado de filtro para todo.
+            'oee' => $oee->paraMaquina($maquina, $desde, $hasta),
+            'pareto' => $oee->pareto($desde, $hasta, $maquina->id),
+            'presets' => $this->presetsDeRango(),
         ]);
+    }
+
+    /**
+     * Presets semana/mes para el filtro del informe (P-M11-11): rellenan el
+     * MISMO desde/hasta que filtra toda la página. Anclas que no desbordan
+     * (bitácora 31-07: jamás subMonth() relativo a hoy — un día 31 desborda).
+     */
+    private function presetsDeRango(): array
+    {
+        $hoy = \App\Support\FechaNegocio::ahora();
+        $finMesAnterior = $hoy->copy()->startOfMonth()->subDay();
+
+        return [
+            'Esta semana' => ['desde' => $hoy->copy()->startOfWeek()->toDateString(), 'hasta' => $hoy->toDateString()],
+            'Este mes' => ['desde' => $hoy->copy()->startOfMonth()->toDateString(), 'hasta' => $hoy->toDateString()],
+            'Mes anterior' => ['desde' => $finMesAnterior->copy()->startOfMonth()->toDateString(), 'hasta' => $finMesAnterior->toDateString()],
+        ];
     }
 
     /**

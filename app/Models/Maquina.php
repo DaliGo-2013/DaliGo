@@ -19,12 +19,16 @@ class Maquina extends Model implements AuditableContract
         'nombre',
         'sucursal_id',
         'activa',
+        'oee_target',
     ];
 
     protected function casts(): array
     {
         return [
             'activa' => 'boolean',
+            // Meta de OEE en % (B4 del benchmark): cada máquina declara la
+            // suya. NULL = sin meta; el informe pinta contra ella si existe.
+            'oee_target' => 'integer',
         ];
     }
 

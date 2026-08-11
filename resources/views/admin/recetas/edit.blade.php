@@ -31,6 +31,17 @@
                             La preforma concreta del movimiento es la que el jefe asigna al turno; acá solo se define cuántas consume una unidad. La merma también consume.
                         </x-input-hint>
                     </div>
+
+                    <div>
+                        <x-input-label for="ciclo_ideal_seg" value="Ciclo ideal (segundos por unidad)" />
+                        <x-text-input id="ciclo_ideal_seg" name="ciclo_ideal_seg" type="number"
+                                      step="1" min="1" max="600" class="mt-1.5 w-full"
+                                      :value="old('ciclo_ideal_seg', $preforma->ciclo_ideal_seg ?? null)" />
+                        <x-input-error class="mt-2" :messages="$errors->get('ciclo_ideal_seg')" />
+                        <x-input-hint class="mt-2">
+                            Segundos que tarda un ciclo de soplado de este botellón en condiciones normales. Lo usa el rendimiento del OEE; vacío = el informe dirá «sin ciclo cargado».
+                        </x-input-hint>
+                    </div>
                 </x-seccion>
 
                 <x-seccion titulo="Tapa">
