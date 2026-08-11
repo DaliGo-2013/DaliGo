@@ -16,6 +16,14 @@
     <x-input-error :messages="$errors->get('sucursal_id')" class="mt-2" />
 </div>
 
+<div>
+    <x-input-label for="oee_target" value="Meta de OEE (%)" />
+    <x-text-input id="oee_target" class="mt-1.5" type="number" name="oee_target" min="1" max="100" step="1"
+                  :value="old('oee_target', $maquina?->oee_target)" placeholder="Ej. 85" />
+    <x-input-error :messages="$errors->get('oee_target')" class="mt-2" />
+    <x-input-hint class="mt-2">El informe de rendimiento pinta el OEE del período contra esta meta. Vacío = sin meta declarada.</x-input-hint>
+</div>
+
 <div class="space-y-2">
     <x-checkbox-item name="activa" value="1" :checked="old('activa', $maquina?->activa ?? true)">
         Activa
