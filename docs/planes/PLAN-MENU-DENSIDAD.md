@@ -68,6 +68,179 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
       lote — la densidad ganada se ve en un número.
 
-## 5. Anexo — auditoría y mapa (lo llena la F0)
+## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 
-*(pendiente: lo entrega Max-1 como parte de su lote F0)*
+> Levantamiento verificado contra `MenuPrincipal::MODULOS`/`CUENTA`, `routes/web.php`,
+> `RolesAndPermissionsSeeder` y las vistas reales (workflow de 7 lectores + síntesis).
+> **Conteo exacto HOY: 47 rótulos** = 11 entradas de primer nivel (6 acordeones + 5
+> links directos) + 35 subítems + 1 en el área de cuenta. Los veredictos son PROPUESTA;
+> la decisión es del dueño, apartado por apartado. Todo permiso citado existe en el
+> seeder (verificado). «Frec.» = frecuencia estimada de uso: D diaria · S semanal · R rara.
+
+### 5.1 Inventario y veredicto por ítem
+
+**Convención del veredicto:** `integrable → X` lleva SIEMPRE la propuesta concreta
+(pestaña/sección/botón y bajo qué permiso). Las pantallas NUNCA se pierden: solo su
+entrada en el menú. Los permisos de las rutas no se tocan en ninguna propuesta.
+
+#### Comercial (3 ítems)
+
+| Ítem | Qué es (rutas) | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Catálogo | Hub del catálogo espejo Bsale: medidas, categoría interna, import/export (12 rutas, `admin.productos.*`) | `manage productos` → solo admin | S | **vive-solo** — hub de datos maestros; ANFITRIÓN del piloto F1 |
+| Precios | Listas de precios espejo, solo-lectura salvo `canal` (3 rutas) | `manage productos` → solo admin | R | **integrable → Catálogo (F1, DECIDIDO por el dueño)** — mismo permiso exacto; el edit de producto YA muestra sus precios por lista y la lista YA enlaza a cada producto (links bidireccionales hoy). Pestaña «Listas de precios» en Catálogo |
+| Clientes | Ficha local sincronizada con Bsale | `manage clientes` → admin, vendedor, jefe_ventas, jefe_sucursal | D | **vive-solo** — dominio y permiso propios, uso diario de ventas |
+
+#### Operación (8 ítems)
+
+| Ítem | Qué es (rutas) | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Inventario | Stock por bodega (espejo) + clasificación/baja de bodegas | lectura `manage productos` (solo admin); gestión `manage sucursales` | S | **vive-solo** — única puerta al stock espejo; bipermiso ya resuelto por rutas |
+| Producción | El panel del jefe: cola de aprobación, alertas, hoy en vivo, OEE, drill-downs (20+ rutas) · badge «:n reporte(s) por aprobar» | `manage production` → admin, jefe_bodega | D | **vive-solo** — hub diario con badge accionable; ANFITRIÓN de Kardex |
+| Kardex | Ledger solo-lectura de movimientos (1 ruta GET) | `manage production` | S | **integrable → Producción** — la cabecera del panel YA lo enlaza y la ficha de reporte también («Ver kardex completo»); su ruta entra a la enumeración `activo` del ítem Producción. Deja de ser ítem; la pantalla no cambia |
+| Recetas | Componentes por botellón + ciclo ideal (3 rutas) | `manage production` | R | **integrable → «Configuración de producción»** (ver propuesta C abajo) |
+| Máquinas | CRUD de sopladoras (6 rutas) | `manage production` | R | **integrable → «Configuración de producción»** |
+| Moldes | Ficha con contador de ciclos + mantenciones (7 rutas) | `manage production` | S | **integrable → «Configuración de producción»** — la ficha y sus avisos M15 quedan intactos; solo la entrada se consolida |
+| Tipos de botellón | CRUD de formatos (6 rutas) | `manage production` | R | **integrable → «Configuración de producción»** |
+| Devoluciones | Flujo M13: recibir → evaluar → resolver · badge «:n devolución(es) por recibir» | `view\|manage devoluciones` → admin, jefe_ventas, jefe_bodega | D/S | **vive-solo** — dominio, permiso y badge propios; audiencia doble (ventas+bodega) |
+
+> **Propuesta C — «Configuración de producción» (4 → 1, la mayor densidad del mapa):**
+> una superficie con pestañas **Máquinas · Tipos de botellón · Recetas · Moldes**. Los
+> 4 comparten `manage production` (nadie gana ni pierde acceso), son catálogos de
+> frecuencia rara del MISMO flujo y ya están encadenados por datos y links (tipo →
+> receta → molde; la ficha del molde enlaza a su receta; máquinas/tipos enlazan al
+> drill-down del panel). Nota de autocrítica asumida: Recetas y Moldes los agregué yo
+> en M11 sin este filtro — este veredicto los reabsorbe sin apego.
+
+#### Logística (6 ítems)
+
+| Ítem | Qué es (rutas) | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Despachos | Salida de mercadería: crear desde documento, cola, QR, retiro, entrega | `manage despachos` → admin, jefe_bodega | D | **vive-solo** — inicio del flujo diario |
+| Hojas de ruta | La hoja del camión con la cadena R11 de 3 llaves (pagos → ruta → carga) | OR de 4 permisos → admin, jefe_logistica, jefe_despacho, jefe_ventas, jefe_bodega | D | **vive-solo** — flujo diario con 3 audiencias autorizadoras distintas |
+| Vehículos | Tablero de flota M18: semáforo de vencimientos, fichas, respaldos | `ver\|manage vehiculos` → admin, jefe_logistica, conductor (ver) | S | **vive-solo** — ANFITRIÓN de Conductores |
+| Simulador de carga | Calculadora «¿cuánto entra?» con visor 3D y Excel (GET-only) | `simular carga` → admin, vendedor, jefe_ventas, jefe_bodega, jefe_logistica | D | **vive-solo** — herramienta diaria de ventas; ANFITRIÓN de Cargas reales |
+| Cargas reales | Anotar lo que entró de verdad; calibra el factor del simulador (3 rutas) | `simular carga` (los mismos 5 roles) | S/R | **integrable → Simulador** — mismo permiso y grupo de middleware; el simulador la CONSUME (factor «medido en terreno») y la enlaza dos veces («anotá una en Cargas reales»). Pestaña «Cargas reales». Contra-argumento honesto (comentario del código): se usa DESPUÉS de cargar y el simulador ANTES — una pestaña conserva ambos momentos sin costar un ítem, pero el dueño decide si ese matiz pesa |
+| Conductores | CRUD mínimo de nombres (5 rutas, sin destroy) | `manage servicio tecnico\|manage vehiculos` → admin, jefe_ventas, tecnico, jefe_logistica | R | **integrable → Vehículos** — «quien administra la flota administra quién la maneja» (la razón del propio traslado del 04-08); pestaña «Conductores» que conserva SU permiso OR (el técnico no la pierde: la pestaña se gatea por el canAny del catálogo, no por el permiso de vehículos). Hecho: sus consumidores de código están todos FUERA de Logística (ingreso por lote, traslados ST, devoluciones) |
+
+#### Facturación (2 ítems)
+
+| Ítem | Qué es (rutas) | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Documentos | DTEs emitidos + orígenes de documento + órdenes listas para facturar | `emitir documentos tributarios` → solo admin | R hoy, D al emitir | **vive-solo** — será el hub del mostrador; ANFITRIÓN de Estado |
+| Estado | Checklist de preparación de la conexión (1 ruta GET, 100 % lectura) | `emitir documentos tributarios` (idéntico) | R y decreciente | **integrable → Documentos** — mismo permiso/controller/grupo; el index ya la enlaza dos veces; su valor cae a casi cero tras la primera emisión. Pestaña «Estado de la conexión». El módulo queda de 1 ítem (se conserva el acordeón por el `activo_extra` del documento de ST, o Documentos pasa a link directo — decisión menor del lote ejecutor) |
+
+#### Administración (6 ítems)
+
+| Ítem | Qué es (rutas) | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Usuarios | Cuentas con roles y sucursal (6 rutas, permisos granulares view/create/edit/delete) | `view users` → admin + 3 jefaturas (solo-lectura) | R | **vive-solo** — entrada de la gestión de accesos; ANFITRIÓN de Roles |
+| Roles | Matriz de permisos por rol (6 rutas) | `manage roles` → solo admin | R | **integrable → Usuarios** — mismo dominio (en Usuarios se ASIGNAN los roles que acá se definen; `config/permissions.php` ya los agrupa como «Usuarios y accesos»). Pestaña «Roles» gateada por `manage roles` |
+| Sucursales | Catálogo casi estático (4 sucursales) | `manage sucursales` → solo admin | MUY R | **vive-solo** — transversal (usuarios/bodegas/facturación la consumen); sin casa mejor; su permiso además gatea la estructura de bodegas en Inventario, mover el ítem no densifica nada más |
+| Auditoría | Historial de cambios owen-it con filtros (1 ruta GET) | `view audit` → solo admin | R | **vive-solo COMO ANFITRIÓN** de la propuesta R (abajo) |
+| Notificaciones | Panel de envíos/reintentos/fallas + prueba (2 rutas) | `view notificaciones` → solo admin | R | **integrable → «Registro del sistema»** (propuesta R) |
+| Historial de aprobaciones | Solo-lectura del motor M14 con filtros (1 ruta GET) | `view aprobaciones` → solo admin | R | **integrable → «Registro del sistema»** — NO junto a la bandeja: el QA 15-07 ya mostró que mezclar bandeja/historial confunde, y las audiencias son disjuntas (jefes actúan / admin audita) |
+
+> **Propuesta R — «Registro del sistema» (3 → 1):** Auditoría como anfitriona con
+> pestañas **Cambios · Notificaciones · Aprobaciones** (cada una conserva su permiso).
+> Los tres son visores solo-lectura forenses, solo-admin, de 1-2 rutas — y la campanita
+> YA los agrupa como hub «Funciones»: la consolidación formaliza un agrupamiento que la
+> práctica ya inventó.
+
+#### Servicio Técnico (10 ítems — el módulo más cargado)
+
+| Ítem | Qué es (rutas) | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Listado | El tablero del taller: órdenes, filtros, por-confirmar, todo el ciclo · badge «:n ingreso(s) por confirmar» | `view\|manage servicio tecnico` → 6 roles | D | **vive-solo** — hub diario; ANFITRIÓN de QR, Informe, Costos (y Traslados si el dueño aprieta) |
+| Ingreso por lote | Form del conductor en ruta: N máquinas de una empresa → N órdenes | `crear lote servicio` → admin, conductor, tecnico | S | **vive-solo** — HECHO decisivo: el conductor porta `crear lote servicio` pero NO `view servicio tecnico`; esconderlo tras el Listado le quitaría su única entrada (el candado del árbol podado fija que el conductor ve ST con EXACTAMENTE `['lote']`). Doctrina 1-clic del operario |
+| Traslados al taller | Flujo sucursal → casa matriz con dos puntas de permiso (cadena de custodia) | `despachar\|recibir traslado servicio` → jefe_sucursal / jefe_ventas, jefe_bodega, tecnico | S | **integrable → Listado** (pestaña «Traslados», conserva su OR) — todos sus roles ya ven el Listado; links bidireccionales orden↔traslado ya existen. **Prioridad baja a propósito**: es un flujo activo, no un catálogo — la de menor urgencia del mapa |
+| Códigos QR | Genera el afiche imprimible por sucursal (1 ruta GET) | `manage servicio tecnico` | R | **integrable → Listado** — botón/sección «Códigos QR» junto al bloque por-confirmar que esos QR alimentan |
+| Informe | Landing dispensadores/industrial con KPIs por período | `ver informe dispensadores\|industrial` → 6-7 roles | S/M | **integrable → Listado** (pestaña «Informes» visible por su OR) — coherente con la casa: los informes de producción ya viven DENTRO del panel, no como ítems |
+| Seguimiento (boceto) | Maqueta estática sin datos (estilo tracking Blue Express) | `view\|manage servicio tecnico` | NULA | **RETIRAR del menú** (caso especial: ni integrable ni vive-solo — es un boceto sin usuarios operativos; si se quiere mostrar, link temporal desde el Listado; vuelve como pantalla real cuando exista el seguimiento público por folio) |
+| Agenda de terreno | Calendario + coordinación de visitas · badge «:n visita(s) por coordinar» | `ver\|agendar servicio terreno` → tecnico_industrial, vendedor, jefe_ventas | D | **vive-solo** — LA pantalla del técnico industrial (la prioridad por rol ya la sube al tope); ANFITRIONA de Servicios de terreno |
+| Servicios de terreno | Tarifario UF de servicios (5 rutas) | `agendar servicio terreno` (idéntico a la mitad de escritura de la agenda) | R | **integrable → Agenda de terreno** — permiso idéntico, la agenda ya lo enlaza desde su cabecera («Catálogo de servicios»); pestaña/sección |
+| Instalaciones | Ledger de instalaciones en terreno (el Excel de Tablante, con historial año→mes) | `gestionar instalaciones` → jefe_ventas, tecnico_industrial | S | **vive-solo** — registro operativo con volumen y navegación propios (2º ítem prioritario del técnico industrial), no un satélite de configuración. Candidata de segunda ola solo si el dueño quiere apretar más |
+| Costos generales de reparación | Tiempos estándar + valor hora (la mano de obra se calcula sola) | `gestionar tiempos reparacion` → jefe_ventas | R | **integrable → Listado** — sección «Configuración» del taller junto a Códigos QR (ambos raros, ambos config; cada uno conserva su permiso) |
+
+#### Links directos + cuenta (6 ítems)
+
+| Ítem | Qué es | Permiso → roles | Frec. | Veredicto |
+|---|---|---|---|---|
+| Dashboard | Aterrizaje post-login, `start_url` de la PWA | null (todos) | D | **vive-solo** |
+| Mi producción | La pantalla del soplador (PWA, cola offline) · badge devueltos | `report production` → soplador | D | **vive-solo** — doctrina 1-clic del operario (dueño 24-07) |
+| Mis entregas | La hoja del día del conductor (firma+foto, offline) | `confirmar entrega` → conductor | D | **vive-solo** — ídem |
+| Aprobaciones | Bandeja del aprobador · badge «:n solicitud(es) por aprobar» | `aprobar solicitudes` → 3 jefaturas | D (por evento) | **vive-solo** — bandeja accionable; su historial se consolida en «Registro del sistema», no acá |
+| Plan del proyecto | Carta Gantt del PROYECTO (fuente: el repo) | `ver plan proyecto` → solo admin | R | **vive-solo con fecha de muerte natural** — transicional por diseño: se retira solo cuando la app se termine, no se consolida |
+| Configuración (cuenta) | Parámetros globales tipados | `manage settings` → solo admin | R | **vive-solo donde está** — ya está fuera del árbol (dropdown del pie) por pedido del dueño 24-07, con candado propio |
+
+### 5.2 Mapa objetivo (si TODAS las propuestas se aprobaran)
+
+```
+Dashboard
+COMERCIAL          Catálogo (+ Listas de precios)          · Clientes
+OPERACIÓN          Inventario · Producción (+ Kardex)
+                   · Configuración de producción (Máquinas · Tipos · Recetas · Moldes)
+                   · Devoluciones
+LOGÍSTICA          Despachos · Hojas de ruta
+                   · Vehículos (+ Conductores) · Simulador de carga (+ Cargas reales)
+FACTURACIÓN        Documentos (+ Estado de la conexión)
+ADMINISTRACIÓN     Usuarios (+ Roles) · Sucursales
+                   · Registro del sistema (Cambios · Notificaciones · Aprobaciones)
+SERVICIO TÉCNICO   Listado (+ QR + Informes + Costos + Traslados) · Ingreso por lote
+                   · Agenda de terreno (+ Servicios de terreno) · Instalaciones
+MI PRODUCCIÓN · MIS ENTREGAS · APROBACIONES · Plan del proyecto      (sin cambios)
+Cuenta: Configuración                                                 (sin cambio)
+```
+
+**El número del proyecto: 47 rótulos → 30** (subítems **35 → 18**; primer nivel y
+cuenta intactos). Operación 8→4 · ST 10→4 · Administración 6→3 · Logística 6→4 ·
+Comercial 3→2 · Facturación 2→1. Ninguna pantalla ni permiso se pierde: 16
+consolidaciones + 1 retiro de boceto.
+
+### 5.3 Priorización (densidad ganada × esfuerzo × riesgo)
+
+| # | Consolidación | Densidad | Esfuerzo | Riesgo | Nota |
+|---|---|---|---|---|---|
+| 1 | **Precios → Catálogo (F1, DECIDIDO)** | −1 | Bajo | Bajo | El piloto; links bidireccionales ya existen; card «Precios» del Inicio se reapunta/borra (candado 2f) |
+| 2 | Seguimiento (boceto): retiro | −1 | Trivial | Nulo | Sin usuarios operativos; densidad gratis |
+| 3 | Estado → Documentos | −1 | Muy bajo | Muy bajo | 1 ruta GET, solo-admin, 2 links que ya existen |
+| 4 | QR → Listado ST | −1 | Bajo | Bajo | 1 ruta GET rara; VolverTest (era ítem, vuelve el Volver) |
+| 5 | Servicios de terreno → Agenda | −1 | Bajo | Bajo | Permiso idéntico; link en cabecera ya existe |
+| 6 | **Configuración de producción (4→1)** | **−3** | Medio | Medio | La mayor densidad; permiso único simplifica; toca el candado duro de ex-huérfanas (abajo) |
+| 7 | Registro del sistema (3→1) | −2 | Medio | Bajo | Todo solo-admin y solo-lectura; 2 cards del Inicio se reapuntan |
+| 8 | Roles → Usuarios | −1 | Bajo-medio | Bajo | Pestaña gateada; card «Roles» se reapunta |
+| 9 | Cargas reales → Simulador | −1 | Bajo | Bajo | Contra-argumento del momento de uso anotado para el dueño |
+| 10 | Kardex → Producción | −1 | Bajo-medio | Bajo | Ex-huérfana (candado duro) + patrón `activo` del ítem Producción |
+| 11 | Conductores → Vehículos | −1 | Medio | Medio | Permisos OR cruzados (el técnico no puede perderlo); ex-huérfana |
+| 12 | Informe → Listado ST | −1 | Medio | Bajo-medio | Pestaña por permiso; audiencia jefatura |
+| 13 | Costos → Listado ST | −1 | Medio | Bajo | Sección config del taller junto a QR |
+| 14 | Traslados → Listado ST | −1 | Medio-alto | Medio | Flujo activo con dos puntas — la última, y opcional |
+
+Ritmo: **un lote = una consolidación = una doble llave** (§2.5). Los números 2-5 son
+tan baratos que podrían acompañar al lote vecino si el dueño lo prefiere — pero la
+doctrina de calma manda.
+
+### 5.4 Candados tocados por consolidación (insumo del lote ejecutor)
+
+Los candados del menú y qué operación los toca (verificado test por test):
+
+| Candado | Qué fija | Lo tocan |
+|---|---|---|
+| `SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item` | Cada ruta de ítem = exactamente UN aria-current (0 = sin dueño; 2+ = comodín pisa hermano) | TODAS las fusiones: el patrón `activo` del anfitrión debe absorber las rutas del absorbido SIN pisar hermanos; prohibido duplicar ruta en dos ítems |
+| `VolverTest::test_las_ex_huerfanas_estan_en_el_menu` | **Candado DURO**: Máquinas, Tipos, Kardex y Conductores DEBEN estar en el menú | #6, #10 y #11 lo ponen rojo A PROPÓSITO — la salida exige editar la lista conscientemente + devolverles `<x-volver>` + sumarlas a `test_pantalla_hija_tiene_exactamente_un_volver` |
+| `VolverTest::test_ningun_item_del_menu_lleva_volver` | Ítem del menú sin Volver | Toda pantalla que SALE del menú necesita su Volver de vuelta (QR, Informe, Estado, Cargas reales, Roles, Notificaciones, Historial, Servicios de terreno, Costos, Traslados, Precios) |
+| `MenuPrincipalTest::test_cards_del_dashboard_son_subconjunto_del_menu` | Cada card del Inicio apunta a un ítem del menú con su mismo route/permiso | #1 (card Precios), #7 (cards Notificaciones y Aprobaciones-historial), #8 (card Roles): reapuntar o borrar la card EN EL MISMO push |
+| `MenuPrincipalTest::test_todo_patron_activo_matchea_rutas_registradas` | Cero patrones muertos | Toda fusión que herede patrones: limpiar la enumeración (Producción declara 10) |
+| `MenuPrincipalTest::test_labels_de_menu_unicos` + `test_badges_cuentan_pendientes…` | Labels únicos; keys y gating de badges | Renombres; los badges viajan con su KEY (el gating vive en el resolver, no en el ítem — puede ser MÁS angosto que el permiso del ítem y eso es diseño) |
+| `SidebarTest::test_badges_de_pendientes_se_ven_en_el_menu` + `DashboardTest` (3 tests) | Los title-contrato literales (`'1 ingreso(s) por confirmar'`…) y la pill de suma por categoría | #12-14 (Listado ST conserva su badge `st_por_confirmar`); jamás un contador de ESTADO al menú (`assertDontSee('equipo(s) por atender')`) |
+| `SidebarTest::test_el_documento_tributario_abre_facturacion_y_no_servicio_tecnico` | El arbitraje `activo_extra` vs comodín es POR ORDEN de declaración de MODULOS | #3 (si Facturación cambia de forma) y cualquier REORDEN de módulos |
+| `HigienePermisosTest::test_ningun_permiso_queda_sin_usar` | Todo permiso sembrado se usa en app/rutas/vistas | Si al sacar un ítem el menú era el último uso textual del permiso → limpiar o declarar en el mismo push |
+| `MenuPrincipalTest` 2g (árbol podado / prioridad por rol) | Fixtures con keys literales de ST (`lote`, `agenda-terreno`, `instalaciones`, `listado`) y del conductor (`['lote']`) | #12-14 y cualquier cambio de keys dentro de ST |
+
+**Regla operativa que el levantamiento confirmó** (para el lote ejecutor): mover una
+ruta a pestaña = (1) sumar la ruta al `activo` del anfitrión, (2) devolver el Volver a
+la pantalla, (3) reapuntar su card del Inicio si tiene, (4) verificar el permiso del
+badge si viaja, (5) limpiar el seeder si el permiso quedaba solo en el menú. Los
+candados existentes cazan 4 de los 5 — el (1) a medias: si la ruta sigue registrada
+pero ningún patrón la cubre, la página queda sin resaltado EN SILENCIO (ningún test
+lo caza hoy; anotado como mini-candado sugerido para el lote F1).
