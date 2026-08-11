@@ -676,9 +676,41 @@
                                         </p>
                                     @endif
 
+                                    {{-- ═══ LO QUE ENTRÓ DE VERDAD ═══
+                                         El lazo de vuelta del historial (§3.7). Esta tarjeta viene diciendo
+                                         desde el día uno que su número es un TECHO y que «se calibra contando
+                                         una carga real»; acá aparece esa carga, cuando existe.
+
+                                         NO corrige el cupo, lo acompaña. Reemplazarlo por el medido sería
+                                         cambiar un número verificable por el promedio de dos anécdotas;
+                                         mostrar los dos deja ver el hueco, que es la información. --}}
+                                    @if (! empty($medido))
+                                        <div class="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm">
+                                            <p class="font-medium text-neutral-900">
+                                                En terreno entraron
+                                                <span class="tabular-nums">{{ number_format($medido['promedio'], 0, ',', '.') }}</span>
+                                                <span class="font-normal text-neutral-500">
+                                                    ({{ round($medido['factor'] * 100) }}% de lo calculado)
+                                                </span>
+                                            </p>
+                                            <p class="mt-0.5 text-xs text-neutral-500">
+                                                {{ $medido['veces'] === 1 ? 'Una sola carga anotada,' : 'Promedio de '.$medido['veces'].' cargas anotadas,' }}
+                                                la última el {{ $medido['ultima'] }} ·
+                                                <a href="{{ route('admin.cargas-reales.index') }}"
+                                                   class="font-medium text-brand-700 hover:text-brand-600">ver el historial</a>
+                                            </p>
+                                        </div>
+                                    @endif
+
+                                    {{-- El enlace del pie va con un ternario y NO con un `@if` en línea: una
+                                         directiva partida entre dos líneas de texto rompe el parser
+                                         («unexpected token endif»), y el punto pegado al `@endif` dejaba
+                                         « real .» con un espacio de más. --}}
                                     <p class="mt-4 text-xs leading-relaxed text-neutral-400">
                                         Capacidad práctica, no promesa: la estiba real no es una rejilla perfecta (amarres, hilera del
-                                        piso girada). Se calibra contando una carga real.
+                                        piso girada). Se calibra contando una carga real{!! empty($medido)
+                                            ? ' — <a href="'.route('admin.cargas-reales.index').'" class="font-medium text-neutral-500 hover:text-neutral-700">anotá una en Cargas reales</a>'
+                                            : '' !!}.
                                     </p>
                                 </div>
                             @endif

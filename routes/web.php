@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\SucursalController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\CargaRealController;
 use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\AprobacionController;
@@ -562,6 +563,14 @@ Route::middleware('auth')
             // El plan de carga como .xlsx. Lleva los MISMOS parametros que la
             // pantalla en la query, asi que baja exactamente lo que se esta mirando.
             Route::get('carga/excel', [SimuladorCargaController::class, 'excel'])->name('carga.excel');
+            // CARGAS REALES: lo que entro de verdad, contra lo que el simulador dijo.
+            // Es lo unico que da un factor de correccion propio, y va con el MISMO
+            // permiso porque calibra esta calculadora y no otra cosa. Estas si
+            // escriben, asi que llevan POST/DELETE ademas del GET.
+            Route::get('cargas-reales', [CargaRealController::class, 'index'])->name('cargas-reales.index');
+            Route::post('cargas-reales', [CargaRealController::class, 'store'])->name('cargas-reales.store');
+            Route::delete('cargas-reales/{cargasReale}', [CargaRealController::class, 'destroy'])
+                ->whereNumber('cargasReale')->name('cargas-reales.destroy');
         });
         Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');

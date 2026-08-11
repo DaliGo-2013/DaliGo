@@ -129,6 +129,12 @@ class MenuPrincipal
                 // Simulador de carga: responde "¿cuanto entra en tal camion?" antes
                 // de que el vendedor prometa. NO escribe nada operativo.
                 'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*'], 'permiso' => 'simular carga'],
+                // Cargas reales: lo que entro de verdad contra lo que el simulador
+                // prometio. Es lo unico que da un factor de correccion propio, y va
+                // como item aparte —no como pestaña del simulador— porque se abre en
+                // otro momento: el simulador se usa ANTES de cargar y esto se anota
+                // DESPUES. Mismo permiso, porque calibra esa misma calculadora.
+                'cargas-reales' => ['label' => 'Cargas reales', 'route' => 'admin.cargas-reales.index', 'activo' => ['admin.cargas-reales.*'], 'permiso' => 'simular carga'],
                 'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
             ],
         ],

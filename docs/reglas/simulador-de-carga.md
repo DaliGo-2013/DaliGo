@@ -710,6 +710,57 @@ para los demás productos** (una caja de 46 cm entra 4 veces en 204 y en 207 igu
 pero otras medidas no). Si la medición da menos de 204, los 480 no son alcanzables
 y hay que volver a 200 — y entonces el número de terreno es el que hay que revisar.
 
+## 3.7 CARGAS REALES: el historial simulado vs. real (lote 4, 11-08-2026)
+
+Pantalla propia bajo LOGÍSTICA (`admin.cargas-reales.index`, mismo permiso `simular carga`).
+Se anota una carga que YA se hizo —fecha, camión, producto, estiba, lo que dijo el simulador
+y lo que entró de verdad— y la pantalla calcula el factor.
+
+**Por qué es la pieza que faltaba.** El motor promete un TECHO y lo dice en todas partes:
+«la estiba real no es una rejilla perfecta». `CalculoDeCarga::conFactor()` está escrito desde
+el primer día para castigar ese techo, y **nunca se usó**, porque el factor se calibra
+contando una carga real y no había dónde anotarla.
+
+**Lo que cuesta no tenerla quedó demostrado esta misma semana.** El 07-08 el dueño reportó
+480 botellones acostados en el HD35 contra 360 calculados. Sin ningún lugar donde poner ese
+número, se convirtió en una **corrección de medidas**: se dedujo un ancho de 204 cm que
+sobrevivió cuatro días hasta que la huincha dio 200 (§3.5bis). Con esta pantalla ese 480
+habría sido **una fila** con su fecha y su estiba —comparable, discutible, y visiblemente
+sola frente a los otros tres cupos que sí cerraban— en vez de una medida inventada.
+
+Decisiones que importan:
+
+1. **El factor NO se guarda.** Es una división de dos columnas que ya están en la tabla, y un
+   número derivado persistido se desactualiza en silencio el día que se corrige un dato.
+2. **Se agrupa por camión + producto + ESTIBA.** La misma bolsa da 420 de pie y 360 acostada
+   en el mismo camión: promediar entre estibas daría un factor que no describe a ninguna. Por
+   eso la estiba es obligatoria en el formulario aunque en el simulador tenga default.
+3. **Un factor MAYOR a 1 se marca en rojo y se explica**: no es un error de tipeo, es la
+   señal más valiosa de la tabla — significa que alguna medida del catálogo está corta. Es
+   exactamente lo que habría gritado el caso del HD35.
+4. **Con menos de 3 cargas el promedio se muestra igual, pero avisa que no alcanza.**
+   Esconderlo sería peor (nadie sabría que hay algo anotado); presentarlo como factor sería
+   llamarle promedio a una anécdota.
+5. **Las observaciones son el campo más útil cuando los números no cuadran**, porque explican
+   el POR QUÉ —«iba media carga de pie y media acostada»— que ningún número dice solo. Es,
+   justamente, la hipótesis que quedó abierta sobre los 480.
+
+### El lazo de vuelta: el simulador muestra lo medido
+
+Sin esto el historial sería un cuaderno. Cuando hay cargas anotadas para la combinación que
+se está mirando, la tarjeta del cupo agrega **«En terreno entraron 480 (133% de lo
+calculado)»** con enlace al historial; cuando no hay ninguna, el pie invita a anotar la
+primera.
+
+**NO corrige el cupo, lo acompaña.** Reemplazar un número verificable por el promedio de dos
+anécdotas sería perder información; mostrar los dos deja ver el hueco, que es el dato.
+Aplicar el factor al número que se le muestra al cliente es un paso aparte y **deliberado**:
+primero hay que juntar cargas suficientes, y eso lo decide el dueño mirando esta tabla.
+
+Candados en `CargasRealesTest` (9), incluidos el agrupamiento por estiba, el aviso de
+«entró más de lo calculado», que lo medido **no se mezcla** entre estibas ni entre camiones,
+y que el cupo teórico sigue intacto al lado del medido.
+
 ## 4. El visor 3D y sus colores
 
 La escena viaja SIEMPRE como **lista de bloques** (posición, orientación,
@@ -878,6 +929,57 @@ paragolpes, parrilla, espejos y ruedas.
 
 El bloque del visor vive en el partial `admin.carga._visor`: estaba copiado idéntico
 en los dos modos de la pantalla y los controles nuevos habrían quedado duplicados.
+
+#### 4.1sexies-bis El rompeviento del techo y los detalles de la puerta (11-08-2026)
+
+Tres fotos más del mismo camión y un pedido: **«creale ese techo arriba de la cabina, me
+imagino que es como un rompeviento, y algunos detalles más en los laterales de las puertas
+o los espejos retrovisores»**. Lo que se agregó, todo dentro de `cabinaHino()`:
+
+1. **El rompeviento** (deflector de techo). Es lo que faltaba para que se pareciera al de
+   la flota: entre el techo de la cabina y el frente del furgón —que le gana ~75 cm—
+   quedaba un escalón vacío, y ese hueco es justo lo que el deflector tapa en el camión
+   real. Tres cosas lo hacen leer como deflector y no como un cajón:
+   - es una **rampa** (baja adelante, alta atrás). Un prisma parejo se lee como el
+     dormitorio de un tracto, que este camión no tiene. Se agregó la primitiva `rampa()`
+     al visor: `cuna()` corre el techo en x pero lo deja horizontal;
+   - **no llega al techo del furgón**: su alto sale de `veh.alto`, no de un número fijo,
+     así que en una caja más baja se achica en vez de asomar por encima;
+   - va **separado del techo**, con el bastidor a la vista en el hueco — en las fotos se
+     ve el aire por debajo, y es lo que delata que es una pieza agregada.
+2. **Espejos de dos tubos + convexo.** El soporte real son dos: uno casi al ras del techo
+   y otro que sale del parante de la puerta. Con un solo brazo la paleta parecía flotar al
+   costado, sobre todo de costado, donde el brazo de arriba se ve de canto. Y cuelga un
+   convexo chico debajo de la paleta: son **dos espejos por lado**, no uno.
+3. **Detalles del costado**: estribo de **dos peldaños** (se sube en dos pasos; con una
+   sola tabla la puerta quedaba a la altura de la nada) y el **repetidor ámbar** adelante
+   de la junta de la puerta, que en la vista de costado es el único punto de color de toda
+   la chapa.
+4. Del frente: los **dos limpiaparabrisas** y los **intermitentes ámbar** en las puntas
+   del paragolpes (en la foto están encendidos).
+
+**NUNCA la patente.** En las fotos está pintada en las dos puertas y en el paragolpes, y
+el repositorio es PÚBLICO (D-012): la placa se dibuja como un rectángulo claro y vacío.
+
+Candados: `SiluetaHinoTest` (rampa, medida contra `veh.alto`, las cuatro piezas del
+espejo, y que el rompeviento **no** se le pegue al HD35, al NQR ni al tracto — sus fotos
+no lo muestran, y el del tracto es otra pieza, fina y plana). Los tres verificados por
+mutación.
+
+#### 4.1sexies-ter El link compartido dibujaba un recuadro VACÍO (11-08-2026)
+
+Encontrado al abrir el link firmado para revisar el rompeviento: la página pública traía
+el visor y todos sus controles, pero **no** el `<script id="carga3d-datos">` con la
+escena, y `montarCarga3d()` (app.js) sale sin hacer nada si no lo encuentra. O sea que el
+link mostraba el recuadro vacío **desde el día que se publicó** (10-08), y lo único que se
+comparte ahí es el dibujo.
+
+Ninguno de los seis candados del link lo vio porque **todos preguntan por texto**, y el
+texto estaba bien: nombre del camión, medidas, tabla de productos, aviso de vencimiento.
+La lección: cuando lo que entrega una pantalla es un DIBUJO, un `assertSee` no la cubre —
+hay que afirmar sobre lo que el dibujo necesita para existir. Candado nuevo:
+`test_la_pantalla_compartida_manda_la_escena_al_lienzo`, que exige el `<script>` **y** que
+traiga el vehículo adentro, en las dos pantallas.
 
 ### 4.1septies Lo que se le tomó a EasyCargo (05-08-2026)
 

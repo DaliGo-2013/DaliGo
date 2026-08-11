@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CamionSimulacion;
+use App\Models\CargaReal;
 use App\Models\TipoBulto;
 use App\Services\Carga\CalculoDeCarga;
 use App\Services\Carga\PalletSimulado;
@@ -264,6 +265,14 @@ class SimuladorCargaController extends Controller
         return view('admin.carga.index', [
             'camiones' => $camiones,
             'bultos' => $bultos,
+            // LO QUE SE MIDIÓ EN TERRENO para esta misma combinación, si existe. Cierra
+            // el lazo del lote 4: la pantalla que promete un techo muestra al lado lo que
+            // realmente entró las veces que se contó.
+            //
+            // No CORRIGE el número: lo acompaña. Aplicar el factor al cupo es una decisión
+            // del dueño y necesita antes suficientes cargas para que el promedio signifique
+            // algo — mientras tanto, mostrar los dos es más honesto que reemplazar uno.
+            'medido' => $this->medidoEnTerreno($camion, $bulto, $estiba),
             // Lo que se puede paletizar: solo cajas. Va aparte de `bultos` para que
             // los otros dos modos sigan ofreciendo el catálogo completo.
             'paletizables' => $paletizables,
@@ -649,6 +658,46 @@ class SimuladorCargaController extends Controller
             'orientacion_fija' => false,
             'peligrosa' => false,
         ]);
+    }
+
+    /**
+     * Las cargas REALES anotadas para esta combinación (camión + producto + estiba).
+     *
+     * Es el lazo de vuelta del historial (lote 4): la pantalla que promete un techo
+     * muestra al lado lo que entró de verdad las veces que se contó. Sin esto el
+     * historial sería un cuaderno — el valor está en que el número aparezca justo donde
+     * se toma la decisión.
+     *
+     * Por COMBINACIÓN y no por camión a secas: la misma bolsa da 420 de pie y 360
+     * acostada, así que promediar entre estibas daría un factor que no describe ninguna.
+     *
+     * Devuelve null cuando no hay nada anotado, que es el caso normal al principio: la
+     * pantalla no muestra una fila vacía prometiendo precisión que no tiene.
+     *
+     * @return ?array{veces:int, factor:float, promedio:int, ultima:?string}
+     */
+    private function medidoEnTerreno(?CamionSimulacion $camion, ?TipoBulto $bulto, string $estiba): ?array
+    {
+        if ($camion === null || $bulto === null || ! $bulto->exists) {
+            return null;   // sin producto, o un bulto a medida que no está en el catálogo
+        }
+
+        $cargas = CargaReal::where('camion_simulacion_id', $camion->id)
+            ->where('tipo_bulto_id', $bulto->id)
+            ->where('estiba', $estiba)
+            ->where('simulado', '>', 0)
+            ->get();
+
+        if ($cargas->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'veces' => $cargas->count(),
+            'factor' => round($cargas->avg(fn (CargaReal $c) => $c->factor()), 4),
+            'promedio' => (int) round($cargas->avg('real')),
+            'ultima' => $cargas->max('fecha')?->format('d/m/Y'),
+        ];
     }
 
     /**
