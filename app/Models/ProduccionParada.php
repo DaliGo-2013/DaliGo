@@ -124,10 +124,23 @@ class ProduccionParada extends Model
             return null;
         }
 
-        [$hi, $mi] = array_map('intval', explode(':', $this->inicio_corta));
-        [$hf, $mf] = array_map('intval', explode(':', $this->fin_corta));
+        return self::minutosEntre($this->inicio_corta, $this->fin_corta);
+    }
 
-        return ((($hf * 60 + $mf) - ($hi * 60 + $mi)) + 1440) % 1440;
+    /**
+     * Cuanto LLEVA una parada abierta hasta una hora de pared dada (el panel
+     * vivo le pasa FechaNegocio::ahora()->format('H:i')). Parametro explicito
+     * a proposito: sin reloj oculto, testeable con horas fijas. Mismo modulo
+     * 1440 que la duracion cerrada (las paradas son siempre del dia del
+     * reporte, asi que la corrida real nunca supera las 24 h).
+     */
+    public function duracionMinutosHasta(?string $horaFin): ?int
+    {
+        if (! $this->inicio_corta || ! is_string($horaFin) || strlen($horaFin) < 5) {
+            return null;
+        }
+
+        return self::minutosEntre($this->inicio_corta, substr($horaFin, 0, 5));
     }
 
     /**
@@ -135,8 +148,12 @@ class ProduccionParada extends Model
      */
     public function getDuracionLabelAttribute(): ?string
     {
-        $minutos = $this->duracion_minutos;
+        return self::labelDe($this->duracion_minutos);
+    }
 
+    /** Formatea minutos a "45 min" / "2 h" / "2 h 15 min" (null pasa de largo). */
+    public static function labelDe(?int $minutos): ?string
+    {
         if ($minutos === null) {
             return null;
         }
@@ -149,5 +166,14 @@ class ProduccionParada extends Model
         }
 
         return $resto === 0 ? "{$horas} h" : "{$horas} h {$resto} min";
+    }
+
+    /** Diferencia entre dos horas de pared H:i, envolviendo la medianoche. */
+    private static function minutosEntre(string $inicio, string $fin): int
+    {
+        [$hi, $mi] = array_map('intval', explode(':', $inicio));
+        [$hf, $mf] = array_map('intval', explode(':', $fin));
+
+        return ((($hf * 60 + $mf) - ($hi * 60 + $mi)) + 1440) % 1440;
     }
 }

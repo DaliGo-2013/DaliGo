@@ -68,6 +68,16 @@ Schedule::command('vehiculos:avisar-vencimientos')
     ->withoutOverlapping(15)
     ->appendOutputTo(storage_path('logs/vehiculos.log'));
 
+// --- M11 · Corte SIC de producción (P-M11-21) ------------------------------
+// Cada 2 horas ('0 */2 * * *': el minuto :00 está EN la grilla */15 de I-01).
+// SIN timezone(): el filtro de "horario de turno" vive DENTRO del service
+// (CorteSic decide por condición con FechaNegocio, no por cadencia) — el
+// patrón de la casa. El anti-duplicado es el unique de `produccion_cortes`.
+Schedule::command('produccion:corte-sic')
+    ->everyTwoHours()
+    ->withoutOverlapping(15)
+    ->appendOutputTo(storage_path('logs/produccion.log'));
+
 // --- M14 · Escalamiento de aprobaciones pendientes ------------------------
 // Cada 15 min (grilla */15 de I-01): pendientes sin respuesta tras N min
 // (`aprobacion_escala_minutos`) pasan al rol_escalamiento de su regla y se
