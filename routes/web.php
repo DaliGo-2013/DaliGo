@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\CargaRealController;
 use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\Admin\VehiculoDocumentoController;
+use App\Http\Controllers\Admin\VehiculoDocumentoTipoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
@@ -566,6 +567,22 @@ Route::middleware('auth')
             // renueva. El servidor comprime; el que sube no tiene que saber.
             Route::post('vehiculos/{vehiculo}/documentos/{documento}', [VehiculoDocumentoController::class, 'store'])
                 ->whereNumber('vehiculo')->name('vehiculos.documentos.store');
+            // QUITAR una foto subida (pedido del dueño 11-08). Borra la ÚLTIMA
+            // versión y deja a la vista la anterior si existía: el caso real es
+            // «subí la foto equivocada», no «este vehículo no tiene SOAP».
+            Route::delete('vehiculos/documento-archivo/{doc}', [VehiculoDocumentoController::class, 'destroy'])
+                ->whereNumber('doc')->name('vehiculos.documentos.destroy');
+            // CREAR tipos de documento (11-08). Los cinco de la ley no se administran
+            // acá: son columnas del vehículo. Esto es para los que pidan después.
+            // Va con 'manage vehiculos' porque cambia el semáforo de TODA la flota.
+            Route::get('vehiculos-tipos-documento', [VehiculoDocumentoTipoController::class, 'index'])
+                ->name('vehiculos.tipos-documento.index');
+            Route::post('vehiculos-tipos-documento', [VehiculoDocumentoTipoController::class, 'store'])
+                ->name('vehiculos.tipos-documento.store');
+            Route::put('vehiculos-tipos-documento/{tipo}', [VehiculoDocumentoTipoController::class, 'update'])
+                ->whereNumber('tipo')->name('vehiculos.tipos-documento.update');
+            Route::delete('vehiculos-tipos-documento/{tipo}', [VehiculoDocumentoTipoController::class, 'destroy'])
+                ->whereNumber('tipo')->name('vehiculos.tipos-documento.destroy');
         });
         // LOGISTICA · simulador de carga. Es una CALCULADORA: no escribe nada
         // operativo, asi que va con su propio permiso (lo usa ventas, que no

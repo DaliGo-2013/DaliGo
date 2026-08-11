@@ -16,6 +16,16 @@
                     </x-secondary-button-link>
 
                     @can('manage vehiculos')
+                        {{-- Los TIPOS de documento (11-08). Va como enlace secundario y no
+                             como botón: se toca una vez cada mucho —cuando aparece un papel
+                             nuevo— y compite por el mismo espacio que «Agregar vehículo»,
+                             que es la acción de todos los días. --}}
+                        <x-secondary-button-link :href="route('admin.vehiculos.tipos-documento.index')"
+                            title="Agregar o quitar tipos de documento de la flota">
+                            <span class="hidden sm:inline">Tipos de documento</span>
+                            <span class="sm:hidden">Documentos</span>
+                        </x-secondary-button-link>
+
                         <x-button-link :href="route('admin.vehiculos.create')">
                             <x-icon.plus class="h-4 w-4" />
                             <span class="hidden sm:inline">Agregar vehículo</span>
@@ -48,8 +58,12 @@
         <form method="GET" action="{{ route('admin.vehiculos.index') }}"
               class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:flex-row sm:items-end sm:p-4">
             <div class="flex-1">
-                <x-input-label for="q" value="Buscar (patente, alias, marca o conductor)" />
-                <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$q" placeholder="ej. PFBS22 o HD35" />
+                {{-- El rótulo dice EXACTAMENTE por dónde busca (pedido del dueño
+                     11-08-2026: sacar el alias). Un rótulo que promete de más manda a
+                     escribir algo que no va a encontrar nada, y el usuario concluye
+                     que el vehículo no está. --}}
+                <x-input-label for="q" value="Buscar (patente, marca o conductor)" />
+                <x-text-input id="q" name="q" class="mt-1.5" type="text" :value="$q" placeholder="ej. PFBS22 o Hyundai" />
             </div>
             <div class="sm:w-40">
                 <x-input-label for="doc" value="Documentos" />

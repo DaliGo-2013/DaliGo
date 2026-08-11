@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Vehiculo;
+use App\Models\VehiculoDocumentoFecha;
 use App\Services\Logistica\FlotaExcel;
+use App\Services\Logistica\RespaldoDeDocumento;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -148,12 +151,18 @@ class VehiculoController extends Controller
         return view('admin.vehiculos.create', ['vehiculo' => new Vehiculo(['estado' => Vehiculo::ESTADO_ACTIVO])]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, RespaldoDeDocumento $respaldos): RedirectResponse
     {
-        $vehiculo = Vehiculo::create($this->datosValidados($request));
+        $datos = $this->datosValidados($request);
+        $fotos = Arr::pull($datos, 'respaldos', []);
+        $creadas = Arr::pull($datos, 'doc_creado', []);
+
+        $vehiculo = Vehiculo::create($datos);
+        $this->guardarFechasCreadas($creadas, $vehiculo);
+        $subidos = $this->guardarRespaldos($fotos, $vehiculo, $respaldos, $request->user()->id);
 
         return redirect()->route('admin.vehiculos.show', $vehiculo)
-            ->with('status', "Vehículo {$vehiculo->ppu} creado.");
+            ->with('status', "Vehículo {$vehiculo->ppu} creado.".self::frase($subidos));
     }
 
     public function edit(Vehiculo $vehiculo): View
@@ -161,12 +170,110 @@ class VehiculoController extends Controller
         return view('admin.vehiculos.edit', ['vehiculo' => $vehiculo]);
     }
 
-    public function update(Request $request, Vehiculo $vehiculo): RedirectResponse
+    public function update(Request $request, Vehiculo $vehiculo, RespaldoDeDocumento $respaldos): RedirectResponse
     {
-        $vehiculo->update($this->datosValidados($request, $vehiculo));
+        // `Arr::pull` y no dejarlo pasar: `respaldos` no es una columna, y el `fill()`
+        // del update se lo comería (o reventaría el día que alguien saque el guarded).
+        $datos = $this->datosValidados($request, $vehiculo);
+        $fotos = Arr::pull($datos, 'respaldos', []);
+        $creadas = Arr::pull($datos, 'doc_creado', []);
+
+        $vehiculo->update($datos);
+        $this->guardarFechasCreadas($creadas, $vehiculo);
+        $subidos = $this->guardarRespaldos($fotos, $vehiculo, $respaldos, $request->user()->id);
 
         return redirect()->route('admin.vehiculos.show', $vehiculo)
-            ->with('status', "Vehículo {$vehiculo->ppu} actualizado.");
+            ->with('status', "Vehículo {$vehiculo->ppu} actualizado.".self::frase($subidos));
+    }
+
+    /**
+     * Los vencimientos de los documentos CREADOS desde la app.
+     *
+     * Los cinco de la ley son columnas y los guarda el `update()` de siempre; estos
+     * viven en `vehiculo_documento_fechas`, una fila por (vehículo, tipo).
+     *
+     * `updateOrCreate` y no `create`: el formulario manda la fecha de todos los tipos
+     * cada vez, así que insertar dejaría una fila nueva por guardado y el semáforo
+     * leería cualquiera de ellas (la unique de la migración lo impediría, pero con un
+     * error 500 en vez de con el comportamiento correcto).
+     *
+     * @param  array<int|string, string|null>  $fechas  tipo_id => 'Y-m-d'|null, ya validadas
+     */
+    private function guardarFechasCreadas(array $fechas, Vehiculo $vehiculo): void
+    {
+        foreach (Vehiculo::tiposCreados() as $tipo) {
+            if (! array_key_exists($tipo->id, $fechas)) {
+                continue;
+            }
+
+            VehiculoDocumentoFecha::updateOrCreate(
+                ['vehiculo_id' => $vehiculo->id, 'tipo_id' => $tipo->id],
+                ['vence' => $fechas[$tipo->id] ?: null],
+            );
+        }
+
+        // La relación ya cargada quedó vieja: sin esto, el aviso y la redirección
+        // mostrarían la fecha anterior.
+        $vehiculo->unsetRelation('fechasDeDocumento');
+    }
+
+    /**
+     * Guarda las fotos de los documentos que vinieron con el formulario (pedido del
+     * dueño 11-08-2026: «necesito un botón de guardar para guardar las fotos»).
+     *
+     * UN DOCUMENTO SON DOS DATOS: la foto y hasta cuándo vale. Estaban en pantallas
+     * distintas —la foto se subía en la ficha, la fecha había que escribirla en
+     * Editar— así que cargar un permiso de circulación eran dos viajes. Acá el
+     * mismo «Guardar cambios» deja los dos.
+     *
+     * La subida de a una que ya existe en la ficha NO se toca: es el camino del
+     * teléfono, parado al lado del camión, donde elegir la foto ya es la acción y un
+     * botón de guardar sería un paso más. Son dos caminos para dos situaciones, y
+     * los dos guardan por `RespaldoDeDocumento` para que dejen el mismo rastro.
+     *
+     * @param  array<string, \Illuminate\Http\UploadedFile|null>  $fotos  ya validadas
+     * @return list<string> las claves de los documentos que se guardaron
+     */
+    private function guardarRespaldos(array $fotos, Vehiculo $vehiculo, RespaldoDeDocumento $respaldos, int $usuarioId): array
+    {
+        $guardados = [];
+
+        // Se recorre el CATÁLOGO y no lo que llegó: así el orden del aviso es
+        // siempre el mismo y una clave que no sea un documento no entra ni por
+        // accidente.
+        foreach (array_keys(Vehiculo::catalogoDocumentos()) as $clave) {
+            if (($fotos[$clave] ?? null) === null) {
+                continue;
+            }
+
+            $respaldos->guardar($vehiculo, $clave, $fotos[$clave], $usuarioId);
+            $guardados[] = $clave;
+        }
+
+        return $guardados;
+    }
+
+    /**
+     * La coletilla del aviso: cuántos respaldos se guardaron.
+     *
+     * Se dice en el mismo mensaje del guardado y no en uno aparte porque fue UNA
+     * acción: el usuario apretó «Guardar cambios» una vez. Dos avisos harían pensar
+     * que pasaron dos cosas.
+     *
+     * @param  list<string>  $claves
+     */
+    private static function frase(array $claves): string
+    {
+        if ($claves === []) {
+            return '';
+        }
+
+        if (count($claves) === 1) {
+            return ' Se subió el respaldo de: '.mb_strtolower(Vehiculo::catalogoDocumentos()[$claves[0]]).'.';
+        }
+
+        return ' Se subieron '.count($claves).' respaldos: '
+            .implode(', ', array_map(fn (string $c) => mb_strtolower(Vehiculo::catalogoDocumentos()[$c]), $claves)).'.';
     }
 
     /**
@@ -260,9 +367,28 @@ class VehiculoController extends Controller
             'extintor_vence' => ['nullable', 'date'],
             'extintor_capacidad_kg' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'observaciones' => ['nullable', 'string', 'max:2000'],
+            // Las fotos de los documentos, que viajan en el MISMO formulario que sus
+            // fechas (ver `guardarRespaldos`). Se validan en esta misma pasada y no
+            // aparte para que el usuario vea todos los errores juntos y —sobre todo—
+            // para que NADA se escriba si algo está mal: validando después, un archivo
+            // rechazado dejaba la fecha ya guardada y la pantalla decía que falló.
+            //
+            // Las claves se enumeran una por una en vez de `respaldos.*`: así una clave
+            // inventada en el formulario se rechaza acá, y no cae en un `isset`
+            // silencioso más adelante.
+            ...collect(array_keys(Vehiculo::catalogoDocumentos()))
+                ->mapWithKeys(fn (string $c) => ["respaldos.$c" => ['nullable', ...RespaldoDeDocumento::reglas()]])
+                ->all(),
+            // Los vencimientos de los documentos CREADOS desde la app, por id de tipo
+            // (los cinco de la ley tienen su propia columna arriba).
+            ...Vehiculo::tiposCreados()
+                ->mapWithKeys(fn ($t) => ["doc_creado.{$t->id}" => ['nullable', 'date']])
+                ->all(),
         ], [
             'ppu.unique' => 'Ya existe un vehículo con esa patente.',
             'baja_motivo.required' => 'Escribe por qué sale de la flota (venta, pérdida total, etc.).',
+            'respaldos.*.max' => 'La foto no puede superar los 15 MB.',
+            'respaldos.*.mimes' => 'La foto tiene que ser una imagen o un PDF.',
         ]);
 
         // Volver a "activo" limpia los datos de la baja: si no, un vehículo

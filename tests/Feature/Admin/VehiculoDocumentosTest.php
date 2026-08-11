@@ -205,4 +205,83 @@ class VehiculoDocumentosTest extends TestCase
             ->get(route('admin.vehiculos.show', $this->camion))
             ->assertOk()->assertSee('Subir el documento');
     }
+
+    // ── Quitar una foto (pedido del dueño 11-08-2026) ───────────────────────
+
+    /**
+     * QUITAR BORRA UNA VERSIÓN, NO EL DOCUMENTO ENTERO.
+     *
+     * El caso real es «subí la foto equivocada»: al deshacerlo tiene que volver la
+     * que estaba antes. Si borrara todo el historial de un clic, un error de dedo
+     * se llevaría puestos los respaldos buenos.
+     */
+    public function test_quitar_devuelve_la_version_anterior(): void
+    {
+        $this->subir($this->gestor);
+        $vieja = VehiculoDocumento::sole();
+        $this->travel(1)->second();
+        $this->subir($this->gestor);
+        $nueva = VehiculoDocumento::orderByDesc('id')->firstOrFail();
+
+        $this->actingAs($this->gestor)
+            ->delete(route('admin.vehiculos.documentos.destroy', $nueva))
+            ->assertRedirect(route('admin.vehiculos.show', $this->camion))
+            ->assertSessionHas('status', fn (string $s) => str_contains($s, 'volvió a quedar la anterior'));
+
+        $this->assertSame([$vieja->id], VehiculoDocumento::pluck('id')->all());
+    }
+
+    public function test_quitar_la_ultima_deja_el_documento_sin_respaldo_y_lo_dice(): void
+    {
+        $this->subir($this->gestor);
+
+        $this->actingAs($this->gestor)
+            ->delete(route('admin.vehiculos.documentos.destroy', VehiculoDocumento::sole()))
+            ->assertSessionHas('status', fn (string $s) => str_contains($s, 'sin respaldo digital'));
+
+        $this->assertSame(0, VehiculoDocumento::count());
+        $this->actingAs($this->gestor)
+            ->get(route('admin.vehiculos.show', $this->camion))
+            ->assertOk()->assertSee('Subir el documento');
+    }
+
+    public function test_quitar_borra_el_archivo_del_disco_y_no_solo_la_fila(): void
+    {
+        // Un respaldo huérfano en storage es la patente de alguien ocupando lugar
+        // sin que nadie lo vea ni lo pueda borrar desde la app.
+        $this->subir($this->gestor);
+        $ruta = VehiculoDocumento::sole()->ruta;
+
+        $this->actingAs($this->gestor)->delete(
+            route('admin.vehiculos.documentos.destroy', VehiculoDocumento::sole()),
+        );
+
+        Storage::disk(\App\Http\Controllers\Admin\VehiculoDocumentoController::DISCO)->assertMissing($ruta);
+    }
+
+    public function test_el_conductor_no_puede_quitar_documentos(): void
+    {
+        // Ve para mostrarlo en un control; borrar los papeles oficiales es de quien
+        // los renueva. Es la misma línea que ya rige para subir.
+        $this->subir($this->gestor);
+
+        $this->actingAs($this->conductor)
+            ->delete(route('admin.vehiculos.documentos.destroy', VehiculoDocumento::sole()))
+            ->assertForbidden();
+
+        $this->assertSame(1, VehiculoDocumento::count());
+    }
+
+    public function test_la_ficha_ofrece_quitar_a_quien_gestiona_y_no_al_conductor(): void
+    {
+        $this->subir($this->gestor);
+
+        $this->actingAs($this->gestor)
+            ->get(route('admin.vehiculos.show', $this->camion))
+            ->assertOk()->assertSee('Quitar');
+
+        $this->actingAs($this->conductor)
+            ->get(route('admin.vehiculos.show', $this->camion))
+            ->assertOk()->assertDontSee('Quitar');
+    }
 }

@@ -8,7 +8,12 @@
     <div class="space-y-5 py-8">
         <x-status-alert :status="session('status')" />
 
-        <form method="POST" action="{{ route('admin.vehiculos.update', $vehiculo) }}" class="space-y-5" data-una-vez>
+        {{-- `enctype`: el formulario lleva las fotos de los documentos. Sin esto el
+             archivo NO viaja y el resto se guarda igual, así que el fallo es
+             silencioso — se ve como «guardé y la foto no quedó». Candado:
+             VehiculoRespaldoDesdeEditarTest. --}}
+        <form method="POST" enctype="multipart/form-data" action="{{ route('admin.vehiculos.update', $vehiculo) }}"
+              class="space-y-5" data-una-vez>
             @csrf
             @method('PUT')
             @include('admin.vehiculos._form', ['vehiculo' => $vehiculo])
