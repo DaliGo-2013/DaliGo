@@ -85,6 +85,9 @@ class MenuPrincipal
                 // de doble aria-current.
                 'recetas' => ['label' => 'Recetas', 'route' => 'admin.recetas.index', 'activo' => ['admin.recetas.*'], 'permiso' => 'manage production'],
                 'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
+                // Moldes (P-M11-12): prefijo propio admin.moldes.* — fuera de
+                // la enumeración de `produccion`, cero doble aria-current.
+                'moldes' => ['label' => 'Moldes', 'route' => 'admin.moldes.index', 'activo' => ['admin.moldes.*'], 'permiso' => 'manage production'],
                 'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
                 // Despachos se fue a LOGÍSTICA el 05-08 (pedido del dueño).
                 // Devoluciones (M13, flujo A-12): el cliente declara por el

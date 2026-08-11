@@ -593,6 +593,11 @@ class ProduccionController extends Controller
             'reporte' => $reporte,
             'planKardex' => $planKardex,
             'nombresPlan' => $nombresPlan,
+            // P-M11-12: con 2+ moldes activos para un tipo del reporte, el
+            // form de Autorizar pide elegir cuál trabajó el turno.
+            'moldesAmbiguos' => $reporte->esPendienteDeRevision()
+                ? app(\App\Services\Produccion\Moldes::class)->candidatosAmbiguos($reporte)
+                : collect(),
         ]);
     }
 
@@ -605,10 +610,21 @@ class ProduccionController extends Controller
             return back()->with('status', 'Solo se pueden aprobar reportes enviados.');
         }
 
+        // P-M11-12: si algún tipo del reporte tiene 2+ moldes ACTIVOS, la
+        // inferencia es ambigua y el jefe debe decir cuál trabajó el turno.
+        $moldes = app(\App\Services\Produccion\Moldes::class);
+        $candidatos = $moldes->candidatosAmbiguos($reporte);
+        $request->validate([
+            'molde_id' => [Rule::requiredIf($candidatos->isNotEmpty()), 'nullable', 'integer', Rule::in($candidatos->pluck('id'))],
+        ], [
+            'molde_id.required' => 'Este reporte tiene tipos con más de un molde activo: elige cuál trabajó el turno.',
+            'molde_id.in' => 'Elige un molde de la lista.',
+        ], ['molde_id' => 'molde']);
+
         // Aprobar + generar el kardex local en la misma transaccion (regla #9:
         // solo lo aprobado mueve inventario). Idempotente: si ya tiene
         // movimientos, no se duplican ante un doble submit.
-        DB::transaction(function () use ($request, $reporte) {
+        $avisosMoldes = DB::transaction(function () use ($request, $reporte) {
             // Lock pesimista del reporte ANTES de mutar: el guard de idempotencia
             // movimientos()->exists() es check-then-act, asi que sin lock dos
             // aprobaciones concurrentes (doble-tap / reintento en el celular)
@@ -616,19 +632,29 @@ class ProduccionController extends Controller
             // segunda espera, re-lee el estado ya APROBADO y sale sin re-generar.
             $locked = ProduccionReporte::whereKey($reporte->getKey())->lockForUpdate()->first();
             if (! $locked || ! $locked->esPendienteDeRevision()) {
-                return;
+                return [];
             }
 
             $locked->update([
                 'estado' => ProduccionReporte::APROBADO,
                 'revisado_por' => $request->user()->id,
                 'revisado_at' => now(),
-            ]);
+            ] + ($request->filled('molde_id') ? ['molde_id' => $request->integer('molde_id')] : []));
 
             if (! $locked->movimientos()->exists()) {
                 ProduccionMovimiento::generarParaReporte($locked);
+
+                // El contador de ciclos comparte el guard del backflush:
+                // devolver jamás resta, re-aprobar jamás re-suma (P-M11-12).
+                return app(\App\Services\Produccion\Moldes::class)->registrarCiclos($locked);
             }
+
+            return [];
         });
+
+        // Los avisos M15 van DESPUÉS del commit (primero el estado, después
+        // el correo — un SMTP caído no puede deshacer la aprobación).
+        $moldes->despachar($avisosMoldes ?? []);
 
         return redirect()->route('admin.produccion.index')
             ->with('status', "Reporte de {$reporte->soplador->name} aprobado.");

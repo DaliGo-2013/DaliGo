@@ -134,6 +134,8 @@ class IdiomaEspanolTest extends TestCase
         $bodega = \App\Models\Bodega::factory()->create();
         $orden = \App\Models\BodegaTraslado::factory()->create();
         $botellon = \App\Models\Producto::factory()->create(['activo' => true]);
+        $tipo = \App\Models\TipoBotellon::create(['codigo' => 'T-IDIOMA', 'nombre' => 'Tipo idioma', 'activo' => true]);
+        $molde = \App\Models\Molde::create(['nombre' => 'Molde idioma', 'tipo_botellon_id' => $tipo->id, 'estado' => 'activo']);
 
         $urls = [
             '/dashboard', '/admin/servicio-tecnico', '/admin/servicio-tecnico/create',
@@ -143,6 +145,10 @@ class IdiomaEspanolTest extends TestCase
             "/admin/bodegas/traslados/{$orden->id}",
             '/admin/recetas',
             "/admin/recetas/{$botellon->id}/edit",
+            '/admin/moldes',
+            '/admin/moldes/nuevo',
+            "/admin/moldes/{$molde->id}",
+            "/admin/moldes/{$molde->id}/editar",
             '/admin/sucursales', '/admin/users', '/admin/users/create', '/admin/roles',
             '/admin/configuracion', '/admin/maquinas', '/admin/tipos-botellon', '/admin/audits',
             '/admin/despachos', '/admin/notificaciones', '/admin/agenda-terreno',

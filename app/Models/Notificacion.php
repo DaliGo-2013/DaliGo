@@ -114,6 +114,11 @@ class Notificacion extends Model
         // Lo dispara el comando `produccion:corte-sic` cada 2 h, no un usuario.
         // El 2º corte consecutivo bajo umbral llega con asunto «⚠ URGENTE».
         'produccion.meta_en_riesgo' => 'Meta de producción en riesgo',
+        // M11 · Moldes (P-M11-12): los dispara aprobar un reporte, no un
+        // usuario directo. El umbral avisa UNA vez por cruce (guard en el
+        // molde); la correctiva nace de una parada «Molde dañado».
+        'molde.umbral_mantencion' => 'Al molde le toca mantención (umbral de ciclos)',
+        'molde.correctiva_pendiente' => 'Molde dañado: mantención correctiva pendiente',
     ];
 
     protected $fillable = [
@@ -203,6 +208,8 @@ class Notificacion extends Model
             'bodega.baja_completada', 'bodega.stock_en_baja' => $user->can('manage sucursales'),
             // El reporte en riesgo: mismo gate que admin.produccion.reporte.show.
             'produccion.meta_en_riesgo' => $user->can('manage production'),
+            // La ficha del molde: mismo gate que sus rutas (P-M11-12).
+            'molde.umbral_mantencion', 'molde.correctiva_pendiente' => $user->can('manage production'),
             default => false,
         };
 
@@ -303,6 +310,11 @@ class Notificacion extends Model
             'produccion.meta_en_riesgo' => $this->notificable_id
                 ? route('admin.produccion.reporte.show', $this->notificable_id)
                 : route('admin.produccion.index'),
+            // El molde aterriza en su FICHA: ahí vive el contador, el umbral
+            // y el registrar mantención (P-M11-12).
+            'molde.umbral_mantencion', 'molde.correctiva_pendiente' => $this->notificable_id
+                ? route('admin.moldes.show', $this->notificable_id)
+                : route('admin.moldes.index'),
             default => null,
         };
     }

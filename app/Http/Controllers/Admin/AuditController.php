@@ -14,6 +14,7 @@ use App\Models\HojaDeRuta;
 use App\Models\HojaRutaParada;
 use App\Models\ListaPrecio;
 use App\Models\Maquina;
+use App\Models\Molde;
 use App\Models\PreferenciaCanal;
 use App\Models\Producto;
 use App\Models\ProduccionReporte;
@@ -43,6 +44,7 @@ class AuditController extends Controller
         BodegaTraslado::class => 'Orden de traslado de bodega',
         ProduccionReporte::class => 'Reporte de producción',
         Maquina::class => 'Máquina',
+        Molde::class => 'Molde',
         TipoBotellon::class => 'Tipo de botellón',
         Receta::class => 'Receta',
         PreferenciaCanal::class => 'Preferencia de canal',

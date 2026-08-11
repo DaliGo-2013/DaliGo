@@ -72,6 +72,9 @@ class ProduccionReporte extends Model implements AuditableContract
         'malo',
         'danada',
         'cavidades_activas',
+        // P-M11-12 (aditivo, frontera declarada): solo cuando la inferencia
+        // «molde activo del tipo» es ambigua y el jefe elige al aprobar.
+        'molde_id',
         'motivo',
         'obs',
         'estado',
@@ -125,6 +128,12 @@ class ProduccionReporte extends Model implements AuditableContract
     public function paradas(): HasMany
     {
         return $this->hasMany(ProduccionParada::class, 'reporte_id');
+    }
+
+    /** El molde elegido al aprobar cuando la inferencia por tipo es ambigua (P-M11-12). */
+    public function molde(): BelongsTo
+    {
+        return $this->belongsTo(Molde::class, 'molde_id');
     }
 
     /**

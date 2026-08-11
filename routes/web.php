@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
+use App\Http\Controllers\Admin\MoldeController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
 use App\Http\Controllers\Admin\ProduccionVivoController;
@@ -507,6 +508,21 @@ Route::middleware('auth')
                 ->whereNumber('producto')->name('recetas.edit');
             Route::put('recetas/{producto}', [RecetaController::class, 'update'])
                 ->whereNumber('producto')->name('recetas.update');
+
+            // Moldes (P-M11-12): ficha estilo M18 con contador de ciclos,
+            // umbral de mantencion e historial. Literales ANTES de la
+            // parametrica + whereNumber (doble candado idiomatico).
+            Route::get('moldes', [MoldeController::class, 'index'])->name('moldes.index');
+            Route::get('moldes/nuevo', [MoldeController::class, 'create'])->name('moldes.create');
+            Route::post('moldes', [MoldeController::class, 'store'])->name('moldes.store');
+            Route::get('moldes/{molde}', [MoldeController::class, 'show'])
+                ->whereNumber('molde')->name('moldes.show');
+            Route::get('moldes/{molde}/editar', [MoldeController::class, 'edit'])
+                ->whereNumber('molde')->name('moldes.edit');
+            Route::put('moldes/{molde}', [MoldeController::class, 'update'])
+                ->whereNumber('molde')->name('moldes.update');
+            Route::post('moldes/{molde}/mantencion', [MoldeController::class, 'mantencionStore'])
+                ->whereNumber('molde')->name('moldes.mantencion.store');
         });
 
         // Despachos (Jefe de Bodega): crear despacho desde un documento
