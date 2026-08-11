@@ -15,6 +15,21 @@
 
         <x-produccion.indicador-red />
 
+        {{-- Notas del jefe vigentes (P-M11-22): antes del split de ramas a
+             propósito — una nota («hoy llegan preformas nuevas») debe verse
+             también sin asignación o con el reporte ya enviado. Brand y no
+             rojo: atención, no problema (doctrina de la paleta). --}}
+        @if ($notasJefe->isNotEmpty())
+            <div class="dg-enter mb-4 space-y-2">
+                @foreach ($notasJefe as $nota)
+                    <div class="flex items-start gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                        <x-icon.information-circle class="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+                        <p><span class="font-medium">Nota del jefe:</span> {{ $nota->texto }}</p>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- Reportes devueltos pendientes (de otros días/turnos) --}}
         @if ($devueltos->isNotEmpty())
             <div class="dg-enter mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

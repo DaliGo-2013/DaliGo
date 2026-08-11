@@ -476,6 +476,13 @@ class MiProduccionController extends Controller
         $semaforoPreformas = app(\App\Services\Produccion\SemaforoPreformas::class)
             ->estadoPara($reporte, $user);
 
+        // Notas del jefe vigentes que le hablan a ESTE soplador (las suyas +
+        // las globales). Se pintan como banner, no persiguen (sin M15).
+        $notasJefe = \App\Models\ProduccionNota::vigentes()
+            ->paraSoplador($user->id)
+            ->orderByDesc('id')
+            ->get();
+
         // Preseleccion pegajosa: la maquina/tipo de la ultima tanda del reporte.
         $ultimo = $reporte?->registros->first();
 
@@ -495,6 +502,7 @@ class MiProduccionController extends Controller
             'tipoPreseleccionado' => (int) old('tipo_botellon_id', $ultimo?->tipo_botellon_id),
             'devueltos' => $devueltos,
             'semaforoPreformas' => $semaforoPreformas,
+            'notasJefe' => $notasJefe,
         ]);
     }
 
