@@ -46,10 +46,13 @@
     // escribirlas a mano dejaba unos con `py-1` y otros con `py-1.5`.
     $btn = 'rounded-lg border border-neutral-300 bg-white px-2 py-1.5 font-medium text-neutral-700 transition hover:bg-neutral-50';
     $titulo = 'px-1 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400';
+    // El acomodo a mano: si viene uno aplicado, el tablero arranca ABIERTO. Llegar a un
+    // camión acomodado y tener que buscar dónde se toca eso es la peor versión.
+    $acomodo = $escena['acomodo'] ?? null;
 @endphp
 
 <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
-     x-data="{ menu: window.innerWidth >= 640 }">
+     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }} }">
     <div class="flex items-stretch">
 
         {{-- ═══ EL MENÚ ═══ --}}
@@ -325,6 +328,25 @@
                 </details>
             @endif
 
+            {{-- ACOMODAR A MANO: mover y girar los bloques en una vista de planta. Ver
+                 `_acomodo.blade.php` para el porqué y para lo que deliberadamente no
+                 hace. Va en el menú como todo lo demás (doctrina del 06-08) y no en el
+                 link compartido: quien mira el plan no lo reacomoda. --}}
+            @if (! empty($acomodo['piezas']))
+                <details open class="group">
+                    <summary class="{{ $titulo }} flex cursor-pointer select-none list-none items-center justify-between rounded hover:text-neutral-600 [&::-webkit-details-marker]:hidden">
+                        Acomodar <span class="transition group-open:rotate-180">▾</span>
+                    </summary>
+                    <button type="button" @click="tablero = ! tablero"
+                            :aria-pressed="tablero ? 'true' : 'false'"
+                            class="{{ $btn }} mt-1 w-full"
+                            x-text="tablero ? 'Cerrar el tablero' : 'Mover y girar bloques'"></button>
+                    <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                        Vista de planta. El cálculo no verifica lo que se acomoda a mano.
+                    </p>
+                </details>
+            @endif
+
             {{-- IMPORTAR DE EXCEL (pedido del dueño 06-08). Ver `_importar.blade.php`:
                  se PEGA lo copiado de la planilla, sin subir archivo. --}}
             <details class="group">
@@ -368,6 +390,43 @@
             </div>
         </div>
     </div>
+
+    {{-- ═══ EL AVISO DE ACOMODO A MANO ═══
+         Va SIEMPRE que haya un acomodo aplicado, también en el link compartido y en el
+         Excel. Es la contraparte de haber permitido mover bultos: quien recibe el plan
+         tiene que saber que esas posiciones las puso una persona y no el cálculo, o el
+         dibujo se lee como una promesa verificada que nadie verificó. Las cantidades sí
+         siguen siendo las del motor — acomodar no descubre lugar nuevo. --}}
+    @if ($acomodo['activo'] ?? false)
+        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            <span class="font-semibold">Acomodo a mano</span>
+            <span class="text-amber-800">El cálculo no verificó estas posiciones. Las cantidades no cambian.</span>
+            @if ($acomodo['choques'] !== [])
+                <span class="font-semibold text-red-700">
+                    {{ count($acomodo['choques']) }} par(es) de bloques se pisan.
+                </span>
+            @endif
+            @if ($acomodo['fuera'] !== [])
+                <span class="font-semibold text-red-700">
+                    {{ count($acomodo['fuera']) }} bloque(s) sobresalen de la caja.
+                </span>
+            @endif
+        </div>
+    @endif
+
+    {{-- Un acomodo armado para OTRO resultado no se aplica torcido: se descarta entero y
+         se dice. Aplicar las primeras posiciones sobre productos que ahora son distintos
+         sería mover carga ajena en silencio (ver `AcomodoManual`). --}}
+    @if ($acomodo['descartado'] ?? false)
+        <div class="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            <span class="font-semibold">Se descartó el acomodo a mano:</span>
+            la carga cambió y las posiciones guardadas ya no corresponden a estos bloques.
+        </div>
+    @endif
+
+    @if (! $publico)
+        @include('admin.carga._acomodo', ['escena' => $escena])
+    @endif
 
     {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
          Pedido del dueño (10-08, dibujado sobre la pantalla): «la descripción del
