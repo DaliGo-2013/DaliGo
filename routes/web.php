@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\Admin\MoldeController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
+use App\Http\Controllers\Admin\ProduccionNotaController;
 use App\Http\Controllers\Admin\ProduccionVivoController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\RecetaController;
@@ -490,6 +491,16 @@ Route::middleware('auth')
             Route::post('produccion/reporte/{reporte}/devolver', [ProduccionController::class, 'devolver'])->name('produccion.reporte.devolver');
             Route::post('produccion/reporte/{reporte}/ajustar', [ProduccionController::class, 'ajustar'])->name('produccion.reporte.ajustar');
             Route::delete('produccion/reporte/{reporte}', [ProduccionController::class, 'destroyReporte'])->name('produccion.reporte.destroy');
+
+            // Notas del jefe (P-M11-22): mensajes operativos que se pintan en
+            // mi-reporte del soplador mientras estan vigentes. Names DENTRO de
+            // admin.produccion.* a proposito: notas NO tiene item de menu y el
+            // patron admin.produccion.notas.* (enumerado en MenuPrincipal)
+            // hace que resalte el item Produccion.
+            Route::resource('produccion/notas', ProduccionNotaController::class)
+                ->names('produccion.notas')
+                ->parameters(['notas' => 'nota'])
+                ->except(['show']);
 
             // Catalogos de produccion: maquinas sopladoras y tipos de botellon.
             Route::resource('maquinas', MaquinaController::class)

@@ -15,6 +15,21 @@
 
         <x-produccion.indicador-red />
 
+        {{-- Notas del jefe vigentes (P-M11-22): antes del split de ramas a
+             propósito — una nota («hoy llegan preformas nuevas») debe verse
+             también sin asignación o con el reporte ya enviado. Brand y no
+             rojo: atención, no problema (doctrina de la paleta). --}}
+        @if ($notasJefe->isNotEmpty())
+            <div class="dg-enter mb-4 space-y-2">
+                @foreach ($notasJefe as $nota)
+                    <div class="flex items-start gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                        <x-icon.information-circle class="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+                        <p><span class="font-medium">Nota del jefe:</span> {{ $nota->texto }}</p>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- Reportes devueltos pendientes (de otros días/turnos) --}}
         @if ($devueltos->isNotEmpty())
             <div class="dg-enter mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -237,11 +252,19 @@
                     }
                  }">
                 {{-- La asignación, siempre a la vista --}}
-                <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                         Preformas asignadas{{ \App\Support\FechaNegocio::esHoy($reporte->fecha) ? ' hoy' : '' }}
                     </span>
-                    <span class="text-xl font-bold text-neutral-900">{{ $reporte->asignadas }}</span>
+                    <span class="flex items-center gap-2">
+                        {{-- Semáforo de preformas (P-M11-22): stock del espejo de SU
+                             sucursal vs la meta. Sin dato completo no se muestra
+                             (silencio antes que rojo falso). Solo unidades, jamás costos. --}}
+                        @if ($semaforoPreformas)
+                            <x-badge :variant="$semaforoPreformas['variante']">{{ $semaforoPreformas['label'] }}</x-badge>
+                        @endif
+                        <span class="text-xl font-bold text-neutral-900">{{ $reporte->asignadas }}</span>
+                    </span>
                 </div>
 
                 {{-- Agregar una tanda: máquina + tipo + cantidades --}}
