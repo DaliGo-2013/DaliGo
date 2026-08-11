@@ -1,57 +1,31 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-11 (v45 — GO F0 de PLAN-MENU-DENSIDAD: auditoría + mapa del menú. SOLO DOCS). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-12 (v46 — F0 RECIBIDA Y MERGEADA; en pausa hasta el visto bueno del mapa por el dueño). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## Proyecto nuevo del dueño: densidad de interfaz
+## ✅ Tu F0 está en main (merge `9192f87`, docs-only)
 
-**Lee `docs/planes/PLAN-MENU-DENSIDAD.md` (VIGENTE)** — directriz textual del dueño:
-la lista lateral crece en cada lote porque construimos superficies sin preguntarnos si
-podían vivir dentro de un apartado existente. Su lente, que es EL criterio del proyecto:
+Revisión del Director: la auditoría es exactamente lo que el proyecto necesitaba —
+47 rótulos con veredicto y propuesta concreta, el contra-argumento honesto donde lo hay
+(Cargas reales), los candados mapeados test por test (el hallazgo de
+`test_las_ex_huerfanas_estan_en_el_menu` como candado duro le ahorra un rojo sorpresa al
+lote ejecutor), el hueco del `activo` sin test detectado, y la autocrítica de Recetas/
+Moldes asumida sin apego. **El mapa (47→30) ya está en manos del dueño** para su
+decisión apartado por apartado, con calma — como él lo pidió.
 
-> **«¿Este apartado puede ser integrado con otro, o necesita vivir sí o sí solo?»**
+## ⏸️ EN PAUSA — la próxima jugada es del dueño
 
-Y: crear/editar/eliminar = visibles por PERMISO dentro de las pantallas, no superficies.
-Ritmo explícito del dueño: **lento pero seguro, decisiones con calma** — este proyecto
-no corre, piensa. (Autocrítica de la casa que te va a sonar: tus propios dictados de M11
-te mandaron crear los ítems «Recetas» y «Moldes» sin este filtro. El proyecto arregla el
-mecanismo, no culpa lotes pasados.)
+Nada que forjar hasta que el mapa vuelva con vistos buenos. Lo primero que saldrá será
+el piloto F1 (Precios→Catálogo, ya decidido) — probablemente con el mini-candado que tú
+mismo sugeriste (ruta movida a pestaña debe entrar al `activo` del anfitrión o la página
+queda sin resaltado en silencio).
 
-## 🟢 GO — F0 · Auditoría + mapa (SOLO DOCS — cero código, cero riesgo)
-
-Tu entregable es el **anexo §5 de PLAN-MENU-DENSIDAD.md** (lo llenas en tu rama, docs
-only):
-
-1. **Inventario**: los ~47 ítems de `MenuPrincipal` — por cada uno: qué pantallas
-   cuelgan (rutas reales), permiso, qué rol lo usa, y tu estimación de frecuencia de
-   uso (diaria/semanal/rara — infiérela del dominio: el kardex se mira a diario, la
-   auditoría rara vez).
-2. **Veredicto con el lente** por ítem: `integrable-en-X` (CON la propuesta concreta:
-   pestaña de qué pantalla, sección de qué show, botón bajo qué permiso) o `vive-solo`
-   (con el porqué en una línea). Sé valiente en el veredicto y conservador en el riesgo:
-   el veredicto es propuesta, la decisión es del dueño.
-3. **Mapa objetivo**: el menú como quedaría si TODAS tus propuestas se aprobaran
-   (estructura completa, con el conteo antes/después — hoy 47).
-4. **Priorización**: consolidaciones ordenadas por densidad ganada × esfuerzo × riesgo.
-   El piloto F1 (Catálogo+Precios → uno) ya está decidido por el dueño — inclúyelo en el
-   mapa pero no lo re-litigues.
-5. **Ojo con los candados existentes**: tu análisis debe anotar, por consolidación, qué
-   candados de menú se tocan (SidebarTest aria-current único, VolverTest, doble
-   aria-current del comodín, badges accionables) — es insumo del lote que la ejecute.
-
-**Qué NO hacer**: ni una línea de código, ni tocar MenuPrincipal, ni arrancar el piloto.
-El mapa va al dueño para visto bueno ANTES de cualquier consolidación — decisión con
-calma, apartado por apartado.
-
-## Territorio
-- **Max-2** forja P-M11-23 (kaizen) en paralelo — sin cruce (tú docs, él producción).
-- **Marcos** activo. Tu rama es docs-only: cero riesgo de carrera de código (el parte
-  igual con re-fetch).
+Si abres sesión y este dictado sigue en v46: revisa el buzón por si hay v47, y si no lo
+hay, cierra sesión sin gastar ventana.
 
 ## Recordatorios
-Rama nueva desde main FRESCO (docs-only: sin suite obligatoria de arranque, pero corre
-`PlanProyectoTest` si llegas a tocar RUTA-MAESTRA — no deberías). Parte al buzón →
-revisión del Director → el mapa al dueño.
+Baseline: **1930 / 13.807** en `c8b343c` (main avanzó con docs desde entonces). Las
+reglas de siempre siguen.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push. La mejor interfaz es la que no hay que
-recorrer.
+CIERRE: nada pendiente de tu lado. 47→30 sin perder una pantalla: eso es diseñar con
+resta.
