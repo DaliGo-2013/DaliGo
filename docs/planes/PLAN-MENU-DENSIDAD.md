@@ -61,7 +61,7 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 
 ## 4. Hecho cuando (por lote)
 
-- [ ] F0: mapa completo en §5 con veredicto por ítem + visto bueno del dueño.
+- [x] F0: mapa completo en §5 (Max-1, 12-ago) — **visto bueno del dueño (12-ago) a F1 + las 4 baratas (#2-#5)**; el resto del mapa pendiente de decisión, apartado por apartado.
 - [ ] F1: un solo ítem «Catálogo» con los precios adentro; cero funcionalidad perdida;
       gate R-31 aprobado; QA del dueño en celular.
 - [ ] Cada F2+: ídem F1 para su consolidación.
