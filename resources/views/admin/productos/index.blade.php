@@ -30,6 +30,8 @@
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.catalogo._tabs')
+
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.productos.index') }}"
               class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">

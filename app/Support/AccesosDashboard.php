@@ -22,7 +22,9 @@ class AccesosDashboard
     public const GRUPOS = [
         'Comercial' => [
             'catalogo' => ['label' => 'Catálogo', 'desc' => 'Productos: peso y dimensiones para despacho', 'route' => 'admin.productos.index', 'permiso' => 'manage productos', 'icon' => 'cube', 'color' => 'naranjo'],
-            'precios' => ['label' => 'Precios', 'desc' => 'Listas de precios (espejo de Bsale)', 'route' => 'admin.listas-precios.index', 'permiso' => 'manage productos', 'icon' => 'tag', 'color' => 'naranjo'],
+            // La card «Precios» se retiró con la consolidación F1: las listas
+            // son pestaña del Catálogo (a un clic de esta card). Las
+            // preferencias de color guardadas toleran la key huérfana (D-013).
             'clientes' => ['label' => 'Clientes', 'desc' => 'Ficha local sincronizada con Bsale', 'route' => 'admin.clientes.index', 'permiso' => 'manage clientes', 'icon' => 'user-group', 'color' => 'naranjo'],
         ],
         'Operación' => [
