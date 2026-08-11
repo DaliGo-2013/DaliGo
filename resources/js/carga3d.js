@@ -268,6 +268,48 @@ export default function iniciarCarga3d(canvas, datos) {
     const G = { grad: true };
 
     /**
+     * LA LÍNEA QUE SEPARA UNA CAJA DE LA DE AL LADO (pedido del dueño 11-08-2026).
+     *
+     * El borde por defecto de `cuerpo()` es negro al 22% y sirve para la chapa del
+     * camión, donde hay una arista cada tanto. En la carga hay CIENTOS de caras pegadas
+     * del mismo color, y al 22% una pared de 40 cajas se lee como un bloque macizo.
+     *
+     * Lo que se pierde no es estética: es el HUECO. Sin ver dónde termina cada caja no
+     * se ve que falta una, y ver el espacio que sobra es para lo que se mira el dibujo.
+     */
+    const BORDE_BULTO = 'rgba(17,17,20,.55)';
+
+    /**
+     * Diagonal mínima EN PANTALLA (px) para dibujarle la línea a un bulto.
+     *
+     * Es el mismo LOD que ya usan los códigos (`CODIGO_MIN`) y por el mismo motivo, pero
+     * al revés de lo que uno esperaría: el problema no es que la línea no se vea, es que
+     * se vea DEMASIADO. Alejado, cada caja mide pocos píxeles y su contorno ocupa casi
+     * toda su superficie: 400 cajas del contenedor se vuelven una mancha negra y
+     * desaparece justo el color que dice de qué producto es cada bloque.
+     *
+     * MEDIDO, no elegido, contando píxeles dentro de la zona de la carga en el contenedor
+     * lleno (400 cajas de tapas): sin umbral la línea se comía el **17,9%** del área, que
+     * a esa distancia es una reja negra. El valor se subió hasta que el dibujo alejado
+     * vuelve a leerse por color y la línea aparece al acercarse.
+     *
+     * Se compara contra el LADO MÁS LARGO proyectado, no contra la diagonal del cuerpo:
+     * la diagonal suma la profundidad y sobreestima el tamaño aparente — con ella, cajas
+     * que en pantalla medían 13 px pasaban el filtro.
+     */
+    const BORDE_MIN = 30;
+
+    /**
+     * Cuánto se encoge cada bulto para que quede una hendija entre vecinos: 1,5%.
+     *
+     * NO se agranda para «separar más». El dibujo tiene que ser fiel al cálculo —las
+     * cajas van pegadas de verdad— y un hueco inventado dibujaría un acomodo que el
+     * motor no calculó, que es el pecado del §2 en versión visual. La separación se
+     * consigue con la LÍNEA, no con aire.
+     */
+    const SEPARACION = 0.985;
+
+    /**
      * Tamaño mínimo de letra, en píxeles, para escribir el código de un bulto. Debajo
      * de esto es una manchita que ensucia en vez de aclarar — y hace de LOD gratis:
      * alejado no se escribe nada, al acercarte aparecen los códigos.
@@ -1416,11 +1458,39 @@ export default function iniciarCarga3d(canvas, datos) {
                 && puesto(ix, iz, iy - 1) && puesto(ix, iz, iy + 1)) continue;
 
             const px = x0 + ix * ori.largo, py = y0 + iy * ori.alto, pz = z0 + iz * ori.ancho;
-            const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
+            const [ba, bb, bc] = [ori.largo * SEPARACION, ori.ancho * SEPARACION, ori.alto * SEPARACION];
             if (bidones) {
                 bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.estiba);
             } else {
-                prisma(px, py, pz, ba, bb, bc, col);
+                // CADA CAJA CON SU LÍNEA (pedido del dueño 11-08: «las cajas bien marcadas
+                // con líneas negras, que se entienda la separación; en la imagen se ven los
+                // espacios faltantes»).
+                //
+                // Antes iban con el borde por defecto de `cuerpo()` —negro al 22%— y a
+                // pocos metros de distancia una pared de 40 cajas del mismo color se leía
+                // como UN bloque naranja. Y lo que se pierde con eso no es estética: es
+                // justamente el hueco. Sin ver dónde termina una caja no se ve que falta
+                // una, que es para lo que se mira el dibujo.
+                //
+                // Va como borde y no como separación mayor entre cajas porque el dibujo
+                // tiene que seguir siendo fiel al cálculo: las cajas están pegadas de
+                // verdad, y agrandar el hueco dibujaría un acomodo que no es el que el
+                // motor calculó.
+                // La línea solo cuando la caja es lo bastante grande en PANTALLA (ver
+                // `BORDE_MIN`). Se mide el LADO MÁS LARGO proyectado y no la diagonal del
+                // cuerpo: la diagonal suma la profundidad, así que sobreestima el tamaño
+                // aparente y dejaba pasar cajas que en pantalla eran de 13 px.
+                const o = proyectar([px, py, pz]);
+                const largoEnPantalla = (p) => Math.hypot(p[0] - o[0], p[1] - o[1]);
+                const lado = Math.max(
+                    largoEnPantalla(proyectar([px + ba, py, pz])),
+                    largoEnPantalla(proyectar([px, py, pz + bb])),
+                    largoEnPantalla(proyectar([px, py + bc, pz])),
+                );
+
+                prisma(px, py, pz, ba, bb, bc, col, {
+                    borde: lado >= BORDE_MIN ? BORDE_BULTO : null,
+                });
             }
             // El código va sobre la caja de siempre, sea prisma o bolsa de bidones: las
             // dos ocupan el mismo volumen, así que la cara se calcula igual.
