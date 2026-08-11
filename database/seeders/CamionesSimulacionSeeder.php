@@ -72,8 +72,9 @@ class CamionesSimulacionSeeder extends Seeder
                 'nombre' => 'HINO 500 (FC 1118)',
                 'largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266,
                 'peso_max_kg' => 11000,
-                // Silueta propia, moldeada sobre sus fotos (05-08). El Chevy sigue con
-                // la genérica `camion` hasta que lleguen las suyas.
+                // Silueta propia, moldeada sobre sus fotos (05-08), con el rompeviento del
+                // techo y los detalles del espejo agregados el 11-08 sobre tres fotos más.
+                // Ya no queda ningún camión del catálogo con la silueta genérica.
                 'silueta' => 'camion_hino',
                 'notas' => 'La misma caja en los dos HINO de la flota.',
             ],
@@ -139,7 +140,15 @@ class CamionesSimulacionSeeder extends Seeder
                 // una pieza y doble espejo por lado. Las fotos llevan pintado «NQR 919»,
                 // que es lo que destapó que las dos filas eran el mismo camión.
                 'silueta' => 'camion_nqr',
-                'notas' => 'Le dicen Chevy 3 y también H3: es el mismo camión (confirmado 11-08-2026). Medidas de huincha, el juego menor de los dos dictados. Falta la carga máxima.',
+                // LA RUEDA DE REPUESTO VIAJA ADENTRO. En las fotos del interior (11-08) va
+                // parada y amarrada en el rincón derecho del fondo. Son ~28 cm del ancho, y
+                // acá el ancho no tiene ese margen: con 220 entran 8 bolsas a lo ancho
+                // (208 cm) y con 192 entran 7 → el cupo de referencia de 960 botellones
+                // pasaría a 840. NO se descuenta todavía porque los 960 los dictó el dueño
+                // como cupo real, así que o la rueda sale para cargar o el 960 es teórico:
+                // es una pregunta abierta, no un dato. Los listones de madera de las
+                // paredes, en cambio, no cuestan nada (con 212 el cupo no se mueve).
+                'notas' => 'Le dicen Chevy 3 y también H3: es el mismo camión (confirmado 11-08-2026). Medidas de huincha, el juego menor de los dos dictados. Tonelaje oficial del dueño (11-08).',
             ],
         ];
 

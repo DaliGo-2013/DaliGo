@@ -46,10 +46,13 @@
     // escribirlas a mano dejaba unos con `py-1` y otros con `py-1.5`.
     $btn = 'rounded-lg border border-neutral-300 bg-white px-2 py-1.5 font-medium text-neutral-700 transition hover:bg-neutral-50';
     $titulo = 'px-1 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400';
+    // El acomodo a mano: si viene uno aplicado, el tablero arranca ABIERTO. Llegar a un
+    // camión acomodado y tener que buscar dónde se toca eso es la peor versión.
+    $acomodo = $escena['acomodo'] ?? null;
 @endphp
 
 <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
-     x-data="{ menu: window.innerWidth >= 640 }">
+     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }} }">
     <div class="flex items-stretch">
 
         {{-- ═══ EL MENÚ ═══ --}}
@@ -325,6 +328,25 @@
                 </details>
             @endif
 
+            {{-- ACOMODAR A MANO: mover y girar los bloques en una vista de planta. Ver
+                 `_acomodo.blade.php` para el porqué y para lo que deliberadamente no
+                 hace. Va en el menú como todo lo demás (doctrina del 06-08) y no en el
+                 link compartido: quien mira el plan no lo reacomoda. --}}
+            @if (! empty($acomodo['piezas']))
+                <details open class="group">
+                    <summary class="{{ $titulo }} flex cursor-pointer select-none list-none items-center justify-between rounded hover:text-neutral-600 [&::-webkit-details-marker]:hidden">
+                        Acomodar <span class="transition group-open:rotate-180">▾</span>
+                    </summary>
+                    <button type="button" @click="tablero = ! tablero"
+                            :aria-pressed="tablero ? 'true' : 'false'"
+                            class="{{ $btn }} mt-1 w-full"
+                            x-text="tablero ? 'Cerrar el tablero' : 'Mover y girar bloques'"></button>
+                    <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                        Vista de planta. El cálculo no verifica lo que se acomoda a mano.
+                    </p>
+                </details>
+            @endif
+
             {{-- IMPORTAR DE EXCEL (pedido del dueño 06-08). Ver `_importar.blade.php`:
                  se PEGA lo copiado de la planilla, sin subir archivo. --}}
             <details class="group">
@@ -353,18 +375,98 @@
             <canvas id="carga3d" width="1240" height="660" style="aspect-ratio: 1240 / 660"
                     class="block max-h-[80vh] min-h-[18rem] w-full cursor-grab"></canvas>
 
+            {{-- Solo la AYUDA de manejo. El nombre del camión y el piso libre estaban
+                 también acá y volvían a aparecer en la franja de datos: ahora que la
+                 franja vive dentro de este mismo recuadro (abajo), repetirlos era
+                 justo el exceso de texto que el dueño pidió recortar (10-08). --}}
             <div class="absolute left-3 top-3 flex items-center gap-2">
                 {{-- El ☰ abre el menú cuando está cerrado (siempre, en celular al arrancar). --}}
                 <button type="button" x-show="!menu" @click="menu = true"
                         class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-50"
                         title="Abrir el menú de herramientas">☰ Menú</button>
                 <span class="text-xs font-medium text-neutral-500">
-                    {{ $escena['vehiculo']['nombre'] }} · arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>
-                    @if ($escena['libre_m'] > 0.05)
-                        · <span class="text-neutral-400">quedan {{ number_format($escena['libre_m'], 2, ',', '.') }} m libres en la puerta</span>
-                    @endif
+                    Arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>
                 </span>
             </div>
         </div>
     </div>
+
+    {{-- ═══ EL AVISO DE ACOMODO A MANO ═══
+         Va SIEMPRE que haya un acomodo aplicado, también en el link compartido y en el
+         Excel. Es la contraparte de haber permitido mover bultos: quien recibe el plan
+         tiene que saber que esas posiciones las puso una persona y no el cálculo, o el
+         dibujo se lee como una promesa verificada que nadie verificó. Las cantidades sí
+         siguen siendo las del motor — acomodar no descubre lugar nuevo. --}}
+    @if ($acomodo['activo'] ?? false)
+        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            <span class="font-semibold">Acomodo a mano</span>
+            <span class="text-amber-800">El cálculo no verificó estas posiciones. Las cantidades no cambian.</span>
+            @if ($acomodo['choques'] !== [])
+                <span class="font-semibold text-red-700">
+                    {{ count($acomodo['choques']) }} par(es) de bloques se pisan.
+                </span>
+            @endif
+            @if ($acomodo['fuera'] !== [])
+                <span class="font-semibold text-red-700">
+                    {{ count($acomodo['fuera']) }} bloque(s) sobresalen de la caja.
+                </span>
+            @endif
+        </div>
+    @endif
+
+    {{-- Un acomodo armado para OTRO resultado no se aplica torcido: se descarta entero y
+         se dice. Aplicar las primeras posiciones sobre productos que ahora son distintos
+         sería mover carga ajena en silencio (ver `AcomodoManual`). --}}
+    @if ($acomodo['descartado'] ?? false)
+        <div class="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            <span class="font-semibold">Se descartó el acomodo a mano:</span>
+            la carga cambió y las posiciones guardadas ya no corresponden a estos bloques.
+        </div>
+    @endif
+
+    @if (! $publico)
+        @include('admin.carga._acomodo', ['escena' => $escena])
+    @endif
+
+    {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
+         Pedido del dueño (10-08, dibujado sobre la pantalla): «la descripción del
+         camión la quiero adentro del cuadrado donde está el camión, para poder usar
+         mejor el espacio». Era una tarjeta aparte debajo del visor: su propio borde,
+         su propia sombra y el hueco entre las dos. Adentro se ahorran los tres, y los
+         datos quedan pegados al dibujo que describen.
+
+         Va como FRANJA AL PIE y no flotando sobre el lienzo: un panel encima taparía
+         el camión, que es la doctrina del 06-08 anotada arriba en este mismo archivo.
+         Con `bg-neutral-50/70` —el mismo fondo del menú lateral— se lee como parte del
+         visor y no como una tarjeta de contenido metida adentro. --}}
+    @if ($camion ?? null)
+        <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-t border-neutral-200 bg-neutral-50/70 px-4 py-2.5 text-sm">
+            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
+            <span class="text-neutral-500">Medidas útiles
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
+                <span class="cursor-help text-neutral-300"
+                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
+            </span>
+            <span class="text-neutral-500">Volumen
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
+            </span>
+            <span class="text-neutral-500">Carga máxima
+                @if ($camion->peso_max_kg)
+                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
+                @else
+                    <span class="text-neutral-400">sin dato</span>
+                @endif
+            </span>
+            @if ($camion->pasillo_cm > 0)
+                <span class="text-neutral-500">Pasillo reservado
+                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
+                </span>
+            @endif
+            {{-- El «Free meters» de EasyCargo: más accionable que el % de ocupación
+                 para «¿le sumo algo más a este viaje?». --}}
+            <span class="text-neutral-500">Piso libre en la puerta
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
+            </span>
+        </div>
+    @endif
 </div>

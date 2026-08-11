@@ -58,6 +58,20 @@ const cuna = (x, y, z, a, b, c, dxFondo = 0, dxFrente = 0) => [
     [x, y, z + b], [x + a, y, z + b], [x + a - dxFrente, y + c, z + b], [x + dxFondo, y + c, z + b],
 ];
 
+/**
+ * Prisma con el techo EN PENDIENTE: mide `cAdelante` de alto en x y `cAtras` en x+a.
+ * `cuna` no sirve para esto —corre el techo en x pero lo deja horizontal— y la cuña
+ * de aire del techo de la cabina (el rompeviento del HINO) es justamente una rampa:
+ * baja adelante, alta atrás, contra el frente del furgón.
+ *
+ * Sale plana cara por cara, así que entra por el mismo pipeline y el sombreado por
+ * cara le da el volumen sin necesitar normales.
+ */
+const rampa = (x, y, z, a, b, cAdelante, cAtras) => [
+    [x, y, z], [x + a, y, z], [x + a, y + cAtras, z], [x, y + cAdelante, z],
+    [x, y, z + b], [x + a, y, z + b], [x + a, y + cAtras, z + b], [x, y + cAdelante, z + b],
+];
+
 const rgb = (c, s = 1) => `rgb(${Math.round(c[0] * s)},${Math.round(c[1] * s)},${Math.round(c[2] * s)})`;
 
 /**
@@ -252,6 +266,48 @@ export default function iniciarCarga3d(canvas, datos) {
 
     const prisma = (x, y, z, a, b, c, col, opts) => cuerpo(v8(x, y, z, a, b, c), col, opts);
     const G = { grad: true };
+
+    /**
+     * LA LÍNEA QUE SEPARA UNA CAJA DE LA DE AL LADO (pedido del dueño 11-08-2026).
+     *
+     * El borde por defecto de `cuerpo()` es negro al 22% y sirve para la chapa del
+     * camión, donde hay una arista cada tanto. En la carga hay CIENTOS de caras pegadas
+     * del mismo color, y al 22% una pared de 40 cajas se lee como un bloque macizo.
+     *
+     * Lo que se pierde no es estética: es el HUECO. Sin ver dónde termina cada caja no
+     * se ve que falta una, y ver el espacio que sobra es para lo que se mira el dibujo.
+     */
+    const BORDE_BULTO = 'rgba(17,17,20,.55)';
+
+    /**
+     * Diagonal mínima EN PANTALLA (px) para dibujarle la línea a un bulto.
+     *
+     * Es el mismo LOD que ya usan los códigos (`CODIGO_MIN`) y por el mismo motivo, pero
+     * al revés de lo que uno esperaría: el problema no es que la línea no se vea, es que
+     * se vea DEMASIADO. Alejado, cada caja mide pocos píxeles y su contorno ocupa casi
+     * toda su superficie: 400 cajas del contenedor se vuelven una mancha negra y
+     * desaparece justo el color que dice de qué producto es cada bloque.
+     *
+     * MEDIDO, no elegido, contando píxeles dentro de la zona de la carga en el contenedor
+     * lleno (400 cajas de tapas): sin umbral la línea se comía el **17,9%** del área, que
+     * a esa distancia es una reja negra. El valor se subió hasta que el dibujo alejado
+     * vuelve a leerse por color y la línea aparece al acercarse.
+     *
+     * Se compara contra el LADO MÁS LARGO proyectado, no contra la diagonal del cuerpo:
+     * la diagonal suma la profundidad y sobreestima el tamaño aparente — con ella, cajas
+     * que en pantalla medían 13 px pasaban el filtro.
+     */
+    const BORDE_MIN = 30;
+
+    /**
+     * Cuánto se encoge cada bulto para que quede una hendija entre vecinos: 1,5%.
+     *
+     * NO se agranda para «separar más». El dibujo tiene que ser fiel al cálculo —las
+     * cajas van pegadas de verdad— y un hueco inventado dibujaría un acomodo que el
+     * motor no calculó, que es el pecado del §2 en versión visual. La separación se
+     * consigue con la LÍNEA, no con aire.
+     */
+    const SEPARACION = 0.985;
 
     /**
      * Tamaño mínimo de letra, en píxeles, para escribir el código de un bulto. Debajo
@@ -851,11 +907,17 @@ export default function iniciarCarga3d(canvas, datos) {
      * Lo que la distingue en las fotos, en orden de cuánto se nota:
      * · ESPEJOS enormes sobre brazos largos, montados alto y bien salidos — pasan el
      *   ancho del furgón y son lo primero que se reconoce del frente;
+     * · el ROMPEVIENTO del techo: una cuña blanca sobre la cabina, separada del techo
+     *   por un bastidor, que sube hasta casi el techo del furgón (ver abajo);
      * · el furgón le gana en alto (el techo de la cabina queda a ~2/3 de la caja) y un
      *   poco en ancho;
      * · parrilla con marco plateado y el logo al centro, con listones negros;
      * · paragolpes claro con la placa al medio, faldón negro abajo y antiniebla;
      * · faros angulares grandes en las esquinas; techo plano con una ceja al frente.
+     *
+     * NUNCA la patente. En las fotos del PF BS-22 está pintada en las dos puertas y en
+     * el paragolpes, y el repositorio es PÚBLICO (D-012): la placa se dibuja como un
+     * rectángulo claro y vacío, igual que hasta ahora.
      */
     function cabinaHino() {
         const largo = M.largoCab, alto = M.altoCab;
@@ -870,6 +932,13 @@ export default function iniciarCarga3d(canvas, datos) {
         // Parabrisas grande, dejando los parantes.
         cuerpo(cuna(x0 - 0.02, y0 + h * 0.55, z0 + 0.10, largo * 0.12, anchoCab - 0.20,
             h * 0.36, largo * 0.035, 0), VIDRIO, { grad: true, borde: 'rgba(0,0,0,.35)' });
+
+        // Los dos limpiaparabrisas, apoyados en la base del parabrisas. Se ven grandes y
+        // cruzados en la foto de frente, y sin ellos el vidrio quedaba como un espejo
+        // liso pegado a la chapa.
+        for (const z of [z0 + anchoCab * 0.14, z0 + anchoCab * 0.50]) {
+            prisma(x0 - 0.048, y0 + h * 0.553, z, 0.02, anchoCab * 0.32, 0.026, [30, 32, 36]);
+        }
 
         // Marco plateado de la parrilla + el óvalo del logo al centro.
         prisma(x0 - 0.035, y0 + h * 0.30, z0 + 0.08, 0.04, anchoCab - 0.16, h * 0.22, [196, 200, 208], G);
@@ -886,27 +955,94 @@ export default function iniciarCarga3d(canvas, datos) {
         for (const z of [z0 + 0.10, z0 + anchoCab - 0.24]) {
             prisma(x0 - 0.11, y0 - 0.01, z, 0.04, 0.14, h * 0.045, [236, 237, 228]);
         }
+        // Intermitentes ÁMBAR en las puntas del paragolpes (en la foto de frente están
+        // encendidos, y son el único color de una cara toda blanca y gris).
+        for (const z of [z0 + 0.015, z0 + anchoCab - 0.135]) {
+            prisma(x0 - 0.105, y0 + h * 0.055, z, 0.035, 0.12, h * 0.05, [228, 150, 38]);
+        }
 
         // Faros angulares en las esquinas.
         for (const z of [z0 + 0.02, z0 + anchoCab - 0.28]) {
             prisma(x0 - 0.07, y0 + h * 0.17, z, 0.05, 0.26, h * 0.12, [242, 243, 234], { borde: 'rgba(0,0,0,.3)' });
         }
 
-        // ESPEJOS: brazo largo hacia adelante + paleta grande. Es lo que más identifica
-        // al 500 de frente, y con espejos chicos la cabina se veía de cualquier camión.
+        /*
+         * ESPEJOS. Es lo que más identifica al 500 de frente, y con espejos chicos la
+         * cabina se veía de cualquier camión.
+         *
+         * El soporte es de DOS TUBOS (fotos del PF BS-22, 11-08): uno arriba, casi al
+         * ras del techo, y otro abajo que sale del parante de la puerta. Con un solo
+         * brazo la paleta parecía flotar al costado de la cabina, sobre todo en la vista
+         * de costado, donde el brazo de arriba se ve de canto. Y cuelga un CONVEXO chico
+         * debajo de la paleta grande: son dos espejos por lado, no uno.
+         */
         for (const z of [z0 - 0.30, z0 + anchoCab + 0.06]) {
+            const zChapa = z > z0 ? z0 + anchoCab - 0.02 : z0 - 0.03;   // de dónde sale el tubo
+            // Brazo de arriba (el que ya estaba) + paleta grande.
             prisma(x0 + largo * 0.06, alto - h * 0.22, z > z0 ? z - 0.24 : z + 0.06, largo * 0.10, 0.26, 0.05, [42, 44, 50]);
             prisma(x0 + largo * 0.10, alto - h * 0.42, z, 0.05, 0.20, 0.40, [46, 48, 54], G);
+            // Tubo de abajo: cruza desde la chapa hasta el espejo, a la altura del
+            // antebrazo del chofer. `Math.min` + la distancia real porque el lado
+            // izquierdo tiene z menor que la chapa y el derecho mayor.
+            prisma(x0 + largo * 0.15, alto - h * 0.52, Math.min(z, zChapa), 0.042,
+                Math.abs(z - zChapa) + 0.05, 0.042, [42, 44, 50]);
+            // Convexo chico, colgando del borde de abajo de la paleta.
+            prisma(x0 + largo * 0.11, alto - h * 0.58, z + 0.02, 0.045, 0.14, 0.13, [40, 42, 48], G);
         }
 
-        // Estribo bajo la puerta.
+        // Repetidor ámbar en el costado, adelante de la junta de la puerta: en la vista
+        // de costado es el único punto de color de toda la chapa.
+        for (const z of [z0 - 0.02, z0 + anchoCab]) {
+            prisma(x0 + largo * 0.22, y0 + h * 0.30, z, 0.10, 0.02, h * 0.05, [228, 150, 38]);
+        }
+
+        // Estribo bajo la puerta, de DOS peldaños: el de abajo colgando del chasis y el
+        // de arriba metido en la chapa. En las fotos se sube en dos pasos, y con una sola
+        // tabla la puerta quedaba a la altura de la nada.
         for (const z of [z0 - 0.03, z0 + anchoCab - 0.20]) {
             prisma(x0 + largo * 0.44, y0 - 0.05, z, largo * 0.42, 0.23, 0.06, [88, 91, 98], G);
+        }
+        for (const z of [z0 - 0.02, z0 + anchoCab - 0.16]) {
+            prisma(x0 + largo * 0.50, y0 + 0.15, z, largo * 0.30, 0.18, 0.05, [74, 77, 84], G);
         }
 
         // El costado (vidrio de la puerta, junta, manija, zócalo) y la visera.
         costadoDeCabina(x0, y0, z0, largo, anchoCab, h);
         visera(x0, z0, anchoCab, alto, 0.07);
+
+        /*
+         * EL ROMPEVIENTO DEL TECHO (pedido del dueño 11-08 con tres fotos del PF BS-22:
+         * «creale ese techo arriba de la cabina, me imagino que es como un rompeviento»).
+         *
+         * Es lo que faltaba para que el HINO se pareciera al de la flota: sin él, entre
+         * el techo de la cabina y el frente del furgón —que le gana casi 90 cm— quedaba
+         * un escalón vacío, y ese hueco es justo lo que el deflector tapa en el camión
+         * real.
+         *
+         * Tres cosas lo hacen leer como deflector y no como un cajón:
+         *  1. es una RAMPA: baja adelante, alta atrás. Un prisma parejo se ve como un
+         *     dormitorio de tracto, que este camión no tiene;
+         *  2. NO llega al techo del furgón. Se mide contra `veh.alto` en vez de llevar un
+         *     alto fijo, así que en una caja más baja se achica en vez de asomar por
+         *     encima — que sería dibujar un camión que no existe;
+         *  3. va SEPARADO del techo, con el bastidor a la vista en el hueco. En las fotos
+         *     se ve el aire por debajo, y es lo que delata que es una pieza agregada.
+         */
+        const hueco = Math.min(0.12, Math.max(0.06, h * 0.07));
+        const yDef = alto + hueco;
+        const altoDef = Math.max(0.14, Math.min(0.62, veh.alto - 0.06 - yDef));
+        const largoDef = largo * 0.86, anchoDef = anchoCab - 0.06, zDef = z0 + 0.03;
+
+        cuerpo(rampa(x0 - 0.06, yDef, zDef, largoDef, anchoDef, altoDef * 0.34, altoDef), CABINA, G);
+
+        // El bastidor: dos travesaños en el hueco y dos parantes atrás, donde la pieza
+        // está más alta y necesita de dónde agarrarse.
+        for (const x of [x0 + 0.02, x0 + largoDef * 0.66]) {
+            prisma(x, alto + hueco * 0.30, zDef + 0.03, 0.05, anchoDef - 0.06, 0.035, [72, 75, 82]);
+        }
+        for (const z of [zDef + 0.05, zDef + anchoDef - 0.11]) {
+            prisma(x0 + largoDef * 0.74, alto, z, 0.05, 0.06, hueco + altoDef * 0.45, [72, 75, 82]);
+        }
 
         // Luces de gálibo del techo: van en el HINO «full» de las fotos y son lo que
         // remata la cabina por arriba.
@@ -1322,11 +1458,39 @@ export default function iniciarCarga3d(canvas, datos) {
                 && puesto(ix, iz, iy - 1) && puesto(ix, iz, iy + 1)) continue;
 
             const px = x0 + ix * ori.largo, py = y0 + iy * ori.alto, pz = z0 + iz * ori.ancho;
-            const [ba, bb, bc] = [ori.largo * 0.985, ori.ancho * 0.985, ori.alto * 0.985];
+            const [ba, bb, bc] = [ori.largo * SEPARACION, ori.ancho * SEPARACION, ori.alto * SEPARACION];
             if (bidones) {
                 bolsaDeBidones(px, py, pz, ba, bb, bc, col, blq.estiba);
             } else {
-                prisma(px, py, pz, ba, bb, bc, col);
+                // CADA CAJA CON SU LÍNEA (pedido del dueño 11-08: «las cajas bien marcadas
+                // con líneas negras, que se entienda la separación; en la imagen se ven los
+                // espacios faltantes»).
+                //
+                // Antes iban con el borde por defecto de `cuerpo()` —negro al 22%— y a
+                // pocos metros de distancia una pared de 40 cajas del mismo color se leía
+                // como UN bloque naranja. Y lo que se pierde con eso no es estética: es
+                // justamente el hueco. Sin ver dónde termina una caja no se ve que falta
+                // una, que es para lo que se mira el dibujo.
+                //
+                // Va como borde y no como separación mayor entre cajas porque el dibujo
+                // tiene que seguir siendo fiel al cálculo: las cajas están pegadas de
+                // verdad, y agrandar el hueco dibujaría un acomodo que no es el que el
+                // motor calculó.
+                // La línea solo cuando la caja es lo bastante grande en PANTALLA (ver
+                // `BORDE_MIN`). Se mide el LADO MÁS LARGO proyectado y no la diagonal del
+                // cuerpo: la diagonal suma la profundidad, así que sobreestima el tamaño
+                // aparente y dejaba pasar cajas que en pantalla eran de 13 px.
+                const o = proyectar([px, py, pz]);
+                const largoEnPantalla = (p) => Math.hypot(p[0] - o[0], p[1] - o[1]);
+                const lado = Math.max(
+                    largoEnPantalla(proyectar([px + ba, py, pz])),
+                    largoEnPantalla(proyectar([px, py, pz + bb])),
+                    largoEnPantalla(proyectar([px, py + bc, pz])),
+                );
+
+                prisma(px, py, pz, ba, bb, bc, col, {
+                    borde: lado >= BORDE_MIN ? BORDE_BULTO : null,
+                });
             }
             // El código va sobre la caja de siempre, sea prisma o bolsa de bidones: las
             // dos ocupan el mismo volumen, así que la cara se calcula igual.

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CamionSimulacion;
 use App\Models\CargaReal;
 use App\Models\TipoBulto;
+use App\Services\Carga\AcomodoManual;
 use App\Services\Carga\CalculoDeCarga;
 use App\Services\Carga\PalletSimulado;
 use App\Services\Carga\PlanDeCargaExcel;
@@ -152,6 +153,18 @@ class SimuladorCargaController extends Controller
             // Opt-in, como el tope de apilado: apagado no mueve ni un número de los
             // verificados, y el candado de consistencia entre pestañas sigue en pie.
             'aprovechar' => ['nullable', 'boolean'],
+            // EL ACOMODO A MANO (pedido del dueño 11-08: «que te dé la opción de dar
+            // vuelta la caja y acomodar como uno quiero»). Una posición por bloque,
+            // `x,y` o `x,y,g` en centímetros, indexada por el ordinal del bloque; y
+            // `acomodo_de`, para cuántos bloques se armó — si el resultado cambió de
+            // tamaño, el acomodo se descarta entero en vez de aplicarse torcido.
+            //
+            // Viaja en la URL como todo lo demás: el link ES el escenario, así que un
+            // plan acomodado a mano se comparte y se baja a Excel sin tabla nueva. Ver
+            // `AcomodoManual` para lo que el acomodo puede y no puede cambiar.
+            'acomodo' => ['nullable', 'array', 'max:200'],
+            'acomodo.*' => ['string', 'regex:'.AcomodoManual::FORMATO],
+            'acomodo_de' => ['nullable', 'integer', 'min:0', 'max:200'],
         ]);
 
         // EL ORDEN DE LAS LÍNEAS SE RESTAURA POR ÍNDICE.
@@ -321,7 +334,13 @@ class SimuladorCargaController extends Controller
             // modelo 3D — la silueta y los bultos son prismas derivados de las
             // medidas. SIEMPRE viaja como lista de bloques: el cupo máximo es el
             // caso particular de un solo bloque.
-            'escena' => $this->escena($camion, $bulto, $resultado, $mixta, $estiba, $enPallet, $prueba['bultos'] ?? null),
+            'escena' => $this->escena(
+                $camion, $bulto, $resultado, $mixta, $estiba, $enPallet, $prueba['bultos'] ?? null,
+                new AcomodoManual(
+                    $datos['acomodo'] ?? [],
+                    isset($datos['acomodo_de']) ? (int) $datos['acomodo_de'] : null,
+                ),
+            ),
         ]);
     }
 
@@ -832,7 +851,7 @@ class SimuladorCargaController extends Controller
      * los que el acomodo por zonas haya puesto — ordenados fondo → puerta para
      * que la animación cargue como se carga de verdad.
      */
-    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $resultado, ?array $mixta, string $estiba = 'auto', ?array $enPallet = null, ?int $topeBultos = null): ?array
+    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $resultado, ?array $mixta, string $estiba = 'auto', ?array $enPallet = null, ?int $topeBultos = null, ?AcomodoManual $acomodoManual = null): ?array
     {
         if (! $camion || ($resultado === null && $mixta === null && $enPallet === null)) {
             return null;
@@ -840,14 +859,34 @@ class SimuladorCargaController extends Controller
 
         $m = fn (int $cm) => $cm / 100;
 
+        $acomodoManual ??= new AcomodoManual;
+
         if ($enPallet !== null) {
-            return $this->escenaEnPallet($camion, $bulto, $enPallet, $m);
+            return $this->escenaEnPallet($camion, $bulto, $enPallet, $m, $acomodoManual);
         }
 
+        // EL ACOMODO A MANO SE APLICA EN CENTÍMETROS, antes de pasar a metros.
+        //
+        // Dos razones. Una: el credo del motor es rejilla entera en cm; comparar huellas
+        // en metros haría que 0,44 × 3 = 1,3199999999999998 se «pise» con un vecino en
+        // 1,32 por dos diezmilésimas de milímetro, y la pantalla marcaría en rojo una
+        // carga perfecta. Dos: la carga de arriba de un pallet se rota comparando el
+        // largo con que quedó colocado contra el suyo (`interiorDelPallet`), así que si
+        // el giro llega ANTES de ese mapeo, el pallet acomodado a mano gira su carga por
+        // el mismo camino que ya usaba el giro del motor — sin código nuevo.
+        $acomodo = null;
+
         if ($mixta !== null) {
-            $bloques = collect($mixta['resultado']['bloques'])
-                ->sortBy([['x', 'asc'], ['y', 'asc']])
-                ->values()
+            // El orden fondo → puerta se fija ACÁ y no se vuelve a tocar: es el ordinal
+            // con el que el acomodo guarda cada posición. Reordenar después de mover
+            // dejaría las posiciones apuntando a otros bloques en el próximo recálculo.
+            $acomodo = $acomodoManual->aplicar(
+                collect($mixta['resultado']['bloques'])->sortBy([['x', 'asc'], ['y', 'asc']])->values()->all(),
+                $camion->largo_cm,
+                $camion->ancho_cm,
+            );
+
+            $bloques = collect($acomodo['bloques'])
                 ->map(function (array $b) use ($mixta, $m) {
                     $fila = $mixta['lineas'][$b['linea']];
 
@@ -888,18 +927,30 @@ class SimuladorCargaController extends Controller
             // Con una CANTIDAD A PROBAR, el dibujo se capa a lo pedido: si el veredicto
             // dice «entran tus 50», el camión tiene que mostrar 50, no el máximo.
             $enEscena = min($resultado['bultos'], $topeBultos ?? PHP_INT_MAX);
-            $bloques = $enEscena > 0 ? [[
+
+            // El cupo máximo también se puede acomodar: es el caso de UN bloque, y ahí
+            // vive la carga «de a un bulto» que se pidió (una línea de 1 es un bloque de
+            // 1, o sea la caja suelta que se arrastra y se gira).
+            $acomodo = $acomodoManual->aplicar($enEscena > 0 ? [[
                 'x' => 0,
                 'y' => 0,
-                'orientacion' => array_map($m, $resultado['orientacion']),
+                'orientacion' => $resultado['orientacion'],
                 'rejilla' => $resultado['rejilla'],
                 'cantidad' => $enEscena,
+            ]] : [], $camion->largo_cm, $camion->ancho_cm);
+
+            $bloques = collect($acomodo['bloques'])->map(fn (array $b) => [
+                'x' => $m($b['x']),
+                'y' => $m($b['y']),
+                'orientacion' => array_map($m, $b['orientacion']),
+                'rejilla' => $b['rejilla'],
+                'cantidad' => $b['cantidad'],
                 'color' => self::COLORES_3D[0],
                 'letra' => self::letra(0),
                 'nombre' => $bulto->nombre,
                 'forma' => $bulto->formaVisor(),
                 'estiba' => TipoBulto::estibaEfectiva($estiba),
-            ]] : [];
+            ])->all();
         }
 
         return [
@@ -917,6 +968,54 @@ class SimuladorCargaController extends Controller
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
             'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
+            // EL TABLERO: la misma carga vista desde arriba, en centímetros enteros, para
+            // arrastrarla y girarla. Viaja con la escena y no aparte porque tiene que
+            // llegar también al link compartido: ahí no se puede tocar, pero el aviso de
+            // «acomodo a mano» sí se tiene que ver.
+            'acomodo' => $this->tablero($acomodo, $bloques, $camion),
+        ];
+    }
+
+    /**
+     * El tablero del acomodo manual: piso, huellas y lo que está mal.
+     *
+     * Las medidas salen de los bloques EN CENTÍMETROS que devolvió el acomodo y no de los
+     * de la escena: los de la escena ya pasaron por metros, y volver a multiplicar por 100
+     * para dibujar un tablero que después escribe centímetros en la URL es dar dos vueltas
+     * para llegar al mismo entero, con una posibilidad de perderlo en el camino.
+     *
+     * @param  array<string, mixed>  $acomodo  lo que devolvió `AcomodoManual::aplicar`
+     * @param  list<array<string, mixed>>  $escena  los mismos bloques ya en metros, por color y nombre
+     * @return array<string, mixed>
+     */
+    private function tablero(array $acomodo, array $escena, CamionSimulacion $camion): array
+    {
+        $piezas = [];
+
+        foreach ($acomodo['bloques'] as $i => $b) {
+            $piezas[] = [
+                'x' => $b['x'],
+                'y' => $b['y'],
+                'largo' => $b['rejilla']['largo'] * $b['orientacion']['largo'],
+                'ancho' => $b['rejilla']['ancho'] * $b['orientacion']['ancho'],
+                'girado' => (bool) ($b['girado'] ?? false),
+                'cantidad' => $b['cantidad'],
+                // El color y la letra son los MISMOS del lienzo (por eso salen de la
+                // escena y no se recalculan): el tablero y el dibujo 3D tienen que
+                // nombrar cada bloque igual, o hay que adivinar cuál se está moviendo.
+                'color' => sprintf('#%02x%02x%02x', ...$escena[$i]['color']),
+                'letra' => $escena[$i]['letra'],
+                'nombre' => $escena[$i]['nombre'],
+            ];
+        }
+
+        return [
+            'piso' => ['largo' => $camion->largo_cm, 'ancho' => $camion->ancho_cm],
+            'piezas' => $piezas,
+            'activo' => $acomodo['activo'],
+            'choques' => $acomodo['choques'],
+            'fuera' => $acomodo['fuera'],
+            'descartado' => $acomodo['descartado'],
         ];
     }
 
@@ -963,7 +1062,7 @@ class SimuladorCargaController extends Controller
      * Si el motor lo giró 90° para que entrara, el interior viene **ya girado** desde acá:
      * el visor no tiene que deducirlo, y así el dibujo no puede contradecir al cálculo.
      */
-    private function escenaEnPallet(CamionSimulacion $camion, TipoBulto $bulto, array $enPallet, callable $m): array
+    private function escenaEnPallet(CamionSimulacion $camion, TipoBulto $bulto, array $enPallet, callable $m, AcomodoManual $acomodoManual): array
     {
         $p = $enPallet['pallet'];
         $enCamion = $enPallet['enCamion'];
@@ -977,22 +1076,33 @@ class SimuladorCargaController extends Controller
             'largo_cm' => $p->largo_cm,
         ];
 
-        $interior = $this->interiorDelPallet($comun, $enCamion['orientacion']['largo'], $m, self::COLORES_3D[0]);
-
-        $bloques = $enPallet['cabenPallets'] > 0 ? [[
+        // Este modo también se acomoda a mano: es el caso de UN bloque de pallets, y
+        // dejarlo afuera sería un agujero arbitrario —el usuario arma el pallet, lo sube
+        // y de golpe no puede moverlo—. Como en los otros dos modos, el acomodo se aplica
+        // en centímetros y ANTES de resolver el interior, así la carga de arriba gira con
+        // la tarima por el camino de siempre.
+        $acomodo = $acomodoManual->aplicar($enPallet['cabenPallets'] > 0 ? [[
             'x' => 0,
             'y' => 0,
-            'orientacion' => array_map($m, $enCamion['orientacion']),
+            'orientacion' => $enCamion['orientacion'],
             'rejilla' => $enCamion['rejilla'],
             'cantidad' => $enPallet['cabenPallets'],
+        ]] : [], $camion->largo_cm, $camion->ancho_cm);
+
+        $bloques = collect($acomodo['bloques'])->map(fn (array $b) => [
+            'x' => $m($b['x']),
+            'y' => $m($b['y']),
+            'orientacion' => array_map($m, $b['orientacion']),
+            'rejilla' => $b['rejilla'],
+            'cantidad' => $b['cantidad'],
             'color' => self::COLORES_3D[0],
             'letra' => self::letra(0),
             'nombre' => $bulto->nombre,
             'forma' => 'pallet',
             'estiba' => 'pie',
             'base' => $m($p->base_cm),
-            'interior' => $interior,
-        ]] : [];
+            'interior' => $this->interiorDelPallet($comun, $b['orientacion']['largo'], $m, self::COLORES_3D[0]),
+        ])->all();
 
         return [
             'vehiculo' => [
@@ -1006,6 +1116,7 @@ class SimuladorCargaController extends Controller
             'bloques' => $bloques,
             'tope' => $enPallet['cabenPallets'],
             'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
+            'acomodo' => $this->tablero($acomodo, $bloques, $camion),
             // Lo que el visor dibuja EN EL PISO, al lado del camión, mientras el pallet
             // todavía no se subió (pedido del dueño 06-08).
             'pallet' => [

@@ -126,6 +126,15 @@ class PlanDeCargaExcel
         // el factor no esté calibrado. Sacarlo del papel sería prometer más de lo
         // que el propio motor dice que sabe.
         $this->filas->celdas([[1, 'Los cupos son un máximo geométrico (pasillo 0, factor 1). Verificar contra la carga real antes de comprometer un viaje.', 'aviso']]);
+
+        // ACOMODO A MANO: si alguien movió los bloques, la planilla lo dice igual que la
+        // pantalla. Es la hoja que se imprime y se le da al chofer, así que es JUSTO
+        // donde no puede faltar: el orden de carga de más abajo sale de esas posiciones,
+        // y sin el aviso se lee como un plan que el motor verificó.
+        if ($d['escena']['acomodo']['activo'] ?? false) {
+            $this->filas->celdas([[1, 'Los bloques se acomodaron A MANO: el cálculo no verificó estas posiciones. Las cantidades sí son las del cálculo.', 'aviso']]);
+        }
+
         $this->filas->vacia();
     }
 

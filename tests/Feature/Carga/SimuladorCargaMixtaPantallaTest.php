@@ -388,6 +388,39 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('hidden lg:block', $antes);
     }
 
+    public function test_cada_bulto_lleva_su_linea_y_se_apaga_cuando_es_diminuto(): void
+    {
+        // Pedido del dueño (11-08): «las cajas bien marcadas con líneas negras, que se
+        // entienda la separación; en la imagen se ven los espacios faltantes».
+        //
+        // Antes iban con el borde por defecto de `cuerpo()` —negro al 22%, pensado para
+        // la chapa del camión— y una pared de 40 cajas del mismo color se leía como UN
+        // bloque. Lo que se pierde con eso no es estética: es el HUECO, que es para lo
+        // que se mira el dibujo.
+        //
+        // Candado de FUENTE porque el visor no tiene tests de JS. Las dos mitades van
+        // juntas a propósito: sin el umbral, medido en el contenedor lleno, la línea se
+        // comía el 17,9% del área de la carga y el dibujo se volvía una reja negra.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('const BORDE_BULTO', $js);
+        $this->assertStringContainsString('borde: lado >= BORDE_MIN ? BORDE_BULTO : null', $js,
+            'Los bultos dejaron de llevar su línea, o se la pusieron sin el umbral.');
+
+        // El umbral se compara contra el LADO más largo proyectado y NO contra la
+        // diagonal del cuerpo: la diagonal suma la profundidad, sobreestima el tamaño
+        // aparente, y con ella pasaban cajas que en pantalla medían 13 px.
+        $cuerpo = $this->cuerpoDeFuncion($js, 'rejillaDeBultos');
+        $this->assertStringContainsString('Math.max(', $cuerpo);
+        $this->assertStringNotContainsString('px + ba, py + bc, pz + bb', $cuerpo,
+            'Volvió la diagonal del cuerpo como medida del tamaño aparente.');
+
+        // Y la SEPARACIÓN sigue siendo la línea, no aire inventado: agrandar el hueco
+        // entre cajas dibujaría un acomodo que el motor no calculó (§2 en versión visual).
+        $this->assertStringContainsString('const SEPARACION = 0.985', $js,
+            'Se agrandó el hueco entre bultos para «separar más»: eso miente sobre el acomodo.');
+    }
+
     public function test_el_visor_no_registra_gestos_tactiles(): void
     {
         // La otra mitad del pedido: el zoom entra por la RUEDA del mouse, que un

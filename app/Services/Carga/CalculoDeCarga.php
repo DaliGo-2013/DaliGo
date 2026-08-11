@@ -163,10 +163,22 @@ class CalculoDeCarga
      *   primero, como en la práctica), no el orden en que se escribieron —
      *   salvo que `$enOrdenDeLista` lo pida, y ahí manda el orden del usuario.
      *
+     * LÍNEAS ABIERTAS — «lo que quepa» (pedido del dueño 11-08-2026, al fusionar las dos
+     * preguntas de la pantalla en una sola). Una línea con `abierta: true` no lleva
+     * cantidad: se coloca hasta que no entra un bulto más o hasta que se agotan los
+     * kilos. Con eso, UNA línea abierta y sola responde exactamente lo que respondía
+     * `cupo()` —el máximo de ese producto en el camión vacío— y varias líneas fijas más
+     * una abierta responden lo que antes no se podía preguntar: «esto va firme, y con lo
+     * que sobre lléname de esto otro».
+     *
+     * `cupo()` NO se reemplaza: sigue siendo la respuesta de una sola división entera,
+     * verificable a mano contra los cupos de referencia, y es la que usa la comparativa
+     * entre camiones. La equivalencia entre las dos está atada por candado.
+     *
      * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int}  $vehiculo  cm y kg
-     * @param  list<array{bulto: array, cantidad: int}>  $lineas  cantidad EN BULTOS
+     * @param  list<array{bulto: array, cantidad?: int, abierta?: bool}>  $lineas  cantidad EN BULTOS
      * @param  bool  $enOrdenDeLista  respeta el orden dado en vez de ordenar por volumen
-     * @return array{lineas: array<int, array{pedidos:int,colocados:int,unidades_colocadas:int,motivo:?string}>, bloques: list<array{linea:int,x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>, cabe_todo:bool, peso_kg:float, volumen_ocupado_m3:float, volumen_vehiculo_m3:float, ocupacion:float}
+     * @return array{lineas: array<int, array{pedidos:?int,abierta:bool,colocados:int,unidades_colocadas:int,motivo:?string,lleno_por:?string}>, bloques: list<array{linea:int,x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>, cabe_todo:bool, peso_kg:float, volumen_ocupado_m3:float, volumen_vehiculo_m3:float, ocupacion:float}
      */
     public function carga(array $vehiculo, array $lineas, bool $enOrdenDeLista = false, bool $aprovechar = false): array
     {
@@ -184,15 +196,23 @@ class CalculoDeCarga
         // carga»: se reordena la lista y el motor recalcula, así que el resultado sigue
         // siendo un acomodo que el motor verificó. Arrastrar bloques a mano dejaría armar
         // en pantalla una carga que el cálculo dice que no cabe.
-        $orden = array_keys($lineas);
-        if (! $enOrdenDeLista) {
-            usort($orden, function (int $a, int $b) use ($lineas) {
-                $va = $lineas[$a]['bulto']['largo'] * $lineas[$a]['bulto']['ancho'] * $lineas[$a]['bulto']['alto'];
-                $vb = $lineas[$b]['bulto']['largo'] * $lineas[$b]['bulto']['ancho'] * $lineas[$b]['bulto']['alto'];
+        $abierta = fn (int $i) => ! empty($lineas[$i]['abierta']);
+        $vol = fn (int $i) => $lineas[$i]['bulto']['largo'] * $lineas[$i]['bulto']['ancho'] * $lineas[$i]['bulto']['alto'];
 
-                return $vb <=> $va ?: $a <=> $b;
-            });
-        }
+        // LAS LÍNEAS ABIERTAS VAN AL FINAL, SIEMPRE — y no es una preferencia de orden.
+        // Una línea sin cantidad se lleva todo lo que quepa; colocada antes que una con
+        // cantidad fija dejaría afuera justamente lo que el vendedor ya vendió. El
+        // relleno se acomoda en lo que sobra, nunca al revés. Por eso la regla manda
+        // incluso con `$enOrdenDeLista`, que en todo lo demás respeta al usuario: acá el
+        // orden que él escribió no puede expresar «primero el relleno» sin contradecirse.
+        $orden = array_keys($lineas);
+        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol) {
+            if ($abierta($a) !== $abierta($b)) {
+                return $abierta($a) ? 1 : -1;
+            }
+
+            return $enOrdenDeLista ? $a <=> $b : ($vol($b) <=> $vol($a) ?: $a <=> $b);
+        });
 
         // Regiones de piso libres. Arranca con toda la caja menos el pasillo.
         $regiones = ($L > 0 && $W > 0) ? [['x' => 0, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];
@@ -204,10 +224,19 @@ class CalculoDeCarga
 
         foreach ($orden as $i) {
             $bulto = $lineas[$i]['bulto'];
-            $pedidos = max(0, (int) $lineas[$i]['cantidad']);
+            // LÍNEA ABIERTA: «lo que quepa». Es una cantidad sin tope, así que el bucle
+            // de abajo para cuando no entra un bulto más o cuando se agotan los kilos —
+            // los dos cortes que ya existían. No hace falta un camino aparte.
+            //
+            // El flag es EXPLÍCITO y no `cantidad === null`: si la clave llegara ausente
+            // por un typo, un null se leería como «llename el camión», y acá el error
+            // tiene que caer del lado de colocar menos, no más.
+            $esAbierta = ! empty($lineas[$i]['abierta']);
+            $pedidos = $esAbierta ? PHP_INT_MAX : max(0, (int) ($lineas[$i]['cantidad'] ?? 0));
             $porUnidad = max(1, (int) ($bulto['unidades'] ?? 1));
             $pesoUnit = (float) ($bulto['peso'] ?? 0);
             $restan = $pedidos;
+            $colocados = 0;
             $capadoPorPeso = false;
             $primerBloque = true;
 
@@ -248,16 +277,24 @@ class CalculoDeCarga
 
                 $bloques[] = $puesto + ['linea' => $i];
                 $restan -= $puesto['cantidad'];
+                $colocados += $puesto['cantidad'];
                 $pesoAcum += $pesoUnit * $puesto['cantidad'];
                 $volOcupado += $this->m3($bulto['largo'], $bulto['ancho'], $bulto['alto']) * $puesto['cantidad'];
             }
 
-            $colocados = $pedidos - $restan;
             $porLinea[$i] = [
-                'pedidos' => $pedidos,
+                // Una línea abierta no tiene «pedidos»: no se pidió un número.
+                'pedidos' => $esAbierta ? null : $pedidos,
+                'abierta' => $esAbierta,
                 'colocados' => $colocados,
                 'unidades_colocadas' => $colocados * $porUnidad,
-                'motivo' => $restan > 0 ? $this->motivoDelFaltante($bulto, $L, $W, $H, $capadoPorPeso) : null,
+                // Y NO deja carga afuera: se pidió «lo que quepa» y entró lo que cabía,
+                // así que un motivo de faltante sería inventar un incumplimiento. Por eso
+                // tampoco puede tumbar el `cabe_todo` de la carga.
+                'motivo' => (! $esAbierta && $restan > 0) ? $this->motivoDelFaltante($bulto, $L, $W, $H, $capadoPorPeso) : null,
+                // Con qué se llenó, que es lo único que sí interesa de una abierta: si
+                // paró por los kilos, sumar un camión más grande no cambia nada.
+                'lleno_por' => $esAbierta ? ($capadoPorPeso ? self::LIMITE_PESO : 'espacio') : null,
             ];
         }
 

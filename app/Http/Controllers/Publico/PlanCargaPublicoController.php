@@ -61,6 +61,21 @@ class PlanCargaPublicoController extends Controller
             'enPallet' => $datos['enPallet'] ?? null,
             'bulto' => $datos['bulto'] ?? null,
             'vence' => now()->addDays(self::DIAS_VIGENCIA),
+            // DOS VISTAS DEL MISMO LINK (pedido del dueño 11-08: «que la otra persona lo
+            // pueda ver pero no editar, y si jefatura lo pueda editar»).
+            //
+            // La diferencia la hace QUIÉN abre, no la URL, y eso es lo que la mantiene
+            // segura: un segundo link «editable» sería una puerta al simulador sin login
+            // para cualquiera que tenga la dirección, y tiraría abajo los cinco puntos de
+            // arriba. Acá el cliente ve exactamente lo mismo de siempre —solo mirar— y
+            // quien ya tiene permiso ve además el atajo para abrirlo y tocarlo adentro,
+            // donde el permiso se vuelve a chequear en la ruta.
+            //
+            // Se pregunta por el PERMISO y no por «estar logueado»: un técnico con cuenta
+            // no puede editar planes de carga, y el botón lo mandaría a un 403.
+            'puedeEditar' => $request->user()?->can('simular carga') ?? false,
+            // El mismo escenario, para abrirlo adentro tal cual se está mirando.
+            'urlEditar' => route('admin.carga.index', $request->except(['signature', 'expires'])),
         ]);
     }
 }

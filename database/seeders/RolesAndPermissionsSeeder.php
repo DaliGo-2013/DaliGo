@@ -144,8 +144,13 @@ class RolesAndPermissionsSeeder extends Seeder
             ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar carga']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
+        //
+        // + 'ver vehiculos' (11-08-2026): el respaldo digital de los documentos
+        // existe PARA el conductor — mostrar el permiso o el SOAP desde el
+        // teléfono si lo controlan en un reparto. Ver es consulta; subir sigue
+        // siendo de quien gestiona la flota ('manage vehiculos').
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
-            ->givePermissionTo(['crear lote servicio', 'confirmar entrega']);
+            ->givePermissionTo(['crear lote servicio', 'confirmar entrega', 'ver vehiculos']);
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
         // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
         // NO lleva 'autorizar reparacion' (decision del dueño 07-08): el taller no
