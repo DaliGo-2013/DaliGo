@@ -21,6 +21,14 @@ class TiposBultoSeederTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Las cuatro cajas del catálogo, medidas con huincha el 11-08-2026. */
+    private const CAMIONES = [
+        "Contenedor 40'" => [1203, 235, 239],
+        'HINO 500' => [797, 260, 266],
+        'Chevy 3' => [790, 220, 230],
+        'Hyundai HD35' => [430, 200, 220],
+    ];
+
     private CalculoDeCarga $calc;
 
     protected function setUp(): void
@@ -35,19 +43,49 @@ class TiposBultoSeederTest extends TestCase
         return TipoBulto::where('nombre', 'like', 'Bolsa 5× botellón 20 L%')->firstOrFail();
     }
 
-    public function test_la_bolsa_de_botellones_apila_10_porque_va_vacia(): void
+    public function test_el_tope_de_la_bolsa_no_muerde_en_ningun_camion_del_catalogo(): void
     {
-        // Dato de terreno del dueño (11-08-2026): «las bolsas aguantan 9 encima porque
-        // están vacías, nada se rompe». Nueve encima de la de abajo son DIEZ de alto.
+        // Dato de terreno del dueño (11-08-2026): «no hay un máximo para apilar, se llenan
+        // todos los camiones siempre y no pasa nada». O sea que el que manda es SIEMPRE la
+        // altura del camión, nunca el tope.
         //
-        // Cuántas aguanta la de abajo NO es geometría: es lo único de este cálculo que el
-        // código no puede deducir, así que queda fijado acá con su origen.
-        $this->assertSame(10, $this->bolsa()->apilable_max);
-        $this->assertSame(
-            10,
-            TipoBulto::where('nombre', 'like', 'Bolsa 5× botellón 10 L%')->firstOrFail()->apilable_max,
-            'La de 10 L va vacía igual.',
-        );
+        // El candado NO fija el número —30 es solo «bien alto»— sino la PROPIEDAD, que es
+        // lo que él dijo. Fijar el 30 dejaría pasar el error que ya pasó dos veces: con 6
+        // y con 10 el tope mordía, y con 10 encima parecía correcto por casualidad porque
+        // en el HINO la bolsa acostada da exactamente 10 capas.
+        foreach (['Bolsa 5× botellón 20 L%', 'Bolsa 5× botellón 10 L%'] as $patron) {
+            $bolsa = TipoBulto::where('nombre', 'like', $patron)->firstOrFail();
+
+            foreach (self::CAMIONES as $nombre => [$largo, $ancho, $alto]) {
+                foreach (['pie', 'costado', 'pico'] as $estiba) {
+                    $b = $bolsa->paraCalculo($estiba);
+                    $porAltura = intdiv($alto, $b['alto']);
+
+                    $this->assertLessThanOrEqual(
+                        $b['apilable_max'],
+                        $porAltura,
+                        "En {$nombre} con la bolsa {$estiba}, el tope ({$b['apilable_max']}) corta antes que la altura ({$porAltura}).",
+                    );
+                }
+            }
+        }
+    }
+
+    public function test_la_bolsa_pesa_lo_que_pesan_sus_cinco_botellones(): void
+    {
+        // 750 g por botellón soplado × 5 = 3,75 kg (dueño, 11-08-2026). Viajaba SIN peso
+        // —0 kg para el motor—, que era inofensivo hasta que existió el cartel de
+        // sobrepeso: una carga de botellones no lo habría disparado nunca.
+        $this->assertSame('3.75', $this->bolsa()->peso_kg);
+
+        // Y sigue sin mover ningún cupo, que es lo que confirma la nota del catálogo:
+        // acá el límite es el volumen, no el peso. El contenedor aguanta 7.680 bolsas por
+        // kilos y el espacio deja 324.
+        $contenedor = new CamionSimulacion(['largo_cm' => 1203, 'ancho_cm' => 235, 'alto_cm' => 239, 'peso_max_kg' => 28800, 'pasillo_cm' => 0]);
+        $r = $this->calc->cupo($contenedor->paraCalculo(), $this->bolsa()->paraCalculo());
+
+        $this->assertSame(1620, $r['unidades']);
+        $this->assertNotSame('peso', $r['limite'], 'Con botellones vacíos el peso no puede ser el límite.');
     }
 
     public function test_el_tope_nuevo_llena_el_hino_y_no_toca_los_cupos_del_hd35(): void

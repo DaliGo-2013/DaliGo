@@ -414,7 +414,36 @@ con «Undefined array key»**; la letra, el color y el Excel señalaban al produ
 Con la clave puesta, los cuatro lugares hablan del mismo producto por construcción. Candado:
 `test_una_linea_descartada_no_le_corre_la_letra_a_las_de_abajo`.
 
-### 3.4quater La bolsa apila 10, no 6 — y eso cierra el hueco solo (11-08-2026)
+### 3.4quinquies La bolsa NO TIENE TOPE de apilado, y pesa 3,75 kg (11-08-2026)
+
+Dos datos de terreno que llegaron juntos y corrigen §3.4quater el mismo día:
+
+> *«No hay un máximo para apilar, se llenan todos los camiones siempre y no pasa nada.»*
+> *«Cada preforma que se sopla y se convierte en botellón pesa 750 gr, o sea que una bolsa de
+> 5 bidones vacíos pesa 3,750 kg.»*
+
+**SIN TOPE.** El `apilable_max` queda en 30, que no es un tope real: es un número por encima de
+lo que cualquier caja del catálogo permite —el peor caso es la bolsa de 10 L acostada en el
+HINO, 266/21 = 12 capas—, así que **el que manda es siempre la altura del camión**.
+
+El candado no fija el 30 sino **la propiedad**, que es lo que él dijo: para cada bolsa, cada
+camión y cada estiba, el tope tiene que ser mayor que lo que da la altura. Fijar el número
+dejaría pasar el error que ya ocurrió **dos veces**: con 6 mordía en todos lados, y con 10
+mordía igual pero **parecía correcto por casualidad** —en el HINO la bolsa de 20 L acostada da
+exactamente 10 capas— mientras le recortaba una capa entera a la de 10 L en el contenedor.
+
+**PESO: 3,75 kg.** Hasta hoy la bolsa viajaba **sin peso**, o sea 0 kg para el motor. Era
+inofensivo mientras no existía el aviso de sobrepeso (§3.6) y dejó de serlo en el momento en
+que existió: una carga de botellones no lo habría disparado nunca, por pesada que fuera.
+
+No mueve ningún cupo, y eso **confirma** lo que la nota del catálogo decía desde el 04-08: el
+contenedor aguanta 7.680 bolsas por kilos y el espacio deja 324. Acá el límite es volumen.
+
+**El de 10 L queda SIN peso a propósito.** Los 750 g son del botellón de 20 L —el que él
+nombró— y el de 10 sale de una preforma más chica. Ponerle el mismo número sería inventar un
+dato que ahora alimenta un cartel de advertencia, que es peor que no tenerlo. Falta pedirlo.
+
+### 3.4quater La bolsa apila 10, no 6 — y eso cierra el hueco solo (11-08-2026) — AFINADO por §3.4quinquies
 
 Dato de terreno del dueño, que era lo único que faltaba: *«si las bolsas aguantan 9 encima
 porque están vacías, nada se rompe»*. **Nueve encima de la de abajo son DIEZ de alto.**

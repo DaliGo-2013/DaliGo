@@ -27,29 +27,45 @@ class TiposBultoSeeder extends Seeder
                 'nombre' => 'Bolsa 5× botellón 20 L (vacío)',
                 'categoria' => 'botellones',
                 'largo_cm' => 130, 'ancho_cm' => 26, 'alto_cm' => 51,
-                // APILA 10, NO 6 (dato de terreno del dueño, 11-08-2026: «las bolsas
-                // aguantan 9 encima porque están vacías, nada se rompe»). Nueve encima de
-                // la de abajo son DIEZ de alto.
+                // PESO REAL: 3,75 kg la bolsa (dueño, 11-08-2026: «cada preforma que se
+                // sopla y se convierte en botellón pesa 750 gr, o sea que una bolsa de 5
+                // bidones vacíos pesa 3,750 kg»). Hasta hoy viajaba SIN peso —o sea, 0 kg
+                // para el motor—, que era inofensivo mientras no existía el aviso de
+                // sobrepeso y dejó de serlo en cuanto existió: una carga de botellones
+                // nunca habría disparado el cartel aunque se pasara.
                 //
-                // El 6 era un número prudente puesto sin medir, y era el que dejaba medio
-                // camión de aire: acostada la bolsa mide 26 cm, así que seis son 156 de
-                // los 266 del HINO. Se cambia acá y no en la pantalla porque el catálogo
-                // es la fuente de verdad del repo (§0) y esto vale para toda simulación.
+                // No mueve ningún cupo: 28.800 kg de contenedor a 3,75 la bolsa dan 7.680
+                // bolsas y el espacio deja 324. Confirma lo que la nota decía desde el
+                // 04-08 — acá el límite es volumen, no peso.
+                'peso_kg' => 3.75,
+                // SIN TOPE DE APILADO (dato de terreno del dueño, 11-08-2026: «no hay un
+                // máximo para apilar, se llenan todos los camiones siempre y no pasa
+                // nada»). El 30 no es un tope real: es un número por encima de lo que
+                // cualquier caja del catálogo permite —el peor caso es la bolsa de 10 L
+                // acostada en el HINO, 266/21 = 12 capas—, así que el que manda es
+                // SIEMPRE la altura del camión. Candado:
+                // `test_el_tope_de_la_bolsa_no_muerde_en_ningun_camion_del_catalogo`.
                 //
-                // NO mueve los cupos verificados del HD35: sus 220 cm de alto solo dan
-                // para 8 acostadas (8 × 26 = 208) y 4 de pie (4 × 51 = 204), así que ahí
-                // manda la altura y no el tope. Donde sí cambia es en el HINO y el
-                // contenedor, que son más altos. Candado: TiposBultoSeederTest.
-                'unidades' => 5, 'apilable_max' => 10, 'soporta_peso_encima' => true,
+                // Estuvo en 6 (prudente, sin medir) y unas horas en 10, cuando él dijo
+                // «aguantan 9 encima». El 10 todavía mordía: en el HINO la bolsa acostada
+                // da exactamente 10 capas, así que parecía correcto por casualidad, y en
+                // la de 10 L recortaba de verdad.
+                'unidades' => 5, 'apilable_max' => 30, 'soporta_peso_encima' => true,
                 'orientacion_fija' => true,
-                'observaciones' => 'Medida del dueño 04-08-2026. Botellones SIEMPRE vacíos: el límite es volumen, no peso. Apila 10 (dueño, 11-08-2026).',
+                'observaciones' => 'Medida del dueño 04-08-2026. Botellones SIEMPRE vacíos: 750 g cada uno, el límite es volumen y no peso. Sin tope de apilado (dueño, 11-08-2026).',
             ],
             [
                 'nombre' => 'Bolsa 5× botellón 10 L (vacío)',
                 'categoria' => 'botellones',
                 'largo_cm' => 110, 'ancho_cm' => 21, 'alto_cm' => 40,
                 // Mismo dato de terreno que la de 20 L: la bolsa va vacía y no se aplasta.
-                'unidades' => 5, 'apilable_max' => 10, 'soporta_peso_encima' => true,
+                //
+                // El PESO va sin poner a propósito. Los 750 g son del botellón de 20 L —el
+                // que él nombró—, y el de 10 L sale de una preforma más chica. Ponerle los
+                // mismos 750 sería inventar un número que ahora alimenta el cartel de
+                // sobrepeso, que es peor que no tenerlo: misma regla que las jaulas sin
+                // medir. Falta pedirlo.
+                'unidades' => 5, 'apilable_max' => 30, 'soporta_peso_encima' => true,
                 'orientacion_fija' => true,
                 'observaciones' => 'Rinde casi el doble que el de 20 L: 54% del espacio por botellón.',
             ],
