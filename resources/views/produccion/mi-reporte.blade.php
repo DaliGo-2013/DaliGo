@@ -237,11 +237,19 @@
                     }
                  }">
                 {{-- La asignación, siempre a la vista --}}
-                <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">
                         Preformas asignadas{{ \App\Support\FechaNegocio::esHoy($reporte->fecha) ? ' hoy' : '' }}
                     </span>
-                    <span class="text-xl font-bold text-neutral-900">{{ $reporte->asignadas }}</span>
+                    <span class="flex items-center gap-2">
+                        {{-- Semáforo de preformas (P-M11-22): stock del espejo de SU
+                             sucursal vs la meta. Sin dato completo no se muestra
+                             (silencio antes que rojo falso). Solo unidades, jamás costos. --}}
+                        @if ($semaforoPreformas)
+                            <x-badge :variant="$semaforoPreformas['variante']">{{ $semaforoPreformas['label'] }}</x-badge>
+                        @endif
+                        <span class="text-xl font-bold text-neutral-900">{{ $reporte->asignadas }}</span>
+                    </span>
                 </div>
 
                 {{-- Agregar una tanda: máquina + tipo + cantidades --}}

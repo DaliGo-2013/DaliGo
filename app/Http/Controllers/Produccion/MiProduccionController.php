@@ -460,6 +460,7 @@ class MiProduccionController extends Controller
     private function vistaReporte(User $user, ?ProduccionReporte $reporte): View
     {
         $reporte?->load([
+            'asignacion.preforma',
             'registros' => fn ($query) => $query->latest('id'),
             'registros.maquina',
             'registros.tipoBotellon',
@@ -469,6 +470,11 @@ class MiProduccionController extends Controller
 
         $maquinas = Maquina::paraSoplador($user);
         $tipos = TipoBotellon::activos()->orderBy('nombre')->get();
+
+        // Semaforo de preformas (P-M11-22): ¿el espejo de SU sucursal alcanza
+        // para la meta? Null = silencio (sin preforma/espejo/sucursal).
+        $semaforoPreformas = app(\App\Services\Produccion\SemaforoPreformas::class)
+            ->estadoPara($reporte, $user);
 
         // Preseleccion pegajosa: la maquina/tipo de la ultima tanda del reporte.
         $ultimo = $reporte?->registros->first();
@@ -488,6 +494,7 @@ class MiProduccionController extends Controller
             'maquinaPreseleccionada' => (int) old('maquina_id', $ultimo?->maquina_id),
             'tipoPreseleccionado' => (int) old('tipo_botellon_id', $ultimo?->tipo_botellon_id),
             'devueltos' => $devueltos,
+            'semaforoPreformas' => $semaforoPreformas,
         ]);
     }
 
