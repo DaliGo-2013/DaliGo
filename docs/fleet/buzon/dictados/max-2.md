@@ -1,59 +1,61 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-10 (v21 — P-M11-21 EN PRODUCCIÓN; GO P-M11-22: semáforo de preformas + notas del jefe, cierra F2). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-11 (v22 — P-M11-22 EN PRODUCCIÓN, F2 COMPLETA; GO P-M11-23: kaizen digital, el último paso del plan). Manda sobre lo anterior.
 
 MODELO: el que fije el dueño en tu asiento · high.
 
-## ✅ P-M11-21 está EN PRODUCCIÓN (merge `3fbc7cd`, doble llave 10-ago)
+## ✅ P-M11-22 está EN PRODUCCIÓN (merge `c8b343c`, doble llave 11-ago) — F2 COMPLETA
 
-Verificación del Director: **suite 1795/12.803, cuadre EXACTO con tu cifra**. Deploy y
-Tests verdes. Tus 3 desviaciones ACEPTADAS con tu propio razonamiento en el mensaje del
-merge (el corte por REPORTE es la lectura correcta: proyectar contra una meta que no
-existe sería inventar el denominador). El slot UTC anti-DST y los tests con fechas fijas
-de invierno aplicando la lección del 31-07 EN LA PRIMERA PASADA: eso es doctrina
-absorbida, no repetida. Tu hallazgo del bundle sucio (11 clases xl:* huérfanas) quedó en
-el mensaje del merge para el canal directo del dueño con Marcos. Rama borrada.
+Verificación del Director: **suite 1930 verdes / 13.807 aserciones, cero rojos** —
+cuadre exacto (1911 del main con los moldes de Max-1 + tus 19). Fronteras con el stream
+A: cero diff. Deploy y Tests verdes. Rama borrada.
 
-Minutos después entró también el OEE de Max-1 (`2264e8c`, suite 1806/12.867): el
-conflicto de ConfiguracionSeeder lo resolví manteniendo AMBAS claves de turno con nota
-de coherencia — quedaron dos hipótesis del mismo hecho (tus horarios, sus minutos), hoy
-coherentes en 12 h. Unificarlas es pulido de F3 (probablemente tuyo o mío, se verá).
+Tu gate EXTRA no dictado (silencio también sin sucursal o sin bodegas en operación) es
+la clase de defensa que convierte un semáforo en algo confiable: un rojo falso por hueco
+de configuración habría enseñado a los sopladores a ignorarlo. Y `stock_disponible` en
+vez de `stock_real` con el criterio ya establecido de la ficha de bodega: coherencia de
+casa, no invento nuevo.
 
-## 🟢 GO — P-M11-22 · El soplador RECIBE: semáforo de preformas + notas del jefe (cierra F2)
+**El soplador ya RECIBE**: su semáforo de preformas y las notas del jefe. Con esto la
+asimetría que detectó el benchmark (capturamos mejor que nadie, devolvíamos poco) quedó
+cerrada para los 3 roles: soplador, jefe, gerente.
 
-PLAN-M11-FINAL §4-F2, el lote chico que faltaba del stream B:
+## 🟢 GO — P-M11-23 · Kaizen digital (F3 stream B — el ÚLTIMO paso de PLAN-M11-FINAL)
 
-- **Semáforo de preformas en mi-reporte**: con la asignación del turno (preforma_id ya
-  existe en la asignación) y el stock del espejo M04 (`stocks` por bodega de SU
-  sucursal): verde = alcanza para la meta · amarillo = alcanza parcial · rojo = sin
-  stock visible. Solo LECTURA del espejo — cero escrituras, cero costos visibles
-  (principio §1.3). Si el producto no tiene stock espejado o la asignación no tiene
-  preforma: el semáforo NO se muestra (silencio correcto, nada de rojo falso).
-- **Notas del jefe**: entidad mínima (`produccion_notas`: texto ≤191, vigente_desde/
-  hasta nullable, autor, opcional soplador_id NULL = para todos) + CRUD chico en el
-  panel del jefe (permiso existente) + las vigentes se pintan en mi-reporte del
-  asignado (banner sobrio paleta-4). Molde conceptual: «important notes» de MRPeasy
-  (benchmark). Sin M15: la nota vive en la pantalla, no persigue a nadie.
-- **Offline**: el semáforo y las notas se renderizan server-side con la página — si el
-  soplador abre sin señal, ve lo del último load (comportamiento natural de la PWA);
-  NO agregues cache extra ni toques offline-queue.js.
+PLAN §4-F3, chico a propósito:
+
+- **Botón «Proponer mejora»** en mi-reporte (junto a las notas del jefe que acabas de
+  construir): texto libre ≤191, opcional foto NO (sin archivos — texto simple).
+- **Tabla `produccion_mejoras`**: soplador_id, texto, estado
+  (`pendiente|revisada|aplicada|descartada`), respuesta del jefe nullable ≤191,
+  timestamps. Auditable.
+- **Bandeja del jefe**: sección en el panel de producción (permiso existente), contador
+  de pendientes, acciones revisar/aplicar/descartar con respuesta opcional — la
+  respuesta se le muestra al soplador en mi-reporte (su historial de propuestas, estado
+  con badge paleta-4).
+- **Sin M14 y sin M15 a propósito**: no es una aprobación con consecuencias de sistema
+  (es conversación estructurada) y no debe perseguir a nadie — vive en las pantallas.
+  Si el dueño después quiere aviso, es una línea.
+- **Offline**: el POST de la propuesta viaja por la MISMA cola (patrón de siempre); si
+  eso complica el lote, decláralo y déjalo online-only con aviso «necesitas señal» —
+  a tu criterio con alternativa nombrada.
 
 ### Candados mínimos
-1. Semáforo: verde/amarillo/rojo exactos con stock 500/80/0 contra meta 100 (fixture).
-2. Sin espejo o sin preforma asignada → sin semáforo (mutado si es barato).
-3. Nota vencida o de otro soplador NO se pinta; la global sí.
-4. 403 del CRUD de notas sin permiso del jefe.
-5. El soplador sigue sin ver costos (test de contenido en mi-reporte con semáforo).
-6. varchar ≤191 en la nota.
+1. Propuesta llega a la bandeja; respuesta + estado se ven en mi-reporte del autor (y
+   SOLO del autor).
+2. 403: soplador no ve bandeja; jefe no propone por otro.
+3. varchar ≤191; sin permiso nuevo.
+4. Si va por la cola: drena 2× sin duplicar (idempotencia de siempre). Si online-only:
+   declarado en el parte.
+5. El soplador sigue sin ver costos (candado de texto percibido, tu propio molde).
 
 ## Territorio
-- **Max-1** recibe GO de F3 (moldes) en paralelo — él en fichas/contadores/backend, tú
-  en mi-reporte y panel del jefe. Cero cruce esperado; si necesitas algo de `Receta` o
-  `Molde`, pídelo por parte.
-- **Marcos** sigue en el simulador. Re-fetch religioso.
+- **Max-1** queda EN PAUSA (su stream de M11 está completo). Cero cruce.
+- **Marcos** sigue activo (flota/documentos hoy). Re-fetch religioso.
 
 ## Recordatorios
 Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (baseline
-del Director: **1806/12.867** en `2264e8c`). Suite completa antes del push. Blade →
+del Director: **1930/13.807** en `c8b343c`). Suite completa antes del push. Blade →
 build + superset. `git checkout origin/main --`. Parte al buzón → doble llave.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+CIERRE: parte a docs/fleet/buzon/partes/ + push. Con tu próximo lote, PLAN-M11-FINAL
+queda 100 % construido.
