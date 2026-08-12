@@ -62,15 +62,21 @@
                                         @php $ej = $mixta['ejes']; @endphp
                                         <div class="mt-4 rounded-lg border border-neutral-200 p-3">
                                             <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cómo cae el peso</p>
-                                            <div class="mt-2 flex items-baseline gap-4 text-sm" @if ($ej['total_kg'] <= 0) hidden @endif>
-                                                <span class="text-neutral-500">Eje delantero
-                                                    <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($ej['delantero_kg'], 0, ',', '.') }} kg</span>
-                                                    <span class="tabular-nums text-neutral-400">({{ $ej['delantero_pct'] }}%)</span>
-                                                </span>
-                                                <span class="text-neutral-500">Eje trasero
-                                                    <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($ej['trasero_kg'], 0, ',', '.') }} kg</span>
-                                                    <span class="tabular-nums text-neutral-400">({{ $ej['trasero_pct'] }}%)</span>
-                                                </span>
+                                            <div class="mt-2 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm" @if ($ej['total_kg'] <= 0) hidden @endif>
+                                                @foreach ([
+                                                    ['Eje delantero', $ej['delantero_kg'], $ej['delantero_pct'], $ej['tope_delantero_kg'], $ej['se_pasa_delantero']],
+                                                    ['Eje trasero', $ej['trasero_kg'], $ej['trasero_pct'], $ej['tope_trasero_kg'], $ej['se_pasa_trasero']],
+                                                ] as [$rotulo, $kg, $pct, $tope, $sePasa])
+                                                    <span class="{{ $sePasa ? 'text-red-700' : 'text-neutral-500' }}">{{ $rotulo }}
+                                                        <span class="font-semibold tabular-nums {{ $sePasa ? 'text-red-700' : 'text-neutral-900' }}">{{ number_format($kg, 0, ',', '.') }} kg</span>
+                                                        <span class="tabular-nums {{ $sePasa ? 'text-red-600' : 'text-neutral-400' }}">({{ $pct }}%)</span>
+                                                        {{-- El tope al lado del número: «1.900 kg» no dice nada solo;
+                                                             «1.900 de 1.700» se lee de un vistazo. --}}
+                                                        @if ($tope)
+                                                            <span class="tabular-nums {{ $sePasa ? 'font-medium text-red-600' : 'text-neutral-400' }}">de {{ number_format($tope, 0, ',', '.') }}</span>
+                                                        @endif
+                                                    </span>
+                                                @endforeach
                                             </div>
                                             {{-- Una barra que se lee de un vistazo: el reparto entre los
                                                  dos apoyos. Los porcentajes negativos se acotan solo en la
@@ -99,6 +105,37 @@
                                                 </p>
                                             @endif
 
+                                            {{-- ═══ SE PASA DE UN EJE ═══
+                                                 Pedido del dueño (12-08): «si me pasé, para evitar una
+                                                 multa, que salga un mensaje en rojo». Va con el mismo
+                                                 peso visual que el «No cabe todo», porque es la misma
+                                                 clase de noticia: algo que hay que cambiar antes de
+                                                 salir. En la balanza no se pesa el camión entero — se
+                                                 pesa eje por eje. --}}
+                                            @php
+                                                $pasados = collect([
+                                                    ['delantero', $ej['se_pasa_delantero'], $ej['delantero_kg'], $ej['tope_delantero_kg']],
+                                                    ['trasero', $ej['se_pasa_trasero'], $ej['trasero_kg'], $ej['tope_trasero_kg']],
+                                                ])->filter(fn ($e) => $e[1] === true);
+                                            @endphp
+                                            @if ($pasados->isNotEmpty())
+                                                <div class="mt-2 rounded-lg border-2 border-red-300 bg-red-50 px-3 py-2">
+                                                    <p class="text-sm font-semibold text-red-700">
+                                                        Se pasa del eje {{ $pasados->pluck(0)->join(' y del eje ') }}
+                                                    </p>
+                                                    <p class="mt-0.5 text-xs leading-relaxed text-red-700">
+                                                        @foreach ($pasados as [$cual, , $kg, $tope])
+                                                            El {{ $cual }} lleva
+                                                            <strong class="tabular-nums">{{ number_format($kg, 0, ',', '.') }} kg</strong>
+                                                            y aguanta {{ number_format($tope, 0, ',', '.') }}:
+                                                            <strong class="tabular-nums">{{ number_format($kg - $tope, 0, ',', '.') }} kg de más</strong>.
+                                                        @endforeach
+                                                        En la balanza se pesa eje por eje, así que esto es multa aunque
+                                                        el total esté dentro de la carga máxima. Corré carga hacia el otro eje.
+                                                    </p>
+                                                </div>
+                                            @endif
+
                                             @if ($ej['aliviana_el_delantero'])
                                                 <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
                                                     <strong>La carga está toda detrás del eje trasero.</strong>
@@ -108,9 +145,11 @@
                                             @endif
 
                                             <p class="mt-2 text-xs leading-relaxed text-neutral-400">
-                                                Reparte solo la CARGA, no el peso del camión vacío. Sirve para comparar
-                                                dos formas de acomodar lo mismo; para avisar que un eje se pasa falta
-                                                cuánto aguanta cada uno.
+                                                Reparte solo la CARGA, no el peso del camión vacío.
+                                                @if ($ej['tope_delantero_kg'] === null || $ej['tope_trasero_kg'] === null)
+                                                    Para avisar que un eje se pasa falta cargar cuánto aguanta cada uno
+                                                    (está en el padrón del vehículo).
+                                                @endif
                                             </p>
                                         </div>
                                     @endif

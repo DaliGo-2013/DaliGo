@@ -39,7 +39,7 @@ class RepartoPorEje
      * @param  list<array<string, mixed>>  $bloques  los del motor, en centímetros
      * @param  array<int, string>  $nombres  nombre del producto de cada línea, para poder
      *                                       decir CUÁL no tiene peso cargado
-     * @return array{delantero_kg: float, trasero_kg: float, total_kg: float, delantero_pct: int, trasero_pct: int, aliviana_el_delantero: bool, sin_peso: list<string>}|null
+     * @return array{delantero_kg: float, trasero_kg: float, total_kg: float, delantero_pct: int, trasero_pct: int, aliviana_el_delantero: bool, sin_peso: list<string>, tope_delantero_kg: ?int, tope_trasero_kg: ?int, se_pasa_delantero: ?bool, se_pasa_trasero: ?bool}|null
      */
     public function calcular(CamionSimulacion $camion, array $bloques, array $lineas, array $nombres = []): ?array
     {
@@ -99,6 +99,9 @@ class RepartoPorEje
                 'delantero_kg' => 0.0, 'trasero_kg' => 0.0, 'total_kg' => 0.0,
                 'delantero_pct' => 0, 'trasero_pct' => 0,
                 'aliviana_el_delantero' => false, 'sin_peso' => $sinPeso,
+                'tope_delantero_kg' => $camion->eje_delantero_max_kg,
+                'tope_trasero_kg' => $camion->eje_trasero_max_kg,
+                'se_pasa_delantero' => null, 'se_pasa_trasero' => null,
             ];
         }
 
@@ -107,6 +110,21 @@ class RepartoPorEje
             'trasero_kg' => round($trasero, 1),
             'total_kg' => round($total, 1),
             'sin_peso' => $sinPeso,
+            // ¿SE PASA DE ALGÚN EJE? (pedido del dueño 12-08: «si me pasé, para evitar
+            // una multa, que salga un mensaje en rojo»). En la balanza no se pesa el
+            // camión entero: se pesa eje por eje, así que un camión por debajo de su
+            // carga útil total puede tener el trasero pasado y lo paga igual.
+            //
+            // Sin el tope cargado no hay aviso —null, no `false`—: «no se pasa» y «no
+            // sé cuánto aguanta» son cosas distintas y la pantalla las dice distinto.
+            'tope_delantero_kg' => $camion->eje_delantero_max_kg,
+            'tope_trasero_kg' => $camion->eje_trasero_max_kg,
+            'se_pasa_delantero' => $camion->eje_delantero_max_kg !== null
+                ? $delantero > $camion->eje_delantero_max_kg
+                : null,
+            'se_pasa_trasero' => $camion->eje_trasero_max_kg !== null
+                ? $trasero > $camion->eje_trasero_max_kg
+                : null,
             // Los porcentajes se calculan sobre el TOTAL y se redondean solo para
             // mostrar; el que manda es el kilo.
             'delantero_pct' => (int) round($delantero / $total * 100),

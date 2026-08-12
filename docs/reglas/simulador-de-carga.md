@@ -1813,9 +1813,34 @@ avisa en rojo en vez de esconderlo con un `min()`.
 - **El peso del camión vacío.** Reparte solo la carga. La tara y cómo apoya no están
   medidas, y sumarlas de memoria convertiría un número exacto en una estimación
   disfrazada. Sirve igual para lo que se usa: comparar dos formas de acomodar lo mismo.
-- **La capacidad de cada eje.** Sin eso no se puede decir «te pasaste de un eje», solo
-  cuánto le toca. Cuando lleguen los dos números por camión, el aviso sale de comparar y
-  este cálculo no se toca.
+- **El peso del camión vacío** (ver arriba).
+
+#### ¿Se pasa de un eje? (12-08-2026)
+
+Pedido del dueño: *«decime cuánto aguanta cada eje y si me pasé, para evitar una multa,
+que salga un mensaje en rojo»*. **En la balanza no se pesa el camión entero: se pesa eje
+por eje**, así que un camión por debajo de su carga útil total puede tener el trasero
+pasado y lo paga igual. El aviso va con el mismo peso visual que el «No cabe todo»,
+porque es la misma clase de noticia: algo que hay que cambiar antes de salir.
+
+Dos campos por camión: `eje_delantero_max_kg` y `eje_trasero_max_kg`.
+
+**`null` NO es `false`.** «No sé cuánto aguanta» y «entra» son cosas distintas: si sin el
+tope se devolviera `false`, la pantalla mostraría verde sobre un camión que puede estar
+pasado — justo la multa que esto viene a evitar. Sin el dato solo se muestra el reparto,
+y el pie dice dónde buscarlo. Candado: `test_sin_el_tope_del_eje_no_se_afirma_que_entra`.
+
+**No se siembra ningún valor por defecto, y es deliberado aunque deje la función
+esperando el dato.** El límite que manda es el **menor** entre el máximo LEGAL por tipo
+de eje (lo que mira la balanza) y el máximo del FABRICANTE para ese eje. Sembrar el legal
+«para que funcione» daría verde a un camión chico con el eje pasado de fábrica; sembrar
+el del fabricante de memoria es peor todavía. Los dos están escritos en el **padrón / la
+revisión técnica** de cada vehículo, que es la misma fuente que usa quien fiscaliza.
+
+**Los pesos del catálogo se completaron el 12-08** (dueño): bolsa de 10 L **2 kg** (400 g
+por botellón — los dos datos cierran entre sí), caja de soportes **6 kg**, caja de tapas
+**5,5 kg**. Con eso ya no queda ningún bulto del catálogo sin peso, así que cualquier
+carga se puede repartir entre los ejes y disparar el sobrepeso.
 
 **UN PRODUCTO SIN PESO NO HACE DESAPARECER LA SECCIÓN: LA EXPLICA.** La mitad del
 catálogo tiene `peso_kg` en null a propósito. La primera versión devolvía `null` y la
