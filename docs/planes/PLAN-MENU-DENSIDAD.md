@@ -62,11 +62,15 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 ## 4. Hecho cuando (por lote)
 
 - [x] F0: mapa completo en §5 (Max-1, 12-ago) — **visto bueno del dueño (12-ago) a F1 + las 4 baratas (#2-#5)**; el resto del mapa pendiente de decisión, apartado por apartado.
-- [ ] F1: un solo ítem «Catálogo» con los precios adentro; cero funcionalidad perdida;
-      gate R-31 aprobado; QA del dueño en celular.
+- [x] **F1 EN PRODUCCIÓN (12-ago, `ca91422`)**: «Precios» vive como pestaña del Catálogo
+      (tab-nav Productos · Listas de precios); cero funcionalidad perdida (3 rutas y
+      permiso intactos); gate R-31 aprobado con observaciones; mini-candado
+      `MenuConsolidacionesTest` instalado y heredable por los lotes siguientes.
+      **Menú 47 → 46.** Falta solo el QA del dueño en celular.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número.
+      lote — la densidad ganada se ve en un número. **Hoy: 46** (L1 hecho; L2-L5
+      aprobados llevan a 42; el mapa completo, a 30).
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 

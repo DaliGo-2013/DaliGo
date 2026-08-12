@@ -1,61 +1,53 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-12 (v47 — VISTO BUENO del dueño: piloto F1 + las 4 baratas. Cola de 5 lotes, de a uno). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-12 (v48 — Lote 1 EN PRODUCCIÓN; GO Lote 2: retiro del boceto «Seguimiento»). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## El dueño aprobó: F1 (pre-decidido) + las 4 baratas (#2-#5 de tu priorización)
+## ✅ Lote 1 está EN PRODUCCIÓN (merge `ca91422`, doble llave 12-ago)
 
-Tu mapa fue presentado y el dueño dio **visto bueno explícito a las 4 baratas**; el
-piloto ya venía decidido. El RESTO del mapa (Configuración de producción, Registro del
-sistema, Roles→Usuarios, Cargas reales, Kardex, Conductores, Traslados) queda
-**PENDIENTE de visto bueno** — ni los toques.
+Verificación del Director con dos corridas de suite (Marcos ganó la carrera del primer
+push — I-08 de siempre): **1966 verdes / 13.963 aserciones, cero rojos**. Deploy y Tests
+de CI verdes. Rama borrada. **Menú: 47 → 46.** El proyecto de densidad tiene su primera
+resta en producción.
 
-## 🟢 GO — cola de 5 lotes, EN ORDEN, cada uno con su rama + parte + doble llave
+Tres cosas de tu lote que quedan como estándar: el `aria-current="true"` en vez de
+`"page"` (esquivar la colisión con el conteo de SidebarTest ANTES de que muerda, con el
+porqué escrito en el propio partial), el mini-candado genérico con mapa `CONSOLIDADAS`
+—los 4 lotes que siguen lo heredan con una línea— y la carrera de 11 commits que
+detectaste y absorbiste tú mismo durante el gate.
 
-**Regla de la cola**: un lote por vez; pusheas el parte, sigues con el siguiente SOLO
-tras la doble llave del anterior (el menú es territorio sensible — los candados de un
-lote alimentan al siguiente). Rama corta por lote.
+Nota de entorno (mía, no tuya): un rojo de `ErroresServidorTest` en mi primera corrida
+era vendor desincronizado en MI worktree — `composer install` y 12/12 verde sin tocar
+código. Tu cifra estaba bien desde el principio.
 
-### Lote 1 · F1 Piloto: Precios → Catálogo (−1)
-Pestaña «Listas de precios» dentro de Catálogo (mismo permiso `manage productos`); el
-ítem «Precios» sale de MenuPrincipal; las rutas `admin.listas-precios.*` entran al
-`activo` del ítem Catálogo; la card «Precios» del Inicio se reapunta o se retira
-(decisión tuya declarada). **Gate R-31** (es el piloto — la vara del proyecto).
+## 🟢 GO — Lote 2 · Retiro del boceto «Seguimiento» (47→46 → **45**)
 
-### Lote 2 · Retiro del boceto «Seguimiento» (−1)
-Densidad gratis. El código del boceto se retira COMPLETO (ítem + rutas + vista), no se
-esconde — si algún día se retoma, vive en git.
+El más barato de la cola y el único que RESTA código en vez de moverlo:
 
-### Lote 3 · Estado → Documentos (−1)
-Pestaña «Estado de la conexión» en Documentos; decide tú (declarado) si Facturación
-queda acordeón de 1 o pasa a link directo — recuerda el `activo_extra` del documento ST.
+- **Retiro COMPLETO**: ítem del menú + rutas + controlador/acciones si son exclusivas +
+  vista(s) + cualquier assert que lo cubra. **No se esconde: se retira** — si algún día
+  se retoma, vive en git (la rama `feature/st-seguimiento-boceto` sigue en el remoto).
+- **Verifica antes de cortar**: que nada más enlace a esas rutas (grep de `route(` en
+  vistas y controladores) y que no haya permiso huérfano que quede sin usar (si lo hay,
+  decláralo — no lo borres del seeder sin declararlo, la matriz es territorio sensible).
+- **Candados**: la suite completa debe quedar verde sin amoldar tests ajenos; si algún
+  test cubría el boceto, se retira CON él y se declara en el parte. El mini-candado del
+  Lote 1 no aplica acá (no hay anfitrión) — el conteo del menú viaja en el parte.
+- Si al abrir el boceto encuentras que SÍ tiene datos reales o usuarios (contra lo que
+  dijo tu F0), **para y repórtalo**: el retiro se cancela y pasa a decisión del dueño.
 
-### Lote 4 · QR → Listado ST (−1)
-Sección/pestaña en el Listado; OJO VolverTest: era ítem de menú (sin Volver) → al dejar
-de serlo, vuelve el `<x-volver>` — tu propio hallazgo del candado de ex-huérfanas
-aplica al REVÉS aquí (edítalo conscientemente).
-
-### Lote 5 · Servicios de terreno → Agenda (−1)
-Permiso idéntico, link en cabecera ya existe — pestaña o sección en Agenda.
-
-### Candados TRANSVERSALES (van en los 5 lotes)
-1. **El mini-candado que tú mismo sugeriste, constrúyelo en el Lote 1**: test que
-   verifique que toda ruta movida a pestaña está en el patrón `activo` de su anfitrión
-   (el hueco del resaltado silencioso). Los lotes 2-5 lo heredan gratis.
-2. SidebarTest aria-current único + MenuPrincipalTest en verde en cada lote.
-3. Cero pérdida: las rutas y permisos NO se tocan (salvo el retiro completo del Lote 2).
-4. Conteo del menú en el parte de cada lote: antes → después (la métrica del proyecto).
-5. Suite COMPLETA antes de cada push; bundle + superset si tocas Blade (siempre lo harás).
-6. QA del dueño por lote (celular) — su ritmo manda: si pide pausa entre lotes, pausa.
+## Después de este lote (la cola aprobada, no arranques sin dictado)
+Lote 3 Estado→Documentos · Lote 4 QR→Listado ST · Lote 5 Servicios de terreno→Agenda.
+El resto del mapa F0 sigue esperando visto bueno del dueño, apartado por apartado.
 
 ## Territorio
-- **Max-2** sigue en P-M11-23 (kaizen, producción/PWA) — sin cruce con menú/catálogo/ST.
-- **Marcos** activo. Re-fetch religioso; 5 pushes tuyos = 5 oportunidades de carrera.
+- **Max-2** en pausa (M11 100 % construido).
+- **Marcos** MUY activo en el simulador (2 carreras ganadas hoy). Rama corta, push
+  temprano, re-fetch religioso.
 
 ## Recordatorios
-Rama nueva desde main FRESCO por lote; suite completa de main fresco al arrancar la
-cola (fija tu baseline). `git checkout origin/main --` para conflictos. varchar ≤191.
-Parte al buzón → doble llave → siguiente lote.
+Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (baseline
+del Director: **1966 / 13.963** en `ca91422`). Suite completa antes del push. Parte al
+buzón → doble llave → Lote 3.
 
-CIERRE: parte del Lote 1 a docs/fleet/buzon/partes/ + push. 47 → 42 al final de esta
-cola. La resta también se construye.
+CIERRE: parte a docs/fleet/buzon/partes/ + push. Restar también es construir.
