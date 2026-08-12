@@ -383,5 +383,4 @@ class TrasladoServicioTest extends TestCase
             ->assertOk()
             ->assertSee('Va en camino desde Coquimbo');
     }
-
 }
