@@ -17,6 +17,8 @@ use App\Models\Maquina;
 use App\Models\Molde;
 use App\Models\PreferenciaCanal;
 use App\Models\Producto;
+use App\Models\ProduccionMejora;
+use App\Models\ProduccionNota;
 use App\Models\ProduccionReporte;
 use App\Models\Receta;
 use App\Models\ReglaAprobacion;
@@ -43,6 +45,8 @@ class AuditController extends Controller
         Bodega::class => 'Bodega',
         BodegaTraslado::class => 'Orden de traslado de bodega',
         ProduccionReporte::class => 'Reporte de producción',
+        ProduccionNota::class => 'Nota del jefe',
+        ProduccionMejora::class => 'Propuesta de mejora',
         Maquina::class => 'Máquina',
         Molde::class => 'Molde',
         TipoBotellon::class => 'Tipo de botellón',

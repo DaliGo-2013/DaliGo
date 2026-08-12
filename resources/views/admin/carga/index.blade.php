@@ -296,22 +296,11 @@
 
                             {{-- RESULTADO · carga mixta --}}
                             @if ($mixta !== null)
-                                {{-- El veredicto, primero y sin rodeos --}}
-                                @if ($mixta['cabeTodo'])
-                                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                        <p class="text-2xl font-semibold text-brand-600">Cabe todo ✓</p>
-                                        <p class="mt-1 text-sm text-neutral-500">
-                                            La carga completa entra en {{ $escena['vehiculo']['nombre'] }}.
-                                        </p>
-                                    </div>
-                                @else
-                                    <div class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
-                                        <p class="text-2xl font-semibold text-red-700">No cabe todo</p>
-                                        <p class="mt-1 text-sm text-red-700">
-                                            Abajo está qué queda afuera y por qué — con eso se negocia.
-                                        </p>
-                                    </div>
-                                @endif
+                                {{-- EL VEREDICTO YA NO ESTÁ ACÁ. Era esta tarjeta, debajo del
+                                     visor: había que mirar el camión, bajar, y recién ahí
+                                     enterarse de que no entraba. Desde el 12-08 va pegado al
+                                     borde de arriba del lienzo (`_visor.blade.php`), donde el
+                                     dueño lo dibujó. No se repite: una respuesta por pantalla. --}}
 
                                 {{-- ═══ SE PASA DE PESO ═══
                                      Pedido del dueño (11-08): «que cuando se pase el límite de
@@ -579,19 +568,11 @@
 
                                     {{-- ① EL NÚMERO --}}
                                     <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                        {{-- LA PRUEBA: el veredicto de la cantidad pedida, ANTES del máximo.
-                                             Si preguntó «¿me entran 50?», la respuesta a eso es lo primero. --}}
-                                        @if ($prueba !== null)
-                                            <div class="mb-4 rounded-lg px-3 py-2 text-sm {{ $prueba['caben'] ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700' }}">
-                                                @if ($prueba['caben'])
-                                                    <strong>Tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran ✓</strong>
-                                                    — y el dibujo muestra esa cantidad, no el máximo.
-                                                @else
-                                                    <strong>De tus {{ number_format($prueba['pedidas'], 0, ',', '.') }} entran {{ number_format($prueba['cargadas'], 0, ',', '.') }}.</strong>
-                                                    Quedan {{ number_format($prueba['pedidas'] - $prueba['cargadas'], 0, ',', '.') }} afuera.
-                                                @endif
-                                            </div>
-                                        @endif
+                                        {{-- LA PRUEBA («¿me entran 50?») ya no se responde acá: desde
+                                             el 12-08 el veredicto va pegado al borde de arriba del
+                                             lienzo, CON los números («de tus 50 entran 42, quedan 8»).
+                                             Repetirlo acá sería decir dos veces lo mismo en la misma
+                                             pantalla. Ver `_visor.blade.php`. --}}
                                         <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
                                         <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
                                         <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>

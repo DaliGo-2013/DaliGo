@@ -1638,12 +1638,13 @@ camión la quiero adentro del cuadrado donde está el camión, para poder usar m
 el espacio y mejorar la interfaz con tanto texto»**, y el resultado partido en
 **dos tarjetas**.
 
-1. **Los datos del camión son una franja AL PIE del recuadro del visor**, no una
-   tarjeta aparte debajo. Adentro se ahorran un borde, una sombra y el hueco entre
-   tarjetas, y los datos quedan pegados al dibujo que describen. Va como franja y
-   **no flotando sobre el lienzo**: un panel encima taparía el camión — la misma
-   doctrina del menú lateral (§4.1nonies). Fondo `neutral-50/70`, el del menú, para
-   que se lea como parte del visor y no como contenido metido adentro.
+1. **Los datos del camión son una franja del recuadro del visor**, no una tarjeta
+   aparte debajo. Adentro se ahorran un borde, una sombra y el hueco entre tarjetas,
+   y los datos quedan pegados al dibujo que describen. Va como franja y **no flotando
+   sobre el lienzo**: un panel encima taparía el camión — la misma doctrina del menú
+   lateral (§4.1nonies). Fondo `neutral-50/70`, el del menú, para que se lea como
+   parte del visor y no como contenido metido adentro. *(Estaba AL PIE; desde el
+   12-08 va ARRIBA — ver §4.3bis.)*
 2. **Nada se dice dos veces.** El rótulo del lienzo repetía el nombre del camión y
    el piso libre, que ya están en la franja: quedó solo la ayuda de manejo
    («arrastrá para girar»). En el plan compartido por link pasaba lo mismo con el
@@ -1660,6 +1661,51 @@ el espacio y mejorar la interfaz con tanto texto»**, y el resultado partido en
 La lección, que ya se repitió en esta pantalla: cuando el dueño dice «hay mucho
 texto» casi nunca sobra un dato, sobra una **repetición** o falta una **agrupación**.
 Antes de borrar información, buscar qué está dicho dos veces.
+
+### 4.3bis La respuesta va ARRIBA del dibujo (12-08-2026)
+
+Otro marcador sobre otra captura, y las dos flechas apuntan al mismo lado: *«subir
+dentro de la pantalla la descripción del chevy con sus medidas, volumen, carga máxima
+y piso libre en la puerta, y el mensaje "NO CABE TODO" arriba, que aparezca cuando no
+entra todo»*.
+
+El orden del recuadro del visor pasa a ser, de arriba abajo:
+
+1. **La ficha del camión** (nombre, medidas útiles, volumen, carga máxima, pasillo si
+   lo hay, piso libre en la puerta). Es lo que se está mirando: se lee ANTES del
+   dibujo. Al pie quedaba **después del tablero de acomodo**, o sea a dos pantallazos
+   del camión que describe.
+2. **El veredicto**, pegado al borde de arriba del lienzo. Vivía en una tarjeta DEBAJO
+   del visor: había que mirar el camión, bajar, y recién ahí enterarse de que no
+   entraba. Es la única línea de la pantalla que cambia una decisión comercial.
+3. El lienzo, y debajo los avisos de acomodo y el tablero.
+
+**El «cabe» va sobrio y el «no cabe» va rojo a todo el ancho.** Una franja verde
+gigante para la respuesta esperada entrena a ignorar la franja — y entonces la roja
+tampoco se ve.
+
+**UNA respuesta por pantalla.** Al subir el cartel había que sacarlo de los otros dos
+lugares donde ya estaba, o la pantalla lo diría dos veces (que es justo lo que el
+§4.3 vino a arreglar): se borró la tarjeta de «Cabe todo / No cabe todo» de
+`index.blade.php`, la línea «No cabe todo en un viaje» del plan compartido, y el
+recuadro de la prueba («tus 50 entran») del modo cupo máximo.
+
+**En «¿cuánto entra?» el cartel lleva los NÚMEROS**, no la frase pelada: la pregunta
+fue «¿me entran 500?», así que la respuesta es *«de tus 500 entran 420, quedan 80
+afuera»*. Un «no cabe todo» a secas obligaría a bajar a buscar el número que se vino a
+buscar. En cambio, el cupo máximo **sin** cantidad a probar y el armado del pallet **no
+muestran cartel**: no responden sí/no.
+
+**El link compartido dice lo mismo con otras palabras.** La versión interna cierra con
+«con eso se negocia», que es una instrucción para el vendedor; del otro lado del link
+hay un cliente o un conductor y ahí suena a que se está calculando cuánto apretarlo.
+Público: *«Queda carga afuera. Abajo, producto por producto.»* Candado:
+`PlanCargaCompartidoTest::test_el_link_dice_que_no_cabe_pero_no_habla_de_negociar`.
+
+Los candados miden **posición contra el `<canvas>`** y no la mera presencia del texto:
+un `assertSee` seguiría verde con el cartel de vuelta abajo
+(`test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo`,
+`test_la_ficha_del_camion_va_arriba_del_lienzo`, `test_el_veredicto_se_dice_una_sola_vez`).
 
 ## 5. Mercancía peligrosa
 

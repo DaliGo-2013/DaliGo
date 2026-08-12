@@ -492,6 +492,13 @@ Route::middleware('auth')
             Route::post('produccion/reporte/{reporte}/ajustar', [ProduccionController::class, 'ajustar'])->name('produccion.reporte.ajustar');
             Route::delete('produccion/reporte/{reporte}', [ProduccionController::class, 'destroyReporte'])->name('produccion.reporte.destroy');
 
+            // Kaizen (P-M11-23): decision del jefe sobre una propuesta de
+            // mejora (revisada|aplicada|descartada + respuesta opcional). Solo
+            // PATCH: la bandeja vive como seccion del panel (produccion.index),
+            // sin pagina GET propia — por eso NO se toca MenuPrincipal.
+            Route::patch('produccion/mejoras/{mejora}', [ProduccionController::class, 'mejoraUpdate'])
+                ->whereNumber('mejora')->name('produccion.mejoras.update');
+
             // Notas del jefe (P-M11-22): mensajes operativos que se pintan en
             // mi-reporte del soplador mientras estan vigentes. Names DENTRO de
             // admin.produccion.* a proposito: notas NO tiene item de menu y el
@@ -726,6 +733,12 @@ Route::middleware(['auth', 'permission:report production'])
         // Mismo contrato offline que los registros (cliente_uuid idempotente).
         Route::post('mi-reporte/{reporte}/paradas', [MiProduccionController::class, 'paradaStore'])->whereNumber('reporte')->name('mi.paradas.store');
         Route::delete('mi-reporte/{reporte}/paradas/{parada}', [MiProduccionController::class, 'paradaDestroy'])->whereNumber(['reporte', 'parada'])->name('mi.paradas.destroy');
+        // Propuesta de mejora (P-M11-23, kaizen): texto libre que llega a la
+        // bandeja del jefe. Path HERMANO (nada nuevo bajo mi-reporte/ — ver el
+        // comentario de mi-historial); no cuelga de un reporte a proposito: se
+        // puede proponer incluso sin asignacion del dia. Mismo contrato
+        // offline que tandas/paradas (cliente_uuid idempotente).
+        Route::post('mis-mejoras', [MiProduccionController::class, 'mejoraStore'])->name('mi.mejoras.store');
     });
 
 // Mis entregas (Conductor, P-DSP-05): SU hoja de ruta del dia y la confirmacion

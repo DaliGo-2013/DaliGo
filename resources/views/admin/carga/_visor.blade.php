@@ -49,10 +49,111 @@
     // El acomodo a mano: si viene uno aplicado, el tablero arranca ABIERTO. Llegar a un
     // camión acomodado y tener que buscar dónde se toca eso es la peor versión.
     $acomodo = $escena['acomodo'] ?? null;
+
+    // EL VEREDICTO, para decirlo ARRIBA del dibujo (pedido del dueño 12-08-2026,
+    // dibujado sobre la pantalla: «el mensaje NO CABE TODO arriba, que aparezca cuando
+    // no entra todo»). Estaba en una tarjeta DEBAJO del visor: había que mirar el camión,
+    // bajar y recién ahí enterarse de que no entraba.
+    //
+    // `null` = esta pantalla no responde sí/no y por eso no muestra cartel: el cupo
+    // máximo sin cantidad a probar contesta «cuántos entran», que es otra pregunta, y el
+    // armado del pallet todavía no es una carga.
+    $cabe = null;
+    $detalle = null;
+    $n = fn ($x) => number_format($x, 0, ',', '.');
+
+    if (($mixta ?? null) !== null) {
+        $cabe = $mixta['cabeTodo'];
+        // «Con eso se negocia» es lo que se le dice al VENDEDOR. El mismo cartel viaja
+        // al link compartido, donde del otro lado hay un cliente o un conductor: ahí la
+        // frase sobra y suena a que se está calculando cuánto apretarlo.
+        $detalle = match (true) {
+            $cabe => 'La carga completa entra en '.$escena['vehiculo']['nombre'].'.',
+            $publico => 'Queda carga afuera. Abajo, producto por producto.',
+            default => 'Abajo está qué queda afuera y por qué — con eso se negocia.',
+        };
+    } elseif (($prueba ?? null) !== null) {
+        // En «¿cuánto entra?» el veredicto va CON LOS NÚMEROS y no con la frase
+        // genérica: la pregunta fue «¿me entran 50?», así que «entran 42, quedan 8»
+        // es la respuesta — «no cabe todo» a secas obligaría a bajar a buscar cuánto.
+        $cabe = $prueba['caben'];
+        $detalle = $cabe
+            ? 'Tus '.$n($prueba['pedidas']).' entran, y el dibujo muestra esa cantidad — no el máximo.'
+            : 'De tus '.$n($prueba['pedidas']).' entran '.$n($prueba['cargadas']).'. '
+                .'Quedan '.$n($prueba['pedidas'] - $prueba['cargadas']).' afuera.';
+    }
 @endphp
 
 <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
      x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }} }">
+
+    {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
+         Pedido del dueño (10-08): «la descripción del camión la quiero adentro del
+         cuadrado donde está el camión, para poder usar mejor el espacio». Era una
+         tarjeta aparte debajo del visor, con su borde, su sombra y el hueco entre las
+         dos; adentro se ahorran los tres.
+
+         ARRIBA y ya no al pie (12-08, dibujado sobre la pantalla): es la ficha de lo
+         que se está mirando, así que se lee ANTES del dibujo. Al pie quedaba después
+         del tablero de acomodo, o sea a dos pantallazos del camión que describe.
+
+         Va como FRANJA y no flotando sobre el lienzo: un panel encima taparía el camión,
+         que es la doctrina del 06-08 anotada arriba en este mismo archivo. Con
+         `bg-neutral-50/70` —el mismo fondo del menú lateral— se lee como parte del visor
+         y no como una tarjeta de contenido metida adentro. --}}
+    @if ($camion ?? null)
+        <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-neutral-200 bg-neutral-50/70 px-4 py-2.5 text-sm">
+            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
+            <span class="text-neutral-500">Medidas útiles
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
+                <span class="cursor-help text-neutral-300"
+                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
+            </span>
+            <span class="text-neutral-500">Volumen
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
+            </span>
+            <span class="text-neutral-500">Carga máxima
+                @if ($camion->peso_max_kg)
+                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
+                @else
+                    <span class="text-neutral-400">sin dato</span>
+                @endif
+            </span>
+            @if ($camion->pasillo_cm > 0)
+                <span class="text-neutral-500">Pasillo reservado
+                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
+                </span>
+            @endif
+            {{-- El «Free meters» de EasyCargo: más accionable que el % de ocupación
+                 para «¿le sumo algo más a este viaje?». --}}
+            <span class="text-neutral-500">Piso libre en la puerta
+                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
+            </span>
+        </div>
+    @endif
+
+    {{-- ═══ EL VEREDICTO ═══
+         Pegado al borde de arriba del lienzo, que es donde el dueño lo dibujó: la
+         respuesta y la prueba de la respuesta se leen de un vistazo.
+
+         El «no cabe» va en ROJO y a todo el ancho, no como un chip discreto: es la
+         única línea de esta pantalla que cambia una decisión comercial. El «cabe» va
+         sobrio a propósito — una franja verde gigante para la respuesta esperada
+         entrena a ignorar la franja, y entonces la roja tampoco se ve. --}}
+    @if ($cabe !== null)
+        <div @class([
+            'flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b px-4 py-2.5',
+            'border-red-200 bg-red-50' => ! $cabe,
+            'border-neutral-200 bg-white' => $cabe,
+        ])>
+            <p @class([
+                'text-lg font-semibold leading-tight',
+                'text-red-700' => ! $cabe,
+                'text-brand-600' => $cabe,
+            ])>{{ $cabe ? 'Cabe todo ✓' : 'No cabe todo' }}</p>
+            <p @class(['text-sm', 'text-red-700' => ! $cabe, 'text-neutral-500' => $cabe])>{{ $detalle }}</p>
+        </div>
+    @endif
     <div class="flex items-stretch">
 
         {{-- ═══ EL MENÚ ═══ --}}
@@ -437,45 +538,6 @@
         @include('admin.carga._acomodo', ['escena' => $escena])
     @endif
 
-    {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
-         Pedido del dueño (10-08, dibujado sobre la pantalla): «la descripción del
-         camión la quiero adentro del cuadrado donde está el camión, para poder usar
-         mejor el espacio». Era una tarjeta aparte debajo del visor: su propio borde,
-         su propia sombra y el hueco entre las dos. Adentro se ahorran los tres, y los
-         datos quedan pegados al dibujo que describen.
-
-         Va como FRANJA AL PIE y no flotando sobre el lienzo: un panel encima taparía
-         el camión, que es la doctrina del 06-08 anotada arriba en este mismo archivo.
-         Con `bg-neutral-50/70` —el mismo fondo del menú lateral— se lee como parte del
-         visor y no como una tarjeta de contenido metida adentro. --}}
-    @if ($camion ?? null)
-        <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-t border-neutral-200 bg-neutral-50/70 px-4 py-2.5 text-sm">
-            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
-            <span class="text-neutral-500">Medidas útiles
-                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
-                <span class="cursor-help text-neutral-300"
-                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
-            </span>
-            <span class="text-neutral-500">Volumen
-                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
-            </span>
-            <span class="text-neutral-500">Carga máxima
-                @if ($camion->peso_max_kg)
-                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
-                @else
-                    <span class="text-neutral-400">sin dato</span>
-                @endif
-            </span>
-            @if ($camion->pasillo_cm > 0)
-                <span class="text-neutral-500">Pasillo reservado
-                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
-                </span>
-            @endif
-            {{-- El «Free meters» de EasyCargo: más accionable que el % de ocupación
-                 para «¿le sumo algo más a este viaje?». --}}
-            <span class="text-neutral-500">Piso libre en la puerta
-                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
-            </span>
-        </div>
-    @endif
+    {{-- La franja del camión y el veredicto viven ARRIBA, antes del lienzo (12-08).
+         Acá abajo no queda nada: lo último del recuadro es el tablero de acomodo. --}}
 </div>

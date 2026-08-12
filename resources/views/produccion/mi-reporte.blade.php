@@ -46,6 +46,79 @@
             </div>
         @endif
 
+        {{-- Kaizen (P-M11-23): proponer una mejora + historial propio con la
+             respuesta del jefe. Junto a las notas y ANTES del split de ramas:
+             proponer no exige asignación ni reporte editable. x-data PROPIO
+             (esta zona vive fuera del x-data grande del form de tandas). El
+             POST viaja por la MISMA cola offline que tandas/paradas.
+             OJO: nada de comillas dobles dentro del x-data (cortan el
+             atributo HTML y matan TODO el Alpine de la pantalla). --}}
+        <div class="dg-enter mb-4"
+             x-data="{
+                 abierto: {{ $errors->has('texto') ? 'true' : 'false' }},
+                 texto: {{ \Illuminate\Support\Js::from(old('texto', '')) }},
+                 sinSenalMejoras: 0,
+                 proponer(e) {
+                     if (! this.texto.trim()) { e.preventDefault(); this.$destacar(this.$refs.grupoMejoraTexto); return; }
+                     if (window.dgCola && this.$store.red && ! this.$store.red.online) {
+                         e.preventDefault();
+                         this.encolarMejora(e.target);
+                     }
+                 },
+                 async encolarMejora(form) {
+                     const fd = new FormData(form);
+                     fd.delete('_token'); /* el token se lee fresco al drenar; no encolar uno stale */
+                     const campos = Object.fromEntries(fd.entries());
+                     const uuid = (crypto.randomUUID && crypto.randomUUID()) || (Date.now() + '-' + Math.random());
+                     await window.dgCola.encolar({ uuid, url: form.action, campos });
+                     this.texto = '';
+                     this.sinSenalMejoras++;
+                 },
+             }">
+            <x-collapsible label="Proponer una mejora" model="abierto">
+                <x-slot:summary>
+                    {{ $misMejoras->isNotEmpty()
+                        ? $misMejoras->count().' '.\Illuminate\Support\Str::plural('propuesta', $misMejoras->count())
+                        : '¿Una idea para producir mejor? Escríbela aquí' }}
+                </x-slot:summary>
+
+                <form method="POST" action="{{ route('produccion.mi.mejoras.store') }}"
+                      class="space-y-3" x-on:submit="proponer($event)">
+                    @csrf
+                    <div x-ref="grupoMejoraTexto">
+                        <x-input-label for="mejora_texto" value="Tu propuesta" />
+                        <x-textarea id="mejora_texto" name="texto" rows="3" maxlength="191"
+                                    class="mt-1.5" x-model="texto"
+                                    placeholder="Ej: mover el rack de preformas más cerca de la M2"></x-textarea>
+                        <x-input-hint>El jefe la verá en su panel y su respuesta aparecerá aquí.</x-input-hint>
+                        <x-input-error :messages="$errors->get('texto')" class="mt-2" />
+                    </div>
+                    <x-secondary-button type="submit" class="h-12 w-full justify-center">
+                        Enviar propuesta
+                    </x-secondary-button>
+                    <p x-show="sinSenalMejoras > 0" x-cloak class="text-xs text-neutral-500">
+                        <span x-text="sinSenalMejoras"></span> sin conexión: se enviará al volver la señal.
+                    </p>
+                </form>
+
+                @if ($misMejoras->isNotEmpty())
+                    <ul class="mt-3 divide-y divide-neutral-100 rounded-lg border border-neutral-200">
+                        @foreach ($misMejoras as $mejora)
+                            <li class="px-3.5 py-3 text-sm">
+                                <div class="flex items-start justify-between gap-3">
+                                    <p class="min-w-0 text-neutral-900">{{ $mejora->texto }}</p>
+                                    <x-produccion.mejora-badge :estado="$mejora->estado" class="shrink-0" />
+                                </div>
+                                @if ($mejora->respuesta)
+                                    <p class="mt-1 text-xs text-neutral-500"><span class="font-medium text-neutral-700">Respuesta del jefe:</span> {{ $mejora->respuesta }}</p>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-collapsible>
+        </div>
+
         @if (! $reporte)
             {{-- Sin asignación --}}
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
