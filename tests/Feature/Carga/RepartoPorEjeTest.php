@@ -148,6 +148,53 @@ class RepartoPorEjeTest extends TestCase
         $this->assertSame([], $r['sin_peso']);
     }
 
+    // ── ¿Se pasa de un eje? (pedido del dueño 12-08-2026) ──────────────────
+
+    /**
+     * SIN EL TOPE CARGADO NO HAY AVISO, y eso NO es «no se pasa».
+     *
+     * `null` y `false` dicen cosas distintas: «no sé cuánto aguanta» contra «entra».
+     * Si se devolviera `false`, la pantalla mostraría verde sobre un camión que puede
+     * estar pasado, que es exactamente la multa que esto viene a evitar.
+     */
+    public function test_sin_el_tope_del_eje_no_se_afirma_que_entra(): void
+    {
+        [$b, $l] = $this->bloque(150, 1000);
+        $r = (new RepartoPorEje)->calcular($this->camion(), $b, $l);
+
+        $this->assertNull($r['se_pasa_delantero']);
+        $this->assertNull($r['se_pasa_trasero']);
+        $this->assertNull($r['tope_trasero_kg']);
+    }
+
+    public function test_avisa_cuando_un_eje_se_pasa_aunque_el_total_este_dentro(): void
+    {
+        // EL caso que se pidió: en la balanza no se pesa el camión entero, se pesa eje
+        // por eje. Este camión aguanta 10.000 kg en total y la carga son 1.000, pero
+        // toda apoyada sobre el trasero, que solo aguanta 600.
+        $camion = $this->camion();
+        $camion->update(['eje_delantero_max_kg' => 3000, 'eje_trasero_max_kg' => 600]);
+
+        [$b, $l] = $this->bloque(350, 1000);   // centro justo sobre el eje trasero
+        $r = (new RepartoPorEje)->calcular($camion->fresh(), $b, $l);
+
+        $this->assertTrue($r['se_pasa_trasero']);
+        $this->assertFalse($r['se_pasa_delantero']);
+        $this->assertSame(600, $r['tope_trasero_kg']);
+    }
+
+    public function test_dentro_del_tope_no_avisa(): void
+    {
+        $camion = $this->camion();
+        $camion->update(['eje_delantero_max_kg' => 3000, 'eje_trasero_max_kg' => 3000]);
+
+        [$b, $l] = $this->bloque(150, 1000);
+        $r = (new RepartoPorEje)->calcular($camion->fresh(), $b, $l);
+
+        $this->assertFalse($r['se_pasa_trasero']);
+        $this->assertFalse($r['se_pasa_delantero']);
+    }
+
     public function test_el_chevy_sembrado_es_el_unico_con_los_ejes_medidos(): void
     {
         // Los datos del 12-08 alcanzaron para UNO solo. Los otros tres quedaron sin

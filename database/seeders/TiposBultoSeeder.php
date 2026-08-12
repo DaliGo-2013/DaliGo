@@ -60,14 +60,17 @@ class TiposBultoSeeder extends Seeder
                 'largo_cm' => 110, 'ancho_cm' => 21, 'alto_cm' => 40,
                 // Mismo dato de terreno que la de 20 L: la bolsa va vacía y no se aplasta.
                 //
-                // El PESO va sin poner a propósito. Los 750 g son del botellón de 20 L —el
-                // que él nombró—, y el de 10 L sale de una preforma más chica. Ponerle los
-                // mismos 750 sería inventar un número que ahora alimenta el cartel de
-                // sobrepeso, que es peor que no tenerlo: misma regla que las jaulas sin
-                // medir. Falta pedirlo.
+                // PESO REAL: 2 kg la bolsa (dueño, 12-08-2026: «cada bolsa de 5 botellones
+                // de 10 lt pesa 2 kg, cada botellón de 10 pesa 400 gr»). Los dos datos
+                // cierran entre sí —5 × 400 g = 2 kg— así que no hay que elegir cuál creer.
+                //
+                // Estuvo en null a propósito desde el 04-08: los 750 g eran del botellón
+                // de 20 L y ponerle los mismos al de 10 habría inventado un número que
+                // alimenta el cartel de sobrepeso. Ahora está medido.
+                'peso_kg' => 2.0,
                 'unidades' => 5, 'apilable_max' => 30, 'soporta_peso_encima' => true,
                 'orientacion_fija' => true,
-                'observaciones' => 'Rinde casi el doble que el de 20 L: 54% del espacio por botellón.',
+                'observaciones' => 'Rinde casi el doble que el de 20 L: 54% del espacio por botellón. Peso del dueño 12-08-2026 (400 g por botellón).',
             ],
 
             // --- Cajas
@@ -75,14 +78,19 @@ class TiposBultoSeeder extends Seeder
                 'nombre' => 'Caja de soportes',
                 'categoria' => 'cajas',
                 'largo_cm' => 79, 'ancho_cm' => 24, 'alto_cm' => 43,
+                // Peso del dueño (12-08-2026). Hasta hoy iba en null: una carga de puras
+                // cajas no se podía repartir entre los ejes ni disparar el sobrepeso.
+                'peso_kg' => 6.0,
                 'unidades' => 1, 'apilable_max' => 6, 'soporta_peso_encima' => true,
+                'observaciones' => 'Peso del dueño 12-08-2026.',
             ],
             [
                 'nombre' => 'Caja de tapas',
                 'categoria' => 'cajas',
                 'largo_cm' => 46, 'ancho_cm' => 37, 'alto_cm' => 42,
+                'peso_kg' => 5.5,
                 'unidades' => 1, 'apilable_max' => 6, 'soporta_peso_encima' => true,
-                'observaciones' => 'La etiqueta declara ~500 unidades por caja.',
+                'observaciones' => 'La etiqueta declara ~500 unidades por caja. Peso del dueño 12-08-2026.',
             ],
 
             // --- Dispensadores: medidas de la etiqueta impresa (mm -> cm)

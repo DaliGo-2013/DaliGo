@@ -38,6 +38,7 @@ class CamionSimulacion extends Model implements AuditableContract
     protected $fillable = [
         'nombre', 'largo_cm', 'ancho_cm', 'alto_cm',
         'peso_max_kg', 'pasillo_cm', 'entre_ejes_cm', 'eje_trasero_cm',
+        'eje_delantero_max_kg', 'eje_trasero_max_kg',
         'activo', 'notas', 'silueta',
     ];
 
@@ -51,6 +52,8 @@ class CamionSimulacion extends Model implements AuditableContract
             'pasillo_cm' => 'integer',
             'entre_ejes_cm' => 'integer',
             'eje_trasero_cm' => 'integer',
+            'eje_delantero_max_kg' => 'integer',
+            'eje_trasero_max_kg' => 'integer',
             'activo' => 'boolean',
         ];
     }

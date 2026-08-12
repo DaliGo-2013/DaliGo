@@ -88,6 +88,27 @@ class TiposBultoSeederTest extends TestCase
         $this->assertNotSame('peso', $r['limite'], 'Con botellones vacíos el peso no puede ser el límite.');
     }
 
+    /**
+     * YA NO QUEDA NINGÚN BULTO SIN PESO (dueño, 12-08-2026).
+     *
+     * Un bulto sin peso no es un detalle cosmético: no dispara el cartel de sobrepeso y
+     * no se puede repartir entre los ejes, así que una carga entera de cajas quedaba sin
+     * ninguna de las dos cosas. Estuvieron en null a propósito mientras no había medida
+     * —no se inventan números— y este candado marca el momento en que dejó de faltar.
+     */
+    public function test_ningun_bulto_del_catalogo_queda_sin_peso(): void
+    {
+        $sinPeso = TipoBulto::whereNull('peso_kg')->orWhere('peso_kg', 0)->pluck('nombre');
+
+        $this->assertSame([], $sinPeso->all(), 'Volvió a haber bultos sin peso: no reparten ni avisan sobrepeso.');
+
+        // Los tres que llegaron el 12-08, con su número exacto.
+        $pesos = TipoBulto::pluck('peso_kg', 'nombre');
+        $this->assertSame('2.00', $pesos['Bolsa 5× botellón 10 L (vacío)'], '400 g por botellón × 5.');
+        $this->assertSame('6.00', $pesos['Caja de soportes']);
+        $this->assertSame('5.50', $pesos['Caja de tapas']);
+    }
+
     public function test_el_tope_nuevo_llena_el_hino_y_no_toca_los_cupos_del_hd35(): void
     {
         $hd35 = new CamionSimulacion(['largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220, 'pasillo_cm' => 0]);
