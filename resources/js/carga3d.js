@@ -2271,5 +2271,12 @@ export default function iniciarCarga3d(canvas, datos) {
     if (window.ResizeObserver) new ResizeObserver(reacomodar).observe(canvas);
 
     encuadrar();
-    dibujar();
+
+    // ARRANCA LLENO si la página volvió de una acción sobre la carga (`arranca_lleno`, hoy
+    // solo «Aplicar al camión»). Ver la nota de arriba: el visor abre VACÍO al ENTRAR —
+    // decisión del dueño del 05-08— y eso no cambia; lo que cambia es que después de
+    // acomodar a mano no haya que apretar «Todo» para ver lo que uno acaba de acomodar
+    // (pedido del 12-08). Va por `fijar()` y no tocando `cant`: así el contador, el campo
+    // y la barra quedan en el mismo número que el dibujo.
+    if (datos.arranca_lleno && TOPE > 0) fijar(TOPE); else dibujar();
 }

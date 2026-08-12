@@ -58,6 +58,23 @@
             que ya existía (y que estaba enterrada en el formulario de abajo). Así el
             bulto cubicado pasa por el mismo motor, el mismo dibujo y el mismo Excel que
             todo lo demás — cero camino paralelo. */
+         /*
+          * EL PANEL NO SE CIERRA AL AGREGAR (pedido del dueño 12-08): «le doy clic y se
+          * sale todo y me deja la interfaz sin nada… quiero que se vayan agregando los
+          * productos, que queden en una lista y me dé la opción de volver a cubicar otra
+          * cosa. El mayor provecho se le saca por unidad».
+          *
+          * El cálculo vive en el servidor —un solo motor, ver el encabezado— así que
+          * agregar SIEMPRE recarga la página: es la única forma de que el camión que se ve
+          * sea el que el motor verificó. Lo que estaba mal no era la recarga, era volver
+          * con el panel cerrado y la pantalla en otra parte. Ahora el `cubicar=1` viaja en
+          * el formulario, así que la página vuelve con el panel ABIERTO, la lista de lo que
+          * ya subió a la vista y el próximo bulto listo para tipear.
+          *
+          * Las medidas NO se limpian a propósito: el bulto que sigue suele ser parecido al
+          * anterior (otra caja de la misma serie), así que se cambia el número que cambia y
+          * listo. Vaciarlas obligaría a tipear tres campos de nuevo cada vez.
+          */
          agregar() {
              if (! this.ok || this.lineas.length >= 8) return;
              this.lineas.push({
@@ -67,8 +84,17 @@
                  medida_peso: this.kgUnidad ? this.kgUnidad.toFixed(2) : '',
              });
              this.modo = 'mixta';
-             this.cubicar = false;
-             this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
+
+             const form = this.$refs.formMixta;
+             if (form && ! form.querySelector('input[name=\'cubicar\']')) {
+                 const volver = document.createElement('input');
+                 volver.type = 'hidden';
+                 volver.name = 'cubicar';
+                 volver.value = '1';
+                 form.appendChild(volver);
+             }
+
+             this.$nextTick(() => form?.requestSubmit());
          },
      }">
 
@@ -184,6 +210,32 @@
                 Cuántas entran lo dice el cálculo al agregarlo, con el mismo motor que el resto
                 — acá solo se mide el bulto.
             </p>
+
+            {{-- LO QUE YA VA EN EL CAMIÓN. Es la lista que pidió el dueño para poder seguir
+                 agregando de a uno sin perder de vista lo anterior. Sale de `lineas`, el
+                 mismo estado que manda el formulario, así que no puede desincronizarse de lo
+                 que el motor calculó. Los colores y las letras son los del lienzo. --}}
+            <template x-if="lineas.length">
+                <div class="mt-3 border-t border-neutral-100 pt-2">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                        En el camión (<span x-text="lineas.length"></span> de 8)
+                    </p>
+                    <ul class="mt-1 space-y-1">
+                        <template x-for="(l, i) in lineas" :key="i">
+                            <li class="flex items-center gap-1.5 text-xs">
+                                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+                                      :style="`background:${color(i)}`" x-text="letra(i)"></span>
+                                <span class="min-w-0 flex-1 truncate text-neutral-600" x-text="resumen(l)"></span>
+                                <span class="shrink-0 tabular-nums text-neutral-500" x-text="l.cantidad"></span>
+                            </li>
+                        </template>
+                    </ul>
+                    <p class="mt-1.5 text-[11px] leading-snug text-neutral-500">
+                        Cubicá el siguiente y volvé a agregar. Para acomodarlos a mano, «Mover y
+                        girar bloques» en el menú.
+                    </p>
+                </div>
+            </template>
         </div>
     </div>
 </div>

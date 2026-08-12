@@ -91,7 +91,23 @@ class SimuladorCargaController extends Controller
             // mano y entra en la carga como cualquier otro. Por eso `tipo` pasa a
             // ser nullable y lo exige una regla condicional: una línea es válida si
             // trae UNA de las dos cosas, nunca ninguna.
-            'lineas.*.tipo' => ['nullable', 'integer', 'exists:tipos_bulto,id'],
+            // CERO ES «BULTO A MEDIDA», no un id inválido.
+            //
+            // Con `exists:tipos_bulto,id` a secas, el 0 que manda el <select> —la opción
+            // «— Bulto a medida —», el contrato desde el 07-08— rebotaba con «el campo
+            // seleccionado no es válido», así que la línea NUNCA se agregaba: la pantalla
+            // volvía sin la carga nueva. Es exactamente el síntoma que reportó el dueño el
+            // 12-08 al usar el panel de cubicar («le doy clic y se sale todo y me deja la
+            // interfaz sin nada»), y estuvo roto desde que existe la función: ningún test
+            // mandaba el 0 que manda el formulario.
+            //
+            // Se valida con un closure y no con `exists` porque la regla real es «o es un
+            // producto del catálogo, o es 0». Un id que no existe sigue rechazándose.
+            'lineas.*.tipo' => ['nullable', 'integer', 'min:0', function (string $atributo, $valor, callable $fallar) {
+                if ((int) $valor > 0 && ! TipoBulto::whereKey((int) $valor)->exists()) {
+                    $fallar('El producto elegido ya no está en el catálogo.');
+                }
+            }],
             'lineas.*.cantidad' => ['required_with:lineas', 'integer', 'min:1', 'max:100000'],
             // --- Bulto a medida. DESCARTABLE a propósito (decisión del dueño
             // 07-08): vive solo en esta simulación y NO se guarda en el catálogo.
@@ -1088,6 +1104,17 @@ class SimuladorCargaController extends Controller
             ],
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
+            // ARRANCA LLENO solo cuando la página vuelve de una ACCIÓN sobre la carga
+            // (hoy: aplicar el acomodo a mano, que manda `ver=todo`).
+            //
+            // El visor abre VACÍO por decisión del dueño del 05-08 —«no quiero que el
+            // camión esté contabilizado a cuánto tiene que llegar»— y esa regla sigue en
+            // pie al ENTRAR a la pantalla. Pero después de acomodar los bloques y apretar
+            // «Aplicar al camión», ver el camión vacío y tener que pulsar «Todo» para
+            // mirar lo que uno acaba de acomodar es un paso de más sin nada a cambio
+            // (pedido del dueño 12-08). Las dos cosas conviven porque la diferencia no es
+            // el gusto: es si el usuario venía de hacer algo o recién llegó.
+            'arranca_lleno' => request()->query('ver') === 'todo',
             'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
             // LO QUE EL CAMIÓN YA LLEVABA, para dibujarlo (lote 5). Sin esto el visor
             // muestra la carga nueva flotando a dos metros de la cabina y el hueco se

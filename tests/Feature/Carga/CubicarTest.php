@@ -98,6 +98,100 @@ class CubicarTest extends TestCase
         }
     }
 
+    /**
+     * AGREGAR NO DEJA LA PANTALLA VACÍA (reclamo del dueño 12-08, textual: «le doy clic y se
+     * sale todo y me deja la interfaz sin nada»).
+     *
+     * El cálculo vive en el servidor —un solo motor— así que agregar recarga la página: es
+     * la única forma de que el camión que se ve sea el que el motor verificó. Lo que estaba
+     * mal era volver con el panel CERRADO. El panel manda `cubicar=1` en el formulario y la
+     * página vuelve con el cubicaje abierto, la lista de lo que ya subió a la vista y el
+     * próximo bulto listo para tipear.
+     */
+    public function test_al_volver_de_agregar_el_panel_sigue_abierto(): void
+    {
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+
+        $html = $this->actingAs($vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->camion->id,
+            'cubicar' => 1,
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 50]],
+        ]))->assertOk()->getContent();
+
+        // El x-data del visor arranca el panel abierto…
+        $this->assertStringContainsString('cubicar: true', $html,
+            'La página volvió con el cubicaje cerrado: hay que buscar el panel de nuevo.');
+        // …y sin el parámetro sigue cerrado, que es lo de siempre.
+        $sinParam = $this->actingAs($vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->camion->id,
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 50]],
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('cubicar: false', $sinParam);
+    }
+
+    public function test_el_panel_lista_lo_que_ya_va_en_el_camion(): void
+    {
+        // La lista que pidió para «ir agregando de a uno»: sale del mismo estado que manda
+        // el formulario, así que no puede desincronizarse de lo que calculó el motor.
+        $html = $this->pantalla();
+
+        $this->assertStringContainsString('En el camión', $html);
+        $this->assertStringContainsString('Cubicá el siguiente y volvé a agregar', $html);
+    }
+
+    /**
+     * UN BULTO AJENO AL CATÁLOGO SE DESCRIBE CON SU NOMBRE Y SU PESO.
+     *
+     * Pedido del dueño (12-08): «si un producto no existe, para no ir hasta el catálogo y
+     * crearlo, que se pueda poner el peso y un nombre aunque sea para describirlo cuando
+     * esté cargado en el camión — a veces (muy pocas) se cargan cosas que no son
+     * específicamente productos».
+     *
+     * No hace falta nada nuevo: la línea a medida ya existe y es DESCARTABLE a propósito
+     * (decisión del 07-08) — vive en esta simulación y no siembra el catálogo, que es de
+     * donde salen los cupos que se le prometen a un cliente. Lo que este candado fija es
+     * que el nombre tipeado LLEGUE a todos los lugares donde se lee la carga, porque un
+     * bulto sin nombre en el dibujo es una caja anónima que nadie sabe qué es.
+     */
+    public function test_un_bulto_ajeno_al_catalogo_viaja_con_su_nombre(): void
+    {
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+
+        $respuesta = $this->actingAs($vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->camion->id,
+            'lineas' => [
+                ['tipo' => $this->bolsa->id, 'cantidad' => 50],
+                [
+                    // `tipo => 0` es LO QUE MANDA EL FORMULARIO para un bulto a medida (la
+                    // opción «— Bulto a medida —» del <select>, contrato desde el 07-08). Se
+                    // manda así a propósito: la validación lo rechazaba con «el campo
+                    // seleccionado no es válido» y la línea NUNCA se agregaba, así que la
+                    // función estuvo muerta desde que existe. Ningún test mandaba el 0.
+                    'tipo' => 0, 'cantidad' => 2,
+                    'medida_nombre' => 'Motor de repuesto (jaula soldada)',
+                    'medida_largo' => 120, 'medida_ancho' => 100, 'medida_alto' => 80,
+                    'medida_peso' => 55,
+                ],
+            ],
+        ]))->assertOk();
+
+        // 1. En el DIBUJO: el rótulo de su bloque.
+        $escena = $respuesta->viewData('escena');
+        $nombres = array_column($escena['bloques'], 'nombre');
+        $this->assertContains('Motor de repuesto (jaula soldada)', $nombres,
+            'El bulto a medida llegó al lienzo sin nombre: en el dibujo es una caja anónima.');
+
+        // 2. En la PANTALLA: el detalle producto por producto y el panel de cubicaje.
+        $respuesta->assertSee('Motor de repuesto (jaula soldada)');
+
+        // 3. Y su PESO entra en la cuenta del camión, que es la otra mitad del pedido:
+        // 2 × 55 kg del bulto ajeno + 10 bolsas × 3,75 kg de los 50 botellones.
+        $mixta = $respuesta->viewData('mixta');
+        $this->assertSame(147.5, $mixta['resultado']['peso_kg'],
+            'Los 55 kg × 2 del bulto ajeno no se sumaron al peso de la carga.');
+    }
+
     public function test_el_link_compartido_no_trae_el_cubicaje(): void
     {
         // Cubicar es ARMAR la carga; el link es para mirarla. Y el panel escribe en las

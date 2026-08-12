@@ -153,7 +153,15 @@
                     .filter(k => k === 'acomodo_de' || k.startsWith('acomodo['))
                     .forEach(k => u.searchParams.delete(k));
 
+                /* `ver=todo` para que el camión aparezca CARGADO al volver (pedido del
+                   dueño 12-08: «no tener que apretar el botón de nuevo de cargar el camión
+                   para ver cómo queda»). Solo al aplicar: el visor abre vacío al ENTRAR,
+                   que es una decisión suya del 05-08 y sigue en pie. Al «Volver al
+                   automático» tampoco se manda: ahí lo que se quiere es empezar de nuevo. */
+                u.searchParams.delete('ver');
+
                 if (conAcomodo) {
+                    u.searchParams.set('ver', 'todo');
                     this.piezas.forEach((p, i) => u.searchParams.set(
                         `acomodo[${i}]`, `${p.x},${p.y}${p.girado ? ',g' : ''}`,
                     ));

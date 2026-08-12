@@ -85,7 +85,12 @@
 @endphp
 
 <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
-     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, cubicar: false }">
+     {{-- `cubicar` arranca ABIERTO si la página volvió de agregar un bulto cubicado
+          (`cubicar=1` en la query, que el panel mete en el formulario). Sin esto, cada
+          «Agregar a la carga» dejaba la pantalla en otra parte y había que volver a buscar
+          el panel — el reclamo textual del dueño el 12-08: «le doy clic y se sale todo y me
+          deja la interfaz sin nada». --}}
+     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, cubicar: {{ ! $publico && request()->boolean('cubicar') ? 'true' : 'false' }} }">
 
     {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
          Pedido del dueño (10-08): «la descripción del camión la quiero adentro del
@@ -574,6 +579,18 @@
         <div class="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
             <span class="font-semibold">Se descartó el acomodo a mano:</span>
             la carga cambió y las posiciones guardadas ya no corresponden a estos bloques.
+        </div>
+    @endif
+
+    {{-- LOS NÚMEROS DE LA CARGA, dentro del recuadro y al pie del dibujo (pedido del dueño
+         12-08: «acá lo quiero abajo, dentro de donde está el camión, para ahorrar espacio»).
+         Era una tarjeta suelta debajo del visor.
+
+         Va DESPUÉS del lienzo y antes de los tableros: se lee el camión, después sus
+         números, y al final las herramientas que lo modifican. --}}
+    @if (($mixta ?? null) !== null)
+        <div class="border-t border-neutral-200 bg-neutral-50/70 px-4 py-3">
+            @include('admin.carga._numeros', ['p' => $mixta['peso']])
         </div>
     @endif
 
