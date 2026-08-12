@@ -57,9 +57,13 @@ hacia abajo. Reglas del motor mixto, deliberadamente conservadoras:
    real de estiba de las fotos (muro de bolsas, máquinas al costado, cajas en el
    resto). El bin-packing 3D es NP-difícil y toda heurística genérica es
    inverificable a mano — esto es verificable, y ese es el punto.
-2. **El espacio SOBRE un bloque es espacio muerto.** No se apila un tipo encima
-   de otro. La estiba real a veces lo hace; prometerlo sin regla de soporte por
-   kilo sería exagerar. Candado: `test_no_apila_un_tipo_sobre_otro`.
+2. **SEGUNDO PISO, con regla de soporte** (11-08-2026 — antes esta regla decía que
+   el espacio sobre un bloque era espacio muerto). Un tipo se apoya encima de otro
+   solo si **los dos declaran `soporta_peso_encima`**, nunca sobre la misma línea,
+   y **un solo nivel**. Ver §2bis: lo que la regla vieja prohibía no era apilar,
+   era prometerlo **sin una regla de soporte por kilo** — y esa regla llegó.
+   Candados: `SegundoPisoTest` (6) + `test_no_apila_un_tipo_sobre_otro`, que sigue
+   verde porque su tarima no declara soporte.
 3. **Un bloque parcial reserva solo su huella real** (columnas de a `apilable_max`,
    en rebanadas a lo ancho), no la rejilla completa — lo contrario regalaría piso.
    Candado: `test_un_bloque_parcial_no_roba_el_piso_que_no_usa`.
@@ -67,6 +71,42 @@ hacia abajo. Reglas del motor mixto, deliberadamente conservadoras:
    siguiente, y el recorte dice `peso`.
 5. **CENTÍMETROS ENTEROS**, nunca metros con coma flotante (regla heredada de
    cupo(): `2.00 // 0.40` da 4 en binario, y eso son 125 botellones fantasma).
+
+### 2bis. SEGUNDO PISO: un tipo encima de otro (11-08-2026)
+
+El dueño mandó una carga donde **200 botellones de 10 L quedaron afuera** con el motivo
+«no queda espacio», y su comentario: *«lo más bien pueden agregarse arriba de los de 20
+lts o al lado, porque son livianos y no rompen nada»*. Tenía razón, y el motivo era
+verdad **del piso** y mentira **del camión**: arriba del muro quedaban 26 cm sin usar.
+
+**Por qué se pudo dar vuelta la regla 2.** No prohibía apilar: prohibía prometerlo **sin
+una regla de soporte por kilo**. La regla llegó con el pedido, y encima ya estaba en el
+catálogo, curada producto por producto: `soporta_peso_encima`.
+
+**Las cuatro condiciones**, todas con candado:
+
+1. El bloque de abajo **declara** que aguanta peso. Un dispensador (`false`, jaula
+   rotulada «keep off») no recibe nada — preguntado explícitamente al dueño el 11-08, y su
+   respuesta fue **no por ahora**.
+2. El de arriba **también** lo declara. Es un proxy y conviene nombrarlo: en este catálogo
+   «aguanta peso» y «es liviano» coinciden (bolsas 3,75 kg contra máquinas de 11 y 15,5),
+   así que el mismo flag sirve de los dos lados sin inventar un umbral que nadie midió.
+3. **Nunca sobre la misma línea.** Un tipo no se apila sobre sí mismo acá: para eso está su
+   `apilable_max`. Sin esta condición **una línea sola dejaba de dar el cupo verificado** —
+   llenaba el piso y seguía apoyándose sobre su propio muro—, y ese número es el que
+   reproduce los cuatro cupos de referencia.
+4. **Un solo nivel.** Lo que se apoya no vuelve a ser techo.
+
+**Arriba se prueba de pie y, si no entra, ACOSTADO** sobre su cara más grande — que es lo
+que uno hace a mano. Y nada más: la primera versión permitía rotación libre y una plancha
+de 200×100×50 quedaba **parada en punta**, 200 cm de alto, con dos donde no iba ninguna.
+De las seis permutaciones, las cinco que apoyan sobre una cara chica no se prueban.
+
+**El campo se llama `apoyo` y no `base`:** en un bloque de pallet `base` ya significa el
+grosor de la tarima y el visor lo usa así. Dos alturas con el mismo nombre habrían dado un
+pallet flotando, en silencio. El visor ya sabía dibujar en altura (los pallets lo hacían),
+así que fue pasarle el número: sin eso, el motor contaba las bolsas de arriba y el lienzo
+las dibujaba **atravesando** el muro.
 
 ### 2.2bis «Usar todo el espacio»: el motor gira el bulto en lo que sobra (10-08-2026)
 

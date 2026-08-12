@@ -1327,7 +1327,11 @@ export default function iniciarCarga3d(canvas, datos) {
             if (blq.forma === 'pallet') {
                 rejillaDePallets(blq, dibujables);
             } else {
-                rejillaDeBultos(blq.x, 0, blq.y, rej, ori, dibujables, blq);
+                // `blq.apoyo` es la altura a la que APOYA el bloque: 0 en el piso y el techo
+                // del bloque de abajo cuando va en segundo piso (bolsas livianas arriba del
+                // muro, 11-08). Antes iba un 0 fijo, así que el motor podía contar carga
+                // apoyada arriba y el lienzo la dibujaba atravesando lo que tenía debajo.
+                rejillaDeBultos(blq.x, blq.apoyo || 0, blq.y, rej, ori, dibujables, blq);
             }
 
             dibujadosPorBloque[i] = dibujables;
@@ -1530,10 +1534,12 @@ export default function iniciarCarga3d(canvas, datos) {
         for (const [nombre, g] of porProducto) {
             const blq = g.bloque;
             const rej = blq.rejilla, ori = blq.orientacion;
-            // Ancla: el centro del techo del bloque.
+            // Ancla: el centro del techo del bloque, contando desde donde APOYA (un bloque
+            // en segundo piso tiene su techo más arriba, y el rótulo tiene que seguirlo o
+            // queda clavado dentro de la carga de abajo).
             const ancla = proyectar([
                 blq.x + (rej.largo * ori.largo) / 2,
-                rej.alto * ori.alto,
+                (blq.apoyo || 0) + rej.alto * ori.alto,
                 blq.y + (rej.ancho * ori.ancho) / 2,
             ]);
             // A medio cargar (los pasos, o la animación) dice CUÁNTOS VAN de cuántos:
