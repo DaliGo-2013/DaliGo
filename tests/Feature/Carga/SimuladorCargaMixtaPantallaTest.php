@@ -1705,6 +1705,65 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         return substr($js, $desde, $hasta - $desde);
     }
 
+    /**
+     * LOS TRES BOTONES DEL MOUSE (pedido del dueño 12-08-2026, con los controles de
+     * EasyCargo en la mano: izquierdo gira, derecho recorre, rueda acerca).
+     *
+     * Girar y acercar ya estaban; faltaba el del medio. Lo que se vigila acá es lo que
+     * se rompe en silencio si alguien «simplifica» el manejo del puntero:
+     *
+     *  · que el derecho DESPLACE y no gire — sin la distinción, el arrastre con el
+     *    derecho giraría el camión y el usuario no sabría por qué;
+     *  · que el desplazamiento viva APARTE del encuadre: girar con zoom 1 vuelve a
+     *    medir CX/CY en cada frame, así que un pan guardado ahí se borra al primer
+     *    grado de giro y parece que el visor «se resetea solo»;
+     *  · que el menú del navegador no se abra encima del camión.
+     */
+    public function test_el_boton_derecho_desplaza_y_el_izquierdo_sigue_girando(): void
+    {
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('const DESPLAZA = new Set([1, 2]);', $js,
+            'Se perdió qué botones desplazan: el derecho (2) y el del medio (1).');
+        $this->assertStringContainsString('mueve: DESPLAZA.has(e.button)', $js,
+            'El arrastre ya no distingue el botón, así que el derecho volvería a girar.');
+        $this->assertStringContainsString("canvas.addEventListener('contextmenu'", $js,
+            'Sin frenar el menú contextual, el botón derecho abre el menú del navegador sobre el camión.');
+
+        // El pan se SUMA al encuadre, no vive adentro. Es la línea que evita que girar
+        // un grado borre el desplazamiento que el usuario acaba de hacer.
+        $this->assertStringContainsString('CX = AW / 2 - centro[0] * ESC + pan[0];', $js);
+        $this->assertStringContainsString('CY = AH / 2 - centro[1] * ESC + pan[1];', $js);
+
+        // Y una vista fija lo limpia: «Planta» tiene que mostrar el camión entero, no
+        // el rincón al que lo habían corrido.
+        $this->assertMatchesRegularExpression(
+            '/function vista\(clave\) \{[\s\S]{0,900}?pan = \[0, 0\];/',
+            $js,
+            'Las vistas fijas dejaron de limpiar el desplazamiento.',
+        );
+    }
+
+    public function test_el_desplazamiento_tiene_tope_para_no_perder_el_camion(): void
+    {
+        // Sin tope, un arrastre largo deja el lienzo en blanco y la única salida es
+        // «Reiniciar». El tope crece con el zoom: a zoom 1 no se puede perder el
+        // camión, y acercado hay cancha para recorrer la carga de punta a punta.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('const tope = [AW * 0.6 * zoom, AH * 0.6 * zoom];', $js,
+            'El desplazamiento perdió su tope (o dejó de crecer con el zoom).');
+    }
+
+    public function test_la_pantalla_dice_que_el_boton_derecho_mueve(): void
+    {
+        // Girar se descubre arrastrando y la rueda es un reflejo; apretar el botón
+        // derecho sobre un dibujo no se le ocurre a nadie si la pantalla no lo dice.
+        $this->verMixta([['tipo' => $this->caja->id, 'cantidad' => 10]])
+            ->assertOk()
+            ->assertSee('botón derecho para mover');
+    }
+
     public function test_el_encuadre_mide_el_dibujo_y_no_una_caja_supuesta(): void
     {
         // El camión se veía chico y corrido a la derecha (reporte del dueño 05-08):

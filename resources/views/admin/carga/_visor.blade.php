@@ -100,6 +100,10 @@
                     <button type="button" id="carga3dMas" aria-label="Acercar" class="{{ $btn }} w-8 text-center">+</button>
                     <button type="button" id="carga3dReset" class="{{ $btn }} flex-1">Reiniciar</button>
                 </div>
+                <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                    Con el <span class="font-medium text-neutral-700">botón derecho</span> apretado se
+                    recorre la carga. «Reiniciar» vuelve al encuadre de siempre.
+                </p>
             </details>
 
             {{-- Cuánto se ve cargado. «▶» reproduce la estiba de a poco (para mirar en
@@ -384,8 +388,13 @@
                 <button type="button" x-show="!menu" @click="menu = true"
                         class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-50"
                         title="Abrir el menú de herramientas">☰ Menú</button>
+                {{-- Los tres controles del mouse, dichos donde se usan (pedido del dueño
+                     12-08-2026, con los controles de EasyCargo al lado). El desplazamiento
+                     con el botón derecho es el único que no se descubre solo: girar se
+                     prueba arrastrando y la rueda es un reflejo, pero a nadie se le ocurre
+                     apretar el derecho sobre un dibujo si nada se lo dice. --}}
                 <span class="text-xs font-medium text-neutral-500">
-                    Arrastrá para girar<span class="hidden lg:inline">, rueda para acercar</span>
+                    Arrastrá para girar<span class="hidden lg:inline">, botón derecho para mover, rueda para acercar</span>
                 </span>
             </div>
         </div>
