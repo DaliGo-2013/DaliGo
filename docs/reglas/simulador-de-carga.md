@@ -121,7 +121,46 @@ pallet flotando, en silencio. El visor ya sabía dibujar en altura (los pallets 
 así que fue pasarle el número: sin eso, el motor contaba las bolsas de arriba y el lienzo
 las dibujaba **atravesando** el muro.
 
-### 2ter. EL MOTOR SE TAPA SU PROPIO TECHO — pendiente (12-08-2026)
+### 2ter. SE PRUEBAN VARIOS ACOMODOS Y GANA EL QUE USE MÁS CAJA (12-08-2026)
+
+> Esta sección nació como **pendiente** el mismo día y se cerró horas después. Se deja el
+> planteo original abajo porque explica el problema mejor que la solución.
+
+`carga()` ya no tiene UN acomodo: arma hasta tres **planes**, corre el motor con cada uno y
+se queda con el mejor. Pedido del dueño, textual: *«el motor prueba las dos y se queda con
+la que meta más carga»*.
+
+| Plan | Qué cambia |
+|---|---|
+| 1 | El de siempre: lo grande primero (o el orden de la lista si el usuario lo pidió) |
+| 2 | **La base primero**: lo que aguanta peso (las cajas) al piso, para que lo liviano tenga dónde apoyarse |
+| 3 | **La base más baja**: como el 2, recortando el apilado de la base para que quede aire utilizable arriba. El recorte se calcula con la medida **más chica** de lo que podría subir — lo que ese bulto necesita acostado — y no a ojo |
+
+**Cómo gana un plan:** primero que la carga entre **completa**, después por **volumen
+ocupado** (literalmente «cuánta caja se usó»). El volumen y no la cantidad de bultos:
+comparar «183 bolsas» contra «420 cajas» no dice nada.
+
+**El desempate es el orden de los planes, y el primero es el de antes**, así que ningún
+número existente se mueve salvo que otro plan lo supere **estrictamente**. Ahí quedan
+atados los cuatro cupos de referencia.
+
+**Los planes son POCOS a propósito:** cada uno es una corrida completa del motor y esto
+responde a un submit de pantalla. Se generan solo cuando hay algo que pueda subir y algo
+que pueda sostenerlo; si no, un plan y listo.
+
+#### Lo que el buscador contestó, y no era lo esperado
+
+Con el catálogo real, **lado a lado casi siempre gana**: la bolsa de botellones es grande y
+apilarla sobre cajas desperdicia más espacio del que aprovecha. Medido en el Chevy 3 con 500
+cajas + 60 bolsas: **35,4 m³ lado a lado contra ~31,5 apilado**.
+
+Que la estiba del andén (cajas abajo, bidones arriba) pierda en volumen no la vuelve
+irracional: el cargador no está maximizando metros cúbicos, está haciendo entrar **un pedido
+concreto**. Y para eso el motor ya prioriza `cabe_todo`, así que **apila cuando es la única
+forma de que entre todo** — candado
+`test_el_motor_apila_cuando_es_la_unica_forma_de_que_entre_todo`.
+
+### 2ter-bis. El planteo original: el motor se tapaba su propio techo
 
 Hallazgo al probar la estiba que dictó el dueño (cajas abajo, bidones arriba) en el Chevy 3:
 **no subió ni una bolsa**, y no es un bug.
@@ -133,14 +172,13 @@ la base, se tapa a sí mismo la posibilidad de hacer lo que hace el cargador: en
 cajas se apilan de a 4 **dejando el aire para los bidones**.
 
 Es la misma pregunta que el dueño ya contestó para el orden: *«que el motor pruebe las dos y
-se quede con la que meta más carga»* (12-08), pero aplicada a la **altura de la base**. Falta
-que `carga()` evalúe varios acomodos y elija por carga total:
+se quede con la que meta más carga»* (12-08), pero aplicada a la **altura de la base**. **Ya está hecho** — ver §2ter arriba. El planteo era:
 
 1. orden: base primero (cajas) contra volumen descendente (bolsas primero) — hoy solo el
    segundo;
 2. altura de la base: al tope, o recortada para dejar techo utilizable.
 
-Mientras eso no exista, la estiba real se puede reproducir **a mano**: bajando el tope de
+Y además se puede reproducir **a mano** en cualquier momento: bajando el tope de
 apilado de la caja en el formulario, que es un control que ya está a la vista.
 
 ### 2.2bis «Usar todo el espacio»: el motor gira el bulto en lo que sobra (10-08-2026)

@@ -205,37 +205,197 @@ class CalculoDeCarga
      */
     public function carga(array $vehiculo, array $lineas, bool $enOrdenDeLista = false, bool $aprovechar = false): array
     {
-        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
-        $W = (int) $vehiculo['ancho'];
-        $H = (int) $vehiculo['alto'];
-        $topePeso = $vehiculo['peso_max_kg'] ?? null;
+        /*
+         * ── SE PRUEBAN VARIOS ACOMODOS Y GANA EL QUE USE MÁS CAJA (12-08-2026) ──
+         *
+         * Pedido del dueño, con su motivo: «lo que quiero es que pueda caber todo lo que
+         * más se pueda; en la vida real se carga hasta el tope, se usa toda la caja». Y su
+         * criterio, textual, cuando le pregunté si las cajas van siempre abajo: «el motor
+         * prueba las dos y se queda con la que meta más carga».
+         *
+         * Antes había UN acomodo y punto, y eso dejaba plata sobre la mesa de dos maneras
+         * que se veían en su propio caso:
+         *
+         *  · el ORDEN. Con «lo grande primero» las bolsas tomaban el piso y las cajas se
+         *    acomodaban al costado, así que nunca salía «cajas abajo, bidones arriba», que
+         *    es como se carga de verdad.
+         *  · la ALTURA DE LA BASE. El motor apila la base lo más alto que puede: cinco
+         *    cajas de tapas son 210 de los 230 cm del Chevy y arriba no entra ni una bolsa
+         *    acostada. Con cuatro —168 cm— los bidones suben de pie. El cargador apila de a
+         *    cuatro A PROPÓSITO; el motor no sabía negociar eso.
+         *
+         * Cómo gana un plan: primero que la carga entre COMPLETA, y después por volumen
+         * ocupado — que es literalmente «cuánta caja se usó». El desempate es el ORDEN de
+         * los planes, y el primero es siempre el de antes, así que **ningún número
+         * existente se mueve salvo que otro plan lo supere estrictamente**. Ahí están
+         * atados los cuatro cupos de referencia.
+         */
+        $mejor = null;
+        foreach ($this->planes($vehiculo, $lineas, $enOrdenDeLista) as $plan) {
+            $r = $this->acomodar($vehiculo, $plan['lineas'], $plan['orden'], $aprovechar);
+            if ($mejor === null || $this->rinde($r) > $this->rinde($mejor)) {
+                $mejor = $r;
+            }
+        }
 
-        // El ORDEN de colocación decide qué producto queda al fondo y qué queda contra la
-        // puerta, porque cada bloque se pone en la región más al fondo donde quepa.
-        //
-        // Por defecto: lo grande primero (estable: a igual volumen, el orden escrito), que
-        // es como se estiba en la práctica. Con `$enOrdenDeLista` manda el orden que armó
-        // el usuario, y ahí él decide qué va al fondo — es la forma HONESTA de «mover la
-        // carga»: se reordena la lista y el motor recalcula, así que el resultado sigue
-        // siendo un acomodo que el motor verificó. Arrastrar bloques a mano dejaría armar
-        // en pantalla una carga que el cálculo dice que no cabe.
+        return $mejor;
+    }
+
+    /**
+     * Lo que rinde un acomodo, para comparar planes: primero que entre TODO, después el
+     * volumen ocupado. Devuelve un array para compararlo lexicográficamente con `>`.
+     *
+     * El volumen y no la cantidad de bultos: comparar «183 bolsas» contra «420 cajas» no
+     * dice nada —son cosas de tamaños distintos—, y lo que el dueño pidió medir es cuánta
+     * CAJA se usa.
+     *
+     * @return array{0:int,1:float}
+     */
+    private function rinde(array $resultado): array
+    {
+        return [(int) $resultado['cabe_todo'], $resultado['volumen_ocupado_m3']];
+    }
+
+    /**
+     * Los acomodos que vale la pena probar. Son POCOS y a propósito: cada uno es una
+     * corrida completa del motor, y esto lo llama una pantalla que responde a un submit.
+     *
+     * 1. El de siempre: lo grande primero (o el orden de la lista, si el usuario lo pidió).
+     * 2. LA BASE PRIMERO: los que aguantan peso encima (las cajas) al piso, para que lo
+     *    liviano tenga dónde apoyarse. Solo si hay algo que pueda subir; si no, sería
+     *    repetir el plan 1 con otro nombre.
+     * 3. LA BASE MÁS BAJA: como el 2, pero recortando el apilado de la base para que quede
+     *    aire utilizable arriba. El recorte no es a ojo — se calcula con la medida más
+     *    chica de lo que podría subir, que es lo que el bulto necesita acostado.
+     *
+     * Con `$enOrdenDeLista` el orden es sagrado (es el «mover la carga» del dueño), pero la
+     * altura de la base no: recortar el apilado no cambia qué producto va al fondo.
+     *
+     * @return list<array{orden: list<int>, lineas: list<array>}>
+     */
+    private function planes(array $vehiculo, array $lineas, bool $enOrdenDeLista): array
+    {
+        $H = (int) $vehiculo['alto'];
+        $base = fn (int $i) => ! empty($lineas[$i]['bulto']['soporta_peso_encima'])
+            && isset(self::SOPORTA_ENCIMA[$lineas[$i]['bulto']['categoria'] ?? '']);
+
+        $planes = [['orden' => $this->orden($lineas, $enOrdenDeLista), 'lineas' => $lineas]];
+
+        // ¿Hay algo que pueda apoyarse sobre algo? Si no, un solo plan.
+        $subibles = array_filter(array_keys($lineas), fn (int $i) => $this->puedeSubirAAlgo($lineas, $i));
+        $bases = array_filter(array_keys($lineas), $base);
+        if ($subibles === [] || $bases === []) {
+            return $planes;
+        }
+
+        if (! $enOrdenDeLista) {
+            $planes[] = ['orden' => $this->orden($lineas, false, priorizarBase: true), 'lineas' => $lineas];
+        }
+
+        // La base recortada: el apilado que deja aire para el más chico de los que suben.
+        $aire = min(array_map(
+            fn (int $i) => min(
+                (int) $lineas[$i]['bulto']['largo'],
+                (int) $lineas[$i]['bulto']['ancho'],
+                (int) $lineas[$i]['bulto']['alto'],
+            ),
+            $subibles,
+        ));
+
+        $recortadas = $lineas;
+        $recorto = false;
+        foreach ($bases as $i) {
+            $alto = max(1, (int) $lineas[$i]['bulto']['alto']);
+            $capas = intdiv(max(0, $H - $aire), $alto);
+            // Solo si el recorte deja capas Y de verdad baja el apilado: si la base ya
+            // dejaba aire, este plan es el anterior repetido.
+            if ($capas >= 1 && $capas < min(intdiv($H, $alto), max(1, (int) ($lineas[$i]['bulto']['apilable_max'] ?? 1)))) {
+                $recortadas[$i]['bulto']['apilable_max'] = $capas;
+                $recorto = true;
+            }
+        }
+        if ($recorto) {
+            $planes[] = [
+                'orden' => $this->orden($recortadas, $enOrdenDeLista, priorizarBase: ! $enOrdenDeLista),
+                'lineas' => $recortadas,
+            ];
+        }
+
+        return $planes;
+    }
+
+    /** Si la línea `$i` podría apoyarse sobre alguna otra de la carga (matriz por categoría). */
+    private function puedeSubirAAlgo(array $lineas, int $i): bool
+    {
+        $cat = $lineas[$i]['bulto']['categoria'] ?? '';
+
+        foreach ($lineas as $j => $otra) {
+            if ($j === $i || empty($otra['bulto']['soporta_peso_encima'])) {
+                continue;
+            }
+            if (in_array($cat, self::SOPORTA_ENCIMA[$otra['bulto']['categoria'] ?? ''] ?? [], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * El ORDEN de colocación decide qué producto queda al fondo y qué queda contra la
+     * puerta, porque cada bloque se pone en la región más al fondo donde quepa.
+     *
+     * Por defecto: lo grande primero (estable: a igual volumen, el orden escrito), que
+     * es como se estiba en la práctica. Con `$enOrdenDeLista` manda el orden que armó
+     * el usuario, y ahí él decide qué va al fondo — es la forma HONESTA de «mover la
+     * carga»: se reordena la lista y el motor recalcula, así que el resultado sigue
+     * siendo un acomodo que el motor verificó. Arrastrar bloques a mano dejaría armar
+     * en pantalla una carga que el cálculo dice que no cabe.
+     *
+     * LAS LÍNEAS ABIERTAS VAN AL FINAL, SIEMPRE — y no es una preferencia de orden.
+     * Una línea sin cantidad se lleva todo lo que quepa; colocada antes que una con
+     * cantidad fija dejaría afuera justamente lo que el vendedor ya vendió. El
+     * relleno se acomoda en lo que sobra, nunca al revés. Por eso la regla manda
+     * incluso con `$enOrdenDeLista`, que en todo lo demás respeta al usuario: acá el
+     * orden que él escribió no puede expresar «primero el relleno» sin contradecirse.
+     *
+     * @return list<int>
+     */
+    private function orden(array $lineas, bool $enOrdenDeLista, bool $priorizarBase = false): array
+    {
         $abierta = fn (int $i) => ! empty($lineas[$i]['abierta']);
         $vol = fn (int $i) => $lineas[$i]['bulto']['largo'] * $lineas[$i]['bulto']['ancho'] * $lineas[$i]['bulto']['alto'];
+        $base = fn (int $i) => ! empty($lineas[$i]['bulto']['soporta_peso_encima'])
+            && isset(self::SOPORTA_ENCIMA[$lineas[$i]['bulto']['categoria'] ?? '']);
 
-        // LAS LÍNEAS ABIERTAS VAN AL FINAL, SIEMPRE — y no es una preferencia de orden.
-        // Una línea sin cantidad se lleva todo lo que quepa; colocada antes que una con
-        // cantidad fija dejaría afuera justamente lo que el vendedor ya vendió. El
-        // relleno se acomoda en lo que sobra, nunca al revés. Por eso la regla manda
-        // incluso con `$enOrdenDeLista`, que en todo lo demás respeta al usuario: acá el
-        // orden que él escribió no puede expresar «primero el relleno» sin contradecirse.
         $orden = array_keys($lineas);
-        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol) {
+        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase) {
             if ($abierta($a) !== $abierta($b)) {
                 return $abierta($a) ? 1 : -1;
+            }
+            if ($priorizarBase && $base($a) !== $base($b)) {
+                return $base($a) ? -1 : 1;
             }
 
             return $enOrdenDeLista ? $a <=> $b : ($vol($b) <=> $vol($a) ?: $a <=> $b);
         });
+
+        return $orden;
+    }
+
+    /**
+     * UN acomodo concreto: coloca las líneas en el orden dado, primero el piso y después el
+     * segundo piso. Es el motor de siempre; lo que cambió es que ahora se lo llama varias
+     * veces con planes distintos (ver `carga()`).
+     *
+     * @param  list<int>  $orden
+     */
+    private function acomodar(array $vehiculo, array $lineas, array $orden, bool $aprovechar): array
+    {
+        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
+        $W = (int) $vehiculo['ancho'];
+        $H = (int) $vehiculo['alto'];
+        $topePeso = $vehiculo['peso_max_kg'] ?? null;
 
         // Regiones de piso libres. Arranca con toda la caja menos el pasillo.
         $regiones = ($L > 0 && $W > 0) ? [['x' => 0, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];

@@ -204,6 +204,36 @@ class SegundoPisoTest extends TestCase
     }
 
     /**
+     * EL MOTOR PRUEBA PLANES Y GANA EL QUE HACE ENTRAR TODO.
+     *
+     * Pedido del dueño (12-08): «que el motor pruebe las dos y se quede con la que meta más
+     * carga». `cabe_todo` se compara ANTES que el volumen, y esta es la prueba: una carga
+     * que lado a lado deja una bolsa afuera y apilada entra completa.
+     *
+     * Las cajas tapizan el piso (dos de 100×100 en 200×100) y no se apilan sobre sí mismas
+     * —`apilable_max` 1—, así que para la bolsa no queda piso. Sobre el techo de la caja, a
+     * 50 cm, sobran 200: ahí entra.
+     */
+    public function test_el_motor_apila_cuando_es_la_unica_forma_de_que_entre_todo(): void
+    {
+        $veh = ['largo' => 200, 'ancho' => 100, 'alto' => 250, 'peso_max_kg' => null];
+        $caja = ['categoria' => 'cajas', 'largo' => 100, 'ancho' => 100, 'alto' => 50, 'peso' => 1,
+            'unidades' => 1, 'apilable_max' => 1, 'soporta_peso_encima' => true, 'orientacion_fija' => true];
+        $bolsa = ['categoria' => 'botellones', 'largo' => 90, 'ancho' => 90, 'alto' => 40, 'peso' => 1,
+            'unidades' => 1, 'apilable_max' => 1, 'soporta_peso_encima' => true, 'orientacion_fija' => true];
+
+        $r = $this->calc->carga($veh, [
+            ['bulto' => $caja, 'cantidad' => 2],
+            ['bulto' => $bolsa, 'cantidad' => 1],
+        ]);
+
+        $this->assertTrue($r['cabe_todo'], 'El motor no encontró el acomodo que hace entrar todo.');
+        $this->assertSame(2, $r['lineas'][0]['colocados']);
+        $this->assertSame(1, $r['lineas'][1]['colocados']);
+        $this->assertNotSame([], $this->enAltura($r), 'La bolsa entró, pero no apoyada arriba: revisar el plan elegido.');
+    }
+
+    /**
      * EL PUENTE ENTRE EL CATÁLOGO Y EL MOTOR, que es donde esto estuvo roto.
      *
      * `paraCalculo()` no mandaba `soporta_peso_encima`, así que el motor nunca veía techos
