@@ -224,10 +224,6 @@ Route::middleware('auth')
         Route::middleware('permission:view servicio tecnico|manage servicio tecnico')->group(function () {
             Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])
                 ->name('servicio-tecnico.index');
-            // BOCETO interno: vista de seguimiento (estilo Blue Express) del estado
-            // de un equipo. Sin conexion a datos; solo un adelanto del diseño.
-            Route::get('servicio-tecnico/seguimiento-demo', [ServicioTecnicoController::class, 'seguimientoDemo'])
-                ->name('servicio-tecnico.seguimiento-demo');
             // Foto de recepcion (disco privado, servida con sesion). ANTES del show
             // {orden} literalmente "foto/..." son 2 segmentos, no chocan con {orden}.
             Route::get('servicio-tecnico/foto/{foto}', [ServicioTecnicoController::class, 'foto'])

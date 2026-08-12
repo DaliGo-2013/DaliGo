@@ -384,13 +384,4 @@ class TrasladoServicioTest extends TestCase
             ->assertSee('Va en camino desde Coquimbo');
     }
 
-    /** El cliente ve el paso del viaje en el seguimiento (decisión 4 del dueño). */
-    public function test_el_seguimiento_del_cliente_tiene_el_paso_en_camino(): void
-    {
-        $this->actingAs($this->tecnico())->get(route('admin.servicio-tecnico.seguimiento-demo'))
-            ->assertOk()
-            ->assertViewHas('pasosConTraslado', fn ($pasos) => collect($pasos)->contains(
-                fn ($p) => $p['key'] === 'en_traslado' && str_contains($p['desc'], 'en camino al taller')
-            ));
-    }
 }
