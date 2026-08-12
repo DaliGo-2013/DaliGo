@@ -239,5 +239,43 @@
                 @endforelse
             </x-list-card>
         </div>
+
+        {{-- Kaizen (P-M11-23): bandeja de propuestas de mejora de los
+             sopladores. Abiertas = pendiente|revisada (esperan decisión); la
+             decisión + respuesta se pintan en mi-reporte del autor. Es
+             conversación estructurada: sin M14/M15 a propósito. --}}
+        <div id="mejoras" class="mt-6">
+            <x-list-card title="Propuestas de mejora" :count="$mejorasAbiertas->count()" :countLabel="\Illuminate\Support\Str::plural('abierta', $mejorasAbiertas->count())">
+                @forelse ($mejorasAbiertas as $mejora)
+                    <li class="px-4 py-4 sm:px-6">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-sm text-neutral-900">{{ $mejora->texto }}</p>
+                                <p class="mt-0.5 text-xs text-neutral-500">
+                                    {{ $mejora->soplador?->name ?? '—' }} · {{ $mejora->created_at->enChile()->format('d-m-Y H:i') }}
+                                </p>
+                            </div>
+                            <x-produccion.mejora-badge :estado="$mejora->estado" class="shrink-0" />
+                        </div>
+                        <form method="POST" action="{{ route('admin.produccion.mejoras.update', $mejora) }}"
+                              class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                            @csrf
+                            @method('PATCH')
+                            <x-text-input name="respuesta" :value="$mejora->respuesta" maxlength="191"
+                                          placeholder="Respuesta para el soplador (opcional)" class="w-full sm:flex-1" />
+                            <div class="flex flex-wrap gap-2 sm:shrink-0">
+                                <x-secondary-button type="submit" name="estado" value="revisada">Revisada</x-secondary-button>
+                                <x-primary-button type="submit" name="estado" value="aplicada">Aplicada</x-primary-button>
+                                <x-danger-button type="submit" name="estado" value="descartada">Descartada</x-danger-button>
+                            </div>
+                        </form>
+                    </li>
+                @empty
+                    <li class="px-6 py-8 text-center text-sm text-neutral-500">
+                        No hay propuestas abiertas. Las ideas de los sopladores aparecerán aquí.
+                    </li>
+                @endforelse
+            </x-list-card>
+        </div>
     </div>
 </x-app-layout>
