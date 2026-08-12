@@ -218,6 +218,7 @@ class CalculoDeCarga
         $regiones = ($L > 0 && $W > 0) ? [['x' => 0, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];
 
         $porLinea = [];
+        $estado = [];
         $bloques = [];
         $pesoAcum = 0.0;
         $volOcupado = 0.0;
@@ -282,19 +283,104 @@ class CalculoDeCarga
                 $volOcupado += $this->m3($bulto['largo'], $bulto['ancho'], $bulto['alto']) * $puesto['cantidad'];
             }
 
+            $estado[$i] = compact('bulto', 'pedidos', 'porUnidad', 'pesoUnit', 'restan', 'colocados', 'capadoPorPeso', 'esAbierta');
+        }
+
+        /*
+         * ── SEGUNDO PISO: un tipo ENCIMA de otro (pedido del dueño 11-08-2026) ──
+         *
+         * «Agregué 100 botellones de 10 litros que lo más bien pueden ir arriba de los de
+         * 20, o al lado, porque son livianos y no rompen nada.»
+         *
+         * Da vuelta la regla 2 del credo, que decía que el espacio sobre un bloque es
+         * espacio muerto. Esa regla no era pereza: decía «prometerlo SIN REGLA DE SOPORTE
+         * POR KILO sería exagerar», y la regla de soporte es justamente lo que faltaba.
+         * Ahora existe, y sale de un dato que el catálogo ya traía curado producto por
+         * producto: `soporta_peso_encima`.
+         *
+         * TRES CANDADOS DE PRUDENCIA, porque acá el error se paga con mercadería rota:
+         *
+         *  1. Solo se sube sobre un bloque cuyo bulto DECLARA que aguanta peso encima. Un
+         *     dispensador (declarado `false`, y su jaula rotulada «keep off») nunca recibe
+         *     nada — decisión del dueño el 11-08 al preguntarle explícitamente.
+         *  2. Solo suben bultos que TAMBIÉN lo declaran, o sea la familia liviana del
+         *     catálogo (bolsas y cajas). Es un proxy y conviene nombrarlo: en este catálogo
+         *     «aguanta peso» y «es liviano» coinciden —las bolsas pesan 3,75 kg y los
+         *     dispensadores 11 y 15,5—, así que el mismo flag sirve de los dos lados sin
+         *     inventar un umbral de kilos que nadie midió.
+         *  3. UN SOLO PISO. Lo que se sube no vuelve a ser techo: el tercer nivel no se
+         *     promete. Si algún día se cuenta una carga real de tres, se sube el tope.
+         *
+         * El piso se llena PRIMERO y entero (el bucle de arriba, sin tocar): así ningún
+         * número existente se mueve y esta pasada solo AGREGA lo que antes quedaba afuera.
+         */
+        $techos = [];
+        foreach ($bloques as $b) {
+            if (empty($lineas[$b['linea']]['bulto']['soporta_peso_encima'])) {
+                continue;
+            }
+            $techos[] = [
+                'linea' => $b['linea'],
+                'x' => $b['x'],
+                'y' => $b['y'],
+                'largo' => $b['rejilla']['largo'] * $b['orientacion']['largo'],
+                'ancho' => $b['rejilla']['ancho'] * $b['orientacion']['ancho'],
+                'base' => $b['rejilla']['alto'] * $b['orientacion']['alto'],
+            ];
+        }
+
+        foreach ($orden as $i) {
+            if ($techos === [] || $estado[$i]['restan'] <= 0 || empty($estado[$i]['bulto']['soporta_peso_encima'])) {
+                continue;
+            }
+
+            while ($estado[$i]['restan'] > 0) {
+                $pesoUnit = $estado[$i]['pesoUnit'];
+                $topeBultos = ($pesoUnit > 0 && $topePeso !== null)
+                    ? (int) floor((max(0, $topePeso - $pesoAcum)) / $pesoUnit)
+                    : PHP_INT_MAX;
+                if ($topeBultos <= 0) {
+                    $estado[$i]['capadoPorPeso'] = true;
+                    break;
+                }
+
+                // ARRIBA SE PRUEBA DE PIE Y, SI NO ENTRA, ACOSTADO. Primero la orientación
+                // que el usuario eligió; si no cabe en el aire que quedó, se apoya sobre su
+                // cara más grande, que es lo que uno hace a mano al poner algo encima de un
+                // muro. Y nada más: la rotación LIBRE acá era un error —una plancha de
+                // 200×100×50 quedaba PARADA EN PUNTA, 200 cm de alto, y así entraban dos
+                // donde no va ninguna—. Nunca se para un bulto sobre su cara chica.
+                $cabida = min($estado[$i]['restan'], $topeBultos);
+                $puesto = $this->colocarEnAltura($techos, $estado[$i]['bulto'], $cabida, $H, $i)
+                    ?? $this->colocarEnAltura($techos, $this->acostado($estado[$i]['bulto']), $cabida, $H, $i);
+                if ($puesto === null) {
+                    break;
+                }
+
+                $bloques[] = $puesto + ['linea' => $i];
+                $estado[$i]['restan'] -= $puesto['cantidad'];
+                $estado[$i]['colocados'] += $puesto['cantidad'];
+                $pesoAcum += $pesoUnit * $puesto['cantidad'];
+                $volOcupado += $this->m3(...array_map(fn ($k) => $estado[$i]['bulto'][$k], ['largo', 'ancho', 'alto'])) * $puesto['cantidad'];
+            }
+        }
+
+        foreach ($estado as $i => $e) {
             $porLinea[$i] = [
                 // Una línea abierta no tiene «pedidos»: no se pidió un número.
-                'pedidos' => $esAbierta ? null : $pedidos,
-                'abierta' => $esAbierta,
-                'colocados' => $colocados,
-                'unidades_colocadas' => $colocados * $porUnidad,
+                'pedidos' => $e['esAbierta'] ? null : $e['pedidos'],
+                'abierta' => $e['esAbierta'],
+                'colocados' => $e['colocados'],
+                'unidades_colocadas' => $e['colocados'] * $e['porUnidad'],
                 // Y NO deja carga afuera: se pidió «lo que quepa» y entró lo que cabía,
                 // así que un motivo de faltante sería inventar un incumplimiento. Por eso
                 // tampoco puede tumbar el `cabe_todo` de la carga.
-                'motivo' => (! $esAbierta && $restan > 0) ? $this->motivoDelFaltante($bulto, $L, $W, $H, $capadoPorPeso) : null,
+                'motivo' => (! $e['esAbierta'] && $e['restan'] > 0)
+                    ? $this->motivoDelFaltante($e['bulto'], $L, $W, $H, $e['capadoPorPeso'])
+                    : null,
                 // Con qué se llenó, que es lo único que sí interesa de una abierta: si
                 // paró por los kilos, sumar un camión más grande no cambia nada.
-                'lleno_por' => $esAbierta ? ($capadoPorPeso ? self::LIMITE_PESO : 'espacio') : null,
+                'lleno_por' => $e['esAbierta'] ? ($e['capadoPorPeso'] ? self::LIMITE_PESO : 'espacio') : null,
             ];
         }
 
@@ -379,6 +465,76 @@ class CalculoDeCarga
         }
 
         return null;
+    }
+
+    /**
+     * Coloca un bloque SOBRE el techo de otro (segundo piso). Devuelve el bloque con su
+     * `base` —la altura desde el piso a la que apoya— o null si no entra en ningún techo.
+     *
+     * Se reusa `colocarBloque()` con UN techo por vez y con el alto libre de ESE techo
+     * (`H - base`), en vez de meterle una lista mixta: cada techo está a una altura
+     * distinta, y la rejilla de arriba depende justamente de cuánto queda por encima. Lo
+     * que sobra del techo después de apoyar el bloque queda disponible a la misma altura,
+     * partido en guillotina por el mismo código que parte el piso.
+     *
+     * Se recorren de MENOR a mayor altura: apoyar primero abajo deja libres los techos
+     * altos, que son los que menos aire tienen por encima.
+     *
+     * NUNCA sobre un techo de la MISMA línea. Un tipo no se apila sobre sí mismo acá: para
+     * eso está su `apilable_max`, que ya gobierna cuántos van uno sobre otro en el piso.
+     * Sin esta condición, una línea sola dejaba de dar el cupo verificado —se llenaba el
+     * piso y después se seguía apoyando encima de su propio muro—, y ese número es el que
+     * reproduce los cuatro cupos de referencia del dueño.
+     *
+     * @param  list<array{linea:int,x:int,y:int,largo:int,ancho:int,base:int}>  $techos  por referencia
+     */
+    private function colocarEnAltura(array &$techos, array $bulto, int $maximo, int $H, int $exceptoLinea): ?array
+    {
+        usort($techos, fn (array $a, array $b) => $a['base'] <=> $b['base'] ?: $a['x'] <=> $b['x'] ?: $a['y'] <=> $b['y']);
+
+        foreach ($techos as $k => $techo) {
+            $libre = $H - $techo['base'];
+            if ($libre <= 0 || $techo['linea'] === $exceptoLinea) {
+                continue;
+            }
+
+            $region = [['x' => $techo['x'], 'y' => $techo['y'], 'largo' => $techo['largo'], 'ancho' => $techo['ancho']]];
+            $puesto = $this->colocarBloque($region, $bulto, $maximo, $libre);
+            if ($puesto === null) {
+                continue;
+            }
+
+            // Lo que quedó del techo sigue siendo techo, a la misma altura y de la misma
+            // línea. Lo que se apoyó NO se agrega: un solo piso arriba (regla 3).
+            array_splice($techos, $k, 1, array_map(
+                fn (array $r) => $r + ['base' => $techo['base'], 'linea' => $techo['linea']],
+                $region,
+            ));
+
+            // `apoyo` y NO `base`: en un bloque de pallet `base` ya significa el grosor de
+            // la tarima de madera, y el visor lo usa así. Dos alturas distintas con el
+            // mismo nombre era un pallet dibujado flotando, en silencio.
+            return $puesto + ['apoyo' => $techo['base']];
+        }
+
+        return null;
+    }
+
+    /**
+     * El mismo bulto apoyado sobre su cara MÁS GRANDE: la dimensión menor pasa a ser el
+     * alto. Es lo que uno hace a mano cuando acuesta algo encima de un muro, y es la única
+     * rotación que el segundo piso se permite — de las seis permutaciones posibles, las
+     * otras cinco incluyen pararlo sobre una cara chica, que en una caja alta es acostarlo
+     * al revés y en una plancha es dejarla en punta.
+     *
+     * Queda `orientacion_fija` para que el motor no vuelva a girarlo por su cuenta.
+     */
+    private function acostado(array $bulto): array
+    {
+        $lados = [(int) $bulto['largo'], (int) $bulto['ancho'], (int) $bulto['alto']];
+        rsort($lados);
+
+        return ['largo' => $lados[0], 'ancho' => $lados[1], 'alto' => $lados[2], 'orientacion_fija' => true] + $bulto;
     }
 
     /**

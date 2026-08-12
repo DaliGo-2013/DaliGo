@@ -57,9 +57,13 @@ hacia abajo. Reglas del motor mixto, deliberadamente conservadoras:
    real de estiba de las fotos (muro de bolsas, máquinas al costado, cajas en el
    resto). El bin-packing 3D es NP-difícil y toda heurística genérica es
    inverificable a mano — esto es verificable, y ese es el punto.
-2. **El espacio SOBRE un bloque es espacio muerto.** No se apila un tipo encima
-   de otro. La estiba real a veces lo hace; prometerlo sin regla de soporte por
-   kilo sería exagerar. Candado: `test_no_apila_un_tipo_sobre_otro`.
+2. **SEGUNDO PISO, con regla de soporte** (11-08-2026 — antes esta regla decía que
+   el espacio sobre un bloque era espacio muerto). Un tipo se apoya encima de otro
+   solo si **los dos declaran `soporta_peso_encima`**, nunca sobre la misma línea,
+   y **un solo nivel**. Ver §2bis: lo que la regla vieja prohibía no era apilar,
+   era prometerlo **sin una regla de soporte por kilo** — y esa regla llegó.
+   Candados: `SegundoPisoTest` (6) + `test_no_apila_un_tipo_sobre_otro`, que sigue
+   verde porque su tarima no declara soporte.
 3. **Un bloque parcial reserva solo su huella real** (columnas de a `apilable_max`,
    en rebanadas a lo ancho), no la rejilla completa — lo contrario regalaría piso.
    Candado: `test_un_bloque_parcial_no_roba_el_piso_que_no_usa`.
@@ -67,6 +71,42 @@ hacia abajo. Reglas del motor mixto, deliberadamente conservadoras:
    siguiente, y el recorte dice `peso`.
 5. **CENTÍMETROS ENTEROS**, nunca metros con coma flotante (regla heredada de
    cupo(): `2.00 // 0.40` da 4 en binario, y eso son 125 botellones fantasma).
+
+### 2bis. SEGUNDO PISO: un tipo encima de otro (11-08-2026)
+
+El dueño mandó una carga donde **200 botellones de 10 L quedaron afuera** con el motivo
+«no queda espacio», y su comentario: *«lo más bien pueden agregarse arriba de los de 20
+lts o al lado, porque son livianos y no rompen nada»*. Tenía razón, y el motivo era
+verdad **del piso** y mentira **del camión**: arriba del muro quedaban 26 cm sin usar.
+
+**Por qué se pudo dar vuelta la regla 2.** No prohibía apilar: prohibía prometerlo **sin
+una regla de soporte por kilo**. La regla llegó con el pedido, y encima ya estaba en el
+catálogo, curada producto por producto: `soporta_peso_encima`.
+
+**Las cuatro condiciones**, todas con candado:
+
+1. El bloque de abajo **declara** que aguanta peso. Un dispensador (`false`, jaula
+   rotulada «keep off») no recibe nada — preguntado explícitamente al dueño el 11-08, y su
+   respuesta fue **no por ahora**.
+2. El de arriba **también** lo declara. Es un proxy y conviene nombrarlo: en este catálogo
+   «aguanta peso» y «es liviano» coinciden (bolsas 3,75 kg contra máquinas de 11 y 15,5),
+   así que el mismo flag sirve de los dos lados sin inventar un umbral que nadie midió.
+3. **Nunca sobre la misma línea.** Un tipo no se apila sobre sí mismo acá: para eso está su
+   `apilable_max`. Sin esta condición **una línea sola dejaba de dar el cupo verificado** —
+   llenaba el piso y seguía apoyándose sobre su propio muro—, y ese número es el que
+   reproduce los cuatro cupos de referencia.
+4. **Un solo nivel.** Lo que se apoya no vuelve a ser techo.
+
+**Arriba se prueba de pie y, si no entra, ACOSTADO** sobre su cara más grande — que es lo
+que uno hace a mano. Y nada más: la primera versión permitía rotación libre y una plancha
+de 200×100×50 quedaba **parada en punta**, 200 cm de alto, con dos donde no iba ninguna.
+De las seis permutaciones, las cinco que apoyan sobre una cara chica no se prueban.
+
+**El campo se llama `apoyo` y no `base`:** en un bloque de pallet `base` ya significa el
+grosor de la tarima y el visor lo usa así. Dos alturas con el mismo nombre habrían dado un
+pallet flotando, en silencio. El visor ya sabía dibujar en altura (los pallets lo hacían),
+así que fue pasarle el número: sin eso, el motor contaba las bolsas de arriba y el lienzo
+las dibujaba **atravesando** el muro.
 
 ### 2.2bis «Usar todo el espacio»: el motor gira el bulto en lo que sobra (10-08-2026)
 
@@ -1563,12 +1603,13 @@ camión la quiero adentro del cuadrado donde está el camión, para poder usar m
 el espacio y mejorar la interfaz con tanto texto»**, y el resultado partido en
 **dos tarjetas**.
 
-1. **Los datos del camión son una franja AL PIE del recuadro del visor**, no una
-   tarjeta aparte debajo. Adentro se ahorran un borde, una sombra y el hueco entre
-   tarjetas, y los datos quedan pegados al dibujo que describen. Va como franja y
-   **no flotando sobre el lienzo**: un panel encima taparía el camión — la misma
-   doctrina del menú lateral (§4.1nonies). Fondo `neutral-50/70`, el del menú, para
-   que se lea como parte del visor y no como contenido metido adentro.
+1. **Los datos del camión son una franja del recuadro del visor**, no una tarjeta
+   aparte debajo. Adentro se ahorran un borde, una sombra y el hueco entre tarjetas,
+   y los datos quedan pegados al dibujo que describen. Va como franja y **no flotando
+   sobre el lienzo**: un panel encima taparía el camión — la misma doctrina del menú
+   lateral (§4.1nonies). Fondo `neutral-50/70`, el del menú, para que se lea como
+   parte del visor y no como contenido metido adentro. *(Estaba AL PIE; desde el
+   12-08 va ARRIBA — ver §4.3bis.)*
 2. **Nada se dice dos veces.** El rótulo del lienzo repetía el nombre del camión y
    el piso libre, que ya están en la franja: quedó solo la ayuda de manejo
    («arrastrá para girar»). En el plan compartido por link pasaba lo mismo con el
@@ -1585,6 +1626,51 @@ el espacio y mejorar la interfaz con tanto texto»**, y el resultado partido en
 La lección, que ya se repitió en esta pantalla: cuando el dueño dice «hay mucho
 texto» casi nunca sobra un dato, sobra una **repetición** o falta una **agrupación**.
 Antes de borrar información, buscar qué está dicho dos veces.
+
+### 4.3bis La respuesta va ARRIBA del dibujo (12-08-2026)
+
+Otro marcador sobre otra captura, y las dos flechas apuntan al mismo lado: *«subir
+dentro de la pantalla la descripción del chevy con sus medidas, volumen, carga máxima
+y piso libre en la puerta, y el mensaje "NO CABE TODO" arriba, que aparezca cuando no
+entra todo»*.
+
+El orden del recuadro del visor pasa a ser, de arriba abajo:
+
+1. **La ficha del camión** (nombre, medidas útiles, volumen, carga máxima, pasillo si
+   lo hay, piso libre en la puerta). Es lo que se está mirando: se lee ANTES del
+   dibujo. Al pie quedaba **después del tablero de acomodo**, o sea a dos pantallazos
+   del camión que describe.
+2. **El veredicto**, pegado al borde de arriba del lienzo. Vivía en una tarjeta DEBAJO
+   del visor: había que mirar el camión, bajar, y recién ahí enterarse de que no
+   entraba. Es la única línea de la pantalla que cambia una decisión comercial.
+3. El lienzo, y debajo los avisos de acomodo y el tablero.
+
+**El «cabe» va sobrio y el «no cabe» va rojo a todo el ancho.** Una franja verde
+gigante para la respuesta esperada entrena a ignorar la franja — y entonces la roja
+tampoco se ve.
+
+**UNA respuesta por pantalla.** Al subir el cartel había que sacarlo de los otros dos
+lugares donde ya estaba, o la pantalla lo diría dos veces (que es justo lo que el
+§4.3 vino a arreglar): se borró la tarjeta de «Cabe todo / No cabe todo» de
+`index.blade.php`, la línea «No cabe todo en un viaje» del plan compartido, y el
+recuadro de la prueba («tus 50 entran») del modo cupo máximo.
+
+**En «¿cuánto entra?» el cartel lleva los NÚMEROS**, no la frase pelada: la pregunta
+fue «¿me entran 500?», así que la respuesta es *«de tus 500 entran 420, quedan 80
+afuera»*. Un «no cabe todo» a secas obligaría a bajar a buscar el número que se vino a
+buscar. En cambio, el cupo máximo **sin** cantidad a probar y el armado del pallet **no
+muestran cartel**: no responden sí/no.
+
+**El link compartido dice lo mismo con otras palabras.** La versión interna cierra con
+«con eso se negocia», que es una instrucción para el vendedor; del otro lado del link
+hay un cliente o un conductor y ahí suena a que se está calculando cuánto apretarlo.
+Público: *«Queda carga afuera. Abajo, producto por producto.»* Candado:
+`PlanCargaCompartidoTest::test_el_link_dice_que_no_cabe_pero_no_habla_de_negociar`.
+
+Los candados miden **posición contra el `<canvas>`** y no la mera presencia del texto:
+un `assertSee` seguiría verde con el cartel de vuelta abajo
+(`test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo`,
+`test_la_ficha_del_camion_va_arriba_del_lienzo`, `test_el_veredicto_se_dice_una_sola_vez`).
 
 ## 5. Mercancía peligrosa
 

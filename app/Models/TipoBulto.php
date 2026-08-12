@@ -179,6 +179,13 @@ class TipoBulto extends Model implements AuditableContract
             'alto' => $alto,
             'peso' => (float) $this->peso_kg,
             'unidades' => $this->unidades,
+            // SI AGUANTA PESO ENCIMA. Lo mira el segundo piso del motor (§2bis): sin este
+            // campo la carga liviana no se apoya nunca sobre otra, y el motivo es el peor
+            // posible — el flag ausente se lee como «no aguanta», así que la función
+            // quedaba MUERTA en la app aunque sus tests de unidad pasaran verdes (ahí el
+            // bulto se arma a mano y sí lo trae). Candado:
+            // test_para_calculo_manda_si_aguanta_peso_encima.
+            'soporta_peso_encima' => (bool) $this->soporta_peso_encima,
             // El tope de apilado del catálogo se puede PISAR para una simulación.
             //
             // El dueño lo pidió mirando el hueco que quedaba arriba de la carga

@@ -7,6 +7,7 @@ use App\Models\Aprobacion;
 use App\Models\Maquina;
 use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
+use App\Models\ProduccionMejora;
 use App\Models\ProduccionMovimiento;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
@@ -92,7 +93,14 @@ class ProduccionController extends Controller
         // meta de cada maquina; el detalle vive en el informe por maquina. ---
         $oeePorMaquina = app(\App\Services\Produccion\Oee::class)->porMaquina($desde, $hasta);
 
+        // --- Kaizen (P-M11-23): propuestas que esperan decision (bandeja). ---
+        $mejorasAbiertas = ProduccionMejora::abiertas()
+            ->with('soplador:id,name')
+            ->latest()
+            ->get();
+
         return view('admin.produccion.index', [
+            'mejorasAbiertas' => $mejorasAbiertas,
             'oeePorMaquina' => $oeePorMaquina,
             'reportes' => $reportes,
             'pendientesOtrosDias' => $pendientesOtrosDias,
@@ -696,6 +704,34 @@ class ProduccionController extends Controller
             'etiquetasTipos' => ProduccionMovimiento::ETIQUETAS,
             'filtros' => $filtros,
         ]);
+    }
+
+    /**
+     * Decision del jefe sobre una propuesta de mejora (P-M11-23, kaizen):
+     * revisada | aplicada | descartada, con respuesta opcional que el
+     * soplador ve en su historial de mi-reporte. `pendiente` NO es un
+     * destino (es el estado de nacimiento). Sin restriccion de origen: el
+     * jefe puede corregir un misclick y la traza queda en la auditoria
+     * (ProduccionMejora es Auditable).
+     */
+    public function mejoraUpdate(Request $request, ProduccionMejora $mejora): RedirectResponse
+    {
+        $validated = $request->validate([
+            'estado' => ['required', Rule::in(ProduccionMejora::DECISIONES)],
+            'respuesta' => ['nullable', 'string', 'max:191'],
+        ], [
+            'estado.required' => 'Elige una decisión.',
+            'estado.in' => 'Elige una decisión válida (revisada, aplicada o descartada).',
+            'respuesta.max' => 'La respuesta no puede superar los 191 caracteres.',
+        ]);
+
+        $mejora->update([
+            'estado' => $validated['estado'],
+            'respuesta' => $validated['respuesta'] ?? null,
+        ]);
+
+        return redirect(route('admin.produccion.index').'#mejoras')
+            ->with('status', 'Propuesta actualizada.');
     }
 
     /**

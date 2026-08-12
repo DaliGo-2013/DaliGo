@@ -893,6 +893,11 @@ class SimuladorCargaController extends Controller
                     $bloque = [
                         'x' => $m($b['x']),
                         'y' => $m($b['y']),
+                        // A qué ALTURA apoya (segundo piso, 11-08). Sin pasarlo, el motor
+                        // contaría las bolsas de arriba y el lienzo las dibujaría en el
+                        // piso, atravesando el muro: el dibujo dejaría de ser la prueba de
+                        // lo que el motor hizo, que es todo lo que aporta.
+                        'apoyo' => $m($b['apoyo'] ?? 0),
                         'orientacion' => array_map($m, $b['orientacion']),
                         'rejilla' => $b['rejilla'],
                         'cantidad' => $b['cantidad'],

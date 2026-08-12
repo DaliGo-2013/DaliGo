@@ -1705,6 +1705,145 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         return substr($js, $desde, $hasta - $desde);
     }
 
+    /**
+     * LOS TRES BOTONES DEL MOUSE (pedido del dueño 12-08-2026, con los controles de
+     * EasyCargo en la mano: izquierdo gira, derecho recorre, rueda acerca).
+     *
+     * Girar y acercar ya estaban; faltaba el del medio. Lo que se vigila acá es lo que
+     * se rompe en silencio si alguien «simplifica» el manejo del puntero:
+     *
+     *  · que el derecho DESPLACE y no gire — sin la distinción, el arrastre con el
+     *    derecho giraría el camión y el usuario no sabría por qué;
+     *  · que el desplazamiento viva APARTE del encuadre: girar con zoom 1 vuelve a
+     *    medir CX/CY en cada frame, así que un pan guardado ahí se borra al primer
+     *    grado de giro y parece que el visor «se resetea solo»;
+     *  · que el menú del navegador no se abra encima del camión.
+     */
+    public function test_el_boton_derecho_desplaza_y_el_izquierdo_sigue_girando(): void
+    {
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('const DESPLAZA = new Set([1, 2]);', $js,
+            'Se perdió qué botones desplazan: el derecho (2) y el del medio (1).');
+        $this->assertStringContainsString('mueve: DESPLAZA.has(e.button)', $js,
+            'El arrastre ya no distingue el botón, así que el derecho volvería a girar.');
+        $this->assertStringContainsString("canvas.addEventListener('contextmenu'", $js,
+            'Sin frenar el menú contextual, el botón derecho abre el menú del navegador sobre el camión.');
+
+        // El pan se SUMA al encuadre, no vive adentro. Es la línea que evita que girar
+        // un grado borre el desplazamiento que el usuario acaba de hacer.
+        $this->assertStringContainsString('CX = AW / 2 - centro[0] * ESC + pan[0];', $js);
+        $this->assertStringContainsString('CY = AH / 2 - centro[1] * ESC + pan[1];', $js);
+
+        // Y una vista fija lo limpia: «Planta» tiene que mostrar el camión entero, no
+        // el rincón al que lo habían corrido.
+        $this->assertMatchesRegularExpression(
+            '/function vista\(clave\) \{[\s\S]{0,900}?pan = \[0, 0\];/',
+            $js,
+            'Las vistas fijas dejaron de limpiar el desplazamiento.',
+        );
+    }
+
+    public function test_el_desplazamiento_tiene_tope_para_no_perder_el_camion(): void
+    {
+        // Sin tope, un arrastre largo deja el lienzo en blanco y la única salida es
+        // «Reiniciar». El tope crece con el zoom: a zoom 1 no se puede perder el
+        // camión, y acercado hay cancha para recorrer la carga de punta a punta.
+        $js = file_get_contents(resource_path('js/carga3d.js'));
+
+        $this->assertStringContainsString('const tope = [AW * 0.6 * zoom, AH * 0.6 * zoom];', $js,
+            'El desplazamiento perdió su tope (o dejó de crecer con el zoom).');
+    }
+
+    public function test_la_pantalla_dice_que_el_boton_derecho_mueve(): void
+    {
+        // Girar se descubre arrastrando y la rueda es un reflejo; apretar el botón
+        // derecho sobre un dibujo no se le ocurre a nadie si la pantalla no lo dice.
+        $this->verMixta([['tipo' => $this->caja->id, 'cantidad' => 10]])
+            ->assertOk()
+            ->assertSee('botón derecho para mover');
+    }
+
+    /**
+     * EL VEREDICTO Y LA FICHA DEL CAMIÓN VAN ARRIBA DEL DIBUJO (pedido del dueño
+     * 12-08-2026, dibujado sobre la pantalla).
+     *
+     * El «No cabe todo» vivía en una tarjeta DEBAJO del visor: había que mirar el
+     * camión, bajar, y recién ahí enterarse de que no entraba. La ficha del camión
+     * estaba al pie del recuadro, o sea después del tablero de acomodo — a dos
+     * pantallazos del dibujo que describe.
+     *
+     * Se mide por POSICIÓN en el HTML contra el `<canvas>`, que es lo que de verdad se
+     * pidió: un `assertSee` seguiría verde con el cartel de vuelta abajo.
+     */
+    private function posiciones(string $html): array
+    {
+        $lienzo = strpos($html, '<canvas id="carga3d"');
+        $this->assertNotFalse($lienzo, 'No está el lienzo del visor.');
+
+        return [
+            'lienzo' => $lienzo,
+            'veredicto' => strpos($html, 'No cabe todo'),
+            'ficha' => strpos($html, 'Medidas útiles'),
+        ];
+    }
+
+    public function test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo(): void
+    {
+        // 600 botellones son 120 bolsas y en el HD35 entran 84.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
+            ->assertOk()->assertSee('No cabe todo')->getContent();
+
+        $p = $this->posiciones($html);
+        $this->assertNotFalse($p['veredicto']);
+        $this->assertLessThan($p['lienzo'], $p['veredicto'],
+            'El cartel de «No cabe todo» volvió a quedar debajo del dibujo.');
+    }
+
+    public function test_la_ficha_del_camion_va_arriba_del_lienzo(): void
+    {
+        $html = $this->verMixta([['tipo' => $this->caja->id, 'cantidad' => 10]])
+            ->assertOk()->getContent();
+
+        $p = $this->posiciones($html);
+        $this->assertNotFalse($p['ficha'], 'Se perdió la ficha del camión del visor.');
+        $this->assertLessThan($p['lienzo'], $p['ficha'],
+            'La ficha del camión volvió al pie del recuadro.');
+        // Y sigue trayendo los cuatro datos que se pidieron.
+        foreach (['Medidas útiles', 'Volumen', 'Carga máxima', 'Piso libre en la puerta'] as $dato) {
+            $this->assertStringContainsString($dato, $html);
+        }
+    }
+
+    public function test_el_veredicto_se_dice_una_sola_vez(): void
+    {
+        // Antes estaba arriba y abajo a la vez mientras se movía. Decir dos veces lo
+        // mismo en la misma pantalla es justo el exceso de texto que el dueño pidió
+        // recortar el 10-08.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])->getContent();
+
+        $this->assertSame(1, substr_count($html, 'No cabe todo'));
+    }
+
+    public function test_en_cuanto_entra_el_cartel_lleva_los_numeros_y_no_la_frase_pelada(): void
+    {
+        // La pregunta fue «¿me entran 500?»: la respuesta útil es cuántos entran y
+        // cuántos quedan, no un «no cabe todo» que obliga a bajar a buscar el número.
+        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->bolsa->id,
+            'cantidad' => 500,
+        ]));
+
+        $res->assertOk()
+            ->assertSee('No cabe todo')
+            ->assertSee('De tus 500 entran 420. Quedan 80 afuera.');
+
+        $p = $this->posiciones($res->getContent());
+        $this->assertLessThan($p['lienzo'], $p['veredicto']);
+        $this->assertSame(1, substr_count($res->getContent(), 'No cabe todo'));
+    }
+
     public function test_el_encuadre_mide_el_dibujo_y_no_una_caja_supuesta(): void
     {
         // El camión se veía chico y corrido a la derecha (reporte del dueño 05-08):

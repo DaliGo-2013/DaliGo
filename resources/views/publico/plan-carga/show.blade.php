@@ -80,9 +80,9 @@
                 </tbody>
             </table>
         </div>
-        <p class="mt-3 text-sm font-semibold {{ $mixta['cabeTodo'] ? 'text-neutral-900' : 'text-red-600' }}">
-            {{ $mixta['cabeTodo'] ? 'Cabe todo en un viaje.' : 'No cabe todo en un viaje.' }}
-        </p>
+        {{-- El veredicto NO se repite acá: desde el 12-08 va pegado al borde de arriba
+             del lienzo, en la misma franja que ve la pantalla interna. Dicho dos veces
+             en la misma página era el exceso de texto que el dueño pidió recortar. --}}
     @elseif ($resultado && $bulto)
         <p class="mt-5 text-sm text-neutral-700">
             Entran <span class="text-lg font-semibold text-neutral-900">{{ number_format($resultado['unidades'], 0, ',', '.') }}</span>

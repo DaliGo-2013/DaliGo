@@ -157,9 +157,13 @@ class CargaMixtaTest extends TestCase
     }
 
     /**
-     * El espacio SOBRE un bloque es espacio muerto: no se apila un tipo encima
-     * de otro. La estiba real a veces lo hace; prometerlo sin una regla de
-     * soporte por kilo sería exagerar — y exagerar es el único pecado acá.
+     * No se apila sobre lo que NO DECLARA que aguanta peso encima.
+     *
+     * ACTUALIZADO EL 11-08-2026: desde el segundo piso (§2bis) sí se apila un tipo sobre
+     * otro, pero solo cuando los dos declaran `soporta_peso_encima`. Este candado siguió
+     * verde sin tocarlo, y por la razón correcta: su tarima no declara nada, y el flag
+     * ausente se lee como «no aguanta» — el lado seguro, que es el que protege a los
+     * bultos todavía sin medir (las jaulas de las máquinas).
      *
      * La prueba limpia: un bloque bajo que tapiza TODO el piso deja 170 cm de
      * aire arriba, y aun así la caja que solo cabría ahí queda AFUERA.
