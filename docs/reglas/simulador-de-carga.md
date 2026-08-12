@@ -1786,13 +1786,67 @@ error del cálculo.
 tope real depende de CUÁL camión es, y ponerlo en las reglas dejaría el formulario
 inválido de golpe al cambiar de camión. Se recorta y la pantalla lo dice (`recortado`).
 
+### 4quater-bis CÓMO CAE EL PESO ENTRE LOS EJES (12-08-2026)
+
+Los datos llegaron el 12-08 y la función se construyó ese día. **Responde la otra mitad
+de la pregunta del peso:** los kilos totales dicen si te pasás de la carga máxima; esto
+dice si están puestos donde corresponde. Un camión puede ir **por debajo del tope y aun
+así llevar el eje trasero pasado** — y si la carga va muy atrás, el eje delantero se
+aliviana, que es un problema de dirección y de frenos, no de multa.
+
+**DOS NÚMEROS Y UNA SOLA REFERENCIA.** Todo el simulador mide desde el **frente de la
+caja de carga** (el x = 0 del motor y del visor), así que los ejes se anotan contra ese
+mismo punto: `entre_ejes_cm` y `eje_trasero_cm`. El eje delantero **no se guarda**: sale
+de restar, y da negativo porque está bajo la cabina. Un tercer número podría contradecir
+a los otros dos. Mezclar referencias —uno desde el paragolpes, otro desde la cabina— es
+la forma segura de que el brazo de palanca salga mal y nadie lo note.
+
+**La física es una palanca de dos apoyos** y es exacta para lo que se pregunta: se toma
+el CENTRO de cada bloque —adentro del bloque la carga es una rejilla pareja, eso lo
+garantiza el motor— y se reparte en proporción inversa a la distancia a cada eje. La
+fracción **no se acota a [0, 1]**: si la carga queda detrás del eje trasero, el delantero
+recibe negativo, y eso no es un error de cuenta sino el camión levantando la trompa. Se
+avisa en rojo en vez de esconderlo con un `min()`.
+
+**Lo que el cálculo NO incluye, y la pantalla lo dice:**
+
+- **El peso del camión vacío.** Reparte solo la carga. La tara y cómo apoya no están
+  medidas, y sumarlas de memoria convertiría un número exacto en una estimación
+  disfrazada. Sirve igual para lo que se usa: comparar dos formas de acomodar lo mismo.
+- **La capacidad de cada eje.** Sin eso no se puede decir «te pasaste de un eje», solo
+  cuánto le toca. Cuando lleguen los dos números por camión, el aviso sale de comparar y
+  este cálculo no se toca.
+
+**UN PRODUCTO SIN PESO NO HACE DESAPARECER LA SECCIÓN: LA EXPLICA.** La mitad del
+catálogo tiene `peso_kg` en null a propósito. La primera versión devolvía `null` y la
+sección se esfumaba — se veía en una carga y no en la otra, sin ninguna pista. Ahora
+vuelve con el nombre del que falta pesar («no se puede repartir esta carga» si no hay
+ninguno con peso, «el reparto deja afuera X» si es parcial). El hueco apareció probando
+en el navegador, no en la suite.
+
+**Solo el Chevy 3 tiene los dos datos** y es el único que muestra el reparto. Los otros
+tres quedaron sin medir a propósito y sus `notas` en el seeder dicen exactamente qué
+falta; el candado `test_el_chevy_sembrado_es_el_unico_con_los_ejes_medidos` se pone rojo
+el día que alguien los complete «para que funcione».
+
+| Camión | Qué llegó el 12-08 | Qué falta |
+|---|---|---|
+| **Chevy 3 (NQR 919)** | entre ejes 417,5 cm · posterior de cabina al eje trasero 360 cm | nada (417,5 → 418: el módulo trabaja en cm enteros y medio cm sobre 4 m es 0,12%) |
+| HINO 500 FC 1118 | entre ejes 435 cm | del frente de la caja al centro del eje trasero |
+| Hyundai HD35 | «114,5 cm aprox» | **de qué a qué se midió** — no coincide con la distancia entre ejes de un HD35 (~242 cm) ni con una caja de 430 medida desde su frente |
+| Contenedor 40' | la ficha del **Actros 2545 LS** | esa ficha es del TRACTO, y la carga va sobre el SEMI (ver abajo) |
+
+**El contenedor es otra cuenta, no la misma con otros números.** En un tracto + semi la
+carga se parte entre los ejes del semi y la **quinta rueda**, y recién de ahí baja a los
+ejes del tracto: no es la palanca de dos apoyos que resuelve `RepartoPorEje`. Hacen falta
+dos medidas del semi que no están —del frente de la caja a la quinta rueda, y de la
+quinta rueda al centro del tren de ejes—. Cargar ahí los números del Actros daría un
+reparto con cara de exacto que describe otro vehículo. De la ficha sí sirve, para cuando
+se haga: capacidades 7.500 (delantero) / 7.500 y 13.000 (traseros), tara 8.168 kg, PBV
+25.000 y PBVC 45.000.
+
 ### Lo que NO entró del lote 5, y por qué
 
-- **Distribución de peso por eje.** Bloqueado por DATOS, no por código: hace falta a qué
-  distancia del frente está cada eje, en cm, camión por camión, y eso no está medido.
-  Hoy `EJES_POR_SILUETA` es solo cuántas ruedas dibujar. El propio doc de exploración ya
-  lo tenía como fase 3 opcional (P-CARGA-23). No se inventan números — misma regla que
-  dejó las jaulas de máquinas sin sembrar.
 - **Traer las líneas desde Comercial.** Falta un puente que no existe: la fuente real de
   líneas es `DocumentoVenta` + `DocumentoVentaDetalle` (el espejo de Bsale, con producto
   y cantidad), pero **`TipoBulto` no tiene ninguna relación con `Producto`** — el

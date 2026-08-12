@@ -66,7 +66,20 @@ class CamionesSimulacionSeeder extends Seeder
                 // Su propia nota dice cómo viaja, y así se dibuja: el contenedor
                 // NO tiene cabina propia.
                 'silueta' => 'semirremolque',
-                'notas' => 'Va sobre el semirremolque (Tremac), tirado por el Actros.',
+                // EJES: el dueño mandó la ficha del Mercedes Actros 2545 LS (12-08-2026)
+                // con sus pesos por eje —delantero 5.022 kg, traseros 1.163 y 1.983,
+                // capacidades 7.500 / 7.500 / 13.000, PBV 25.000 y PBVC 45.000—.
+                //
+                // ESO ES EL TRACTO, y la carga NO va sobre él: va sobre el semirremolque.
+                // El reparto en un tracto + semi no es la palanca de dos apoyos que
+                // resuelve `RepartoPorEje`: la carga se parte entre los ejes del semi y la
+                // QUINTA RUEDA, y recién de ahí baja a los ejes del tracto. Para eso hacen
+                // falta dos medidas del SEMI que no están: del frente de la caja a la
+                // quinta rueda, y de la quinta rueda al centro del tren de ejes.
+                //
+                // Se dejan en null a propósito. Cargar acá los números del tracto daría un
+                // reparto con cara de exacto que describe otro vehículo.
+                'notas' => 'Va sobre el semirremolque (Tremac), tirado por el Actros. Ejes: la ficha del Actros (12-08) es del TRACTO; para repartir peso falta la geometría del semi (frente de la caja a la quinta rueda, y quinta rueda al tren de ejes).',
             ],
             [
                 'nombre' => 'HINO 500 (FC 1118)',
@@ -76,7 +89,13 @@ class CamionesSimulacionSeeder extends Seeder
                 // techo y los detalles del espejo agregados el 11-08 sobre tres fotos más.
                 // Ya no queda ningún camión del catálogo con la silueta genérica.
                 'silueta' => 'camion_hino',
-                'notas' => 'La misma caja en los dos HINO de la flota.',
+                // EJES: el dueño dictó «distancia entre ejes 435 cm» (12-08-2026), pero
+                // FALTA el otro número —del frente de la caja al centro del eje trasero—
+                // y con uno solo no hay brazo de palanca. Los dos quedan en null: el
+                // reparto de peso no se muestra y la pantalla dice qué falta medir, en vez
+                // de estimar la posición de la caja y dar un número con cara de medido.
+                // Ver `RepartoPorEje`. Cuando llegue: entre_ejes_cm => 435.
+                'notas' => 'La misma caja en los dos HINO de la flota. Distancia entre ejes 435 cm (12-08); falta del frente de la caja al eje trasero para repartir peso por eje.',
             ],
             [
                 'nombre' => 'Hyundai HD35',
@@ -102,7 +121,12 @@ class CamionesSimulacionSeeder extends Seeder
                 'largo_cm' => 430, 'ancho_cm' => 200, 'alto_cm' => 220,
                 'peso_max_kg' => 1500,
                 'silueta' => 'camion_liviano',
-                'notas' => 'La misma caja en los tres HD35 de la flota. Medidas de huincha (11-08-2026).',
+                // EJES: el dueño dictó «aprox 114,5 cm» (12-08-2026) sin decir de qué a
+                // qué. No coincide con la distancia entre ejes de un HD35 (~242 cm) ni
+                // con una caja de 430 cm medida desde su frente, así que no se puede
+                // usar sin adivinar cuál de las dos medidas es. Quedan en null y la
+                // pantalla lo dice; con la pregunta contestada es una línea.
+                'notas' => 'La misma caja en los tres HD35 de la flota. Medidas de huincha (11-08-2026). Ejes: llegó «114,5 cm aprox» (12-08) sin referencia; falta saber de qué a qué se midió.',
             ],
             [
                 // UN SOLO CAMIÓN CON DOS NOMBRES (confirmado por el dueño con el jefe,
@@ -140,6 +164,20 @@ class CamionesSimulacionSeeder extends Seeder
                 // una pieza y doble espejo por lado. Las fotos llevan pintado «NQR 919»,
                 // que es lo que destapó que las dos filas eran el mismo camión.
                 'silueta' => 'camion_nqr',
+                // EJES (dictados el 12-08-2026): «distancia entre ejes 417,5 cm, posterior
+                // de cabina a centro de eje trasero 360 cm aprox».
+                //
+                // Es el ÚNICO camión del catálogo con los DOS datos que hace falta, y por
+                // eso el único que reparte peso por eje. «Posterior de cabina» es donde
+                // arranca la caja de carga, que es el x = 0 del motor, así que el 360 entra
+                // tal cual. De ahí sale que el eje delantero cae 58 cm ADELANTE del frente
+                // de la caja (360 − 418), o sea debajo de la cabina, como corresponde.
+                //
+                // 417,5 se guarda como 418: el módulo trabaja en centímetros enteros y
+                // medio centímetro sobre un brazo de 4 m es un 0,12% — invisible al lado
+                // del «aprox» del propio dato.
+                'entre_ejes_cm' => 418,
+                'eje_trasero_cm' => 360,
                 // LA RUEDA DE REPUESTO VIAJA ADENTRO. En las fotos del interior (11-08) va
                 // parada y amarrada en el rincón derecho del fondo. Son ~28 cm del ancho, y
                 // acá el ancho no tiene ese margen: con 220 entran 8 bolsas a lo ancho

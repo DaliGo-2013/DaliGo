@@ -10,6 +10,7 @@ use App\Services\Carga\AcomodoManual;
 use App\Services\Carga\CalculoDeCarga;
 use App\Services\Carga\PalletSimulado;
 use App\Services\Carga\PlanDeCargaExcel;
+use App\Services\Carga\RepartoPorEje;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
@@ -573,6 +574,12 @@ class SimuladorCargaController extends Controller
             // EL REPARTO POR PARADAS (lote 6). Null cuando es una sola entrega, que es
             // el caso de siempre: la pantalla no muestra la sección y no cambia nada.
             'paradas' => self::reparto($filas),
+            // CUÁNTO CAE SOBRE CADA EJE. Null si al camión le faltan las medidas de los
+            // ejes: se dice qué falta medir, no se estima (ver `RepartoPorEje`).
+            'ejes' => (new RepartoPorEje)->calcular(
+                $camion, $resultado['bloques'], $lineas,
+                array_map(fn (TipoBulto $m) => $m->nombre, $modelos),
+            ),
             'peso' => [
                 'tope_kg' => $topePeso,
                 // El de la chapa, para poder mostrar «6.430 menos 800 que ya lleva».

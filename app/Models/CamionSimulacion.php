@@ -37,7 +37,8 @@ class CamionSimulacion extends Model implements AuditableContract
 
     protected $fillable = [
         'nombre', 'largo_cm', 'ancho_cm', 'alto_cm',
-        'peso_max_kg', 'pasillo_cm', 'activo', 'notas', 'silueta',
+        'peso_max_kg', 'pasillo_cm', 'entre_ejes_cm', 'eje_trasero_cm',
+        'activo', 'notas', 'silueta',
     ];
 
     protected function casts(): array
@@ -48,8 +49,35 @@ class CamionSimulacion extends Model implements AuditableContract
             'alto_cm' => 'integer',
             'peso_max_kg' => 'integer',
             'pasillo_cm' => 'integer',
+            'entre_ejes_cm' => 'integer',
+            'eje_trasero_cm' => 'integer',
             'activo' => 'boolean',
         ];
+    }
+
+    /**
+     * ¿Se le puede repartir el peso entre los ejes? Hacen falta LOS DOS números.
+     *
+     * Con uno solo no hay brazo de palanca: sin la distancia entre ejes no se sabe
+     * contra qué se reparte, y sin la posición del trasero no se sabe dónde cae la
+     * carga respecto de él. Medio dato da medio cálculo, que acá es un número
+     * inventado con cara de medido.
+     */
+    public function tieneEjes(): bool
+    {
+        return $this->entre_ejes_cm > 0 && $this->eje_trasero_cm > 0;
+    }
+
+    /**
+     * Dónde cae el eje DELANTERO respecto del frente de la caja, en cm.
+     *
+     * Sale de restar, no se guarda: un tercer número podría contradecir a los otros
+     * dos. Da NEGATIVO en un camión normal, porque el eje delantero va debajo de la
+     * cabina, o sea adelante de donde arranca la caja.
+     */
+    public function ejeDelanteroCm(): ?int
+    {
+        return $this->tieneEjes() ? $this->eje_trasero_cm - $this->entre_ejes_cm : null;
     }
 
     /** Volumen útil de la caja, en m³. */

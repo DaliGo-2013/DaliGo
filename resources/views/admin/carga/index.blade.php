@@ -382,6 +382,73 @@
                                         @endif
                                     </div>
 
+                                    {{-- ═══ CÓMO CAE EL PESO ENTRE LOS EJES ═══
+                                         Lote 5, con los datos de ejes del 12-08. Solo aparece en
+                                         los camiones que tienen las DOS medidas; en el resto no se
+                                         muestra nada y las notas del catálogo dicen qué falta.
+
+                                         Va junto al peso porque responde la otra mitad de la misma
+                                         pregunta: los kilos totales dicen si te pasás de la carga
+                                         máxima, y esto dice si están puestos donde corresponde. Un
+                                         camión puede ir por debajo del tope y aun así llevar el eje
+                                         trasero pasado. --}}
+                                    @if ($mixta['ejes'] !== null)
+                                        @php $ej = $mixta['ejes']; @endphp
+                                        <div class="mt-4 rounded-lg border border-neutral-200 p-3">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cómo cae el peso</p>
+                                            <div class="mt-2 flex items-baseline gap-4 text-sm" @if ($ej['total_kg'] <= 0) hidden @endif>
+                                                <span class="text-neutral-500">Eje delantero
+                                                    <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($ej['delantero_kg'], 0, ',', '.') }} kg</span>
+                                                    <span class="tabular-nums text-neutral-400">({{ $ej['delantero_pct'] }}%)</span>
+                                                </span>
+                                                <span class="text-neutral-500">Eje trasero
+                                                    <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($ej['trasero_kg'], 0, ',', '.') }} kg</span>
+                                                    <span class="tabular-nums text-neutral-400">({{ $ej['trasero_pct'] }}%)</span>
+                                                </span>
+                                            </div>
+                                            {{-- Una barra que se lee de un vistazo: el reparto entre los
+                                                 dos apoyos. Los porcentajes negativos se acotan solo en la
+                                                 barra —no en el número— porque un ancho negativo no existe;
+                                                 el caso lo grita el aviso de abajo. --}}
+                                            @if ($ej['total_kg'] > 0)
+                                                <div class="mt-2 flex h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                                                    <div class="h-1.5 bg-brand-600" style="width: {{ max(0, min(100, $ej['delantero_pct'])) }}%"></div>
+                                                    <div class="h-1.5 bg-neutral-500" style="width: {{ max(0, min(100, $ej['trasero_pct'])) }}%"></div>
+                                                </div>
+                                            @endif
+
+                                            {{-- Lo que quedó fuera del reparto, con nombre y apellido. La
+                                                 mitad del catálogo todavía no tiene el peso cargado —está
+                                                 en null a propósito, no se inventa— y antes eso hacía
+                                                 desaparecer la sección entera sin decir por qué. --}}
+                                            @if ($ej['sin_peso'] !== [])
+                                                <p class="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                                                    @if ($ej['total_kg'] <= 0)
+                                                        <strong>No se puede repartir esta carga.</strong>
+                                                    @else
+                                                        <strong>Falta peso.</strong> El reparto de arriba deja afuera
+                                                    @endif
+                                                    {{ implode(', ', $ej['sin_peso']) }}: no {{ count($ej['sin_peso']) === 1 ? 'tiene' : 'tienen' }}
+                                                    el peso cargado en el catálogo. Con ese dato el número sale solo.
+                                                </p>
+                                            @endif
+
+                                            @if ($ej['aliviana_el_delantero'])
+                                                <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
+                                                    <strong>La carga está toda detrás del eje trasero.</strong>
+                                                    En vez de apoyar sobre el delantero, lo LEVANTA: se pierde dirección y freno.
+                                                    Hay que correr carga hacia la cabina.
+                                                </p>
+                                            @endif
+
+                                            <p class="mt-2 text-xs leading-relaxed text-neutral-400">
+                                                Reparte solo la CARGA, no el peso del camión vacío. Sirve para comparar
+                                                dos formas de acomodar lo mismo; para avisar que un eje se pasa falta
+                                                cuánto aguanta cada uno.
+                                            </p>
+                                        </div>
+                                    @endif
+
                                     @if ($mixta['peligrosas'] !== [])
                                         <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
                                             <strong>Mercancía peligrosa en la carga
