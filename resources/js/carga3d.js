@@ -141,6 +141,21 @@ export default function iniciarCarga3d(canvas, datos) {
     // Encuadre base (escala y centro medidos a escala 1) + zoom encima. Separarlos
     // es lo que permite que girar no cambie el zoom.
     let escBase = 100, centro = [0, 0], zoom = 1, nombres = true, codigos = true, vistaActual = '3d';
+    /**
+     * DESPLAZAMIENTO con el botón DERECHO (pedido del dueño 12-08-2026, con la ayuda
+     * de EasyCargo en la mano: «izquierdo gira, derecho recorre el espacio de carga,
+     * rueda acerca»). Faltaba el del medio: girar y acercar ya estaban.
+     *
+     * Es un corrimiento EN PÍXELES DE PANTALLA y no un movimiento de cámara en el
+     * mundo: la proyección de este visor es paralela (ver `proyectar`), así que
+     * mover la cámara de costado y correr el dibujo dan exactamente la misma imagen
+     * — y el corrimiento en pantalla no puede desalinear el encuadre ni el zoom.
+     *
+     * Se guarda APARTE de CX/CY, que se recalculan solos cada vez que el encuadre se
+     * vuelve a medir (girar con zoom 1 lo hace en cada frame). Si el desplazamiento
+     * viviera dentro de CX/CY, se borraría en cuanto el usuario girara un grado.
+     */
+    let pan = [0, 0];
     // Acumulador de la medición del encuadre. Distinto de null = se está midiendo, y
     // en ese rato nada debe pintar en el lienzo (ver `medirEncuadre`).
     let midiendo = null;
@@ -1714,8 +1729,11 @@ export default function iniciarCarga3d(canvas, datos) {
         centro = [(ext.x0 + ext.x1) / 2, (ext.y0 + ext.y1) / 2];
         zoom = 1;
         ESC = escBase;
-        CX = AW / 2 - centro[0] * ESC;
-        CY = AH / 2 - centro[1] * ESC;
+        // El desplazamiento del botón derecho se SUMA al encuadre en vez de estar
+        // adentro: acá se vuelve a medir todo, así que un pan guardado en CX/CY se
+        // perdería con solo girar un grado (ver `pan`).
+        CX = AW / 2 - centro[0] * ESC + pan[0];
+        CY = AH / 2 - centro[1] * ESC + pan[1];
     }
 
     /** Suma un punto a la medición del encuadre en curso. */
@@ -1806,6 +1824,13 @@ export default function iniciarCarga3d(canvas, datos) {
     function vista(clave) {
         const [y, p] = VISTAS[clave] || VISTAS['3d'];
 
+        // Una vista fija es «ponete acá y mostrame todo»: si conservara el
+        // desplazamiento del botón derecho, apretar «Planta» después de haber
+        // recorrido la carga dejaría el camión a medio salir del cuadro, y el botón
+        // no habría hecho lo que dice. Se limpia ANTES de encuadrar, que es quien lo
+        // suma a CX/CY.
+        pan = [0, 0];
+
         aplicar(medirEncuadre(y, p));
         yaw = y; pitch = p;
         vistaActual = clave;
@@ -1851,6 +1876,30 @@ export default function iniciarCarga3d(canvas, datos) {
         ESC = escBase * zoom;
         CX = px - ux * ESC;
         CY = py - uy * ESC;
+
+        // El ancla movió CX/CY, así que `pan` —que es la diferencia contra el encuadre
+        // centrado— se recalcula desde ellos. Sin esto queda viejo, y el primer giro
+        // con zoom 1 devolvería el dibujo a un lugar que el usuario no eligió.
+        pan = [CX - (AW / 2 - centro[0] * ESC), CY - (AH / 2 - centro[1] * ESC)];
+    }
+
+    /**
+     * Corre el dibujo por la pantalla (botón derecho).
+     *
+     * El tope crece con el zoom y por eso no estorba: a zoom 1 el camión llena el
+     * recuadro y no se lo puede empujar hasta perderlo de vista; acercado 4 veces hay
+     * cancha para recorrer la carga de punta a punta, que es para lo que se acerca.
+     * Sin tope, un arrastre largo deja el lienzo en blanco y la única salida es
+     * «Reiniciar» — un callejón que no tiene por qué existir.
+     */
+    function desplazar(dx, dy) {
+        const tope = [AW * 0.6 * zoom, AH * 0.6 * zoom];
+        pan = [
+            Math.max(-tope[0], Math.min(tope[0], dx)),
+            Math.max(-tope[1], Math.min(tope[1], dy)),
+        ];
+        CX = AW / 2 - centro[0] * ESC + pan[0];
+        CY = AH / 2 - centro[1] * ESC + pan[1];
     }
 
     /** Pasa las coordenadas del puntero a píxeles del lienzo (se dibuja a 1240×720
@@ -1899,12 +1948,47 @@ export default function iniciarCarga3d(canvas, datos) {
 
     // ---------------------------------------------------------------- controles
 
+    /**
+     * BOTÓN IZQUIERDO GIRA, BOTÓN DERECHO DESPLAZA (pedido del dueño 12-08-2026,
+     * copiando los controles de EasyCargo). La rueda ya acercaba.
+     *
+     * El botón del medio también desplaza: es lo que hace cualquier programa de 3D o
+     * de mapas, no cuesta nada y evita que quien lo tenga por costumbre crea que el
+     * visor se trabó.
+     *
+     * En el TELÉFONO nada de esto cambia: un dedo emite `button 0`, así que sigue
+     * girando igual que siempre.
+     */
+    const DESPLAZA = new Set([1, 2]);
+
     canvas.addEventListener('pointerdown', (e) => {
-        arrastre = { x: e.clientX, y: e.clientY, yaw, pitch };
+        arrastre = {
+            x: e.clientX, y: e.clientY, yaw, pitch,
+            // Qué hace este arrastre queda decidido al APRETAR y no se recalcula
+            // mientras se mueve: si se leyera `e.buttons` en cada `pointermove`,
+            // soltar el derecho y apretar el izquierdo sin levantar la mano cambiaría
+            // de modo a mitad de gesto.
+            mueve: DESPLAZA.has(e.button),
+            pan: [...pan],
+        };
         canvas.setPointerCapture(e.pointerId);
+        canvas.style.cursor = arrastre.mueve ? 'move' : 'grabbing';
     });
     canvas.addEventListener('pointermove', (e) => {
         if (!arrastre) return;
+
+        if (arrastre.mueve) {
+            // Píxeles del LIENZO y no del CSS: el lienzo se dibuja a su ancho lógico y
+            // el navegador lo escala, así que sin convertir, el dibujo se movería más
+            // (o menos) que el cursor y el arrastre se sentiría resbaladizo.
+            const k = AW / Math.max(1, canvas.getBoundingClientRect().width);
+            desplazar(arrastre.pan[0] + (e.clientX - arrastre.x) * k,
+                arrastre.pan[1] + (e.clientY - arrastre.y) * k);
+            dibujar();
+
+            return;
+        }
+
         // Girando con el dedo o el mouse ya no se está en ninguna vista fija, así que se
         // apaga el botón marcado. Si no, quedaba «Costado» encendido con el camión en
         // tres cuartos —el dueño lo mandó en una captura— y el botón mentía.
@@ -1932,7 +2016,14 @@ export default function iniciarCarga3d(canvas, datos) {
 
         dibujar();
     });
-    canvas.addEventListener('pointerup', () => { arrastre = null; });
+    canvas.addEventListener('pointerup', () => {
+        arrastre = null;
+        canvas.style.cursor = '';
+    });
+    // Sin esto, el botón derecho abre el menú del navegador encima del camión y el
+    // desplazamiento no se llega a ver. Va en el LIENZO y no en el documento: el clic
+    // derecho tiene que seguir funcionando en el resto de la pantalla.
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     /**
      * ZOOM SOLO EN ESCRITORIO (pedido del dueño 05-08-2026: «no lo quiero para
