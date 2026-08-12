@@ -121,41 +121,6 @@ pallet flotando, en silencio. El visor ya sabía dibujar en altura (los pallets 
 así que fue pasarle el número: sin eso, el motor contaba las bolsas de arriba y el lienzo
 las dibujaba **atravesando** el muro.
 
-### 2quater. GRUPOS DE CARGA POR PARADA (12-08-2026)
-
-Pedido del dueño sobre los ejemplos de EasyCargo —«Hamburg – Dresden – Antwerp», con la
-nota *«los artículos del primer grupo fueron cargados primero»*—. Es su realidad: las hojas
-de ruta tienen varias entregas y **el camión se carga al revés del orden en que se
-descarga**.
-
-Cada línea lleva una **parada** (`grupo`, 1 a 8; vacío = todo junto, o sea el
-comportamiento de siempre). El motor coloca cada bloque en la región más al fondo que le
-sirva, así que para que la **parada 1 quede contra la puerta** hay que colocar la **última
-parada primero**: el orden es descendente.
-
-**LA PARADA ES UNA RESTRICCIÓN, NO UNA PREFERENCIA**, y esa distinción es la parte que
-importa:
-
-- va **antes** que el volumen, que la base y que las líneas abiertas. Ninguno de esos tres
-  puede justificar que el conductor vacíe media carga en la primera parada para llegar a lo
-  suyo;
-- y el **buscador de acomodos no la puede pisar**: cada plan reordena **dentro** de la
-  parada, nunca entre paradas. Si un plan «con más volumen» pudiera romper la ruta, estaría
-  eligiendo el error más caro: el volumen se recupera en el viaje siguiente, la descarga en
-  la vereda no. Candado: `test_ningun_plan_puede_reordenar_entre_paradas`.
-
-La parada es un **atributo de la línea**, junto a la estiba y el apilado — no una pantalla
-de «grupos» aparte, que sería otra cosa que mantener sincronizada con la lista.
-
-**El pallet también viaja a una parada.** Sin eso, los pallets ignorarían la ruta y se
-irían al fondo por ser los bloques más grandes.
-
-Y el candado del **puente** (`test_la_pantalla_manda_la_parada_al_motor`) prueba la cadena
-completa: la parada entra por la query como la manda el formulario y se lee en la escena que
-dibuja el lienzo. Es la lección del mismo día — un candado sobre el motor no prueba que la
-pantalla lo use; el segundo piso estuvo **muerto en la app** con seis candados en verde
-porque `paraCalculo()` no mandaba un campo.
-
 ### 2ter. SE PRUEBAN VARIOS ACOMODOS Y GANA EL QUE USE MÁS CAJA (12-08-2026)
 
 > Esta sección nació como **pendiente** el mismo día y se cerró horas después. Se deja el

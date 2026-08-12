@@ -92,12 +92,6 @@ class SimuladorCargaController extends Controller
             // trae UNA de las dos cosas, nunca ninguna.
             'lineas.*.tipo' => ['nullable', 'integer', 'exists:tipos_bulto,id'],
             'lineas.*.cantidad' => ['required_with:lineas', 'integer', 'min:1', 'max:100000'],
-            // LA PARADA de la ruta a la que pertenece la línea (grupos de carga, 12-08).
-            // El motor coloca la última parada primero, así que la primera entrega queda
-            // contra la puerta. Ausente = todo es la misma parada, o sea el comportamiento
-            // de siempre. El tope de 8 es el mismo que el de las líneas: más paradas que
-            // productos no tendría sentido.
-            'lineas.*.grupo' => ['nullable', 'integer', 'min:1', 'max:8'],
             // --- Bulto a medida. DESCARTABLE a propósito (decisión del dueño
             // 07-08): vive solo en esta simulación y NO se guarda en el catálogo.
             // El catálogo es de donde salen los cupos que se le prometen a un
@@ -324,10 +318,6 @@ class SimuladorCargaController extends Controller
                     // de «pedí justo 6», y cambiar de producto no arrastra un tope que
                     // era del anterior.
                     'apilado' => $l['apilado'] ?? '',
-                    // La parada de la ruta. Vacío y no 1 por el mismo motivo que el
-                    // apilado: «no lo toqué» tiene que distinguirse de «puse la 1», o el
-                    // campo aparecería lleno en una carga donde nadie habló de paradas.
-                    'grupo' => $l['grupo'] ?? '',
                     // Vacío = la línea va suelta. Con un estándar, va sobre pallet.
                     'pallet' => isset(PalletSimulado::TIPOS[$l['pallet'] ?? '']) ? $l['pallet'] : '',
                     'pallet_alto' => $l['pallet_alto'] ?? '',
@@ -396,9 +386,6 @@ class SimuladorCargaController extends Controller
                 $lineas[$i] = [
                     'bulto' => $pal['bulto'],
                     'cantidad' => $pal['porPallet']['bultos'] > 0 ? max(0, (int) $l['cantidad']) : 0,
-                    // Un pallet también viaja a una parada: si esto faltara, los pallets
-                    // ignorarían la ruta y se irían al fondo por ser los más grandes.
-                    'grupo' => max(1, (int) ($l['grupo'] ?? 1)),
                 ];
 
                 continue;
@@ -417,9 +404,6 @@ class SimuladorCargaController extends Controller
             $lineas[$i] = [
                 'bulto' => $modelo->paraCalculo($estibas[$i], $apilados[$i]),
                 'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
-                // La PARADA de la ruta: decide en qué orden se carga, y manda sobre
-                // cualquier otro criterio (ver CalculoDeCarga::orden).
-                'grupo' => max(1, (int) ($l['grupo'] ?? 1)),
             ];
         }
 
