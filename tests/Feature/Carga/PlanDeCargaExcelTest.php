@@ -252,6 +252,40 @@ class PlanDeCargaExcelTest extends TestCase
         $this->assertStringContainsString('300 kg', $hoja);
     }
 
+    /**
+     * En un reparto con paradas, el orden de carga dice ADEMÁS dónde baja cada bloque.
+     *
+     * Es justo acá donde importa: el que carga es quien decide si un bloque termina
+     * contra la puerta o contra la cabina, y cargar en el orden correcto sin saber a
+     * qué parada va cada cosa es media instrucción.
+     */
+    public function test_el_orden_de_carga_dice_en_que_parada_baja_cada_bloque(): void
+    {
+        $hoja = $this->partes($this->bajar([
+            'lineas' => [
+                ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'parada' => 1],
+                ['tipo' => $this->caja->id, 'cantidad' => 20, 'parada' => 2],
+            ],
+        ]))['xl/worksheets/sheet1.xml'];
+
+        $this->assertStringContainsString('Baja en', $hoja);
+        $this->assertStringContainsString('Parada 1', $hoja);
+        $this->assertStringContainsString('Parada 2', $hoja);
+        $this->assertStringContainsString('se carga último', $hoja);
+    }
+
+    public function test_sin_paradas_la_planilla_no_agrega_la_columna(): void
+    {
+        // Una columna «Baja en» vacía en toda carga normal es ruido en la hoja que se
+        // imprime.
+        $hoja = $this->partes($this->bajar([
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 100]],
+        ]))['xl/worksheets/sheet1.xml'];
+
+        $this->assertStringContainsString('ORDEN DE CARGA', $hoja);
+        $this->assertStringNotContainsString('Baja en', $hoja);
+    }
+
     public function test_el_boton_esta_en_el_menu_del_visor(): void
     {
         // Regla del dueño: todo lo nuevo va en el menú lateral, no suelto.

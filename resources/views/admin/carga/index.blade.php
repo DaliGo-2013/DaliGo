@@ -397,6 +397,61 @@
                                     </p>
                                 </div>
 
+                                {{-- ═══ EL ORDEN DE DESCARGA ═══
+                                     Lote 6: multi-drop LIFO. Solo aparece si alguien declaró
+                                     paradas; con una sola entrega esta sección no existe.
+
+                                     Va en orden de ENTREGA (parada 1 primero) y no de carga,
+                                     que es el inverso: esta lista la lee el CHOFER, y él las
+                                     recorre en el orden en que maneja. El orden de carga —el
+                                     del andén, del fondo hacia la puerta— ya lo dice el Excel. --}}
+                                @if ($mixta['paradas'] !== null)
+                                    <x-seccion titulo="El reparto, parada por parada">
+                                        <p class="text-xs leading-relaxed text-neutral-500">
+                                            Lo que baja primero se carga último. La parada 1 queda contra la
+                                            <span class="font-medium text-neutral-700">puerta</span> y la última contra la cabina,
+                                            así no hay que bajar mercadería a la vereda para llegar a la de atrás.
+                                        </p>
+
+                                        <ol class="space-y-2">
+                                            @foreach ($mixta['paradas']['grupos'] as $grupo)
+                                                <li class="flex gap-3 rounded-xl border border-neutral-200 bg-white p-3">
+                                                    <span @class([
+                                                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                                                        'bg-brand-600 text-white' => $grupo['parada'] > 0,
+                                                        'bg-neutral-200 text-neutral-600' => $grupo['parada'] === 0,
+                                                    ])>{{ $grupo['parada'] > 0 ? $grupo['parada'] : '—' }}</span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-sm font-medium text-neutral-900">
+                                                            {{ $grupo['parada'] > 0 ? 'Parada '.$grupo['parada'] : 'Sin parada asignada' }}
+                                                        </p>
+                                                        <ul class="mt-0.5 space-y-0.5">
+                                                            @foreach ($grupo['lineas'] as $fila)
+                                                                <li class="text-sm text-neutral-600">
+                                                                    {{ $fila['modelo']->nombre }}
+                                                                    <span class="tabular-nums text-neutral-400">·
+                                                                        {{ number_format($fila['cargadas_unidades'], 0, ',', '.') }} de
+                                                                        {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}</span>
+                                                                    @if ($fila['motivo'] !== null)
+                                                                        <span class="font-medium text-red-600">· queda carga afuera</span>
+                                                                    @endif
+                                                                </li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ol>
+
+                                        @if ($mixta['paradas']['sin_asignar'] > 0)
+                                            <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                                                Hay {{ $mixta['paradas']['sin_asignar'] }} producto(s) sin parada asignada. Se cargan
+                                                junto a la puerta, o sea que salen en la primera entrega — si van a otra, ponéles el número.
+                                            </p>
+                                        @endif
+                                    </x-seccion>
+                                @endif
+
                                 {{-- El detalle por producto: qué entra, qué queda afuera y POR QUÉ.
                                      El color de cada fila es la leyenda del visor. --}}
                                 <x-list-card title="La carga, producto por producto" :count="count($mixta['lineas'])"
@@ -1054,6 +1109,20 @@
                                                        :title="enPallet(linea)
                                                            ? `Cuántas cajas se apilan ENCIMA del pallet. Un pallet no se apila sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`
                                                            : `Cuántos se apilan uno sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`"
+                                                       class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
+                                            {{-- LA PARADA EN LA QUE BAJA (lote 6: multi-drop LIFO).
+                                                 Vacío = una sola entrega, que es el caso de siempre.
+
+                                                 Es un NÚMERO de orden de entrega y no el nombre del
+                                                 cliente: lo que el motor necesita es la secuencia
+                                                 —quién baja antes que quién— y un nombre no se
+                                                 ordena. El nombre vive en la hoja de ruta. --}}
+                                            <div>
+                                                <label class="text-xs font-medium text-neutral-600">Baja en la parada</label>
+                                                <input type="number" :name="`lineas[${i}][parada]`" x-model="linea.parada" @input="ensuciar()"
+                                                       min="1" max="20" inputmode="numeric" placeholder="—"
+                                                       title="El número de parada del reparto: 1 es la primera que se entrega. Lo que baja primero se carga último, contra la puerta. Vacío = una sola entrega."
                                                        class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                                             </div>
                                         </div>

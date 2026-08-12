@@ -368,12 +368,39 @@ class CalculoDeCarga
         $vol = fn (int $i) => $lineas[$i]['bulto']['largo'] * $lineas[$i]['bulto']['ancho'] * $lineas[$i]['bulto']['alto'];
         $base = fn (int $i) => ! empty($lineas[$i]['bulto']['soporta_peso_encima'])
             && isset(self::SOPORTA_ENCIMA[$lineas[$i]['bulto']['categoria'] ?? '']);
+        // Sin parada declarada, todo es una sola entrega: 0 para todos y el criterio
+        // no muerde. Es lo que mantiene intactos los cupos verificados.
+        $parada = fn (int $i) => (int) ($lineas[$i]['parada'] ?? 0);
 
         $orden = array_keys($lineas);
-        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase) {
+        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase, $parada) {
             if ($abierta($a) !== $abierta($b)) {
                 return $abierta($a) ? 1 : -1;
             }
+
+            /*
+             * ── LIFO: LO QUE BAJA PRIMERO SE CARGA ÚLTIMO (lote 6) ──
+             *
+             * En un reparto con varias paradas, el orden de estiba no es una preferencia:
+             * es una restricción física. Si la mercadería de la parada 3 viaja contra la
+             * puerta, en la parada 1 hay que BAJARLA A LA VEREDA para llegar a lo que sí
+             * se entrega ahí, volver a subirla, y repetirlo en cada parada.
+             *
+             * Por eso las paradas se ordenan al REVÉS: la última primero. El motor coloca
+             * cada bloque en la región de menor x —contra la cabina— así que cargar
+             * primero la parada 3 la deja al fondo y la parada 1 termina junto a la
+             * puerta, que es de donde se descarga.
+             *
+             * Va ANTES que el volumen y que la base: se puede negociar qué producto va
+             * abajo, no en qué orden se baja del camión. Y va DESPUÉS de `abierta` a
+             * propósito — ver la nota de esa regla: una línea «lo que quepa» se acomoda
+             * en lo que sobra y por eso siempre queda contra la puerta, sin importar a
+             * qué parada se la haya asignado. La pantalla lo avisa.
+             */
+            if ($parada($a) !== $parada($b)) {
+                return $parada($b) <=> $parada($a);
+            }
+
             if ($priorizarBase && $base($a) !== $base($b)) {
                 return $base($a) ? -1 : 1;
             }

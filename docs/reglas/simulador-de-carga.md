@@ -1799,6 +1799,52 @@ inválido de golpe al cambiar de camión. Se recorta y la pantalla lo dice (`rec
   simulador no sabe que «Botellón 20 L» del catálogo es la bolsa de 5. Hay que decidir
   primero cómo se mapea un producto a su bulto (y cuántas unidades entran en uno).
 
+## 4quinquies. MULTI-DROP: lo que baja primero se carga último (lote 6, 12-08-2026)
+
+Un reparto con varias paradas tiene una restricción que **no es una preferencia de
+acomodo**: si la mercadería de la parada 3 viaja contra la puerta, en la parada 1 hay
+que **bajarla a la vereda** para llegar a lo que sí se entrega ahí, volver a subirla, y
+repetirlo en cada parada.
+
+Cada línea lleva un campo **«Baja en la parada»** (1 a 20; vacío = una sola entrega, que
+es el caso de siempre y no mueve ningún número). El motor ordena las paradas **al revés**:
+la última se carga primero y queda contra la cabina, y la parada 1 termina junto a la
+puerta, que es de donde se descarga.
+
+**La parada manda sobre el volumen y sobre la base.** En el comparador de `orden()` va
+antes que los dos: se puede negociar qué producto va abajo, no en qué orden se baja del
+camión. Y como el criterio vive en `orden()`, **todos los planes** que prueba el motor
+(§ el de «varios acomodos») respetan la secuencia por construcción — la base y el volumen
+solo reordenan *dentro* de una parada.
+
+**Va DESPUÉS de `abierta`, y eso tiene una consecuencia que la pantalla dice.** Una línea
+«lo que quepa» se acomoda en lo que sobra, así que **siempre** termina contra la puerta,
+sin importar a qué parada se la haya asignado. Lo mismo las líneas **sin parada**: caen al
+final y salen en la primera entrega. El aviso lo dice con todas las letras («si van a
+otra, ponéles el número») en vez de esconderlas dentro de la parada 1.
+
+**Dos listas, dos lectores, dos órdenes** — y por eso no se unificaron:
+
+| | Para quién | En qué orden |
+|---|---|---|
+| «El reparto, parada por parada» (pantalla) | El **chofer** | De ENTREGA: parada 1 primero |
+| «Orden de carga» + columna «Baja en» (Excel) | El **andén** | De CARGA: del fondo hacia la puerta |
+
+La columna «Baja en» del Excel **solo aparece si hay paradas**: vacía en toda carga normal
+sería ruido en la hoja que se imprime.
+
+**Los candados miden el ORDEN DE COLOCACIÓN, no la coordenada `x`.** Dos bloques angostos
+entran uno al lado del otro y los dos arrancan en x = 0, así que comparar la x no prueba
+nada — se compara la posición en la lista de bloques de la escena, que viene ordenada
+fondo → puerta. Ver `SimuladorCargaMixtaPantallaTest::ordenDeCarga()`.
+
+### Lo que falta para cerrar el lote 6
+
+Traer las paradas **desde una Hoja de ruta** en vez de tipearlas. Está bloqueado por lo
+mismo que las líneas desde Comercial (§4quater): `HojaDeRuta` ya tiene sus `paradas()`,
+pero para convertir lo que se entrega en cada una en bultos hace falta el puente
+**producto → tipo de bulto**, que todavía no existe.
+
 ## 5. Mercancía peligrosa
 
 Si una línea lleva un bulto `peligrosa` (los cajones `UN3480` de baterías de

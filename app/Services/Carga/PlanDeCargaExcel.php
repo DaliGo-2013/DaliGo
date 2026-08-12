@@ -223,22 +223,42 @@ class PlanDeCargaExcel
             return;
         }
 
+        // ¿Es un reparto con paradas? Entonces la tabla lleva una columna más: cargar
+        // en el orden correcto sin saber a qué parada va cada bloque es media
+        // instrucción — y es JUSTO acá donde importa, porque el que carga es quien
+        // decide si el bloque termina contra la puerta o contra la cabina.
+        $conParadas = array_filter($bloques, fn (array $b) => ($b['parada'] ?? 0) > 0) !== [];
+
         $this->filas->vacia();
         $this->filas->celdas([[1, 'ORDEN DE CARGA — del fondo hacia la puerta', 'seccion'], [2, '', 'seccion'], [3, '', 'seccion'], [4, '', 'seccion']]);
-        $this->filas->celdas([
+
+        $cabeceras = [
             [1, '#', 'cab'], [2, 'Producto', 'cab'], [3, 'Cód.', 'cab'],
             [4, 'Bultos', 'cab'], [5, 'Rejilla (largo × ancho × alto)', 'cab'],
-        ]);
+        ];
+        if ($conParadas) {
+            $cabeceras[] = [6, 'Baja en', 'cab'];
+        }
+        $this->filas->celdas($cabeceras);
 
         foreach (array_values($bloques) as $n => $b) {
             $r = $b['rejilla'];
-            $this->filas->celdas([
+            $celdas = [
                 [1, $n + 1, 'numero'],
                 [2, $b['nombre'] ?? '—', 'texto'],
                 [3, $b['letra'] ?? '', 'negrita'],
                 [4, $b['cantidad'], 'numero'],
                 [5, sprintf('%d × %d × %d', $r['largo'], $r['ancho'], $r['alto']), 'texto'],
-            ]);
+            ];
+            if ($conParadas) {
+                $celdas[] = [6, ($b['parada'] ?? 0) > 0 ? 'Parada '.$b['parada'] : 'Sin asignar', 'texto'];
+            }
+            $this->filas->celdas($celdas);
+        }
+
+        if ($conParadas) {
+            $this->filas->celdas([[1, 'Lo que baja primero se carga último: la parada 1 queda contra la puerta. '
+                .'Cargando en este orden no hay que bajar mercadería a la vereda para llegar a la de atrás.', 'aviso']]);
         }
     }
 
