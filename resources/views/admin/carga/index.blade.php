@@ -1045,6 +1045,22 @@
                                                        placeholder="{{ \App\Services\Carga\PalletSimulado::ALTO_DEFECTO }}"
                                                        class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                                             </div>
+                                            {{-- LA PARADA de la ruta (grupos de carga, 12-08). Lo que se
+                                                 entrega primero va contra la puerta, así que el motor
+                                                 carga la última parada al fondo. Vacío = todo junto,
+                                                 que es como venía funcionando.
+
+                                                 Va acá y no como una pantalla de «grupos» aparte: la
+                                                 parada es un atributo de la línea, igual que la estiba
+                                                 o el apilado, y un panel más sería otra cosa que
+                                                 mantener sincronizada con la lista. --}}
+                                            <div>
+                                                <label class="text-xs font-medium text-neutral-600">Parada</label>
+                                                <input type="number" :name="`lineas[${i}][grupo]`" x-model="linea.grupo" @input="ensuciar()"
+                                                       min="1" max="8" inputmode="numeric" placeholder="1"
+                                                       title="En qué parada de la ruta se entrega. La 1 se entrega primero, así que viaja contra la puerta; la última va al fondo. Vacío = todo en la misma parada."
+                                                       class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
                                             <div>
                                                 <label class="text-xs font-medium text-neutral-600"
                                                        x-text="enPallet(linea) ? 'Apilar en el pallet' : 'Apilar hasta'"></label>

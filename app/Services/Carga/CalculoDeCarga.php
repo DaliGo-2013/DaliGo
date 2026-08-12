@@ -368,8 +368,26 @@ class CalculoDeCarga
         $base = fn (int $i) => ! empty($lineas[$i]['bulto']['soporta_peso_encima'])
             && isset(self::SOPORTA_ENCIMA[$lineas[$i]['bulto']['categoria'] ?? '']);
 
+        // LA PARADA MANDA SOBRE TODO LO DEMÁS, y no es una preferencia: es la ruta.
+        //
+        // Grupos de carga por parada (pedido del dueño 12-08, sobre los ejemplos de
+        // EasyCargo: «Hamburg – Dresden – Antwerp», y «los artículos del primer grupo
+        // fueron cargados primero»). Cada bloque se coloca en la región más al FONDO que
+        // le sirva, así que para que la primera entrega quede contra la puerta hay que
+        // colocar la ÚLTIMA parada primero. De ahí el orden descendente.
+        //
+        // Va antes que el volumen, antes que la base y antes que las abiertas porque
+        // ninguna de esas tres puede justificar que el conductor tenga que descargar media
+        // carga en la primera parada para llegar a lo suyo. Y por lo mismo el buscador de
+        // acomodos NO puede pisarlo: cada plan reordena DENTRO de la parada, nunca entre
+        // paradas — si no, un plan «con más volumen» rompería la ruta en silencio.
+        $grupo = fn (int $i) => (int) ($lineas[$i]['grupo'] ?? 1);
+
         $orden = array_keys($lineas);
-        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase) {
+        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase, $grupo) {
+            if ($grupo($a) !== $grupo($b)) {
+                return $grupo($b) <=> $grupo($a);
+            }
             if ($abierta($a) !== $abierta($b)) {
                 return $abierta($a) ? 1 : -1;
             }
