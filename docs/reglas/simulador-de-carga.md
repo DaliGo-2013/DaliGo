@@ -88,9 +88,22 @@ catálogo, curada producto por producto: `soporta_peso_encima`.
 1. El bloque de abajo **declara** que aguanta peso. Un dispensador (`false`, jaula
    rotulada «keep off») no recibe nada — preguntado explícitamente al dueño el 11-08, y su
    respuesta fue **no por ahora**.
-2. El de arriba **también** lo declara. Es un proxy y conviene nombrarlo: en este catálogo
-   «aguanta peso» y «es liviano» coinciden (bolsas 3,75 kg contra máquinas de 11 y 15,5),
-   así que el mismo flag sirve de los dos lados sin inventar un umbral que nadie midió.
+2. **La categoría de arriba tiene que estar admitida por la de abajo** (`SOPORTA_ENCIMA`).
+   La primera versión pedía el mismo flag de los dos lados, y estaba mal: el dueño lo
+   corrigió el 12-08 — *«arriba de las bolsas de 10 o 20 comúnmente no se pone nada pesado
+   porque los bidones están vacíos, pero lo que se hace es que se cargan cajas y arriba se
+   acomodan los bidones»*. La caja y la bolsa **las dos** «aguantan peso», pero no aguantan
+   lo mismo, y con un solo booleano el motor apilaba **cajas sobre bolsas**, que es lo que
+   nadie hace.
+
+   | Abajo | Recibe arriba |
+   |---|---|
+   | `cajas` | `botellones` — la caja es la BASE de la estiba |
+   | `botellones` | `botellones` — solo otras bolsas (respuesta del dueño, 12-08) |
+   | `dispensadores` | nada (no está en la matriz) |
+
+   El flag del catálogo **no se reemplaza**: sigue siendo el veto por producto, así que una
+   bolsa que mañana se declare frágil deja de recibir carga sin tocar código.
 3. **Nunca sobre la misma línea.** Un tipo no se apila sobre sí mismo acá: para eso está su
    `apilable_max`. Sin esta condición **una línea sola dejaba de dar el cupo verificado** —
    llenaba el piso y seguía apoyándose sobre su propio muro—, y ese número es el que
@@ -107,6 +120,28 @@ grosor de la tarima y el visor lo usa así. Dos alturas con el mismo nombre habr
 pallet flotando, en silencio. El visor ya sabía dibujar en altura (los pallets lo hacían),
 así que fue pasarle el número: sin eso, el motor contaba las bolsas de arriba y el lienzo
 las dibujaba **atravesando** el muro.
+
+### 2ter. EL MOTOR SE TAPA SU PROPIO TECHO — pendiente (12-08-2026)
+
+Hallazgo al probar la estiba que dictó el dueño (cajas abajo, bidones arriba) en el Chevy 3:
+**no subió ni una bolsa**, y no es un bug.
+
+La caja de tapas mide 42 cm y el motor **apila la base lo más alto que puede**: 5 cajas son
+210 cm de los 230 útiles, y arriba quedan 20 cm donde no entra ni una bolsa acostada (26).
+Con las cajas de a **4** —168 cm— las bolsas suben de pie. O sea que el motor, maximizando
+la base, se tapa a sí mismo la posibilidad de hacer lo que hace el cargador: en el andén las
+cajas se apilan de a 4 **dejando el aire para los bidones**.
+
+Es la misma pregunta que el dueño ya contestó para el orden: *«que el motor pruebe las dos y
+se quede con la que meta más carga»* (12-08), pero aplicada a la **altura de la base**. Falta
+que `carga()` evalúe varios acomodos y elija por carga total:
+
+1. orden: base primero (cajas) contra volumen descendente (bolsas primero) — hoy solo el
+   segundo;
+2. altura de la base: al tope, o recortada para dejar techo utilizable.
+
+Mientras eso no exista, la estiba real se puede reproducir **a mano**: bajando el tope de
+apilado de la caja en el formulario, que es un control que ya está a la vista.
 
 ### 2.2bis «Usar todo el espacio»: el motor gira el bulto en lo que sobra (10-08-2026)
 

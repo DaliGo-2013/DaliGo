@@ -179,6 +179,12 @@ class TipoBulto extends Model implements AuditableContract
             'alto' => $alto,
             'peso' => (float) $this->peso_kg,
             'unidades' => $this->unidades,
+            // LA CATEGORÍA viaja al motor porque el segundo piso decide POR CATEGORÍA qué
+            // se puede apoyar sobre qué (§2bis): «arriba de las bolsas no se pone nada
+            // pesado porque los bidones están vacíos, pero se cargan cajas y arriba se
+            // acomodan los bidones» (dueño, 12-08-2026). Un booleano no alcanza para eso:
+            // la caja y la bolsa los dos «aguantan», pero no aguantan LO MISMO.
+            'categoria' => $this->categoria,
             // SI AGUANTA PESO ENCIMA. Lo mira el segundo piso del motor (§2bis): sin este
             // campo la carga liviana no se apoya nunca sobre otra, y el motivo es el peor
             // posible — el flag ausente se lee como «no aguanta», así que la función

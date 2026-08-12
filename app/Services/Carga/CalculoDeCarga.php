@@ -44,6 +44,29 @@ class CalculoDeCarga
     public const LIMITE_NINGUNO = 'ninguno';
 
     /**
+     * QUÉ SE PUEDE APOYAR SOBRE QUÉ, por categoría del catálogo (segundo piso, §2bis).
+     *
+     * Dictado del dueño (12-08-2026), y es más fino que un booleano: *«arriba de las bolsas
+     * de 10 o 20 comúnmente no se pone nada pesado porque los bidones están vacíos, pero lo
+     * que se hace es que se cargan cajas y arriba se acomodan los bidones»*.
+     *
+     * O sea que la caja y la bolsa las dos «aguantan peso», pero no aguantan LO MISMO: la
+     * caja es la BASE y la bolsa apenas se sostiene a sí misma. Con un solo flag las dos
+     * quedaban iguales, y el motor apilaba cajas sobre bolsas — que es justo lo que nadie
+     * hace.
+     *
+     * Se lee: [categoría de ABAJO => categorías que puede recibir ARRIBA]. Lo que no está
+     * listado no recibe nada; por eso `dispensadores` no aparece (decisión del dueño el
+     * 11-08: nada encima de una máquina embalada). Y esto NO reemplaza a
+     * `soporta_peso_encima`: el flag del catálogo sigue siendo un veto por producto, así
+     * que una bolsa que mañana se declare frágil deja de recibir carga sin tocar el código.
+     */
+    private const SOPORTA_ENCIMA = [
+        'cajas' => ['botellones'],
+        'botellones' => ['botellones'],
+    ];
+
+    /**
      * Máximo de bultos de UN tipo en un vehículo vacío.
      *
      * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int}  $vehiculo  cm y kg
@@ -316,10 +339,14 @@ class CalculoDeCarga
          */
         $techos = [];
         foreach ($bloques as $b) {
-            if (empty($lineas[$b['linea']]['bulto']['soporta_peso_encima'])) {
+            $abajo = $lineas[$b['linea']]['bulto'];
+            // El veto del catálogo Y la categoría: el flag dice si ESTE producto aguanta
+            // algo encima, la matriz dice QUÉ. Los dos tienen que dar el sí.
+            if (empty($abajo['soporta_peso_encima']) || ! isset(self::SOPORTA_ENCIMA[$abajo['categoria'] ?? ''])) {
                 continue;
             }
             $techos[] = [
+                'categoria' => $abajo['categoria'] ?? '',
                 'linea' => $b['linea'],
                 'x' => $b['x'],
                 'y' => $b['y'],
@@ -330,7 +357,7 @@ class CalculoDeCarga
         }
 
         foreach ($orden as $i) {
-            if ($techos === [] || $estado[$i]['restan'] <= 0 || empty($estado[$i]['bulto']['soporta_peso_encima'])) {
+            if ($techos === [] || $estado[$i]['restan'] <= 0) {
                 continue;
             }
 
@@ -494,7 +521,11 @@ class CalculoDeCarga
 
         foreach ($techos as $k => $techo) {
             $libre = $H - $techo['base'];
-            if ($libre <= 0 || $techo['linea'] === $exceptoLinea) {
+            // La matriz por categoría: sobre una bolsa solo van bolsas, sobre una caja van
+            // bidones. Lo que no está en la lista de ese techo no sube.
+            $admitidas = self::SOPORTA_ENCIMA[$techo['categoria']] ?? [];
+            if ($libre <= 0 || $techo['linea'] === $exceptoLinea
+                || ! in_array($bulto['categoria'] ?? '', $admitidas, true)) {
                 continue;
             }
 
@@ -507,7 +538,7 @@ class CalculoDeCarga
             // Lo que quedó del techo sigue siendo techo, a la misma altura y de la misma
             // línea. Lo que se apoyó NO se agrega: un solo piso arriba (regla 3).
             array_splice($techos, $k, 1, array_map(
-                fn (array $r) => $r + ['base' => $techo['base'], 'linea' => $techo['linea']],
+                fn (array $r) => $r + ['base' => $techo['base'], 'linea' => $techo['linea'], 'categoria' => $techo['categoria']],
                 $region,
             ));
 

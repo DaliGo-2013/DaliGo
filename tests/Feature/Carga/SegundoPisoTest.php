@@ -26,18 +26,24 @@ class SegundoPisoTest extends TestCase
     private const CHEVY = ['largo' => 790, 'ancho' => 220, 'alto' => 230, 'peso_max_kg' => 6430];
 
     private const BOLSA20 = [
-        'largo' => 130, 'ancho' => 26, 'alto' => 51, 'peso' => 3.75,
+        'categoria' => 'botellones', 'largo' => 130, 'ancho' => 26, 'alto' => 51, 'peso' => 3.75,
         'unidades' => 5, 'apilable_max' => 30, 'soporta_peso_encima' => true, 'orientacion_fija' => true,
     ];
 
     private const BOLSA10 = [
-        'largo' => 110, 'ancho' => 21, 'alto' => 40, 'peso' => 2.5,
+        'categoria' => 'botellones', 'largo' => 110, 'ancho' => 21, 'alto' => 40, 'peso' => 2.5,
         'unidades' => 5, 'apilable_max' => 30, 'soporta_peso_encima' => true, 'orientacion_fija' => true,
+    ];
+
+    /** Caja de tapas: la BASE de la estiba, según el dueño. */
+    private const CAJA = [
+        'categoria' => 'cajas', 'largo' => 46, 'ancho' => 37, 'alto' => 42, 'peso' => 0,
+        'unidades' => 1, 'apilable_max' => 6, 'soporta_peso_encima' => true,
     ];
 
     /** LB-93: 15,5 kg y su jaula rotulada «keep off». NO aguanta peso encima. */
     private const DISPENSADOR = [
-        'largo' => 38, 'ancho' => 33, 'alto' => 98, 'peso' => 15.5,
+        'categoria' => 'dispensadores', 'largo' => 38, 'ancho' => 33, 'alto' => 98, 'peso' => 15.5,
         'unidades' => 1, 'apilable_max' => 2, 'soporta_peso_encima' => false,
     ];
 
@@ -114,26 +120,64 @@ class SegundoPisoTest extends TestCase
     }
 
     /**
+     * LA REGLA QUE DICTÓ EL DUEÑO (12-08): la CAJA es la base y arriba van los bidones.
+     * *«Se cargan cajas y arriba se acomodan bidones de 20 o de 10 (de cinco)»*.
+     */
+    public function test_las_bolsas_se_apoyan_sobre_las_cajas(): void
+    {
+        // Las cajas van apiladas de a 4 y NO de a 5. No es un detalle del test: con 5 el
+        // muro de cajas llega a 210 cm de los 230 del Chevy y arriba no entra ni una bolsa
+        // acostada (26 cm). O sea que hoy el motor, que apila la base lo más alto que puede,
+        // se tapa a sí mismo la posibilidad de poner bidones encima. Ver §2ter: para
+        // reproducir la estiba real hay que dejar que pruebe la base MÁS BAJA.
+        $r = $this->calc->carga(self::CHEVY, [
+            ['bulto' => ['apilable_max' => 4] + self::CAJA, 'cantidad' => 500],
+            ['bulto' => self::BOLSA20, 'cantidad' => 60],
+        ], enOrdenDeLista: true);
+
+        $arriba = $this->enAltura($r);
+        $this->assertNotSame([], $arriba, 'Las bolsas no subieron sobre las cajas.');
+        $this->assertSame(1, $arriba[0]['linea']);
+    }
+
+    /**
+     * Y LO QUE NO SE HACE: una caja arriba de una bolsa. *«Arriba de las bolsas de 10 o 20
+     * comúnmente no se pone nada pesado porque los bidones están vacíos»* — sobre una bolsa
+     * solo van otras bolsas (respuesta del dueño, 12-08). Con el flag booleano solo, la
+     * caja y la bolsa quedaban iguales y el motor apilaba cajas sobre bolsas.
+     */
+    public function test_una_caja_no_se_apoya_sobre_una_bolsa(): void
+    {
+        $r = $this->calc->carga(self::CHEVY, [
+            ['bulto' => self::BOLSA20, 'cantidad' => 192],
+            ['bulto' => self::CAJA, 'cantidad' => 200],
+        ], enOrdenDeLista: true);
+
+        $this->assertSame([], $this->enAltura($r),
+            'Se apoyaron cajas sobre un muro de bolsas de botellones vacíos.');
+    }
+
+    /**
      * UN SOLO PISO ARRIBA. Lo que se apoya no vuelve a ser techo: el tercer nivel no se
-     * promete. Tres bloques que tapizan el piso entero en un camión de 3 m: el primero va
-     * al piso, el segundo encima, y el tercero queda AFUERA aunque sobren 150 cm de aire.
+     * promete. Cajas que tapizan el piso, bolsas encima, y las siguientes bolsas quedan
+     * AFUERA aunque sobre aire — porque el techo de las de arriba no es techo.
      */
     public function test_un_solo_piso_arriba(): void
     {
         $veh = ['largo' => 200, 'ancho' => 100, 'alto' => 300, 'peso_max_kg' => null];
-        $plancha = [
-            'largo' => 200, 'ancho' => 100, 'alto' => 50, 'peso' => 1,
-            'unidades' => 1, 'apilable_max' => 1, 'soporta_peso_encima' => true, 'orientacion_fija' => true,
-        ];
+        $caja = ['categoria' => 'cajas', 'largo' => 200, 'ancho' => 100, 'alto' => 50, 'peso' => 1,
+            'unidades' => 1, 'apilable_max' => 1, 'soporta_peso_encima' => true, 'orientacion_fija' => true];
+        $bolsa = ['categoria' => 'botellones', 'largo' => 200, 'ancho' => 100, 'alto' => 50, 'peso' => 1,
+            'unidades' => 1, 'apilable_max' => 1, 'soporta_peso_encima' => true, 'orientacion_fija' => true];
 
         $r = $this->calc->carga($veh, [
-            ['bulto' => $plancha, 'cantidad' => 1],
-            ['bulto' => $plancha, 'cantidad' => 1],
-            ['bulto' => $plancha, 'cantidad' => 1],
+            ['bulto' => $caja, 'cantidad' => 1],
+            ['bulto' => $bolsa, 'cantidad' => 1],
+            ['bulto' => $bolsa, 'cantidad' => 1],
         ], enOrdenDeLista: true);
 
         $this->assertSame(1, $r['lineas'][0]['colocados']);
-        $this->assertSame(1, $r['lineas'][1]['colocados'], 'El segundo no se apoyó sobre el primero.');
+        $this->assertSame(1, $r['lineas'][1]['colocados'], 'La bolsa no se apoyó sobre la caja.');
         $this->assertSame(0, $r['lineas'][2]['colocados'],
             'Se armó un TERCER nivel: lo que se apoya no puede volver a ser techo.');
         $this->assertSame(50, $this->enAltura($r)[0]['apoyo']);
