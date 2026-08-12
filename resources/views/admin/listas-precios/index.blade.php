@@ -6,6 +6,8 @@
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.catalogo._tabs')
+
         <x-list-card title="Listas" :count="$listas->count()" :countLabel="\Illuminate\Support\Str::plural('lista', $listas->count())">
             @forelse ($listas as $lista)
                 {{-- La fila entera abre la lista (patron bodegas/ST, pedido del dueño
