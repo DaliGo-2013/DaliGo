@@ -75,10 +75,27 @@
                                 {{ $version->created_at->format('d-m-Y H:i') }}
                                 {{ $version->autor ? '· '.$version->autor->name : '' }}
                             </span>
-                            <a href="{{ route('admin.vehiculos.documentos.archivo', $version) }}"
-                               class="min-h-8 inline-flex items-center text-sm font-medium text-brand-700 hover:text-brand-600">
-                                Ver <span class="ml-1 font-normal text-neutral-400">· {{ $version->tamano_kb }} KB</span>
-                            </a>
+                            <span class="flex items-center gap-3">
+                                <a href="{{ route('admin.vehiculos.documentos.archivo', $version) }}"
+                                   class="min-h-8 inline-flex items-center text-sm font-medium text-brand-700 hover:text-brand-600">
+                                    Ver <span class="ml-1 font-normal text-neutral-400">· {{ $version->tamano_kb }} KB</span>
+                                </a>
+                                {{-- Quitar una versión VIEJA se hace acá y no en la ficha:
+                                     la ficha solo conoce la vigente. Es el lugar donde el
+                                     historial está a la vista, o sea donde se puede ver qué
+                                     se está borrando. --}}
+                                @can('manage vehiculos')
+                                    <form method="POST" action="{{ route('admin.vehiculos.documentos.destroy', $version) }}"
+                                          onsubmit="return confirm('¿Borrar esta versión del {{ mb_strtolower($label) }} ({{ $version->created_at->format('d-m-Y H:i') }})?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="min-h-8 text-sm font-medium text-neutral-500 underline-offset-2 transition hover:text-red-700 hover:underline">
+                                            Quitar
+                                        </button>
+                                    </form>
+                                @endcan
+                            </span>
                         </li>
                     @endforeach
                 </ul>

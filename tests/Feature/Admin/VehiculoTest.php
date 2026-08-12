@@ -296,6 +296,27 @@ class VehiculoTest extends TestCase
         }
     }
 
+    public function test_la_busqueda_no_mira_el_alias_y_el_rotulo_no_lo_promete(): void
+    {
+        // Decisión del dueño (11-08-2026): se busca por patente, marca y conductor.
+        // El alias quedó fuera A SABIENDAS de que es el nombre grande de cada fila,
+        // así que el rótulo del buscador tampoco puede ofrecerlo: prometer de más
+        // manda a escribir algo que no encuentra nada, y se lee como que el vehículo
+        // no está cargado.
+        Vehiculo::factory()->create([
+            'ppu' => 'TJGW15', 'alias' => 'Ratoncito', 'marca' => 'RAM', 'conductor_nombre' => 'Pedro Soto',
+        ]);
+
+        $this->assertSame(0, Vehiculo::buscar('Ratoncito')->count());
+        $this->assertSame(1, Vehiculo::buscar('RAM')->count());
+        $this->assertSame(1, Vehiculo::buscar('Pedro')->count());
+
+        $this->actingAs($this->jefeLogistica())
+            ->get(route('admin.vehiculos.index'))
+            ->assertOk()
+            ->assertDontSee('Buscar (patente, alias');
+    }
+
     // --- Navegación ---------------------------------------------------------
 
     public function test_logistica_aparece_en_el_menu_de_quien_ve_la_flota(): void

@@ -46,6 +46,8 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_plantilla_bodega_stock_en_baja',
         // M11 · corte SIC: meta del turno en riesgo (P-M11-21)
         'notif_plantilla_produccion_meta_en_riesgo',
+        'notif_plantilla_molde_umbral_mantencion',
+        'notif_plantilla_molde_correctiva_pendiente',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void

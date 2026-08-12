@@ -1,71 +1,61 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-10 (v43 — P-M11-11 EN PRODUCCIÓN; GO P-M11-12: el molde como entidad, F3). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-12 (v47 — VISTO BUENO del dueño: piloto F1 + las 4 baratas. Cola de 5 lotes, de a uno). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ P-M11-11 está EN PRODUCCIÓN (merge `2264e8c`, doble llave 10-ago)
+## El dueño aprobó: F1 (pre-decidido) + las 4 baratas (#2-#5 de tu priorización)
 
-Verificación del Director sobre el árbol unión (main ya traía las alertas SIC de Max-2):
-**suite 1806 verdes / 12.867 aserciones, cero rojos** — cuadre exacto (1795 + tus 11).
-Conflicto único en ConfiguracionSeeder (ambos streams sembraron claves de turno):
-resuelto manteniendo AMBAS con nota de coherencia — tu `produccion_minutos_turno` y los
-horarios de Max-2 son dos hipótesis del mismo hecho, hoy coherentes en 12 h; unificarlas
-(derivar minutos de los horarios) queda como pulido de F3. Deploy y Tests verdes. Rama
-borrada.
+Tu mapa fue presentado y el dueño dio **visto bueno explícito a las 4 baratas**; el
+piloto ya venía decidido. El RESTO del mapa (Configuración de producción, Registro del
+sistema, Roles→Usuarios, Cargas reales, Kardex, Conductores, Traslados) queda
+**PENDIENTE de visto bueno** — ni los toques.
 
-Tu «ciclo NULL se declara, no se inventa» y el aviso de OEE>100 en vez de clamp
-silencioso son exactamente la casa: los datos que faltan se VEN faltar. Y la corrección
-de la premisa del dictado (scrap de arranque no estaba en MOTIVOS_DEFECTO) con 1 línea
-aditiva: verificar el dictado contra el repo es tan parte del lote como el código.
+## 🟢 GO — cola de 5 lotes, EN ORDEN, cada uno con su rama + parte + doble llave
 
-## 🟢 GO — P-M11-12 · El molde como entidad (F3, stream A)
+**Regla de la cola**: un lote por vez; pusheas el parte, sigues con el siguiente SOLO
+tras la doble llave del anterior (el menú es territorio sensible — los candados de un
+lote alimentan al siguiente). Rama corta por lote.
 
-PLAN-M11-FINAL §4-F3 — el rasgo que ni Odoo tiene (solo los MES de plásticos):
+### Lote 1 · F1 Piloto: Precios → Catálogo (−1)
+Pestaña «Listas de precios» dentro de Catálogo (mismo permiso `manage productos`); el
+ítem «Precios» sale de MenuPrincipal; las rutas `admin.listas-precios.*` entran al
+`activo` del ítem Catálogo; la card «Precios» del Inicio se reapunta o se retira
+(decisión tuya declarada). **Gate R-31** (es el piloto — la vara del proyecto).
 
-- **Tabla `moldes`** (ficha estilo M18 vehículos): nombre (≤191), tipo_botellon_id,
-  cavidades (tinyint), ciclo_ideal_seg (unsignedSmallInteger nullable — **mover/enlazar
-  el dato que hoy vive en la receta**: decide tú si el molde REFERENCIA la receta o la
-  receta al molde, con sweep y alternativa nombrada; evita la tercera copia),
-  ciclos_acumulados (unsignedBigInteger), umbral_mantencion (nullable), estado
-  (`activo|en_mantencion|retirado`), notas. CRUD con permiso existente de producción.
-- **El contador se alimenta solo**: cada reporte APROBADO suma al molde del turno
-  (producción total / cavidades_activas cuando venga, factor 1 si NULL — el dato ya
-  existe de P-M11-20). Idempotencia: devolución no resta, re-aprobación no re-suma
-  (mismo guard del backflush).
-- **Umbral → aviso M15** «al molde X le toca mantención» (evento nuevo, molde de
-  bodega.nueva) a quienes gestionen producción, UNA vez por cruce de umbral (guard
-  timestamp, patrón aviso_stock_nuevo de M04-F2). Registrar la mantención resetea el
-  contador y deja historial (tabla `molde_mantenciones` mínima: fecha, tipo
-  `preventiva|correctiva`, quién, nota).
-- **Correctiva automática**: reporte aprobado con parada de motivo «Molde dañado» →
-  crea la mantención correctiva pendiente + aviso. (Falla de máquina NO — eso es de la
-  máquina, no del molde.)
-- **¿Qué molde trabajó el turno?** No existe el dato — inferencia honesta: el molde
-  activo del tipo_botellon de la tanda; si hay 2+ moldes activos para el mismo tipo, el
-  reporte pide elegirlo (campo nuevo en ProduccionReporte — COORDINA: es frontera; campo
-  aditivo nullable está OK pero decláralo en el parte para que Max-2 lo sepa).
-- El OEE puede empezar a leer `ciclo_ideal_seg` desde el molde si decides que el molde
-  es el portador — si lo haces, la receta muestra el dato del molde (una fuente).
+### Lote 2 · Retiro del boceto «Seguimiento» (−1)
+Densidad gratis. El código del boceto se retira COMPLETO (ítem + rutas + vista), no se
+esconde — si algún día se retoma, vive en git.
 
-### Candados mínimos
-1. Contador: aprobar suma exacto (con cavidades y sin), devolver no resta, re-aprobar
-   no duplica (MUTADO el guard → rojo).
-2. Umbral cruzado → UN aviso; siguiente reporte sin re-aviso; mantención registrada →
-   contador 0 + historial + re-arma el aviso.
-3. «Molde dañado» aprobado → correctiva pendiente creada UNA vez.
-4. Molde retirado no aparece en selectores.
-5. 403 sin permiso; el soplador no ve la ficha de moldes.
-6. varchar ≤191; sin permiso nuevo.
+### Lote 3 · Estado → Documentos (−1)
+Pestaña «Estado de la conexión» en Documentos; decide tú (declarado) si Facturación
+queda acordeón de 1 o pasa a link directo — recuerda el `activo_extra` del documento ST.
+
+### Lote 4 · QR → Listado ST (−1)
+Sección/pestaña en el Listado; OJO VolverTest: era ítem de menú (sin Volver) → al dejar
+de serlo, vuelve el `<x-volver>` — tu propio hallazgo del candado de ex-huérfanas
+aplica al REVÉS aquí (edítalo conscientemente).
+
+### Lote 5 · Servicios de terreno → Agenda (−1)
+Permiso idéntico, link en cabecera ya existe — pestaña o sección en Agenda.
+
+### Candados TRANSVERSALES (van en los 5 lotes)
+1. **El mini-candado que tú mismo sugeriste, constrúyelo en el Lote 1**: test que
+   verifique que toda ruta movida a pestaña está en el patrón `activo` de su anfitrión
+   (el hueco del resaltado silencioso). Los lotes 2-5 lo heredan gratis.
+2. SidebarTest aria-current único + MenuPrincipalTest en verde en cada lote.
+3. Cero pérdida: las rutas y permisos NO se tocan (salvo el retiro completo del Lote 2).
+4. Conteo del menú en el parte de cada lote: antes → después (la métrica del proyecto).
+5. Suite COMPLETA antes de cada push; bundle + superset si tocas Blade (siempre lo harás).
+6. QA del dueño por lote (celular) — su ritmo manda: si pide pausa entre lotes, pausa.
 
 ## Territorio
-- **Max-2** cierra F2 con P-M11-22 (semáforo + notas en mi-reporte) EN PARALELO. Tu
-  único roce posible: el campo molde_id en ProduccionReporte — aditivo nullable,
-  declarado en el parte. Sus vistas del soplador no las tocas.
-- **Marcos** en el simulador. Re-fetch religioso.
+- **Max-2** sigue en P-M11-23 (kaizen, producción/PWA) — sin cruce con menú/catálogo/ST.
+- **Marcos** activo. Re-fetch religioso; 5 pushes tuyos = 5 oportunidades de carrera.
 
 ## Recordatorios
-Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (baseline
-del Director: **1806/12.867** en `2264e8c`). Suite completa antes del push. Blade →
-build + superset. `git checkout origin/main --`. Parte al buzón → doble llave.
+Rama nueva desde main FRESCO por lote; suite completa de main fresco al arrancar la
+cola (fija tu baseline). `git checkout origin/main --` para conflictos. varchar ≤191.
+Parte al buzón → doble llave → siguiente lote.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push.
+CIERRE: parte del Lote 1 a docs/fleet/buzon/partes/ + push. 47 → 42 al final de esta
+cola. La resta también se construye.

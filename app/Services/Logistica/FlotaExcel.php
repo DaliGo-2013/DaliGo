@@ -178,6 +178,16 @@ class FlotaExcel
 
         // Las 5 fechas de documentos, cada una con el color de SU estado — igual
         // que las celdas pintadas a mano en la planilla, pero calculado.
+        //
+        // SOLO LAS 5 DE LA LEY, a propósito. Los tipos creados desde la app
+        // (`Vehiculo::catalogoDocumentos`) no tienen columna propia: el mapa de
+        // columnas de esta planilla es fijo (17-21 las fechas, 22-25 el resto) y
+        // hacerlo variable movería el encabezado, los anchos y las fórmulas de quien
+        // ya usa el archivo. Igual NO se pierden: la columna «Estado» y la de
+        // documentos críticos salen de `documentos()`, que sí los incluye, así que un
+        // documento creado y vencido pinta la fila y se nombra. Si algún día hacen
+        // falta como columna, el cambio es rehacer el mapa entero, no agregar un
+        // `foreach`.
         $columnaDoc = 17;
         foreach (Vehiculo::DOCUMENTOS as $clave => $label) {
             $doc = $documentos->get($clave);

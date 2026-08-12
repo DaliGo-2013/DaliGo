@@ -180,8 +180,14 @@ class Vehiculo extends Model implements AuditableContract
     }
 
     /**
-     * Búsqueda por patente, alias, marca, modelo, chofer o base. Un solo campo
-     * de búsqueda: en la planilla se busca con Ctrl+F sin pensar en columnas.
+     * Búsqueda por patente, marca, modelo, chofer o base. Un solo campo de
+     * búsqueda: en la planilla se busca con Ctrl+F sin pensar en columnas.
+     *
+     * SIN EL ALIAS, por pedido del dueño (11-08-2026). Se sacó a sabiendas de que el
+     * alias es el nombre GRANDE de cada fila del listado —«TREMAC», «NPR (CHEVY 1)»—,
+     * así que un apodo que no esté también en la marca o el modelo deja de encontrar
+     * su fila. Si eso molesta, volver a agregar `alias` a la lista de abajo y al
+     * rótulo del buscador es un cambio de una palabra en cada lado.
      *
      * @param  Builder<Vehiculo>  $query
      */
@@ -198,7 +204,7 @@ class Vehiculo extends Model implements AuditableContract
         $plano = str_replace(['-', ' ', '.'], '', $termino);
 
         return $query->where(function (Builder $q) use ($termino, $plano) {
-            foreach (['ppu', 'alias', 'marca', 'modelo', 'conductor_nombre', 'base', 'vin'] as $col) {
+            foreach (['ppu', 'marca', 'modelo', 'conductor_nombre', 'base', 'vin'] as $col) {
                 $q->orWhere($col, 'like', "%{$termino}%");
             }
             $q->orWhere('ppu', 'like', "%{$plano}%");
@@ -252,7 +258,67 @@ class Vehiculo extends Model implements AuditableContract
             return false;
         }
 
+        // Un tipo CREADO declara a qué vehículos le toca (ver VehiculoDocumentoTipo):
+        // si no, crear «Certificado de la grúa» dejaría a las 17 unidades en rojo.
+        $id = VehiculoDocumentoTipo::idDeClave($clave);
+        if ($id !== null) {
+            return self::tiposCreados()->get($id)?->aplicaA($this->tipo) ?? false;
+        }
+
         return true;
+    }
+
+    /**
+     * El catálogo COMPLETO de documentos: los cinco de la ley más los creados desde
+     * la app. Clave => etiqueta.
+     *
+     * Es lo que tienen que recorrer el formulario, la validación y la pantalla del
+     * documento; `DOCUMENTOS` a secas son solo los cinco fijos y sirve para lo que
+     * de verdad es de la ley (las columnas del Excel, el orden del semáforo).
+     *
+     * @return array<string, string>
+     */
+    public static function catalogoDocumentos(): array
+    {
+        $catalogo = self::DOCUMENTOS;
+
+        foreach (self::tiposCreados() as $tipo) {
+            $catalogo[$tipo->clave] = $tipo->nombre;
+        }
+
+        return $catalogo;
+    }
+
+    /** La clave con la que el catálogo de tipos vive en el contenedor. */
+    private const MEMO_TIPOS = 'vehiculos.tipos-documento';
+
+    /**
+     * Los tipos creados, leídos UNA vez por request.
+     *
+     * `documentos()` corre una vez por vehículo y el listado trae 17: sin memo serían
+     * 17 consultas idénticas contra una tabla de dos filas.
+     *
+     * El memo vive en el CONTENEDOR y no en una propiedad estática a propósito: el
+     * contenedor se rehace en cada request y en cada test, así que no hay forma de que
+     * un caché sobreviva al `RefreshDatabase` y deje un test verde dependiendo del que
+     * corrió antes. Con un `static` habría que acordarse de limpiarlo, y esa clase de
+     * «acordarse» falla siempre.
+     *
+     * @return \Illuminate\Support\Collection<int, VehiculoDocumentoTipo>
+     */
+    public static function tiposCreados(): \Illuminate\Support\Collection
+    {
+        if (! app()->bound(self::MEMO_TIPOS)) {
+            app()->instance(self::MEMO_TIPOS, VehiculoDocumentoTipo::vigentes()->get()->keyBy('id'));
+        }
+
+        return app()->make(self::MEMO_TIPOS);
+    }
+
+    /** Tira el memo: lo usa el alta, la edición y la baja de un tipo. */
+    public static function olvidarTiposCreados(): void
+    {
+        app()->forgetInstance(self::MEMO_TIPOS);
     }
 
     /**
@@ -274,8 +340,11 @@ class Vehiculo extends Model implements AuditableContract
         $hoy = Carbon::parse(FechaNegocio::hoy());
         $docs = [];
 
-        foreach (self::DOCUMENTOS as $clave => $label) {
-            $vence = $this->{$clave};
+        foreach (self::catalogoDocumentos() as $clave => $label) {
+            // Los cinco de la ley son columnas; los creados desde la app viven en
+            // `vehiculo_documento_fechas`. De acá para abajo son todos iguales: el
+            // semáforo, la ficha y los avisos no distinguen de dónde salió la fecha.
+            $vence = $this->venceDe($clave);
 
             if (! $this->documentoAplica($clave)) {
                 $estado = self::DOC_NO_APLICA;
@@ -298,6 +367,30 @@ class Vehiculo extends Model implements AuditableContract
         }
 
         return $docs;
+    }
+
+    /**
+     * La fecha de vencimiento de un documento, venga de donde venga: de su columna
+     * (los cinco de la ley) o de `vehiculo_documento_fechas` (los creados).
+     *
+     * Un solo lugar que sepa esta diferencia; de ahí para arriba —semáforo, ficha,
+     * avisos, Excel— son todos documentos con una fecha y nada más.
+     */
+    public function venceDe(string $clave): ?Carbon
+    {
+        $id = VehiculoDocumentoTipo::idDeClave($clave);
+
+        if ($id === null) {
+            return $this->{$clave};
+        }
+
+        return $this->fechasDeDocumento->firstWhere('tipo_id', $id)?->vence;
+    }
+
+    /** Las fechas de los documentos CREADOS. Los cinco de la ley son columnas. */
+    public function fechasDeDocumento(): HasMany
+    {
+        return $this->hasMany(VehiculoDocumentoFecha::class, 'vehiculo_id');
     }
 
     /**

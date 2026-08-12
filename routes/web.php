@@ -13,8 +13,10 @@ use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
 use App\Http\Controllers\Admin\LoteServicioController;
 use App\Http\Controllers\Admin\MaquinaController;
+use App\Http\Controllers\Admin\MoldeController;
 use App\Http\Controllers\Admin\NotificacionController;
 use App\Http\Controllers\Admin\ProduccionController;
+use App\Http\Controllers\Admin\ProduccionNotaController;
 use App\Http\Controllers\Admin\ProduccionVivoController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\RecetaController;
@@ -29,6 +31,7 @@ use App\Http\Controllers\Admin\CargaRealController;
 use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\Admin\VehiculoDocumentoController;
+use App\Http\Controllers\Admin\VehiculoDocumentoTipoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
@@ -489,6 +492,16 @@ Route::middleware('auth')
             Route::post('produccion/reporte/{reporte}/ajustar', [ProduccionController::class, 'ajustar'])->name('produccion.reporte.ajustar');
             Route::delete('produccion/reporte/{reporte}', [ProduccionController::class, 'destroyReporte'])->name('produccion.reporte.destroy');
 
+            // Notas del jefe (P-M11-22): mensajes operativos que se pintan en
+            // mi-reporte del soplador mientras estan vigentes. Names DENTRO de
+            // admin.produccion.* a proposito: notas NO tiene item de menu y el
+            // patron admin.produccion.notas.* (enumerado en MenuPrincipal)
+            // hace que resalte el item Produccion.
+            Route::resource('produccion/notas', ProduccionNotaController::class)
+                ->names('produccion.notas')
+                ->parameters(['notas' => 'nota'])
+                ->except(['show']);
+
             // Catalogos de produccion: maquinas sopladoras y tipos de botellon.
             Route::resource('maquinas', MaquinaController::class)
                 ->parameters(['maquinas' => 'maquina'])
@@ -506,6 +519,21 @@ Route::middleware('auth')
                 ->whereNumber('producto')->name('recetas.edit');
             Route::put('recetas/{producto}', [RecetaController::class, 'update'])
                 ->whereNumber('producto')->name('recetas.update');
+
+            // Moldes (P-M11-12): ficha estilo M18 con contador de ciclos,
+            // umbral de mantencion e historial. Literales ANTES de la
+            // parametrica + whereNumber (doble candado idiomatico).
+            Route::get('moldes', [MoldeController::class, 'index'])->name('moldes.index');
+            Route::get('moldes/nuevo', [MoldeController::class, 'create'])->name('moldes.create');
+            Route::post('moldes', [MoldeController::class, 'store'])->name('moldes.store');
+            Route::get('moldes/{molde}', [MoldeController::class, 'show'])
+                ->whereNumber('molde')->name('moldes.show');
+            Route::get('moldes/{molde}/editar', [MoldeController::class, 'edit'])
+                ->whereNumber('molde')->name('moldes.edit');
+            Route::put('moldes/{molde}', [MoldeController::class, 'update'])
+                ->whereNumber('molde')->name('moldes.update');
+            Route::post('moldes/{molde}/mantencion', [MoldeController::class, 'mantencionStore'])
+                ->whereNumber('molde')->name('moldes.mantencion.store');
         });
 
         // Despachos (Jefe de Bodega): crear despacho desde un documento
@@ -566,6 +594,22 @@ Route::middleware('auth')
             // renueva. El servidor comprime; el que sube no tiene que saber.
             Route::post('vehiculos/{vehiculo}/documentos/{documento}', [VehiculoDocumentoController::class, 'store'])
                 ->whereNumber('vehiculo')->name('vehiculos.documentos.store');
+            // QUITAR una foto subida (pedido del dueño 11-08). Borra la ÚLTIMA
+            // versión y deja a la vista la anterior si existía: el caso real es
+            // «subí la foto equivocada», no «este vehículo no tiene SOAP».
+            Route::delete('vehiculos/documento-archivo/{doc}', [VehiculoDocumentoController::class, 'destroy'])
+                ->whereNumber('doc')->name('vehiculos.documentos.destroy');
+            // CREAR tipos de documento (11-08). Los cinco de la ley no se administran
+            // acá: son columnas del vehículo. Esto es para los que pidan después.
+            // Va con 'manage vehiculos' porque cambia el semáforo de TODA la flota.
+            Route::get('vehiculos-tipos-documento', [VehiculoDocumentoTipoController::class, 'index'])
+                ->name('vehiculos.tipos-documento.index');
+            Route::post('vehiculos-tipos-documento', [VehiculoDocumentoTipoController::class, 'store'])
+                ->name('vehiculos.tipos-documento.store');
+            Route::put('vehiculos-tipos-documento/{tipo}', [VehiculoDocumentoTipoController::class, 'update'])
+                ->whereNumber('tipo')->name('vehiculos.tipos-documento.update');
+            Route::delete('vehiculos-tipos-documento/{tipo}', [VehiculoDocumentoTipoController::class, 'destroy'])
+                ->whereNumber('tipo')->name('vehiculos.tipos-documento.destroy');
         });
         // LOGISTICA · simulador de carga. Es una CALCULADORA: no escribe nada
         // operativo, asi que va con su propio permiso (lo usa ventas, que no

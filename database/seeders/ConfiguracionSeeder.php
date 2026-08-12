@@ -553,6 +553,27 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso al jefe de producción cuando el corte SIC proyecta el turno bajo el umbral (M11; el 2º corte consecutivo llega con asunto ⚠ URGENTE).',
             ],
+            // ── M11 · Moldes (P-M11-12) ─────────────────────────────────────
+            [
+                'clave' => 'notif_plantilla_molde_umbral_mantencion',
+                'valor' => json_encode([
+                    'asunto' => 'Al molde {molde} le toca mantención',
+                    'cuerpo' => "El molde {molde} ({tipo_botellon}) cruzó su umbral de mantención.\nCiclos acumulados: {ciclos} · umbral: {umbral}.\nRegistra la mantención en su ficha para resetear el contador.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a producción cuando un molde cruza su umbral de ciclos (M11 F3; una vez por cruce — registrar la mantención re-arma el aviso).',
+            ],
+            [
+                'clave' => 'notif_plantilla_molde_correctiva_pendiente',
+                'valor' => json_encode([
+                    'asunto' => 'Molde dañado: correctiva pendiente para {molde}',
+                    'cuerpo' => "Un reporte aprobado trae una parada «Molde dañado» del molde {molde} ({tipo_botellon}).\nSe creó una mantención CORRECTIVA pendiente en su ficha — regístrala cuando el molde quede reparado.\nCiclos acumulados: {ciclos}.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a producción cuando un reporte aprobado trae parada «Molde dañado» (M11 F3; la correctiva nace pendiente, una por reporte).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

@@ -365,6 +365,107 @@ no un valor nuevo, justo para no obligar a reconstruir `public/build` por una
 pantalla (R-33). Al escribir esta vista salió una clase nueva (`max-h-[75vh]`) que
 el CSS commiteado no tenía; se cambió por la que ya existía.
 
+### La foto se guarda por DOS caminos, y no es una duplicación (11-08-2026)
+
+Un documento son **dos datos**: la foto y hasta cuándo vale. Al principio vivían en
+pantallas distintas —la foto se subía en la ficha, la fecha se escribía en Editar—
+así que cargar un permiso de circulación eran **dos viajes**. El dueño lo pidió así:
+*«necesito un botón de guardar para guardar las fotos, si no tengo que ir a editar y
+al final aparece un botón de guardar que es en otra pestaña al fin y al cabo»*.
+
+Ahora hay dos caminos, para dos situaciones:
+
+| | Dónde | Cómo guarda | Para qué |
+|---|---|---|---|
+| **De a una** | La ficha | Sola, al elegir la foto | El teléfono, parado al lado del camión: elegir la foto YA es la acción |
+| **Con la fecha** | Editar | «Guardar cambios», junto a todo lo demás | Cargar el papel completo de una sentada |
+
+Los dos guardan por **`RespaldoDeDocumento`**, no por copias: si no, el día que
+cambie la compresión o el `subido_por`, una de las dos se queda atrás y no se nota
+hasta que alguien abre un documento de 6 MB en un control.
+
+**Dos cosas que se rompen en silencio y por eso tienen candado:**
+
+1. **El `enctype` del formulario.** Sin `multipart/form-data`, el navegador manda el
+   nombre del archivo como texto: **las fechas se guardan, la foto no llega y no hay
+   ningún error**. Se lee como «guardé y la foto no quedó».
+   (`VehiculoRespaldoDesdeEditarTest::test_la_pantalla_de_editar_manda_el_formulario_como_multipart`)
+2. **Validar los archivos en la MISMA pasada que el resto.** Al principio la foto se
+   validaba después del `update()`: un archivo rechazado dejaba la fecha ya guardada
+   y la pantalla decía que había fallado. Ahora todo se valida antes de escribir nada.
+
+### Quitar una foto: se borra una VERSIÓN, no el documento (11-08-2026)
+
+Pedido del dueño: *«dame la opción para eliminar o quitar el documento»*. El caso real
+es «subí la foto equivocada» o «esta salió ilegible», no «este camión no tiene SOAP»:
+por eso **Quitar borra la última versión y vuelve a quedar la anterior**, que es lo que
+uno espera al deshacer. Para dejar un documento sin respaldo se quitan todas, de a una,
+y eso es a propósito — cada clic borra un archivo de verdad.
+
+El archivo se borra **del disco** además de la fila: un respaldo huérfano en `storage/`
+es la patente de alguien ocupando lugar sin que nadie lo vea ni lo pueda borrar desde
+la app. Quitar es de `manage vehiculos`; el conductor ve y no borra, la misma línea que
+ya regía para subir.
+
+## 4quinquies. Documentos que se pueden CREAR (11-08-2026)
+
+Pedido del dueño: *«otra opción para crear uno nuevo si a futuro pidieran»*.
+
+**Los cinco de la ley siguen siendo columnas de `vehiculos` y no se tocan** — revisión
+técnica, emisiones, permiso, SOAP y extintor. Están en el Excel, en el comando de avisos
+y en el semáforo; moverlos a una tabla sería un refactor grande a cambio de nada. Lo que
+se agrega es la vía para los que aparezcan después (una póliza de carga peligrosa, el
+certificado de una grúa) sin tocar código:
+
+- **`vehiculo_documento_tipos`** — el catálogo, con a qué tipos de vehículo aplica.
+- **`vehiculo_documento_fechas`** — el vencimiento por vehículo. Sin fila = sin fecha.
+- La foto reusa la tabla de respaldos con la clave **`tipo:{id}`** (por eso
+  `vehiculo_documentos.documento` es un string y no un enum).
+
+De ahí para arriba **son documentos iguales a los otros**: aparecen en la ficha, en
+Editar con su fecha y su foto, mueven el semáforo y disparan el aviso automático. Si no
+lo hicieran, sería una lista decorativa.
+
+**Por qué la clave es `tipo:{id}` y no el nombre:** el nombre se corrige («Póliza carga
+peligrosa» → «Póliza de carga peligrosa») y si la clave dependiera de él, las fotos y
+fechas ya cargadas quedarían apuntando a un documento que no existe.
+
+**Tres decisiones que evitan que esto haga daño:**
+
+1. **Aplica a tipos de vehículo.** Sin esto, crear un documento deja a las 17 unidades
+   en «sin fecha» de un día para el otro, y ese rojo es ruido si el papel era solo para
+   los camiones. Al que no le toca, el estado es `no_aplica`, no `sin_registro` — la
+   misma regla del §3.2. Y el formulario **no le ofrece el campo**, que de paso arregló
+   el caso viejo de ofrecerle «emisiones» a un semirremolque.
+2. **Marcar todos = guardar lista vacía.** Guardar la lista completa dejaría afuera a
+   un tipo de vehículo que se agregue mañana al catálogo, sin que nadie lo note.
+3. **Se desactiva, no se borra.** Un tipo con fechas y fotos cargadas es el registro de
+   que ese papel existió; borrarlo se llevaría el historial. Desactivado sale del
+   semáforo, de los avisos y de los formularios, y lo cargado queda. Solo se borra de
+   verdad un tipo que nunca se usó.
+
+**En el Excel no tienen columna propia** y es deliberado: el mapa de columnas es fijo
+(17-21 las fechas, 22-25 el resto) y hacerlo variable movería encabezado y anchos para
+quien ya usa el archivo. **No se pierden**: la columna «Estado» y la de documentos
+críticos salen de `documentos()`, que sí los incluye, así que un documento creado y
+vencido pinta la fila y se nombra.
+
+El catálogo completo se lee con **`Vehiculo::catalogoDocumentos()`** (fijos + creados);
+`Vehiculo::DOCUMENTOS` a secas son solo los cinco de la ley y se usa donde de verdad son
+los de la ley. Los tipos se leen **una vez por request**, memoizados en el **contenedor**
+y no en un `static`: el contenedor se rehace en cada test, así que ningún caché sobrevive
+al `RefreshDatabase`. Candados: `VehiculoTipoDocumentoTest` (12).
+
+## 5bis. Búsqueda: sin el alias (11-08-2026)
+
+El buscador de la flota mira **patente, marca, modelo, conductor, base y VIN**. El
+**alias quedó fuera por pedido del dueño**, y se anota acá porque es contraintuitivo: el
+alias es el nombre GRANDE de cada fila del listado («TREMAC», «NPR (CHEVY 1)»), así que
+un apodo que no esté también en la marca o el modelo **deja de encontrar su fila**. El
+rótulo del buscador dice exactamente por dónde busca — prometer de más manda a escribir
+algo que no encuentra nada, y se lee como que el vehículo no está cargado. Volver a
+incluirlo es una palabra en `Vehiculo::scopeBuscar` y otra en el rótulo.
+
 ## 6. Fuera de alcance (decidido, no olvidado)
 
 La planilla tiene tres bloques a medio usar que **no** se trajeron (decisión del

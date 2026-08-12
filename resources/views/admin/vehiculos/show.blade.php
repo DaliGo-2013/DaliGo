@@ -76,6 +76,30 @@
                                         Ver el documento
                                         <span class="font-normal text-neutral-400">· {{ $respaldo->tamano_kb }} KB</span>
                                     </a>
+                                    @can('manage vehiculos')
+                                        {{-- QUITAR la foto (pedido del dueño 11-08). Va discreto y
+                                             al lado de «Ver», no como botón rojo grande: el uso es
+                                             deshacer una subida equivocada, no una acción que se
+                                             busque. Pide confirmación porque borra un archivo de
+                                             verdad, y el texto DICE qué queda después: si había una
+                                             versión anterior vuelve, y si no, el documento se queda
+                                             sin respaldo. --}}
+                                        @php
+                                            $versiones = $respaldos->get($doc['clave'])?->count() ?? 0;
+                                        @endphp
+                                        <form method="POST" class="inline"
+                                              action="{{ route('admin.vehiculos.documentos.destroy', $respaldo) }}"
+                                              onsubmit="return confirm(@js($versiones > 1
+                                                  ? 'Quitar esta foto de «'.$doc['label'].'»? Vuelve a quedar la versión anterior.'
+                                                  : 'Quitar la foto de «'.$doc['label'].'»? El documento queda sin respaldo digital.'));">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="min-h-8 font-medium text-neutral-500 underline-offset-2 transition hover:text-red-700 hover:underline">
+                                                Quitar
+                                            </button>
+                                        </form>
+                                    @endcan
                                 @endif
                                 @can('manage vehiculos')
                                     {{-- <x-archivo-input> y NO un input nativo: el navegador

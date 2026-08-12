@@ -98,15 +98,62 @@
 </x-seccion>
 
 {{-- Documentos: el motivo del módulo. Cada fecha alimenta el semáforo y el
-     aviso automático; vacía = sin dato y sin alerta. --}}
+     aviso automático; vacía = sin dato y sin alerta.
+
+     LA FOTO VA JUNTO A SU FECHA (pedido del dueño 11-08-2026: «necesito un botón
+     de guardar para guardar las fotos»). Un documento son DOS datos —la foto y
+     hasta cuándo vale— y vivían en pantallas distintas: la foto se subía en la
+     ficha y la fecha había que escribirla acá, así que cargar un permiso de
+     circulación eran dos viajes. Ahora el «Guardar cambios» del final deja los
+     dos. La subida de a una de la ficha sigue existiendo y no se toca: esa es
+     para el teléfono, parado al lado del camión. --}}
+@php
+    $respaldosPorDoc = $vehiculo->exists
+        ? $vehiculo->respaldos->sortByDesc('id')->groupBy('documento')
+        : collect();
+@endphp
 <x-seccion titulo="Documentos y vencimientos">
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        @foreach (\App\Models\Vehiculo::DOCUMENTOS as $clave => $label)
+        {{-- El catálogo COMPLETO: los cinco de la ley (que son columnas) más los que
+             se hayan creado desde Tipos de documento. Los creados guardan su fecha en
+             `doc_creado[{id}]`; de acá para abajo se ven y se cargan igual. --}}
+        @foreach (\App\Models\Vehiculo::catalogoDocumentos() as $clave => $label)
+            {{-- Lo que a ESTE vehículo no le toca, no se pide. Un semirremolque no rinde
+                 emisiones y una póliza de carga peligrosa puede ser solo de los camiones:
+                 ofrecer el campo igual invita a escribir una fecha que la ficha después
+                 va a mostrar como «No aplica», o sea un dato que se guarda y no sirve.
+
+                 En el ALTA se muestran todos: el vehículo todavía no existe, así que no
+                 hay tipo contra el cual decidir (y el selector de tipo está en esta misma
+                 pantalla, sin recargar). --}}
+            @continue($vehiculo->exists && ! $vehiculo->documentoAplica($clave))
+            @php
+                $respaldo = $respaldosPorDoc->get($clave)?->first();
+                $idCreado = \App\Models\VehiculoDocumentoTipo::idDeClave($clave);
+                $campoFecha = $idCreado === null ? $clave : "doc_creado[$idCreado]";
+                $errorFecha = $idCreado === null ? $clave : "doc_creado.$idCreado";
+                $valorFecha = $vehiculo->exists ? $vehiculo->venceDe($clave)?->toDateString() : null;
+            @endphp
             <div>
-                <x-input-label :for="$clave" :value="$label" />
-                <x-text-input :id="$clave" :name="$clave" type="date" class="mt-1.5 w-full"
-                              :value="old($clave, $vehiculo->{$clave}?->toDateString())" />
-                <x-input-error :messages="$errors->get($clave)" class="mt-2" />
+                <x-input-label :for="$campoFecha" :value="$label" />
+                <x-text-input :id="$campoFecha" :name="$campoFecha" type="date" class="mt-1.5 w-full"
+                              :value="old($errorFecha, $valorFecha)" />
+                <x-input-error :messages="$errors->get($errorFecha)" class="mt-2" />
+
+                {{-- Sin `required` y sin auto-enviar, al revés que en la ficha: acá
+                     el archivo es opcional (casi siempre se viene a corregir una
+                     fecha) y el envío lo manda el botón del final, que es justo lo
+                     que se pidió. --}}
+                <div class="mt-1.5">
+                    <x-archivo-input :name="'respaldos['.$clave.']'"
+                                     accept="image/jpeg,image/png,image/webp,application/pdf"
+                                     capture="environment"
+                                     :texto="$respaldo ? 'Reemplazar la foto' : 'Subir la foto'"
+                                     :vacio="$respaldo
+                                        ? 'Hay una foto cargada · '.$respaldo->tamano_kb.' KB'
+                                        : 'Sin foto · se comprime sola, queda liviana'" />
+                    <x-input-error :messages="$errors->get('respaldos.'.$clave)" class="mt-2" />
+                </div>
             </div>
         @endforeach
         <div>
@@ -118,6 +165,7 @@
     </div>
     <p class="text-xs text-neutral-500">
         Una fecha vacía no genera alerta. El aviso llega {{ \App\Models\Vehiculo::DIAS_AVISO }} días antes y el día que vence.
+        Las fotos se guardan con el botón del final, junto con el resto de los cambios.
     </p>
 </x-seccion>
 

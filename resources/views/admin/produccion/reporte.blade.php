@@ -269,9 +269,30 @@
             };
         @endphp
         <div x-data="{ panel: @js($panelConError) }" class="space-y-4">
+            {{-- P-M11-12: con 2+ moldes activos para un tipo del reporte, la
+                 inferencia es ambigua y el jefe elige ANTES de autorizar. El
+                 select vive SIEMPRE visible (jamás dentro de un x-show: un
+                 required oculto aborta el envío en silencio, bitácora 28-07)
+                 y dentro del MISMO form de Autorizar. --}}
+            @if ($reporte->esPendienteDeRevision() && $moldesAmbiguos->isNotEmpty())
+                <div class="rounded-2xl border border-brand-100 bg-brand-50 p-4 sm:p-6">
+                    <x-input-label for="molde_id" value="¿Qué molde trabajó el turno?" />
+                    <x-select id="molde_id" name="molde_id" form="form-autorizar" class="mt-1.5 w-full bg-white">
+                        <option value="">— Elige un molde —</option>
+                        @foreach ($moldesAmbiguos as $candidato)
+                            <option value="{{ $candidato->id }}" @selected((string) old('molde_id') === (string) $candidato->id)>
+                                {{ $candidato->nombre }}{{ $candidato->tipoBotellon ? ' · '.$candidato->tipoBotellon->nombre : '' }}
+                            </option>
+                        @endforeach
+                    </x-select>
+                    <x-input-error :messages="$errors->get('molde_id')" class="mt-2" />
+                    <x-input-hint class="mt-2">Hay más de un molde activo para un tipo de este reporte: el contador de ciclos necesita saber cuál corrió.</x-input-hint>
+                </div>
+            @endif
+
             <div class="flex flex-wrap gap-3">
                 @if ($reporte->esPendienteDeRevision())
-                    <form method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"
+                    <form id="form-autorizar" method="POST" action="{{ route('admin.produccion.reporte.aprobar', $reporte) }}"
                           x-on:submit="if (! confirm('¿Autorizar el reporte de ' + @js($reporte->soplador->name) + '?')) $event.preventDefault()">
                         @csrf
                         <x-primary-button>Autorizar</x-primary-button>
