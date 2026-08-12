@@ -85,7 +85,7 @@
 @endphp
 
 <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
-     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }} }">
+     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, cubicar: false }">
 
     {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
          Pedido del dueño (10-08): «la descripción del camión la quiero adentro del
@@ -452,6 +452,26 @@
                 </details>
             @endif
 
+            {{-- CUBICAR: medir un bulto que no está en el catálogo y verlo mientras se
+                 define (pedido del dueño 12-08, mostrando el panel de EasyCargo). Ver
+                 `_cubicar.blade.php`.
+
+                 Va en el menú y no como botón suelto, igual que todo lo demás, y NO en el
+                 link compartido: cubicar es armar la carga, no mirarla. --}}
+            <details open class="group">
+                <summary class="{{ $titulo }} flex cursor-pointer select-none list-none items-center justify-between rounded hover:text-neutral-600 [&::-webkit-details-marker]:hidden">
+                    Cubicar <span class="transition group-open:rotate-180">▾</span>
+                </summary>
+                <button type="button" @click="cubicar = ! cubicar"
+                        :aria-pressed="cubicar ? 'true' : 'false'"
+                        class="{{ $btn }} mt-1 w-full"
+                        x-text="cubicar ? 'Cerrar el cubicaje' : 'Medir un bulto'"></button>
+                <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
+                    Medidas, unidades y kilos, con la caja a escala. Para lo que no está en
+                    el catálogo.
+                </p>
+            </details>
+
             {{-- IMPORTAR DE EXCEL (pedido del dueño 06-08). Ver `_importar.blade.php`:
                  se PEGA lo copiado de la planilla, sin subir archivo. --}}
             <details class="group">
@@ -536,6 +556,11 @@
 
     @if (! $publico)
         @include('admin.carga._acomodo', ['escena' => $escena])
+        {{-- El panel de cubicaje va DENTRO del recuadro del visor, como el del acomodo:
+             los dos son la misma clase de cosa —una herramienta del menú que se abre
+             abajo— y sacarlo afuera habría vuelto a llenar la pantalla de tarjetas, que
+             es lo que el dueño pidió recortar el 10-08. --}}
+        @include('admin.carga._cubicar')
     @endif
 
     {{-- La franja del camión y el veredicto viven ARRIBA, antes del lienzo (12-08).
