@@ -280,4 +280,27 @@ class PlanCargaCompartidoTest extends TestCase
         $ajeno = User::factory()->create();
         $this->actingAs($ajeno)->get($destino)->assertRedirect(route('dashboard'));
     }
+
+    /**
+     * El cartel de «No cabe todo» llega al link, pero SIN el lenguaje de adentro.
+     *
+     * Desde el 12-08 el veredicto vive en la franja de arriba del visor, que es
+     * compartida por la pantalla interna y la pública. La versión interna dice «con eso
+     * se negocia», que es una instrucción para el vendedor: del otro lado del link hay
+     * un cliente o un conductor, y leerlo ahí suena a que se está calculando cuánto
+     * apretarlo.
+     */
+    public function test_el_link_dice_que_no_cabe_pero_no_habla_de_negociar(): void
+    {
+        // 600 botellones son 120 bolsas y en el HD35 entran 84.
+        $res = $this->get($this->link(['lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 600]]]));
+
+        $res->assertOk()
+            ->assertSee('No cabe todo')
+            ->assertSee('Queda carga afuera')
+            ->assertDontSee('se negocia');
+
+        // Y una sola vez: la tabla de abajo ya no repite el veredicto.
+        $this->assertSame(1, substr_count($res->getContent(), 'No cabe todo'));
+    }
 }

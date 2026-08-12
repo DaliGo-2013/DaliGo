@@ -1764,6 +1764,86 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->assertSee('botón derecho para mover');
     }
 
+    /**
+     * EL VEREDICTO Y LA FICHA DEL CAMIÓN VAN ARRIBA DEL DIBUJO (pedido del dueño
+     * 12-08-2026, dibujado sobre la pantalla).
+     *
+     * El «No cabe todo» vivía en una tarjeta DEBAJO del visor: había que mirar el
+     * camión, bajar, y recién ahí enterarse de que no entraba. La ficha del camión
+     * estaba al pie del recuadro, o sea después del tablero de acomodo — a dos
+     * pantallazos del dibujo que describe.
+     *
+     * Se mide por POSICIÓN en el HTML contra el `<canvas>`, que es lo que de verdad se
+     * pidió: un `assertSee` seguiría verde con el cartel de vuelta abajo.
+     */
+    private function posiciones(string $html): array
+    {
+        $lienzo = strpos($html, '<canvas id="carga3d"');
+        $this->assertNotFalse($lienzo, 'No está el lienzo del visor.');
+
+        return [
+            'lienzo' => $lienzo,
+            'veredicto' => strpos($html, 'No cabe todo'),
+            'ficha' => strpos($html, 'Medidas útiles'),
+        ];
+    }
+
+    public function test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo(): void
+    {
+        // 600 botellones son 120 bolsas y en el HD35 entran 84.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
+            ->assertOk()->assertSee('No cabe todo')->getContent();
+
+        $p = $this->posiciones($html);
+        $this->assertNotFalse($p['veredicto']);
+        $this->assertLessThan($p['lienzo'], $p['veredicto'],
+            'El cartel de «No cabe todo» volvió a quedar debajo del dibujo.');
+    }
+
+    public function test_la_ficha_del_camion_va_arriba_del_lienzo(): void
+    {
+        $html = $this->verMixta([['tipo' => $this->caja->id, 'cantidad' => 10]])
+            ->assertOk()->getContent();
+
+        $p = $this->posiciones($html);
+        $this->assertNotFalse($p['ficha'], 'Se perdió la ficha del camión del visor.');
+        $this->assertLessThan($p['lienzo'], $p['ficha'],
+            'La ficha del camión volvió al pie del recuadro.');
+        // Y sigue trayendo los cuatro datos que se pidieron.
+        foreach (['Medidas útiles', 'Volumen', 'Carga máxima', 'Piso libre en la puerta'] as $dato) {
+            $this->assertStringContainsString($dato, $html);
+        }
+    }
+
+    public function test_el_veredicto_se_dice_una_sola_vez(): void
+    {
+        // Antes estaba arriba y abajo a la vez mientras se movía. Decir dos veces lo
+        // mismo en la misma pantalla es justo el exceso de texto que el dueño pidió
+        // recortar el 10-08.
+        $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])->getContent();
+
+        $this->assertSame(1, substr_count($html, 'No cabe todo'));
+    }
+
+    public function test_en_cuanto_entra_el_cartel_lleva_los_numeros_y_no_la_frase_pelada(): void
+    {
+        // La pregunta fue «¿me entran 500?»: la respuesta útil es cuántos entran y
+        // cuántos quedan, no un «no cabe todo» que obliga a bajar a buscar el número.
+        $res = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'tipo_bulto_id' => $this->bolsa->id,
+            'cantidad' => 500,
+        ]));
+
+        $res->assertOk()
+            ->assertSee('No cabe todo')
+            ->assertSee('De tus 500 entran 420. Quedan 80 afuera.');
+
+        $p = $this->posiciones($res->getContent());
+        $this->assertLessThan($p['lienzo'], $p['veredicto']);
+        $this->assertSame(1, substr_count($res->getContent(), 'No cabe todo'));
+    }
+
     public function test_el_encuadre_mide_el_dibujo_y_no_una_caja_supuesta(): void
     {
         // El camión se veía chico y corrido a la derecha (reporte del dueño 05-08):
