@@ -127,6 +127,22 @@ class PlanDeCargaExcel
         // que el propio motor dice que sabe.
         $this->filas->celdas([[1, 'Los cupos son un máximo geométrico (pasillo 0, factor 1). Verificar contra la carga real antes de comprometer un viaje.', 'aviso']]);
 
+        // EL CAMIÓN YA IBA CON CARGA (lote 5). Sin decirlo, la planilla muestra la caja
+        // útil y la carga máxima del camión VACÍO, y el andén lee que puede subir todo
+        // eso — el plan de abajo se calculó contra bastante menos.
+        $ocupado = $d['mixta']['ocupado'] ?? null;
+        if ($ocupado['hay'] ?? false) {
+            $partes = [];
+            if ($ocupado['cm'] > 0) {
+                $partes[] = number_format($ocupado['cm'] / 100, 2, ',', '.').' m de piso';
+            }
+            if ($ocupado['kg'] > 0) {
+                $partes[] = number_format($ocupado['kg'], 0, ',', '.').' kg';
+            }
+            $this->filas->celdas([[1, 'El camión YA SALE CON CARGA: '.implode(' y ', $partes)
+                .'. Este plan es lo que se le suma; las medidas de arriba son las del camión vacío.', 'aviso']]);
+        }
+
         // ACOMODO A MANO: si alguien movió los bloques, la planilla lo dice igual que la
         // pantalla. Es la hoja que se imprime y se le da al chofer, así que es JUSTO
         // donde no puede faltar: el orden de carga de más abajo sale de esas posiciones,
@@ -207,22 +223,42 @@ class PlanDeCargaExcel
             return;
         }
 
+        // ¿Es un reparto con paradas? Entonces la tabla lleva una columna más: cargar
+        // en el orden correcto sin saber a qué parada va cada bloque es media
+        // instrucción — y es JUSTO acá donde importa, porque el que carga es quien
+        // decide si el bloque termina contra la puerta o contra la cabina.
+        $conParadas = array_filter($bloques, fn (array $b) => ($b['parada'] ?? 0) > 0) !== [];
+
         $this->filas->vacia();
         $this->filas->celdas([[1, 'ORDEN DE CARGA — del fondo hacia la puerta', 'seccion'], [2, '', 'seccion'], [3, '', 'seccion'], [4, '', 'seccion']]);
-        $this->filas->celdas([
+
+        $cabeceras = [
             [1, '#', 'cab'], [2, 'Producto', 'cab'], [3, 'Cód.', 'cab'],
             [4, 'Bultos', 'cab'], [5, 'Rejilla (largo × ancho × alto)', 'cab'],
-        ]);
+        ];
+        if ($conParadas) {
+            $cabeceras[] = [6, 'Baja en', 'cab'];
+        }
+        $this->filas->celdas($cabeceras);
 
         foreach (array_values($bloques) as $n => $b) {
             $r = $b['rejilla'];
-            $this->filas->celdas([
+            $celdas = [
                 [1, $n + 1, 'numero'],
                 [2, $b['nombre'] ?? '—', 'texto'],
                 [3, $b['letra'] ?? '', 'negrita'],
                 [4, $b['cantidad'], 'numero'],
                 [5, sprintf('%d × %d × %d', $r['largo'], $r['ancho'], $r['alto']), 'texto'],
-            ]);
+            ];
+            if ($conParadas) {
+                $celdas[] = [6, ($b['parada'] ?? 0) > 0 ? 'Parada '.$b['parada'] : 'Sin asignar', 'texto'];
+            }
+            $this->filas->celdas($celdas);
+        }
+
+        if ($conParadas) {
+            $this->filas->celdas([[1, 'Lo que baja primero se carga último: la parada 1 queda contra la puerta. '
+                .'Cargando en este orden no hay que bajar mercadería a la vereda para llegar a la de atrás.', 'aviso']]);
         }
     }
 

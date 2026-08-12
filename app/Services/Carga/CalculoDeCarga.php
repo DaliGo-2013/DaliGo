@@ -69,15 +69,16 @@ class CalculoDeCarga
     /**
      * Máximo de bultos de UN tipo en un vehículo vacío.
      *
-     * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int}  $vehiculo  cm y kg
+     * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int,ocupado?:int}  $vehiculo  cm y kg
      * @param  array{largo:int,ancho:int,alto:int,peso?:float|null,unidades?:int,apilable_max?:int,orientacion_fija?:bool}  $bulto  cm y kg
      * @return array{bultos:int,unidades:int,rejilla:array{largo:int,ancho:int,alto:int},orientacion:array{largo:int,ancho:int,alto:int},limite:string,peso_kg:float,volumen_ocupado_m3:float,volumen_vehiculo_m3:float,ocupacion:float}
      */
     public function cupo(array $vehiculo, array $bulto): array
     {
         // El pasillo se descuenta del LARGO: es el paso desde la puerta hacia
-        // adentro, no una franja a lo ancho.
-        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
+        // adentro, no una franja a lo ancho. Lo mismo lo que ya está cargado
+        // (`ocupado`): son metros de piso que este cálculo no puede usar.
+        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0) - (int) ($vehiculo['ocupado'] ?? 0));
         $W = (int) $vehiculo['ancho'];
         $H = (int) $vehiculo['alto'];
 
@@ -198,7 +199,7 @@ class CalculoDeCarga
      * verificable a mano contra los cupos de referencia, y es la que usa la comparativa
      * entre camiones. La equivalencia entre las dos está atada por candado.
      *
-     * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int}  $vehiculo  cm y kg
+     * @param  array{largo:int,ancho:int,alto:int,peso_max_kg?:int|null,pasillo?:int,ocupado?:int}  $vehiculo  cm y kg
      * @param  list<array{bulto: array, cantidad?: int, abierta?: bool}>  $lineas  cantidad EN BULTOS
      * @param  bool  $enOrdenDeLista  respeta el orden dado en vez de ordenar por volumen
      * @return array{lineas: array<int, array{pedidos:?int,abierta:bool,colocados:int,unidades_colocadas:int,motivo:?string,lleno_por:?string}>, bloques: list<array{linea:int,x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>, cabe_todo:bool, peso_kg:float, volumen_ocupado_m3:float, volumen_vehiculo_m3:float, ocupacion:float}
@@ -367,12 +368,39 @@ class CalculoDeCarga
         $vol = fn (int $i) => $lineas[$i]['bulto']['largo'] * $lineas[$i]['bulto']['ancho'] * $lineas[$i]['bulto']['alto'];
         $base = fn (int $i) => ! empty($lineas[$i]['bulto']['soporta_peso_encima'])
             && isset(self::SOPORTA_ENCIMA[$lineas[$i]['bulto']['categoria'] ?? '']);
+        // Sin parada declarada, todo es una sola entrega: 0 para todos y el criterio
+        // no muerde. Es lo que mantiene intactos los cupos verificados.
+        $parada = fn (int $i) => (int) ($lineas[$i]['parada'] ?? 0);
 
         $orden = array_keys($lineas);
-        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase) {
+        usort($orden, function (int $a, int $b) use ($enOrdenDeLista, $abierta, $vol, $base, $priorizarBase, $parada) {
             if ($abierta($a) !== $abierta($b)) {
                 return $abierta($a) ? 1 : -1;
             }
+
+            /*
+             * ── LIFO: LO QUE BAJA PRIMERO SE CARGA ÚLTIMO (lote 6) ──
+             *
+             * En un reparto con varias paradas, el orden de estiba no es una preferencia:
+             * es una restricción física. Si la mercadería de la parada 3 viaja contra la
+             * puerta, en la parada 1 hay que BAJARLA A LA VEREDA para llegar a lo que sí
+             * se entrega ahí, volver a subirla, y repetirlo en cada parada.
+             *
+             * Por eso las paradas se ordenan al REVÉS: la última primero. El motor coloca
+             * cada bloque en la región de menor x —contra la cabina— así que cargar
+             * primero la parada 3 la deja al fondo y la parada 1 termina junto a la
+             * puerta, que es de donde se descarga.
+             *
+             * Va ANTES que el volumen y que la base: se puede negociar qué producto va
+             * abajo, no en qué orden se baja del camión. Y va DESPUÉS de `abierta` a
+             * propósito — ver la nota de esa regla: una línea «lo que quepa» se acomoda
+             * en lo que sobra y por eso siempre queda contra la puerta, sin importar a
+             * qué parada se la haya asignado. La pantalla lo avisa.
+             */
+            if ($parada($a) !== $parada($b)) {
+                return $parada($b) <=> $parada($a);
+            }
+
             if ($priorizarBase && $base($a) !== $base($b)) {
                 return $base($a) ? -1 : 1;
             }
@@ -392,13 +420,22 @@ class CalculoDeCarga
      */
     private function acomodar(array $vehiculo, array $lineas, array $orden, bool $aprovechar): array
     {
-        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0));
+        // Lo que el camión YA lleva encima (lote 5) sale del largo utilizable y, además,
+        // corre el arranque de las regiones: la carga vieja va contra la CABINA porque se
+        // subió primero, así que lo nuevo empieza donde termina ella y llega hasta la
+        // puerta. Restarlo sin correr el origen dibujaría lo nuevo encima de lo que ya
+        // viaja. Va acá adentro y no en `carga()` porque cada plan se acomoda por su
+        // cuenta: el camión sale igual de medio cargado los pruebe el motor como los
+        // pruebe.
+        $ocupado = max(0, (int) ($vehiculo['ocupado'] ?? 0));
+        $L = max(0, (int) $vehiculo['largo'] - (int) ($vehiculo['pasillo'] ?? 0) - $ocupado);
         $W = (int) $vehiculo['ancho'];
         $H = (int) $vehiculo['alto'];
         $topePeso = $vehiculo['peso_max_kg'] ?? null;
 
-        // Regiones de piso libres. Arranca con toda la caja menos el pasillo.
-        $regiones = ($L > 0 && $W > 0) ? [['x' => 0, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];
+        // Regiones de piso libres: la caja menos el pasillo y menos lo que ya viaja
+        // arriba, arrancando DESPUÉS de esa carga vieja.
+        $regiones = ($L > 0 && $W > 0) ? [['x' => $ocupado, 'y' => 0, 'largo' => $L, 'ancho' => $W]] : [];
 
         $porLinea = [];
         $estado = [];

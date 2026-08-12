@@ -382,6 +382,73 @@
                                         @endif
                                     </div>
 
+                                    {{-- ═══ CÓMO CAE EL PESO ENTRE LOS EJES ═══
+                                         Lote 5, con los datos de ejes del 12-08. Solo aparece en
+                                         los camiones que tienen las DOS medidas; en el resto no se
+                                         muestra nada y las notas del catálogo dicen qué falta.
+
+                                         Va junto al peso porque responde la otra mitad de la misma
+                                         pregunta: los kilos totales dicen si te pasás de la carga
+                                         máxima, y esto dice si están puestos donde corresponde. Un
+                                         camión puede ir por debajo del tope y aun así llevar el eje
+                                         trasero pasado. --}}
+                                    @if ($mixta['ejes'] !== null)
+                                        @php $ej = $mixta['ejes']; @endphp
+                                        <div class="mt-4 rounded-lg border border-neutral-200 p-3">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Cómo cae el peso</p>
+                                            <div class="mt-2 flex items-baseline gap-4 text-sm" @if ($ej['total_kg'] <= 0) hidden @endif>
+                                                <span class="text-neutral-500">Eje delantero
+                                                    <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($ej['delantero_kg'], 0, ',', '.') }} kg</span>
+                                                    <span class="tabular-nums text-neutral-400">({{ $ej['delantero_pct'] }}%)</span>
+                                                </span>
+                                                <span class="text-neutral-500">Eje trasero
+                                                    <span class="font-semibold tabular-nums text-neutral-900">{{ number_format($ej['trasero_kg'], 0, ',', '.') }} kg</span>
+                                                    <span class="tabular-nums text-neutral-400">({{ $ej['trasero_pct'] }}%)</span>
+                                                </span>
+                                            </div>
+                                            {{-- Una barra que se lee de un vistazo: el reparto entre los
+                                                 dos apoyos. Los porcentajes negativos se acotan solo en la
+                                                 barra —no en el número— porque un ancho negativo no existe;
+                                                 el caso lo grita el aviso de abajo. --}}
+                                            @if ($ej['total_kg'] > 0)
+                                                <div class="mt-2 flex h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                                                    <div class="h-1.5 bg-brand-600" style="width: {{ max(0, min(100, $ej['delantero_pct'])) }}%"></div>
+                                                    <div class="h-1.5 bg-neutral-500" style="width: {{ max(0, min(100, $ej['trasero_pct'])) }}%"></div>
+                                                </div>
+                                            @endif
+
+                                            {{-- Lo que quedó fuera del reparto, con nombre y apellido. La
+                                                 mitad del catálogo todavía no tiene el peso cargado —está
+                                                 en null a propósito, no se inventa— y antes eso hacía
+                                                 desaparecer la sección entera sin decir por qué. --}}
+                                            @if ($ej['sin_peso'] !== [])
+                                                <p class="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                                                    @if ($ej['total_kg'] <= 0)
+                                                        <strong>No se puede repartir esta carga.</strong>
+                                                    @else
+                                                        <strong>Falta peso.</strong> El reparto de arriba deja afuera
+                                                    @endif
+                                                    {{ implode(', ', $ej['sin_peso']) }}: no {{ count($ej['sin_peso']) === 1 ? 'tiene' : 'tienen' }}
+                                                    el peso cargado en el catálogo. Con ese dato el número sale solo.
+                                                </p>
+                                            @endif
+
+                                            @if ($ej['aliviana_el_delantero'])
+                                                <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
+                                                    <strong>La carga está toda detrás del eje trasero.</strong>
+                                                    En vez de apoyar sobre el delantero, lo LEVANTA: se pierde dirección y freno.
+                                                    Hay que correr carga hacia la cabina.
+                                                </p>
+                                            @endif
+
+                                            <p class="mt-2 text-xs leading-relaxed text-neutral-400">
+                                                Reparte solo la CARGA, no el peso del camión vacío. Sirve para comparar
+                                                dos formas de acomodar lo mismo; para avisar que un eje se pasa falta
+                                                cuánto aguanta cada uno.
+                                            </p>
+                                        </div>
+                                    @endif
+
                                     @if ($mixta['peligrosas'] !== [])
                                         <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
                                             <strong>Mercancía peligrosa en la carga
@@ -396,6 +463,61 @@
                                         producto arriba de otro. Capacidad práctica, no promesa.
                                     </p>
                                 </div>
+
+                                {{-- ═══ EL ORDEN DE DESCARGA ═══
+                                     Lote 6: multi-drop LIFO. Solo aparece si alguien declaró
+                                     paradas; con una sola entrega esta sección no existe.
+
+                                     Va en orden de ENTREGA (parada 1 primero) y no de carga,
+                                     que es el inverso: esta lista la lee el CHOFER, y él las
+                                     recorre en el orden en que maneja. El orden de carga —el
+                                     del andén, del fondo hacia la puerta— ya lo dice el Excel. --}}
+                                @if ($mixta['paradas'] !== null)
+                                    <x-seccion titulo="El reparto, parada por parada">
+                                        <p class="text-xs leading-relaxed text-neutral-500">
+                                            Lo que baja primero se carga último. La parada 1 queda contra la
+                                            <span class="font-medium text-neutral-700">puerta</span> y la última contra la cabina,
+                                            así no hay que bajar mercadería a la vereda para llegar a la de atrás.
+                                        </p>
+
+                                        <ol class="space-y-2">
+                                            @foreach ($mixta['paradas']['grupos'] as $grupo)
+                                                <li class="flex gap-3 rounded-xl border border-neutral-200 bg-white p-3">
+                                                    <span @class([
+                                                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                                                        'bg-brand-600 text-white' => $grupo['parada'] > 0,
+                                                        'bg-neutral-200 text-neutral-600' => $grupo['parada'] === 0,
+                                                    ])>{{ $grupo['parada'] > 0 ? $grupo['parada'] : '—' }}</span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-sm font-medium text-neutral-900">
+                                                            {{ $grupo['parada'] > 0 ? 'Parada '.$grupo['parada'] : 'Sin parada asignada' }}
+                                                        </p>
+                                                        <ul class="mt-0.5 space-y-0.5">
+                                                            @foreach ($grupo['lineas'] as $fila)
+                                                                <li class="text-sm text-neutral-600">
+                                                                    {{ $fila['modelo']->nombre }}
+                                                                    <span class="tabular-nums text-neutral-400">·
+                                                                        {{ number_format($fila['cargadas_unidades'], 0, ',', '.') }} de
+                                                                        {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}</span>
+                                                                    @if ($fila['motivo'] !== null)
+                                                                        <span class="font-medium text-red-600">· queda carga afuera</span>
+                                                                    @endif
+                                                                </li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ol>
+
+                                        @if ($mixta['paradas']['sin_asignar'] > 0)
+                                            <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                                                Hay {{ $mixta['paradas']['sin_asignar'] }} producto(s) sin parada asignada. Se cargan
+                                                junto a la puerta, o sea que salen en la primera entrega — si van a otra, ponéles el número.
+                                            </p>
+                                        @endif
+                                    </x-seccion>
+                                @endif
 
                                 {{-- El detalle por producto: qué entra, qué queda afuera y POR QUÉ.
                                      El color de cada fila es la leyenda del visor. --}}
@@ -1056,6 +1178,20 @@
                                                            : `Cuántos se apilan uno sobre otro. Vacío deja el tope de siempre: ${topeDeCatalogo(linea)}.`"
                                                        class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                                             </div>
+                                            {{-- LA PARADA EN LA QUE BAJA (lote 6: multi-drop LIFO).
+                                                 Vacío = una sola entrega, que es el caso de siempre.
+
+                                                 Es un NÚMERO de orden de entrega y no el nombre del
+                                                 cliente: lo que el motor necesita es la secuencia
+                                                 —quién baja antes que quién— y un nombre no se
+                                                 ordena. El nombre vive en la hoja de ruta. --}}
+                                            <div>
+                                                <label class="text-xs font-medium text-neutral-600">Baja en la parada</label>
+                                                <input type="number" :name="`lineas[${i}][parada]`" x-model="linea.parada" @input="ensuciar()"
+                                                       min="1" max="20" inputmode="numeric" placeholder="—"
+                                                       title="El número de parada del reparto: 1 es la primera que se entrega. Lo que baja primero se carga último, contra la puerta. Vacío = una sola entrega."
+                                                       class="mt-1 block w-full rounded-lg border-neutral-300 px-3 py-2 text-base sm:text-sm tabular-nums shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
                                         </div>
 
                                         <div class="flex flex-wrap items-center gap-1 border-t border-neutral-200 pt-2.5 text-xs">
@@ -1123,6 +1259,50 @@
                                 <span x-show="sucio" x-cloak>Recalcular ·  hay cambios</span>
                             </x-primary-button>
                         </div>
+                        {{-- ═══ EL CAMIÓN NO SIEMPRE SALE VACÍO ═══
+                             Lote 5. Pasa todo el tiempo: el camión vuelve de un reparto con
+                             carga arriba, o se le suma un pedido a uno que ya está armado.
+                             Hasta ahora eso se simulaba a ojo eligiendo un camión más chico.
+
+                             Va detrás de un botón porque el caso normal ES el camión vacío:
+                             dos campos siempre visibles con 0 adentro son dos campos que
+                             estorban en cada simulación para servir en una de cada diez.
+
+                             LOS DOS CAMPOS JUNTOS, no de a uno: descontar el espacio sin
+                             descontar los kilos deja el cartel de sobrepeso en verde con el
+                             camión pasado. Ver `CamionSimulacion::paraCalculo`. --}}
+                        @php $yaLleva = ($mixta['ocupado']['hay'] ?? false); @endphp
+                        <div class="mt-3" x-data="{ abierto: {{ $yaLleva ? 'true' : 'false' }} }">
+                            <button type="button" @click="abierto = ! abierto"
+                                    :aria-pressed="abierto ? 'true' : 'false'"
+                                    class="text-xs font-medium text-brand-700 underline-offset-2 hover:underline">
+                                <span x-show="! abierto">El camión ya lleva carga</span>
+                                <span x-show="abierto" x-cloak>Ocultar lo que ya lleva</span>
+                            </button>
+
+                            <div x-show="abierto" x-cloak class="mt-2 flex flex-wrap items-end gap-3">
+                                <div>
+                                    <label for="ocupado_cm" class="text-xs text-neutral-500">Piso ya ocupado (cm)</label>
+                                    <x-text-input id="ocupado_cm" name="ocupado_cm" type="number" min="0" max="2000"
+                                                  class="mt-1 w-32" inputmode="numeric" placeholder="0"
+                                                  :value="($mixta['ocupado']['cm'] ?? 0) ?: ''"
+                                                  @input="ensuciar()" />
+                                </div>
+                                <div>
+                                    <label for="ocupado_kg" class="text-xs text-neutral-500">Kilos ya cargados</label>
+                                    <x-text-input id="ocupado_kg" name="ocupado_kg" type="number" min="0" max="40000"
+                                                  step="0.1" class="mt-1 w-32" inputmode="decimal" placeholder="0"
+                                                  :value="($mixta['ocupado']['kg'] ?? 0) ?: ''"
+                                                  @input="ensuciar()" />
+                                </div>
+                                <p class="max-w-md text-xs leading-snug text-neutral-500">
+                                    Se descuentan del largo útil y de la carga máxima. Lo que ya viaja se toma
+                                    contra la cabina —se subió primero— así que lo nuevo se acomoda desde ahí
+                                    hacia la puerta, y el dibujo lo muestra en gris.
+                                </p>
+                            </div>
+                        </div>
+
                         <p class="mt-2 text-xs text-neutral-400">
                             Las cantidades van en unidades sueltas (botellones, cajas, equipos). Los botellones
                             viajan en bolsas de 5: se completa la bolsa.

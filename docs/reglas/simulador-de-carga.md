@@ -1745,6 +1745,160 @@ un `assertSee` seguiría verde con el cartel de vuelta abajo
 (`test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo`,
 `test_la_ficha_del_camion_va_arriba_del_lienzo`, `test_el_veredicto_se_dice_una_sola_vez`).
 
+## 4quater. EL CAMIÓN QUE SALE A MEDIO CARGAR (lote 5, 12-08-2026)
+
+Pasa todo el tiempo: el camión vuelve de un reparto con carga arriba, o se le suma un
+pedido a uno que ya está armado. Hasta acá eso se simulaba **a ojo eligiendo un camión
+más chico**, que da un número parecido por la razón equivocada — y que además deja el
+tope de kilos del camión chico, que no es el que va a viajar.
+
+Dos campos en la carga mixta, detrás de un botón (**«El camión ya lleva carga»**, porque
+el caso normal es el camión vacío y dos campos con 0 adentro estorban en cada simulación
+para servir en una de cada diez):
+
+- **Piso ya ocupado (cm)** — se descuenta del largo útil, y **corre el arranque** de las
+  regiones. La carga vieja va contra la **cabina** porque se subió primero; restarla sin
+  correr el origen dibujaría lo nuevo encima de lo que ya viaja.
+- **Kilos ya cargados** — salen del tope de peso.
+
+**LOS DOS VAN JUNTOS, y esa es la regla.** Descontar el espacio sin descontar los kilos
+deja el **cartel de sobrepeso en verde con el camión pasado**, que es peor que no tener
+la función: con 1.200 kg ya arriba de un HD35 (1.400), un pedido de 300 kg se pasa, y
+contra el tope entero habría dado verde. Por eso viajan como **un solo parámetro** de
+`CamionSimulacion::paraCalculo($ocupadoCm, $ocupadoKg)` y no como dos campos sueltos que
+alguien pueda completar a medias. Candado:
+`test_los_kilos_que_ya_viajan_salen_del_tope_o_el_cartel_miente`.
+
+**El visor lo dibuja en gris**, translúcido y hasta el techo, y **siempre** —aunque el
+lienzo esté en 0 bultos, porque no depende de la animación: ya estaba arriba antes de
+empezar. Sin dibujarlo, la carga nueva aparece flotando a dos metros de la cabina y el
+hueco se lee como un error del acomodo, que es exactamente lo contrario de lo que pasa.
+Va hasta el techo a propósito: no sabemos cómo está estibada la carga vieja, solo que ese
+pedazo de camión no está disponible — dibujarla bajita sugeriría lugar que el motor no
+está ofreciendo.
+
+**Se dice en los tres lados**: la franja del camión («Ya lleva 2,50 m · 900 kg —
+descontado»), el dibujo y el **Excel** («El camión YA SALE CON CARGA… las medidas de
+arriba son las del camión vacío»). Un cupo más chico sin decir por qué se lee como un
+error del cálculo.
+
+**El recorte al largo del camión se hace en el controlador, no en la validación**: el
+tope real depende de CUÁL camión es, y ponerlo en las reglas dejaría el formulario
+inválido de golpe al cambiar de camión. Se recorta y la pantalla lo dice (`recortado`).
+
+### 4quater-bis CÓMO CAE EL PESO ENTRE LOS EJES (12-08-2026)
+
+Los datos llegaron el 12-08 y la función se construyó ese día. **Responde la otra mitad
+de la pregunta del peso:** los kilos totales dicen si te pasás de la carga máxima; esto
+dice si están puestos donde corresponde. Un camión puede ir **por debajo del tope y aun
+así llevar el eje trasero pasado** — y si la carga va muy atrás, el eje delantero se
+aliviana, que es un problema de dirección y de frenos, no de multa.
+
+**DOS NÚMEROS Y UNA SOLA REFERENCIA.** Todo el simulador mide desde el **frente de la
+caja de carga** (el x = 0 del motor y del visor), así que los ejes se anotan contra ese
+mismo punto: `entre_ejes_cm` y `eje_trasero_cm`. El eje delantero **no se guarda**: sale
+de restar, y da negativo porque está bajo la cabina. Un tercer número podría contradecir
+a los otros dos. Mezclar referencias —uno desde el paragolpes, otro desde la cabina— es
+la forma segura de que el brazo de palanca salga mal y nadie lo note.
+
+**La física es una palanca de dos apoyos** y es exacta para lo que se pregunta: se toma
+el CENTRO de cada bloque —adentro del bloque la carga es una rejilla pareja, eso lo
+garantiza el motor— y se reparte en proporción inversa a la distancia a cada eje. La
+fracción **no se acota a [0, 1]**: si la carga queda detrás del eje trasero, el delantero
+recibe negativo, y eso no es un error de cuenta sino el camión levantando la trompa. Se
+avisa en rojo en vez de esconderlo con un `min()`.
+
+**Lo que el cálculo NO incluye, y la pantalla lo dice:**
+
+- **El peso del camión vacío.** Reparte solo la carga. La tara y cómo apoya no están
+  medidas, y sumarlas de memoria convertiría un número exacto en una estimación
+  disfrazada. Sirve igual para lo que se usa: comparar dos formas de acomodar lo mismo.
+- **La capacidad de cada eje.** Sin eso no se puede decir «te pasaste de un eje», solo
+  cuánto le toca. Cuando lleguen los dos números por camión, el aviso sale de comparar y
+  este cálculo no se toca.
+
+**UN PRODUCTO SIN PESO NO HACE DESAPARECER LA SECCIÓN: LA EXPLICA.** La mitad del
+catálogo tiene `peso_kg` en null a propósito. La primera versión devolvía `null` y la
+sección se esfumaba — se veía en una carga y no en la otra, sin ninguna pista. Ahora
+vuelve con el nombre del que falta pesar («no se puede repartir esta carga» si no hay
+ninguno con peso, «el reparto deja afuera X» si es parcial). El hueco apareció probando
+en el navegador, no en la suite.
+
+**Solo el Chevy 3 tiene los dos datos** y es el único que muestra el reparto. Los otros
+tres quedaron sin medir a propósito y sus `notas` en el seeder dicen exactamente qué
+falta; el candado `test_el_chevy_sembrado_es_el_unico_con_los_ejes_medidos` se pone rojo
+el día que alguien los complete «para que funcione».
+
+| Camión | Qué llegó el 12-08 | Qué falta |
+|---|---|---|
+| **Chevy 3 (NQR 919)** | entre ejes 417,5 cm · posterior de cabina al eje trasero 360 cm | nada (417,5 → 418: el módulo trabaja en cm enteros y medio cm sobre 4 m es 0,12%) |
+| HINO 500 FC 1118 | entre ejes 435 cm | del frente de la caja al centro del eje trasero |
+| Hyundai HD35 | «114,5 cm aprox» | **de qué a qué se midió** — no coincide con la distancia entre ejes de un HD35 (~242 cm) ni con una caja de 430 medida desde su frente |
+| Contenedor 40' | la ficha del **Actros 2545 LS** | esa ficha es del TRACTO, y la carga va sobre el SEMI (ver abajo) |
+
+**El contenedor es otra cuenta, no la misma con otros números.** En un tracto + semi la
+carga se parte entre los ejes del semi y la **quinta rueda**, y recién de ahí baja a los
+ejes del tracto: no es la palanca de dos apoyos que resuelve `RepartoPorEje`. Hacen falta
+dos medidas del semi que no están —del frente de la caja a la quinta rueda, y de la
+quinta rueda al centro del tren de ejes—. Cargar ahí los números del Actros daría un
+reparto con cara de exacto que describe otro vehículo. De la ficha sí sirve, para cuando
+se haga: capacidades 7.500 (delantero) / 7.500 y 13.000 (traseros), tara 8.168 kg, PBV
+25.000 y PBVC 45.000.
+
+### Lo que NO entró del lote 5, y por qué
+
+- **Traer las líneas desde Comercial.** Falta un puente que no existe: la fuente real de
+  líneas es `DocumentoVenta` + `DocumentoVentaDetalle` (el espejo de Bsale, con producto
+  y cantidad), pero **`TipoBulto` no tiene ninguna relación con `Producto`** — el
+  simulador no sabe que «Botellón 20 L» del catálogo es la bolsa de 5. Hay que decidir
+  primero cómo se mapea un producto a su bulto (y cuántas unidades entran en uno).
+
+## 4quinquies. MULTI-DROP: lo que baja primero se carga último (lote 6, 12-08-2026)
+
+Un reparto con varias paradas tiene una restricción que **no es una preferencia de
+acomodo**: si la mercadería de la parada 3 viaja contra la puerta, en la parada 1 hay
+que **bajarla a la vereda** para llegar a lo que sí se entrega ahí, volver a subirla, y
+repetirlo en cada parada.
+
+Cada línea lleva un campo **«Baja en la parada»** (1 a 20; vacío = una sola entrega, que
+es el caso de siempre y no mueve ningún número). El motor ordena las paradas **al revés**:
+la última se carga primero y queda contra la cabina, y la parada 1 termina junto a la
+puerta, que es de donde se descarga.
+
+**La parada manda sobre el volumen y sobre la base.** En el comparador de `orden()` va
+antes que los dos: se puede negociar qué producto va abajo, no en qué orden se baja del
+camión. Y como el criterio vive en `orden()`, **todos los planes** que prueba el motor
+(§ el de «varios acomodos») respetan la secuencia por construcción — la base y el volumen
+solo reordenan *dentro* de una parada.
+
+**Va DESPUÉS de `abierta`, y eso tiene una consecuencia que la pantalla dice.** Una línea
+«lo que quepa» se acomoda en lo que sobra, así que **siempre** termina contra la puerta,
+sin importar a qué parada se la haya asignado. Lo mismo las líneas **sin parada**: caen al
+final y salen en la primera entrega. El aviso lo dice con todas las letras («si van a
+otra, ponéles el número») en vez de esconderlas dentro de la parada 1.
+
+**Dos listas, dos lectores, dos órdenes** — y por eso no se unificaron:
+
+| | Para quién | En qué orden |
+|---|---|---|
+| «El reparto, parada por parada» (pantalla) | El **chofer** | De ENTREGA: parada 1 primero |
+| «Orden de carga» + columna «Baja en» (Excel) | El **andén** | De CARGA: del fondo hacia la puerta |
+
+La columna «Baja en» del Excel **solo aparece si hay paradas**: vacía en toda carga normal
+sería ruido en la hoja que se imprime.
+
+**Los candados miden el ORDEN DE COLOCACIÓN, no la coordenada `x`.** Dos bloques angostos
+entran uno al lado del otro y los dos arrancan en x = 0, así que comparar la x no prueba
+nada — se compara la posición en la lista de bloques de la escena, que viene ordenada
+fondo → puerta. Ver `SimuladorCargaMixtaPantallaTest::ordenDeCarga()`.
+
+### Lo que falta para cerrar el lote 6
+
+Traer las paradas **desde una Hoja de ruta** en vez de tipearlas. Está bloqueado por lo
+mismo que las líneas desde Comercial (§4quater): `HojaDeRuta` ya tiene sus `paradas()`,
+pero para convertir lo que se entrega en cada una en bultos hace falta el puente
+**producto → tipo de bulto**, que todavía no existe.
+
 ## 5. Mercancía peligrosa
 
 Si una línea lleva un bulto `peligrosa` (los cajones `UN3480` de baterías de

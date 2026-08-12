@@ -10,6 +10,7 @@ use App\Services\Carga\AcomodoManual;
 use App\Services\Carga\CalculoDeCarga;
 use App\Services\Carga\PalletSimulado;
 use App\Services\Carga\PlanDeCargaExcel;
+use App\Services\Carga\RepartoPorEje;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
@@ -115,6 +116,13 @@ class SimuladorCargaController extends Controller
             // así que seis son 156 de los 266 del HINO — media caja de aire. Vacío = el
             // del catálogo, que es el comportamiento verificado.
             'lineas.*.apilado' => ['nullable', 'integer', 'min:1', 'max:30'],
+            // LA PARADA en la que baja esta línea (lote 6: multi-drop LIFO). Vacío =
+            // una sola entrega, que es el caso de siempre y no cambia ningún número.
+            //
+            // Es un NÚMERO de orden de entrega y no el nombre del cliente: lo que el
+            // motor necesita es la secuencia —quién baja antes que quién— y un nombre
+            // no se puede ordenar. El nombre vive en la hoja de ruta.
+            'lineas.*.parada' => ['nullable', 'integer', 'min:1', 'max:20'],
             // UN PALLET ES UNA LÍNEA MÁS DE LA CARGA (pedido del dueño 10-08: «si cargo
             // botellones y tapas también tengo que poder cargar pallets, porque en la vida
             // real cargamos a veces pallets y de paso bidones o dispensadores»).
@@ -153,6 +161,15 @@ class SimuladorCargaController extends Controller
             // Opt-in, como el tope de apilado: apagado no mueve ni un número de los
             // verificados, y el candado de consistencia entre pestañas sigue en pie.
             'aprovechar' => ['nullable', 'boolean'],
+            // EL CAMIÓN QUE SALE A MEDIO CARGAR (lote 5). Metros de piso ya tomados
+            // contra la cabina y kilos que ya viajan arriba. Van juntos a propósito:
+            // ver `CamionSimulacion::paraCalculo`.
+            //
+            // El tope de 2.000 cm no es un número redondo: es más que el camión más
+            // largo del catálogo, así que un valor absurdo se rechaza acá en vez de
+            // llegar al motor y devolver un camión de largo cero sin explicación.
+            'ocupado_cm' => ['nullable', 'integer', 'min:0', 'max:2000'],
+            'ocupado_kg' => ['nullable', 'numeric', 'min:0', 'max:40000'],
             // EL ACOMODO A MANO (pedido del dueño 11-08: «que te dé la opción de dar
             // vuelta la caja y acomodar como uno quiero»). Una posición por bloque,
             // `x,y` o `x,y,g` en centímetros, indexada por el ordinal del bloque; y
@@ -222,8 +239,21 @@ class SimuladorCargaController extends Controller
         $enOrdenDeLista = ($datos['orden'] ?? 'auto') === 'lista';
         $aprovechar = (bool) ($datos['aprovechar'] ?? false);
 
+        // Lo que el camión YA lleva encima. Se acota al largo del camión elegido acá y
+        // no en la validación: el tope depende de CUÁL camión es, y cambiar de camión
+        // no puede dejar un formulario inválido — se recorta y la pantalla lo dice.
+        $ocupadoCm = min((int) ($datos['ocupado_cm'] ?? 0), $camion?->largo_cm ?? 0);
+        $ocupadoKg = (float) ($datos['ocupado_kg'] ?? 0);
+        $ocupado = [
+            'cm' => $ocupadoCm,
+            'kg' => $ocupadoKg,
+            'hay' => $ocupadoCm > 0 || $ocupadoKg > 0,
+            // Se pidió más piso del que tiene el camión: se recortó y hay que decirlo.
+            'recortado' => (int) ($datos['ocupado_cm'] ?? 0) > $ocupadoCm,
+        ];
+
         $mixta = ($camion && isset($datos['lineas']) && $datos['lineas'] !== [])
-            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista, $aprovechar)
+            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista, $aprovechar, $ocupado)
             : null;
 
         $estiba = $datos['estiba'] ?? 'auto';
@@ -318,6 +348,8 @@ class SimuladorCargaController extends Controller
                     // de «pedí justo 6», y cambiar de producto no arrastra un tope que
                     // era del anterior.
                     'apilado' => $l['apilado'] ?? '',
+                    // La parada vuelve al formulario tal cual: vacío = una sola entrega.
+                    'parada' => $l['parada'] ?? '',
                     // Vacío = la línea va suelta. Con un estándar, va sobre pallet.
                     'pallet' => isset(PalletSimulado::TIPOS[$l['pallet'] ?? '']) ? $l['pallet'] : '',
                     'pallet_alto' => $l['pallet_alto'] ?? '',
@@ -353,14 +385,17 @@ class SimuladorCargaController extends Controller
      * @param  Collection<int, TipoBulto>  $bultos
      * @return array{resultado: array, lineas: list<array<string, mixed>>, cabeTodo: bool, peligrosas: list<TipoBulto>}
      */
-    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false, bool $aprovechar = false): array
+    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false, bool $aprovechar = false, array $ocupado = ['cm' => 0, 'kg' => 0.0]): array
     {
         $modelos = [];
         $estibas = [];
         $apilados = [];
         $palletsDeLinea = [];
+        // La parada de cada línea (lote 6). 0 = sin declarar, o sea una sola entrega.
+        $paradas = [];
         $lineas = [];
         foreach (array_values($lineasInput) as $i => $l) {
+            $paradas[$i] = max(0, (int) ($l['parada'] ?? 0));
             // La estiba se elige POR LÍNEA: en la misma carga puede ir un pack de
             // botellones acostado, otro de pie y una caja en automático. Un valor
             // inventado cae a `auto`, que es el comportamiento verificado.
@@ -386,6 +421,7 @@ class SimuladorCargaController extends Controller
                 $lineas[$i] = [
                     'bulto' => $pal['bulto'],
                     'cantidad' => $pal['porPallet']['bultos'] > 0 ? max(0, (int) $l['cantidad']) : 0,
+                    'parada' => $paradas[$i],
                 ];
 
                 continue;
@@ -404,10 +440,14 @@ class SimuladorCargaController extends Controller
             $lineas[$i] = [
                 'bulto' => $modelo->paraCalculo($estibas[$i], $apilados[$i]),
                 'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
+                'parada' => $paradas[$i],
             ];
         }
 
-        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas, $enOrdenDeLista, $aprovechar);
+        $resultado = $this->calculo->carga(
+            $camion->paraCalculo($ocupado['cm'] ?? 0, $ocupado['kg'] ?? 0.0),
+            $lineas, $enOrdenDeLista, $aprovechar,
+        );
 
         $filas = [];
         foreach ($modelos as $i => $modelo) {
@@ -472,6 +512,8 @@ class SimuladorCargaController extends Controller
             $filas[$i] = [
                 'modelo' => $modelo,
                 'estiba' => $estibas[$i],
+                // En qué parada baja (lote 6). 0 = una sola entrega.
+                'parada' => $paradas[$i],
                 'apilado' => $apilados[$i],
                 'apiladas' => $apiladas,
                 'apilables_por_alto' => $porAlto,
@@ -509,7 +551,15 @@ class SimuladorCargaController extends Controller
         // entra. Lo que faltaba es el número con el que se avisa: **cuánto pesa lo
         // PEDIDO**, que es lo único que dice de cuánto te pasaste. Se calcula sobre las
         // cantidades pedidas, no sobre las colocadas.
-        $topePeso = $camion->peso_max_kg;
+        // EL TOPE ES LO QUE QUEDA, no lo que dice la chapa: si el camión ya sale con
+        // 800 kg arriba, un pedido de 6.000 en un camión de 6.430 SE PASA. Comparar
+        // contra el tope entero daría verde justo en el caso para el que se pidió el
+        // cartel (11-08). `paraCalculo` ya se lo descontó al motor; acá se hace la
+        // misma resta para lo que se muestra, y las dos salen del mismo número.
+        $ocupadoKg = (float) ($ocupado['kg'] ?? 0);
+        $topePeso = $camion->peso_max_kg === null
+            ? null
+            : max(0, $camion->peso_max_kg - (int) round($ocupadoKg));
         $pedidoKg = 0.0;
         foreach ($lineas as $l) {
             $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0)) * $l['cantidad'];
@@ -518,8 +568,23 @@ class SimuladorCargaController extends Controller
         return [
             'resultado' => $resultado,
             'lineas' => $filas,
+            // Lo que el camión ya llevaba, para que la pantalla pueda decir contra qué
+            // se calculó. Un cupo recortado sin decir por qué se lee como un error.
+            'ocupado' => $ocupado,
+            // EL REPARTO POR PARADAS (lote 6). Null cuando es una sola entrega, que es
+            // el caso de siempre: la pantalla no muestra la sección y no cambia nada.
+            'paradas' => self::reparto($filas),
+            // CUÁNTO CAE SOBRE CADA EJE. Null si al camión le faltan las medidas de los
+            // ejes: se dice qué falta medir, no se estima (ver `RepartoPorEje`).
+            'ejes' => (new RepartoPorEje)->calcular(
+                $camion, $resultado['bloques'], $lineas,
+                array_map(fn (TipoBulto $m) => $m->nombre, $modelos),
+            ),
             'peso' => [
                 'tope_kg' => $topePeso,
+                // El de la chapa, para poder mostrar «6.430 menos 800 que ya lleva».
+                'tope_chapa_kg' => $camion->peso_max_kg,
+                'ocupado_kg' => $ocupadoKg,
                 'cargado_kg' => $resultado['peso_kg'],
                 'pedido_kg' => round($pedidoKg, 1),
                 // Se pasa: lo pedido no entra por kilos. Es el caso del cartel.
@@ -534,6 +599,51 @@ class SimuladorCargaController extends Controller
             'cabeTodo' => array_filter($filas, fn (array $f) => $f['motivo'] !== null) === [],
             'peligrosas' => array_values(array_filter($modelos, fn (TipoBulto $m) => $m->peligrosa)),
         ];
+    }
+
+    /**
+     * EL REPARTO POR PARADAS, en orden de ENTREGA (lote 6: multi-drop LIFO).
+     *
+     * Devuelve `null` cuando nadie declaró parada, que es el caso de siempre: sin esto
+     * la pantalla mostraría una sección «Parada 0» a toda carga normal.
+     *
+     * Va en orden de entrega —parada 1 primero— y no en orden de carga, que es el
+     * inverso: esta lista es para el CHOFER, y él las recorre en el orden en que
+     * maneja. El orden de carga ya lo dice el Excel, que es para el andén.
+     *
+     * Las líneas sin parada declarada caen en un grupo propio al final: son las que
+     * viajan sin destino asignado y hay que verlas, no esconderlas en la parada 1.
+     *
+     * @param  array<int, array<string, mixed>>  $filas
+     * @return array{grupos: list<array{parada:int, lineas: list<array<string, mixed>>}>, sin_asignar: int}|null
+     */
+    private static function reparto(array $filas): ?array
+    {
+        $conParada = array_filter($filas, fn (array $f) => ($f['parada'] ?? 0) > 0);
+        if ($conParada === []) {
+            return null;
+        }
+
+        $porParada = [];
+        foreach ($filas as $f) {
+            $porParada[(int) ($f['parada'] ?? 0)][] = $f;
+        }
+
+        // Las declaradas, de la primera a la última. El 0 se saca del orden y se
+        // agrega al final, para que no se lea como «parada cero».
+        $sinAsignar = $porParada[0] ?? [];
+        unset($porParada[0]);
+        ksort($porParada);
+
+        $grupos = [];
+        foreach ($porParada as $n => $lineas) {
+            $grupos[] = ['parada' => $n, 'lineas' => array_values($lineas)];
+        }
+        if ($sinAsignar !== []) {
+            $grupos[] = ['parada' => 0, 'lineas' => array_values($sinAsignar)];
+        }
+
+        return ['grupos' => $grupos, 'sin_asignar' => count($sinAsignar)];
     }
 
     /**
@@ -910,6 +1020,12 @@ class SimuladorCargaController extends Controller
                         // lienzo dejaría de ser la prueba de lo que el motor hizo, que es todo
                         // lo que aporta.
                         'estiba' => TipoBulto::estibaEfectiva($fila['estiba']),
+                        // En qué parada baja este bloque (lote 6). 0 = una sola entrega.
+                        // Viaja en la escena porque de ahí sale el ORDEN DE CARGA del
+                        // Excel, que es la hoja que lee el andén: cargar en el orden
+                        // correcto sin saber a qué parada va cada bloque es media
+                        // instrucción.
+                        'parada' => $fila['parada'] ?? 0,
                     ];
 
                     // Una línea EN PALLET se dibuja como pallet: tarima de madera con su
@@ -973,6 +1089,11 @@ class SimuladorCargaController extends Controller
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
             'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
+            // LO QUE EL CAMIÓN YA LLEVABA, para dibujarlo (lote 5). Sin esto el visor
+            // muestra la carga nueva flotando a dos metros de la cabina y el hueco se
+            // lee como un error del acomodo, que es exactamente lo contrario de lo que
+            // pasa: ese metraje está tomado.
+            'ocupado_m' => ($mixta['ocupado']['cm'] ?? 0) / 100,
             // EL TABLERO: la misma carga vista desde arriba, en centímetros enteros, para
             // arrastrarla y girarla. Viaja con la escena y no aparte porque tiene que
             // llegar también al link compartido: ahí no se puede tocar, pero el aviso de
