@@ -59,8 +59,12 @@ class MenuPrincipal
             'label' => 'Comercial',
             'icon' => 'shopping-cart',
             'items' => [
-                'catalogo' => ['label' => 'Catálogo', 'route' => 'admin.productos.index', 'activo' => ['admin.productos.*'], 'permiso' => 'manage productos'],
-                'precios' => ['label' => 'Precios', 'route' => 'admin.listas-precios.index', 'activo' => ['admin.listas-precios.*'], 'permiso' => 'manage productos'],
+                // Consolidación F1 (PLAN-MENU-DENSIDAD): «Precios» dejó de ser
+                // ítem y vive como pestaña del Catálogo (admin/catalogo/_tabs).
+                // Sus rutas van AQUÍ, en el `activo` del anfitrión — si no, la
+                // página queda sin resaltado en silencio (hueco detectado en
+                // F0; candado en MenuConsolidacionesTest).
+                'catalogo' => ['label' => 'Catálogo', 'route' => 'admin.productos.index', 'activo' => ['admin.productos.*', 'admin.listas-precios.*'], 'permiso' => 'manage productos'],
                 'clientes' => ['label' => 'Clientes', 'route' => 'admin.clientes.index', 'activo' => ['admin.clientes.*'], 'permiso' => 'manage clientes'],
             ],
         ],
