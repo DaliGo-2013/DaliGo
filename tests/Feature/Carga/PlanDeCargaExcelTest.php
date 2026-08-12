@@ -232,6 +232,26 @@ class PlanDeCargaExcelTest extends TestCase
         $this->assertStringContainsString('acomodaron A MANO', $aMano);
     }
 
+    /**
+     * Y si el camión ya salía con carga, la planilla lo dice.
+     *
+     * Sin eso, la hoja muestra la caja útil y la carga máxima del camión VACÍO y el
+     * andén lee que puede subir todo eso — cuando el plan de abajo se calculó contra
+     * bastante menos.
+     */
+    public function test_avisa_cuando_el_camion_ya_salia_con_carga(): void
+    {
+        $hoja = $this->partes($this->bajar([
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 100]],
+            'ocupado_cm' => 200,
+            'ocupado_kg' => 300,
+        ]))['xl/worksheets/sheet1.xml'];
+
+        $this->assertStringContainsString('YA SALE CON CARGA', $hoja);
+        $this->assertStringContainsString('2,00 m de piso', $hoja);
+        $this->assertStringContainsString('300 kg', $hoja);
+    }
+
     public function test_el_boton_esta_en_el_menu_del_visor(): void
     {
         // Regla del dueño: todo lo nuevo va en el menú lateral, no suelto.

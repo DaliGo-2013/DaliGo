@@ -1745,6 +1745,60 @@ un `assertSee` seguiría verde con el cartel de vuelta abajo
 (`test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo`,
 `test_la_ficha_del_camion_va_arriba_del_lienzo`, `test_el_veredicto_se_dice_una_sola_vez`).
 
+## 4quater. EL CAMIÓN QUE SALE A MEDIO CARGAR (lote 5, 12-08-2026)
+
+Pasa todo el tiempo: el camión vuelve de un reparto con carga arriba, o se le suma un
+pedido a uno que ya está armado. Hasta acá eso se simulaba **a ojo eligiendo un camión
+más chico**, que da un número parecido por la razón equivocada — y que además deja el
+tope de kilos del camión chico, que no es el que va a viajar.
+
+Dos campos en la carga mixta, detrás de un botón (**«El camión ya lleva carga»**, porque
+el caso normal es el camión vacío y dos campos con 0 adentro estorban en cada simulación
+para servir en una de cada diez):
+
+- **Piso ya ocupado (cm)** — se descuenta del largo útil, y **corre el arranque** de las
+  regiones. La carga vieja va contra la **cabina** porque se subió primero; restarla sin
+  correr el origen dibujaría lo nuevo encima de lo que ya viaja.
+- **Kilos ya cargados** — salen del tope de peso.
+
+**LOS DOS VAN JUNTOS, y esa es la regla.** Descontar el espacio sin descontar los kilos
+deja el **cartel de sobrepeso en verde con el camión pasado**, que es peor que no tener
+la función: con 1.200 kg ya arriba de un HD35 (1.400), un pedido de 300 kg se pasa, y
+contra el tope entero habría dado verde. Por eso viajan como **un solo parámetro** de
+`CamionSimulacion::paraCalculo($ocupadoCm, $ocupadoKg)` y no como dos campos sueltos que
+alguien pueda completar a medias. Candado:
+`test_los_kilos_que_ya_viajan_salen_del_tope_o_el_cartel_miente`.
+
+**El visor lo dibuja en gris**, translúcido y hasta el techo, y **siempre** —aunque el
+lienzo esté en 0 bultos, porque no depende de la animación: ya estaba arriba antes de
+empezar. Sin dibujarlo, la carga nueva aparece flotando a dos metros de la cabina y el
+hueco se lee como un error del acomodo, que es exactamente lo contrario de lo que pasa.
+Va hasta el techo a propósito: no sabemos cómo está estibada la carga vieja, solo que ese
+pedazo de camión no está disponible — dibujarla bajita sugeriría lugar que el motor no
+está ofreciendo.
+
+**Se dice en los tres lados**: la franja del camión («Ya lleva 2,50 m · 900 kg —
+descontado»), el dibujo y el **Excel** («El camión YA SALE CON CARGA… las medidas de
+arriba son las del camión vacío»). Un cupo más chico sin decir por qué se lee como un
+error del cálculo.
+
+**El recorte al largo del camión se hace en el controlador, no en la validación**: el
+tope real depende de CUÁL camión es, y ponerlo en las reglas dejaría el formulario
+inválido de golpe al cambiar de camión. Se recorta y la pantalla lo dice (`recortado`).
+
+### Lo que NO entró del lote 5, y por qué
+
+- **Distribución de peso por eje.** Bloqueado por DATOS, no por código: hace falta a qué
+  distancia del frente está cada eje, en cm, camión por camión, y eso no está medido.
+  Hoy `EJES_POR_SILUETA` es solo cuántas ruedas dibujar. El propio doc de exploración ya
+  lo tenía como fase 3 opcional (P-CARGA-23). No se inventan números — misma regla que
+  dejó las jaulas de máquinas sin sembrar.
+- **Traer las líneas desde Comercial.** Falta un puente que no existe: la fuente real de
+  líneas es `DocumentoVenta` + `DocumentoVentaDetalle` (el espejo de Bsale, con producto
+  y cantidad), pero **`TipoBulto` no tiene ninguna relación con `Producto`** — el
+  simulador no sabe que «Botellón 20 L» del catálogo es la bolsa de 5. Hay que decidir
+  primero cómo se mapea un producto a su bulto (y cuántas unidades entran en uno).
+
 ## 5. Mercancía peligrosa
 
 Si una línea lleva un bulto `peligrosa` (los cajones `UN3480` de baterías de

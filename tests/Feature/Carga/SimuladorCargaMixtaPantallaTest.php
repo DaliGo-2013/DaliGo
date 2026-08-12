@@ -55,12 +55,98 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         ]);
     }
 
-    private function verMixta(array $lineas)
+    private function verMixta(array $lineas, array $extra = [])
     {
-        return $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+        return $this->actingAs($this->vendedor)->get(route('admin.carga.index', array_merge([
             'camion_id' => $this->hd35->id,
             'lineas' => $lineas,
-        ]));
+        ], $extra)));
+    }
+
+    // ── El camión que sale a medio cargar (lote 5) ──────────────────────────
+
+    /**
+     * EL CAMIÓN NO SIEMPRE SALE VACÍO.
+     *
+     * Vuelve de un reparto con carga arriba, o se le suma un pedido a uno que ya está
+     * armado. Hasta acá eso se simulaba a ojo eligiendo un camión más chico, que da un
+     * número parecido por la razón equivocada.
+     */
+    public function test_lo_que_ya_lleva_le_come_piso_al_cupo(): void
+    {
+        // El HD35 mide 430 de largo. Con 200 cm tomados quedan 230 para lo nuevo.
+        $vacio = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]]);
+        $conCarga = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]], ['ocupado_cm' => 200]);
+
+        $entranVacio = $vacio->viewData('mixta')['lineas'][0]['bultos_colocados'];
+        $entranConCarga = $conCarga->viewData('mixta')['lineas'][0]['bultos_colocados'];
+
+        $this->assertGreaterThan(0, $entranConCarga, 'Con 200 de 430 tomados todavía tiene que entrar algo.');
+        $this->assertLessThan($entranVacio, $entranConCarga, 'El piso ocupado no le descontó nada al cupo.');
+    }
+
+    public function test_la_carga_nueva_arranca_donde_termina_la_que_ya_viaja(): void
+    {
+        // La carga vieja va contra la CABINA porque se subió primero. Si el motor
+        // siguiera arrancando en x=0, dibujaría lo nuevo encima de lo que ya viaja.
+        $escena = $this->verMixta(
+            [['tipo' => $this->bolsa->id, 'cantidad' => 100]],
+            ['ocupado_cm' => 200],
+        )->viewData('escena');
+
+        $this->assertGreaterThanOrEqual(2.0, $escena['bloques'][0]['x'],
+            'El primer bloque se metió adentro del espacio que ya estaba ocupado.');
+        // Y el visor recibe el metraje para dibujarlo en gris: sin eso, el hueco entre
+        // la cabina y la carga se lee como un error del acomodo.
+        $this->assertEquals(2, $escena["ocupado_m"]);
+    }
+
+    public function test_los_kilos_que_ya_viajan_salen_del_tope_o_el_cartel_miente(): void
+    {
+        // EL punto de que los dos campos vayan juntos. El HD35 aguanta 1.400 kg; con
+        // 1.200 ya arriba, un pedido de 300 kg SE PASA — y contra el tope entero
+        // habría dado verde, que es el caso para el que se pidió el cartel (11-08).
+        $p = $this->verMixta(
+            // 60 bolsas de 5 kg = 300 kg.
+            [['tipo' => $this->bolsa->id, 'cantidad' => 300]],
+            ['ocupado_kg' => 1200],
+        )->viewData('mixta')['peso'];
+
+        $this->assertSame(200, $p['tope_kg'], 'El tope no descontó lo que ya viaja.');
+        $this->assertSame(1400, $p['tope_chapa_kg'], 'Se perdió el tope de la chapa, que es lo que explica la resta.');
+        $this->assertTrue($p['se_pasa'], 'Con 1.200 kg arriba y 300 más pedidos, el cartel tiene que saltar.');
+    }
+
+    public function test_la_pantalla_dice_lo_que_ya_llevaba_y_que_lo_descontó(): void
+    {
+        // Un cupo más chico sin decir por qué se lee como un error del cálculo.
+        $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]], ['ocupado_cm' => 200, 'ocupado_kg' => 300])
+            ->assertOk()
+            ->assertSee('Ya lleva')
+            ->assertSee('2,00 m · 300 kg')
+            ->assertSee('descontado');
+    }
+
+    public function test_pedir_mas_piso_del_que_tiene_el_camion_se_recorta_y_no_revienta(): void
+    {
+        // El tope real depende de CUÁL camión es, así que no puede vivir en la
+        // validación: cambiar de camión dejaría el formulario inválido de golpe.
+        $res = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 10]], ['ocupado_cm' => 2000]);
+
+        $res->assertOk();
+        $this->assertSame(430, $res->viewData('mixta')['ocupado']['cm']);
+        $this->assertTrue($res->viewData('mixta')['ocupado']['recortado']);
+    }
+
+    public function test_sin_declarar_nada_el_camion_sigue_saliendo_vacio(): void
+    {
+        // El caso normal no puede cambiar: los cupos verificados salen de acá.
+        $mixta = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])->viewData('mixta');
+
+        $this->assertFalse($mixta['ocupado']['hay']);
+        $this->assertSame(0, $mixta['ocupado']['cm']);
+        $this->assertSame(1400, $mixta['peso']['tope_kg']);
+        $this->assertSame(84, $mixta['lineas'][0]['bultos_colocados'], 'Se movió el cupo verificado del HD35.');
     }
 
     public function test_el_caso_del_pedido_del_dueno_responde_con_el_veredicto(): void

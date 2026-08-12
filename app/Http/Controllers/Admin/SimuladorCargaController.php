@@ -153,6 +153,15 @@ class SimuladorCargaController extends Controller
             // Opt-in, como el tope de apilado: apagado no mueve ni un número de los
             // verificados, y el candado de consistencia entre pestañas sigue en pie.
             'aprovechar' => ['nullable', 'boolean'],
+            // EL CAMIÓN QUE SALE A MEDIO CARGAR (lote 5). Metros de piso ya tomados
+            // contra la cabina y kilos que ya viajan arriba. Van juntos a propósito:
+            // ver `CamionSimulacion::paraCalculo`.
+            //
+            // El tope de 2.000 cm no es un número redondo: es más que el camión más
+            // largo del catálogo, así que un valor absurdo se rechaza acá en vez de
+            // llegar al motor y devolver un camión de largo cero sin explicación.
+            'ocupado_cm' => ['nullable', 'integer', 'min:0', 'max:2000'],
+            'ocupado_kg' => ['nullable', 'numeric', 'min:0', 'max:40000'],
             // EL ACOMODO A MANO (pedido del dueño 11-08: «que te dé la opción de dar
             // vuelta la caja y acomodar como uno quiero»). Una posición por bloque,
             // `x,y` o `x,y,g` en centímetros, indexada por el ordinal del bloque; y
@@ -222,8 +231,21 @@ class SimuladorCargaController extends Controller
         $enOrdenDeLista = ($datos['orden'] ?? 'auto') === 'lista';
         $aprovechar = (bool) ($datos['aprovechar'] ?? false);
 
+        // Lo que el camión YA lleva encima. Se acota al largo del camión elegido acá y
+        // no en la validación: el tope depende de CUÁL camión es, y cambiar de camión
+        // no puede dejar un formulario inválido — se recorta y la pantalla lo dice.
+        $ocupadoCm = min((int) ($datos['ocupado_cm'] ?? 0), $camion?->largo_cm ?? 0);
+        $ocupadoKg = (float) ($datos['ocupado_kg'] ?? 0);
+        $ocupado = [
+            'cm' => $ocupadoCm,
+            'kg' => $ocupadoKg,
+            'hay' => $ocupadoCm > 0 || $ocupadoKg > 0,
+            // Se pidió más piso del que tiene el camión: se recortó y hay que decirlo.
+            'recortado' => (int) ($datos['ocupado_cm'] ?? 0) > $ocupadoCm,
+        ];
+
         $mixta = ($camion && isset($datos['lineas']) && $datos['lineas'] !== [])
-            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista, $aprovechar)
+            ? $this->calcularMixta($camion, $datos['lineas'], $bultos, $enOrdenDeLista, $aprovechar, $ocupado)
             : null;
 
         $estiba = $datos['estiba'] ?? 'auto';
@@ -353,7 +375,7 @@ class SimuladorCargaController extends Controller
      * @param  Collection<int, TipoBulto>  $bultos
      * @return array{resultado: array, lineas: list<array<string, mixed>>, cabeTodo: bool, peligrosas: list<TipoBulto>}
      */
-    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false, bool $aprovechar = false): array
+    private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false, bool $aprovechar = false, array $ocupado = ['cm' => 0, 'kg' => 0.0]): array
     {
         $modelos = [];
         $estibas = [];
@@ -407,7 +429,10 @@ class SimuladorCargaController extends Controller
             ];
         }
 
-        $resultado = $this->calculo->carga($camion->paraCalculo(), $lineas, $enOrdenDeLista, $aprovechar);
+        $resultado = $this->calculo->carga(
+            $camion->paraCalculo($ocupado['cm'] ?? 0, $ocupado['kg'] ?? 0.0),
+            $lineas, $enOrdenDeLista, $aprovechar,
+        );
 
         $filas = [];
         foreach ($modelos as $i => $modelo) {
@@ -509,7 +534,15 @@ class SimuladorCargaController extends Controller
         // entra. Lo que faltaba es el número con el que se avisa: **cuánto pesa lo
         // PEDIDO**, que es lo único que dice de cuánto te pasaste. Se calcula sobre las
         // cantidades pedidas, no sobre las colocadas.
-        $topePeso = $camion->peso_max_kg;
+        // EL TOPE ES LO QUE QUEDA, no lo que dice la chapa: si el camión ya sale con
+        // 800 kg arriba, un pedido de 6.000 en un camión de 6.430 SE PASA. Comparar
+        // contra el tope entero daría verde justo en el caso para el que se pidió el
+        // cartel (11-08). `paraCalculo` ya se lo descontó al motor; acá se hace la
+        // misma resta para lo que se muestra, y las dos salen del mismo número.
+        $ocupadoKg = (float) ($ocupado['kg'] ?? 0);
+        $topePeso = $camion->peso_max_kg === null
+            ? null
+            : max(0, $camion->peso_max_kg - (int) round($ocupadoKg));
         $pedidoKg = 0.0;
         foreach ($lineas as $l) {
             $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0)) * $l['cantidad'];
@@ -518,8 +551,14 @@ class SimuladorCargaController extends Controller
         return [
             'resultado' => $resultado,
             'lineas' => $filas,
+            // Lo que el camión ya llevaba, para que la pantalla pueda decir contra qué
+            // se calculó. Un cupo recortado sin decir por qué se lee como un error.
+            'ocupado' => $ocupado,
             'peso' => [
                 'tope_kg' => $topePeso,
+                // El de la chapa, para poder mostrar «6.430 menos 800 que ya lleva».
+                'tope_chapa_kg' => $camion->peso_max_kg,
+                'ocupado_kg' => $ocupadoKg,
                 'cargado_kg' => $resultado['peso_kg'],
                 'pedido_kg' => round($pedidoKg, 1),
                 // Se pasa: lo pedido no entra por kilos. Es el caso del cartel.
@@ -973,6 +1012,11 @@ class SimuladorCargaController extends Controller
             'bloques' => $bloques,
             'tope' => array_sum(array_column($bloques, 'cantidad')),
             'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
+            // LO QUE EL CAMIÓN YA LLEVABA, para dibujarlo (lote 5). Sin esto el visor
+            // muestra la carga nueva flotando a dos metros de la cabina y el hueco se
+            // lee como un error del acomodo, que es exactamente lo contrario de lo que
+            // pasa: ese metraje está tomado.
+            'ocupado_m' => ($mixta['ocupado']['cm'] ?? 0) / 100,
             // EL TABLERO: la misma carga vista desde arriba, en centímetros enteros, para
             // arrastrarla y girarla. Viaja con la escena y no aparte porque tiene que
             // llegar también al link compartido: ahí no se puede tocar, pero el aviso de

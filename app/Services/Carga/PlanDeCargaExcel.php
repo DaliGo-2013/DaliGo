@@ -127,6 +127,22 @@ class PlanDeCargaExcel
         // que el propio motor dice que sabe.
         $this->filas->celdas([[1, 'Los cupos son un máximo geométrico (pasillo 0, factor 1). Verificar contra la carga real antes de comprometer un viaje.', 'aviso']]);
 
+        // EL CAMIÓN YA IBA CON CARGA (lote 5). Sin decirlo, la planilla muestra la caja
+        // útil y la carga máxima del camión VACÍO, y el andén lee que puede subir todo
+        // eso — el plan de abajo se calculó contra bastante menos.
+        $ocupado = $d['mixta']['ocupado'] ?? null;
+        if ($ocupado['hay'] ?? false) {
+            $partes = [];
+            if ($ocupado['cm'] > 0) {
+                $partes[] = number_format($ocupado['cm'] / 100, 2, ',', '.').' m de piso';
+            }
+            if ($ocupado['kg'] > 0) {
+                $partes[] = number_format($ocupado['kg'], 0, ',', '.').' kg';
+            }
+            $this->filas->celdas([[1, 'El camión YA SALE CON CARGA: '.implode(' y ', $partes)
+                .'. Este plan es lo que se le suma; las medidas de arriba son las del camión vacío.', 'aviso']]);
+        }
+
         // ACOMODO A MANO: si alguien movió los bloques, la planilla lo dice igual que la
         // pantalla. Es la hoja que se imprime y se le da al chofer, así que es JUSTO
         // donde no puede faltar: el orden de carga de más abajo sale de esas posiciones,

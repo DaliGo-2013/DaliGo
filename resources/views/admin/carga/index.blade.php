@@ -1123,6 +1123,50 @@
                                 <span x-show="sucio" x-cloak>Recalcular ·  hay cambios</span>
                             </x-primary-button>
                         </div>
+                        {{-- ═══ EL CAMIÓN NO SIEMPRE SALE VACÍO ═══
+                             Lote 5. Pasa todo el tiempo: el camión vuelve de un reparto con
+                             carga arriba, o se le suma un pedido a uno que ya está armado.
+                             Hasta ahora eso se simulaba a ojo eligiendo un camión más chico.
+
+                             Va detrás de un botón porque el caso normal ES el camión vacío:
+                             dos campos siempre visibles con 0 adentro son dos campos que
+                             estorban en cada simulación para servir en una de cada diez.
+
+                             LOS DOS CAMPOS JUNTOS, no de a uno: descontar el espacio sin
+                             descontar los kilos deja el cartel de sobrepeso en verde con el
+                             camión pasado. Ver `CamionSimulacion::paraCalculo`. --}}
+                        @php $yaLleva = ($mixta['ocupado']['hay'] ?? false); @endphp
+                        <div class="mt-3" x-data="{ abierto: {{ $yaLleva ? 'true' : 'false' }} }">
+                            <button type="button" @click="abierto = ! abierto"
+                                    :aria-pressed="abierto ? 'true' : 'false'"
+                                    class="text-xs font-medium text-brand-700 underline-offset-2 hover:underline">
+                                <span x-show="! abierto">El camión ya lleva carga</span>
+                                <span x-show="abierto" x-cloak>Ocultar lo que ya lleva</span>
+                            </button>
+
+                            <div x-show="abierto" x-cloak class="mt-2 flex flex-wrap items-end gap-3">
+                                <div>
+                                    <label for="ocupado_cm" class="text-xs text-neutral-500">Piso ya ocupado (cm)</label>
+                                    <x-text-input id="ocupado_cm" name="ocupado_cm" type="number" min="0" max="2000"
+                                                  class="mt-1 w-32" inputmode="numeric" placeholder="0"
+                                                  :value="($mixta['ocupado']['cm'] ?? 0) ?: ''"
+                                                  @input="ensuciar()" />
+                                </div>
+                                <div>
+                                    <label for="ocupado_kg" class="text-xs text-neutral-500">Kilos ya cargados</label>
+                                    <x-text-input id="ocupado_kg" name="ocupado_kg" type="number" min="0" max="40000"
+                                                  step="0.1" class="mt-1 w-32" inputmode="decimal" placeholder="0"
+                                                  :value="($mixta['ocupado']['kg'] ?? 0) ?: ''"
+                                                  @input="ensuciar()" />
+                                </div>
+                                <p class="max-w-md text-xs leading-snug text-neutral-500">
+                                    Se descuentan del largo útil y de la carga máxima. Lo que ya viaja se toma
+                                    contra la cabina —se subió primero— así que lo nuevo se acomoda desde ahí
+                                    hacia la puerta, y el dibujo lo muestra en gris.
+                                </p>
+                            </div>
+                        </div>
+
                         <p class="mt-2 text-xs text-neutral-400">
                             Las cantidades van en unidades sueltas (botellones, cajas, equipos). Los botellones
                             viajan en bolsas de 5: se completa la bolsa.

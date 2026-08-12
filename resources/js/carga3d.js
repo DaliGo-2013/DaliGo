@@ -1330,7 +1330,31 @@ export default function iniciarCarga3d(canvas, datos) {
      * esconder un bulto que sí se vería, porque un vecino que todavía no se
      * dibujó no cuenta como tapa.
      */
+    /**
+     * LO QUE EL CAMIÓN YA LLEVABA (lote 5): un bloque gris contra la cabina, del largo
+     * que se declaró ocupado.
+     *
+     * Sin dibujarlo, la carga nueva aparece flotando a dos metros del frente y el hueco
+     * se lee como un error del acomodo — justo lo contrario de lo que pasa: ese metraje
+     * está tomado. Va GRIS, translúcido y sin código: no es carga de esta simulación y
+     * no puede competir con los colores que sí son datos.
+     *
+     * Se dibuja SIEMPRE que exista, aunque el visor esté en 0 bultos, porque no depende
+     * de la animación de carga: ya estaba arriba antes de empezar.
+     */
+    function cargaPrevia() {
+        const largo = datos.ocupado_m || 0;
+        if (largo <= 0) return;
+
+        // Alto: hasta el techo. Es lo honesto — no sabemos cómo está estibada la carga
+        // vieja, solo que ese pedazo de camión no está disponible. Dibujarla bajita
+        // sugeriría que arriba queda lugar, y el motor no lo está ofreciendo.
+        prisma(0, 0, 0, largo, veh.ancho, veh.alto, [148, 152, 158], { alpha: 0.5, borde: 'rgba(17,17,20,.45)' });
+    }
+
     function bultos() {
+        cargaPrevia();
+
         let puestos = 0;
         dibujadosPorBloque = bloques.map(() => 0);
 

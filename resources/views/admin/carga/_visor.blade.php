@@ -129,6 +129,29 @@
             <span class="text-neutral-500">Piso libre en la puerta
                 <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
             </span>
+            {{-- LO QUE YA LLEVABA (lote 5). Va en la MISMA franja que las medidas y no
+                 en un aviso aparte: es lo que explica por qué el cupo salió más chico
+                 que otras veces con el mismo camión. Sin decirlo, el número recortado
+                 se lee como un error del cálculo. --}}
+            @if ($mixta['ocupado']['hay'] ?? false)
+                @php
+                    // Se arma en PHP y no con `@if` inline: un `@endif` pegado al texto
+                    // («… m@endif») no lo reconoce el compilador de Blade y revienta la
+                    // vista entera con «unexpected end of file». Ya pasó antes en esta
+                    // misma pantalla.
+                    $partes = [];
+                    if ($mixta['ocupado']['cm'] > 0) {
+                        $partes[] = number_format($mixta['ocupado']['cm'] / 100, 2, ',', '.').' m';
+                    }
+                    if ($mixta['ocupado']['kg'] > 0) {
+                        $partes[] = number_format($mixta['ocupado']['kg'], 0, ',', '.').' kg';
+                    }
+                @endphp
+                <span class="font-medium text-amber-700">Ya lleva
+                    <span class="tabular-nums">{{ implode(' · ', $partes) }}</span>
+                    <span class="font-normal text-amber-600">— descontado</span>
+                </span>
+            @endif
         </div>
     @endif
 
