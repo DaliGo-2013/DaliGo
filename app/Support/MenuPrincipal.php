@@ -153,8 +153,14 @@ class MenuPrincipal
             'label' => 'Facturación',
             'icon' => 'document-text',
             'items' => [
-                'documentos' => ['label' => 'Documentos', 'route' => 'admin.dte.index', 'activo' => ['admin.dte.index'], 'permiso' => 'emitir documentos tributarios'],
-                'estado-facturacion' => ['label' => 'Estado', 'route' => 'admin.dte.estado', 'activo' => ['admin.dte.estado'], 'permiso' => 'emitir documentos tributarios'],
+                // Consolidación Lote 3 (PLAN-MENU-DENSIDAD): «Estado» dejó de
+                // ser ítem y vive como pestaña de Documentos (admin/dte/_tabs).
+                // Su ruta va AQUÍ, en el `activo` del anfitrión — si no, la
+                // página queda sin resaltado en silencio (candado en
+                // MenuConsolidacionesTest). El acordeón de 1 ítem se conserva
+                // a propósito: el activo_extra de abajo lo necesita, y M05 va
+                // a crecer cuando se habilite la emisión (parte del Lote 3).
+                'documentos' => ['label' => 'Documentos', 'route' => 'admin.dte.index', 'activo' => ['admin.dte.index', 'admin.dte.estado'], 'permiso' => 'emitir documentos tributarios'],
             ],
             // La pantalla del documento de una orden cuelga de Servicio Técnico por
             // ruta, pero conceptualmente es de acá: abre este acordeón.

@@ -7,14 +7,16 @@
 --}}
 <x-app-layout ancho="formulario">
     <x-slot name="header">
-        {{-- Sin «Volver»: es un ítem del menú, se llega por la sidebar (doctrina
-             P-NAV-08, candado en VolverTest). Desde Documentos se llega por el
-             enlace del aviso. --}}
+        {{-- Sin «Volver»: es la pestaña «Estado de la conexión» de Documentos
+             (consolidación Lote 3, PLAN-MENU-DENSIDAD) — el tab-nav es su
+             navegación, misma jerarquía que su hermana (precedente Lote 1). --}}
         <x-page-header title="Estado de la facturación"
                        subtitle="Qué está listo y qué falta para poder emitir documentos tributarios." />
     </x-slot>
 
     <div class="space-y-5 py-8 sm:py-12">
+
+        @include('admin.dte._tabs')
 
         {{-- AVANCE primero. Una pantalla que arranca enumerando pendientes se lee
              como un módulo roto; el avance real es grande y sin esto era invisible. --}}

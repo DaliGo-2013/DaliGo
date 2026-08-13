@@ -27,11 +27,14 @@ class MenuConsolidacionesTest extends TestCase
 
     /**
      * Prefijo de nombre de ruta consolidado => key del ítem anfitrión
-     * (formato de MenuPrincipal::items(): "modulo.item"). El prefijo debe
-     * tener una ruta `{prefijo}index` sin parámetros (la puerta que se visita).
+     * (formato de MenuPrincipal::items(): "modulo.item"). La puerta que se
+     * visita es la ruta llamada EXACTAMENTE `{prefijo}` si existe (una
+     * consolidación de ruta hoja, como Estado) o `{prefijo}index` (una familia
+     * con prefijo, como listas-precios) — en ambos casos sin parámetros.
      */
     private const CONSOLIDADAS = [
         'admin.listas-precios.' => 'comercial.catalogo', // F1: Precios → pestaña de Catálogo
+        'admin.dte.estado' => 'facturacion.documentos', // Lote 3: Estado → pestaña de Documentos
     ];
 
     private function admin(): User
@@ -70,11 +73,12 @@ class MenuConsolidacionesTest extends TestCase
         foreach (self::CONSOLIDADAS as $prefijo => $anfitrionKey) {
             $anfitrion = MenuPrincipal::items()[$anfitrionKey];
 
-            $ruta = Route::getRoutes()->getByName($prefijo.'index');
-            $this->assertNotNull($ruta, "No existe [{$prefijo}index] para visitar; el mapa exige un index sin parámetros.");
-            $this->assertSame([], $ruta->parameterNames(), "[{$prefijo}index] necesita parámetros; el candado no la puede visitar.");
+            $puerta = Route::getRoutes()->getByName($prefijo) !== null ? $prefijo : $prefijo.'index';
+            $ruta = Route::getRoutes()->getByName($puerta);
+            $this->assertNotNull($ruta, "No existe [{$puerta}] para visitar; el mapa exige la ruta exacta o un index, sin parámetros.");
+            $this->assertSame([], $ruta->parameterNames(), "[{$puerta}] necesita parámetros; el candado no la puede visitar.");
 
-            $html = $this->actingAs($admin)->get(route($prefijo.'index'))->assertOk()->getContent();
+            $html = $this->actingAs($admin)->get(route($puerta))->assertOk()->getContent();
 
             // Exactamente UN resaltado del menú, y es el del anfitrión (forma
             // contigua que produce x-sidebar-item, doctrina anti verde-engañoso).
