@@ -3,8 +3,10 @@
         <x-page-header title="Agenda de terreno" subtitle="Mantenciones, reparaciones e instalaciones del técnico industrial.">
             <x-slot name="action">
                 <div class="flex items-center gap-2">
+                    {{-- El link «Catálogo de servicios» que vivía acá lo absorbió
+                         la pestaña «Servicios de terreno» del tab-nav (Lote 5,
+                         PLAN-MENU-DENSIDAD) — misma URL, mismo @can. --}}
                     @can('agendar servicio terreno')
-                        <x-secondary-link :href="route('admin.servicios-terreno.index')">Catálogo de servicios</x-secondary-link>
                         <x-button-link :href="route('admin.agenda-terreno.create')">
                             <x-icon.plus class="h-4 w-4" />
                             Agendar trabajo
@@ -17,6 +19,8 @@
 
     <div class="space-y-5 py-8 sm:py-12">
         <x-status-alert :status="session('status')" />
+
+        @include('admin.agenda-terreno._tabs')
 
         {{-- Por coordinar: solicitudes que dejó el CLIENTE por el QR (sin
              fecha). Quien agenda las revisa, llama al cliente y les pone

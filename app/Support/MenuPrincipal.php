@@ -237,8 +237,14 @@ class MenuPrincipal
                 // las dos puntas: quien despacha y quien recibe.
                 'traslados' => ['label' => 'Traslados al taller', 'route' => 'admin.traslados.index', 'activo' => ['admin.traslados.*'], 'permiso' => 'despachar traslado servicio|recibir traslado servicio'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
-                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
-                'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],
+                // Consolidación Lote 5 (PLAN-MENU-DENSIDAD): «Servicios de
+                // terreno» dejó de ser ítem y vive como pestaña de la Agenda
+                // (admin/agenda-terreno/_tabs). Su ruta va AQUÍ, en el `activo`
+                // del anfitrión (candado en MenuConsolidacionesTest). La
+                // pestaña se gatea con `agendar servicio terreno` en el _tabs:
+                // el técnico industrial ve la Agenda con solo `ver agenda
+                // terreno` y el tarifario le daría 403.
+                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*', 'admin.servicios-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
                 // Conductores se fue a LOGÍSTICA el 04-08 (pedido del dueño).
