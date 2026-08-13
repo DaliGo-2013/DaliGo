@@ -13,6 +13,8 @@
     <div class="space-y-5 py-8 sm:py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.agenda-terreno._tabs')
+
         <x-list-card title="Servicios" :count="$servicios->count()" :countLabel="$servicios->count() === 1 ? 'servicio' : 'servicios'">
             @forelse ($servicios as $s)
                 <li class="px-4 py-3 sm:px-6 {{ $s->activo ? '' : 'opacity-60' }}">
