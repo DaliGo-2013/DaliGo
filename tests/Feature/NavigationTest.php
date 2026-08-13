@@ -32,14 +32,23 @@ class NavigationTest extends TestCase
     public function test_admin_ve_todos_los_accesos_de_servicio_tecnico(): void
     {
         // "Registrar ingreso" ya NO va en el nav: vive como botón dentro de Listado.
+        // «Códigos QR» ídem desde el Lote 4 (PLAN-MENU-DENSIDAD): dejó de ser
+        // ítem del menú — su entrada es el botón de la cabecera del Listado.
         $this->actingAs($this->usuarioCon('admin'))
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Listado')
             ->assertDontSee('Registrar ingreso')
             ->assertSee('Ingreso por lote')
-            ->assertSee('Códigos QR')
+            ->assertDontSee('Códigos QR')
             ->assertSee('Informe');
+
+        // El acceso NO se perdió: el admin lo tiene en la cabecera del Listado.
+        $this->actingAs($this->usuarioCon('admin'))
+            ->get(route('admin.servicio-tecnico.index'))
+            ->assertOk()
+            ->assertSee('Códigos QR')
+            ->assertSee(route('admin.servicio-tecnico.qr'), false);
     }
 
     public function test_solo_lectura_ve_listado_e_informe_pero_no_la_gestion(): void
@@ -53,6 +62,13 @@ class NavigationTest extends TestCase
             ->assertDontSee('Registrar ingreso')
             ->assertDontSee('Códigos QR')
             ->assertDontSee('Ingreso por lote');
+
+        // Tampoco en la cabecera del Listado: el botón QR es de `manage`, y al
+        // vendedor (solo `view`) la pantalla QR le daría 403 (Lote 4).
+        $this->actingAs($this->usuarioCon('vendedor'))
+            ->get(route('admin.servicio-tecnico.index'))
+            ->assertOk()
+            ->assertDontSee('Códigos QR');
     }
 
     public function test_conductor_ve_el_menu_solo_con_ingreso_por_lote(): void

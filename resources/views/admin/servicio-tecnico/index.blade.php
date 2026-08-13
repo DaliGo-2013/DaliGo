@@ -5,10 +5,18 @@
                 <div class="flex items-center gap-2">
                     {{-- Sin "Volver": este listado ES un ítem del menú, no tiene
                          pantalla padre (doctrina del botón único, 24-07). --}}
-                    {{-- Las acciones secundarias (Informe, Lote, QR…)
-                         viven en el acordeón «Servicio Técnico» de la sidebar,
-                         para no duplicarlas. Aquí queda solo el CTA primario. --}}
+                    {{-- Las acciones secundarias (Informe, Lote…) viven en el
+                         acordeón «Servicio Técnico» de la sidebar, para no
+                         duplicarlas. «Códigos QR» es la excepción (Lote 4,
+                         PLAN-MENU-DENSIDAD): dejó de ser ítem del menú y su
+                         entrada es este botón — gateado por `manage` porque el
+                         Listado también lo ve quien solo tiene `view`, y a ese
+                         la pantalla QR le daría 403 (por eso botón, no pestaña). --}}
                     @can('manage servicio tecnico')
+                        <a href="{{ route('admin.servicio-tecnico.qr') }}"
+                           class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                            Códigos QR
+                        </a>
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
                             <x-icon.plus class="h-4 w-4" />
                             Registrar ingreso
