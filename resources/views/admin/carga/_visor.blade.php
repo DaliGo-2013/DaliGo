@@ -569,6 +569,16 @@
                     {{ count($acomodo['fuera']) }} bloque(s) sobresalen de la caja.
                 </span>
             @endif
+            {{-- Lo que se acomodó a mano y NO se pudo conservar: el bloque que hoy ocupa
+                 ese lugar es de otro producto, así que volvió a donde lo puso el cálculo.
+                 Sin decirlo, un bloque que aparece movido de vuelta se lee como que el
+                 acomodo no se guardó — y lo que pasó es lo contrario: se guardó, y se
+                 respetó de quién era cada lugar (ver `AcomodoManual`). --}}
+            @if (($acomodo['ignorados'] ?? 0) > 0)
+                <span class="text-amber-800">
+                    {{ $acomodo['ignorados'] }} bloque(s) volvieron al lugar del cálculo: cambió el producto que iba ahí.
+                </span>
+            @endif
         </div>
     @endif
 

@@ -18,11 +18,39 @@ namespace App\Services\Carga;
  *  2. LO QUE ESTÁ MAL SE DICE, no se corrige en silencio. Dos bloques encimados o uno
  *     medio afuera se reportan como `choques` y `fuera`. No se los reacomoda —eso sería
  *     volver a decidir por el usuario— ni se los descarta.
- *  3. UN ACOMODO VIEJO SE TIRA ENTERO. Si el resultado cambió de cantidad de bloques, las
- *     posiciones guardadas ya no corresponden a estos productos: aplicar las primeras
- *     tres pondría la carga de otro en el lugar equivocado, en silencio y con cara de
- *     verificada. Por eso el acomodo viaja con `de` (para cuántos bloques se hizo) y si
- *     no coincide se descarta completo.
+ *  3. UNA POSICIÓN VALE SI SIGUE SIENDO DEL MISMO PRODUCTO. Aplicar una posición sobre un
+ *     bloque que ahora es de otra cosa sería mover carga ajena en silencio y con cara de
+ *     verificada. Por eso el acomodo viaja con los PRODUCTOS para los que se armó
+ *     (`acomodo_para`: un id de tipo de bulto por bloque) y cada posición se compara con el
+ *     producto del bloque que hoy ocupa su lugar: la que coincide se aplica, la que no
+ *     vuelve a donde la puso el motor.
+ *
+ *     El PRODUCTO y no el número de línea: cambiarle el producto a una línea, o reordenar
+ *     la lista con los botones de mover, deja el mismo índice apuntando a otra cosa. Con el
+ *     índice eso pasaba el control; con el id, no.
+ *
+ *     DECISIÓN DEL DUEÑO (13-08-2026): *«muchas veces los botellones se acomodan por
+ *     cantidad y las cajas se acomodan a mano; lo mejor es conservar ambas»*. Antes el
+ *     acomodo viajaba con un CONTADOR de bloques y cualquier cambio de cantidad lo tiraba
+ *     entero: subir 20 botellones borraba el acomodo de las cajas, que era justo lo que él
+ *     había hecho a mano. Con las líneas, cambiar una cantidad conserva las posiciones
+ *     mientras el reparto en bloques no cambie.
+ *
+ *     Y de paso tapa un agujero del contador: dos resultados con el MISMO número de
+ *     bloques pero de productos distintos pasaban el control y las posiciones se aplicaban
+ *     igual — exactamente la carga ajena que este punto 3 dice evitar.
+ *
+ *     LO QUE SIGUE SIN CONSERVARSE, y es a propósito: si una línea cambia de CUÁNTOS
+ *     bloques ocupa, los ordinales de las que vienen detrás se corren y sus posiciones
+ *     dejan de coincidir. Ahí los bloques vuelven al lugar del cálculo y la pantalla lo
+ *     dice. Podría arreglarse indexando por producto+ocurrencia en vez de por ordinal, pero
+ *     cuando el reparto en bloques cambia las huellas también cambian, así que la posición
+ *     vieja es tan probable que se pise como que sirva: volver a lo verificado es la salida
+ *     honesta. Dos líneas del MISMO producto tampoco se distinguen entre sí, y no hace
+ *     falta: mover carga idéntica al lugar de su gemela no mueve carga ajena.
+ *
+ *     El contador viejo (`acomodo_de`) se sigue aceptando para los links ya compartidos:
+ *     el link ES el escenario y hay planes acomodados a mano circulando por WhatsApp.
  *
  * GIRAR es sobre el PISO, no volcar. Se intercambian largo↔ancho del bulto y de la
  * rejilla a la vez —el bloque entero rota 90°, con las cajas adentro—, y el ALTO no se
@@ -40,35 +68,56 @@ final class AcomodoManual
     /** Formato de cada posición: `x,y` o `x,y,g` (girado), en centímetros enteros. */
     public const FORMATO = '/^-?\d{1,4},-?\d{1,4}(,g)?$/';
 
+    /** Formato de `acomodo_para`: el id de producto de cada bloque, en orden. */
+    public const FORMATO_PARA = '/^\d{1,7}(,\d{1,7})*$/';
+
     /**
      * @param  array<int|string, string>  $crudo  el parámetro `acomodo` tal como llega
-     * @param  ?int  $hechoPara  el `acomodo_de`: para cuántos bloques se armó
+     * @param  ?int  $hechoPara  el `acomodo_de` VIEJO: para cuántos bloques se armó. Solo
+     *                           manda cuando no llega `$paraProductos` (links ya compartidos)
+     * @param  ?string  $paraProductos  el `acomodo_para`: un id de tipo de bulto por bloque,
+     *                                  en orden, `3,3,5`
      */
     public function __construct(
         private readonly array $crudo = [],
         private readonly ?int $hechoPara = null,
+        private readonly ?string $paraProductos = null,
     ) {}
 
     /**
      * Aplica el acomodo a los bloques del motor.
      *
      * @param  list<array{x:int,y:int,orientacion:array{largo:int,ancho:int,alto:int},rejilla:array{largo:int,ancho:int,alto:int},cantidad:int}>  $bloques
-     * @return array{bloques:list<array<string,mixed>>, activo:bool, movidos:int, choques:list<array{0:int,1:int}>, fuera:list<int>, descartado:bool}
+     * @param  array<int, int>  $productoPorLinea  qué producto (id de tipo de bulto) tiene
+     *                                             hoy cada línea. Sin esto no se puede saber
+     *                                             de quién era cada posición y se aplica como
+     *                                             antes: lo usan los tests del servicio y
+     *                                             cualquier llamador que no lleve líneas
+     * @return array{bloques:list<array<string,mixed>>, activo:bool, movidos:int, ignorados:int, choques:list<array{0:int,1:int}>, fuera:list<int>, descartado:bool}
      */
-    public function aplicar(array $bloques, int $largoCm, int $anchoCm): array
+    public function aplicar(array $bloques, int $largoCm, int $anchoCm, array $productoPorLinea = []): array
     {
         $posiciones = $this->posiciones();
 
-        // Un acomodo armado para otra cantidad de bloques no es «casi» este: es otro.
-        // Se tira entero y la pantalla lo dice, en vez de encajar las primeras tres
-        // posiciones sobre productos que ahora son distintos.
-        $descartado = $posiciones !== [] && $this->hechoPara !== null && $this->hechoPara !== count($bloques);
+        // Para qué PRODUCTO se guardó cada posición. `null` = no se puede comparar (link
+        // viejo sin la lista, o un llamador que no pasó los productos): ahí manda el
+        // contador de abajo, que es el comportamiento de antes.
+        $productos = $productoPorLinea !== [] && $this->paraProductos !== null
+            && preg_match(self::FORMATO_PARA, $this->paraProductos) === 1
+                ? array_map('intval', explode(',', $this->paraProductos))
+                : null;
+
+        // EL CONTROL VIEJO, solo para los links que ya andan por ahí: un acomodo armado
+        // para otra cantidad de bloques no es «casi» este, es otro, y se tira entero.
+        $descartado = $posiciones !== [] && $productos === null
+            && $this->hechoPara !== null && $this->hechoPara !== count($bloques);
 
         if ($posiciones === [] || $descartado) {
             return [
                 'bloques' => $bloques,
                 'activo' => false,
                 'movidos' => 0,
+                'ignorados' => 0,
                 'choques' => [],
                 'fuera' => [],
                 'descartado' => $descartado,
@@ -76,8 +125,27 @@ final class AcomodoManual
         }
 
         $movidos = 0;
+        // Las posiciones que se dejaron pasar porque el bloque de ese lugar ya es de otro
+        // producto. Se cuentan para poder decirlo: un bloque que vuelve solo al lugar del
+        // cálculo, sin aviso, se lee como que el acomodo no se guardó.
+        $ignorados = 0;
+
         foreach ($posiciones as $i => $pos) {
             if (! isset($bloques[$i])) {
+                continue;
+            }
+
+            // ¿El bloque que hoy ocupa este lugar es del mismo producto que cuando se
+            // acomodó? Si no, la posición no se aplica: se quedaría la carga de otro en un
+            // lugar que nadie eligió para ella.
+            //
+            // El bloque del cupo máximo y el del pallet no traen `linea` —son de un solo
+            // producto— y ahí la línea es la 0, la misma con la que el controlador arma el
+            // mapa. Sin ese default esos dos modos ignorarían el acomodo entero.
+            if ($productos !== null
+                && ($productos[$i] ?? -1) !== ($productoPorLinea[$bloques[$i]['linea'] ?? 0] ?? -1)) {
+                $ignorados++;
+
                 continue;
             }
 
@@ -99,9 +167,13 @@ final class AcomodoManual
             'bloques' => $bloques,
             'activo' => $movidos > 0,
             'movidos' => $movidos,
+            'ignorados' => $ignorados,
             'choques' => self::choques($bloques),
             'fuera' => self::fuera($bloques, $largoCm, $anchoCm),
-            'descartado' => false,
+            // Si NINGUNA posición sobrevivió, el acomodo se perdió completo y hay que
+            // decirlo con las mismas palabras de siempre: «se descartó». Media docena de
+            // bloques que volvieron solos a su lugar, sin cartel, se lee como un bug.
+            'descartado' => $movidos === 0 && $ignorados > 0,
         ];
     }
 

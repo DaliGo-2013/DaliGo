@@ -189,15 +189,18 @@ class SimuladorCargaController extends Controller
             // EL ACOMODO A MANO (pedido del dueño 11-08: «que te dé la opción de dar
             // vuelta la caja y acomodar como uno quiero»). Una posición por bloque,
             // `x,y` o `x,y,g` en centímetros, indexada por el ordinal del bloque; y
-            // `acomodo_de`, para cuántos bloques se armó — si el resultado cambió de
-            // tamaño, el acomodo se descarta entero en vez de aplicarse torcido.
+            // `acomodo_para`, la LÍNEA de cada bloque, para saber si una posición sigue
+            // siendo del mismo producto (decisión del dueño 13-08: cambiar una cantidad no
+            // tiene que borrar lo que se acomodó a mano).
             //
-            // Viaja en la URL como todo lo demás: el link ES el escenario, así que un
-            // plan acomodado a mano se comparte y se baja a Excel sin tabla nueva. Ver
-            // `AcomodoManual` para lo que el acomodo puede y no puede cambiar.
+            // `acomodo_de` es el control VIEJO —cuántos bloques eran— y se sigue aceptando
+            // para los links ya compartidos. Viaja todo en la URL como el resto: el link ES
+            // el escenario, así que un plan acomodado a mano se comparte y se baja a Excel
+            // sin tabla nueva. Ver `AcomodoManual`.
             'acomodo' => ['nullable', 'array', 'max:200'],
             'acomodo.*' => ['string', 'regex:'.AcomodoManual::FORMATO],
             'acomodo_de' => ['nullable', 'integer', 'min:0', 'max:200'],
+            'acomodo_para' => ['nullable', 'string', 'max:800', 'regex:'.AcomodoManual::FORMATO_PARA],
         ]);
 
         // EL ORDEN DE LAS LÍNEAS SE RESTAURA POR ÍNDICE.
@@ -387,6 +390,7 @@ class SimuladorCargaController extends Controller
                 new AcomodoManual(
                     $datos['acomodo'] ?? [],
                     isset($datos['acomodo_de']) ? (int) $datos['acomodo_de'] : null,
+                    $datos['acomodo_para'] ?? null,
                 ),
             ),
         ]);
@@ -987,8 +991,15 @@ class SimuladorCargaController extends Controller
 
         $acomodoManual ??= new AcomodoManual;
 
+        // QUÉ PRODUCTO TIENE HOY CADA LÍNEA. Es con lo que `AcomodoManual` decide si una
+        // posición guardada sigue siendo de quien la pidió (ver su punto 3). En los modos de
+        // un solo producto la línea es la 0, el mismo default que usa el servicio.
+        $productoPorLinea = $mixta !== null
+            ? collect($mixta['lineas'])->map(fn (array $f) => (int) ($f['modelo']->id ?? 0))->all()
+            : [0 => (int) ($bulto->id ?? 0)];
+
         if ($enPallet !== null) {
-            return $this->escenaEnPallet($camion, $bulto, $enPallet, $m, $acomodoManual);
+            return $this->escenaEnPallet($camion, $bulto, $enPallet, $m, $acomodoManual, $productoPorLinea);
         }
 
         // EL ACOMODO A MANO SE APLICA EN CENTÍMETROS, antes de pasar a metros.
@@ -1010,6 +1021,7 @@ class SimuladorCargaController extends Controller
                 collect($mixta['resultado']['bloques'])->sortBy([['x', 'asc'], ['y', 'asc']])->values()->all(),
                 $camion->largo_cm,
                 $camion->ancho_cm,
+                $productoPorLinea,
             );
 
             $bloques = collect($acomodo['bloques'])
@@ -1074,7 +1086,7 @@ class SimuladorCargaController extends Controller
                 'orientacion' => $resultado['orientacion'],
                 'rejilla' => $resultado['rejilla'],
                 'cantidad' => $enEscena,
-            ]] : [], $camion->largo_cm, $camion->ancho_cm);
+            ]] : [], $camion->largo_cm, $camion->ancho_cm, $productoPorLinea);
 
             $bloques = collect($acomodo['bloques'])->map(fn (array $b) => [
                 'x' => $m($b['x']),
@@ -1125,7 +1137,7 @@ class SimuladorCargaController extends Controller
             // arrastrarla y girarla. Viaja con la escena y no aparte porque tiene que
             // llegar también al link compartido: ahí no se puede tocar, pero el aviso de
             // «acomodo a mano» sí se tiene que ver.
-            'acomodo' => $this->tablero($acomodo, $bloques, $camion),
+            'acomodo' => $this->tablero($acomodo, $bloques, $camion, $productoPorLinea),
         ];
     }
 
@@ -1141,7 +1153,7 @@ class SimuladorCargaController extends Controller
      * @param  list<array<string, mixed>>  $escena  los mismos bloques ya en metros, por color y nombre
      * @return array<string, mixed>
      */
-    private function tablero(array $acomodo, array $escena, CamionSimulacion $camion): array
+    private function tablero(array $acomodo, array $escena, CamionSimulacion $camion, array $productoPorLinea = []): array
     {
         $piezas = [];
 
@@ -1153,6 +1165,13 @@ class SimuladorCargaController extends Controller
                 'ancho' => $b['rejilla']['ancho'] * $b['orientacion']['ancho'],
                 'girado' => (bool) ($b['girado'] ?? false),
                 'cantidad' => $b['cantidad'],
+                // QUÉ PRODUCTO es. Es lo que el tablero escribe en `acomodo_para` para
+                // que, al recalcular, cada posición se aplique solo si el bloque de ese
+                // lugar sigue siendo del mismo producto (ver `AcomodoManual`). Va el id y
+                // no la letra ni el índice de línea: la letra es para el ojo, y el índice
+                // sigue apuntando a la misma fila cuando se le cambia el producto o se
+                // reordena la lista — justo los dos casos que hay que detectar.
+                'producto' => $productoPorLinea[$b['linea'] ?? 0] ?? 0,
                 // El color y la letra son los MISMOS del lienzo (por eso salen de la
                 // escena y no se recalculan): el tablero y el dibujo 3D tienen que
                 // nombrar cada bloque igual, o hay que adivinar cuál se está moviendo.
@@ -1169,6 +1188,7 @@ class SimuladorCargaController extends Controller
             'choques' => $acomodo['choques'],
             'fuera' => $acomodo['fuera'],
             'descartado' => $acomodo['descartado'],
+            'ignorados' => $acomodo['ignorados'],
         ];
     }
 
@@ -1215,7 +1235,7 @@ class SimuladorCargaController extends Controller
      * Si el motor lo giró 90° para que entrara, el interior viene **ya girado** desde acá:
      * el visor no tiene que deducirlo, y así el dibujo no puede contradecir al cálculo.
      */
-    private function escenaEnPallet(CamionSimulacion $camion, TipoBulto $bulto, array $enPallet, callable $m, AcomodoManual $acomodoManual): array
+    private function escenaEnPallet(CamionSimulacion $camion, TipoBulto $bulto, array $enPallet, callable $m, AcomodoManual $acomodoManual, array $productoPorLinea = []): array
     {
         $p = $enPallet['pallet'];
         $enCamion = $enPallet['enCamion'];
@@ -1240,7 +1260,7 @@ class SimuladorCargaController extends Controller
             'orientacion' => $enCamion['orientacion'],
             'rejilla' => $enCamion['rejilla'],
             'cantidad' => $enPallet['cabenPallets'],
-        ]] : [], $camion->largo_cm, $camion->ancho_cm);
+        ]] : [], $camion->largo_cm, $camion->ancho_cm, $productoPorLinea);
 
         $bloques = collect($acomodo['bloques'])->map(fn (array $b) => [
             'x' => $m($b['x']),
@@ -1269,7 +1289,7 @@ class SimuladorCargaController extends Controller
             'bloques' => $bloques,
             'tope' => $enPallet['cabenPallets'],
             'libre_m' => self::pisoLibre($camion->largo_cm / 100, $bloques),
-            'acomodo' => $this->tablero($acomodo, $bloques, $camion),
+            'acomodo' => $this->tablero($acomodo, $bloques, $camion, $productoPorLinea),
             // Lo que el visor dibuja EN EL PISO, al lado del camión, mientras el pallet
             // todavía no se subió (pedido del dueño 06-08).
             'pallet' => [

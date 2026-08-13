@@ -89,13 +89,29 @@ class CamionesSimulacionSeeder extends Seeder
                 // techo y los detalles del espejo agregados el 11-08 sobre tres fotos más.
                 // Ya no queda ningún camión del catálogo con la silueta genérica.
                 'silueta' => 'camion_hino',
-                // EJES: el dueño dictó «distancia entre ejes 435 cm» (12-08-2026), pero
-                // FALTA el otro número —del frente de la caja al centro del eje trasero—
-                // y con uno solo no hay brazo de palanca. Los dos quedan en null: el
-                // reparto de peso no se muestra y la pantalla dice qué falta medir, en vez
-                // de estimar la posición de la caja y dar un número con cara de medido.
-                // Ver `RepartoPorEje`. Cuando llegue: entre_ejes_cm => 435.
-                'notas' => 'La misma caja en los dos HINO de la flota. Distancia entre ejes 435 cm (12-08); falta del frente de la caja al eje trasero para repartir peso por eje.',
+                // EJES: llegó el segundo número —«del frente de la caja al eje trasero:
+                // 499 cm» (dueño, 13-08-2026)— y NO CIERRA con el primero. Se guarda el
+                // 499, que es una medida de huincha, y `entre_ejes_cm` sigue en null: con
+                // uno solo no hay brazo de palanca, así que el reparto de peso no se
+                // muestra y la pantalla dice qué falta.
+                //
+                // POR QUÉ NO CIERRA. Con los 435 cm entre ejes que dictó el 12-08:
+                // 499 − 435 = +64, o sea el eje DELANTERO caería 64 cm ADENTRO de la caja
+                // de carga. En un camión cab-over la cabina va sobre el eje delantero, así
+                // que ese eje está siempre ADELANTE del frente de la caja: en el Chevy 3,
+                // el único medido, da −58 cm. Un +64 haría que el motor reparta el peso
+                // hacia el eje equivocado, y de forma OPTIMISTA (le saca kilos al trasero,
+                // que es justo el que se pasa) — el falso verde que este módulo existe para
+                // evitar.
+                //
+                // Y EL 499 ES EL QUE CUADRA con lo demás: la caja mide 797 cm, así que
+                // detrás del eje trasero quedan 797 − 499 = 298 cm de voladizo. Sobre 435
+                // de distancia entre ejes eso es el 68% —arriba del límite legal del 60%—
+                // y sobre ~557 da 53%, normal. Un HINO 500 con 5.530 mm entre ejes es una
+                // versión de catálogo. Lo que falta confirmar es la distancia entre ejes,
+                // en el padrón o la revisión técnica. Ver `docs/pendientes/01`.
+                'eje_trasero_cm' => 499,
+                'notas' => 'La misma caja en los dos HINO de la flota. Del frente de la caja al eje trasero: 499 cm (13-08). Falta CONFIRMAR la distancia entre ejes: el 435 cm del 12-08 no cierra con el 499 (pondría el eje delantero adentro de la caja) y sin ese número no se reparte peso por eje.',
             ],
             [
                 'nombre' => 'Hyundai HD35',

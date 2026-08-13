@@ -266,9 +266,11 @@ reglas que el código sostiene (`App\Services\Carga\AcomodoManual`):
    reportan (`choques`, `fuera`) y salen en rojo. No se reacomodan solos: separarlos sería
    volver a decidir por el usuario. Tocarse **no** es pisarse — así dos bloques pegados,
    que es como se carga, no salen marcados.
-3. **Un acomodo viejo se descarta ENTERO.** Viaja con `acomodo_de` (para cuántos bloques se
-   armó); si el resultado cambió de tamaño, aplicar las primeras posiciones pondría carga
-   ajena en el lugar equivocado, en silencio y con cara de verificada.
+3. **Una posición vale si sigue siendo del MISMO PRODUCTO.** Aplicarla sobre un bloque que
+   ahora es otra cosa pondría carga ajena en el lugar equivocado, en silencio y con cara de
+   verificada. Viaja con `acomodo_para` (un id de producto por bloque) y se compara uno a
+   uno; lo que no coincide vuelve al lugar del cálculo y se cuenta. **Reemplazó al contador
+   de bloques el 13-08 — ver §2.3ter.**
 4. **El cartel viaja con el plan.** «Acomodo a mano · el cálculo no verificó estas
    posiciones» sale en la pantalla, en el **link compartido** y en el **Excel** — que es la
    hoja que se imprime y se le da al chofer.
@@ -289,7 +291,7 @@ el mismo idioma que el cálculo; arrastrar en perspectiva obliga a adivinar la p
 con el mouse. Los bloques se **imantan** a las paredes y a los cantos de los vecinos (4 cm)
 porque si no quedan huecos de 2 o 3 cm que se acumulan hasta un «no entra» que no existe.
 
-**Viaja en la URL** (`acomodo[i]=x,y[,g]` en centímetros + `acomodo_de`), como todo lo demás:
+**Viaja en la URL** (`acomodo[i]=x,y[,g]` en centímetros + `acomodo_para`), como todo lo demás:
 el link ES el escenario, así que un plan acomodado a mano se comparte y se baja a Excel sin
 tabla nueva ni migración. Se aplica **en centímetros y antes de pasar a metros**, por dos
 razones: comparar huellas en metros haría que `0,44 × 3 = 1,3199999999999998` se «pise» con
@@ -299,6 +301,43 @@ pallet arrastra su carga de arriba por el mismo camino que ya usaba el giro del 
 
 Aplica a los **tres modos** (cupo máximo, carga mixta y sobre pallet). Candados en
 `AcomodoManualTest` (13) y `PlanDeCargaExcelTest::test_avisa_cuando_los_bloques_se_acomodaron_a_mano`.
+
+### 2.3ter CAMBIAR UNA CANTIDAD NO BORRA LO ACOMODADO A MANO (13-08-2026)
+
+Decisión del dueño, textual: *«muchas veces los botellones se acomodan por cantidad y las
+cajas se acomodan a mano, yo creo que lo mejor es conservar ambas»*.
+
+**El problema era la clave.** El acomodo viajaba con un CONTADOR de bloques (`acomodo_de`) y
+si el resultado cambiaba de tamaño se tiraba entero. Medido contra el motor: 40 cajas + 100
+bolsas se reparten en **tres** bloques y 40 + 300 en **dos** — o sea que subir los botellones
+borraba el acomodo de las cajas, que es justo lo que él había hecho a mano.
+
+**Ahora la clave son los PRODUCTOS** (`acomodo_para=2,1,1`: un id de tipo de bulto por
+bloque, en orden) y cada posición se aplica solo si el bloque que hoy ocupa ese lugar es del
+mismo producto. Lo que coincide se conserva; lo que no, vuelve a donde lo puso el motor y la
+pantalla dice cuántos («N bloque(s) volvieron al lugar del cálculo: cambió el producto que
+iba ahí»). Si no sobrevive ninguno, se dice «se descartó» como siempre.
+
+**El id y no el número de línea.** Fue mi primer intento y tiene un agujero: cambiarle el
+producto a una línea —o reordenar la lista con los botones de mover— deja el mismo índice
+apuntando a otra cosa, así que la posición se aplicaba igual. Con el id no. El candado que lo
+destapó es `test_cambiar_el_producto_no_le_pasa_la_posicion_al_nuevo`, que quedó rojo con la
+versión por índice.
+
+**Y el contador viejo se sigue aceptando**, con su comportamiento de siempre: el link ES el
+escenario y hay planes acomodados a mano circulando desde el 11-08. Lo que dejó de hacer es
+escribirse.
+
+**Lo que sigue sin conservarse, a propósito:** si una línea cambia de cuántos bloques ocupa,
+los ordinales de las que vienen detrás se corren y esas posiciones se descartan. Se podría
+indexar por producto+ocurrencia, pero cuando el reparto cambia las huellas también cambian:
+la posición vieja es tan probable que se pise como que sirva, y volver a lo verificado es la
+salida honesta. Dos líneas del mismo producto tampoco se distinguen entre sí, y no hace
+falta: mover carga idéntica al lugar de su gemela no mueve carga ajena.
+
+Candados en `AcomodoConservaTest` (11), incluido el **puente**: que el tablero escriba
+`acomodo_para` con el producto de cada pieza. Un candado sobre el servicio no prueba que la
+pantalla lo use — ya pasó tres veces en este módulo.
 
 ## 3. Unidades: el vendedor habla en botellones, el motor en bolsas
 
@@ -1896,12 +1935,40 @@ tres quedaron sin medir a propósito y sus `notas` en el seeder dicen exactament
 falta; el candado `test_el_chevy_sembrado_es_el_unico_con_los_ejes_medidos` se pone rojo
 el día que alguien los complete «para que funcione».
 
-| Camión | Qué llegó el 12-08 | Qué falta |
+| Camión | Qué llegó | Qué falta |
 |---|---|---|
-| **Chevy 3 (NQR 919)** | entre ejes 417,5 cm · posterior de cabina al eje trasero 360 cm | nada (417,5 → 418: el módulo trabaja en cm enteros y medio cm sobre 4 m es 0,12%) |
-| HINO 500 FC 1118 | entre ejes 435 cm | del frente de la caja al centro del eje trasero |
-| Hyundai HD35 | «114,5 cm aprox» | **de qué a qué se midió** — no coincide con la distancia entre ejes de un HD35 (~242 cm) ni con una caja de 430 medida desde su frente |
-| Contenedor 40' | la ficha del **Actros 2545 LS** | esa ficha es del TRACTO, y la carga va sobre el SEMI (ver abajo) |
+| **Chevy 3 (NQR 919)** | entre ejes 417,5 cm · posterior de cabina al eje trasero 360 cm (12-08) | nada (417,5 → 418: el módulo trabaja en cm enteros y medio cm sobre 4 m es 0,12%) |
+| HINO 500 FC 1118 | entre ejes 435 cm (12-08) · **frente de la caja al eje trasero 499 cm (13-08)** | **confirmar la distancia entre ejes**: los dos números no cierran (ver abajo). El 499 está sembrado; `entre_ejes_cm` sigue en null |
+| Hyundai HD35 | «114,5 cm aprox» (12-08) · **ficha con silueta acotada (13-08)**: largo 6.110 · ancho 1.920 · alto 2.150 · entre ejes **3.415** · voladizos 1.075 y 1.620 mm | del frente de la caja al centro del eje trasero. La ficha da el entre ejes pero **no** dónde arranca la caja (ver abajo) |
+| Contenedor 40' | la ficha del **Actros 2545 LS** (12-08) | esa ficha es del TRACTO, y la carga va sobre el SEMI (ver abajo) |
+
+#### Los dos números del HINO no cierran, y el que manda es el 499 (13-08-2026)
+
+`499 − 435 = +64`: con esos dos datos el eje **delantero** caería 64 cm **adentro** de la
+caja de carga. En un cab-over la cabina va sobre el eje delantero, así que ese eje está
+siempre **adelante** del frente de la caja — en el Chevy 3, el único medido, da **−58 cm**.
+Y el error no sería neutro: un +64 le saca kilos al eje **trasero**, que es justo el que se
+pasa. Falso verde, que es lo que este cálculo existe para evitar.
+
+El 499 es además el que cuadra con el resto: la caja mide 797 cm, así que detrás del eje
+trasero quedan `797 − 499 = 298 cm` de voladizo. Sobre 435 cm entre ejes eso es el **68%**
+—arriba del límite legal del 60%—; sobre ~557 da 53%, normal. Un HINO 500 con 5.530 mm
+entre ejes es una versión de catálogo. Así que **se sembró el 499** y falta confirmar el
+entre ejes en el padrón o la revisión técnica.
+
+#### La ficha del HD35 contradice el «281» y no contesta lo que falta
+
+La silueta acotada que llegó el 13-08 da **3.415 mm entre ejes**, no los 281 cm que estaban
+anotados como «ya sabemos» (ese número no tenía fuente en el repo). Y el 3.415 es el que
+cuadra con la caja de 430 cm: con 281 el voladizo trasero saldría arriba del 80% del entre
+ejes, imposible.
+
+Lo que la ficha **no** dice es dónde arranca la caja, que es de donde se mide. Se puede
+deducir con un supuesto: si el fondo de la caja va al ras del final del chasis, entonces
+`frente de la caja → eje trasero = largo exterior de la caja − 162 ≈ 440 − 162 = 278 cm`.
+Y 278 ≈ 281 — lo más probable es que **el «281» sea justamente esta medida**, anotada por
+error como distancia entre ejes. No se siembra por probable: lo resuelve una pregunta
+(¿de qué a qué se midió el 281?) o una huincha.
 
 **El contenedor es otra cuenta, no la misma con otros números.** En un tracto + semi la
 carga se parte entre los ejes del semi y la **quinta rueda**, y recién de ahí baja a los
