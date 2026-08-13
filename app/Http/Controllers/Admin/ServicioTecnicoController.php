@@ -32,7 +32,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -448,56 +447,6 @@ class ServicioTecnicoController extends Controller
             ]);
 
         return view('admin.servicio-tecnico.qr', ['sucursales' => $sucursales]);
-    }
-
-    /**
-     * BOCETO interno: vista de seguimiento (estilo Blue Express) de las etapas
-     * por las que pasa un equipo en el taller. Datos de ejemplo, sin conexión a
-     * datos ni a la búsqueda del cliente todavía — es un adelanto del diseño.
-     */
-    public function seguimientoDemo(): View
-    {
-        return view('admin.servicio-tecnico.seguimiento-demo', [
-            // No hay etapa de espera de repuesto en ninguna de las dos puntas: el
-            // técnico define en el momento si hay o no repuesto (regla del dueño
-            // 07-08-2026), así que tampoco existe como estado interno.
-            'pasos' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
-            'pasosSinSolucion' => $this->pasosSeguimiento(['recibido', 'en_revision', 'cotizacion', 'sin_solucion']),
-            // Variante para las máquinas recibidas en Abate o Coquimbo: llevan el
-            // paso del viaje a la casa matriz.
-            'pasosConTraslado' => $this->pasosSeguimiento(['recibido', 'en_traslado', 'en_revision', 'cotizacion', 'reparado', 'entregado']),
-        ]);
-    }
-
-    /**
-     * Arma los pasos de la línea de tiempo (key/label/desc/tono) a partir de los
-     * estados de OrdenServicio. El label usa Str::headline (mismo criterio que el
-     * <select> de la reparación); sin_solucion se pinta en rojo (danger).
-     *
-     * @param  list<string>  $keys
-     * @return list<array{key:string,label:string,desc:string,tono:string}>
-     */
-    private function pasosSeguimiento(array $keys): array
-    {
-        $desc = [
-            'recibido' => 'Recibimos tu equipo en el taller.',
-            // Paso propio para el equipo que se recibió en sucursal y viaja a la
-            // casa matriz: el cliente veía «recibido» y después nada por días
-            // (decisión del dueño 03-08, para el seguimiento por folio).
-            'en_traslado' => 'Tu equipo va en camino al taller.',
-            'en_revision' => 'El técnico está revisando la falla.',
-            'cotizacion' => 'Te enviamos el presupuesto y esperamos tu aprobación.',
-            'reparado' => 'Tu equipo quedó reparado y probado.',
-            'entregado' => 'Retiraste tu equipo. ¡Gracias!',
-            'sin_solucion' => 'Lamentablemente el equipo no tiene reparación.',
-        ];
-
-        return array_map(fn (string $k) => [
-            'key' => $k,
-            'label' => Str::headline($k),
-            'desc' => $desc[$k] ?? '',
-            'tono' => $k === 'sin_solucion' ? 'danger' : 'brand',
-        ], $keys);
     }
 
     public function show(OrdenServicio $orden): View

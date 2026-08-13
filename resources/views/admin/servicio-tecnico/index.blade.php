@@ -5,7 +5,7 @@
                 <div class="flex items-center gap-2">
                     {{-- Sin "Volver": este listado ES un ítem del menú, no tiene
                          pantalla padre (doctrina del botón único, 24-07). --}}
-                    {{-- Las acciones secundarias (Informe, Lote, QR, Seguimiento…)
+                    {{-- Las acciones secundarias (Informe, Lote, QR…)
                          viven en el acordeón «Servicio Técnico» de la sidebar,
                          para no duplicarlas. Aquí queda solo el CTA primario. --}}
                     @can('manage servicio tecnico')
