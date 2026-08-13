@@ -1745,6 +1745,48 @@ un `assertSee` seguiría verde con el cartel de vuelta abajo
 (`test_el_cartel_de_no_cabe_todo_va_arriba_del_lienzo`,
 `test_la_ficha_del_camion_va_arriba_del_lienzo`, `test_el_veredicto_se_dice_una_sola_vez`).
 
+### 4.3ter SACAR UN PRODUCTO TIENE QUE VERSE (12-08-2026)
+
+Reclamo del dueño, textual: *«quiero un botón o una opción para quitar productos porque
+siempre comienza la opción con bidones pero no encuentro ninguna opción para quitar o
+eliminar»*.
+
+**El botón existía.** Estaba adentro de la tarjeta del producto, al lado de «Duplicar», así
+que para descubrir que una línea se podía sacar había que abrirla primero. Es la tercera vez
+que pasa lo mismo en esta pantalla —la pestaña de varios productos (§1), el pallet enterrado
+en un desplegable (§3.3bis)— y la regla ya no se discute: **una función que no se ve, no
+existe**. Cuando el dueño dice «no hay opción para X», antes de agregar X hay que buscar
+dónde está X escondido; agregar un segundo camino deja dos.
+
+Ahora el tacho está en los **dos lugares donde se lee la lista de la carga**:
+
+1. **La cabecera de cada producto** del formulario, junto al chevrón — lo que se ve con la
+   tarjeta cerrada. Va con `@click.stop`, porque la cabecera entera abre y cierra la tarjeta.
+2. **La lista «En el camión»** del panel de cubicar, que es donde él fue a buscarlo: si ahí
+   se agrega de a un bulto, ahí se saca.
+
+**Con una sola línea no se ofrece.** Una carga sin ningún producto no es una carga: el
+formulario no tendría qué calcular y el validador la rechazaría, así que sería un botón que
+solo sabe fallar.
+
+**Sacar desde el panel RECALCULA**, igual que agregar, y con `cubicar=1` para volver con el
+panel abierto (§ el pedido de «que no salga todo»). Si la lista se actualizara sola, la lista
+diría una cosa y el camión dibujado otra: el dibujo es el último resultado del **servidor**, y
+el servidor no se enteró de que la línea se fue. En la cabecera del formulario, en cambio, el
+botón solo **ensucia** —«Recalcular · hay cambios»—, que es la convención de todo ese
+formulario.
+
+Los candados (`QuitarProductoTest`) **no miran si `quitar` está definido**, que era justo lo
+que estaba bien: cortan la pantalla en el límite entre la cabecera y el cuerpo desplegable, y
+exigen el control del lado que siempre se ve. El corte se verifica a sí mismo (el trozo
+«cabecera» no puede contener el «Duplicar» del cuerpo), y se probó al revés rompiendo el
+`@click` a mano: el candado se pone rojo.
+
+**La trampa del nombre**, anotada porque cuesta un assert y se paga una vez: el `x-data` del
+panel de cubicar **tapa** el del formulario (por eso conviven dos `agregar`), así que un
+método llamado `quitar` ahí adentro se llamaría a sí mismo hasta desbordar la pila. Se llama
+`quitarDelCamion` y hay un candado que lo fija.
+
 ## 4quater. EL CAMIÓN QUE SALE A MEDIO CARGAR (lote 5, 12-08-2026)
 
 Pasa todo el tiempo: el camión vuelve de un reparto con carga arriba, o se le suma un

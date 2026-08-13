@@ -896,6 +896,30 @@
                                                 </template>
                                             </p>
                                         </div>
+                                        {{-- QUITAR, EN LA CABECERA (pedido del dueño 12-08: «siempre
+                                             comienza la opción con bidones pero no encuentro ninguna
+                                             opción para quitar o eliminar»).
+
+                                             El botón existía, pero ADENTRO de la tarjeta: había que
+                                             abrir el producto para descubrir que se podía sacar. Una
+                                             función que no se ve, no existe — la misma lección del
+                                             botón de pallet enterrado en un desplegable (10-08).
+
+                                             `@click.stop` porque la cabecera entera abre y cierra la
+                                             tarjeta: sin eso, quitar dejaba además abierta la de al
+                                             lado. Y el `<button>` va como hermano del chevrón, no
+                                             anidado en algo clicable: la cabecera es un `div` con
+                                             `@click`, así que esto es HTML válido.
+
+                                             Con UNA sola línea no se ofrece: una carga sin ningún
+                                             producto no es una carga, y el formulario no tendría qué
+                                             calcular. --}}
+                                        <button type="button" @click.stop="quitar(i)" x-show="lineas.length > 1"
+                                                class="shrink-0 rounded-lg p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+                                                :title="`Quitar ${resumen(linea)} de la carga`"
+                                                :aria-label="`Quitar ${resumen(linea)} de la carga`">
+                                            <x-icon.trash class="h-4 w-4" />
+                                        </button>
                                         <span class="shrink-0 text-neutral-400 transition" :class="expandido === i && 'rotate-180'">▾</span>
                                     </div>
 

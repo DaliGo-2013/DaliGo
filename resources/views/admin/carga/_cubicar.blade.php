@@ -83,6 +83,28 @@
                  medida_largo: +this.l, medida_ancho: +this.w, medida_alto: +this.h,
                  medida_peso: this.kgUnidad ? this.kgUnidad.toFixed(2) : '',
              });
+             this.recalcular();
+         },
+
+         /* QUITAR DESDE ESTA LISTA (pedido del dueño 12-08: «siempre comienza la opción
+            con bidones pero no encuentro ninguna opción para quitar o eliminar»). Es la
+            otra punta de armar la carga de a un bulto: si acá se agrega, acá se saca.
+
+            Usa el `quitar` del formulario —una sola forma de sacar una línea— y recalcula
+            igual que al agregar: la lista sin el bulto y el CAMIÓN sin el bulto tienen que
+            verse a la vez, o la lista dice una cosa y el dibujo otra. Nombre distinto de
+            `quitar` a propósito: llamarlo igual lo haría llamarse a sí mismo para siempre
+            (el x-data de acá tapa el del formulario, como pasa con `agregar`). */
+         quitarDelCamion(i) {
+             if (this.lineas.length < 2) return;
+             this.quitar(i);
+             this.recalcular();
+         },
+
+         /* Recalcular SIN cerrar el panel. El `cubicar=1` viaja en el formulario, así que
+            la página vuelve con el panel abierto, la lista a la vista y el próximo bulto
+            listo para tipear — el pedido del 12-08 de que «no salga todo». */
+         recalcular() {
              this.modo = 'mixta';
 
              const form = this.$refs.formMixta;
@@ -227,6 +249,18 @@
                                       :style="`background:${color(i)}`" x-text="letra(i)"></span>
                                 <span class="min-w-0 flex-1 truncate text-neutral-600" x-text="resumen(l)"></span>
                                 <span class="shrink-0 tabular-nums text-neutral-500" x-text="l.cantidad"></span>
+                                {{-- El tacho va en la lista y no en un menú: la lista es donde el
+                                     dueño lo buscó. Con una sola línea no se ofrece — una carga sin
+                                     ningún producto no es una carga y el cálculo no tendría qué
+                                     mirar. El `p-1.5` no es estético: el ícono mide 14 px y solo
+                                     con el relleno el área de toque llega a 26, que es lo mínimo
+                                     usable en el teléfono. --}}
+                                <button type="button" @click="quitarDelCamion(i)" x-show="lineas.length > 1"
+                                        class="shrink-0 rounded p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+                                        :title="`Quitar ${resumen(l)} de la carga`"
+                                        :aria-label="`Quitar ${resumen(l)} de la carga`">
+                                    <x-icon.trash class="h-3.5 w-3.5" />
+                                </button>
                             </li>
                         </template>
                     </ul>
