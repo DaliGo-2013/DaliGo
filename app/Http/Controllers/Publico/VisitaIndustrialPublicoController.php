@@ -8,8 +8,11 @@ use App\Models\Cliente;
 use App\Models\ServicioTerreno;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
+use App\Support\FechaNegocio;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -18,10 +21,15 @@ use Illuminate\View\View;
 /**
  * Solicitud PÚBLICA de visita/revisión INDUSTRIAL (QR): el cliente pide que el
  * técnico industrial vaya a su planta (lavadoras, llenadoras, plantas de
- * osmosis). Elige el tipo de trabajo (Visita técnica primero: diagnóstico +
- * cotización) y opcionalmente el servicio del tarifario, deja sus datos y una
- * fecha PREFERIDA opcional. Entra a la Agenda de terreno como 'solicitado'
- * (sin fecha real): el jefe/vendedor la coordina y ahí queda agendada.
+ * osmosis). SIEMPRE es una visita técnica —diagnóstico + cotización—: el cliente
+ * NO elige el tipo de trabajo (pedido del técnico industrial, 13-08-2026; ver
+ * AgendaTrabajo::TIPO_PUBLICO), porque no puede saber si lo suyo es mantención,
+ * reparación o instalación, y elegir mal desviaba la visita. El trabajo que
+ * salga de la visita lo agenda después el vendedor o el jefe de ventas por el
+ * flujo interno, hablando con el cliente. Acá solo indica —opcional— el servicio
+ * del tarifario, deja sus datos y una fecha PREFERIDA opcional. Entra a la
+ * Agenda de terreno como 'solicitado' (sin fecha real): el jefe/vendedor la
+ * coordina y ahí queda agendada.
  *
  * Mismo esquema de seguridad que el ingreso por QR: GET firmado (sucursal
  * embebida), POST con honeypot, throttle del grupo.
@@ -34,11 +42,59 @@ class VisitaIndustrialPublicoController extends Controller
 
         return view('publico.taller.create-visita', [
             'sucursal' => $sucursal,
-            'tipos' => AgendaTrabajo::TIPOS,
             'servicios' => ServicioTerreno::activos()->get(),
             // Volver a la pantalla principal del QR (firmada) para elegir otro
             // modo de ingreso (por unidad / por cantidad).
             'urlInicio' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]),
+        ]);
+    }
+
+    /**
+     * ¿Está libre ese día? — lo que alimenta el cartel en vivo del campo de fecha.
+     *
+     * Pedido del dueño (13-08-2026): «cuando el cliente ingrese una fecha que diga si está
+     * disponible u ocupada, un cartel de advertencia que no se puede ese día o varios días».
+     * El chequeo YA EXISTÍA en `store()` pero recién al enviar: el cliente llenaba nombre,
+     * RUT, teléfono, correo, dirección y ciudad, apretaba Enviar y ahí se enteraba. Esto es
+     * el MISMO `AgendaTrabajo::disponibilidad()` —que a su vez es el mismo `conflictos()`—
+     * adelantado al momento de elegir la fecha. Un criterio, no dos.
+     *
+     * DEVUELVE SOLO FECHAS Y BOOLEANOS. Es un endpoint público y sin firma: contestar
+     * «ocupado porque el técnico está en Aguas Claras, en Talca» sería contarle a cualquiera
+     * para quién trabaja la empresa y dónde. El mensaje del admin sí nombra cliente y ciudad,
+     * y ahí está bien — del otro lado hay alguien con permiso.
+     */
+    public function disponibilidad(Request $request): JsonResponse
+    {
+        $hoy = FechaNegocio::hoy();
+
+        $data = $request->validate([
+            // La ventana se acota a un año: sin tope, esto es un recorrido gratis por la
+            // agenda de la empresa hacia el futuro infinito.
+            'fecha' => ['required', 'date', 'after_or_equal:'.$hoy,
+                'before_or_equal:'.Carbon::parse($hoy)->addYear()->toDateString()],
+        ]);
+
+        $d = AgendaTrabajo::disponibilidad($data['fecha']);
+
+        // Las etiquetas se arman ACÁ y no en el navegador: los meses en castellano y el «de»
+        // los pone Carbon con locale forzado, no una tabla de nombres copiada en el JS que se
+        // desincroniza con el resto de la app. Y el locale va explícito porque la app corre
+        // con APP_LOCALE=en por defecto.
+        $enEspanol = fn (string $f) => Carbon::parse($f)->locale('es');
+
+        return response()->json([
+            'ocupado' => $d['ocupado'],
+            'dias' => $d['dias'],
+            'proximo_libre' => $d['proximo_libre'],
+            'etiqueta_tramo' => $d['ocupado']
+                ? ($d['dias'] > 1
+                    ? 'del '.$enEspanol($d['desde'])->translatedFormat('j').' al '.$enEspanol($d['hasta'])->translatedFormat('j \d\e F')
+                    : 'el '.$enEspanol($d['desde'])->translatedFormat('j \d\e F'))
+                : null,
+            'etiqueta_proximo' => $d['proximo_libre']
+                ? $enEspanol($d['proximo_libre'])->translatedFormat('l j \d\e F')
+                : null,
         ]);
     }
 
@@ -58,7 +114,11 @@ class VisitaIndustrialPublicoController extends Controller
 
         $data = $request->validate([
             'sucursal_id' => ['required', 'integer', Rule::exists('sucursales', 'id')->where('activa', true)],
-            'tipo' => ['required', Rule::in(AgendaTrabajo::TIPOS)],
+            // `tipo` NO se valida porque NO se acepta: lo público es siempre una
+            // visita técnica (ver AgendaTrabajo::TIPO_PUBLICO). Se fija abajo, en
+            // el servidor, y no se lee de la petición — este POST no lleva firma,
+            // así que esconder el campo del formulario no seria una defensa: un
+            // `tipo=instalacion` enviado a mano se agendaria solo.
             'servicio_terreno_id' => ['nullable', 'integer', Rule::exists('servicios_terreno', 'id')->where('activo', true)],
             'cliente_nombre' => ['required', 'string', 'min:3', 'max:191'],
             'cliente_rut' => ['required', 'string', 'max:20', new RutChileno],
@@ -89,7 +149,7 @@ class VisitaIndustrialPublicoController extends Controller
         $clienteCatalogo = Cliente::buscarPorRut($data['cliente_rut']);
 
         $trabajo = AgendaTrabajo::create([
-            'tipo' => $data['tipo'],
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
             'fecha' => null,                    // la pone quien coordina
             'fecha_preferida' => $data['fecha_preferida'] ?? null,
             'estado' => 'solicitado',

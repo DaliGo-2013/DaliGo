@@ -28,6 +28,16 @@ class AgendaTrabajo extends Model implements AuditableContract
     // donde el cliente, diagnostica y cotiza; después vienen los trabajos.
     public const TIPOS = ['visita_tecnica', 'mantencion', 'reparacion', 'instalacion'];
 
+    /**
+     * El ÚNICO tipo que puede pedir un cliente por el QR (pedido del técnico
+     * industrial, 13-08-2026). El cliente no sabe —ni tiene por qué— si lo suyo
+     * es una mantención, una reparación o una instalación: eso lo determina el
+     * técnico en la planta. Los otros tres tipos existen solo para el flujo
+     * INTERNO, donde el vendedor o el jefe de ventas agenda el trabajo después
+     * de la visita, hablando con el cliente.
+     */
+    public const TIPO_PUBLICO = 'visita_tecnica';
+
     public const TIPO_ETIQUETAS = [
         'visita_tecnica' => 'Visita técnica',
         'mantencion' => 'Mantención',
@@ -190,6 +200,73 @@ class AgendaTrabajo extends Model implements AuditableContract
             })
             ->orderBy('fecha')
             ->get();
+    }
+
+    /**
+     * ¿La agenda está ocupada ese día, hasta cuándo, y cuál es el próximo día libre?
+     *
+     * Pedido del dueño (13-08-2026): «cuando el cliente ingrese una fecha que diga si está
+     * disponible u ocupada, un cartel de advertencia que no se puede ese día o varios días».
+     *
+     * NO ES UNA REGLA NUEVA. Es `conflictos()` —la misma que impide agendar encima de un
+     * técnico ocupado y la misma que YA rechaza la fecha preferida al enviar el formulario
+     * público— mirada de otra forma. Un segundo criterio de «ocupado» sería una pantalla que
+     * dice «hay disponibilidad» y un servidor que después contesta que no; el reclamo que
+     * esto viene a resolver es justamente haberse enterado tarde.
+     *
+     * UNA SOLA CONSULTA para toda la ventana. Preguntar día por día son 90 consultas por cada
+     * fecha que el cliente tantea, y esto vive en una pantalla pública sin login.
+     *
+     * DOS TRABAJOS PEGADOS SON UN SOLO TRAMO (7 al 10 y 11 al 12 → «del 7 al 12»): al cliente
+     * no le sirve saber dónde termina un trabajo, le sirve saber cuándo puede venir el técnico.
+     *
+     * @param  int  $diasVentana  hasta dónde se busca el próximo libre. Si no aparece ninguno
+     *                            dentro de la ventana devuelve null: «no sé» y «el 15» son
+     *                            respuestas distintas y no se inventa una fecha.
+     * @return array{ocupado: bool, desde: ?string, hasta: ?string, dias: int, proximo_libre: ?string}
+     */
+    public static function disponibilidad(string $fecha, int $diasVentana = 90): array
+    {
+        $pedida = Carbon::parse($fecha)->toDateString();
+        $finVentana = Carbon::parse($pedida)->addDays(max(1, $diasVentana))->toDateString();
+
+        $ocupados = [];
+        $arranque = null;
+
+        foreach (static::conflictos($pedida, $finVentana) as $t) {
+            $desde = $t->fecha->toDateString();
+            $hasta = ($t->fecha_fin ?? $t->fecha)->toDateString();
+
+            for ($d = Carbon::parse($desde); $d->toDateString() <= $hasta; $d->addDay()) {
+                $ocupados[$d->toDateString()] = true;
+            }
+
+            // El tramo puede EMPEZAR antes del día pedido: un viaje del 7 al 10 con el cliente
+            // eligiendo el 9 tiene que decir «del 7 al 10», no «del 9 al 10».
+            if ($desde <= $pedida && $hasta >= $pedida && ($arranque === null || $desde < $arranque)) {
+                $arranque = $desde;
+            }
+        }
+
+        if (! isset($ocupados[$pedida])) {
+            return ['ocupado' => false, 'desde' => null, 'hasta' => null, 'dias' => 0, 'proximo_libre' => null];
+        }
+
+        $desde = $arranque ?? $pedida;
+        $hasta = $pedida;
+        while (isset($ocupados[Carbon::parse($hasta)->addDay()->toDateString()])) {
+            $hasta = Carbon::parse($hasta)->addDay()->toDateString();
+        }
+
+        $siguiente = Carbon::parse($hasta)->addDay()->toDateString();
+
+        return [
+            'ocupado' => true,
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'dias' => (int) Carbon::parse($desde)->diffInDays($hasta) + 1,
+            'proximo_libre' => $siguiente <= $finVentana ? $siguiente : null,
+        ];
     }
 
     /**

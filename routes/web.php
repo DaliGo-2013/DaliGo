@@ -806,6 +806,14 @@ Route::middleware('throttle:6,1')->group(function () {
     Route::get('visita-industrial/listo/{trabajo}', [VisitaIndustrialPublicoController::class, 'gracias'])
         ->middleware('signed')->name('visita-industrial.gracias');
 
+    // ¿Esta fecha esta libre? Alimenta el cartel en vivo del campo "cuando te acomoda"
+    // (pedido del dueno 13-08). Va con throttle PROPIO y mas alto que el 6/min del grupo:
+    // el cliente tantea varias fechas seguidas y con 6 se queda sin respuesta a la tercera.
+    // Solo lectura y sin datos de nadie: contesta booleanos y fechas (ver el controlador).
+    Route::get('visita-industrial/disponibilidad', [VisitaIndustrialPublicoController::class, 'disponibilidad'])
+        ->withoutMiddleware('throttle:6,1')->middleware('throttle:40,1')
+        ->name('visita-industrial.disponibilidad');
+
     // Respuesta del cliente a una COTIZACION del taller (P-M12-02): link firmado
     // del correo. El POST tambien va firmado (autorizacion comercial: no espera
     // al endurecimiento P-F3-01 del QR). Binding por token (no enumerable).
