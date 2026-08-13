@@ -1,0 +1,119 @@
+# LO QUE SALE A PRODUCCIÓN SE ANOTA SOLO EN TRELLO.
+#
+# Pedido del dueño (13-08-2026): «estamos perdiendo mucho tiempo en el envío una a una».
+#
+# POR QUÉ `workflow_run` Y NO `push`: la tarjeta tiene que decir que algo SALIÓ, no que se
+# mergeó. Este workflow espera a que «Desplegar a producción» termine y solo escribe si
+# terminó BIEN. Un deploy fallido no genera tarjeta — si no, el tablero diría que se entregó
+# algo que nunca llegó al servidor.
+#
+# POR QUÉ NO USA EL MCP DE TRELLO: el MCP es OAuth interactivo (necesita un navegador y una
+# persona). En CI no hay ninguno de los dos, así que va por la API REST con `key` + `token`.
+# Los dos viven en GitHub Secrets y NUNCA en el repo: DaliGo es público (D-012).
+#
+# El mismo patrón sirve para Bóveda LOLS (las listas ya existen en el mismo tablero); se copia
+# cambiando el nombre de la lista y el workflow de deploy al que se engancha.
+name: Tarjeta en Trello del deploy
+
+on:
+  workflow_run:
+    workflows: ['Desplegar a producción']
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  tarjeta:
+    # Solo deploys de main que salieron bien.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Anotar en Terminadas DaliGo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRELLO_KEY: ${{ secrets.TRELLO_KEY }}
+          TRELLO_TOKEN: ${{ secrets.TRELLO_TOKEN }}
+          # El id corto del tablero (el de la URL: trello.com/b/XXXXXXXX/...). Va en una
+          # VARIABLE del repo y no en el archivo: sin ser una credencial, tampoco hace falta
+          # publicarlo en un repo abierto.
+          TRELLO_BOARD: ${{ vars.TRELLO_BOARD }}
+          TRELLO_LISTA: ${{ vars.TRELLO_LISTA || 'Terminadas DaliGo' }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          MENSAJE: ${{ github.event.workflow_run.head_commit.message }}
+          AUTOR: ${{ github.event.workflow_run.head_commit.author.name }}
+          CORRIDA: ${{ github.event.workflow_run.html_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # ── 0. Sin configurar todavía: no se falla, se avisa ───────────────────────────
+          # Así el workflow puede entrar a main antes de que existan los secrets sin dejar
+          # deploys en rojo, que es la clase de ruido que hace que se desactiven las alertas.
+          if [ -z "${TRELLO_KEY}" ] || [ -z "${TRELLO_TOKEN}" ] || [ -z "${TRELLO_BOARD}" ]; then
+            echo "::notice::Trello todavía no está configurado (faltan TRELLO_KEY, TRELLO_TOKEN o la variable TRELLO_BOARD). No se creó tarjeta."
+            exit 0
+          fi
+
+          CORTO="${SHA:0:7}"
+          MARCA="[deploy ${CORTO}]"
+
+          # ── 1. El título: el del PR si existe, si no el del commit ────────────────────
+          # Un merge de PR deja el commit «Merge pull request #3 from …», que como título de
+          # tarjeta no dice nada. El título del PR sí.
+          TITULO="$(printf '%s' "${MENSAJE}" | head -n 1)"
+          PR_LINEA=""
+          if PR="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq '.[0] | "\(.number)\t\(.title)\t\(.html_url)"' 2>/dev/null)" && [ -n "${PR}" ] && [ "${PR}" != "null" ]; then
+            PR_NUM="$(printf '%s' "${PR}" | cut -f1)"
+            PR_TIT="$(printf '%s' "${PR}" | cut -f2)"
+            PR_URL="$(printf '%s' "${PR}" | cut -f3)"
+            [ -n "${PR_TIT}" ] && TITULO="${PR_TIT}"
+            PR_LINEA="PR #${PR_NUM}: ${PR_URL}"
+          fi
+
+          # ── 2. ¿Ya se anotó? ──────────────────────────────────────────────────────────
+          # Un deploy se puede volver a correr a mano desde Actions, y eso dispara esto otra
+          # vez. La marca con el hash evita la tarjeta duplicada.
+          # Se busca por el HASH y el filtro exacto lo hace jq con --arg: la búsqueda de
+          # Trello es difusa y los corchetes de la marca podrían no sobrevivirla.
+          YA="$(curl -sf --get 'https://api.trello.com/1/search' \
+                  --data-urlencode "query=${CORTO}" \
+                  --data-urlencode "idBoards=${TRELLO_BOARD}" \
+                  --data-urlencode 'modelTypes=cards' \
+                  --data-urlencode 'cards_limit=20' \
+                  --data-urlencode "key=${TRELLO_KEY}" \
+                  --data-urlencode "token=${TRELLO_TOKEN}" \
+                | jq -r --arg m "${MARCA}" '[.cards[]? | select(.desc | contains($m))] | length')"
+          if [ "${YA:-0}" -gt 0 ]; then
+            echo "::notice::El deploy ${CORTO} ya tiene tarjeta. No se duplica."
+            exit 0
+          fi
+
+          # ── 3. La lista, por NOMBRE ───────────────────────────────────────────────────
+          # Por nombre y no por id pegado en el archivo: un id opaco en el repo no se puede
+          # revisar de un vistazo, y si alguien renombra la lista este paso lo dice con los
+          # nombres que sí encontró en vez de escribir en el lugar equivocado.
+          LISTAS="$(curl -sf --get "https://api.trello.com/1/boards/${TRELLO_BOARD}/lists" \
+                      --data-urlencode 'fields=id,name' \
+                      --data-urlencode "key=${TRELLO_KEY}" \
+                      --data-urlencode "token=${TRELLO_TOKEN}")"
+          ID_LISTA="$(printf '%s' "${LISTAS}" | jq -r --arg n "${TRELLO_LISTA}" 'first(.[] | select(.name == $n) | .id) // empty')"
+          if [ -z "${ID_LISTA}" ]; then
+            echo "::error::No existe la lista «${TRELLO_LISTA}» en el tablero. Listas encontradas: $(printf '%s' "${LISTAS}" | jq -r '[.[].name] | join(" · ")')"
+            exit 1
+          fi
+
+          # ── 4. La tarjeta ─────────────────────────────────────────────────────────────
+          DESC="$(printf 'Salió a producción.\n\nCommit: %s\nhttps://github.com/%s/commit/%s\n%s\nAutor: %s\nDeploy: %s\nAmbiente: Producción\n\n%s' \
+                    "${CORTO}" "${REPO}" "${SHA}" "${PR_LINEA}" "${AUTOR}" "${CORRIDA}" "${MARCA}")"
+
+          RESP="$(curl -sf -X POST 'https://api.trello.com/1/cards' \
+                    --data-urlencode "idList=${ID_LISTA}" \
+                    --data-urlencode "name=${TITULO}" \
+                    --data-urlencode "desc=${DESC}" \
+                    --data-urlencode 'pos=top' \
+                    --data-urlencode "key=${TRELLO_KEY}" \
+                    --data-urlencode "token=${TRELLO_TOKEN}")"
+
+          echo "::notice::Tarjeta creada: $(printf '%s' "${RESP}" | jq -r '.shortUrl')"

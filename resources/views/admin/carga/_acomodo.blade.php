@@ -150,7 +150,7 @@
             url(conAcomodo) {
                 const u = new URL(window.location.href);
                 [...u.searchParams.keys()]
-                    .filter(k => k === 'acomodo_de' || k.startsWith('acomodo['))
+                    .filter(k => k === 'acomodo_de' || k === 'acomodo_para' || k.startsWith('acomodo['))
                     .forEach(k => u.searchParams.delete(k));
 
                 /* `ver=todo` para que el camión aparezca CARGADO al volver (pedido del
@@ -165,7 +165,17 @@
                     this.piezas.forEach((p, i) => u.searchParams.set(
                         `acomodo[${i}]`, `${p.x},${p.y}${p.girado ? ',g' : ''}`,
                     ));
-                    u.searchParams.set('acomodo_de', this.piezas.length);
+                    /* PARA QUÉ PRODUCTOS se acomodó, uno por bloque. Con esto, cambiar
+                       una CANTIDAD conserva lo acomodado a mano —decisión del dueño
+                       13-08: «los botellones se acomodan por cantidad y las cajas a
+                       mano; conservar ambas»— y en cambio cambiar el PRODUCTO de una
+                       línea, o reordenar la lista, descarta las posiciones que ya no son
+                       de quien las pidió.
+
+                       Reemplaza al `acomodo_de` (cuántos bloques eran), que tiraba el
+                       acomodo entero ante cualquier cambio de cantidad. Ya no se escribe;
+                       el servidor lo sigue aceptando por los links compartidos. */
+                    u.searchParams.set('acomodo_para', this.piezas.map(p => p.producto).join(','));
                 }
 
                 return u.toString();
