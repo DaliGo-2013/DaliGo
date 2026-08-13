@@ -224,13 +224,14 @@ class MenuPrincipal
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
             'items' => [
-                // Consolidación Lote 4 (PLAN-MENU-DENSIDAD): «Códigos QR» dejó
-                // de ser ítem — se entra por el botón de la cabecera del
-                // Listado, gateado por `manage` (el Listado lo ve también quien
-                // solo tiene `view`, y a ese QR le daría 403: por eso botón y
-                // no pestaña). Su ruta va AQUÍ, en el `activo` del anfitrión
-                // (candado en MenuConsolidacionesTest).
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
+                // Consolidaciones Lote 4 + A1 (PLAN-MENU-DENSIDAD): «Códigos
+                // QR» y «Costos generales de reparación» dejaron de ser ítems —
+                // se entra por el desplegable «Configuración» de la cabecera
+                // del Listado, cada entrada gateada por SU permiso (el Listado
+                // lo ve también quien no porta ninguno de los dos). Sus rutas
+                // van AQUÍ, en el `activo` del anfitrión (candado en
+                // MenuConsolidacionesTest).
+                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
                 // Traslado sucursal → casa matriz (decisión del dueño 03-08). Lo ven
@@ -246,7 +247,6 @@ class MenuPrincipal
                 // terreno` y el tarifario le daría 403.
                 'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*', 'admin.servicios-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
-                'tiempos-reparacion' => ['label' => 'Costos generales de reparación', 'route' => 'admin.tiempos-reparacion.index', 'activo' => ['admin.tiempos-reparacion.*'], 'permiso' => 'gestionar tiempos reparacion'],
                 // Conductores se fue a LOGÍSTICA el 04-08 (pedido del dueño).
                 // Sigue siendo visible para el técnico: el permiso del ítem es
                 // canAny y conserva 'manage servicio tecnico'.

@@ -37,6 +37,7 @@ class MenuConsolidacionesTest extends TestCase
         'admin.dte.estado' => 'facturacion.documentos', // Lote 3: Estado → pestaña de Documentos
         'admin.servicio-tecnico.qr' => 'servicio-tecnico.listado', // Lote 4: Códigos QR → botón del Listado
         'admin.servicios-terreno.' => 'servicio-tecnico.agenda-terreno', // Lote 5: Servicios de terreno → pestaña de la Agenda
+        'admin.tiempos-reparacion.' => 'servicio-tecnico.listado', // A1: Costos generales → desplegable «Configuración» del Listado
     ];
 
     private function admin(): User

@@ -1,7 +1,11 @@
 <x-app-layout>
     @php $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.'); @endphp
     <x-slot name="header">
-        <x-page-header title="Costos generales de reparación" subtitle="Tiempo estándar (horas) por trabajo — fija la mano de obra del taller.">
+        {{-- Con «Volver» (doctrina P-NAV-08): desde el A1 de PLAN-MENU-DENSIDAD
+             esta pantalla es HIJA del Listado — se entra por el desplegable
+             «Configuración» de su cabecera, ya no por la sidebar. --}}
+        <x-page-header title="Costos generales de reparación" subtitle="Tiempo estándar (horas) por trabajo — fija la mano de obra del taller."
+                       :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado de Servicio Técnico">
             <x-slot name="action">
                 <x-button-link :href="route('admin.tiempos-reparacion.create')">
                     <x-icon.plus class="h-4 w-4" />

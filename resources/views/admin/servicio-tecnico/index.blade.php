@@ -7,16 +7,33 @@
                          pantalla padre (doctrina del botón único, 24-07). --}}
                     {{-- Las acciones secundarias (Informe, Lote…) viven en el
                          acordeón «Servicio Técnico» de la sidebar, para no
-                         duplicarlas. «Códigos QR» es la excepción (Lote 4,
-                         PLAN-MENU-DENSIDAD): dejó de ser ítem del menú y su
-                         entrada es este botón — gateado por `manage` porque el
-                         Listado también lo ve quien solo tiene `view`, y a ese
-                         la pantalla QR le daría 403 (por eso botón, no pestaña). --}}
+                         duplicarlas. La CONFIGURACIÓN del taller es la excepción
+                         (lotes 4 y A1, PLAN-MENU-DENSIDAD): «Códigos QR» y
+                         «Costos generales de reparación» dejaron de ser ítems
+                         del menú y entran por este desplegable — la «sección
+                         Configuración» del mapa F0, agrupada al llegar la 2ª
+                         entrada (idioma del «Más» de productos: no amontonar el
+                         header). Cada entrada se gatea por SU permiso: el
+                         Listado también lo ve quien no porta ninguno. --}}
+                    @canany(['manage servicio tecnico', 'gestionar tiempos reparacion'])
+                        <x-dropdown align="right" width="w-56">
+                            <x-slot name="trigger">
+                                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                                    Configuración
+                                    <x-icon.chevron-down class="h-4 w-4" />
+                                </button>
+                            </x-slot>
+                            <x-slot name="content">
+                                @can('manage servicio tecnico')
+                                    <x-dropdown-link :href="route('admin.servicio-tecnico.qr')">Códigos QR</x-dropdown-link>
+                                @endcan
+                                @can('gestionar tiempos reparacion')
+                                    <x-dropdown-link :href="route('admin.tiempos-reparacion.index')">Costos generales de reparación</x-dropdown-link>
+                                @endcan
+                            </x-slot>
+                        </x-dropdown>
+                    @endcanany
                     @can('manage servicio tecnico')
-                        <a href="{{ route('admin.servicio-tecnico.qr') }}"
-                           class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
-                            Códigos QR
-                        </a>
                         <x-button-link :href="route('admin.servicio-tecnico.create')">
                             <x-icon.plus class="h-4 w-4" />
                             Registrar ingreso
