@@ -18,7 +18,7 @@
 
         {{-- QR del formulario público, por sucursal (colapsado por defecto). --}}
         <x-collapsible label="QR y links del formulario público" model="paneles.qr">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 @foreach ($linksQr as $nombre => $url)
                     <div class="flex flex-col items-center rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4">
                         <p class="text-sm font-semibold text-neutral-900">{{ $nombre }}</p>

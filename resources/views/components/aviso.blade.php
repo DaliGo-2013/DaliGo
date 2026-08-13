@@ -22,7 +22,7 @@
          corrido respecto del título y del contenido (tres bordes izquierdos
          distintos en la misma página). --}}
     <div data-aviso x-data="{ visible: true }" x-show="visible"
-         class="mx-auto {{ $maxW }} px-4 pt-4 sm:px-6 lg:px-8">
+         class="mx-auto {{ $maxW }} px-4 pt-4 sm:px-6 xl:px-8">
         <div role="status" aria-live="polite"
              class="dg-enter flex items-start gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 shadow-sm">
             <x-icon.information-circle class="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />

@@ -125,7 +125,7 @@
 
         {{-- Desgloses del periodo (clickeables a su detalle) --}}
         @php $linkRango = ['desde' => $periodo['desde'], 'hasta' => $periodo['hasta']]; @endphp
-        <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Ranking de sopladores · periodo</h3>

@@ -8,7 +8,7 @@
         {{-- Filtros (responsive: apilan en móvil, grilla en pantallas anchas) --}}
         <form method="GET" action="{{ route('admin.aprobaciones.index') }}"
               class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <div>
                     <x-input-label for="estado" value="Estado" />
                     <x-select id="estado" name="estado" class="mt-1.5">
@@ -63,7 +63,7 @@
         </form>
 
         {{-- Resumen (respeta los filtros): por estado + por tipo + por aprobador/solicitante --}}
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                 <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por estado</p>
                 <div class="mt-3 flex flex-wrap gap-2">

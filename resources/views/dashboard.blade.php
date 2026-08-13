@@ -70,7 +70,7 @@
 
         {{-- ② Pulso del día: producción y taller (medida directa + contexto) --}}
         @if ($pulsoProduccion || $pulsoTaller)
-            <div class="grid gap-6 {{ $pulsoProduccion && $pulsoTaller ? 'lg:grid-cols-2' : '' }}">
+            <div class="grid gap-6 {{ $pulsoProduccion && $pulsoTaller ? 'xl:grid-cols-2' : '' }}">
                 @if ($pulsoProduccion)
                     <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <div class="flex items-center justify-between gap-4">
@@ -170,7 +170,7 @@
                     @foreach ($accesos as $grupo => $items)
                         <div>
                             <p class="text-xs text-neutral-400">{{ $grupo }}</p>
-                            <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                                 @foreach ($items as $item)
                                     <x-dashboard.acceso :item="$item" :paleta="$paleta" />
                                 @endforeach

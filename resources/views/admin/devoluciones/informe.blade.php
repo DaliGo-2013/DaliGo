@@ -65,7 +65,7 @@
         </div>
 
         {{-- Desgloses: causa y canal lado a lado; el embudo abajo. --}}
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por causa</h2>
@@ -88,7 +88,7 @@
                 ])
             </div>
 
-            <div class="rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
+            <div class="rounded-2xl border border-neutral-200 bg-white shadow-sm xl:col-span-2">
                 <div class="border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Embudo por estado</h2>
                 </div>

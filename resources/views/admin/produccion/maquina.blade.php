@@ -34,7 +34,7 @@
 
         {{-- OEE + Pareto del período (P-M11-11). Los factores que faltan se
              DECLARAN («sin ciclo cargado»), jamás se inventa un 100 %. --}}
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">OEE del período</h3>
@@ -117,7 +117,7 @@
             @include('admin.produccion.partials._tendencia', ['tendencia' => $tendencia, 'linkDia' => true])
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="border-b border-neutral-100 px-4 py-3 sm:px-6"><h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de botellón</h3></div>
                 @include('admin.produccion.partials._desglose', [

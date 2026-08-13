@@ -46,7 +46,7 @@
 
                 @isset($header)
                     <header class="border-b border-neutral-200 bg-white">
-                        <div class="mx-auto {{ $maxW }} px-4 py-6 sm:px-6 lg:px-8">
+                        <div class="mx-auto {{ $maxW }} px-4 py-6 sm:px-6 xl:px-8">
                             {{ $header }}
                         </div>
                     </header>
@@ -64,7 +64,7 @@
                          vista: es lo que garantiza que el contenido comparta
                          borde con el titulo. Las vistas solo traen su envoltorio
                          de padding vertical. --}}
-                    <div class="mx-auto {{ $maxW }} px-4 sm:px-6 lg:px-8">
+                    <div class="mx-auto {{ $maxW }} px-4 sm:px-6 xl:px-8">
                         {{ $slot }}
                     </div>
                 </main>

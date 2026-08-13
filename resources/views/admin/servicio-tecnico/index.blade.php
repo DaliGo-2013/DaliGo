@@ -138,7 +138,7 @@
                     @endif
                 </div>
                 @if (! $anioActivo)
-                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                         @foreach ($historial['anios'] as $a => $r)
                             <a href="{{ route('admin.servicio-tecnico.index', array_merge($qsBase, ['anio' => $a])) }}"
                                class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 transition duration-150 hover:border-brand-300 hover:shadow">
@@ -150,7 +150,7 @@
                         @endforeach
                     </div>
                 @else
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-6">
                         @foreach ($historial['meses'] as $m => $conteo)
                             @php $nombreMes = ucfirst(\Illuminate\Support\Carbon::create($anioActivo, $m, 1)->translatedFormat('F')); @endphp
                             @if ($conteo > 0)

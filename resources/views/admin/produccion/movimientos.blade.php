@@ -9,7 +9,7 @@
         <x-status-alert :status="session('status')" />
 
         {{-- Resumen del filtro actual --}}
-        <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div class="dg-enter grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
             @php
                 $chips = [
                     ['Consumo preforma', $resumen[\App\Models\ProduccionMovimiento::TIPO_CONSUMO_PREFORMA] ?? 0],
@@ -29,7 +29,7 @@
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.produccion.movimientos') }}"
-              class="dg-enter grid grid-cols-1 gap-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:grid-cols-2 lg:grid-cols-4">
+              class="dg-enter grid grid-cols-1 gap-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
                 <x-input-label for="q" value="Producto (nombre o SKU)" />
                 <x-text-input id="q" class="mt-1.5 w-full" type="search" name="q" :value="$filtros['q'] ?? ''" placeholder="Buscar…" />
@@ -51,7 +51,7 @@
                 <x-input-label for="hasta" value="Hasta" />
                 <x-text-input id="hasta" class="mt-1.5 w-full" type="date" name="hasta" :value="$filtros['hasta'] ?? ''" />
             </div>
-            <div class="flex items-end gap-3 sm:col-span-2 lg:col-span-4">
+            <div class="flex items-end gap-3 sm:col-span-2 xl:col-span-4">
                 <x-primary-button>Filtrar</x-primary-button>
                 @if (array_filter($filtros))
                     <x-secondary-link :href="route('admin.produccion.movimientos')">Limpiar</x-secondary-link>

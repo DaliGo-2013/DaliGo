@@ -25,7 +25,7 @@
             ['label' => 'Tasa 1ª', 'valor' => $resumen['tasa1'].'%', 'tono' => null],
         ]])
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             @if ($porMaquina->isNotEmpty())
                 <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                     <div class="border-b border-neutral-100 px-4 py-3 sm:px-6">

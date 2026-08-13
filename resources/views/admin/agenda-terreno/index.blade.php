@@ -131,10 +131,10 @@
 
         {{-- ===== Calendario (izq) + DÍA SELECCIONADO con formularios (der) ===== --}}
         @php $isoSel = $diaSel->toDateString(); @endphp
-        <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div class="grid grid-cols-1 gap-5 xl:grid-cols-12">
             {{-- ---- Calendario del mes (izquierda, pegajoso al hacer scroll) ---- --}}
-            <div class="lg:col-span-5">
-                <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-5 lg:sticky lg:top-6">
+            <div class="xl:col-span-5">
+                <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-5 xl:sticky xl:top-6">
                     <div class="mb-3 flex items-center justify-between">
                         <a href="{{ route('admin.agenda-terreno.index', $anterior) }}"
                            class="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100" title="Mes anterior">&larr;</a>
@@ -181,7 +181,7 @@
 
             {{-- ---- Día seleccionado (derecha): sus trabajos como FORMULARIOS
                      editables + un formulario para agregar. Solo un día por vez. ---- --}}
-            <div class="space-y-4 lg:col-span-7">
+            <div class="space-y-4 xl:col-span-7">
                 <div class="flex items-center justify-between">
                     <h3 class="text-base font-semibold {{ \App\Support\FechaNegocio::esHoy($diaSel) ? 'text-brand-700' : 'text-neutral-900' }}">
                         {{ ucfirst($diaSel->translatedFormat('l d \d\e F')) }}@if (\App\Support\FechaNegocio::esHoy($diaSel)) · HOY @endif

@@ -132,7 +132,7 @@
                 </p>
 
                 {{-- ── Zonas 4, 5 y 6: cliente · tipo de documento · totales ──────── --}}
-                <div class="grid gap-5 border-t border-neutral-100 bg-neutral-50 px-4 py-4 sm:px-6 lg:grid-cols-3">
+                <div class="grid gap-5 border-t border-neutral-100 bg-neutral-50 px-4 py-4 sm:px-6 xl:grid-cols-3">
 
                     {{-- Cliente (abajo a la izquierda, como en Bsale) --}}
                     <div class="text-sm">

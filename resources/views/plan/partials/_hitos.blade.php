@@ -4,7 +4,7 @@
     <div class="border-b border-neutral-100 px-6 py-3">
         <h2 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Hitos</h2>
     </div>
-    <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-6 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-6 xl:grid-cols-4">
         @foreach ($hitos as $hito)
             <div class="rounded-lg border border-neutral-200 p-3">
                 <div class="flex items-center justify-between gap-2">
