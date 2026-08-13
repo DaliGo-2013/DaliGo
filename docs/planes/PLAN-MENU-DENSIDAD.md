@@ -84,10 +84,18 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       ruta hoja exacta además de `{prefijo}index`. Decisión declarada: el acordeón de
       Facturación se conserva con 1 ítem (su `activo_extra` lo necesita y la aritmética
       aprobada de la cola lo asume). **Menú 45 → 44.** Falta solo el QA del dueño en celular.
+- [x] **Lote 4 EN PRODUCCIÓN (13-ago, `6d6a2ce`)**: «Códigos QR» dejó de ser ítem y entra
+      por la cabecera del Listado de ST como **BOTÓN** (no pestaña). Decisión delegada,
+      resuelta con criterio: los permisos NO son idénticos (Listado `view|manage`, QR solo
+      `manage`) → una pestaña se la mostraría al vendedor con `view` que recibe 403; el
+      botón se gatea con `@can('manage')`. Desviación de la LETRA del mapa declarada (va en
+      la cabecera permanente, no en el bloque doblemente condicional). QR pasa a hija con su
+      «Volver». Amolde de NavigationTest correcto (mueve la aserción + agrega el gateo del
+      vendedor). Suite 2005/14.152, delta 0 exacto. **Menú 44 → 43.** Falta QA del dueño.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 44** (L1, L2 y L3 hechos; L4-L5
-      aprobados llevan a 42; el mapa completo, a 30).
+      lote — la densidad ganada se ve en un número. **Hoy: 43** (L1-L4 hechos; L5 cierra la
+      fase «en vuelo» a 42; los bloques A-E del mapa completo, a 30 — ver §4.1).
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
