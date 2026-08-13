@@ -21,11 +21,14 @@ use App\Models\TiempoReparacion;
 use App\Models\Sucursal;
 use App\Models\User;
 use App\Services\Notificaciones\NotificacionDispatcher;
+use App\Services\ServicioTecnico\InformeTallerExcel;
+use App\Services\ServicioTecnico\InformeTerrenoExcel;
 use App\Rules\RutChileno;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -194,9 +197,7 @@ class ServicioTecnicoController extends Controller
             ->orderByDesc('unidades')->get();
 
         $total = (int) ($kpis->total ?? 0);
-        $periodoLabel = $mes
-            ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
-            : 'Año '.$anio;
+        $periodoLabel = $this->periodoLabel($anio, $mes);
 
         return view('admin.servicio-tecnico.informe-dispensadores', [
             'anio' => $anio,
@@ -234,13 +235,12 @@ class ServicioTecnicoController extends Controller
     {
         [$desde, $hasta, $anio, $mes] = $this->periodoInforme($request);
 
-        // Query base reutilizable (clon por indicador). whereDate en ambos bordes
-        // (portable MySQL 5.7 / SQLite) y descarta solicitudes sin fecha.
-        $base = fn () => AgendaTrabajo::query()
-            ->whereNotNull('fecha')
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->whereIn('estado', ['agendado', 'realizado']);
+        // Query base reutilizable (clon por indicador). El criterio vive en
+        // trabajosDelPeriodo() porque el Excel de este mismo informe tiene que
+        // exportar EXACTAMENTE el universo que se muestra: si se escribiera dos
+        // veces, un cambio en uno dejaria el archivo diciendo otra cosa que la
+        // pantalla.
+        $base = fn () => $this->trabajosDelPeriodo($desde, $hasta);
 
         $total = $base()->count();
 
@@ -299,9 +299,7 @@ class ServicioTecnicoController extends Controller
             ->groupBy('agenda_trabajo_repuestos.nombre')
             ->orderByDesc('unidades')->get();
 
-        $periodoLabel = $mes
-            ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
-            : 'Año '.$anio;
+        $periodoLabel = $this->periodoLabel($anio, $mes);
 
         return view('admin.servicio-tecnico.informe-industrial', [
             'anio' => $anio,
@@ -324,6 +322,55 @@ class ServicioTecnicoController extends Controller
             'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
             'totalNombresRepuestos' => $repuestos->count(),
             'periodoLabel' => $periodoLabel,
+        ]);
+    }
+
+    /**
+     * El informe del taller como Excel de TABLA PLANA (pedido del gerente
+     * general, 13-08-2026: bajarse el apartado de Informes «como informacion»
+     * para decidir con ella). Exporta el MISMO periodo y filtro que la pantalla
+     * —reusa periodoInforme() y ordenesDelPeriodo()— pero completo: sin el top 15
+     * de las tarjetas, que es un recorte de legibilidad y en un archivo de datos
+     * seria mentir por omision.
+     */
+    public function informeDispensadoresExcel(Request $request): Response
+    {
+        [$desde, $hasta, $anio, $mes, $tipo] = $this->periodoInforme($request);
+
+        $ordenes = $this->ordenesDelPeriodo($desde, $hasta, $tipo)
+            ->with(['producto:id,nombre,sku', 'sucursal:id,nombre', 'repuestos'])
+            ->orderBy('fecha_ingreso')->orderBy('id')
+            ->get();
+
+        $periodoLabel = $this->periodoLabel($anio, $mes);
+        $contenido = (new InformeTallerExcel)->generar(
+            $ordenes,
+            $periodoLabel,
+            $tipo ? OrdenServicio::etiquetaTipo($tipo) : 'Todos los equipos',
+        );
+
+        return response($contenido, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.InformeTallerExcel::nombreArchivo($periodoLabel).'"',
+        ]);
+    }
+
+    /** El informe de terreno como Excel de tabla plana. Hermano del anterior. */
+    public function informeIndustrialExcel(Request $request): Response
+    {
+        [$desde, $hasta, $anio, $mes] = $this->periodoInforme($request);
+
+        $trabajos = $this->trabajosDelPeriodo($desde, $hasta)
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
+            ->orderBy('fecha')->orderBy('id')
+            ->get();
+
+        $periodoLabel = $this->periodoLabel($anio, $mes);
+        $contenido = (new InformeTerrenoExcel)->generar($trabajos, $periodoLabel);
+
+        return response($contenido, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.InformeTerrenoExcel::nombreArchivo($periodoLabel).'"',
         ]);
     }
 
@@ -1513,6 +1560,32 @@ class ServicioTecnicoController extends Controller
             ->whereDate('fecha_ingreso', '>=', $desde)
             ->whereDate('fecha_ingreso', '<=', $hasta)
             ->when($tipo, fn (Builder $qb, $t) => $qb->where('tipo_equipo', $t));
+    }
+
+    /**
+     * Trabajos de terreno del informe industrial: con fecha dentro del rango y
+     * agendados o realizados. Se EXCLUYEN los cancelados y las solicitudes sin
+     * coordinar (estado 'solicitado'), que no son trabajo del periodo.
+     *
+     * Es el equivalente de ordenesDelPeriodo() para la agenda, y existe como
+     * metodo —no como closure dentro del informe— porque el Excel exporta el
+     * mismo universo: una sola definicion para los dos.
+     */
+    private function trabajosDelPeriodo(string $desde, string $hasta): Builder
+    {
+        return AgendaTrabajo::query()
+            ->whereNotNull('fecha')
+            ->whereDate('fecha', '>=', $desde)
+            ->whereDate('fecha', '<=', $hasta)
+            ->whereIn('estado', ['agendado', 'realizado']);
+    }
+
+    /** Rotulo del periodo elegido: «Agosto 2026» o «Año 2026». */
+    private function periodoLabel(int $anio, ?int $mes): string
+    {
+        return $mes
+            ? ucfirst(Carbon::create($anio, $mes, 1)->translatedFormat('F Y'))
+            : 'Año '.$anio;
     }
 
     /**

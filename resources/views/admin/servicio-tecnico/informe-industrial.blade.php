@@ -15,6 +15,14 @@
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Período</h3>
                     <p class="mt-0.5 text-lg font-semibold text-neutral-900">{{ $periodoLabel }}</p>
                     <p class="text-sm text-neutral-500">Servicio industrial (terreno)</p>
+                    {{-- Excel de tabla plana: una fila por trabajo y otra hoja con una
+                         fila por repuesto usado. Baja el período que se está viendo.
+                         Pedido del gerente general (13-08). --}}
+                    <a href="{{ route('admin.servicio-tecnico.informe.industrial.excel', array_filter(['anio' => $anio, 'mes' => $mes])) }}"
+                       class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99]">
+                        <x-icon.document-text class="h-4 w-4" />
+                        Descargar Excel
+                    </a>
                 </div>
                 <form method="GET" action="{{ route('admin.servicio-tecnico.informe.industrial') }}" class="flex flex-wrap items-end gap-2">
                     <div class="w-28">
@@ -118,7 +126,7 @@
         </div>
 
         {{-- Desgloses: % por tipo de trabajo + servicios más usados --}}
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de trabajo</h3>
@@ -142,7 +150,7 @@
                     'vacio' => 'Sin trabajos en el período.',
                 ])
             </div>
-            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
+            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm xl:col-span-2">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Clientes que más solicitan</h3>
                     <x-info-tip>Clientes con más trabajos de terreno en el período (agrupados por RUT).</x-info-tip>

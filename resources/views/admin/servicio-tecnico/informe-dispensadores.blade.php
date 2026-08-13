@@ -13,6 +13,16 @@
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Período</h3>
                     <p class="mt-0.5 text-lg font-semibold text-neutral-900">{{ $periodoLabel }}</p>
                     <p class="text-sm text-neutral-500">{{ $tipoLabel }}</p>
+                    {{-- Excel de tabla plana: una fila por orden y otra hoja con una
+                         fila por repuesto usado, para cruzarlo afuera. Baja EXACTAMENTE
+                         el período y el tipo que se están viendo (de ahí que el enlace
+                         lleve los valores ya resueltos y no lo que diga el formulario
+                         sin enviar). Pedido del gerente general (13-08). --}}
+                    <a href="{{ route('admin.servicio-tecnico.informe.dispensadores.excel', array_filter(['anio' => $anio, 'mes' => $mes, 'tipo' => $tipo])) }}"
+                       class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99]">
+                        <x-icon.document-text class="h-4 w-4" />
+                        Descargar Excel
+                    </a>
                 </div>
                 <form method="GET" action="{{ route('admin.servicio-tecnico.informe.dispensadores') }}" class="flex flex-wrap items-end gap-2">
                     <div class="w-28">
@@ -69,7 +79,7 @@
         </div>
 
         {{-- Desgloses del período --}}
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Equipos que más ingresan</h3>
@@ -117,7 +127,7 @@
                     'vacio' => 'Sin ingresos en el período.',
                 ])
             </div>
-            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm lg:col-span-2">
+            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm xl:col-span-2">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Por causa de la falla</h3>
                     <x-info-tip>Diagnóstico del técnico al reparar. Sirve para reforzar la capacitación al cliente: si muchas fallas son por mal uso, conviene enseñar mejor el uso del producto. "Sin determinar" = el técnico aún no la registró.</x-info-tip>

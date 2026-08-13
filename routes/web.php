@@ -244,13 +244,21 @@ Route::middleware('auth')
             Route::get('servicio-tecnico/informe', [ServicioTecnicoController::class, 'informes'])
                 ->name('servicio-tecnico.informe');
         });
+        // El .xlsx va DENTRO del mismo grupo de permiso que su informe: es la
+        // misma informacion en otro formato, asi que no puede tener una puerta
+        // mas ancha que la pantalla (el archivo trae el detalle completo, con
+        // datos de clientes).
         Route::middleware('permission:ver informe dispensadores')->group(function () {
             Route::get('servicio-tecnico/informe/dispensadores', [ServicioTecnicoController::class, 'informeDispensadores'])
                 ->name('servicio-tecnico.informe.dispensadores');
+            Route::get('servicio-tecnico/informe/dispensadores/excel', [ServicioTecnicoController::class, 'informeDispensadoresExcel'])
+                ->name('servicio-tecnico.informe.dispensadores.excel');
         });
         Route::middleware('permission:ver informe industrial')->group(function () {
             Route::get('servicio-tecnico/informe/industrial', [ServicioTecnicoController::class, 'informeIndustrial'])
                 ->name('servicio-tecnico.informe.industrial');
+            Route::get('servicio-tecnico/informe/industrial/excel', [ServicioTecnicoController::class, 'informeIndustrialExcel'])
+                ->name('servicio-tecnico.informe.industrial.excel');
         });
 
         // Registrar el pago y autorizar: SOLO quien coordina plata — vendedor/
