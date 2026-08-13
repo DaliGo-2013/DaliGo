@@ -102,11 +102,17 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       pestaña). Suite 2005/14.193, delta 0 exacto. **Menú 43 → 42.** Falta QA del dueño.
 - [x] **FASE «EN VUELO» COMPLETA (47 → 42 en cinco lotes)**: cero pérdida de pantallas ni
       permisos; mini-candado con las 4 consolidaciones fijadas por test + mutación.
+- [x] **Bloque A · A1 EN PRODUCCIÓN (13-ago, `0e9feaa`)**: «Costos generales de reparación»
+      entra al Listado de ST. La «sección Configuración» del mapa F0 se materializó como
+      desplegable «Configuración» (QR + Costos, cada uno por su permiso; trigger `@canany`).
+      Cambio de UX declarado por el forjador (el botón QR del Lote 4 se muda adentro, 1→2
+      clics) → **decisión del dueño: se mantiene el desplegable**. Permisos verificados
+      (jefe_ventas + admin, ambos ven el Listado). Re-merge tras drift de 4 commits ajenos
+      (auto-merge sin conflicto). Suite 2032/14.396. **Menú 42 → 41.**
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 42** (L1-L5 hechos; los bloques
-      A-E del mapa completo llevan a 30 — ver §4.1; el Bloque A abre tras el QA del dueño
-      de los lotes 4 y 5).
+      lote — la densidad ganada se ve en un número. **Hoy: 41** (L1-L5 + A1 hechos; falta
+      A2 Traslados y A3 Informe para cerrar el Bloque A en 39; los bloques B-E, a 30 — §4.1).
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
@@ -126,7 +132,7 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 | Bloque | Lotes (en orden) | Δ | Nota |
 |---|---|---|---|
 | (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
-| **A · Servicio Técnico** (ABIERTA 13-ago) | A1 Costos→Listado · A2 Traslados→Listado · A3 Informe (PARTIDO por dominio) | −3 | Costos y Traslados verificados limpios (todos sus roles ven el Listado). Informe último y REPLANTEADO: ver hallazgo abajo |
+| **A · Servicio Técnico** (ABIERTA 13-ago) | ✅A1 Costos→Listado (`0e9feaa`) · A2 Traslados→Listado · A3 Informe (PARTIDO por dominio) | −3 | A1 HECHO (desplegable «Configuración», QR adentro por decisión del dueño). Costos y Traslados verificados limpios. Informe último y REPLANTEADO: ver hallazgo abajo |
 | **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |

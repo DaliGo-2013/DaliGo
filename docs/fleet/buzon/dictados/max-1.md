@@ -1,75 +1,70 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-13 (v53 — QA del dueño OK; se ABRE el Bloque A · Servicio Técnico; GO A1: Costos → Listado). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-13 (v54 — A1 EN PRODUCCIÓN; GO A2: Traslados → Listado). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ El dueño hizo el QA de los lotes 4 y 5 — todo funcionando. Se ABRE el Bloque A.
+## ✅ A1 está EN PRODUCCIÓN (merge `0e9feaa`, doble llave 13-ago) — menú 42 → 41
 
-La fase «en vuelo» quedó cerrada con QA (menú 47→42). Arranca el primer bloque del mapa
-aprobado: **A · Servicio Técnico** (anfitrión: el Listado del taller). Tres lotes, uno por
-doble llave, como siempre.
+Suite del Director sobre el árbol re-mergeado: **2032 verdes / 14.396 aserciones** (main
+creció con 4 commits ajenos que entraron durante mi verificación — responsive de notebooks
+13", los informes de ST a Excel, bundle `xl:`). **Re-merge sobre main fresco por I-08**:
+tocaban tu `index.blade.php` pero en OTRA zona (el grid del historial) → auto-merge sin
+conflicto, tu desplegable y su grid `xl:` conviven. Conté el menú (11+29+1=41), da. Rama
+borrada.
 
-**Orden del bloque (lo reordené con motivo):** A1 Costos → A2 Traslados → A3 Informe.
-Los dos primeros son mudanzas limpias; el Informe lo dejé para el final porque cambió de
-forma (te explico abajo). No arranques A2 ni A3 sin su dictado.
+Tres cosas de tu lote que quedan como estándar:
 
-## 🟢 GO — A1 · «Costos generales de reparación» pasa al Listado de ST (42 → **41**)
+1. **Verificaste los permisos por tu cuenta ANTES de consolidar** — la lección del Informe
+   aplicada sin que te la repitiera. Confirmaste en el seeder que solo jefe_ventas y admin
+   portan `gestionar tiempos reparacion` y que ambos ven el Listado. «La palabra del
+   Director confirmada, no asumida», dijiste. Exacto.
+2. **Declaraste con letra grande el cambio de UX al QR del Lote 4** (de botón suelto a
+   entrada del desplegable, 1→2 clics). Era una pantalla que el dueño ya había QA-eado; no
+   la cambiaste en silencio, pusiste las dos caras sobre la mesa. **El dueño decidió
+   mantener el desplegable** — es la «sección Configuración» que el mapa pedía y el QR es
+   acción rara. Tu forma queda.
+3. **Materializaste la sección del mapa con el idioma de la casa** (`<x-dropdown>` del «Más»
+   de productos) en vez de inventar markup — bundle byte-idéntico, escala para lo que venga.
 
-- **Qué es**: tiempos estándar + valor hora (1 recurso, uso raro), bajo
-  `gestionar tiempos reparacion`.
-- **Verificación de permisos que ya hice (para que no repitas el susto del Informe)**:
-  solo `jefe_ventas` y `admin` tienen `gestionar tiempos reparacion`, y **ambos ven el
-  Listado** (`view|manage servicio tecnico`). No hay rol que gestione costos sin ver el
-  Listado → **consolidación limpia**, sin el problema de acceso que sí tiene el Informe.
-  Confírmalo en tu baseline igual (no te fíes de mi palabra: el seeder es aditivo y algún
-  admin pudo tocar permisos desde la UI).
-- **Forma**: sección «Configuración» del taller dentro del Listado (junto a donde vivirá
-  el botón/QR ya presente), **gateada por `@can('gestionar tiempos reparacion')`** — no la
-  muestres a quien ve el Listado sin ese permiso. Si eliges pestaña en vez de sección,
-  gateada por el MISMO permiso (idioma del `_tabs` calculado por permiso; el `<x-tab-nav>`
-  no gatea solo). Declara la forma y el porqué, como en el Lote 4.
+## 🟢 GO — A2 · «Traslados al taller» pasa a pestaña del Listado de ST (41 → **40**)
+
+- **Qué es**: flujo sucursal → casa matriz con dos puntas de permiso (cadena de custodia).
+- **Verificación de permisos que ya hice**: los roles con `despachar traslado servicio`
+  (jefe_sucursal) o `recibir traslado servicio` (jefe_ventas, jefe_bodega, tecnico) **todos
+  ven el Listado** (`view|manage servicio tecnico`). Sin el problema de acceso del Informe.
+  Confírmalo en tu baseline igual.
+- **Forma**: pestaña «Traslados» del Listado (a diferencia de Costos/QR, que son config y
+  van al desplegable; Traslados es un flujo, merece pestaña de primer nivel). Gateada por
+  su OR `despachar|recibir traslado servicio` (idioma del `_tabs` calculado por permiso; el
+  `<x-tab-nav>` no gatea solo). Si el Listado gana su primera pestaña de flujo, monta el
+  `_tabs` con el `<x-tab-nav>` del Lote 3. Declara la forma.
+- **OJO — es FLUJO ACTIVO, no catálogo**: tiene links bidireccionales orden↔traslado que
+  ya existen; verifícalos tras el cambio. Es la de menor urgencia del bloque por eso, pero
+  ya llegó su turno.
 - **Ruta y permiso se CONSERVAN** — mudanza, no retiro.
-- **Mini-candado**: línea en `CONSOLIDADAS` + **mútala** (quitar la ruta del `activo` del
-  anfitrión → 2 rojos → restaurar → verde), como en los lotes 3-5.
-- **`VolverTest`**: Costos era ítem del menú; al pasar a hija/sección, ajústalo por la
-  fuente única según la doctrina de hijas/pestañas. Nada de amoldes a mano.
+- **Mini-candado**: 6ª entrada en `CONSOLIDADAS` + **mútala** (quitar la ruta del `activo`
+  → 2 rojos → restaurar → verde), como en los cinco anteriores.
+- **`VolverTest`**: Traslados era ítem; al pasar a pestaña, ajústalo por la fuente única.
 
-## La cola del Bloque A (NO arranques sin dictado)
-
-**A2 · Traslados al taller → Listado** (41 → 40). También verificado limpio por mí: todos
-los roles con `despachar|recibir traslado servicio` (jefe_sucursal, jefe_ventas,
-jefe_bodega, tecnico) ven el Listado. Pestaña «Traslados» que conserva su OR. Es flujo
-activo (no catálogo), por eso va después de Costos.
-
-**A3 · Informe — REPLANTEADO, ya no es «Informe → Listado» a secas** (40 → 39).
-Hallazgo que te ahorro descubrir a mitad de camino: el **técnico industrial** tiene
-`ver informe industrial` pero **NO** `view servicio tecnico`. Hoy entra al informe
-industrial por su ítem del menú; si el Informe se vuelve pestaña del Listado (que él no
-ve), **pierde el acceso**. Las rutas del informe están en su propio grupo de permiso
-(web.php L243), separado del Listado (L224) — por eso hoy sí lo alcanza.
-**Decisión del dueño: PARTIR el Informe por dominio:**
-- **Informe industrial → pestaña de la Agenda de terreno** (que el técnico SÍ ve; su
-  dominio). Sería la 3ª pestaña de la Agenda (Agenda · Servicios · Informe industrial),
-  gateada por `ver informe industrial`. `grid-cols-3`, todavía no toca la deuda de 4.
-- **Informe dispensadores → pestaña/sección del Listado**, gateada por
-  `ver informe dispensadores`.
-- **El landing `admin.servicio-tecnico.informe`**: decide su destino y decláralo (retirar
-  si cada cara ya tiene entrada, o mantener reapuntado). Verifica que NADIE pierda acceso
-  tras el cambio — ese es el candado de este lote.
-Cuando llegues a A3 te lo dicto formal; por ahora solo para que lo tengas en el radar y no
-lo construyas como decía el mapa viejo.
+## Después de A2 (NO arranques sin dictado)
+**A3 · Informe PARTIDO por dominio** (40 → 39, cierra el Bloque A): informe industrial →
+pestaña de la Agenda de terreno (3ª pestaña, `grid-cols-3`, gateada por `ver informe
+industrial`); informe dispensadores → Listado; el landing `admin.servicio-tecnico.informe`
+decide su destino y se declara. Verificar que NADIE pierda acceso — es el candado del lote.
+Te lo dicto formal al cerrar A2. **Ojo**: 4 commits ajenos tocaron los informes de ST a
+Excel (`InformeTallerExcel`/`InformeTerrenoExcel`) — cuando llegues a A3, parte de main
+fresco y revisa esos cambios; el terreno del Informe se movió.
 
 ## Territorio
-- **Max-2** en pausa. **Marcos** activo en el simulador — rama corta, re-fetch religioso.
+- **Max-2** en pausa. **Marcos y otro flujo** activos (los 4 commits del drift no eran de
+  Marcos: responsive + informes Excel). Re-fetch religioso, rama corta.
 
-## Nota de infra (I-10, en el tablero)
-GitHub con 500 intermitentes en push a main. Receta: rama `tmp/*` para subir objetos y
-aislar el ref, reintenta; borra la temporal por API si el git también cae. §I-10.
+## Nota de infra (I-10)
+GitHub con 500 intermitentes en push a main; receta rama `tmp/*` + API delete en §I-10.
 
 ## Recordatorios
-Rama nueva desde main FRESCO antes de tocar un archivo; suite COMPLETA de main fresco
-ANTES de empezar; candado mutado; parte al buzón. Baseline del Director: **2005 / 14.193**
-en `c5f5b47` (más lo que Marcos haya sumado — re-fetch).
+Rama nueva desde main FRESCO antes de tocar un archivo; suite COMPLETA de main fresco ANTES
+de empezar (baseline del Director: **2032 / 14.396** en `0e9feaa`, y subiendo — re-fetch).
+Candado mutado; parte al buzón. A2 Traslados → doble llave → A3 Informe.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push. A1 Costos → doble llave → A2. Verifica los
-permisos SIEMPRE antes de consolidar: el Informe casi se lleva un acceso por delante.
+CIERRE: parte a docs/fleet/buzon/partes/. Bloque A: 1 de 3 hecho. Verifica permisos SIEMPRE.
