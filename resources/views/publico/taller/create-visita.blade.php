@@ -41,7 +41,7 @@
               servicioId: @js(old('servicio_terreno_id', '')),
               fecha: @js(old('fecha_preferida', '')),
               url: @js(route('visita-industrial.disponibilidad')),
-              estado: null, tramo: null, proximo: null, proximoIso: null, dias: 0,
+              estado: null, tramo: null, cerrado: null, proximo: null, proximoIso: null, dias: 0,
 
               async revisar() {
                   if (! this.fecha) { this.estado = null; return; }
@@ -53,9 +53,12 @@
                       const d = await r.json();
                       this.dias = d.dias;
                       this.tramo = d.etiqueta_tramo;
+                      this.cerrado = d.etiqueta_cerrado;
                       this.proximo = d.etiqueta_proximo;
                       this.proximoIso = d.proximo_libre;
-                      this.estado = d.ocupado ? 'ocupado' : 'libre';
+                      // El servidor manda el estado; el cartel no lo deduce. Si mañana
+                      // aparece uno nuevo (media jornada), acá no hay nada que adivinar.
+                      this.estado = d.estado;
                   } catch (e) {
                       this.estado = 'error';
                   }
@@ -132,13 +135,20 @@
                     </p>
                 </template>
 
-                <template x-if="estado === 'ocupado'">
+                {{-- «Cerrado» y «ocupado» comparten la caja pero NO el texto: al cliente le
+                     sirve saber si el día no se atiende (y entonces ni insiste) o si está
+                     tomado (y entonces prueba otro cercano). Del motivo de fondo no se dice
+                     nada — decisión del dueño: «no es tan importante que la gente sepa que
+                     está de vacaciones, simplemente no está disponible». --}}
+                <template x-if="estado === 'cerrado' || estado === 'ocupado'">
                     <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                         <p class="font-semibold">
                             <span aria-hidden="true">⚠</span>
-                            <span x-text="dias > 1
-                                ? `La agenda está ocupada ${tramo}.`
-                                : `Ese día la agenda está ocupada (${tramo}).`"></span>
+                            <span x-text="estado === 'cerrado'
+                                ? cerrado
+                                : (dias > 1
+                                    ? `La agenda está ocupada ${tramo}.`
+                                    : `Ese día la agenda está ocupada (${tramo}).`)"></span>
                         </p>
                         <p class="mt-1" x-show="proximo" x-cloak>
                             El día más cercano disponible es el <span class="font-medium" x-text="proximo"></span>.
