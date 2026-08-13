@@ -14,6 +14,8 @@
     <div class="space-y-5 py-8 sm:py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.dte._tabs')
+
         {{-- Estado del módulo. Arriba, porque explica todo lo demás — y redactado
              como AVANCE y no como carencia: el módulo está en marcha, y mientras lo
              esté, Bsale sigue funcionando igual que siempre. --}}
