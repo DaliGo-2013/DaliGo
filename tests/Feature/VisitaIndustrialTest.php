@@ -73,9 +73,44 @@ class VisitaIndustrialTest extends TestCase
             ->assertOk()->assertSee('Visita / revisión industrial');
     }
 
-    public function test_visita_tecnica_es_la_primera_opcion_de_tipo(): void
+    /**
+     * El cliente YA NO elige el tipo de trabajo (pedido del técnico industrial,
+     * 13-08-2026): no puede saber si lo suyo es mantención, reparación o
+     * instalación, y elegir mal desviaba la visita.
+     *
+     * Se assertea la AUSENCIA DEL CAMPO y no las etiquetas de los otros tipos, a
+     * propósito: el tarifario que el formulario SÍ muestra trae nombres como
+     * «Reparación o cambio planta» y «Lavadora reparación», así que un
+     * assertDontSee('Reparación') fallaría por una razón que no es la que se
+     * quiere vigilar (doctrina verde-engañoso, bitácora 20-07).
+     */
+    public function test_el_cliente_ya_no_elige_el_tipo_de_trabajo(): void
     {
-        $this->assertSame('visita_tecnica', AgendaTrabajo::TIPOS[0]);
+        $sucursal = $this->sucursal();
+
+        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
+            ->assertOk()
+            ->assertDontSee('name="tipo"', false)
+            // Y en su lugar la pantalla EXPLICA el flujo de dos pasos, para que el
+            // cliente no busque un campo que ya no está.
+            ->assertSee('lo coordinamos contigo');
+    }
+
+    /**
+     * Y el candado que de verdad importa: el tipo se fija en el SERVIDOR. Este
+     * POST no lleva firma, así que sacar el campo del formulario no es una
+     * defensa — un `tipo=instalacion` a mano tiene que terminar igual como
+     * visita técnica, no agendarse solo.
+     */
+    public function test_un_tipo_enviado_a_mano_no_se_respeta(): void
+    {
+        $sucursal = $this->sucursal();
+
+        $this->post(route('visita-industrial.store'), $this->payload($sucursal, ['tipo' => 'instalacion']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(AgendaTrabajo::TIPO_PUBLICO, AgendaTrabajo::latest('id')->first()->tipo);
+        $this->assertSame('visita_tecnica', AgendaTrabajo::TIPO_PUBLICO);
     }
 
     public function test_el_cliente_no_ve_los_valores_uf_de_los_servicios(): void
