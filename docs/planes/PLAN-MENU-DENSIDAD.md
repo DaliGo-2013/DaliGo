@@ -92,10 +92,21 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       la cabecera permanente, no en el bloque doblemente condicional). QR pasa a hija con su
       «Volver». Amolde de NavigationTest correcto (mueve la aserción + agrega el gateo del
       vendedor). Suite 2005/14.152, delta 0 exacto. **Menú 44 → 43.** Falta QA del dueño.
+- [x] **Lote 5 EN PRODUCCIÓN (13-ago, `c5f5b47`)**: «Servicios de terreno» (tarifario UF)
+      vive como pestaña de la Agenda de terreno. Matiz de permisos que el forjador corrigió
+      contra el dictado con evidencia (seeder L172): NO es permiso 100 % idéntico — la
+      Agenda la ve el técnico industrial con solo `ver agenda terreno`; el tarifario exige
+      `agendar servicio terreno`. La pestaña se gatea con `@can` y con una sola pestaña el
+      nav no se dibuja (idioma del `_tabs` de ST) → el técnico ve su Agenda sin la que le
+      daría 403. Link «Catálogo de servicios» retirado de la cabecera (lo absorbe la
+      pestaña). Suite 2005/14.193, delta 0 exacto. **Menú 43 → 42.** Falta QA del dueño.
+- [x] **FASE «EN VUELO» COMPLETA (47 → 42 en cinco lotes)**: cero pérdida de pantallas ni
+      permisos; mini-candado con las 4 consolidaciones fijadas por test + mutación.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 43** (L1-L4 hechos; L5 cierra la
-      fase «en vuelo» a 42; los bloques A-E del mapa completo, a 30 — ver §4.1).
+      lote — la densidad ganada se ve en un número. **Hoy: 42** (L1-L5 hechos; los bloques
+      A-E del mapa completo llevan a 30 — ver §4.1; el Bloque A abre tras el QA del dueño
+      de los lotes 4 y 5).
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
