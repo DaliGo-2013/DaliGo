@@ -25,6 +25,11 @@ use Tests\TestCase;
  * técnico ocupado). Dos criterios de «ocupado» serían una pantalla que promete un día que el
  * servidor después rechaza.
  *
+ * Y DOS RESPUESTAS DISTINTAS, no una (dueño, 13-08): un día puede estar **ocupado** (hay un
+ * trabajo encima) o **cerrado** (el técnico no atiende ese día: atiende de lunes a viernes).
+ * Al cliente le sirven distinto — un día tomado invita a probar el de al lado, un día que no
+ * se atiende no— y del motivo de fondo no se dice nada.
+ *
  * Por eso estos candados cuidan tres cosas distintas:
  *   · que el cálculo diga la verdad (libre / ocupado / tramo / próximo libre);
  *   · que el endpoint público NO cuente de quién es el trabajo que ocupa el día;
@@ -59,25 +64,54 @@ class DisponibilidadVisitaTest extends TestCase
         return $this->getJson(route('visita-industrial.disponibilidad', ['fecha' => $fecha]));
     }
 
+    /**
+     * Un día LABORABLE a partir de hoy + $dias. Ningún candado de acá puede usar «hoy + 3» a
+     * secas: desde que el técnico atiende de lunes a viernes, ese día cae en fin de semana una
+     * vez cada tres y la suite pasaría a fallar según el día en que se corre — que es la peor
+     * clase de test, el que rompe sin que nadie haya tocado nada.
+     */
+    private function laborable(int $dias): string
+    {
+        $d = Carbon::parse(FechaNegocio::hoy())->addDays($dias);
+
+        while (! AgendaTrabajo::esLaborable($d->toDateString())) {
+            $d->addDay();
+        }
+
+        return $d->toDateString();
+    }
+
+    /** El siguiente día laborable DESPUÉS de uno dado (lo que el cartel debería ofrecer). */
+    private function siguienteLaborable(string $desde): string
+    {
+        $d = Carbon::parse($desde)->addDay();
+
+        while (! AgendaTrabajo::esLaborable($d->toDateString())) {
+            $d->addDay();
+        }
+
+        return $d->toDateString();
+    }
+
     // ─────────────────────────────────────────────────────── el cálculo
 
     public function test_un_dia_sin_trabajos_esta_libre(): void
     {
-        $this->consultar(Carbon::parse(FechaNegocio::hoy())->addDays(3)->toDateString())
+        $this->consultar($this->laborable(3))
             ->assertOk()
-            ->assertJson(['ocupado' => false, 'dias' => 0, 'etiqueta_tramo' => null]);
+            ->assertJson(['estado' => 'libre', 'ocupado' => false, 'dias' => 0, 'etiqueta_tramo' => null]);
     }
 
     public function test_un_dia_con_un_trabajo_agendado_esta_ocupado(): void
     {
-        $dia = Carbon::parse(FechaNegocio::hoy())->addDays(3)->toDateString();
+        $dia = $this->laborable(3);
         $this->trabajo($dia);
 
         $r = $this->consultar($dia)->assertOk();
 
-        $this->assertTrue($r->json('ocupado'));
+        $this->assertSame('ocupado', $r->json('estado'));
         $this->assertSame(1, $r->json('dias'));
-        $this->assertSame(Carbon::parse($dia)->addDay()->toDateString(), $r->json('proximo_libre'));
+        $this->assertSame($this->siguienteLaborable($dia), $r->json('proximo_libre'));
     }
 
     /**
@@ -88,15 +122,18 @@ class DisponibilidadVisitaTest extends TestCase
      */
     public function test_un_viaje_de_varios_dias_informa_el_tramo_completo(): void
     {
-        $desde = Carbon::parse(FechaNegocio::hoy())->addDays(7);
+        // Arranca un LUNES para que el viaje de cuatro días caiga entero en semana: si
+        // cruzara el fin de semana, el tramo mezclaría días ocupados con días cerrados y el
+        // candado dejaría de probar lo que dice probar.
+        $desde = Carbon::parse($this->laborable(7))->next(Carbon::MONDAY);
         $hasta = $desde->copy()->addDays(3);
         $this->trabajo($desde->toDateString(), $hasta->toDateString());
 
         $r = $this->consultar($desde->copy()->addDays(2)->toDateString())->assertOk();
 
-        $this->assertTrue($r->json('ocupado'));
+        $this->assertSame('ocupado', $r->json('estado'));
         $this->assertSame(4, $r->json('dias'), 'El tramo tiene que contar los cuatro días del viaje.');
-        $this->assertSame($hasta->copy()->addDay()->toDateString(), $r->json('proximo_libre'));
+        $this->assertSame($this->siguienteLaborable($hasta->toDateString()), $r->json('proximo_libre'));
         $this->assertStringStartsWith('del ', (string) $r->json('etiqueta_tramo'));
     }
 
@@ -108,7 +145,8 @@ class DisponibilidadVisitaTest extends TestCase
      */
     public function test_dos_trabajos_pegados_no_dejan_un_hueco_falso(): void
     {
-        $lunes = Carbon::parse(FechaNegocio::hoy())->addDays(10);
+        // Lunes y martes: dos días pegados y los dos laborables.
+        $lunes = Carbon::parse($this->laborable(7))->next(Carbon::MONDAY);
         $this->trabajo($lunes->toDateString());
         $this->trabajo($lunes->copy()->addDay()->toDateString());
 
@@ -126,7 +164,7 @@ class DisponibilidadVisitaTest extends TestCase
      */
     public function test_una_solicitud_sin_coordinar_no_ocupa_el_dia(): void
     {
-        $dia = Carbon::parse(FechaNegocio::hoy())->addDays(4)->toDateString();
+        $dia = $this->laborable(4);
         $this->trabajo($dia, null, ['estado' => 'solicitado', 'fecha' => null, 'fecha_preferida' => $dia]);
 
         $this->consultar($dia)->assertOk()->assertJson(['ocupado' => false]);
@@ -134,10 +172,81 @@ class DisponibilidadVisitaTest extends TestCase
 
     public function test_un_trabajo_cancelado_libera_el_dia(): void
     {
-        $dia = Carbon::parse(FechaNegocio::hoy())->addDays(5)->toDateString();
+        $dia = $this->laborable(5);
         $this->trabajo($dia, null, ['estado' => 'cancelado']);
 
         $this->consultar($dia)->assertOk()->assertJson(['ocupado' => false]);
+    }
+
+    // ─────────────────────────────────────────────────────── días laborables
+
+    /** El próximo sábado (o domingo), sin fechas fijas: el candado no puede depender de hoy. */
+    private function finDeSemana(int $isoDia = Carbon::SATURDAY): string
+    {
+        return Carbon::parse(FechaNegocio::hoy())->next($isoDia)->toDateString();
+    }
+
+    /**
+     * «Trabaja solo de lunes a viernes el técnico» (dueño, 13-08-2026). El sábado no está
+     * OCUPADO —no hay ningún trabajo— sino CERRADO, y son cosas distintas para el que pide:
+     * un día tomado invita a probar el de al lado; un día que no se atiende, no.
+     */
+    public function test_el_sabado_y_el_domingo_estan_cerrados(): void
+    {
+        foreach ([Carbon::SATURDAY, Carbon::SUNDAY] as $dia) {
+            $r = $this->consultar($this->finDeSemana($dia))->assertOk();
+
+            $this->assertSame('cerrado', $r->json('estado'));
+            $this->assertTrue($r->json('ocupado'), 'Cerrado también es «no se puede pedir ese día».');
+            $this->assertNotNull($r->json('etiqueta_cerrado'));
+            $this->assertNull($r->json('etiqueta_tramo'), 'Un día cerrado no tiene tramo que informar.');
+        }
+    }
+
+    /** Y el día que sigue al sábado que ofrece NO puede ser el domingo. */
+    public function test_el_proximo_libre_de_un_sabado_es_un_dia_laborable(): void
+    {
+        $libre = $this->consultar($this->finDeSemana())->assertOk()->json('proximo_libre');
+
+        $this->assertNotNull($libre);
+        $this->assertTrue(AgendaTrabajo::esLaborable($libre),
+            "Se ofreció el {$libre}, que no es día laborable.");
+    }
+
+    /**
+     * EL CASO QUE MÁS IMPORTA: un viernes ocupado NO puede ofrecer el sábado. Antes de la
+     * regla de días laborables, el «próximo libre» solo esquivaba trabajos, así que un viernes
+     * tomado ofrecía el sábado — un día sin nadie, que el servidor rechazaría al enviar.
+     */
+    public function test_un_viernes_ocupado_ofrece_el_lunes_y_no_el_sabado(): void
+    {
+        $viernes = Carbon::parse(FechaNegocio::hoy())->next(Carbon::FRIDAY);
+        $this->trabajo($viernes->toDateString());
+
+        $r = $this->consultar($viernes->toDateString())->assertOk();
+
+        $this->assertSame('ocupado', $r->json('estado'));
+        $this->assertSame($viernes->copy()->next(Carbon::MONDAY)->toDateString(), $r->json('proximo_libre'),
+            'Se ofreció un día del fin de semana: el técnico no atiende sábado ni domingo.');
+    }
+
+    public function test_el_envio_rechaza_una_fecha_de_fin_de_semana(): void
+    {
+        // El cartel y el servidor tienen que decir lo mismo: si el cartel dijo «no se
+        // atiende», el envío no puede aceptarlo igual.
+        $sucursal = Sucursal::firstOrCreate(['codigo' => 'MIRADOR'], ['activa' => true, 'nombre' => 'Mirador', 'es_central' => true]);
+
+        $this->post(route('visita-industrial.store'), [
+            'sucursal_id' => $sucursal->id,
+            'cliente_nombre' => 'Planta Norte SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@norte.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'La llenadora traba la cadena.',
+            'fecha_preferida' => $this->finDeSemana(),
+        ])->assertSessionHasErrors('fecha_preferida');
     }
 
     // ─────────────────────────────────────────────────────── privacidad
@@ -150,7 +259,7 @@ class DisponibilidadVisitaTest extends TestCase
      */
     public function test_no_cuenta_de_quien_es_el_trabajo_que_ocupa_el_dia(): void
     {
-        $dia = Carbon::parse(FechaNegocio::hoy())->addDays(6)->toDateString();
+        $dia = $this->laborable(6);
         $this->trabajo($dia);
 
         $cuerpo = $this->consultar($dia)->assertOk()->getContent();
@@ -204,7 +313,7 @@ class DisponibilidadVisitaTest extends TestCase
     public function test_el_envio_sigue_rechazando_una_fecha_ocupada(): void
     {
         $sucursal = Sucursal::firstOrCreate(['codigo' => 'MIRADOR'], ['activa' => true, 'nombre' => 'Mirador', 'es_central' => true]);
-        $dia = Carbon::parse(FechaNegocio::hoy())->addDays(8)->toDateString();
+        $dia = $this->laborable(8);
         $this->trabajo($dia);
 
         $this->post(route('visita-industrial.store'), [
@@ -223,7 +332,7 @@ class DisponibilidadVisitaTest extends TestCase
     /** Es público: el cliente que entra por el QR no tiene sesión. */
     public function test_no_pide_login_y_contesta_lo_mismo_con_sesion(): void
     {
-        $dia = Carbon::parse(FechaNegocio::hoy())->addDays(2)->toDateString();
+        $dia = $this->laborable(2);
 
         $this->assertGuest();
         $this->consultar($dia)->assertOk()->assertJson(['ocupado' => false]);

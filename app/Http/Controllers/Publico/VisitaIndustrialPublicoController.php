@@ -84,10 +84,18 @@ class VisitaIndustrialPublicoController extends Controller
         $enEspanol = fn (string $f) => Carbon::parse($f)->locale('es');
 
         return response()->json([
+            // `estado` es lo que decide el texto del cartel; `ocupado` se mantiene como «no
+            // se puede pedir ese día», que es lo que el formulario ya consumía.
+            'estado' => $d['estado'],
             'ocupado' => $d['ocupado'],
             'dias' => $d['dias'],
             'proximo_libre' => $d['proximo_libre'],
-            'etiqueta_tramo' => $d['ocupado']
+            // El «por qué» que SÍ se puede decir: que ese día no se atiende. Nunca el motivo
+            // de fondo (vacaciones, feriado, lo que sea): decisión del dueño.
+            'etiqueta_cerrado' => $d['estado'] === 'cerrado'
+                ? 'Ese día no se atiende: el técnico va a terreno de lunes a viernes.'
+                : null,
+            'etiqueta_tramo' => $d['estado'] === 'ocupado'
                 ? ($d['dias'] > 1
                     ? 'del '.$enEspanol($d['desde'])->translatedFormat('j').' al '.$enEspanol($d['hasta'])->translatedFormat('j \d\e F')
                     : 'el '.$enEspanol($d['desde'])->translatedFormat('j \d\e F'))
@@ -134,13 +142,27 @@ class VisitaIndustrialPublicoController extends Controller
             'disponibilidad' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // Si la fecha preferida cae en días en que el técnico ya está ocupado o de
-        // viaje, no se puede pedir para entonces: se pide elegir otra fecha.
-        if (! empty($data['fecha_preferida'])
-            && AgendaTrabajo::conflictos($data['fecha_preferida'], $data['fecha_preferida'])->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'fecha_preferida' => 'En esa fecha el técnico no estará disponible (fuera o con la agenda ocupada). Por favor elige otra fecha preferida.',
-            ]);
+        // Si la fecha preferida cae en un día que no se puede pedir —el técnico ya está
+        // ocupado o de viaje, o simplemente no atiende ese día— se pide elegir otra.
+        //
+        // EL MISMO `disponibilidad()` que alimenta el cartel en vivo, para que la pantalla y
+        // el servidor no puedan contradecirse: si el cartel dijo que no se puede, acá tampoco,
+        // y con el mismo criterio. Antes esto llamaba a `conflictos()` por su lado y el día no
+        // laborable pasaba igual.
+        if (! empty($data['fecha_preferida'])) {
+            $d = AgendaTrabajo::disponibilidad($data['fecha_preferida']);
+
+            if ($d['estado'] === 'cerrado') {
+                throw ValidationException::withMessages([
+                    'fecha_preferida' => 'Ese día no se atiende: el técnico va a terreno de lunes a viernes. Elige otro día o deja la fecha vacía y coordinamos contigo.',
+                ]);
+            }
+
+            if ($d['ocupado']) {
+                throw ValidationException::withMessages([
+                    'fecha_preferida' => 'En esa fecha el técnico no estará disponible (fuera o con la agenda ocupada). Por favor elige otra fecha preferida.',
+                ]);
+            }
         }
 
         // Si el RUT ya está en el catálogo, la solicitud nace ENLAZADA a esa
