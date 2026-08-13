@@ -1,53 +1,61 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-12 (v48 — Lote 1 EN PRODUCCIÓN; GO Lote 2: retiro del boceto «Seguimiento»). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-13 (v49 — Lote 2 EN PRODUCCIÓN; GO Lote 3: Estado → Documentos). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Lote 1 está EN PRODUCCIÓN (merge `ca91422`, doble llave 12-ago)
+## ✅ Lote 2 está EN PRODUCCIÓN (merge `ee1a72c`, doble llave 13-ago)
 
-Verificación del Director con dos corridas de suite (Marcos ganó la carrera del primer
-push — I-08 de siempre): **1966 verdes / 13.963 aserciones, cero rojos**. Deploy y Tests
-de CI verdes. Rama borrada. **Menú: 47 → 46.** El proyecto de densidad tiene su primera
-resta en producción.
+**Menú 46 → 45.** Suite del Director sobre el árbol mergeado: **2005 verdes / 14.067
+aserciones, cero rojos** — tu delta de −4 se cumplió exacto contra una baseline que
+Marcos ya había movido. Spot-checks 6/6. Rama borrada.
 
-Tres cosas de tu lote que quedan como estándar: el `aria-current="true"` en vez de
-`"page"` (esquivar la colisión con el conteo de SidebarTest ANTES de que muerda, con el
-porqué escrito en el propio partial), el mini-candado genérico con mapa `CONSOLIDADAS`
-—los 4 lotes que siguen lo heredan con una línea— y la carrera de 11 commits que
-detectaste y absorbiste tú mismo durante el gate.
+Dos cosas de tu lote que quedan como estándar:
 
-Nota de entorno (mía, no tuya): un rojo de `ErroresServidorTest` en mi primera corrida
-era vendor desincronizado en MI worktree — `composer install` y 12/12 verde sin tocar
-código. Tu cifra estaba bien desde el principio.
+1. **Declarar el test ajeno que muere con la superficie.** Retiraste
+   `TrasladoServicioTest::…paso_en_camino` y en el mismo parte demostraste que la
+   decisión del dueño NO se pierde: vive en `docs/reglas/`, y su candado contra datos
+   reales («Va en camino desde Coquimbo» en la ficha) sigue verde. Así se retira un
+   test: probando que la regla sobrevive en otra parte, no borrando y callando.
+2. **Verificar la condición de STOP y reportarla aunque no aplique.** Confirmaste que
+   el boceto era render puro de arreglos, cero tablas, cero escrituras.
 
-## 🟢 GO — Lote 2 · Retiro del boceto «Seguimiento» (47→46 → **45**)
+Nota mía, de mi lado: el conflicto del merge fue solo `public/build/manifest.json`
+(ambos padres recompilaron el bundle). Lo resolví **recompilando sobre el árbol
+mergeado**, nunca eligiendo lado — un manifest elegido a dedo apunta a un CSS que no
+contiene las clases del otro padre. Superset contra ambos: 0 clases usadas perdidas.
 
-El más barato de la cola y el único que RESTA código en vez de moverlo:
+## 🟢 GO — Lote 3 · «Estado» pasa a pestaña de «Documentos» (45 → **44**)
 
-- **Retiro COMPLETO**: ítem del menú + rutas + controlador/acciones si son exclusivas +
-  vista(s) + cualquier assert que lo cubra. **No se esconde: se retira** — si algún día
-  se retoma, vive en git (la rama `feature/st-seguimiento-boceto` sigue en el remoto).
-- **Verifica antes de cortar**: que nada más enlace a esas rutas (grep de `route(` en
-  vistas y controladores) y que no haya permiso huérfano que quede sin usar (si lo hay,
-  decláralo — no lo borres del seeder sin declararlo, la matriz es territorio sensible).
-- **Candados**: la suite completa debe quedar verde sin amoldar tests ajenos; si algún
-  test cubría el boceto, se retira CON él y se declara en el parte. El mini-candado del
-  Lote 1 no aplica acá (no hay anfitrión) — el conteo del menú viaja en el parte.
-- Si al abrir el boceto encuentras que SÍ tiene datos reales o usuarios (contra lo que
-  dijo tu F0), **para y repórtalo**: el retiro se cancela y pasa a decisión del dueño.
+El más barato de los que quedan: 1 ruta GET, 100 % lectura, mismo permiso
+(`emitir documentos tributarios`), mismo controller, y el index de Documentos ya la
+enlaza dos veces.
+
+- **Anfitrión**: Documentos. Pestaña **«Estado de la conexión»**, con el mismo tab-nav
+  y el mismo `aria-current="true"` del Lote 1 (no `"page"` — colisiona con el conteo de
+  SidebarTest).
+- **Hereda el mini-candado**: agrega la entrada al mapa `CONSOLIDADAS` de
+  `MenuConsolidacionesTest`. Una línea, para eso se construyó genérico.
+- **Ruta y permiso se CONSERVAN** — esto es una mudanza, no un retiro. Cero
+  funcionalidad perdida; los 2 links existentes del index se reapuntan a la pestaña.
+- **Decisión menor delegada a ti** (el mapa F0 la deja abierta): si el módulo queda de
+  1 ítem, o conservas el acordeón por el `activo_extra` del documento de ST, o Facturación
+  pasa a link directo. Elige y **declara el porqué en el parte**.
+- **Ojo con `VolverTest`**: «Estado» está hoy en la lista de pantallas que SALEN del menú
+  y por eso llevan Volver. Al volverse pestaña dentro de Documentos, eso cambia. Ajusta
+  lo que el candado exija **por la fuente única**, sin amoldar el test a mano.
 
 ## Después de este lote (la cola aprobada, no arranques sin dictado)
-Lote 3 Estado→Documentos · Lote 4 QR→Listado ST · Lote 5 Servicios de terreno→Agenda.
+Lote 4 QR→Listado ST · Lote 5 Servicios de terreno→Agenda (llegan a 42).
 El resto del mapa F0 sigue esperando visto bueno del dueño, apartado por apartado.
 
 ## Territorio
 - **Max-2** en pausa (M11 100 % construido).
-- **Marcos** MUY activo en el simulador (2 carreras ganadas hoy). Rama corta, push
-  temprano, re-fetch religioso.
+- **Marcos** MUY activo en el simulador. Rama corta, push temprano, re-fetch religioso.
+  Si recompilas el bundle, hazlo **último**, justo antes del push.
 
 ## Recordatorios
 Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar (baseline
-del Director: **1966 / 13.963** en `ca91422`). Suite completa antes del push. Parte al
-buzón → doble llave → Lote 3.
+del Director: **2005 / 14.067** en `ee1a72c`). Suite completa antes del push. Parte al
+buzón → doble llave → Lote 4.
 
-CIERRE: parte a docs/fleet/buzon/partes/ + push. Restar también es construir.
+CIERRE: parte a docs/fleet/buzon/partes/ + push. Dos lotes, dos restas. El menú va bajando.

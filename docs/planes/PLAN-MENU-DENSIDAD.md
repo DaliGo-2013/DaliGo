@@ -67,9 +67,17 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       permiso intactos); gate R-31 aprobado con observaciones; mini-candado
       `MenuConsolidacionesTest` instalado y heredable por los lotes siguientes.
       **Menú 47 → 46.** Falta solo el QA del dueño en celular.
+- [x] **Lote 2 EN PRODUCCIÓN (13-ago, `ee1a72c`)**: retiro COMPLETO del boceto
+      «Seguimiento» — ítem, ruta, acción + helper, vista, componente `st/seguimiento-timeline`
+      y su test. El único lote de la cola que RESTA código: **+3 / −244** en 11 archivos.
+      El test ajeno que asserteaba contra la maqueta (`TrasladoServicioTest::…paso_en_camino`)
+      se retiró CON él y quedó declarado; la decisión de negocio sobrevive en
+      `docs/reglas/traslado-maquinas-a-reparar.md` y su candado real («Va en camino desde
+      Coquimbo» en la ficha) sigue verde. Suite 2005/14.067, delta −4 exacto.
+      **Menú 46 → 45.** Falta solo el QA del dueño en celular.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 46** (L1 hecho; L2-L5
+      lote — la densidad ganada se ve en un número. **Hoy: 45** (L1 y L2 hechos; L3-L5
       aprobados llevan a 42; el mapa completo, a 30).
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
