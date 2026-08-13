@@ -224,13 +224,18 @@ class MenuPrincipal
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
             'items' => [
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
+                // Consolidación Lote 4 (PLAN-MENU-DENSIDAD): «Códigos QR» dejó
+                // de ser ítem — se entra por el botón de la cabecera del
+                // Listado, gateado por `manage` (el Listado lo ve también quien
+                // solo tiene `view`, y a ese QR le daría 403: por eso botón y
+                // no pestaña). Su ruta va AQUÍ, en el `activo` del anfitrión
+                // (candado en MenuConsolidacionesTest).
+                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
                 // Traslado sucursal → casa matriz (decisión del dueño 03-08). Lo ven
                 // las dos puntas: quien despacha y quien recibe.
                 'traslados' => ['label' => 'Traslados al taller', 'route' => 'admin.traslados.index', 'activo' => ['admin.traslados.*'], 'permiso' => 'despachar traslado servicio|recibir traslado servicio'],
-                'qr' => ['label' => 'Códigos QR', 'route' => 'admin.servicio-tecnico.qr', 'activo' => ['admin.servicio-tecnico.qr'], 'permiso' => 'manage servicio tecnico'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
                 'servicios-terreno' => ['label' => 'Servicios de terreno', 'route' => 'admin.servicios-terreno.index', 'activo' => ['admin.servicios-terreno.*'], 'permiso' => 'agendar servicio terreno'],

@@ -6,9 +6,11 @@
 --}}
 <x-app-layout>
     <x-slot name="header">
-        {{-- Sin "Volver": es un ítem del menú (acordeón Servicio Técnico), no
-             cuelga del listado. Se llega y se sale por la sidebar. --}}
-        <x-page-header title="Códigos QR" subtitle="Imprime y pega uno en el mostrador de cada sucursal.">
+        {{-- Con «Volver» (doctrina P-NAV-08): desde el Lote 4 de
+             PLAN-MENU-DENSIDAD esta pantalla es HIJA del Listado — se entra
+             por el botón «Códigos QR» de su cabecera, ya no por la sidebar. --}}
+        <x-page-header title="Códigos QR" subtitle="Imprime y pega uno en el mostrador de cada sucursal."
+                       :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado de Servicio Técnico">
             <x-slot name="action">
                 <x-primary-button type="button" onclick="window.print()">Imprimir</x-primary-button>
             </x-slot>

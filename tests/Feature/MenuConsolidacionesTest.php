@@ -35,6 +35,7 @@ class MenuConsolidacionesTest extends TestCase
     private const CONSOLIDADAS = [
         'admin.listas-precios.' => 'comercial.catalogo', // F1: Precios → pestaña de Catálogo
         'admin.dte.estado' => 'facturacion.documentos', // Lote 3: Estado → pestaña de Documentos
+        'admin.servicio-tecnico.qr' => 'servicio-tecnico.listado', // Lote 4: Códigos QR → botón del Listado
     ];
 
     private function admin(): User
