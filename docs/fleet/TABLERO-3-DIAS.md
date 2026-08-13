@@ -79,6 +79,24 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
+### I-10 · `git push` a main rechazado con «Internal Server Error» — RESUELTA 13-08 (receta fijada)
+Durante el merge del Lote 3 (`47785ad`), tres `git push origin HEAD:main` seguidos fueron
+rechazados con `remote: Internal Server Error` + Request ID, mientras githubstatus.com marcaba
+**todo operacional** (su página iba ~1 h atrasada respecto del incidente). No es rechazo de
+política ni non-fast-forward: es un 500 del servidor.
+**Receta, en este orden:**
+1. **Aislar con una rama temporal**: `git push origin HEAD:refs/heads/tmp/<algo>`. Si esa SÍ
+   pasa, el problema es del ref `main`, no del repo ni de la red — y de paso **los objetos ya
+   quedaron subidos**, así que el reintento sobre main es solo una actualización de ref (barata
+   y con mucha más probabilidad de pasar). Funcionó al primer reintento.
+2. **Si `git push --delete` de la rama temporal también da 500**, borrarla por API:
+   `gh api -X DELETE repos/<org>/<repo>/git/refs/heads/tmp/<algo>`. El camino API pasó cuando
+   el de git seguía cayendo — son rutas distintas del servidor.
+3. **No cambiar nada del árbol** entre reintentos: el commit ya está hecho y verificado; un 500
+   no invalida la suite. Re-verificar solo si en el intervalo main se movió con código (I-08).
+4. La página de estado **no es la fuente en tiempo real**: un 500 con Request ID ya es evidencia
+   suficiente de infra. Guardar el Request ID por si hay que reportar.
+
 ### I-09 · Outage mayor de GitHub Actions — rojos falsos en CI — DIAGNOSTICADA 06-08 (doctrina fijada)
 El 06-08 (desde ~15:22 UTC) GitHub Actions entró en **Major Outage** oficial (githubstatus.com):
 jobs en cola sin arrancar y runners hosted sin capacidad. En nuestro repo: Tests y Deploy del

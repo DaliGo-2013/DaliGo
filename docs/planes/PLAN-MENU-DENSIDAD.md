@@ -75,10 +75,24 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       `docs/reglas/traslado-maquinas-a-reparar.md` y su candado real («Va en camino desde
       Coquimbo» en la ficha) sigue verde. Suite 2005/14.067, delta −4 exacto.
       **Menú 46 → 45.** Falta solo el QA del dueño en celular.
+- [x] **Lote 3 EN PRODUCCIÓN (13-ago, `47785ad`)**: «Estado» dejó de ser ítem y vive como
+      pestaña «Estado de la conexión» de Documentos. **Mudanza, no retiro**: ruta, permiso
+      y controller intactos. Suite 2005/14.113 — delta 0 tests exacto, +46 aserciones del
+      candado extendido. Nace **`<x-tab-nav>`**, extraído al 3er uso como prometió el Lote 1
+      (el `_tabs` del Catálogo migró; el de ST queda fuera a propósito: vive en páginas de
+      detalle y ahí `aria-current="page"` es correcto). El mapa `CONSOLIDADAS` ahora acepta
+      ruta hoja exacta además de `{prefijo}index`. Decisión declarada: el acordeón de
+      Facturación se conserva con 1 ítem (su `activo_extra` lo necesita y la aritmética
+      aprobada de la cola lo asume). **Menú 45 → 44.** Falta solo el QA del dueño en celular.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 45** (L1 y L2 hechos; L3-L5
+      lote — la densidad ganada se ve en un número. **Hoy: 44** (L1, L2 y L3 hechos; L4-L5
       aprobados llevan a 42; el mapa completo, a 30).
+- [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
+      `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
+      sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
+      Moldes) si el dueño le da visto bueno. Resolver EN el lote que traiga la 4ª pestaña,
+      no antes (hoy los dos usos son de 2).
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 
