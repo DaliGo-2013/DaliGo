@@ -91,8 +91,33 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
-      Moldes) si el dueño le da visto bueno. Resolver EN el lote que traiga la 4ª pestaña,
-      no antes (hoy los dos usos son de 2).
+      Moldes), ahora aprobada. Se salda EN el lote que trae la 4ª pestaña (Bloque E), no
+      antes (hoy los dos usos son de 2).
+
+## 4.1 Cola de bloques — el dueño aprobó TODO el mapa, en bloques por módulo (13-ago)
+
+> Decisión del dueño (13-ago): **todas las consolidaciones restantes aprobadas**, con la
+> condición de ejecutarlas **en bloques, no todas juntas** (directiva raíz: lento y seguro).
+> Criterio de agrupación: **por módulo**. La grande #6 (Config de producción, −3): **al
+> final y sola**. El ritmo de seguridad NO cambia: **un lote = un merge = una doble llave**.
+> El bloque agrupa el visto bueno y el QA: el dueño aprueba el bloque una vez, Max-1 lo
+> forja lote a lote (cada uno con su doble llave), y al cerrarlo el dueño hace QA del
+> módulo completo antes de abrir el siguiente. **Nunca dos bloques abiertos a la vez.**
+
+| Bloque | Lotes (en orden) | Δ | Nota |
+|---|---|---|---|
+| (en vuelo) | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | dictado v50; 44→42 |
+| **A · Servicio Técnico** | A1 Informe→Listado · A2 Costos→Listado · A3 Traslados→Listado | −3 | Traslados último (flujo activo, no catálogo); cierra ST como hub con pestañas |
+| **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
+| **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
+| **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
+| **E · Cierre (SOLA)** | E1 Configuración de producción (Máquinas·Tipos·Recetas·Moldes 4→1) | −3 | la mayor densidad y más riesgo; **aquí se salda la deuda del `<x-tab-nav>`** (4ª pestaña) |
+
+**Aritmética:** 44 → (L4) 43 → (L5) 42 → **A** 39 → **B** 37 → **C** 34 → **D** 33 → **E** 30.
+
+**Regla de apertura:** no se emite dictado de un bloque nuevo hasta que el anterior esté
+cerrado (todos sus lotes en producción + QA del dueño). El Bloque A abre cuando Lote 4 y 5
+estén en producción con QA.
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 
