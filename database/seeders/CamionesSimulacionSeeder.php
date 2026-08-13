@@ -111,7 +111,11 @@ class CamionesSimulacionSeeder extends Seeder
                 // versión de catálogo. Lo que falta confirmar es la distancia entre ejes,
                 // en el padrón o la revisión técnica. Ver `docs/pendientes/01`.
                 'eje_trasero_cm' => 499,
-                'notas' => 'La misma caja en los dos HINO de la flota. Del frente de la caja al eje trasero: 499 cm (13-08). Falta CONFIRMAR la distancia entre ejes: el 435 cm del 12-08 no cierra con el 499 (pondría el eje delantero adentro de la caja) y sin ese número no se reparte peso por eje.',
+                // `notas` es VARCHAR(255) y en MySQL eso NO perdona: la versión larga de esta
+                // nota tumbó el deploy del 13-08 con «Data too long for column». El porqué
+                // completo vive en el comentario de arriba y en docs/pendientes/01 — la
+                // columna es para una nota corta, no para el razonamiento.
+                'notas' => 'La misma caja en los dos HINO de la flota. Frente de la caja al eje trasero: 499 cm (13-08). Falta confirmar el entre ejes: el 435 del 12-08 no cierra con el 499. Ver docs/pendientes/01.',
             ],
             [
                 'nombre' => 'Hyundai HD35',
