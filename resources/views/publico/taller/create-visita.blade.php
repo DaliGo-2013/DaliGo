@@ -1,9 +1,10 @@
 {{--
     Solicitud PÚBLICA de visita/revisión industrial (QR, sin login): para
-    lavadoras, llenadoras y plantas de osmosis EN EL CLIENTE. Elige el tipo de
-    trabajo (Visita técnica primero: diagnóstico + cotización), opcionalmente
-    el servicio del tarifario, deja sus datos y una fecha preferida opcional.
-    Entra a la Agenda de terreno como 'solicitado'; el staff llama y coordina.
+    lavadoras, llenadoras y plantas de osmosis EN EL CLIENTE. SIEMPRE es una
+    visita técnica (diagnóstico + cotización): el cliente no elige el tipo de
+    trabajo — ver AgendaTrabajo::TIPO_PUBLICO. Opcionalmente indica el servicio
+    del tarifario, deja sus datos y una fecha preferida opcional. Entra a la
+    Agenda de terreno como 'solicitado'; el staff llama y coordina.
 --}}
 <x-guest-layout>
     <div class="mb-6 text-center">
@@ -22,8 +23,50 @@
         </div>
     @endif
 
+    {{-- EL CARTEL DE DISPONIBILIDAD (pedido del dueño 13-08-2026: «cuando el cliente
+         ingrese una fecha que diga si está disponible u ocupada, un cartel de advertencia
+         que no se puede ese día o varios días»).
+
+         El chequeo YA EXISTÍA en el servidor, pero recién al ENVIAR: el cliente llenaba
+         nombre, RUT, teléfono, correo, dirección y ciudad, apretaba Enviar y ahí se
+         enteraba de que ese día no había. Esto pregunta lo MISMO —el mismo
+         `AgendaTrabajo::disponibilidad()`, que es el mismo `conflictos()` de la agenda
+         interna— en cuanto elige la fecha.
+
+         SI LA CONSULTA FALLA NO SE BLOQUEA NADA: se avisa y se deja enviar. El veredicto
+         que manda sigue siendo el del servidor al recibir el formulario; esto es un aviso
+         temprano, no una segunda regla. --}}
     <form method="POST" action="{{ route('visita-industrial.store') }}" class="space-y-5 pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:pb-0"
-          x-data="{ servicioId: @js(old('servicio_terreno_id', '')) }">
+          x-data="{
+              servicioId: @js(old('servicio_terreno_id', '')),
+              fecha: @js(old('fecha_preferida', '')),
+              url: @js(route('visita-industrial.disponibilidad')),
+              estado: null, tramo: null, proximo: null, proximoIso: null, dias: 0,
+
+              async revisar() {
+                  if (! this.fecha) { this.estado = null; return; }
+                  this.estado = 'consultando';
+                  try {
+                      const r = await fetch(`${this.url}?fecha=${encodeURIComponent(this.fecha)}`,
+                                           { headers: { Accept: 'application/json' } });
+                      if (! r.ok) { this.estado = 'error'; return; }
+                      const d = await r.json();
+                      this.dias = d.dias;
+                      this.tramo = d.etiqueta_tramo;
+                      this.proximo = d.etiqueta_proximo;
+                      this.proximoIso = d.proximo_libre;
+                      this.estado = d.ocupado ? 'ocupado' : 'libre';
+                  } catch (e) {
+                      this.estado = 'error';
+                  }
+              },
+              usarProximo() {
+                  if (! this.proximoIso) return;
+                  this.fecha = this.proximoIso;
+                  this.revisar();
+              },
+          }"
+          x-init="revisar()">
         @csrf
         <input type="hidden" name="sucursal_id" value="{{ $sucursal->id }}">
         {{-- Honeypot anti-bot --}}
@@ -33,16 +76,20 @@
 
         {{-- Qué necesitas --}}
         <x-seccion titulo="¿Qué necesitas?">
-            <div>
-                <x-input-label for="tipo">Tipo de trabajo <span class="text-red-500">*</span></x-input-label>
-                <x-select id="tipo" name="tipo" class="mt-1.5" required>
-                    <option value="">— Selecciona —</option>
-                    @foreach ($tipos as $tp)
-                        <option value="{{ $tp }}" @selected(old('tipo') === $tp)>{{ \App\Models\AgendaTrabajo::TIPO_ETIQUETAS[$tp] }}</option>
-                    @endforeach
-                </x-select>
-                <x-input-hint>Visita técnica: el técnico diagnostica en tu planta y te cotiza lo que haya que hacer.</x-input-hint>
-                <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
+            {{-- El cliente YA NO elige el tipo de trabajo (pedido del técnico
+                 industrial, 13-08): no puede saber si lo suyo es mantención,
+                 reparación o instalación, y elegir mal desviaba la visita. Lo
+                 público es siempre una visita técnica; el trabajo que salga de
+                 ella lo agenda después el vendedor o el jefe de ventas hablando
+                 con el cliente. Acá queda DICHO qué se está pidiendo, para que
+                 nadie crea que se le olvidó un campo. --}}
+            <div class="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-neutral-700">
+                <p class="font-semibold text-brand-700">Visita técnica</p>
+                <p class="mt-1">
+                    El técnico va a tu planta, revisa el equipo y te cotiza lo que haya que hacer.
+                    Si después hay que hacer una mantención, una reparación o una instalación,
+                    lo coordinamos contigo.
+                </p>
             </div>
             <div>
                 <x-input-label for="servicio_terreno_id" value="Servicio (si ya sabes cuál)" />
@@ -67,8 +114,57 @@
             <div>
                 <x-input-label for="fecha_preferida" value="¿Cuándo te acomoda? (opcional)" />
                 <x-text-input id="fecha_preferida" name="fecha_preferida" type="date" class="mt-1.5 w-full"
-                    min="{{ \App\Support\FechaNegocio::hoy() }}" :value="old('fecha_preferida')" />
+                    min="{{ \App\Support\FechaNegocio::hoy() }}" x-model="fecha" @change="revisar()" />
                 <x-input-hint>Es una referencia: el día definitivo se coordina contigo.</x-input-hint>
+
+                {{-- Cuatro estados y ninguno bloquea el envío por su cuenta. El «ocupado»
+                     dice de frente que con ese día la solicitud no se va a poder enviar,
+                     porque el servidor la rechaza: avisarlo acá y no descubrirlo al final
+                     es todo el punto de este cartel. --}}
+                <template x-if="estado === 'consultando'">
+                    <p class="mt-2 text-xs text-neutral-500">Revisando la agenda…</p>
+                </template>
+
+                <template x-if="estado === 'libre'">
+                    <p class="mt-2 flex items-start gap-1.5 text-sm font-medium text-brand-700">
+                        <span aria-hidden="true">✓</span>
+                        <span>Ese día hay disponibilidad.</span>
+                    </p>
+                </template>
+
+                <template x-if="estado === 'ocupado'">
+                    <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                        <p class="font-semibold">
+                            <span aria-hidden="true">⚠</span>
+                            <span x-text="dias > 1
+                                ? `La agenda está ocupada ${tramo}.`
+                                : `Ese día la agenda está ocupada (${tramo}).`"></span>
+                        </p>
+                        <p class="mt-1" x-show="proximo" x-cloak>
+                            El día más cercano disponible es el <span class="font-medium" x-text="proximo"></span>.
+                        </p>
+                        <p class="mt-1 text-amber-800">
+                            Elige otra fecha o deja el campo vacío y coordinamos por teléfono.
+                        </p>
+                        {{-- Las clases son las del botón «Volver al inicio» de esta misma
+                             vista, a propósito: el CSS va commiteado y construirlo de nuevo
+                             solo para dos tonos de ámbar nuevos no vale el riesgo. --}}
+                        <button type="button" @click="usarProximo()" x-show="proximoIso" x-cloak
+                                class="mt-2 min-h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                            Usar el día disponible
+                        </button>
+                    </div>
+                </template>
+
+                {{-- Si la consulta falla, se dice y se sigue. Un formulario público que no
+                     deja pedir una visita porque no pudo leer la agenda es peor que uno que
+                     acepta una fecha que después hay que mover por teléfono. --}}
+                <template x-if="estado === 'error'">
+                    <p class="mt-2 text-xs text-neutral-500">
+                        No pudimos revisar la agenda en este momento. Puedes enviar la solicitud igual: coordinamos contigo.
+                    </p>
+                </template>
+
                 <x-input-error :messages="$errors->get('fecha_preferida')" class="mt-2" />
             </div>
             <div>
