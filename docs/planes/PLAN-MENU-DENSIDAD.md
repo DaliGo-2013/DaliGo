@@ -125,8 +125,8 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 
 | Bloque | Lotes (en orden) | Δ | Nota |
 |---|---|---|---|
-| (en vuelo) | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | dictado v50; 44→42 |
-| **A · Servicio Técnico** | A1 Informe→Listado · A2 Costos→Listado · A3 Traslados→Listado | −3 | Traslados último (flujo activo, no catálogo); cierra ST como hub con pestañas |
+| (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
+| **A · Servicio Técnico** (ABIERTA 13-ago) | A1 Costos→Listado · A2 Traslados→Listado · A3 Informe (PARTIDO por dominio) | −3 | Costos y Traslados verificados limpios (todos sus roles ven el Listado). Informe último y REPLANTEADO: ver hallazgo abajo |
 | **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
@@ -136,7 +136,34 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 
 **Regla de apertura:** no se emite dictado de un bloque nuevo hasta que el anterior esté
 cerrado (todos sus lotes en producción + QA del dueño). El Bloque A abre cuando Lote 4 y 5
-estén en producción con QA.
+estén en producción con QA. **Cumplido: QA del dueño OK el 13-ago → Bloque A ABIERTO.**
+
+### Hallazgo del Director al abrir el Bloque A — «Informe» NO puede ir tal cual al Listado
+El mapa F0 proponía «Informe → pestaña del Listado». Verificación de permisos por
+ejecución (seeder + grupos de `routes/web.php`): las rutas del informe viven en su PROPIO
+grupo `permission:ver informe dispensadores|ver informe industrial` (web.php L243),
+**separado** del grupo del Listado (`view|manage servicio tecnico`, L224). El **técnico
+industrial** (`tecnico_industrial`) tiene `ver informe industrial` pero **NO**
+`view servicio tecnico`: hoy entra al informe industrial por su ítem del menú, sin tocar
+el Listado. Meterlo tras el Listado le quitaría su ÚNICO acceso (no puede ver el anfitrión).
+Esto viola el invariante del proyecto (ninguna pantalla/permiso se pierde) — el mapa no lo
+detectó. Costos y Traslados NO tienen este problema (verificado: todos sus roles ven el
+Listado).
+
+**Decisión del dueño (13-ago): PARTIR el Informe por dominio** (no ampliar permisos, no
+dejarlo solo):
+- **Informe industrial → pestaña de la Agenda de terreno** (el técnico industrial SÍ la
+  ve; es su dominio de terreno). Pestaña gateada por `ver informe industrial` (idioma del
+  `_tabs` calculado por permiso, ya usado en lotes 4-5). Sería la 3ª pestaña de la Agenda
+  (Agenda · Servicios de terreno · Informe industrial) — `grid-cols-3`, aún no toca la
+  deuda de 4 pestañas.
+- **Informe dispensadores → pestaña/sección del Listado** (gateada por `ver informe
+  dispensadores`).
+- **El landing `admin.servicio-tecnico.informe`** (que hoy bifurca): su destino lo decide
+  y declara el lote ejecutor (retirarlo si cada cara ya tiene entrada propia, o mantenerlo
+  reapuntado). Verificar que nadie pierda acceso tras el cambio.
+- Aritmética intacta: el ítem «Informe» se retira igual (−1); sus dos caras son navegación
+  interna, no rótulos del menú. Bloque A sigue −3 → 39.
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 

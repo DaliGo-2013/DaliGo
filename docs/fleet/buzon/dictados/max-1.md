@@ -1,57 +1,75 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-13 (v52 — Lote 5 EN PRODUCCIÓN; fase «en vuelo» COMPLETA 47→42; EN PAUSA hasta el QA del dueño y el dictado del Bloque A). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-13 (v53 — QA del dueño OK; se ABRE el Bloque A · Servicio Técnico; GO A1: Costos → Listado). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Lote 5 está EN PRODUCCIÓN (merge `c5f5b47`, doble llave 13-ago) — y con él CIERRA la cola «en vuelo»
+## ✅ El dueño hizo el QA de los lotes 4 y 5 — todo funcionando. Se ABRE el Bloque A.
 
-**Menú 43 → 42.** Suite del Director sobre el árbol mergeado: **2005 verdes / 14.193
-aserciones** — tu delta 0 y tus +41 aserciones, exactos. Conté el menú (11+30+1=42), da.
-Bundle byte-idéntico; el `<x-tab-nav>` compartido no lo tocaste (el guard vive en el
-`_tabs`, correcto). Rama borrada.
+La fase «en vuelo» quedó cerrada con QA (menú 47→42). Arranca el primer bloque del mapa
+aprobado: **A · Servicio Técnico** (anfitrión: el Listado del taller). Tres lotes, uno por
+doble llave, como siempre.
 
-**Cinco lotes, cinco restas, 47 → 42, cero pérdida de pantallas ni permisos.** Es un
-proyecto entero cerrado limpio.
+**Orden del bloque (lo reordené con motivo):** A1 Costos → A2 Traslados → A3 Informe.
+Los dos primeros son mudanzas limpias; el Informe lo dejé para el final porque cambió de
+forma (te explico abajo). No arranques A2 ni A3 sin su dictado.
 
-Lo mejor del Lote 5, y de la cola completa:
+## 🟢 GO — A1 · «Costos generales de reparación» pasa al Listado de ST (42 → **41**)
 
-1. **Corregiste MI dictado con evidencia.** Escribí «permiso idéntico»; encontraste que es
-   cierto solo para la mitad de escritura (seeder L172: el técnico industrial ve la Agenda
-   con `ver agenda terreno`, sin `agendar servicio terreno`). Una pestaña sin gatear le
-   daría 403 al usuario PRINCIPAL de esa pantalla. No te tragaste el error del dictado: lo
-   mostraste con la línea del seeder y lo resolviste. Un forjador que confía ciegamente en
-   el dictado propaga los errores del Director; tú los atrapas. Es exactamente lo que quiero.
-2. **Reusaste el idioma correcto**: el `_tabs` de ST (pestañas calculadas por permiso) para
-   el caso de la Agenda, y el `<x-tab-nav>` para la parte visual — sin tocar el componente
-   compartido. Cada patrón en su lugar.
-3. **La cola entera con proceso limpio**: de los lotes 3 al 5, rama cortada ANTES de tocar
-   un archivo, baseline en worktree aislado, candado mutado en cada uno. Consistencia.
+- **Qué es**: tiempos estándar + valor hora (1 recurso, uso raro), bajo
+  `gestionar tiempos reparacion`.
+- **Verificación de permisos que ya hice (para que no repitas el susto del Informe)**:
+  solo `jefe_ventas` y `admin` tienen `gestionar tiempos reparacion`, y **ambos ven el
+  Listado** (`view|manage servicio tecnico`). No hay rol que gestione costos sin ver el
+  Listado → **consolidación limpia**, sin el problema de acceso que sí tiene el Informe.
+  Confírmalo en tu baseline igual (no te fíes de mi palabra: el seeder es aditivo y algún
+  admin pudo tocar permisos desde la UI).
+- **Forma**: sección «Configuración» del taller dentro del Listado (junto a donde vivirá
+  el botón/QR ya presente), **gateada por `@can('gestionar tiempos reparacion')`** — no la
+  muestres a quien ve el Listado sin ese permiso. Si eliges pestaña en vez de sección,
+  gateada por el MISMO permiso (idioma del `_tabs` calculado por permiso; el `<x-tab-nav>`
+  no gatea solo). Declara la forma y el porqué, como en el Lote 4.
+- **Ruta y permiso se CONSERVAN** — mudanza, no retiro.
+- **Mini-candado**: línea en `CONSOLIDADAS` + **mútala** (quitar la ruta del `activo` del
+  anfitrión → 2 rojos → restaurar → verde), como en los lotes 3-5.
+- **`VolverTest`**: Costos era ítem del menú; al pasar a hija/sección, ajústalo por la
+  fuente única según la doctrina de hijas/pestañas. Nada de amoldes a mano.
 
-## ⏸️ EN PAUSA — la cola «en vuelo» terminó; el Bloque A espera dos cosas
+## La cola del Bloque A (NO arranques sin dictado)
 
-No arranques nada. El mapa completo (47→30) está aprobado por el dueño **en bloques por
-módulo** (§4.1 del plan), y la regla de apertura es dura:
+**A2 · Traslados al taller → Listado** (41 → 40). También verificado limpio por mí: todos
+los roles con `despachar|recibir traslado servicio` (jefe_sucursal, jefe_ventas,
+jefe_bodega, tecnico) ven el Listado. Pestaña «Traslados» que conserva su OR. Es flujo
+activo (no catálogo), por eso va después de Costos.
 
-- **El Bloque A (Servicio Técnico: Informe→Listado · Costos→Listado · Traslados→Listado)
-  se abre con su PROPIO dictado**, no con este.
-- Ese dictado no sale hasta que el dueño haga el **QA en celular de los lotes 4 y 5**
-  (botón QR + pantalla QR con Volver; pestañas de la Agenda que el técnico industrial NO
-  ve). Bloque cerrado con QA antes de abrir el siguiente — **nunca dos bloques a la vez**.
-
-Cuando el dueño dé el visto bueno, te llega el dictado del Bloque A con A1 (Informe→Listado)
-como primer lote. Hasta entonces: pausa.
+**A3 · Informe — REPLANTEADO, ya no es «Informe → Listado» a secas** (40 → 39).
+Hallazgo que te ahorro descubrir a mitad de camino: el **técnico industrial** tiene
+`ver informe industrial` pero **NO** `view servicio tecnico`. Hoy entra al informe
+industrial por su ítem del menú; si el Informe se vuelve pestaña del Listado (que él no
+ve), **pierde el acceso**. Las rutas del informe están en su propio grupo de permiso
+(web.php L243), separado del Listado (L224) — por eso hoy sí lo alcanza.
+**Decisión del dueño: PARTIR el Informe por dominio:**
+- **Informe industrial → pestaña de la Agenda de terreno** (que el técnico SÍ ve; su
+  dominio). Sería la 3ª pestaña de la Agenda (Agenda · Servicios · Informe industrial),
+  gateada por `ver informe industrial`. `grid-cols-3`, todavía no toca la deuda de 4.
+- **Informe dispensadores → pestaña/sección del Listado**, gateada por
+  `ver informe dispensadores`.
+- **El landing `admin.servicio-tecnico.informe`**: decide su destino y decláralo (retirar
+  si cada cara ya tiene entrada, o mantener reapuntado). Verifica que NADIE pierda acceso
+  tras el cambio — ese es el candado de este lote.
+Cuando llegues a A3 te lo dicto formal; por ahora solo para que lo tengas en el radar y no
+lo construyas como decía el mapa viejo.
 
 ## Territorio
-- **Max-2** en pausa (M11 100 % construido).
-- **Marcos** MUY activo en el simulador. Si retomas, rama corta y re-fetch religioso.
+- **Max-2** en pausa. **Marcos** activo en el simulador — rama corta, re-fetch religioso.
 
 ## Nota de infra (I-10, en el tablero)
-GitHub sigue con 500 intermitentes en `git push` a main mientras su estado dice
-«operacional». Receta: push a rama `tmp/*` (sube objetos + aísla el ref), reintenta main;
-borra la temporal por API si el git también cae. §I-10.
+GitHub con 500 intermitentes en push a main. Receta: rama `tmp/*` para subir objetos y
+aislar el ref, reintenta; borra la temporal por API si el git también cae. §I-10.
 
-## Recordatorios (para cuando se abra el Bloque A)
+## Recordatorios
 Rama nueva desde main FRESCO antes de tocar un archivo; suite COMPLETA de main fresco
-ANTES de empezar; candado mutado; parte al buzón. Un lote por doble llave dentro del bloque.
+ANTES de empezar; candado mutado; parte al buzón. Baseline del Director: **2005 / 14.193**
+en `c5f5b47` (más lo que Marcos haya sumado — re-fetch).
 
-CIERRE: cola «en vuelo» completa (47→42). Bloque A en espera del QA del dueño. Buen trabajo.
+CIERRE: parte a docs/fleet/buzon/partes/ + push. A1 Costos → doble llave → A2. Verifica los
+permisos SIEMPRE antes de consolidar: el Informe casi se lleva un acceso por delante.
