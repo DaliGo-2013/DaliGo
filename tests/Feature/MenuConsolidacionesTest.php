@@ -38,6 +38,7 @@ class MenuConsolidacionesTest extends TestCase
         'admin.servicio-tecnico.qr' => 'servicio-tecnico.listado', // Lote 4: Códigos QR → botón del Listado
         'admin.servicios-terreno.' => 'servicio-tecnico.agenda-terreno', // Lote 5: Servicios de terreno → pestaña de la Agenda
         'admin.tiempos-reparacion.' => 'servicio-tecnico.listado', // A1: Costos generales → desplegable «Configuración» del Listado
+        'admin.traslados.' => 'servicio-tecnico.listado', // A2: Traslados al taller → pestaña del Listado
     ];
 
     private function admin(): User

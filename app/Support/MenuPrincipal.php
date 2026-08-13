@@ -224,19 +224,16 @@ class MenuPrincipal
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
             'items' => [
-                // Consolidaciones Lote 4 + A1 (PLAN-MENU-DENSIDAD): «Códigos
-                // QR» y «Costos generales de reparación» dejaron de ser ítems —
-                // se entra por el desplegable «Configuración» de la cabecera
-                // del Listado, cada entrada gateada por SU permiso (el Listado
-                // lo ve también quien no porta ninguno de los dos). Sus rutas
-                // van AQUÍ, en el `activo` del anfitrión (candado en
-                // MenuConsolidacionesTest).
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
+                // Consolidaciones Lote 4 + A1 + A2 (PLAN-MENU-DENSIDAD): la
+                // CONFIG del taller («Códigos QR», «Costos generales») entra
+                // por el desplegable «Configuración» de la cabecera del
+                // Listado, y el FLUJO «Traslados al taller» por su pestaña
+                // (_tabs-listado) — cada entrada/pestaña gateada por SU
+                // permiso. Sus rutas van AQUÍ, en el `activo` del anfitrión
+                // (candado en MenuConsolidacionesTest).
+                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*', 'admin.traslados.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
-                // Traslado sucursal → casa matriz (decisión del dueño 03-08). Lo ven
-                // las dos puntas: quien despacha y quien recibe.
-                'traslados' => ['label' => 'Traslados al taller', 'route' => 'admin.traslados.index', 'activo' => ['admin.traslados.*'], 'permiso' => 'despachar traslado servicio|recibir traslado servicio'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 // Consolidación Lote 5 (PLAN-MENU-DENSIDAD): «Servicios de
                 // terreno» dejó de ser ítem y vive como pestaña de la Agenda
