@@ -28,6 +28,8 @@
 
     <div class="space-y-6 py-6">
 
+        @include('admin.carga._tabs')
+
         @if ($camiones->isEmpty())
             {{-- Solo puede pasar si alguien desactivó todos los camiones del
                  catálogo: el seeder los crea en cada deploy. --}}

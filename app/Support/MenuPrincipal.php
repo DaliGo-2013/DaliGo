@@ -135,13 +135,16 @@ class MenuPrincipal
                 // SidebarTest (una ruta resalta exactamente un ítem).
                 // Simulador de carga: responde "¿cuanto entra en tal camion?" antes
                 // de que el vendedor prometa. NO escribe nada operativo.
-                'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*'], 'permiso' => 'simular carga'],
-                // Cargas reales: lo que entro de verdad contra lo que el simulador
-                // prometio. Es lo unico que da un factor de correccion propio, y va
-                // como item aparte —no como pestaña del simulador— porque se abre en
-                // otro momento: el simulador se usa ANTES de cargar y esto se anota
-                // DESPUES. Mismo permiso, porque calibra esa misma calculadora.
-                'cargas-reales' => ['label' => 'Cargas reales', 'route' => 'admin.cargas-reales.index', 'activo' => ['admin.cargas-reales.*'], 'permiso' => 'simular carga'],
+                // Consolidación B1 (PLAN-MENU-DENSIDAD): «Cargas reales» vive
+                // como pestaña del Simulador (admin/carga/_tabs). ANTES era
+                // ítem aparte a propósito —el simulador se usa ANTES de cargar
+                // y las cargas reales se anotan DESPUÉS—, pero el dueño
+                // resolvió (14-ago) que ese matiz de momento-de-uso no pesa
+                // frente a la densidad: la pestaña no impide anotar después,
+                // solo agrupa bajo un ítem. Mismo permiso (`simular carga`,
+                // calibra esta misma calculadora); su ruta va AQUÍ, en el
+                // `activo` del anfitrión (candado en MenuConsolidacionesTest).
+                'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*', 'admin.cargas-reales.*'], 'permiso' => 'simular carga'],
                 'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
             ],
         ],
