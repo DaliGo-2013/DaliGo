@@ -5,10 +5,10 @@
              «editable» y no darle ningún botón es la clase de detalle que hace dudar de la
              pantalla en vez de dudar del permiso. --}}
         <x-page-header title="Catálogo de servicios de terreno"
-                       :subtitle="auth()->user()->can('agendar servicio terreno')
+                       :subtitle="auth()->user()->can('gestionar servicios terreno')
                             ? 'Tarifario en UF del técnico industrial (editable).'
                             : 'Tarifario en UF del técnico industrial. Precios y detalle de cada servicio.'">
-            @can('agendar servicio terreno')
+            @can('gestionar servicios terreno')
                 <x-slot name="action">
                     <x-button-link :href="route('admin.servicios-terreno.create')">
                         <x-icon.plus class="h-4 w-4" />
@@ -50,7 +50,7 @@
                         </div>
                         {{-- Sin permiso de edición no se ofrece el botón: un enlace que termina
                              en 403 es peor que no tenerlo. --}}
-                        @can('agendar servicio terreno')
+                        @can('gestionar servicios terreno')
                             <div class="shrink-0">
                                 <x-secondary-link :href="route('admin.servicios-terreno.edit', $s)">Editar</x-secondary-link>
                             </div>

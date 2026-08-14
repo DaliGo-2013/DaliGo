@@ -10,18 +10,23 @@
     dibuja — el técnico ve su agenda igual que siempre, sin una pestaña que
     le daría 403.
 
-    ACTUALIZADO 14-08-2026: el técnico industrial SÍ ve el tarifario, con un
-    permiso propio de solo lectura (`ver servicios terreno`). Pedido del dueño:
-    «para Carlos crear el permiso de vista, actualmente no le aparece» — en la
-    planta del cliente le preguntan cuánto sale y qué incluye. La pestaña ahora
-    se gatea con CUALQUIERA de los dos permisos; editar sigue siendo de
-    jefatura/ventas y los botones de la pantalla se esconden solos.
+    ACTUALIZADO 14-08-2026: el tarifario tiene sus DOS permisos propios y ya no
+    depende de `agendar servicio terreno`:
+
+      · ver servicios terreno       → consultar precios y detalle
+      · gestionar servicios terreno → crear y editar
+
+    Pedido del dueño, en dos pasos: primero «para Carlos crear el permiso de
+    vista, actualmente no le aparece» (en la planta del cliente le preguntan
+    cuánto sale), y después «que puedan elegir dar el permiso o no al perfil,
+    separar el permiso de edición del de agendar». La pestaña se gatea con
+    cualquiera de los dos; los botones de la pantalla se esconden solos.
 --}}
 @php
     $agendaTabs = [
         ['label' => 'Agenda', 'url' => route('admin.agenda-terreno.index'), 'activa' => request()->routeIs('admin.agenda-terreno.*')],
     ];
-    if (auth()->user()?->canAny(['agendar servicio terreno', 'ver servicios terreno'])) {
+    if (auth()->user()?->canAny(['ver servicios terreno', 'gestionar servicios terreno'])) {
         $agendaTabs[] = ['label' => 'Servicios de terreno', 'url' => route('admin.servicios-terreno.index'), 'activa' => request()->routeIs('admin.servicios-terreno.*')];
     }
 @endphp

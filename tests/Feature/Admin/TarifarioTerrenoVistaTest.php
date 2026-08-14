@@ -131,6 +131,54 @@ class TarifarioTerrenoVistaTest extends TestCase
             'El técnico industrial cambió el tarifario: solo tiene permiso de vista.');
     }
 
+    // ─────────────────────────────────────────────────── las dos llaves, separadas
+
+    /**
+     * EL PUNTO DE HABER SEPARADO LOS PERMISOS (dueño, 14-08-2026): «que puedan elegir dar el
+     * permiso o no al perfil… separar el permiso de edición del de agendar».
+     *
+     * Antes, para que alguien pudiera corregir un precio había que dejarlo agendar trabajos —y
+     * al revés, quien agendaba podía cambiar la lista de precios sin que nadie lo decidiera—.
+     * Estos dos candados fijan que ahora cada llave abre SOLO su puerta; si algún día vuelven a
+     * quedar pegadas, se ponen rojos.
+     */
+    public function test_agendar_trabajos_ya_no_alcanza_para_editar_el_tarifario(): void
+    {
+        $servicio = $this->servicio();
+
+        // Un perfil que solo agenda: el caso de un vendedor al que gerencia le quita el
+        // tarifario desde la pantalla de Roles.
+        $soloAgenda = tap(User::factory()->create())->assignRole('vendedor');
+        $soloAgenda->revokePermissionTo('gestionar servicios terreno');
+        $soloAgenda->roles->first()->revokePermissionTo('gestionar servicios terreno');
+
+        $this->actingAs($soloAgenda)->put(route('admin.servicios-terreno.update', $servicio), [
+            'nombre' => 'Precio cambiado sin permiso', 'valor_uf' => 1,
+        ]);
+
+        $this->assertSame('Full planta 1T', $servicio->refresh()->nombre,
+            'Agendar trabajos volvió a alcanzar para cambiar precios: las dos llaves quedaron pegadas otra vez.');
+    }
+
+    /** Y al revés: quien edita el tarifario no queda habilitado para agendar trabajos. */
+    public function test_editar_el_tarifario_no_habilita_agendar_trabajos(): void
+    {
+        // El perfil que gerencia podría querer: cambia precios, no compromete al técnico.
+        $soloTarifario = tap(User::factory()->create())->assignRole('tecnico_industrial');
+        $soloTarifario->givePermissionTo('gestionar servicios terreno');
+
+        // Edita el tarifario…
+        $this->actingAs($soloTarifario)
+            ->get(route('admin.servicios-terreno.create'))
+            ->assertOk();
+
+        // …y NO puede agendar (esta app manda al Inicio con un aviso cuando alguien navega a
+        // algo que no le corresponde).
+        $this->actingAs($soloTarifario)
+            ->get(route('admin.agenda-terreno.create'))
+            ->assertRedirect(route('dashboard'));
+    }
+
     // ─────────────────────────────────────────────────────── nadie más cambió
 
     public function test_quien_ya_lo_editaba_sigue_editandolo(): void
