@@ -142,16 +142,17 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 |---|---|---|---|
 | (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
 | **A · Servicio Técnico** ✅ CERRADA (14-ago) | ✅A1 Costos (`0e9feaa`) · ✅A2 Traslados (`6a35329`) · ❌A3 Informe → **VIVE SOLO** (decisión del dueño 14-ago) | **−2** | A1 y A2 en producción. El Informe NO se consolida: su audiencia cruza dos dominios sin anfitrión común (ver «SEGUNDO NUDO» abajo). Bloque cierra en menú 40 |
-| **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
+| **B · Logística** (ABIERTA 14-ago) | B1 Cargas reales→Simulador (pestaña) · B2 Conductores → **VIVE SOLO** | **−1** | B1 consolida (mismo permiso; decisión del dueño 14-ago: reemplaza la nota vieja del código «va aparte»). B2 Conductores NO se consolida: mismo nudo del Informe (jefe_ventas/tecnico ven Conductores pero no entran a Vehículos) → vive solo (decisión del dueño) |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
 | **E · Cierre (SOLA)** | E1 Configuración de producción (Máquinas·Tipos·Recetas·Moldes 4→1) | −3 | la mayor densidad y más riesgo; **aquí se salda la deuda del `<x-tab-nav>`** (4ª pestaña) |
 
-**Aritmética (actualizada 14-ago tras «Informe vive solo»):** 44 → (L4) 43 → (L5) 42 →
-**A** 40 (solo A1+A2; el Informe no se consolida) → **B** 38 → **C** 35 → **D** 34 →
-**E** 31. El mapa completo llega a **31**, no 30: el Informe es el ítem que el propio
-criterio del proyecto («¿puede integrarse o vive solo?») deja fuera — una resta menos, cero
-accesos rotos. Honestidad del proyecto por encima del número redondo.
+**Aritmética (actualizada 14-ago tras «Informe vive solo» + «Conductores vive solo»):**
+44 → (L4) 43 → (L5) 42 → **A** 40 (A1+A2; Informe vive solo) → **B** 39 (solo B1 Cargas
+reales; Conductores vive solo) → **C** 36 → **D** 35 → **E** 32. El mapa completo llega a
+**32**, no 30: dos ítems (Informe, Conductores) son casos de audiencia partida entre dos
+dominios sin anfitrión común — el propio criterio del proyecto («¿puede integrarse o vive
+solo?») los deja fuera. Cero accesos rotos. Honestidad del proyecto por encima del número.
 
 **Regla de apertura:** no se emite dictado de un bloque nuevo hasta que el anterior esté
 cerrado (todos sus lotes en producción + QA del dueño). El Bloque A abre cuando Lote 4 y 5
