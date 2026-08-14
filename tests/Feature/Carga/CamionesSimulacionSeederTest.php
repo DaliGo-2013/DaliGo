@@ -31,7 +31,11 @@ class CamionesSimulacionSeederTest extends TestCase
         // (el ancho del HD35) era directamente una deducción.
         $esperado = [
             "Contenedor 40'" => [1203, 235, 239, 28800],
-            'HINO 500 (FC 1118)' => [797, 260, 266, 11000],
+            // 8.000 kg y no 11.000: el padrón (14-08-2026) separa «Carga: 8.000» de «Peso
+            // bruto v.: 11.000». Este campo es la CARGA; el bruto incluye el camión. Con
+            // 11.000 el simulador prometía 3 t que el camión no puede llevar — la misma
+            // confusión que ya se había evitado en el contenedor (§3.5ter de las reglas).
+            'HINO 500 (FC 1118)' => [797, 260, 266, 8000],
             // VUELVE A 200 (era 204 entre el 07 y el 11-08, deducido para que cerraran
             // sus dos cupos de terreno). La huincha mandó. Ver §3.5 de las reglas y
             // CalculoDeCargaTest::test_el_hd35_medido_da_420_de_pie_y_360_acostado.

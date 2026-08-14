@@ -84,7 +84,21 @@ class CamionesSimulacionSeeder extends Seeder
             [
                 'nombre' => 'HINO 500 (FC 1118)',
                 'largo_cm' => 797, 'ancho_cm' => 260, 'alto_cm' => 266,
-                'peso_max_kg' => 11000,
+                // 8.000 Y NO 11.000: el padrón del camión (14-08-2026) distingue las dos cosas
+                // en dos renglones — «Carga: 8.000 kg» y «Peso bruto v.: 11.000 kg»—. Este
+                // campo es la CARGA (lo que se puede subir); el bruto incluye el camión, que
+                // en un FC 1118 pesa unas 3 t. Con 11.000 el simulador prometía tres toneladas
+                // que este camión no puede llevar.
+                //
+                // Es la MISMA trampa que ya estaba documentada para el contenedor (§3.5ter): el
+                // 30.000 que se descartó por parecerse al bruto. Acá no hay que deducir nada —
+                // el padrón lo dice con las dos etiquetas— y el «11.000 coincide con el
+                // catálogo» del 11-08 era el número del modelo (FC **11**18 = 11 t de bruto),
+                // no su capacidad de carga.
+                //
+                // El error iba HACIA ARRIBA, que es el único que este módulo no se permite: en
+                // peso, pasarse no es un viaje a medias, es una multa.
+                'peso_max_kg' => 8000,
                 // Silueta propia, moldeada sobre sus fotos (05-08), con el rompeviento del
                 // techo y los detalles del espejo agregados el 11-08 sobre tres fotos más.
                 // Ya no queda ningún camión del catálogo con la silueta genérica.

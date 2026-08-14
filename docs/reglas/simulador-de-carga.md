@@ -836,9 +836,9 @@ queda de respaldo para uno que llegue sin fotos — como estuvo este unas horas.
 | Camión | Carga máxima | |
 |---|---|---|
 | Contenedor 40' | **28.800 kg** | de la placa — el dueño pasó 30.000, ver abajo |
-| HINO 500 | 11.000 kg | coincide con el catálogo |
+| HINO 500 | ~~11.000~~ → **8.000 kg** | **corregido el 14-08 con el padrón**, ver §3.5quater |
 | Chevy 3 (NQR 919 · H3) | **6.430 kg** | dato nuevo: estuvo unas horas en «sin dato» |
-| Hyundai HD35 | 1.500 kg | coincide con el catálogo |
+| Hyundai HD35 | 1.500 kg | coincide con el catálogo y con el padrón |
 
 Tres de los cuatro confirmaron lo que ya había. El Chevy cerró el único hueco donde **el error
 iba hacia arriba**: sin tonelaje el motor no recorta por peso y decía que entraba carga que el
@@ -852,6 +852,42 @@ camión no puede llevar.
    BRUTO** (contenedor + carga), no a la carga sola, que es lo que este campo significa.
    Tomarlo prometería ~1.200 kg de más — y en peso pasarse no es un viaje a medias: es una
    multa.
+
+### 3.5quater EL HINO PROMETÍA 3 TONELADAS DE MÁS (14-08-2026)
+
+Llegaron los **padrones** del HINO y del HD35 (el dueño los mandó para ver si traían datos de
+ejes; no los traen). Lo que sí traen es la carga, y en **dos renglones separados**:
+
+| | HINO 500 FC 1118 | Hyundai HD35 2.5 |
+|---|---|---|
+| **Carga** | **8.000 kg** | 1.500 kg |
+| Peso bruto v. | 11.000 kg | 3.500 kg |
+
+El simulador tenía cargados los **11.000** del HINO. Ese es el **bruto** —incluye el camión, que
+en un FC 1118 pesa unas 3 t— y este campo significa lo que se puede **subir**. O sea que la
+pantalla prometía tres toneladas que ese camión no puede llevar, y el error iba **hacia arriba**,
+que es el único que este módulo no se permite (§2): en peso, pasarse no es un viaje a medias, es
+una multa.
+
+**Es la misma trampa que el contenedor**, ya documentada arriba: ahí se descartó el 30.000
+justamente por parecerse al bruto. La diferencia es que acá no hubo que deducir nada — el padrón
+lo dice con las dos etiquetas. Y el «11.000 coincide con el catálogo» del 11-08 se explica solo:
+**FC 1118** significa 11 t de bruto y 180 HP, así que el número del modelo era el del bruto, no
+el de la carga.
+
+**Cross-check que da confianza en el resto:** el HD35 ya tenía 1.500, que es exactamente la
+carga del padrón (y no los 3.500 del bruto). Y el 6.430 del Chevy 3 se comporta como carga
+—un NQR 919 tiene ~9,2 t de bruto y unas 2,8 de tara—, así que los otros tres campos estaban
+bien leídos. El único mal leído era el del HINO.
+
+**Ningún cupo cambió** con la corrección: el HINO llena por volumen mucho antes que por peso
+(1.620 bolsas son 6.075 kg). El número importa para las cargas pesadas y para el cartel de
+sobrepeso, que es justo donde se usaba mal.
+
+**Lo que los padrones NO traen, y que sigue faltando:** distancia entre ejes y capacidad por
+eje. Ninguno de los dos documentos las lista. Esos datos están en la **revisión técnica** (que
+sí detalla el límite por eje) o en el informe técnico del fabricante — el del HD35 tiene su
+código en la factura. Ver `docs/pendientes/01`.
 
 ## 3.6 EL CARTEL DE SOBREPESO (11-08-2026)
 
