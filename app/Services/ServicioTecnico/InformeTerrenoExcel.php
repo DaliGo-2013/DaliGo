@@ -20,11 +20,12 @@ use Illuminate\Support\Str;
  * el contexto de su trabajo repetido para poder cruzarlo solo).
  *
  * Diferencia HONESTA con el Excel del taller, y por eso queda dicha en la propia
- * hoja: los repuestos de terreno solo guardan nombre y cantidad. No hay SKU ni
- * precio porque `agenda_trabajo_repuestos` no los tiene —a diferencia de
- * `orden_servicio_repuestos`, que si—, asi que la hoja no puede valorizarlos. Sin
- * esa nota, un lector compararia las dos planillas y concluiria que en terreno no
- * se gasta en repuestos.
+ * hoja: el repuesto de terreno trae codigo y cantidad pero NO precio, porque al
+ * tecnico industrial le pagan por arreglar e instalar y no maneja precios (dueno
+ * 14-08-2026) — la cotizacion formal la hacen el vendedor y el jefe de ventas.
+ * Asi que esta hoja cuenta el USO y no lo valoriza. Sin esa nota, un lector
+ * compararia las dos planillas y concluiria que en terreno no se gasta en
+ * repuestos, cuando lo que pasa es que el precio se pone en otra parte.
  */
 class InformeTerrenoExcel
 {
@@ -53,6 +54,9 @@ class InformeTerrenoExcel
     /** @var array<int, array{0: string, 1: int, 2: string}> */
     private const COLUMNAS_REPUESTOS = [
         ['Repuesto', 30, 'texto'],
+        // Vacio cuando el tecnico lo escribio a mano (no estaba en el catalogo):
+        // null significa «no vino del catalogo», no «falta el dato».
+        ['Código', 16, 'texto'],
         ['Cantidad', 10, 'numero'],
         ['Fecha', 13, 'fecha'],
         ['Tipo', 16, 'texto'],
@@ -88,7 +92,7 @@ class InformeTerrenoExcel
 
         $hojaRepuestos = new HojaPlanaXlsx(
             'REPUESTOS USADOS EN TERRENO · DALI',
-            $resumen.' · En terreno el repuesto se registra solo por nombre y cantidad: no hay SKU ni precio para valorizarlo',
+            $resumen.' · En terreno el repuesto se registra con su código y cantidad, SIN precio: el técnico industrial no maneja precios (la cotización la hacen el vendedor y el jefe de ventas), así que esta hoja cuenta el uso y no lo valoriza',
             self::COLUMNAS_REPUESTOS,
         );
         foreach ($trabajos as $trabajo) {
@@ -138,6 +142,7 @@ class InformeTerrenoExcel
     {
         return [
             $repuesto->nombre,
+            $repuesto->sku,
             (int) $repuesto->cantidad,
             $trabajo->fecha,
             $trabajo->tipo_label,

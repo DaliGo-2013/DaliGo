@@ -303,6 +303,12 @@ Route::middleware('auth')
                 ->name('agenda-terreno.calendario');
             Route::patch('agenda-terreno/{trabajo}/estado', [AgendaTrabajoController::class, 'estado'])
                 ->whereNumber('trabajo')->name('agenda-terreno.estado');
+            // Autocompletado de repuestos del cierre: va en ESTE grupo (el que ve la
+            // agenda) porque quien cierra el trabajo es el tecnico industrial, y el
+            // buscador del taller esta gateado por 'manage servicio tecnico'. No
+            // devuelve precios: el tecnico no maneja precios (ver buscarRepuesto).
+            Route::get('agenda-terreno/buscar-repuesto', [AgendaTrabajoController::class, 'buscarRepuesto'])
+                ->name('agenda-terreno.buscar-repuesto');
         });
         // Cuando el tecnico NO esta disponible: feriados, vacaciones, medias jornadas.
         // Permiso PROPIO ('gestionar cierres agenda', del jefe de ventas): agendar un trabajo

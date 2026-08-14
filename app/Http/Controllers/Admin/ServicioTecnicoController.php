@@ -262,15 +262,15 @@ class ServicioTecnicoController extends Controller
         // período), así que se cargan completas. Realizados: lo más reciente
         // primero; pendientes: lo más próximo primero.
         $realizadosLista = $base()->where('estado', 'realizado')
-            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
             ->orderByDesc('fecha')->get();
         $pendientesLista = $base()->where('estado', 'agendado')
-            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
             ->orderBy('fecha')->get();
         // Los NO realizados con su motivo: es la lista que ventas mira para
         // decidir si se vuelve o no (el motivo lo escribió el técnico al cerrar).
         $noRealizadosLista = $base()->where('estado', 'no_realizado')
-            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
             ->orderByDesc('fecha')->get();
 
         // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.

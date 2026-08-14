@@ -730,6 +730,7 @@ class AgendaTrabajo extends Model implements AuditableContract
             'direccion' => $this->direccion ?: '—',
             'tecnico' => $this->tecnico?->name ?? '—',
             'detalle' => $this->notas_tecnico ?: '—',
+            'repuestos' => $this->repuestosResumen(),
             'url' => route('admin.agenda-terreno.index'),
         ], $extra);
 
@@ -739,6 +740,84 @@ class AgendaTrabajo extends Model implements AuditableContract
             ->when($this->vendedorDelCliente(), fn ($u, $v) => $u->push($v))
             ->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /**
+     * EL TÉCNICO SE ENTERA DE SU PROPIA AGENDA (pedido del dueño, 14-08-2026:
+     * «cuando realizamos pruebas de testeo con instalaciones o reparaciones nunca
+     * le llegó una notificación… cualquier dato que influya en sus tareas
+     * laborales, que esté al tanto»).
+     *
+     * El hueco era estructural, no un olvido puntual: hasta hoy el rol
+     * `tecnico_industrial` NO figuraba en NINGUNA lista de destinatarios de la app
+     * (ROLES_AVISO_COORDINAR y ROLES_AVISO_CIERRE son de ventas), así que el
+     * técnico no recibía ni un aviso de nada — le agendaban el día y se enteraba
+     * abriendo la agenda a ver si había algo nuevo.
+     *
+     * A QUIÉN: al técnico ASIGNADO si el trabajo lo tiene; si no tiene, a todos
+     * los técnicos industriales. Un trabajo sin asignar sigue siendo trabajo del
+     * equipo, y si el aviso dependiera del `tecnico_id` no le llegaría a nadie —
+     * que es exactamente la falla que esto viene a cerrar.
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    public function avisarAlTecnico(string $evento, array $extra = []): void
+    {
+        $destinatarios = $this->tecnico
+            ? collect([$this->tecnico])
+            : User::role('tecnico_industrial')->get();
+
+        if ($destinatarios->isEmpty()) {
+            return;
+        }
+
+        $datos = array_merge([
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'fecha' => $this->fecha?->format('d-m-Y') ?? 'sin fecha',
+            // La hora importa más que ninguna otra cosa para quien maneja hasta
+            // allá: es lo que decide a qué hora sale.
+            'hora' => $this->rango_horas_label ?: 'sin hora fijada',
+            'ciudad' => $this->ciudad ?: '—',
+            'direccion' => $this->direccion ?: '—',
+            'telefono' => $this->cliente_telefono ?: 's/i',
+            'servicio' => $this->servicio?->nombre ?: 'Fuera de tarifa',
+            'descripcion' => $this->descripcion ?: '—',
+            'url' => route('admin.agenda-terreno.index', [
+                'anio' => $this->fecha?->year,
+                'mes' => $this->fecha?->month,
+                'dia' => $this->fecha?->toDateString(),
+            ]),
+        ], $extra);
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        $destinatarios->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /**
+     * Los repuestos que declaró el técnico, en texto, para el aviso a ventas.
+     *
+     * Va DENTRO del aviso y no solo en la pantalla porque el vendedor tiene que
+     * poder facturar leyendo el correo: si la lista obliga a entrar a la app, la
+     * factura se arma preguntándole al técnico por teléfono, que es exactamente lo
+     * que este campo existe para evitar. El código va entre paréntesis cuando el
+     * repuesto vino del catálogo (es lo que se copia a la línea del documento).
+     *
+     * Sin montos: el técnico no maneja precios. Ver AgendaTrabajoRepuesto.
+     */
+    public function repuestosResumen(): string
+    {
+        $lineas = $this->repuestos
+            ->map(fn (AgendaTrabajoRepuesto $r) => trim(sprintf(
+                '%d × %s%s',
+                (int) $r->cantidad,
+                $r->nombre,
+                filled($r->sku) ? " ({$r->sku})" : ''
+            )));
+
+        return $lineas->isEmpty() ? 'No usó repuestos.' : $lineas->implode("\n");
     }
 
     /**

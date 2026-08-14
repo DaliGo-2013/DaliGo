@@ -274,6 +274,92 @@
                                         <x-input-hint>Esto es lo que le llega al jefe de ventas y al vendedor del cliente. Si no se pudo hacer, cuenta por qué.</x-input-hint>
                                         <x-input-error :messages="$errors->get('notas_tecnico')" class="mt-2" />
                                     </div>
+
+                                    {{-- REPUESTOS USADOS (dueño 14-08-2026). Acompañan al paso a
+                                         paso: el detalle cuenta QUÉ se hizo, esta lista con QUÉ.
+                                         Viajan en el aviso a ventas y quedan en el informe.
+
+                                         SIN PRECIO, y no por simplificar: al técnico le pagan por
+                                         arreglar e instalar, no por cobrarle al cliente — la
+                                         cotización formal la hacen el vendedor y el jefe de
+                                         ventas. El buscador tampoco devuelve precios (endpoint
+                                         aparte del taller, ver AgendaTrabajoController).
+
+                                         Y SIN DESCUENTO DE STOCK: el inventario se descuenta con
+                                         la factura o boleta del vendedor, porque Bsale descuenta
+                                         al facturar y el técnico no emite documentos. Descontar
+                                         acá también sería consumir el repuesto dos veces.
+
+                                         Arranca vacío y ocupa una línea: el repuesto es opcional
+                                         (una mantención puede no llevar ninguno) y la pantalla
+                                         del técnico no crece de gratis. --}}
+                                    <div x-data="terrenoRepuestos({
+                                            repuestos: @js(old('repuestos', [])),
+                                            endpointRepuestos: @js(route('admin.agenda-terreno.buscar-repuesto')),
+                                         })">
+                                        <div class="flex items-center justify-between">
+                                            <x-input-label value="Repuestos que usaste" />
+                                            <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
+                                        </div>
+
+                                        <div class="mt-2 space-y-2">
+                                            <template x-for="(r, i) in repuestos" :key="i">
+                                                <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start">
+                                                    {{-- Código del catálogo: lo pone el buscador al elegir.
+                                                         Es lo que deja al vendedor armar la línea de la
+                                                         factura sin volver a preguntarle al técnico.
+                                                         Vacío = escrito a mano. --}}
+                                                    <input type="hidden" :name="`repuestos[${i}][sku]`" :value="r.sku ?? ''">
+
+                                                    <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrar()">
+                                                        <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
+                                                            placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
+                                                            x-on:input.debounce.250ms="buscar(i)"
+                                                            x-on:focus="buscar(i)"
+                                                            x-on:keydown.escape="cerrar()"
+                                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+
+                                                        <div x-show="filaActiva === i && (buscando || sugerencias.length)" x-cloak
+                                                            class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                                            <template x-if="buscando && sugerencias.length === 0">
+                                                                <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
+                                                            </template>
+                                                            <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
+                                                                <template x-for="(s, si) in sugerencias" :key="si">
+                                                                    <li>
+                                                                        <button type="button" x-on:click="elegir(i, s)"
+                                                                            class="flex min-h-12 w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
+                                                                            <span class="min-w-0">
+                                                                                <span x-show="s.sku" class="font-mono text-xs text-neutral-400" x-text="s.sku"></span>
+                                                                                <span x-text="s.nombre"></span>
+                                                                            </span>
+                                                                        </button>
+                                                                    </li>
+                                                                </template>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-start gap-2">
+                                                        <div class="w-20 sm:w-16">
+                                                            <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
+                                                            <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                        </div>
+                                                        <button type="button" x-on:click="quitar(i)"
+                                                            class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
+                                                            <x-icon.trash class="h-5 w-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            <p x-show="repuestos.length === 0" class="text-sm text-neutral-400">
+                                                Si no usaste ninguno, déjalo así.
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     <div class="flex flex-col gap-2 sm:flex-row">
                                         <button type="submit" name="estado" value="realizado"
                                             class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99] sm:w-auto">

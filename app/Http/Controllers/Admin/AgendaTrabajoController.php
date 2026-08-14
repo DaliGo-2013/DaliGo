@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\AgendaTrabajoAviso;
 use App\Models\AgendaTrabajo;
+use App\Models\AgendaTrabajoRepuesto;
 use App\Models\Aprobacion;
 use App\Models\Cliente;
+use App\Models\Producto;
 use App\Models\ReglaAprobacion;
 use App\Models\ServicioTerreno;
 use App\Models\User;
@@ -396,9 +398,12 @@ class AgendaTrabajoController extends Controller
         $data = $request->validate([
             'estado' => ['required', Rule::in(AgendaTrabajo::ESTADOS)],
             'notas_tecnico' => ['nullable', 'string'],
-            // Repuestos usados: el técnico los registra al cerrar (Realizado).
+            // Repuestos usados: el técnico los registra al cerrar el trabajo.
+            // SIN precio a propósito (no maneja precios) y sin efecto en stock: el
+            // descuento sale de la factura del vendedor. Ver AgendaTrabajoRepuesto.
             'repuestos' => ['nullable', 'array'],
             'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.sku' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
@@ -430,14 +435,19 @@ class AgendaTrabajoController extends Controller
         }
         $trabajo->update($update);
 
-        // Repuestos SOLO al marcar realizado y si vienen en la petición: se
-        // reemplazan los del trabajo (filas con nombre vacío se descartan).
-        if ($data['estado'] === 'realizado' && $request->has('repuestos')) {
+        // Repuestos: se guardan al CERRAR, de las dos formas. Un «no realizado»
+        // también consume repuestos (el técnico abrió el equipo, cambió el filtro y
+        // se quedó sin la membrana), y si solo se guardaran en el «realizado» ese
+        // consumo no quedaría en ninguna parte. Se reemplazan los del trabajo; las
+        // filas con nombre vacío se descartan.
+        if ($esCierreDeTerreno && $request->has('repuestos')) {
             $trabajo->repuestos()->delete();
             foreach ($data['repuestos'] ?? [] as $r) {
                 if (! empty($r['nombre'])) {
                     $trabajo->repuestos()->create([
                         'nombre' => $r['nombre'],
+                        // Solo si vino del catálogo; en blanco = escrito a mano.
+                        'sku' => blank($r['sku'] ?? null) ? null : $r['sku'],
                         'cantidad' => $r['cantidad'] ?? 1,
                     ]);
                 }
@@ -535,6 +545,52 @@ class AgendaTrabajoController extends Controller
             'ciudad' => $c->ciudad,
             'label' => ($c->rut ? $c->rut.' — ' : '').$c->razon_social,
         ]));
+    }
+
+    /**
+     * Autocompletado de repuestos para el cierre del trabajo en terreno.
+     *
+     * ES UN ENDPOINT APARTE del de servicio técnico A PROPÓSITO, y no por el
+     * permiso (que también): el del taller devuelve `precio`, y el técnico
+     * industrial NO maneja precios (dueño 14-08-2026). Reusarlo dejaría el precio
+     * viajando al navegador aunque ninguna pantalla lo pinte —visible en la
+     * pestaña de red— y bastaría un `x-text` de más para que apareciera. Acá el
+     * precio no se consulta, así que no hay nada que filtrar en la vista.
+     *
+     * Dos fuentes, como en el taller: el catálogo (que es el que trae el CÓDIGO,
+     * lo único que el vendedor necesita para facturar sin preguntar) y el
+     * historial de lo ya usado en terreno (nombres, sin código: cubre el repuesto
+     * que se escribe a mano una y otra vez).
+     */
+    public function buscarRepuesto(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $catalogo = Producto::query()
+            ->where(fn (Builder $w) => $w
+                ->where('sku', 'like', "%{$q}%")
+                ->orWhere('nombre', 'like', "%{$q}%"))
+            ->orderBy('sku')
+            ->limit(10)
+            ->get(['id', 'sku', 'nombre'])
+            ->map(fn (Producto $p) => ['nombre' => $p->nombre, 'sku' => $p->sku]);
+
+        $historial = AgendaTrabajoRepuesto::query()
+            ->where('nombre', 'like', "%{$q}%")
+            ->whereNull('sku')
+            ->distinct()
+            ->orderBy('nombre')
+            ->limit(10)
+            ->pluck('nombre')
+            ->map(fn (string $nombre) => ['nombre' => $nombre, 'sku' => null]);
+
+        return response()->json(
+            $catalogo->concat($historial)->unique('nombre')->take(12)->values()
+        );
     }
 
     // --- Helpers --------------------------------------------------------

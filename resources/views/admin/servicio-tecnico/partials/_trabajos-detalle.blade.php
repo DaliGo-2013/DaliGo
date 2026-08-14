@@ -49,6 +49,16 @@
                 <span class="text-xs font-medium uppercase tracking-wide text-neutral-400">{{ $etiquetaDetalle }}:</span>
                 {{ $detalle ?: '—' }}
             </p>
+
+            {{-- Repuestos declarados por el técnico al cerrar (14-08). Sin montos:
+                 acá interesa el USO (qué y cuántos) y el código cuando vino del
+                 catálogo. Valorizarlo es asunto de la factura del vendedor. --}}
+            @if ($t->repuestos->isNotEmpty())
+                <p class="mt-1 text-sm text-neutral-600">
+                    <span class="text-xs font-medium uppercase tracking-wide text-neutral-400">Repuestos:</span>
+                    {{ $t->repuestos->map(fn ($r) => $r->cantidad.' × '.$r->nombre.($r->sku ? ' ('.$r->sku.')' : ''))->implode(' · ') }}
+                </p>
+            @endif
         </li>
     @empty
         <li class="px-4 py-6 text-center text-sm text-neutral-500 sm:px-6">

@@ -312,7 +312,10 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_realizado',
                 'valor' => json_encode([
                     'asunto' => 'Trabajo listo: {cliente} ({tipo}) · {ciudad}',
-                    'cuerpo' => "{tecnico} cerró el trabajo de {cliente} el {fecha}.\nTipo: {tipo} · {ciudad} · {direccion}\n\nQué se hizo:\n{detalle}",
+                    // Los {repuestos} van en el cuerpo porque el vendedor factura
+                    // desde ACÁ: si tuviera que entrar a la app para saber qué se
+                    // usó, la factura se armaría preguntándole al técnico.
+                    'cuerpo' => "{tecnico} cerró el trabajo de {cliente} el {fecha}.\nTipo: {tipo} · {ciudad} · {direccion}\n\nQué se hizo:\n{detalle}\n\nRepuestos usados:\n{repuestos}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
@@ -322,7 +325,10 @@ class ConfiguracionSeeder extends Seeder
                 'clave' => 'notif_plantilla_terreno_no_realizado',
                 'valor' => json_encode([
                     'asunto' => 'NO se pudo hacer: {cliente} ({tipo}) · {ciudad}',
-                    'cuerpo' => "{tecnico} fue a {cliente} el {fecha} y el trabajo NO se pudo hacer.\nTipo: {tipo} · {ciudad} · {direccion}\n\nPor qué:\n{detalle}\n\nSi hay que volver, ventas coordina una visita nueva.",
+                    // Los repuestos también acá: una visita que no se pudo terminar
+                    // igual gasta repuestos (se cambió el filtro y faltó la membrana),
+                    // y ese consumo hay que facturarlo o reponerlo igual.
+                    'cuerpo' => "{tecnico} fue a {cliente} el {fecha} y el trabajo NO se pudo hacer.\nTipo: {tipo} · {ciudad} · {direccion}\n\nPor qué:\n{detalle}\n\nRepuestos usados:\n{repuestos}\n\nSi hay que volver, ventas coordina una visita nueva.",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
