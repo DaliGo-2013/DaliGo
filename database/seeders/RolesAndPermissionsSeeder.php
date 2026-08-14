@@ -51,7 +51,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'recibir traslado servicio',   // tecnico, jefe de bodega y jefe de ventas (en la matriz)
             // Agenda de terreno (tecnico industrial): plantas de osmosis,
             // llenadoras y lavadoras en el cliente.
-            'agendar servicio terreno',   // jefe/vendedores: agendar trabajos + editar el catalogo de servicios
+            // OJO: desde el 14-08-2026 esto es SOLO agendar trabajos. Editar el tarifario se
+            // separo en 'gestionar servicios terreno' (abajo) para que gerencia pueda dar una
+            // cosa sin la otra desde Administracion -> Roles.
+            'agendar servicio terreno',   // jefe/vendedores: agendar trabajos en terreno
             'ver agenda terreno',         // tecnico industrial: ver la agenda y marcar lo realizado
             // Cuando el tecnico NO esta disponible: feriados, vacaciones y dias a media
             // jornada. Cierra el dia para el formulario PUBLICO (el cliente deja de poder
@@ -59,12 +62,16 @@ class RolesAndPermissionsSeeder extends Seeder
             // lleva la agenda del tecnico industrial (dueño, 13-08-2026) — un vendedor no
             // deberia poder cerrarle la agenda a todos.
             'gestionar cierres agenda',
-            // VER el tarifario de servicios de terreno (solo lectura). Existe aparte de
-            // 'agendar servicio terreno' —que ademas lo EDITA— porque el tecnico industrial
-            // necesita consultar precios y que incluye cada servicio cuando esta en la planta
-            // del cliente, y no tiene por que poder cambiar la lista de precios (pedido del
-            // dueño 14-08-2026: «para Carlos crear el permiso de vista»).
-            'ver servicios terreno',
+            // EL TARIFARIO DE TERRENO, en DOS permisos (dueño, 14-08-2026): «que puedan elegir
+            // dar el permiso o no al perfil… separar el permiso de edicion del de agendar».
+            //
+            // Antes editar el tarifario venia pegado a 'agendar servicio terreno', asi que para
+            // que alguien pudiera corregir un precio habia que dejarlo agendar trabajos — y para
+            // que el tecnico industrial pudiera MIRAR precios, las dos cosas. Separados, cada
+            // perfil recibe exactamente lo que hace y el resto se decide desde la UI de Roles,
+            // sin tocar codigo ni esperar un deploy.
+            'ver servicios terreno',       // consultar precios y detalle (el tecnico en terreno)
+            'gestionar servicios terreno', // crear y editar el tarifario (decision comercial)
             'gestionar instalaciones',    // tecnico industrial / jefes: registro de instalaciones (Excel de terreno)
             'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
             // Informes de Servicio Tecnico (por dominio): el tecnico de taller ve
@@ -134,7 +141,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // 'simular carga': el vendedor es el usuario PRINCIPAL del simulador —
             // arma la ruta y responde "¿cuanto le cabe?" sin adivinar. Es solo
             // lectura y no escribe nada operativo, asi que no hay riesgo en darlo.
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga']);
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga']);
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
@@ -145,7 +152,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
             // hoja de ruta le da la llave 1 (autorizar pagos ruta).
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta']);
+            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).

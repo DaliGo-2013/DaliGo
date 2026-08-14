@@ -333,22 +333,30 @@ Route::middleware('auth')
                 ->whereNumber('trabajo')->name('agenda-terreno.rechazar');
             Route::delete('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'destroy'])
                 ->whereNumber('trabajo')->name('agenda-terreno.destroy');
+        });
 
-            // Catalogo de servicios de terreno (tarifario UF): CREAR y EDITAR es de
-            // jefatura/ventas. El `index` esta afuera de este grupo — ver abajo.
+        // ═══ EL TARIFARIO DE TERRENO, CON PERMISOS PROPIOS ═══
+        //
+        // Pedido del dueño (14-08-2026): «que puedan elegir dar el permiso o no al perfil…
+        // separar el permiso de edicion del de agendar». Antes editar el tarifario venia pegado
+        // a 'agendar servicio terreno', asi que para dejar que alguien corrigiera un precio
+        // habia que dejarlo agendar trabajos tambien. Ahora son dos llaves distintas y gerencia
+        // decide cada una desde Administracion -> Roles, sin tocar codigo:
+        //
+        //   · ver servicios terreno       → consultar precios y detalle (el tecnico en terreno)
+        //   · gestionar servicios terreno → crear y editar el tarifario (decision comercial)
+        //
+        // NINGUNA de las dos vive en el grupo de la agenda: si estuvieran ahi adentro
+        // heredarian 'agendar servicio terreno' y la separacion no serviria de nada.
+        Route::get('servicios-terreno', [ServicioTerrenoController::class, 'index'])
+            ->middleware('permission:ver servicios terreno|gestionar servicios terreno')
+            ->name('servicios-terreno.index');
+
+        Route::middleware('permission:gestionar servicios terreno')->group(function () {
             Route::resource('servicios-terreno', ServicioTerrenoController::class)
                 ->parameters(['servicios-terreno' => 'servicio'])
                 ->only(['create', 'store', 'edit', 'update']);
         });
-
-        // VER el tarifario: dos permisos, porque son dos necesidades distintas. Quien agenda lo
-        // edita; el tecnico industrial solo lo CONSULTA —en la planta del cliente le preguntan
-        // cuanto sale y que incluye— y hasta el 14-08 la pantalla no le aparecia (pedido del
-        // dueño: «para Carlos crear el permiso de vista»). Va FUERA del grupo de arriba para no
-        // heredar el permiso de edicion.
-        Route::get('servicios-terreno', [ServicioTerrenoController::class, 'index'])
-            ->middleware('permission:agendar servicio terreno|ver servicios terreno')
-            ->name('servicios-terreno.index');
 
         // "Costos generales de reparación": catálogo de tiempos estándar por
         // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
