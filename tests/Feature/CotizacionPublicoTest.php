@@ -61,11 +61,31 @@ class CotizacionPublicoTest extends TestCase
         return URL::signedRoute('cotizacion.mostrar', ['cotizacion' => $c->token]);
     }
 
-    private function responder(OrdenServicioCotizacion $c, string $respuesta, ?string $motivo = null)
-    {
+    /**
+     * Responde como responde un cliente real: desde el 14-08 el motivo es
+     * OBLIGATORIO en las dos respuestas, así que el helper lo manda por defecto y
+     * los tests que no van sobre esa regla no tienen que repetirlo.
+     *
+     * Para probar la regla se pasa explícitamente `null` (campo ausente), `''`
+     * (vacío) o `'   '` (solo espacios) — los tres casos son distintos y los tres
+     * tienen que rebotar.
+     */
+    private function responder(
+        OrdenServicioCotizacion $c,
+        string $respuesta,
+        ?string $motivo = 'Lo conversé con mi equipo y seguimos adelante.'
+    ) {
+        $datos = ['respuesta' => $respuesta];
+
+        // Con null la clave NO viaja (campo ausente); con '' o '   ' viaja tal cual,
+        // que es lo que hace falta para probar el trim del servidor.
+        if ($motivo !== null) {
+            $datos['motivo'] = $motivo;
+        }
+
         return $this->post(
             URL::signedRoute('cotizacion.responder', ['cotizacion' => $c->token]),
-            array_filter(['respuesta' => $respuesta, 'motivo' => $motivo])
+            $datos
         );
     }
 
@@ -92,10 +112,12 @@ class CotizacionPublicoTest extends TestCase
             ->assertSee('$14.000')                // total del snapshot
             ->assertSee('ACEPTO')
             ->assertSee('NO ACEPTO')
-            // CON campo «¿por qué?» opcional: el 06-08 el dueño dio vuelta su
-            // decisión del 30-07 (antes este test exigía que NO hubiera textarea).
+            // CON campo «¿por qué?», y desde el 14-08 OBLIGATORIO: marcado con el
+            // `*` rojo y con el `required` del navegador, para que el cliente no
+            // haga el viaje al servidor para enterarse.
             ->assertSee('name="motivo"', false)
-            ->assertSee('(opcional)');
+            ->assertSee('required', false)
+            ->assertDontSee('(opcional)');
     }
 
     // --- Respuesta ---
@@ -146,20 +168,76 @@ class CotizacionPublicoTest extends TestCase
         $this->assertStringContainsString('Muy caro, prefiero comprar uno nuevo', $notif->cuerpo);
     }
 
-    public function test_sin_motivo_el_aviso_dice_que_no_lo_indico(): void
+    /**
+     * EL MOTIVO ES OBLIGATORIO EN LAS DOS RESPUESTAS (dueño 14-08-2026). Este test
+     * REEMPLAZA a `test_sin_motivo_el_aviso_dice_que_no_lo_indico`, que fijaba la
+     * regla anterior (responder sin motivo era válido y el aviso decía «no lo
+     * indicó»): esa conducta ya no existe y dejar el test habría sido conservar en
+     * verde justo lo que se quiso prohibir.
+     *
+     * Los TRES casos importan y son distintos: campo ausente (un POST armado a
+     * mano), campo vacío, y campo con solo espacios — el último es el que `required`
+     * por sí solo dejaría pasar, y el que haría que el campo fuera obligatorio solo
+     * de apariencia.
+     */
+    public function test_no_se_puede_responder_sin_decir_por_que(): void
+    {
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+
+        foreach (['aceptada', 'rechazada'] as $respuesta) {
+            foreach ([null, '', '   '] as $motivo) {
+                $c = $this->cotizacion();
+
+                $this->responder($c, $respuesta, $motivo)
+                    ->assertSessionHasErrors('motivo');
+
+                // Y la cotización queda INTACTA: sigue respondible, sin fecha de
+                // respuesta y sin avisarle a nadie. Un rechazo a medio aplicar sería
+                // peor que el campo opcional.
+                $c->refresh();
+                $this->assertSame('enviada', $c->estado);
+                $this->assertNull($c->respondida_at);
+                $this->assertNull($c->respuesta_motivo);
+            }
+        }
+
+        $this->assertSame(
+            0,
+            Notificacion::where('evento', 'cotizacion.respondida')->count(),
+            'Una respuesta rechazada por falta de motivo no puede avisar nada.'
+        );
+        $this->assertNotNull($jefe);
+    }
+
+    /** Y con motivo, el ACEPTO también lo guarda (antes solo se probaba el rechazo). */
+    public function test_el_motivo_tambien_se_guarda_al_aceptar(): void
     {
         $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
         $c = $this->cotizacion();
 
-        $this->responder($c, 'aceptada')->assertRedirect();
+        $this->responder($c, 'aceptada', 'Autorizo, pero factúrenlo a nombre de la empresa.')
+            ->assertRedirect();
 
-        $this->assertNull($c->fresh()->respuesta_motivo);
+        $c->refresh();
+        $this->assertSame('aceptada', $c->estado);
+        $this->assertSame('Autorizo, pero factúrenlo a nombre de la empresa.', $c->respuesta_motivo);
+
         $notif = Notificacion::where('user_id', $jefe->id)
             ->where('evento', 'cotizacion.respondida')
             ->where('canal', Notificacion::CANAL_DATABASE)->first();
-        // Placeholder SIEMPRE relleno: sin motivo no queda «{motivo}» crudo.
-        $this->assertStringContainsString('no indicó el motivo', $notif->cuerpo);
+        $this->assertStringContainsString('factúrenlo a nombre de la empresa', $notif->cuerpo);
+        // El placeholder nunca queda crudo (la mitad que sobrevive del test viejo).
         $this->assertStringNotContainsString('{motivo}', $notif->cuerpo);
+    }
+
+    /** El motivo se guarda TRIMEADO: sin esto entraría con los espacios del textarea. */
+    public function test_el_motivo_se_guarda_sin_espacios_de_sobra(): void
+    {
+        $c = $this->cotizacion();
+
+        $this->responder($c, 'rechazada', "   Muy caro para mí.\n  ")->assertRedirect();
+
+        $this->assertSame('Muy caro para mí.', $c->fresh()->respuesta_motivo);
     }
 
     public function test_la_primera_respuesta_gana_y_no_se_renotifica(): void

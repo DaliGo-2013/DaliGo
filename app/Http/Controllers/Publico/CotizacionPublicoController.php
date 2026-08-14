@@ -17,9 +17,11 @@ use Illuminate\View\View;
 /**
  * Respuesta PÚBLICA del cliente a una cotización del taller (P-M12-02): abre el
  * link firmado del correo, ve la carta (desde el SNAPSHOT, nunca la orden viva)
- * y responde ACEPTO / NO ACEPTO con un «¿por qué?» opcional. OJO: el 30-07 el
- * dueño había pedido sin comentario; el 06-08 dio vuelta esa decisión — quiere
- * leer el motivo en la campanita. Sigue siendo UNA pasada, no una conversación.
+ * y responde ACEPTO / NO ACEPTO con un «¿por qué?» OBLIGATORIO. Historia de esa
+ * decisión, porque dio dos vueltas: el 30-07 el dueño pidió sin comentario; el
+ * 06-08 lo agregó como opcional para leer el motivo en la campanita; el 14-08 lo
+ * hizo obligatorio en las DOS respuestas. Sigue siendo UNA pasada, no una
+ * conversación: se responde una vez y se cierra.
  * Sin login: la seguridad es la firma de la URL (GET y POST) + token no
  * enumerable + throttle + honeypot, como el flujo QR.
  *
@@ -47,11 +49,27 @@ class CotizacionPublicoController extends Controller
             return redirect()->to(URL::signedRoute('cotizacion.mostrar', ['cotizacion' => $cotizacion->token]));
         }
 
+        // EL «¿POR QUÉ?» ES OBLIGATORIO EN LAS DOS RESPUESTAS (dueño 14-08-2026),
+        // no solo en el rechazo: un ACEPTO también trae información que el equipo
+        // necesita («autorizo, pero factúrenlo a nombre de la empresa»), y pedirle
+        // explicaciones solo a quien dice no se lee como un interrogatorio.
+        //
+        // `required` ALCANZA, incluido el caso del textarea con solo espacios: la
+        // regla de Laravel trimea los strings antes de decidir, así que '   ' rebota
+        // igual que '' y que el campo ausente. Acá hubo un intento de normalizar el
+        // valor con un `merge(trim(...))` ANTES de validar «por si acaso»: se quitó
+        // al comprobar por mutación que quitándolo NINGÚN test cambiaba de color, o
+        // sea que no hacía nada. El trim que sí importa es el de abajo, y es para
+        // GUARDAR limpio, no para validar.
         $data = $request->validate([
             'respuesta' => ['required', Rule::in(['aceptada', 'rechazada'])],
-            'motivo' => ['nullable', 'string', 'max:1000'],
+            'motivo' => ['required', 'string', 'max:1000'],
+        ], [
+            // Al cliente le hablamos como cliente: el mensaje por defecto de Laravel
+            // («El campo motivo es obligatorio») no le dice qué hacer.
+            'motivo.required' => 'Cuéntanos brevemente el motivo de tu decisión: es obligatorio para registrar tu respuesta.',
         ]);
-        $motivo = trim((string) ($data['motivo'] ?? '')) ?: null;
+        $motivo = trim((string) $data['motivo']) ?: null;
 
         // Primera respuesta gana: lock + recheck dentro de la transacción para
         // absorber doble clic o dos pestañas (patrón confirmar() del taller).
@@ -83,7 +101,9 @@ class CotizacionPublicoController extends Controller
             $cotizacion->refresh()->avisarInternos('cotizacion.respondida', [
                 'respuesta' => $data['respuesta'] === 'aceptada' ? 'ACEPTADA' : 'NO ACEPTADA',
                 // {motivo} SIEMPRE relleno: un placeholder sin dato queda crudo
-                // en la campanita (regla de avisarInternos).
+                // en la campanita (regla de avisarInternos). Desde el 14-08 el
+                // motivo es obligatorio, así que la segunda rama es una red por si
+                // la regla se relaja — no un caso que hoy pueda ocurrir.
                 'motivo' => $motivo !== null ? 'Motivo del cliente: «'.$motivo.'»' : 'El cliente no indicó el motivo.',
             ], porCartera: true);
 
