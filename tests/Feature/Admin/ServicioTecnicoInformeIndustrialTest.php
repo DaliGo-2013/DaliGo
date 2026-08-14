@@ -116,7 +116,15 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
     public function test_repuestos_se_registran_al_cerrar_y_se_cuentan_en_el_informe(): void
     {
         $tecnico = tap(User::factory()->create())->assignRole('tecnico_industrial');
-        $trabajo = AgendaTrabajo::factory()->create(['fecha' => '2026-07-10', 'estado' => 'agendado']);
+        // El `tipo` se FIJA (mismo criterio que el helper de InformeServicioTecnico
+        // ExcelTest): AgendaTrabajoFactory lo sortea entre los 4, y desde el 14-08
+        // el informe NO cuenta los repuestos de una visita técnica —ahí son lo que
+        // se va a NECESITAR para cotizar, no lo gastado—. Sin fijarlo este test
+        // falla 1 de cada 4 corridas: el flaky-por-factory-aleatoria de la bitácora
+        // [2026-07-13], que acá tardó tres corridas verdes en asomar.
+        $trabajo = AgendaTrabajo::factory()->create([
+            'fecha' => '2026-07-10', 'estado' => 'agendado', 'tipo' => 'mantencion',
+        ]);
 
         // El técnico cierra el trabajo y registra repuestos (una fila vacía se descarta).
         $this->actingAs($tecnico)
