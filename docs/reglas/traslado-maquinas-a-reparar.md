@@ -6,7 +6,7 @@
 ## El problema que resuelve
 
 Abate Molina y Coquimbo **reciben** máquinas pero **no reparan**: la reparación
-es en El Mirador (casa matriz). La ficha ya decía *"Se repara en El Mirador"*,
+es en Mirador (casa matriz). La ficha ya decía *"Se repara en Mirador"*,
 pero del viaje no quedaba registro: ni quién la entregó, ni quién la recibió, ni
 cuándo. Una máquina recibida en Coquimbo el 3 y reparada el 20 tenía 17 días sin
 ningún responsable — y ahí vivían las excusas.

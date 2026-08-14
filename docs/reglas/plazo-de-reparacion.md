@@ -25,7 +25,7 @@ Un plazo en días hábiles dice lo mismo sin fijar el día: el cliente lo cuenta
 
    | Sucursal | Plazo | Por qué |
    |---|---|---|
-   | El Mirador (`MIRADOR`) | 10 días hábiles | repara ahí mismo (casa matriz) |
+   | Mirador (`MIRADOR`) | 10 días hábiles | repara ahí mismo (casa matriz) |
    | Coquimbo (`COQUIMBO`) | 15 días hábiles | manda el equipo a Mirador |
    | Abate Molina (`ABATE-MOLINA`) | 15 días hábiles | manda el equipo a Mirador |
 
