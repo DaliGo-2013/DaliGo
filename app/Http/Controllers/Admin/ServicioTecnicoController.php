@@ -244,12 +244,17 @@ class ServicioTecnicoController extends Controller
 
         $total = $base()->count();
 
-        // Cumplimiento: realizados vs pendientes (la base solo trae agendado +
-        // realizado, así que pendientes = total - realizados).
+        // Cumplimiento: realizados vs pendientes vs NO realizados. Los tres se
+        // cuentan explícitamente y `pendientes` ya NO se deduce restando: desde
+        // que existe 'no_realizado' (14-08) la resta lo habría metido dentro de
+        // «pendientes», o sea habría contado como «falta hacerlo» un trabajo al
+        // que el técnico ya fue. Los tres suman el total del período.
         $realizados = $base()->where('estado', 'realizado')->count();
-        $pendientes = $total - $realizados;
+        $noRealizados = $base()->where('estado', 'no_realizado')->count();
+        $pendientes = $base()->where('estado', 'agendado')->count();
         $pctCumplimiento = $total > 0 ? (int) round($realizados / $total * 100) : 0;
         $pctPendientes = $total > 0 ? (int) round($pendientes / $total * 100) : 0;
+        $pctNoRealizados = $total > 0 ? (int) round($noRealizados / $total * 100) : 0;
 
         // Detalle cliqueable de las tarjetas Realizados/Pendientes: la lista de
         // trabajos que hay detrás de cada número, para pasar del agregado al
@@ -262,6 +267,11 @@ class ServicioTecnicoController extends Controller
         $pendientesLista = $base()->where('estado', 'agendado')
             ->with(['servicio:id,nombre', 'tecnico:id,name'])
             ->orderBy('fecha')->get();
+        // Los NO realizados con su motivo: es la lista que ventas mira para
+        // decidir si se vuelve o no (el motivo lo escribió el técnico al cerrar).
+        $noRealizadosLista = $base()->where('estado', 'no_realizado')
+            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->orderByDesc('fecha')->get();
 
         // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.
         $visitas = $base()->where('tipo', 'visita_tecnica')->count();
@@ -308,6 +318,9 @@ class ServicioTecnicoController extends Controller
             'total' => $total,
             'realizados' => $realizados,
             'pendientes' => $pendientes,
+            'noRealizados' => $noRealizados,
+            'pctNoRealizados' => $pctNoRealizados,
+            'noRealizadosLista' => $noRealizadosLista,
             'pctCumplimiento' => $pctCumplimiento,
             'pctPendientes' => $pctPendientes,
             'realizadosLista' => $realizadosLista,
@@ -1577,7 +1590,13 @@ class ServicioTecnicoController extends Controller
             ->whereNotNull('fecha')
             ->whereDate('fecha', '>=', $desde)
             ->whereDate('fecha', '<=', $hasta)
-            ->whereIn('estado', ['agendado', 'realizado']);
+            // 'no_realizado' entra desde el 14-08: el técnico FUE y no se pudo
+            // hacer, así que es trabajo del período igual que un realizado. Si
+            // quedara fuera, esos trabajos desaparecerían del informe y del Excel
+            // —el peor resultado: el que no se pudo hacer es justo el que hay que
+            // mirar—. Los 'cancelado' y los 'solicitado' siguen afuera: nunca
+            // llegaron a ser trabajo de un día.
+            ->whereIn('estado', ['agendado', 'realizado', 'no_realizado']);
     }
 
     /** Rotulo del periodo elegido: «Agosto 2026» o «Año 2026». */

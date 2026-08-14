@@ -402,9 +402,26 @@ class AgendaTrabajoController extends Controller
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
-        if (! $request->user()->can('agendar servicio terreno')
-            && ! ($trabajo->estado === 'agendado' && $data['estado'] === 'realizado')) {
-            abort(403, 'Solo puedes marcar como realizado un trabajo agendado.');
+        $esCierreDeTerreno = $trabajo->estado === 'agendado'
+            && in_array($data['estado'], AgendaTrabajo::ESTADOS_CIERRE, true);
+
+        // El técnico industrial solo VE su agenda: lo único que puede hacer es
+        // CERRAR un trabajo agendado, de las dos formas (hecho / no se pudo).
+        if (! $request->user()->can('agendar servicio terreno') && ! $esCierreDeTerreno) {
+            abort(403, 'Solo puedes cerrar un trabajo agendado (realizado o no realizado).');
+        }
+
+        // Al cerrar hay que CONTAR qué pasó, y es obligatorio a propósito (dueño
+        // 14-08): el detalle paso a paso es lo que viaja en el aviso a ventas, y
+        // un cierre sin explicación deja al vendedor llamando al técnico para
+        // preguntarle. Se valida acá y no en las reglas de arriba porque depende
+        // de la transición, no del campo.
+        if ($esCierreDeTerreno && blank($data['notas_tecnico'] ?? null)) {
+            throw ValidationException::withMessages([
+                'notas_tecnico' => $data['estado'] === 'realizado'
+                    ? 'Cuenta qué hiciste, paso a paso: es lo que le llega a ventas.'
+                    : 'Cuenta por qué no se pudo hacer: es lo que le llega a ventas.',
+            ]);
         }
 
         $update = ['estado' => $data['estado']];
@@ -427,7 +444,16 @@ class AgendaTrabajoController extends Controller
             }
         }
 
-        return back()->with('status', "Trabajo de {$trabajo->cliente_nombre} marcado como {$data['estado']}.");
+        // Aviso a ventas POR LA ZONA (dueño 14-08): jefe de ventas + el vendedor
+        // del cliente. Va después de guardar y no revierte el cierre si falla —
+        // el trabajo ya se hizo (o no), y eso es lo que tiene que quedar.
+        if ($esCierreDeTerreno) {
+            $trabajo->refresh()->avisarCierre(
+                $data['estado'] === 'realizado' ? 'terreno.realizado' : 'terreno.no_realizado'
+            );
+        }
+
+        return back()->with('status', "Trabajo de {$trabajo->cliente_nombre} marcado como {$trabajo->estado_label}.");
     }
 
     /**

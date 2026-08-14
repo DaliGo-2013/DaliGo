@@ -82,6 +82,11 @@ class Notificacion extends Model
         'terreno.confirmada' => 'El cliente respondió a la visita agendada',
         // Agenda de terreno · una solicitud fue rechazada (con motivo)
         'terreno.rechazada' => 'Solicitud de terreno rechazada',
+        // Agenda de terreno · el técnico CERRÓ el trabajo en la planta del cliente
+        // (dueño 14-08-2026). Le importa a ventas por la zona: el trabajo quedó
+        // hecho —hay que facturar/seguir— o no se pudo y hay que decidir qué sigue.
+        'terreno.realizado' => 'Trabajo de terreno realizado',
+        'terreno.no_realizado' => 'Trabajo de terreno NO realizado',
         // Logística · vencimiento de documentos de la flota (decisión del dueño
         // 04-08): aviso 30 días antes y aviso cuando ya venció. Lo dispara el
         // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
@@ -191,7 +196,8 @@ class Notificacion extends Model
             'cotizacion.retiro_avisado', 'garantia.detalle_enviado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
-            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada',
+            'terreno.realizado', 'terreno.no_realizado' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
             // La ficha del traslado la abre quien despacha o quien recibe.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
             // La ficha del vehículo: mismo gate que su ruta en routes/web.php.
@@ -274,7 +280,8 @@ class Notificacion extends Model
                 : null,
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
             // ven en la agenda de terreno.
-            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada',
+            'terreno.realizado', 'terreno.no_realizado' => route('admin.agenda-terreno.index'),
             // El traslado aterriza en SU ficha: es donde se confirma la recepcion
             // y donde se ve que maquina falta.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $this->notificable_id

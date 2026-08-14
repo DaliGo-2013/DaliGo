@@ -303,6 +303,31 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando un cliente deja una solicitud por coordinar (QR) en la agenda de terreno.',
             ],
+            // El técnico CERRÓ el trabajo en terreno (dueño 14-08-2026). Los dos
+            // avisos van a ventas «por la zona»: jefe de ventas + el vendedor del
+            // cliente. El `{detalle}` es el paso a paso que escribió el técnico, y
+            // es el corazón del aviso: es lo que ventas necesita para facturar o
+            // para hablar con el cliente sin volver a preguntarle nada al técnico.
+            [
+                'clave' => 'notif_plantilla_terreno_realizado',
+                'valor' => json_encode([
+                    'asunto' => 'Trabajo listo: {cliente} ({tipo}) · {ciudad}',
+                    'cuerpo' => "{tecnico} cerró el trabajo de {cliente} el {fecha}.\nTipo: {tipo} · {ciudad} · {direccion}\n\nQué se hizo:\n{detalle}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al jefe de ventas y al vendedor del cliente cuando el técnico marca un trabajo de terreno como realizado.',
+            ],
+            [
+                'clave' => 'notif_plantilla_terreno_no_realizado',
+                'valor' => json_encode([
+                    'asunto' => 'NO se pudo hacer: {cliente} ({tipo}) · {ciudad}',
+                    'cuerpo' => "{tecnico} fue a {cliente} el {fecha} y el trabajo NO se pudo hacer.\nTipo: {tipo} · {ciudad} · {direccion}\n\nPor qué:\n{detalle}\n\nSi hay que volver, ventas coordina una visita nueva.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al jefe de ventas y al vendedor del cliente cuando el técnico no pudo hacer el trabajo (falta un repuesto, el cliente no quiso, etc.).',
+            ],
             [
                 'clave' => 'notif_plantilla_terreno_confirmada',
                 'valor' => json_encode([

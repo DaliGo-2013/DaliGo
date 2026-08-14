@@ -1,10 +1,15 @@
-{{-- Detalle desplegable de las tarjetas Realizados / Pendientes del informe
-     industrial. $trabajos = colección de App\Models\AgendaTrabajo; $modo =
-     'realizado' (muestra lo que se HIZO: notas del técnico) | 'pendiente'
-     (muestra lo que se VA a realizar: la descripción del pedido). --}}
+{{-- Detalle desplegable de las tarjetas del informe industrial.
+     $trabajos = colección de App\Models\AgendaTrabajo; $modo =
+     'realizado' (lo que se HIZO: notas del técnico) | 'pendiente' (lo que se VA a
+     realizar: la descripción del pedido) | 'no_realizado' (POR QUÉ no se pudo:
+     el motivo que escribió el técnico al cerrar, 14-08). --}}
 @php
     $modo = $modo ?? 'pendiente';
-    $etiquetaDetalle = $modo === 'realizado' ? 'Lo que se hizo' : 'Lo que se va a realizar';
+    $etiquetaDetalle = match ($modo) {
+        'realizado' => 'Lo que se hizo',
+        'no_realizado' => 'Por qué no se pudo',
+        default => 'Lo que se va a realizar',
+    };
 @endphp
 <ul class="divide-y divide-neutral-100">
     @forelse ($trabajos as $t)
@@ -12,7 +17,7 @@
             // Realizado: prioriza las notas del técnico (lo efectivamente hecho);
             // si no las cargó, cae en la descripción del pedido. Pendiente: la
             // descripción de lo que se irá a hacer.
-            $detalle = $modo === 'realizado'
+            $detalle = in_array($modo, ['realizado', 'no_realizado'], true)
                 ? ($t->notas_tecnico ?: $t->descripcion)
                 : $t->descripcion;
         @endphp
@@ -47,7 +52,11 @@
         </li>
     @empty
         <li class="px-4 py-6 text-center text-sm text-neutral-500 sm:px-6">
-            {{ $modo === 'realizado' ? 'Sin trabajos realizados en el período.' : 'Sin trabajos pendientes en el período.' }}
+            {{ match ($modo) {
+                'realizado' => 'Sin trabajos realizados en el período.',
+                'no_realizado' => 'Todos los trabajos del período se pudieron hacer.',
+                default => 'Sin trabajos pendientes en el período.',
+            } }}
         </li>
     @endforelse
 </ul>

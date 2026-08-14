@@ -87,6 +87,24 @@
                     </button>
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos agendados en el período que aún no se marcan como realizados, y su % del total. Clic en el número para ver la lista.</x-info-tip></span>
                 </div>
+                {{-- NO REALIZADOS (14-08): el técnico fue y no se pudo hacer. Es su
+                     propia categoría y no «pendientes»: contarlos como pendientes diría
+                     que falta ir, cuando ya se fue. Rojo porque es lo que hay que mirar. --}}
+                <div class="relative rounded-2xl border bg-white p-3 shadow-sm sm:p-4 transition"
+                     :class="abierto === 'no_realizados' ? 'border-red-400 ring-1 ring-red-200' : 'border-neutral-200'">
+                    <button type="button" class="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 rounded-lg"
+                            @click="abierto = abierto === 'no_realizados' ? null : 'no_realizados'"
+                            :aria-expanded="abierto === 'no_realizados' ? 'true' : 'false'">
+                        <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">No realizados</p>
+                        <p class="mt-1 text-2xl font-semibold {{ $noRealizados > 0 ? 'text-red-600' : 'text-neutral-900' }}">{{ number_format($noRealizados, 0, ',', '.') }}</p>
+                        <p class="text-xs text-neutral-400">{{ $pctNoRealizados }}% del período · se fue y no se pudo</p>
+                        <span class="mt-1 inline-flex items-center gap-0.5 text-xs font-medium text-red-600">
+                            <span x-text="abierto === 'no_realizados' ? 'Ocultar detalle' : 'Ver detalle'">Ver detalle</span>
+                            <svg class="h-3.5 w-3.5 transition-transform" :class="abierto === 'no_realizados' && 'rotate-180'" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
+                        </span>
+                    </button>
+                    <span class="absolute right-2 top-2"><x-info-tip>Trabajos a los que el técnico fue y no se pudieron hacer (faltó un repuesto, el cliente no quiso…), con el motivo que escribió al cerrar. Clic en el número para ver la lista y decidir si se vuelve.</x-info-tip></span>
+                </div>
                 <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Visitas técnicas</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($visitas, 0, ',', '.') }}</p>
@@ -122,6 +140,14 @@
                     <span class="text-xs text-neutral-400">· {{ number_format($pendientes, 0, ',', '.') }} {{ $pendientes === 1 ? 'trabajo' : 'trabajos' }}</span>
                 </div>
                 @include('admin.servicio-tecnico.partials._trabajos-detalle', ['trabajos' => $pendientesLista, 'modo' => 'pendiente'])
+            </div>
+            <div x-show="abierto === 'no_realizados'" x-transition x-cloak
+                 class="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
+                <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">No realizados — {{ $periodoLabel }}</h3>
+                    <span class="text-xs text-neutral-400">· {{ number_format($noRealizados, 0, ',', '.') }} {{ $noRealizados === 1 ? 'trabajo' : 'trabajos' }}</span>
+                </div>
+                @include('admin.servicio-tecnico.partials._trabajos-detalle', ['trabajos' => $noRealizadosLista, 'modo' => 'no_realizado'])
             </div>
         </div>
 

@@ -79,7 +79,24 @@ class AgendaTrabajo extends Model implements AuditableContract
 
     // 'solicitado' = lo pidió el CLIENTE por el QR y espera coordinación
     // (sin fecha); al coordinar pasa a 'agendado' con fecha y técnico.
-    public const ESTADOS = ['solicitado', 'agendado', 'realizado', 'cancelado'];
+    //
+    // 'no_realizado' (dueño 14-08-2026) = el técnico FUE y no se pudo hacer:
+    // faltaba un repuesto, el cliente no quiso, lo que sea. Es un estado FINAL y
+    // distinto de 'cancelado': cancelado es la coordinación diciendo «no va»
+    // ANTES (y le avisa al cliente por correo); no_realizado es el terreno
+    // contando qué pasó cuando ya se fue. Si hay que volver, ventas agenda un
+    // trabajo nuevo — así la agenda no arrastra un pendiente eterno.
+    public const ESTADOS = ['solicitado', 'agendado', 'realizado', 'no_realizado', 'cancelado'];
+
+    /** Los dos cierres que hace el técnico en terreno, y que avisan a ventas. */
+    public const ESTADOS_CIERRE = ['realizado', 'no_realizado'];
+
+    /**
+     * Quién recibe el aviso de cierre además del vendedor del cliente. El jefe de
+     * ventas y admin van SIEMPRE: si dependiera solo del vendedor, hoy el aviso
+     * no le llegaría a nadie (las carteras están sin asignar).
+     */
+    public const ROLES_AVISO_CIERRE = ['jefe_ventas', 'admin'];
 
     // Variante de x-badge por estado. OJO: x-badge solo define brand|neutral|
     // danger (paleta del design system); espeja al taller: cerrado-bien =
@@ -88,7 +105,19 @@ class AgendaTrabajo extends Model implements AuditableContract
         'solicitado' => 'brand',
         'agendado' => 'brand',
         'realizado' => 'neutral',
+        // Cerrado-mal = danger, igual que 'cancelado' y que el 'sin_solucion' del
+        // taller: no es un error del sistema, es un resultado que hay que ver.
+        'no_realizado' => 'danger',
         'cancelado' => 'danger',
+    ];
+
+    /** Rótulo del estado para pantallas y Excel ('no_realizado' se lee mal crudo). */
+    public const ESTADO_ETIQUETAS = [
+        'solicitado' => 'Solicitado',
+        'agendado' => 'Agendado',
+        'realizado' => 'Realizado',
+        'no_realizado' => 'No realizado',
+        'cancelado' => 'Cancelado',
     ];
 
     protected $fillable = [
@@ -651,6 +680,65 @@ class AgendaTrabajo extends Model implements AuditableContract
     public function getEstadoVarianteAttribute(): string
     {
         return self::ESTADO_VARIANTES[$this->estado] ?? 'brand';
+    }
+
+    public function getEstadoLabelAttribute(): string
+    {
+        return self::ESTADO_ETIQUETAS[$this->estado] ?? ucfirst(str_replace('_', ' ', (string) $this->estado));
+    }
+
+    /**
+     * El vendedor a cargo del cliente de este trabajo, o null.
+     *
+     * OJO: hoy devuelve null SIEMPRE, y eso es correcto — las carteras
+     * (`clientes.vendedor_id`) están sin asignar por decisión del dueño hasta la
+     * reunión con gerencia, y no existe ningún usuario con rol vendedor. Está
+     * escrito así para que el día que se asignen, el aviso le llegue solo sin
+     * tocar código.
+     *
+     * Busca por `cliente_id` y, si el trabajo entró por QR sin enlazar, por RUT
+     * — que es la misma escalera que usa el resto del flujo público.
+     */
+    public function vendedorDelCliente(): ?User
+    {
+        $cliente = $this->cliente_id
+            ? Cliente::find($this->cliente_id)
+            : (filled($this->cliente_rut) ? Cliente::buscarPorRut($this->cliente_rut) : null);
+
+        return $cliente?->vendedor;
+    }
+
+    /**
+     * Avisa el CIERRE del trabajo a quien tiene que actuar por la zona: el jefe
+     * de ventas y el vendedor del cliente (pedido del dueño 14-08-2026).
+     *
+     * El jefe de ventas y admin van siempre —si el aviso dependiera solo del
+     * vendedor, hoy no le llegaría a nadie— y el vendedor se suma cuando exista.
+     *
+     * Los avisos son SECUNDARIOS: si fallan, el cierre del trabajo ya está
+     * guardado y no se revierte (mismo criterio que el rechazo).
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    public function avisarCierre(string $evento, array $extra = []): void
+    {
+        $datos = array_merge([
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'fecha' => $this->fecha?->format('d-m-Y') ?? '—',
+            'ciudad' => $this->ciudad ?: '—',
+            'direccion' => $this->direccion ?: '—',
+            'tecnico' => $this->tecnico?->name ?? '—',
+            'detalle' => $this->notas_tecnico ?: '—',
+            'url' => route('admin.agenda-terreno.index'),
+        ], $extra);
+
+        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_CIERRE)->get()
+            ->when($this->vendedorDelCliente(), fn ($u, $v) => $u->push($v))
+            ->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
     }
 
     /**

@@ -231,7 +231,7 @@
                     @forelse ($trabajosDia as $t)
                         <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                             <div class="flex flex-wrap items-center gap-2">
-                                <x-badge :variant="$t->estado_variante">{{ ucfirst($t->estado) }}</x-badge>
+                                <x-badge :variant="$t->estado_variante">{{ $t->estado_label }}</x-badge>
                                 <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $t->tipo_label }}</span>
                                 <span class="font-medium text-neutral-900">{{ $t->cliente_nombre }}</span>
                             </div>
@@ -249,24 +249,42 @@
                             {{-- Cerrar el trabajo: solo cuando está agendado (el controlador
                                  exige esa transición para quien no puede agendar). --}}
                             @if ($t->estado === 'agendado')
-                                {{-- El nombre va por Js::from y NO por {{ }} dentro del string:
-                                     `e()` convierte el apóstrofo en `&#039;`, el parser de HTML lo
-                                     devuelve a `'` dentro del atributo y el JS queda
-                                     `confirm('… D'Angelo?')` = SyntaxError. El onsubmit muere y el
-                                     formulario se envía SIN preguntar — justo la confirmación que
-                                     evita cerrar un trabajo con un toque accidental. Y este nombre
-                                     lo escribe el cliente en el formulario público del QR, así que
-                                     el apóstrofo llega solo ("Comercial D'Angelo"). --}}
-                                <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}" class="mt-4"
-                                      onsubmit="return confirm({{ Illuminate\Support\Js::from('¿Marcar como realizado el trabajo de '.$t->cliente_nombre.'?') }});">
+                                {{-- CIERRE DEL TRABAJO EN TERRENO (dueño 14-08-2026).
+                                     Antes era un botón pelado con un confirm(): el técnico
+                                     cerraba y no quedaba registro de QUÉ hizo, aunque el
+                                     controlador ya aceptaba el detalle.
+
+                                     Ahora escribe el paso a paso —obligatorio, es lo que
+                                     viaja en el aviso a ventas— y cierra de una de las dos
+                                     formas. El «No realizado» existe porque el trabajo no
+                                     siempre se puede hacer: faltó un repuesto, el cliente no
+                                     quiso, lo que sea; sin ese botón el técnico dejaba el
+                                     trabajo abierto y nadie se enteraba.
+
+                                     Sin confirm(): el texto que escribió ES la confirmación,
+                                     y un confirm() sobre un formulario ya llenado solo
+                                     estorba con guantes en la planta. --}}
+                                <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}" class="mt-4 space-y-3">
                                     @csrf
                                     @method('PATCH')
-                                    <input type="hidden" name="estado" value="realizado">
-                                    <button type="submit"
-                                        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99] sm:w-auto">
-                                        <x-icon.check class="h-5 w-5" />
-                                        Marcar realizado
-                                    </button>
+                                    <div>
+                                        <x-input-label :for="'notas-'.$t->id" value="¿Qué hiciste? Paso a paso" />
+                                        <x-textarea :id="'notas-'.$t->id" name="notas_tecnico" rows="4" class="mt-1.5"
+                                            placeholder="Ej. 1) Revisé la bomba booster: sin presión. 2) Cambié la membrana y el filtro de papel. 3) Purgué el sistema y medí 65 psi. 4) Dejé funcionando y el cliente lo probó.">{{ old('notas_tecnico', $t->notas_tecnico) }}</x-textarea>
+                                        <x-input-hint>Esto es lo que le llega al jefe de ventas y al vendedor del cliente. Si no se pudo hacer, cuenta por qué.</x-input-hint>
+                                        <x-input-error :messages="$errors->get('notas_tecnico')" class="mt-2" />
+                                    </div>
+                                    <div class="flex flex-col gap-2 sm:flex-row">
+                                        <button type="submit" name="estado" value="realizado"
+                                            class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99] sm:w-auto">
+                                            <x-icon.check class="h-5 w-5" />
+                                            Marcar realizado
+                                        </button>
+                                        <button type="submit" name="estado" value="no_realizado"
+                                            class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-300 bg-white px-5 py-3 text-base font-semibold text-red-600 shadow-sm transition duration-150 hover:bg-red-50 active:scale-[0.99] sm:w-auto">
+                                            No realizado
+                                        </button>
+                                    </div>
                                 </form>
                             @endif
                         </div>
@@ -285,7 +303,7 @@
                              })">
                             <div class="mb-3 flex items-center justify-between">
                                 <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">Editar trabajo · {{ $t->tipo_label }}</p>
-                                <x-badge :variant="$t->estado_variante">{{ ucfirst($t->estado) }}</x-badge>
+                                <x-badge :variant="$t->estado_variante">{{ $t->estado_label }}</x-badge>
                             </div>
 
                             {{-- El estado de la confirmación del cliente vive dentro de _form

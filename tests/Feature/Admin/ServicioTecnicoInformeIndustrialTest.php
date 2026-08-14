@@ -122,6 +122,8 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
         $this->actingAs($tecnico)
             ->patch(route('admin.agenda-terreno.estado', $trabajo), [
                 'estado' => 'realizado',
+                // Obligatorio desde el 14-08: cerrar exige contar qué pasó.
+                'notas_tecnico' => 'Cambié la membrana y el filtro de papel.',
                 'repuestos' => [
                     ['nombre' => 'Membrana', 'cantidad' => 2],
                     ['nombre' => 'Filtro de papel', 'cantidad' => 1],
@@ -149,7 +151,11 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
         $trabajo = AgendaTrabajo::factory()->create(['fecha' => '2026-07-10', 'estado' => 'agendado']);
 
         $this->actingAs($tecnico)
-            ->patch(route('admin.agenda-terreno.estado', $trabajo), ['estado' => 'realizado'])
+            ->patch(route('admin.agenda-terreno.estado', $trabajo), [
+                'estado' => 'realizado',
+                // Obligatorio desde el 14-08: cerrar exige contar qué pasó.
+                'notas_tecnico' => 'Cerrado en terreno.',
+            ])
             ->assertRedirect();
 
         $this->assertSame('realizado', $trabajo->fresh()->estado);
