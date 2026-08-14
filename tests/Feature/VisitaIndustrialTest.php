@@ -178,32 +178,36 @@ class VisitaIndustrialTest extends TestCase
         $this->assertSame('La planta de osmosis 1T pierde presión.', $notif->payload['descripcion']);
     }
 
-    public function test_el_formulario_ofrece_el_campo_de_disponibilidad(): void
+    /**
+     * EL TEXTO LIBRE SALIÓ DEL FORMULARIO PÚBLICO (dueño, 14-08-2026): «quitar el apartado de
+     * cuándo puedes y cuándo no, sino agregar un horario de trabajo… el cliente pincha y elige
+     * el horario». El cliente ahora elige una HORA de la lista del día (ver `HorarioVisitaTest`).
+     *
+     * Pero el campo NO se fue del sistema: quien coordina lo sigue teniendo en el formulario
+     * interno para anotar lo que el cliente cuenta por teléfono («solo martes en la mañana»,
+     * «avisar antes de llegar»), que no cabe en una hora elegida. Eso es lo que estos dos
+     * candados cuidan ahora — y que lo viejo se siga leyendo.
+     */
+    public function test_el_formulario_interno_conserva_la_disponibilidad_escrita(): void
     {
-        $sucursal = $this->sucursal();
-
-        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
+        $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.create'))
             ->assertOk()
-            ->assertSee('¿Cuándo puedes y cuándo no?');
-    }
-
-    public function test_guarda_la_disponibilidad_escrita_por_el_cliente(): void
-    {
-        $sucursal = $this->sucursal();
-
-        $this->post(route('visita-industrial.store'), $this->payload($sucursal, [
-            'disponibilidad' => 'Fines de semana no; ir después de las 15 h.',
-        ]))->assertSessionHasNoErrors()->assertRedirect();
-
-        $this->assertSame('Fines de semana no; ir después de las 15 h.', AgendaTrabajo::first()->disponibilidad);
+            ->assertSee('Disponibilidad del cliente');
     }
 
     public function test_la_agenda_muestra_la_disponibilidad_al_coordinar(): void
     {
-        $sucursal = $this->sucursal();
-        $this->post(route('visita-industrial.store'), $this->payload($sucursal, [
+        // Se carga en la solicitud como la cargaría quien atiende el teléfono.
+        $solicitud = AgendaTrabajo::create([
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
+            'estado' => 'solicitado',
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'descripcion' => 'La planta pierde presión.',
             'disponibilidad' => 'Solo martes y jueves en la mañana',
-        ]));
+        ]);
+
+        $this->assertSame('Solo martes y jueves en la mañana', $solicitud->disponibilidad);
 
         // Quien coordina (vendedor) la ve en la lista "por coordinar".
         $this->actingAs($this->vendedor())

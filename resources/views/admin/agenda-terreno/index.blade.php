@@ -90,7 +90,10 @@
                                              blanco táctil es el tamaño que corresponde. --}}
                                         <x-tel-link :telefono="$s->cliente_telefono" />
                                         @if ($s->fecha_preferida)
-                                            <span class="text-xs text-neutral-400">Prefiere: {{ $s->fecha_preferida->format('d-m-Y') }}</span>
+                                            {{-- La hora que eligió el cliente va PEGADA a la fecha:
+                                                 es el mismo dato («cuándo le acomoda») y quien
+                                                 llama lo necesita junto, no en dos renglones. --}}
+                                            <span class="text-xs text-neutral-400">Prefiere: {{ $s->fecha_preferida->format('d-m-Y') }}@if ($s->hora_preferida_corta) a las {{ $s->hora_preferida_corta }}@endif</span>
                                         @endif
                                     </div>
                                 </div>

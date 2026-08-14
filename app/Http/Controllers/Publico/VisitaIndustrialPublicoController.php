@@ -104,6 +104,15 @@ class VisitaIndustrialPublicoController extends Controller
             'etiqueta_parcial' => $d['estado'] === 'parcial'
                 ? 'Ese día hay disponibilidad hasta las '.$d['hora_hasta'].'.'
                 : null,
+            // LAS HORAS QUE PUEDE ELEGIR ese día (pedido del dueño 14-08: «el cliente pincha y
+            // elige el horario»). Salen del servidor y no de una tabla copiada en el JS: el
+            // horario cambia según el día de la semana y se recorta si el día es de media
+            // jornada, así que la lista tiene que venir de donde vive esa regla.
+            //
+            // En un día que no se puede pedir van vacías: ofrecer horas de un día cerrado es
+            // invitar a elegir algo que el servidor va a rechazar.
+            'horarios' => $d['ocupado'] ? [] : AgendaTrabajo::horasDisponibles($data['fecha']),
+            'horario_label' => AgendaTrabajo::horarioLabel($data['fecha']),
             'etiqueta_tramo' => $d['estado'] === 'ocupado'
                 ? ($d['dias'] > 1
                     ? 'del '.$enEspanol($d['desde'])->translatedFormat('j').' al '.$enEspanol($d['hasta'])->translatedFormat('j \d\e F')
@@ -146,9 +155,12 @@ class VisitaIndustrialPublicoController extends Controller
             // 'today' resolvía en UTC y de noche RECHAZABA el "hoy" del cliente
             // chileno (P-TZ-01): el borde es el día de negocio, no el del server.
             'fecha_preferida' => ['nullable', 'date', 'after_or_equal:'.\App\Support\FechaNegocio::hoy()],
+            // A qué hora le acomoda, elegida de la lista del día (dueño 14-08). Reemplaza al
+            // texto libre «cuándo puedes y cuándo no», que había que leer y traducir a mano en
+            // cada llamada. El formulario interno lo sigue teniendo para lo que se conversa por
+            // teléfono; acá, no.
+            'hora_preferida' => ['nullable', 'date_format:H:i'],
             'descripcion' => ['required', 'string', 'min:3'],
-            // Disponibilidad libre del cliente (cuándo puede/no): la usa quien coordina.
-            'disponibilidad' => ['nullable', 'string', 'max:1000'],
         ]);
 
         // Si la fecha preferida cae en un día que no se puede pedir —el técnico ya está
@@ -172,6 +184,22 @@ class VisitaIndustrialPublicoController extends Controller
                     'fecha_preferida' => 'En esa fecha el técnico no estará disponible (fuera o con la agenda ocupada). Por favor elige otra fecha preferida.',
                 ]);
             }
+
+            // LA HORA TAMBIÉN SE VERIFICA, con la misma lista que ofreció la pantalla: el
+            // `<select>` se puede editar y una hora fuera del horario sería una cita imposible
+            // que alguien tiene que descubrir llamando.
+            if (! empty($data['hora_preferida'])
+                && ! in_array($data['hora_preferida'], AgendaTrabajo::horasDisponibles($data['fecha_preferida']), true)) {
+                throw ValidationException::withMessages([
+                    'hora_preferida' => 'Esa hora no está dentro del horario de ese día. Elige una de la lista.',
+                ]);
+            }
+        }
+
+        // Una hora sin fecha no significa nada: se descarta en silencio en vez de guardar un
+        // dato que quien coordina no puede usar.
+        if (empty($data['fecha_preferida'])) {
+            $data['hora_preferida'] = null;
         }
 
         // Si el RUT ya está en el catálogo, la solicitud nace ENLAZADA a esa
@@ -193,7 +221,7 @@ class VisitaIndustrialPublicoController extends Controller
             'direccion' => $data['direccion'],
             'ciudad' => $data['ciudad'],
             'descripcion' => $data['descripcion'],
-            'disponibilidad' => $data['disponibilidad'] ?? null,
+            'hora_preferida' => $data['hora_preferida'] ?? null,
             'creado_por' => 'Cliente (QR)',
         ]);
 

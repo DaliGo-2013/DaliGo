@@ -66,6 +66,7 @@ class AgendaTrabajo extends Model implements AuditableContract
         'hora',
         'hora_fin',
         'fecha_preferida',
+        'hora_preferida',
         'estado',
         'confirmacion_token',
         'confirmacion_enviada_at',
@@ -319,13 +320,87 @@ class AgendaTrabajo extends Model implements AuditableContract
      * LO QUE EL CLIENTE NO TIENE POR QUÉ SABER (decisión del dueño): el motivo. «No es tan
      * importante que la gente sepa que está de vacaciones, simplemente no está disponible».
      * Así que hacia afuera esto contesta *que* no se puede, nunca *por qué*.
+     *
+     * EL HORARIO, día por día (dueño, 14-08-2026): «lunes y martes 08:00 a 17:30 y miércoles a
+     * viernes 08:00 a 16:30». Un día laborable es, exactamente, un día que TIENE horario: así no
+     * hay dos listas que puedan contradecirse (una de días y otra de horas), que es como una
+     * termina diciendo que el sábado se atiende de 8 a 5.
      */
-    public const DIAS_LABORABLES = [1, 2, 3, 4, 5];
+    public const HORARIO = [
+        1 => ['08:00', '17:30'],   // lunes
+        2 => ['08:00', '17:30'],   // martes
+        3 => ['08:00', '16:30'],   // miércoles
+        4 => ['08:00', '16:30'],   // jueves
+        5 => ['08:00', '16:30'],   // viernes
+    ];
+
+    /** Cada cuántos minutos se ofrece una hora para elegir. */
+    public const PASO_MINUTOS = 30;
 
     /** ¿El técnico atiende ese día de la SEMANA? (los feriados y cierres van aparte) */
     public static function esLaborable(string $fecha): bool
     {
-        return in_array(Carbon::parse($fecha)->isoWeekday(), self::DIAS_LABORABLES, true);
+        return isset(self::HORARIO[Carbon::parse($fecha)->isoWeekday()]);
+    }
+
+    /** El horario de ese día: ['08:00', '17:30'], o null si no se atiende. */
+    public static function horarioDe(string $fecha): ?array
+    {
+        return self::HORARIO[Carbon::parse($fecha)->isoWeekday()] ?? null;
+    }
+
+    /**
+     * Las horas que el cliente puede elegir para ese día.
+     *
+     * SE CORTA MEDIA HORA ANTES DEL CIERRE: la hora que elige es la de LLEGADA del técnico, y
+     * ofrecer las 17:30 cuando el día termina 17:30 es ofrecer una visita de cero minutos.
+     *
+     * Y SI EL DÍA ES DE MEDIA JORNADA, se corta ahí: el cierre que cargó el jefe de ventas
+     * manda sobre el horario general, que es lo que uno espera de una excepción.
+     *
+     * @return list<string> «08:00», «08:30», … (vacío si ese día no se atiende)
+     */
+    public static function horasDisponibles(string $fecha): array
+    {
+        $horario = self::horarioDe($fecha);
+
+        if ($horario === null) {
+            return [];
+        }
+
+        [$abre, $cierra] = $horario;
+
+        // El cierre de media jornada solo puede ADELANTAR el cierre, nunca estirarlo: si
+        // alguien carga «hasta las 19:00» en un día que termina 16:30, el día termina 16:30.
+        $media = AgendaCierre::mapaDeDias($fecha, $fecha)[$fecha] ?? null;
+        if ($media?->tipo === AgendaCierre::TIPO_MEDIA_JORNADA && $media->hora_corta) {
+            $cierra = min($cierra, $media->hora_corta);
+        }
+
+        $horas = [];
+        $t = Carbon::parse($fecha.' '.$abre);
+        $tope = Carbon::parse($fecha.' '.$cierra)->subMinutes(self::PASO_MINUTOS);
+
+        while ($t->lessThanOrEqualTo($tope)) {
+            $horas[] = $t->format('H:i');
+            $t->addMinutes(self::PASO_MINUTOS);
+        }
+
+        return $horas;
+    }
+
+    /** «08:00 a 17:30» para ese día, o null si no se atiende. */
+    public static function horarioLabel(string $fecha): ?string
+    {
+        $h = self::horarioDe($fecha);
+
+        return $h ? $h[0].' a '.$h[1] : null;
+    }
+
+    /** La hora preferida en formato corto «14:00» (la columna `time` viene «14:00:00»). */
+    public function getHoraPreferidaCortaAttribute(): ?string
+    {
+        return $this->hora_preferida ? substr((string) $this->hora_preferida, 0, 5) : null;
     }
 
     /**
@@ -360,7 +435,10 @@ class AgendaTrabajo extends Model implements AuditableContract
             'ciudad' => $this->ciudad ?: 'sin ciudad',
             'direccion' => $this->direccion ?: '—',
             'telefono' => $this->cliente_telefono ?: 's/i',
-            'preferida' => $this->fecha_preferida?->format('d-m-Y') ?: 'sin fecha preferida',
+            // Con la hora si la eligió: quien va a llamar necesita las dos cosas juntas.
+            'preferida' => $this->fecha_preferida
+                ? $this->fecha_preferida->format('d-m-Y').($this->hora_preferida_corta ? ' a las '.$this->hora_preferida_corta : '')
+                : 'sin fecha preferida',
             // Lo que escribió el cliente: es lo más útil para quien coordina.
             'descripcion' => $this->descripcion ?: '—',
             'url' => route('admin.agenda-terreno.index'),
