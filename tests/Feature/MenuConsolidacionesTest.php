@@ -39,6 +39,7 @@ class MenuConsolidacionesTest extends TestCase
         'admin.servicios-terreno.' => 'servicio-tecnico.agenda-terreno', // Lote 5: Servicios de terreno → pestaña de la Agenda
         'admin.tiempos-reparacion.' => 'servicio-tecnico.listado', // A1: Costos generales → desplegable «Configuración» del Listado
         'admin.traslados.' => 'servicio-tecnico.listado', // A2: Traslados al taller → pestaña del Listado
+        'admin.cargas-reales.' => 'logistica.carga', // B1: Cargas reales → pestaña del Simulador
     ];
 
     private function admin(): User
