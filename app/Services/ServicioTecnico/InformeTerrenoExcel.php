@@ -57,6 +57,12 @@ class InformeTerrenoExcel
         // Vacio cuando el tecnico lo escribio a mano (no estaba en el catalogo):
         // null significa «no vino del catalogo», no «falta el dato».
         ['Código', 16, 'texto'],
+        // USADO vs POR COTIZAR. En una visita tecnica el tecnico anota lo que se va
+        // a NECESITAR (con eso ventas cotiza la segunda visita) y no instala nada,
+        // asi que sumar las dos cosas cuenta el mismo repuesto dos veces. Se
+        // exportan ambas ROTULADAS en vez de dejar una afuera: es una tabla de
+        // datos, y el que la filtra decide — pero tiene que poder distinguirlas.
+        ['Registro', 14, 'texto'],
         ['Cantidad', 10, 'numero'],
         ['Fecha', 13, 'fecha'],
         ['Tipo', 16, 'texto'],
@@ -92,7 +98,7 @@ class InformeTerrenoExcel
 
         $hojaRepuestos = new HojaPlanaXlsx(
             'REPUESTOS USADOS EN TERRENO · DALI',
-            $resumen.' · En terreno el repuesto se registra con su código y cantidad, SIN precio: el técnico industrial no maneja precios (la cotización la hacen el vendedor y el jefe de ventas), así que esta hoja cuenta el uso y no lo valoriza',
+            $resumen.' · SIN precio: el técnico industrial no maneja precios (la cotización la hacen el vendedor y el jefe de ventas), así que esta hoja cuenta el uso y no lo valoriza. Filtra la columna «Registro»: «Usado» salió de bodega; «Por cotizar» es lo que el técnico estimó en la visita de revisión para el trabajo que sigue — sumar las dos cuenta el mismo repuesto dos veces',
             self::COLUMNAS_REPUESTOS,
         );
         foreach ($trabajos as $trabajo) {
@@ -143,6 +149,7 @@ class InformeTerrenoExcel
         return [
             $repuesto->nombre,
             $repuesto->sku,
+            $trabajo->repuestosSonPronostico() ? 'Por cotizar' : 'Usado',
             (int) $repuesto->cantidad,
             $trabajo->fecha,
             $trabajo->tipo_label,

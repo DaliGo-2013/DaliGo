@@ -115,7 +115,7 @@
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos usados</p>
                     <p class="mt-1 text-2xl font-semibold text-brand-600">{{ number_format($totalUnidadesRepuestos, 0, ',', '.') }}</p>
                     <p class="text-xs text-neutral-400">unidades</p>
-                    <span class="absolute right-2 top-2"><x-info-tip>Unidades totales de repuestos que el técnico registró al cerrar los trabajos del período.</x-info-tip></span>
+                    <span class="absolute right-2 top-2"><x-info-tip>Unidades de repuestos efectivamente USADAS en los trabajos del período. <strong>No cuenta las visitas técnicas</strong>: ahí el técnico anota lo que se va a necesitar para cotizar la segunda visita, y sumarlo acá contaría dos veces el mismo repuesto. Ese pronóstico está en el Excel, en la columna «Registro».</x-info-tip></span>
                 </div>
                 <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos distintos</p>

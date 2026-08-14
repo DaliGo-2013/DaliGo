@@ -730,6 +730,10 @@ class AgendaTrabajo extends Model implements AuditableContract
             'direccion' => $this->direccion ?: '—',
             'tecnico' => $this->tecnico?->name ?? '—',
             'detalle' => $this->notas_tecnico ?: '—',
+            // El rótulo viaja como dato porque el MISMO evento sirve a los cuatro
+            // tipos de trabajo, y en una visita técnica la lista significa lo
+            // contrario que en las otras: es lo que hay que COTIZAR, no lo gastado.
+            'repuestos_titulo' => $this->repuestosTitulo(),
             'repuestos' => $this->repuestosResumen(),
             'url' => route('admin.agenda-terreno.index'),
         ], $extra);
@@ -866,6 +870,52 @@ class AgendaTrabajo extends Model implements AuditableContract
      *
      * Sin montos: el técnico no maneja precios. Ver AgendaTrabajoRepuesto.
      */
+    /**
+     * ¿Los repuestos de ESTE trabajo son un PRONÓSTICO o un CONSUMO?
+     *
+     * En una visita técnica Carlos no instala nada: va a ver qué hay que hacer y
+     * qué se va a necesitar, y con eso el vendedor y el jefe de ventas arman la
+     * cotización para la SEGUNDA visita (flujo dictado por el dueño, 14-08-2026).
+     * En los otros tres tipos el trabajo se ejecuta, así que el repuesto salió de
+     * la bodega de verdad.
+     *
+     * SE DERIVA DEL TIPO Y NO SE GUARDA EN UNA COLUMNA a propósito: una visita
+     * técnica nunca instala, así que el dato ya está y no hay forma de que las dos
+     * fuentes se contradigan.
+     *
+     * Por qué importa que estén separados: sin esto, los repuestos que Carlos
+     * anota en la visita —los que va a NECESITAR— se cuentan como gastados, y
+     * además se cuentan DOS VECES, porque en la segunda visita los declara de
+     * nuevo al usarlos. El informe mostraría consumo que nunca ocurrió.
+     */
+    public function repuestosSonPronostico(): bool
+    {
+        return $this->tipo === self::TIPO_PUBLICO;
+    }
+
+    /**
+     * Rótulo del bloque de repuestos para el AVISO y el informe: lo leen ventas y
+     * jefatura, así que va en tercera persona.
+     */
+    public function repuestosTitulo(): string
+    {
+        return $this->repuestosSonPronostico()
+            ? 'Repuestos que se van a necesitar (para cotizar)'
+            : 'Repuestos usados';
+    }
+
+    /**
+     * El mismo rótulo para el FORMULARIO del técnico, en segunda persona: las
+     * pantallas de operario le hablan a él, que es quien las llena de pie en la
+     * planta ("Repuestos que usaste", no "Repuestos usados").
+     */
+    public function repuestosEtiquetaFormulario(): string
+    {
+        return $this->repuestosSonPronostico()
+            ? 'Repuestos que vas a necesitar'
+            : 'Repuestos que usaste';
+    }
+
     public function repuestosResumen(): string
     {
         $lineas = $this->repuestos
@@ -876,7 +926,11 @@ class AgendaTrabajo extends Model implements AuditableContract
                 filled($r->sku) ? " ({$r->sku})" : ''
             )));
 
-        return $lineas->isEmpty() ? 'No usó repuestos.' : $lineas->implode("\n");
+        if ($lineas->isEmpty()) {
+            return $this->repuestosSonPronostico() ? 'No indicó repuestos.' : 'No usó repuestos.';
+        }
+
+        return $lineas->implode("\n");
     }
 
     /**

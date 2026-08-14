@@ -272,6 +272,142 @@ class RepuestosTerrenoTest extends TestCase
         $this->assertSame([['nombre' => 'Abrazadera inoxidable 1/2', 'sku' => null]], $sugerencias);
     }
 
+    // --- Visita técnica: los repuestos son un PRONÓSTICO, no un consumo -------
+
+    /**
+     * EL FLUJO QUE DICTÓ EL DUEÑO (14-08-2026): la PRIMERA visita de Carlos a un
+     * cliente es de revisión — va a ver qué hay que hacer y, si es una reparación,
+     * qué repuestos se necesitan. Después vuelve a la sucursal, se junta con el
+     * jefe de ventas y el vendedor, y con eso se arma la cotización para la
+     * SEGUNDA visita, que es cuando el trabajo se hace.
+     *
+     * O sea: en una visita técnica el técnico NO INSTALA NADA. Sus repuestos son
+     * lo que va a necesitar, no lo que gastó.
+     *
+     * POR QUÉ ESTO ES UN CANDADO Y NO UN DETALLE DE REDACCIÓN: si el informe los
+     * contara como usados, mostraría consumo que nunca salió de bodega — y lo
+     * contaría DOS VECES, porque en la segunda visita se declaran de nuevo al
+     * usarlos de verdad. El número quedaría inflado justo en el informe que la
+     * gerencia usa para decidir compras.
+     */
+    private function trabajoDeTipo(string $tipo): AgendaTrabajo
+    {
+        return AgendaTrabajo::factory()->create([
+            'fecha' => '2026-08-10',
+            'tipo' => $tipo,
+            'estado' => 'agendado',
+            'cliente_nombre' => 'Embotelladora Curicó',
+            'ciudad' => 'Curicó',
+        ]);
+    }
+
+    public function test_los_repuestos_de_una_visita_tecnica_no_cuentan_como_usados_en_el_informe(): void
+    {
+        // Misma cantidad, mismo repuesto, en los dos tipos de trabajo.
+        foreach (['visita_tecnica', 'mantencion'] as $tipo) {
+            AgendaTrabajoRepuesto::create([
+                'agenda_trabajo_id' => $this->trabajoDeTipo($tipo)->id,
+                'nombre' => 'Membrana RO 100 GPD',
+                'sku' => 'MEM-100',
+                'cantidad' => 4,
+            ]);
+        }
+
+        $jefe = tap(User::factory()->create())->assignRole('admin');
+
+        $vista = $this->actingAs($jefe)
+            ->get(route('admin.servicio-tecnico.informe.industrial', ['anio' => 2026, 'mes' => 8]))
+            ->assertOk();
+
+        // Solo las 4 de la mantención: las 4 de la visita son pronóstico.
+        $this->assertSame(
+            4,
+            (int) $vista->viewData('totalUnidadesRepuestos'),
+            'El informe está contando como usado el pronóstico de la visita técnica.'
+        );
+    }
+
+    public function test_el_excel_rotula_cada_linea_como_usada_o_por_cotizar(): void
+    {
+        AgendaTrabajoRepuesto::create([
+            'agenda_trabajo_id' => $this->trabajoDeTipo('visita_tecnica')->id,
+            'nombre' => 'Membrana por cotizar', 'sku' => 'MEM-100', 'cantidad' => 2,
+        ]);
+        AgendaTrabajoRepuesto::create([
+            'agenda_trabajo_id' => $this->trabajoDeTipo('reparacion')->id,
+            'nombre' => 'Filtro gastado', 'sku' => 'FIL-PAP', 'cantidad' => 1,
+        ]);
+
+        $jefe = tap(User::factory()->create())->assignRole('admin');
+
+        // getContent() y no streamedContent(): el .xlsx se arma completo en memoria
+        // y viaja en un Response normal (mismo criterio que InformeTerrenoExcel).
+        $binario = (string) $this->actingAs($jefe)
+            ->get(route('admin.servicio-tecnico.informe.industrial.excel', ['anio' => 2026, 'mes' => 8]))
+            ->assertOk()
+            ->getContent();
+
+        $tmp = tempnam(sys_get_temp_dir(), 'xlsx');
+        file_put_contents($tmp, $binario);
+        $z = new \ZipArchive;
+        $this->assertTrue($z->open($tmp) === true, 'El binario descargado no es un zip válido.');
+        $hoja = (string) $z->getFromName('xl/worksheets/sheet2.xml');
+        $z->close();
+        @unlink($tmp);
+
+        // Ninguna de las dos se pierde, y se distinguen: es una tabla de datos, el
+        // que la filtra decide — pero tiene que poder distinguirlas.
+        $this->assertStringContainsString('Registro', $hoja);
+        $this->assertStringContainsString('Por cotizar', $hoja);
+        $this->assertStringContainsString('Usado', $hoja);
+        $this->assertStringContainsString('Membrana por cotizar', $hoja);
+        $this->assertStringContainsString('Filtro gastado', $hoja);
+    }
+
+    public function test_el_rotulo_cambia_segun_el_tipo_de_visita(): void
+    {
+        $visita = $this->trabajoDeTipo('visita_tecnica');
+        $trabajo = $this->trabajoDeTipo('reparacion');
+
+        // Al técnico se le habla en segunda persona (pantalla de operario); a
+        // ventas, en tercera (el aviso).
+        $this->assertSame('Repuestos que vas a necesitar', $visita->repuestosEtiquetaFormulario());
+        $this->assertSame('Repuestos que usaste', $trabajo->repuestosEtiquetaFormulario());
+        $this->assertStringContainsString('se van a necesitar', $visita->repuestosTitulo());
+        $this->assertSame('Repuestos usados', $trabajo->repuestosTitulo());
+
+        // Y en la pantalla del técnico se lee el de la visita, con su explicación.
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.agenda-terreno.index', ['dia' => '2026-08-10']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Repuestos que vas a necesitar', $html);
+        $this->assertStringContainsString('ventas arma la cotización', $html);
+    }
+
+    public function test_el_aviso_de_una_visita_tecnica_dice_que_es_para_cotizar(): void
+    {
+        $jefe = $this->jefeVentas();
+        $visita = $this->trabajoDeTipo('visita_tecnica');
+
+        $this->cerrar($visita, [
+            'estado' => 'realizado',
+            'notas_tecnico' => 'Revisé la planta: hay que cambiar la membrana y la bomba.',
+            'repuestos' => [
+                ['nombre' => 'Membrana RO 100 GPD', 'sku' => 'MEM-100', 'cantidad' => 2],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $cuerpo = (string) Notificacion::where('user_id', $jefe->id)->first()?->cuerpo;
+
+        // Ventas tiene que leer que esto es el insumo de la cotización, no un gasto.
+        $this->assertStringContainsString('se van a necesitar', $cuerpo);
+        $this->assertStringContainsString('2 × Membrana RO 100 GPD', $cuerpo);
+        $this->assertStringNotContainsString('Repuestos usados', $cuerpo);
+        $this->assertStringNotContainsString('{repuestos_titulo}', $cuerpo);
+    }
+
     // --- La pantalla del técnico ----------------------------------------------
 
     public function test_la_pantalla_del_tecnico_ofrece_declarar_repuestos_y_no_habla_de_plata(): void

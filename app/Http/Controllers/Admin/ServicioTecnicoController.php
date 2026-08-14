@@ -298,10 +298,21 @@ class ServicioTecnicoController extends Controller
             ->groupBy('agenda_trabajos.servicio_terreno_id')
             ->orderByDesc('cantidad')->limit(10)->get();
 
-        // Uso de repuestos (en números): suma de unidades por repuesto de los
+        // USO de repuestos (en números): suma de unidades por repuesto de los
         // trabajos del período. Mismo patrón que el informe de dispensadores.
+        //
+        // LAS VISITAS TÉCNICAS QUEDAN FUERA, y es la diferencia entre un número
+        // verdadero y uno que miente: en la visita de revisión el técnico anota lo
+        // que va a NECESITAR (con eso ventas cotiza la segunda visita), no lo que
+        // instaló — ahí no instala nada. Contarlas acá infla el consumo con
+        // repuestos que nunca salieron de bodega, y encima DOS VECES, porque en la
+        // segunda visita se declaran de nuevo al usarlos de verdad. Medido con el
+        // candado puesto: 8 unidades donde había 4.
+        // El pronóstico no se pierde: viaja en el aviso a ventas y en el Excel,
+        // rotulado en la columna «Registro».
         $repuestos = AgendaTrabajoRepuesto::query()
             ->join('agenda_trabajos', 'agenda_trabajos.id', '=', 'agenda_trabajo_repuestos.agenda_trabajo_id')
+            ->where('agenda_trabajos.tipo', '!=', AgendaTrabajo::TIPO_PUBLICO)
             ->whereNotNull('agenda_trabajos.fecha')
             ->whereDate('agenda_trabajos.fecha', '>=', $desde)
             ->whereDate('agenda_trabajos.fecha', '<=', $hasta)

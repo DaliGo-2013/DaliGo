@@ -297,10 +297,21 @@
                                             repuestos: @js(old('repuestos', [])),
                                             endpointRepuestos: @js(route('admin.agenda-terreno.buscar-repuesto')),
                                          })">
+                                        {{-- EN UNA VISITA TÉCNICA LA LISTA SIGNIFICA LO CONTRARIO
+                                             (flujo del dueño, 14-08): la primera visita es para
+                                             ver qué hay que hacer y qué se va a necesitar, y con
+                                             eso el vendedor y el jefe de ventas arman la
+                                             cotización para la segunda. Ahí Carlos no instala
+                                             nada, así que sus repuestos son un PRONÓSTICO. El
+                                             rótulo se deriva del tipo (`repuestosTitulo`), no de
+                                             un campo que alguien tenga que acordarse de marcar. --}}
                                         <div class="flex items-center justify-between">
-                                            <x-input-label value="Repuestos que usaste" />
+                                            <x-input-label :value="$t->repuestosEtiquetaFormulario()" />
                                             <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
                                         </div>
+                                        @if ($t->repuestosSonPronostico())
+                                            <x-input-hint>Esta es la visita de revisión: anota lo que vas a NECESITAR. Con esto ventas arma la cotización para cuando vuelvas a hacer el trabajo.</x-input-hint>
+                                        @endif
 
                                         <div class="mt-2 space-y-2">
                                             <template x-for="(r, i) in repuestos" :key="i">
@@ -362,7 +373,7 @@
                                             </template>
 
                                             <p x-show="repuestos.length === 0" class="text-sm text-neutral-400">
-                                                Si no usaste ninguno, déjalo así.
+                                                {{ $t->repuestosSonPronostico() ? 'Si no hace falta ninguno, déjalo así.' : 'Si no usaste ninguno, déjalo así.' }}
                                             </p>
                                         </div>
                                     </div>
