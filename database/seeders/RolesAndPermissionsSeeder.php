@@ -59,6 +59,12 @@ class RolesAndPermissionsSeeder extends Seeder
             // lleva la agenda del tecnico industrial (dueño, 13-08-2026) — un vendedor no
             // deberia poder cerrarle la agenda a todos.
             'gestionar cierres agenda',
+            // VER el tarifario de servicios de terreno (solo lectura). Existe aparte de
+            // 'agendar servicio terreno' —que ademas lo EDITA— porque el tecnico industrial
+            // necesita consultar precios y que incluye cada servicio cuando esta en la planta
+            // del cliente, y no tiene por que poder cambiar la lista de precios (pedido del
+            // dueño 14-08-2026: «para Carlos crear el permiso de vista»).
+            'ver servicios terreno',
             'gestionar instalaciones',    // tecnico industrial / jefes: registro de instalaciones (Excel de terreno)
             'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
             // Informes de Servicio Tecnico (por dominio): el tecnico de taller ve
@@ -174,8 +180,11 @@ class RolesAndPermissionsSeeder extends Seeder
         // realizado); NO agenda ni edita la agenda (eso lo hacen jefes/vendedores).
         // Mantiene su registro de Instalaciones (su planilla). Si gerencia quiere
         // habilitarle agendar, lo activa en Administracion -> Roles.
+        // Y VE EL TARIFARIO (pedido del dueño 14-08-2026): en la planta del cliente le
+        // preguntan cuanto sale y que incluye, y hasta ahora la pantalla no le aparecia. Solo
+        // lectura: cambiar la lista de precios sigue siendo de jefatura/ventas.
         Role::firstOrCreate(['name' => 'tecnico_industrial', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial']);
+            ->givePermissionTo(['ver agenda terreno', 'ver servicios terreno', 'gestionar instalaciones', 'ver informe industrial']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
             ->givePermissionTo('report production');
         // JEFE DE SUCURSAL (2026-07-28). Nace por la regla 9 de Contabilidad: la
