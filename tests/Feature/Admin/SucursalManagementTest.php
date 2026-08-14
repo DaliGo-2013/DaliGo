@@ -189,6 +189,28 @@ class SucursalManagementTest extends TestCase
 
         $this->assertSame(4, Sucursal::count());
         $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR', 'es_central' => true]);
+        // El nombre oficial de la casa matriz es «Mirador», sin artículo (dueño, 14-08-2026).
+        // Se ve en el correo de ingreso, en el de retiro y en la pantalla del QR.
+        $this->assertSame('Mirador', Sucursal::where('codigo', 'MIRADOR')->value('nombre'));
+    }
+
+    /**
+     * «El Mirador» era un error de tipeo al crear la ficha (dueño, 14-08-2026) y el seeder no
+     * lo corrige solo: es `firstOrCreate`, no pisa lo editado desde la UI. Por eso hay una
+     * migración one-shot, y este candado prueba que hace lo que dice.
+     */
+    public function test_la_migracion_devuelve_a_mirador_su_nombre_oficial(): void
+    {
+        $mirador = Sucursal::create(['nombre' => 'El Mirador', 'codigo' => 'MIRADOR', 'es_central' => true, 'activa' => true]);
+        // Una ficha con OTRO código no se toca, aunque se llame parecido: si hay una duplicada,
+        // renombrarla dejaría dos «Mirador» y taparía el problema en vez de mostrarlo.
+        $otra = Sucursal::create(['nombre' => 'EL MIRADOR', 'codigo' => 'EL-MIRADOR', 'activa' => true]);
+
+        $migracion = require database_path('migrations/2026_08_14_200000_normaliza_el_nombre_de_la_sucursal_mirador.php');
+        $migracion->up();
+
+        $this->assertSame('Mirador', $mirador->fresh()->nombre);
+        $this->assertSame('EL MIRADOR', $otra->fresh()->nombre);
     }
 
     // ── P-M04-11 · guardas de eliminación COMPLETAS ────────────────────────
