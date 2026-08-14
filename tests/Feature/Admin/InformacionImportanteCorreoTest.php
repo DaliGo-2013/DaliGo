@@ -23,8 +23,10 @@ use Tests\TestCase;
  * cobra, la responsabilidad por el equipo sin caja, el plazo.
  *
  * DOS NÚMEROS NO SE ESCRIBEN A MANO, y por eso hay candados:
- *   · el PLAZO sale de la sucursal (cada una tiene el suyo). Con un «10» fijo, el mismo correo
- *     que muestra una entrega estimada a 15 días hábiles se contradiría solo.
+ *   · el PLAZO sale de la sucursal (cada una tiene el suyo). Con un «10» fijo, el correo
+ *     prometería 10 días hábiles en una sucursal que tarda 15. Desde el 14-08-2026 es además
+ *     el ÚNICO compromiso de tiempo del correo: la fecha de entrega calculada ya no viaja
+ *     (ver PlazoSinFechaPrometidaTest).
  *   · la GARANTÍA es la misma constante que promete el correo de retiro. Si fueran dos números,
  *     un día se prometería una cosa al ingresar y otra al entregar.
  */
@@ -90,9 +92,10 @@ class InformacionImportanteCorreoTest extends TestCase
     // ─────────────────────────────────────────────────── los dos números que no se escriben
 
     /**
-     * EL PLAZO ES EL DE LA SUCURSAL. Mirador repara (10 días hábiles); las otras mandan el
-     * equipo a Mirador y por eso tardan más (15). Un número fijo en el texto haría que el correo
-     * se contradijera con la entrega estimada que él mismo muestra dos renglones arriba.
+     * EL PLAZO ES EL DE LA SUCURSAL, confirmado por el dueño el 14-08-2026: «para la sucursal
+     * de Mirador son 10 días hábiles, pero para Abate Molina y Coquimbo son 15 días hábiles».
+     * Mirador repara; las otras dos mandan el equipo a Mirador y por eso tardan más. Un número
+     * fijo en el texto prometería 10 días en una sucursal que tarda 15.
      */
     public function test_el_plazo_es_el_de_la_sucursal_que_recibio(): void
     {
@@ -101,6 +104,9 @@ class InformacionImportanteCorreoTest extends TestCase
 
         $coquimbo = $this->correo(['sucursal_id' => $this->sucursal('COQUIMBO', 'Coquimbo')->id]);
         $this->assertStringContainsString('hasta 15 días hábiles', $coquimbo);
+
+        $abate = $this->correo(['sucursal_id' => $this->sucursal('ABATE-MOLINA', 'Abate Molina')->id]);
+        $this->assertStringContainsString('hasta 15 días hábiles', $abate);
     }
 
     /** Sin sucursal (ingreso por ruta) no se promete ningún plazo, en vez de inventar uno. */
@@ -108,7 +114,9 @@ class InformacionImportanteCorreoTest extends TestCase
     {
         $html = $this->correo(['sucursal_id' => null]);
 
-        $this->assertStringNotContainsString('días hábiles.', $html);
+        // La frase entera, no un fragmento con punto: el correo nombra los días hábiles en otra
+        // línea («el plazo se cuenta en días hábiles») y ese texto general sí va siempre.
+        $this->assertStringNotContainsString('El plazo de reparación es de hasta', $html);
         // Pero el resto del bloque va igual: el bodegaje y la garantía no dependen de la sucursal.
         $this->assertStringContainsString('INFORMACIÓN IMPORTANTE', $html);
         $this->assertStringContainsString('bodegaje', $html);

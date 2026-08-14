@@ -189,16 +189,20 @@
 
     <div>
         <x-input-label for="fecha_entrega" value="Fecha de entrega (estimada)" />
+        {{-- REFERENCIA INTERNA. Al cliente no se le manda esta fecha (dueño, 14-08-2026): en
+             el correo y en la pantalla del QR va el PLAZO en días hábiles y él lo cuenta.
+             Sirve para el taller (flujo de salidas del dashboard, informe de gestión), no
+             para prometerla por teléfono. --}}
         @if ($esCreacion)
             {{-- Solo informativa: la calcula el servidor (sucursal + dias habiles);
                  el JS la muestra en vivo al elegir sucursal/fecha. --}}
             <x-text-input id="fecha_entrega" class="mt-1.5 pointer-events-none bg-neutral-50 text-neutral-500" type="date" name="fecha_entrega"
                 x-model="fechaEntrega" readonly tabindex="-1" />
-            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados).</x-input-hint>
+            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Es referencia interna: al cliente se le informa el plazo en días hábiles, no una fecha.</x-input-hint>
         @else
             <x-text-input id="fecha_entrega" class="mt-1.5" type="date" name="fecha_entrega"
                 x-model="fechaEntrega" x-on:input="entregaManual = true" />
-            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Puedes editarla.</x-input-hint>
+            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Puedes editarla. Es referencia interna: al cliente se le informa el plazo en días hábiles, no una fecha.</x-input-hint>
         @endif
         <x-input-error :messages="$errors->get('fecha_entrega')" class="mt-2" />
     </div>

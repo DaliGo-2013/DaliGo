@@ -46,13 +46,17 @@
                             {{-- Detalle --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px; color:#171717;">
                                 @php
+                                    // SIN FECHA DE ENTREGA (dueño, 14-08-2026): «no quiero que la app lo
+                                    // calcule, solo diga 15 días hábiles o 10 días, después el cliente lo
+                                    // calcula por sí solo». Si el técnico se enferma o sale de vacaciones,
+                                    // una fecha escrita es un compromiso que después trae reclamos; el
+                                    // plazo en días hábiles va abajo, en «INFORMACIÓN IMPORTANTE».
                                     $filas = [
                                         'Equipo' => $tipo,
                                         'Código' => $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : null,
                                         'N° de serie' => $orden->numero_serie,
                                         'Sucursal' => $orden->sucursal?->nombre,
                                         'Fecha de ingreso' => $orden->fecha_ingreso?->format('d-m-Y'),
-                                        'Entrega estimada' => $orden->fecha_entrega?->format('d-m-Y'),
                                         'RUT' => $orden->cliente_rut,
                                         'Teléfono' => $orden->cliente_telefono,
                                     ];
@@ -72,8 +76,8 @@
                             </table>
 
                             <p style="margin:24px 0 0; font-size:13px; color:#a3a3a3; line-height:1.5;">
-                                La fecha de entrega es estimada (días hábiles) y puede variar según el diagnóstico.
-                                Te avisaremos cuando el equipo esté listo para retirar.
+                                Te avisaremos por correo cuando el equipo esté listo para retirar; el plazo
+                                se cuenta en días hábiles y puede variar según el diagnóstico.
                             </p>
 
                             {{-- ═══ INFORMACIÓN IMPORTANTE ═══
@@ -84,9 +88,14 @@
                                  por la caja, plazo).
 
                                  EL PLAZO SALE DE LA SUCURSAL y no escrito a mano: cada una tiene el
-                                 suyo (Mirador repara, las otras mandan el equipo a Mirador y por eso
-                                 tardan más). Con un «10» fijo, el mismo correo que muestra una
-                                 entrega estimada a 15 días hábiles se contradeciría solo. --}}
+                                 suyo (Mirador repara en 10 días hábiles; Coquimbo y Abate Molina
+                                 mandan el equipo a Mirador y por eso son 15). Con un número fijo,
+                                 el correo prometería 10 días en una sucursal que tarda 15.
+
+                                 Y ES EL ÚNICO COMPROMISO DE TIEMPO QUE VIAJA: la fecha de entrega
+                                 calculada se saca (dueño, 14-08-2026) porque el técnico se enferma o
+                                 sale de vacaciones y una fecha escrita termina en reclamo. El plazo
+                                 lo cuenta el cliente. --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0; border:1px solid #e5e5e5; border-radius:8px;">
                                 <tr>
                                     <td style="padding:10px 14px; background-color:#fafafa; border-bottom:1px solid #e5e5e5; font-size:13px; font-weight:bold; color:#171717; text-align:center; letter-spacing:1px;">

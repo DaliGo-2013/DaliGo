@@ -26,10 +26,18 @@
                 <span class="text-neutral-500">Sucursal</span>
                 <span class="font-medium text-neutral-900">{{ $orden->sucursal?->nombre }}</span>
             </div>
-            <div class="flex justify-between py-1.5">
-                <span class="text-neutral-500">Entrega estimada</span>
-                <span class="font-medium text-neutral-900">{{ $orden->fecha_entrega?->format('d-m-Y') }}</span>
-            </div>
+            {{-- EL PLAZO, NO UNA FECHA (dueño, 14-08-2026): «no quiero que la app lo calcule,
+                 solo diga 15 días hábiles o 10 días, después el cliente lo calcula por sí
+                 solo». Una fecha escrita es un compromiso que el taller no siempre puede
+                 cumplir (técnico enfermo o de vacaciones) y termina en reclamo. Cada sucursal
+                 tiene su plazo: Mirador repara (10); Coquimbo y Abate Molina mandan el equipo
+                 a Mirador (15). --}}
+            @if ($orden->sucursal)
+                <div class="flex justify-between py-1.5">
+                    <span class="text-neutral-500">Plazo de reparación</span>
+                    <span class="font-medium text-neutral-900">hasta {{ $orden->sucursal->dias_reparacion }} días hábiles</span>
+                </div>
+            @endif
         </div>
 
         <p class="mt-5 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-700">

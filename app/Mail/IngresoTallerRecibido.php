@@ -38,10 +38,12 @@ class IngresoTallerRecibido extends Mailable
         return new Content(
             view: 'emails.taller.recibido',
             with: [
-                // EL PLAZO SALE DE LA SUCURSAL, no escrito a mano: cada una tiene el suyo
-                // (Mirador repara; las otras mandan el equipo a Mirador y por eso tardan más).
-                // Con un número fijo, el mismo correo que muestra la entrega estimada se
-                // contradiría solo. Sin sucursal —ingreso por ruta— no se promete plazo.
+                // EL PLAZO SALE DE LA SUCURSAL, no escrito a mano: Mirador repara en 10 días
+                // hábiles; Coquimbo y Abate Molina mandan el equipo a Mirador y por eso son 15.
+                // Es el ÚNICO compromiso de tiempo del correo: la fecha de entrega calculada
+                // ya no viaja (dueño 14-08-2026) porque una fecha prometida que el taller no
+                // cumple —técnico enfermo, de vacaciones— termina en reclamo. Sin sucursal
+                // —ingreso por ruta— no se promete nada.
                 'plazoDias' => $this->orden->sucursal?->dias_reparacion,
                 // La MISMA constante que usa el correo de retiro: un solo número para las dos
                 // cartas, así no puede prometerse una garantía al ingresar y otra al entregar.
