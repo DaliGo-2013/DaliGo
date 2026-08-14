@@ -1,61 +1,61 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-14 (v57 — QA del Bloque A OK; se ABRE el Bloque B · Logística; GO B1: Cargas reales → Simulador. B2 Conductores VIVE SOLO). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-14 (v58 — B1 EN PRODUCCIÓN; Bloque B CERRADO; EN PAUSA hasta el QA del dueño del Bloque B → luego Bloque C). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ El dueño hizo el QA del Bloque A — todo funcionando. Se ABRE el Bloque B.
+## ✅ B1 está EN PRODUCCIÓN (merge `c67d882`, doble llave 14-ago) — menú 40 → 39
 
-El Bloque A cerró en producción (menú 40; Costos + Traslados en el Listado, Informe vive
-solo). Arranca **B · Logística**. Antes de dictar crucé los permisos de las DOS
-consolidaciones en ambas direcciones (la lección del Informe). Resultado: **una consolida
-limpia, la otra vive sola.**
+Suite del Director sobre el árbol re-mergeado: **2182 verdes / 15.096 aserciones**. Conté
+el menú (11+27+1=39), da. **Re-merge por I-08**: durante mi verificación entró un drift de
+Sucursales + plazos (territorio disjunto del tuyo) → auto-merge sin conflicto, suite entera
+re-corrida. Rama borrada. **Bloque B CERRADO en un solo lote** (B2 Conductores vive solo).
 
-## 🟢 GO — B1 · «Cargas reales» pasa a pestaña del «Simulador de carga» (40 → **39**)
+Lo que quedó fino en B1:
 
-- **Permiso IDÉNTICO**: ambos bajo `simular carga` (Cargas reales calibra la misma
-  calculadora). Quien ve el Simulador ve Cargas reales → **consolidación limpia**, cero
-  riesgo de acceso. Confírmalo en tu baseline igual.
-- **Anfitrión**: Simulador de carga. Pestaña «Cargas reales» con el `<x-tab-nav>` del Lote
-  3. El Simulador ya CONSUME Cargas reales (el factor «medido en terreno») y la enlaza
-  dos veces — los links se reapuntan a la pestaña.
-- **⚠️ Reemplaza una decisión previa del código, CON conciencia**: el comentario de
-  `MenuPrincipal` (hoy L139-143) dice que Cargas reales «va como ítem aparte a propósito»
-  porque el Simulador se usa ANTES de cargar y esto se anota DESPUÉS. **El dueño decidió
-  consolidar igual** (14-ago): la pestaña no impide anotarla después — solo agrupa bajo un
-  ítem. **Actualiza ese comentario** a la nueva decisión (no lo borres sin más: explica que
-  antes vivía aparte por el momento de uso y que el dueño resolvió que ese matiz no pesa lo
-  suficiente frente a la densidad). Es el mismo estándar del QR: la decisión previa se
-  reemplaza dejando rastro del porqué.
-- **Mini-candado**: 7ª entrada en `CONSOLIDADAS` + **mútala** (quitar la ruta del `activo`
-  del anfitrión → 2 rojos → restaurar → verde).
-- **`VolverTest`**: Cargas reales era ítem; al pasar a pestaña, ajústalo por la fuente única.
-- **Ruta y permiso se CONSERVAN** — mudanza, no retiro.
+1. **Verificaste el permiso y confirmaste que era limpio POR CONSTRUCCIÓN** (las 5 rutas en
+   el mismo grupo `permission:simular carga`) — no asumiste «mismo permiso», lo mostraste.
+2. **Reescribiste el comentario del ítem-aparte dejando el rastro** (estándar del QR): la
+   nota vieja defendía el ítem separado por el momento de uso; la nueva explica que el
+   dueño resolvió que ese matiz no pesa frente a la densidad. Reemplazar con el porqué
+   escrito, no borrar. Así se pisa una decisión previa: a la vista.
+3. **Cazaste el detalle del prefijo con `Str::is`**: `admin.carga.*` no matchea
+   `admin.cargas-reales.index` (el punto corta). Tercer prefijo tramposo que atrapas
+   (traslados/bodegas, dte, ahora carga). Es un reflejo ya.
 
-## ❌ B2 · Conductores — NO se construye. Conductores VIVE SOLO (decisión del dueño 14-ago)
+## 📊 El marcador del proyecto: 47 → 39 en producción
 
-El cruce de permisos (que hice ANTES de dictar, no a mitad) dio el mismo nudo del Informe:
-`jefe_ventas` y `tecnico` administran Conductores hoy (por `manage servicio tecnico`) pero
-**NO** tienen `ver|manage vehiculos` → **no pueden entrar a Vehículos**; solo `jefe_logistica`
-y `admin` (por `manage vehiculos`) ven ambos. Conductores tiene audiencia partida entre
-servicio-técnico y logística, sin anfitrión común. El mapa F0 asumió que gatear la pestaña
-bastaba, pero el problema es LLEGAR al anfitrión, no ver la pestaña.
+Ocho lotes ejecutados (L1-L5 + A1 + A2 + B1) y **dos vive-solos decididos con evidencia**
+(Informe, Conductores) — ambos por el mismo patrón: audiencia partida entre dos dominios
+sin anfitrión común. El mapa final: **32** (Bloques C+D+E restan 7 más).
 
-**Decisión del dueño: Conductores vive solo.** No se toca. En el mapa (§5.1) su veredicto
-pasa de «integrable → Vehículos» a **vive-solo**. Es el 2º ítem (con el Informe) que el
-criterio del proyecto deja fuera por audiencia partida.
+## ⏸️ EN PAUSA — el Bloque C espera el QA del dueño del Bloque B
 
-## Consecuencia y cola
-El Bloque B es **un solo lote** (B1). Tras B1 en producción + QA del dueño, se abre el
-**Bloque C · Administración** (C1 Roles→Usuarios, C2 «Registro del sistema» 3→1). Menú
-final del mapa: **32** (no 30 — Informe y Conductores viven solos).
+Protocolo de bloques: no se abre el siguiente hasta cerrar el anterior con QA. **El dueño
+va a hacer el QA del Bloque B en el celular**:
+- El Simulador de carga con las pestañas «Simulador · Cargas reales» arriba (ambas visibles
+  a todo portador de `simular carga`).
+- Cargas reales operando igual (anotar, borrar, el factor por combinación).
+- La sidebar de Logística sin el ítem «Cargas reales» suelto.
+
+Cuando el dueño dé el visto bueno, te llega el dictado v59 abriendo el **Bloque C ·
+Administración**. Adelanto para que lo tengas en el radar (NO arranques):
+- **C1 Roles → Usuarios**: pestaña «Roles». Cruzaré `manage roles` (Roles) vs `view users`
+  (anfitrión Usuarios) en ambas direcciones ANTES de dictar — quién define roles pero no
+  ve Usuarios, y viceversa.
+- **C2 «Registro del sistema» (3→1)**: la primera consolidación de MÚLTIPLES ítems en un
+  anfitrión — Auditoría + Notificaciones + Historial de aprobaciones, cada una con su
+  permiso. Tab-nav triple (`grid-cols-3`, existe). Cruzaré los tres permisos igual.
+
+Hasta el dictado v59: **pausa, no arranques**.
 
 ## Estado
-- **Max-2** en pausa. **Marcos y el PR #9** activos (main creció: servicios terreno,
-  autorización de citas, jefe_logistica/jefe_despacho nuevos). Re-fetch religioso.
+- **Max-2** en pausa (dictado v24: sin lote seguro; retoma con ronda 2 de Luis o dos-manos).
+- **Marcos y el PR #9** muy activos (el drift de hoy: Sucursales, plazos, cierres de
+  agenda). Re-fetch religioso al reanudar.
 
-## Recordatorios
-Rama nueva desde main FRESCO (`589754a` o posterior — re-fetch); suite COMPLETA de main
-fresco ANTES de empezar; candado mutado; parte al buzón. **Cruce de permisos en ambas
-direcciones ANTES de consolidar** — ya nos ahorró romper el Informe y Conductores.
+## Recordatorios (para el Bloque C)
+Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar; **cruce de
+permisos en ambas direcciones ANTES de consolidar**; candado mutado; parte al buzón.
+Baseline del Director: **2182 / 15.096** en `c67d882` (y subiendo — re-fetch).
 
-CIERRE: parte a docs/fleet/buzon/partes/. B1 Cargas reales → doble llave → QA → Bloque C.
+CIERRE: Bloques A y B cerrados (47→39). Espera el QA del dueño → Bloque C. Buen ritmo.

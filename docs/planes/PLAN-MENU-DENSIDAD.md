@@ -116,12 +116,16 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       Nota: 1 rojo de ENTORNO durante la verificación (AutorizacionCitaTest del PR #9, ajeno;
       vendor `symfony/error-handler` incompleto → `composer reinstall` lo curó; CI de main verde
       lo confirmó). 4ª incidencia de entorno de la semana.
+- [x] **Bloque B · B1 EN PRODUCCIÓN (14-ago, `c67d882`)**: «Cargas reales» pasa a pestaña
+      del Simulador. Permiso IDÉNTICO por construcción (grupo `permission:simular carga`) —
+      sin nudo. Comentario del ítem-aparte reescrito dejando rastro (estándar del QR).
+      Re-merge tras drift (Sucursales+plazos, territorio disjunto). Suite 2182/15.096.
+      **Menú 40 → 39.** Con B2 Conductores vive solo, el **Bloque B queda CERRADO en un lote**.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 40** (L1-L5 + A1 + A2 hechos; falta
-      A3 Informe para cerrar el Bloque A; los bloques B-E, a 31 — §4.1). **Bloque A CERRADO:
-      el Informe VIVE SOLO (decisión del dueño 14-ago, 2º nudo de permisos — §4.1). Pausa
-      hasta el QA del dueño del Bloque A → luego Bloque B.**
+      lote — la densidad ganada se ve en un número. **Hoy: 39** (Bloques A y B cerrados; falta
+      C, D, E). **Bloques A y B CERRADOS; Informe y Conductores viven solos. Pausa hasta el
+      QA del dueño del Bloque B → luego Bloque C (Roles→Usuarios + Registro del sistema 3→1).**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
@@ -142,7 +146,7 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 |---|---|---|---|
 | (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
 | **A · Servicio Técnico** ✅ CERRADA (14-ago) | ✅A1 Costos (`0e9feaa`) · ✅A2 Traslados (`6a35329`) · ❌A3 Informe → **VIVE SOLO** (decisión del dueño 14-ago) | **−2** | A1 y A2 en producción. El Informe NO se consolida: su audiencia cruza dos dominios sin anfitrión común (ver «SEGUNDO NUDO» abajo). Bloque cierra en menú 40 |
-| **B · Logística** (ABIERTA 14-ago) | B1 Cargas reales→Simulador (pestaña) · B2 Conductores → **VIVE SOLO** | **−1** | B1 consolida (mismo permiso; decisión del dueño 14-ago: reemplaza la nota vieja del código «va aparte»). B2 Conductores NO se consolida: mismo nudo del Informe (jefe_ventas/tecnico ven Conductores pero no entran a Vehículos) → vive solo (decisión del dueño) |
+| **B · Logística** ✅ CERRADA (14-ago) | ✅B1 Cargas reales→Simulador (`c67d882`) · B2 Conductores → **VIVE SOLO** | **−1** | B1 en producción (pestaña; permiso idéntico; nota vieja del código reescrita con rastro). B2 Conductores no se consolida: mismo nudo del Informe → vive solo. Bloque cierra en menú 39 |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
 | **E · Cierre (SOLA)** | E1 Configuración de producción (Máquinas·Tipos·Recetas·Moldes 4→1) | −3 | la mayor densidad y más riesgo; **aquí se salda la deuda del `<x-tab-nav>`** (4ª pestaña) |
