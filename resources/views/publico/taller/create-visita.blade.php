@@ -43,9 +43,10 @@
               url: @js(route('visita-industrial.disponibilidad')),
               estado: null, tramo: null, cerrado: null, parcial: null,
               proximo: null, proximoIso: null, dias: 0,
+              hora: @js(old('hora_preferida', '')), horarios: [], horarioLabel: '',
 
               async revisar() {
-                  if (! this.fecha) { this.estado = null; return; }
+                  if (! this.fecha) { this.estado = null; this.horarios = []; return; }
                   this.estado = 'consultando';
                   try {
                       const r = await fetch(`${this.url}?fecha=${encodeURIComponent(this.fecha)}`,
@@ -58,6 +59,12 @@
                       this.parcial = d.etiqueta_parcial;
                       this.proximo = d.etiqueta_proximo;
                       this.proximoIso = d.proximo_libre;
+                      this.horarios = d.horarios || [];
+                      this.horarioLabel = d.horario_label || '';
+                      // Si la hora que tenía elegida no está en el día nuevo (cambió de día
+                      // de la semana, o el día pasó a media jornada), se limpia en vez de
+                      // quedar mostrando una hora que el servidor va a rechazar.
+                      if (this.hora && ! this.horarios.includes(this.hora)) this.hora = '';
                       // El servidor manda el estado; el cartel no lo deduce. Si mañana
                       // aparece uno nuevo (media jornada), acá no hay nada que adivinar.
                       this.estado = d.estado;
@@ -188,13 +195,44 @@
 
                 <x-input-error :messages="$errors->get('fecha_preferida')" class="mt-2" />
             </div>
-            <div>
-                <x-input-label for="disponibilidad" value="¿Cuándo puedes y cuándo no? (opcional)" />
-                <x-textarea id="disponibilidad" name="disponibilidad" rows="3" class="mt-1.5" maxlength="1000"
-                    placeholder="Ej. Fines de semana no; ir después de las 15 h; el taller cierra a las 18 h; avisar antes de llegar.">{{ old('disponibilidad') }}</x-textarea>
-                <x-input-hint>Cuéntanos tus horarios o restricciones para que coordinemos la visita a tu medida.</x-input-hint>
-                <x-input-error :messages="$errors->get('disponibilidad')" class="mt-2" />
+            {{-- LA HORA, ELEGIDA DE UNA LISTA (pedido del dueño 14-08: «quitar el apartado de
+                 cuándo puedes y cuándo no, sino agregar un horario de trabajo… el cliente
+                 pincha y elige el horario»).
+
+                 Reemplazó a un campo de texto libre donde el cliente escribía «fines de semana
+                 no, después de las 15, avisar antes de llegar»: había que leerlo y traducirlo a
+                 mano en cada llamada. Una hora elegida se cruza con la agenda.
+
+                 Las horas las manda el SERVIDOR junto con la disponibilidad del día: cambian
+                 según el día de la semana (lunes y martes hasta 17:30, miércoles a viernes
+                 hasta 16:30) y se recortan si ese día es de media jornada. Una tabla de horas
+                 copiada acá se desincronizaría con la regla el primer día que cambie. --}}
+            <div x-show="horarios.length > 0" x-cloak>
+                <x-input-label for="hora_preferida" value="¿A qué hora te acomoda? (opcional)" />
+                {{-- El componente y no un `<select>` a mano: el estilo de los desplegables está
+                     resuelto en un solo lugar y un select suelto se ve distinto al de arriba. --}}
+                <x-select id="hora_preferida" name="hora_preferida" class="mt-1.5" x-model="hora">
+                    <option value="">— La que se pueda —</option>
+                    <template x-for="h in horarios" :key="h">
+                        <option :value="h" x-text="h"></option>
+                    </template>
+                </x-select>
+                <x-input-hint>
+                    <span x-text="`Ese día atendemos de ${horarioLabel}.`"></span>
+                    Es la hora de llegada del técnico; la confirmamos al coordinar.
+                </x-input-hint>
+                <x-input-error :messages="$errors->get('hora_preferida')" class="mt-2" />
             </div>
+
+            {{-- Sin fecha elegida no se puede saber el horario (depende del día de la semana),
+                 así que en vez de una lista vacía se dice el horario de la semana. --}}
+            <template x-if="! fecha">
+                <p class="text-sm text-neutral-500">
+                    Atendemos de <span class="font-medium text-neutral-700">lunes y martes de 08:00 a 17:30</span>
+                    y <span class="font-medium text-neutral-700">miércoles a viernes de 08:00 a 16:30</span>.
+                    Elige un día y podrás elegir la hora.
+                </p>
+            </template>
         </x-seccion>
 
         {{-- Tus datos --}}
