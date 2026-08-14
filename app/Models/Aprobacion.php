@@ -45,6 +45,19 @@ class Aprobacion extends Model implements AuditableContract
     public const ACCION_DEVOLUCION_REEMBOLSO = 'devoluciones.reembolso';
 
     /**
+     * Cita de terreno que fija un VENDEDOR (mantención, reparación o instalación).
+     *
+     * Pedido del dueño (13-08-2026): «cuando un vendedor fije una cita con un cliente por
+     * mantención, reparación o instalación le tiene que llegar una notificación al jefe de
+     * ventas para autorizar eso, que él siempre esté al tanto de lo que hacen sus vendedores».
+     *
+     * SIN UMBRAL: no hay magnitud que medir —una cita no tiene monto— así que la regla matchea
+     * siempre y toda cita de vendedor espera el visto bueno. El jefe de ventas agendando NO se
+     * auto-solicita nada: el motor exime a quien porta el rol aprobador.
+     */
+    public const ACCION_AGENDA_CITA = 'terreno.cita';
+
+    /**
      * Catálogo de tipos de acción => etiqueta legible (patrón
      * Notificacion::EVENTOS). Los consumidores futuros (M04/M05/M07)
      * agregan aquí su tipo al integrarse, junto con su handler en
@@ -53,6 +66,7 @@ class Aprobacion extends Model implements AuditableContract
     public const TIPOS_ACCION = [
         self::ACCION_AJUSTE_REPORTE => 'Ajuste de reporte de producción',
         self::ACCION_DEVOLUCION_REEMBOLSO => 'Reembolso de devolución',
+        self::ACCION_AGENDA_CITA => 'Cita de terreno fijada por un vendedor',
     ];
 
     /**

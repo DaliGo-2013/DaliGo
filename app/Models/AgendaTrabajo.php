@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Mail\AgendaTrabajoAviso;
 use Database\Factories\AgendaTrabajoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -37,6 +39,36 @@ class AgendaTrabajo extends Model implements AuditableContract
      * de la visita, hablando con el cliente.
      */
     public const TIPO_PUBLICO = 'visita_tecnica';
+
+    /**
+     * Los tipos de cita que el JEFE DE VENTAS tiene que autorizar cuando las fija un vendedor
+     * (dueño, 13-08-2026: «cuando un vendedor fije una cita con un cliente por mantención,
+     * reparación o instalación… que él siempre esté al tanto de lo que hacen sus vendedores»).
+     *
+     * La VISITA TÉCNICA queda afuera a propósito: es la que pide el cliente por el QR y el
+     * vendedor solo la coordina — no es un compromiso que el vendedor decida por su cuenta.
+     */
+    public const TIPOS_QUE_AUTORIZA_JEFATURA = ['mantencion', 'reparacion', 'instalacion'];
+
+    /**
+     * La solicitud de autorización que esta cita tiene ESPERANDO, si tiene alguna.
+     *
+     * Existe para que la agenda pueda decir «esperando autorización» en vez de mostrar la cita
+     * como una solicitud más del cliente: la fila vive en el bloque «Por coordinar» —está
+     * 'solicitado' y sin fecha— pero no la pidió ningún cliente, la fijó un vendedor.
+     */
+    public function aprobacionPendiente(): \Illuminate\Database\Eloquent\Relations\MorphOne
+    {
+        return $this->morphOne(Aprobacion::class, 'aprobable')
+            ->where('tipo_accion', Aprobacion::ACCION_AGENDA_CITA)
+            ->where('estado', Aprobacion::ESTADO_PENDIENTE);
+    }
+
+    /** ¿Esta cita está esperando el visto bueno del jefe de ventas? */
+    public function esperandoAutorizacion(): bool
+    {
+        return $this->aprobacionPendiente()->exists();
+    }
 
     public const TIPO_ETIQUETAS = [
         'visita_tecnica' => 'Visita técnica',
@@ -479,6 +511,37 @@ class AgendaTrabajo extends Model implements AuditableContract
      * día, pedirle confirmar sería redundante (doble confirmación). Solo se pide
      * cuando la fecha agendada DIFIERE de la que pidió (o no indicó ninguna).
      */
+    /**
+     * Avisa al cliente por correo de su cita (agendada / movida / anulada).
+     *
+     * VIVE EN EL MODELO y no en el controlador porque hay DOS caminos que llegan acá: el
+     * vendedor que agenda, y el jefe de ventas que AUTORIZA una cita días después (ver
+     * `Acciones\CitaTerreno`). Con el aviso en el controlador, la cita autorizada por el
+     * camino diferido salía sin avisarle a nadie — el cliente se enteraba por teléfono o no
+     * se enteraba.
+     *
+     * El try/catch es a propósito: un correo que falla no puede tumbar ni el agendamiento ni
+     * la transacción de la aprobación.
+     */
+    public function avisarAlCliente(string $motivo): void
+    {
+        try {
+            if ($motivo !== 'anulada') {
+                // Solo se le pide CONFIRMAR si la fecha agendada difiere de la que pidió (si
+                // la respetamos, ya la eligió → correo informativo sin botón).
+                if ($this->requiereConfirmacionCliente()) {
+                    $this->prepararConfirmacionCliente();
+                } else {
+                    $this->marcarAvisoSinConfirmacion();
+                }
+            }
+
+            Mail::to($this->cliente_email)->send(new AgendaTrabajoAviso($this, $motivo));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     public function requiereConfirmacionCliente(): bool
     {
         if (! $this->fecha) {

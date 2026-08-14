@@ -10,6 +10,7 @@ use App\Models\ProduccionReporte;
 use App\Models\ReglaAprobacion;
 use App\Models\User;
 use App\Services\Aprobaciones\Acciones\AjusteReporteProduccion;
+use App\Services\Aprobaciones\Acciones\CitaTerreno;
 use App\Services\Aprobaciones\Acciones\ReembolsoDevolucion;
 use App\Services\Notificaciones\NotificacionDispatcher;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -43,6 +44,7 @@ class Aprobaciones
     public const HANDLERS = [
         Aprobacion::ACCION_AJUSTE_REPORTE => AjusteReporteProduccion::class,
         Aprobacion::ACCION_DEVOLUCION_REEMBOLSO => ReembolsoDevolucion::class,
+        Aprobacion::ACCION_AGENDA_CITA => CitaTerreno::class,
     ];
 
     /**

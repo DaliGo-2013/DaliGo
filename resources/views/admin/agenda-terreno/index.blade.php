@@ -73,6 +73,18 @@
                                                 <x-icon.check class="h-3 w-3" /> en catálogo
                                             </span>
                                         @endif
+                                        {{-- ESTA NO LA PIDIÓ EL CLIENTE: la fijó un vendedor y
+                                             espera el visto bueno del jefe de ventas. Vive en
+                                             este bloque porque está 'solicitado' y sin fecha,
+                                             pero sin decirlo se lee como un pedido del cliente
+                                             y alguien intentaría «coordinarla» sin saber que la
+                                             fecha ya está pedida y esperando. --}}
+                                        @if ($s->esperandoAutorizacion())
+                                            <span class="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800"
+                                                  title="La fijó un vendedor; el jefe de ventas la tiene que autorizar antes de que ocupe la agenda">
+                                                esperando autorización
+                                            </span>
+                                        @endif
                                     </div>
                                     <p class="truncate text-sm text-neutral-600">
                                         {{ collect([$s->servicio?->nombre, $s->direccion, $s->ciudad])->filter()->implode(' · ') }}
