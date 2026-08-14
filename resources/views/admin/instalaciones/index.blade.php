@@ -105,6 +105,19 @@
             </div>
         @endif
 
+        {{-- Excel para compartir (pedido del técnico industrial, 13-08): el detalle
+             mes por mes de sus trabajos, que es con lo que le pagan las horas
+             extras. Baja EXACTAMENTE lo que se está viendo —los mismos filtros de
+             búsqueda, categoría y período— y completo, sin la paginación de 25.
+             Por eso el enlace lleva los filtros vigentes y no la ruta pelada. --}}
+        <div class="flex justify-end">
+            <a href="{{ route('admin.instalaciones.excel', array_filter($filtros)) }}"
+               class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99]">
+                <x-icon.document-text class="h-4 w-4" />
+                Descargar Excel
+            </a>
+        </div>
+
         <x-list-card title="Instalaciones" :count="$instalaciones->total()" :countLabel="$instalaciones->total() === 1 ? 'instalación' : 'instalaciones'">
             @php $mesSep = null; @endphp
             @forelse ($instalaciones as $ins)

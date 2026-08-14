@@ -365,6 +365,11 @@ Route::middleware('auth')
         Route::middleware('permission:gestionar instalaciones')->group(function () {
             Route::get('instalaciones/buscar-cliente', [InstalacionController::class, 'buscarCliente'])
                 ->name('instalaciones.buscar-cliente');
+            // Excel del registro (respaldo de las horas extras del tecnico).
+            // TAMBIEN antes del resource, por lo mismo que buscar-cliente: si va
+            // despues, 'excel' entra como {instalacion} y da un 404 de modelo.
+            Route::get('instalaciones/excel', [InstalacionController::class, 'excel'])
+                ->name('instalaciones.excel');
             Route::resource('instalaciones', InstalacionController::class)
                 ->parameters(['instalaciones' => 'instalacion'])
                 ->except(['show']);

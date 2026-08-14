@@ -7,12 +7,14 @@ use App\Models\Cliente;
 use App\Models\Instalacion;
 use App\Models\Producto;
 use App\Rules\RutChileno;
+use App\Services\ServicioTecnico\InstalacionesExcel;
 use App\Support\FechaNegocio;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -107,12 +109,71 @@ class InstalacionController extends Controller
         ]));
     }
 
+    /**
+     * El registro como Excel para compartir. Pedido del tecnico industrial
+     * (13-08-2026): el detalle mes por mes de sus trabajos, porque con eso le
+     * pagan las horas extras — de ahi que el archivo traiga una hoja que suma los
+     * DIAS por mes y no solo la lista.
+     *
+     * Baja lo MISMO que se esta viendo (reusa consulta(), con sus filtros de
+     * busqueda, categoria y periodo) pero COMPLETO: el listado pagina de 25 en 25
+     * y un respaldo de pago cortado en la primera pagina seria una liquidacion
+     * incompleta.
+     */
+    public function excel(Request $request): Response
+    {
+        $instalaciones = $this->consulta($request)
+            ->orderBy('fecha')->orderBy('id')
+            ->get();
+
+        $periodo = $this->periodoLabel($request);
+
+        return response((new InstalacionesExcel)->generar($instalaciones, $periodo), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.InstalacionesExcel::nombreArchivo($periodo).'"',
+        ]);
+    }
+
     // --- Helpers --------------------------------------------------------
+
+    /**
+     * Rotulo del periodo que se esta viendo, para el nombre del archivo y su
+     * linea de resumen: «Julio 2026», «Año 2026» o todo el registro.
+     */
+    private function periodoLabel(Request $request): string
+    {
+        $anio = $request->filled('anio') ? (int) $request->input('anio') : null;
+        $mes = $request->filled('mes') ? (int) $request->input('mes') : null;
+
+        if ($anio === null) {
+            return 'Registro completo';
+        }
+
+        return $mes
+            ? ucfirst(Carbon::create($anio, $mes, 1)->locale('es')->translatedFormat('F Y'))
+            : 'Año '.$anio;
+    }
 
     /**
      * @return LengthAwarePaginator<Instalacion>
      */
     private function filtradas(Request $request): LengthAwarePaginator
+    {
+        return $this->consulta($request)
+            ->latest('fecha')->latest('id')
+            ->paginate(25)
+            ->withQueryString();
+    }
+
+    /**
+     * El listado con sus filtros (busqueda, categoria, periodo) SIN ordenar ni
+     * paginar. Vive aparte de filtradas() porque el Excel exporta EXACTAMENTE lo
+     * que se esta viendo: con el criterio escrito dos veces, el archivo diria una
+     * cosa distinta que la pantalla el dia que uno de los dos cambie.
+     *
+     * @return Builder<Instalacion>
+     */
+    private function consulta(Request $request): Builder
     {
         $f = $request->validate([
             'q' => ['nullable', 'string', 'max:191'],
@@ -143,10 +204,7 @@ class InstalacionController extends Controller
                 $hasta = $mes ? $desde->copy()->endOfMonth() : $desde->copy()->endOfYear();
                 $b->whereDate('fecha', '>=', $desde->toDateString())
                     ->whereDate('fecha', '<=', $hasta->toDateString());
-            })
-            ->latest('fecha')->latest('id')
-            ->paginate(25)
-            ->withQueryString();
+            });
     }
 
     /**
