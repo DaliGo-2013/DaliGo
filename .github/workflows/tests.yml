@@ -26,6 +26,15 @@ jobs:
       # objeto disponible; el checkout sigue siendo por $SHA para fijar el commit
       # exacto que disparo el run. Probar el MERGE y no la punta de la rama es lo
       # correcto: una rama vieja pasa verde por su cuenta y rompe main igual.
+      #
+      # PERO EN UN PR ESE $SHA ES EFIMERO (visto el 14-08-2026, PR #15: tres runs
+      # seguidos muertos en `fatal: unable to read tree`). GitHub RECALCULA el
+      # commit de merge cada tanto —aunque la base no se mueva— y el anterior deja
+      # de ser alcanzable, asi que el $SHA del payload puede estar muerto ya cuando
+      # el runner clona. El `fetch` de arriba igual trae el merge VIGENTE, asi que
+      # se prueba ese con un aviso ruidoso en vez de fallar: es el mismo arbol
+      # (misma rama, misma base), y un rojo de infra que no dice nada del codigo
+      # entrena a la gente a mergear sin CI, que es lo que este workflow evita.
       - name: Clonar el repo
         env:
           GH_TOKEN: ${{ github.token }}
@@ -39,7 +48,10 @@ jobs:
             echo "::error::No se pudo traer ${REF}. En un PR esto casi siempre significa que tiene CONFLICTOS con la base: GitHub no genera refs/pull/N/merge hasta que se resuelvan."
             exit 1
           }
-          git checkout "$SHA"
+          git checkout "$SHA" 2>/dev/null || {
+            echo "::warning::El commit de merge del payload ($SHA) ya no existe (GitHub lo recalculo). Se prueba el merge VIGENTE del PR: $(git rev-parse refs/ci/objetivo)."
+            git checkout refs/ci/objetivo
+          }
           git log -1 --oneline
 
       - name: Suite
