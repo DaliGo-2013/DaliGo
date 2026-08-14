@@ -106,12 +106,6 @@
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos a los que el técnico fue y no se pudieron hacer (faltó un repuesto, el cliente no quiso…), con el motivo que escribió al cerrar. Clic en el número para ver la lista y decidir si se vuelve.</x-info-tip></span>
                 </div>
                 <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-                    <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Visitas técnicas</p>
-                    <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($visitas, 0, ',', '.') }}</p>
-                    <p class="text-xs text-neutral-400">{{ $pctVisitas }}% del período · {{ $visitasRealizadas }} realizadas</p>
-                    <span class="absolute right-2 top-2"><x-info-tip>Visitas técnicas (diagnóstico + cotización) del período y su % del total. La conversión visita → trabajo derivado se medirá cuando enlacemos ambos.</x-info-tip></span>
-                </div>
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos usados</p>
                     <p class="mt-1 text-2xl font-semibold text-brand-600">{{ number_format($totalUnidadesRepuestos, 0, ',', '.') }}</p>
                     <p class="text-xs text-neutral-400">unidades</p>
@@ -121,6 +115,39 @@
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos distintos</p>
                     <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($totalNombresRepuestos, 0, ',', '.') }}</p>
                     <span class="absolute right-2 top-2"><x-info-tip>Cantidad de repuestos distintos usados en el período.</x-info-tip></span>
+                </div>
+            </div>
+
+            {{-- POR TIPO DE TRABAJO, una tarjeta cada uno (dueño 14-08-2026): antes
+                 solo existía la de «Visitas técnicas» y los otros tres tipos había
+                 que leerlos del ranking de más abajo.
+
+                 Van en su PROPIA fila y no sumadas a la grilla de arriba: esa mide
+                 el ESTADO de los trabajos (hechos, pendientes, no realizados) y esta
+                 mide de QUÉ son. Diez tarjetas seguidas se leen como una pared;
+                 cuatro, agrupadas y rotuladas, se leen de un vistazo.
+
+                 Siempre las cuatro, incluso en 0: que un mes no haya reparaciones es
+                 información, y una tarjeta ausente se lee como «esto no se mide». --}}
+            <div>
+                <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de trabajo</h3>
+                <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    @foreach ($tiposResumen as $t)
+                        <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+                            <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $t['label'] }}</p>
+                            <p class="mt-1 text-2xl font-semibold {{ $t['total'] > 0 ? 'text-neutral-900' : 'text-neutral-300' }}">{{ number_format($t['total'], 0, ',', '.') }}</p>
+                            <p class="text-xs text-neutral-400">{{ $t['pct'] }}% del período · {{ $t['realizados'] }} {{ $t['realizados'] === 1 ? 'realizado' : 'realizados' }}</p>
+                            <span class="absolute right-2 top-2">
+                                <x-info-tip>
+                                    @if ($t['tipo'] === 'visita_tecnica')
+                                        Visitas de revisión: el técnico va, estudia qué hay que hacer y con eso ventas cotiza el trabajo. Es la primera visita, no el trabajo.
+                                    @else
+                                        Trabajos de {{ mb_strtolower($t['label']) }} con fecha en el período, y cuántos ya se realizaron.
+                                    @endif
+                                </x-info-tip>
+                            </span>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 

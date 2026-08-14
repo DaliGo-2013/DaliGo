@@ -273,14 +273,42 @@ class ServicioTecnicoController extends Controller
             ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
             ->orderByDesc('fecha')->get();
 
-        // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.
-        $visitas = $base()->where('tipo', 'visita_tecnica')->count();
-        $visitasRealizadas = $base()->where('tipo', 'visita_tecnica')->where('estado', 'realizado')->count();
-        $pctVisitas = $total > 0 ? (int) round($visitas / $total * 100) : 0;
+        // DESGLOSE POR TIPO DE TRABAJO, en UNA consulta que alimenta las DOS
+        // superficies: las tarjetas por tipo y el ranking «por tipo de trabajo».
+        // Antes eran TRES consultas para el mismo agrupamiento —dos dedicadas solo a
+        // la visita técnica y una para el ranking—, y la de las visitas era la única
+        // que además contaba realizados.
+        //
+        // SUM(CASE WHEN…) y no un `having`: es portable entre MySQL 5.7 y SQLite, y
+        // trae el total y los realizados en la misma pasada.
+        $conteoPorTipo = $base()
+            ->selectRaw("tipo, COUNT(*) AS total, SUM(CASE WHEN estado = 'realizado' THEN 1 ELSE 0 END) AS realizados")
+            ->groupBy('tipo')
+            ->get()
+            ->keyBy('tipo');
 
-        $porTipo = $base()
-            ->selectRaw('tipo AS nombre, COUNT(*) AS cantidad')
-            ->groupBy('tipo')->orderByDesc('cantidad')->get();
+        // Las tarjetas: SIEMPRE LAS CUATRO y en el orden del catálogo (pedido del
+        // dueño 14-08, que antes solo tenía la de visitas técnicas). Un tipo sin
+        // trabajos muestra 0 en vez de desaparecer: que un mes no haya reparaciones
+        // es información, y una tarjeta ausente se lee como «esto no se mide».
+        $tiposResumen = collect(AgendaTrabajo::TIPOS)->map(function (string $tipo) use ($conteoPorTipo, $total) {
+            $n = (int) ($conteoPorTipo[$tipo]->total ?? 0);
+
+            return [
+                'tipo' => $tipo,
+                'label' => AgendaTrabajo::TIPO_ETIQUETAS[$tipo] ?? $tipo,
+                'total' => $n,
+                'realizados' => (int) ($conteoPorTipo[$tipo]->realizados ?? 0),
+                'pct' => $total > 0 ? (int) round($n / $total * 100) : 0,
+            ];
+        })->values();
+
+        // El ranking sale del MISMO conteo (no de una consulta propia), ordenado por
+        // cantidad. Conserva las claves nombre/cantidad que espera `_ranking`.
+        $porTipo = $conteoPorTipo
+            ->map(fn ($r) => (object) ['nombre' => $r->tipo, 'cantidad' => (int) $r->total])
+            ->sortByDesc('cantidad')
+            ->values();
 
         // Clientes que más solicitan servicio industrial. Agrupa por RUT cuando
         // existe; si no, por nombre — el criterio vive en el MODELO porque el
@@ -359,9 +387,10 @@ class ServicioTecnicoController extends Controller
             'pctPendientes' => $pctPendientes,
             'realizadosLista' => $realizadosLista,
             'pendientesLista' => $pendientesLista,
-            'visitas' => $visitas,
-            'visitasRealizadas' => $visitasRealizadas,
-            'pctVisitas' => $pctVisitas,
+            // Reemplaza a 'visitas'/'visitasRealizadas'/'pctVisitas': el mismo dato
+            // para los cuatro tipos, en una sola estructura. Tres variables sueltas
+            // para UN tipo no se podían generalizar sin multiplicarlas por cuatro.
+            'tiposResumen' => $tiposResumen,
             'porTipo' => $porTipo,
             'topServicios' => $topServicios,
             'topClientes' => $topClientes,

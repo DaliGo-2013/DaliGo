@@ -204,16 +204,91 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
             });
     }
 
-    public function test_visitas_tecnicas_cuenta_y_porcentaje(): void
+    /**
+     * UNA TARJETA POR TIPO DE TRABAJO (dueño 14-08-2026). Reemplaza al test que
+     * asertaba `visitas`/`visitasRealizadas`/`pctVisitas`: esas tres variables
+     * medían UN tipo y no se podían generalizar sin multiplicarlas por cuatro, así
+     * que se unificaron en `tiposResumen`.
+     */
+    public function test_cada_tipo_de_trabajo_trae_su_conteo_y_su_porcentaje(): void
     {
         AgendaTrabajo::factory()->count(2)->create(['fecha' => '2026-07-10', 'tipo' => 'visita_tecnica', 'estado' => 'realizado']);
         AgendaTrabajo::factory()->count(2)->create(['fecha' => '2026-07-11', 'tipo' => 'mantencion', 'estado' => 'agendado']);
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-12', 'tipo' => 'reparacion', 'estado' => 'realizado']);
 
-        $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+        $resumen = $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
             ->assertOk()
-            ->assertViewHas('visitas', 2)
-            ->assertViewHas('visitasRealizadas', 2)
-            ->assertViewHas('pctVisitas', 50);
+            ->viewData('tiposResumen')
+            ->keyBy('tipo');
+
+        $this->assertSame(2, $resumen['visita_tecnica']['total']);
+        $this->assertSame(2, $resumen['visita_tecnica']['realizados']);
+        $this->assertSame(40, $resumen['visita_tecnica']['pct']);   // 2 de 5
+
+        $this->assertSame(2, $resumen['mantencion']['total']);
+        $this->assertSame(0, $resumen['mantencion']['realizados'], 'Agendado no es realizado.');
+
+        $this->assertSame(1, $resumen['reparacion']['total']);
+        $this->assertSame(1, $resumen['reparacion']['realizados']);
+    }
+
+    /**
+     * LOS CUATRO TIPOS SIEMPRE, incluso en 0. Que un mes no haya reparaciones es
+     * información; una tarjeta ausente se lee como «esto no se mide» y manda a
+     * alguien a buscar el dato a otra parte.
+     */
+    public function test_un_tipo_sin_trabajos_igual_muestra_su_tarjeta_en_cero(): void
+    {
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-10', 'tipo' => 'mantencion', 'estado' => 'realizado']);
+
+        $respuesta = $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk();
+
+        $resumen = $respuesta->viewData('tiposResumen');
+
+        // Las cuatro, y en el orden del catálogo (la visita técnica primero).
+        $this->assertSame(AgendaTrabajo::TIPOS, $resumen->pluck('tipo')->all());
+
+        $enCero = $resumen->keyBy('tipo')['instalacion'];
+        $this->assertSame(0, $enCero['total']);
+        $this->assertSame(0, $enCero['pct']);
+
+        // Y se ven en la pantalla, con su rótulo legible (no el valor crudo).
+        $html = $respuesta->getContent();
+        foreach (['Visita técnica', 'Mantención', 'Reparación', 'Instalación'] as $etiqueta) {
+            $this->assertStringContainsString($etiqueta, $html, "Falta la tarjeta de {$etiqueta}.");
+        }
+    }
+
+    /**
+     * El ranking «por tipo» y las tarjetas salen del MISMO conteo: si se separan,
+     * la página muestra dos números distintos para lo mismo y ninguno de los dos
+     * queda desmentido por el otro a la vista.
+     */
+    public function test_las_tarjetas_y_el_ranking_por_tipo_no_pueden_discrepar(): void
+    {
+        AgendaTrabajo::factory()->count(3)->create(['fecha' => '2026-07-10', 'tipo' => 'instalacion', 'estado' => 'realizado']);
+        AgendaTrabajo::factory()->create(['fecha' => '2026-07-11', 'tipo' => 'reparacion', 'estado' => 'agendado']);
+
+        $respuesta = $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk();
+
+        $tarjetas = $respuesta->viewData('tiposResumen')->keyBy('tipo');
+        $ranking = collect($respuesta->viewData('porTipo'))->keyBy('nombre');
+
+        foreach ($ranking as $tipo => $fila) {
+            $this->assertSame(
+                $tarjetas[$tipo]['total'],
+                (int) $fila->cantidad,
+                "La tarjeta y el ranking discrepan en {$tipo}."
+            );
+        }
+
+        // El ranking va ordenado por cantidad (la instalación, con 3, primero).
+        $this->assertSame('instalacion', collect($respuesta->viewData('porTipo'))->first()->nombre);
     }
 
     // --- Detalle cliqueable de Realizados / Pendientes ---

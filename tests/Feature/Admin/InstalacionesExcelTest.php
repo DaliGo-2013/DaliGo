@@ -241,4 +241,50 @@ class InstalacionesExcelTest extends TestCase
         $this->assertStringContainsString('Julio 2026', $hoja);
         $this->assertStringContainsString('2 días trabajados', $hoja);
     }
+
+    // --- El botón de descarga aparece UNA vez ---------------------------------
+
+    /**
+     * EL BOTÓN DE EXCEL APARECE EXACTAMENTE UNA VEZ, en los tres estados de la
+     * pantalla. Desde el 14-08 (dueño) se ubica en DOS lugares según lo que se esté
+     * viendo —junto a las tarjetas de año, para no gastar una fila entera, y suelto
+     * abajo cuando esa línea no existe—, y las dos ubicaciones se excluyen con
+     * condiciones negadas entre sí.
+     *
+     * Ese es exactamente el arreglo que se rompe en silencio: si las condiciones
+     * dejan de ser complementarias, o salen DOS botones (y quien mira no sabe cuál
+     * apretar) o NINGUNO (y la descarga se vuelve inalcanzable sin que nada falle).
+     * Se cuenta la RUTA, que es lo único de la página que no puede aparecer por otro
+     * motivo.
+     */
+    public function test_el_boton_de_excel_aparece_una_sola_vez_en_los_tres_estados(): void
+    {
+        $tecnico = $this->tecnico();
+        $ruta = route('admin.instalaciones.excel');
+
+        // 1) Sin historial todavía: no hay tarjetas de año donde ponerlo.
+        $html = $this->actingAs($tecnico)->get(route('admin.instalaciones.index'))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, $ruta), 'Sin historial el botón tiene que salir una vez.');
+
+        // 2) Con historial y sin año abierto: va en la línea de las tarjetas de año.
+        $this->instalacion();
+        $html = $this->actingAs($tecnico)->get(route('admin.instalaciones.index'))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, $ruta), 'Con tarjetas de año el botón tiene que salir una vez.');
+
+        // Y va DENTRO del bloque del historial, ANTES del listado: si quedara
+        // después seguiría siendo una fila propia y no se habría ahorrado nada.
+        $posBoton = strpos($html, $ruta);
+        $posListado = strpos($html, 'Registro de instalaciones y puestas en marcha');
+        $this->assertNotFalse($posListado, 'No se encontró el ancla del listado.');
+        $this->assertGreaterThan(
+            $posListado,
+            $posBoton,
+            'El botón no está en el bloque del historial.'
+        );
+
+        // 3) Con un año abierto: arriba hay doce tarjetas de mes y el botón vuelve abajo.
+        $html = $this->actingAs($tecnico)
+            ->get(route('admin.instalaciones.index', ['anio' => 2026]))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, $ruta), 'Con un año abierto el botón tiene que salir una vez.');
+    }
 }
