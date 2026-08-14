@@ -154,6 +154,47 @@ class CorreosAlClienteSinAccesoTest extends TestCase
     }
 
     /**
+     * LA PUERTA QUE EL CORREO NO MOSTRABA (dueño, 14-08-2026, probando el flujo
+     * real con un correo propio): «cuando se enviaba el mensaje al cliente tenía
+     * la opción de ingresar, es riesgoso eso».
+     *
+     * No estaba en el correo —los candados de arriba ya lo cubren— sino UN CLIC
+     * DESPUÉS: el logo del layout `guest` enlazaba a `/`, y esa portada ofrece
+     * «Iniciar sesión». Así que la cotización dejaba al cliente a dos clics del
+     * ingreso del personal, y lo mismo TODAS las pantallas públicas (QR,
+     * devolución, confirmación de visita, las de «gracias»).
+     *
+     * Se recorre la lista de vistas públicas de verdad y no una copiada a mano:
+     * si mañana se agrega una pantalla pública, entra sola a este candado.
+     */
+    public function test_ninguna_pantalla_publica_ofrece_entrar_a_la_app(): void
+    {
+        $publicas = collect(glob(resource_path('views/publico/*/*.blade.php')));
+
+        $this->assertGreaterThan(10, $publicas->count(), 'No se encontraron las vistas públicas: ¿cambió la ruta?');
+
+        // El layout que comparten: su logo no puede ser un enlace.
+        $guest = (string) file_get_contents(resource_path('views/layouts/guest.blade.php'));
+        $this->assertStringNotContainsString(
+            '<a href="/"',
+            $guest,
+            'El logo del layout guest volvió a enlazar a la portada, que ofrece «Iniciar sesión».'
+        );
+
+        // Y ninguna pantalla pública nombra el login por su cuenta.
+        foreach ($publicas as $ruta) {
+            $contenido = (string) file_get_contents($ruta);
+            foreach (["route('login')", '/login'] as $prohibido) {
+                $this->assertStringNotContainsString(
+                    $prohibido,
+                    $contenido,
+                    'La pantalla pública '.basename($ruta)." ofrece el ingreso ({$prohibido})."
+                );
+            }
+        }
+    }
+
+    /**
      * El botón «Abrir en DaliGo» es de los avisos INTERNOS y ahí se queda
      * (decisión del dueño 13-08: el equipo llega a la orden en un toque desde el
      * celular). Este candado fija el límite: que exista SOLO en esa plantilla, y

@@ -29,10 +29,26 @@
 
              px-3 en móvil (12px) y el px-6 de siempre desde sm:. --}}
         <div class="min-h-screen flex flex-col justify-center items-center px-3 py-12 sm:px-6">
-            <a href="/" class="group flex flex-col items-center gap-3">
-                <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-black text-white shadow-sm transition duration-200 group-hover:bg-brand-700">D</span>
+            {{-- El logo NO es un enlace, a propósito (pedido del dueño 14-08-2026,
+                 encontrado probando el flujo real con un correo propio).
+
+                 Este layout lo comparten las 5 pantallas de autenticación y las 13
+                 PÚBLICAS que ve un cliente: la cotización que responde, los
+                 formularios del QR, la devolución, la confirmación de visita y todas
+                 las de «gracias». Cuando el logo enlazaba a `/`, esa portada ofrece
+                 «Iniciar sesión» — así que el correo de cotización dejaba al cliente
+                 a DOS clics del ingreso del personal, sin que ningún correo tuviera
+                 un enlace a la app.
+
+                 Se resuelve acá y no con un prop por vista (`:inicio="false"`) para
+                 que falle CERRADO: con un prop, la próxima pantalla pública que
+                 alguien agregue vuelve a abrir la puerta si se olvida de ponerlo. En
+                 las pantallas de login no se pierde nada: nadie necesita volver a la
+                 portada desde ahí. --}}
+            <div class="flex flex-col items-center gap-3">
+                <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-black text-white shadow-sm">D</span>
                 <span class="text-lg font-semibold tracking-tight text-neutral-900">DaliGo</span>
-            </a>
+            </div>
 
             @php
                 // El ancho del card es un TOKEN validado, igual que en app-layout: uno
