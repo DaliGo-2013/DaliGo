@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AgendaCierreController;
 use App\Http\Controllers\Admin\AgendaTrabajoController;
 use App\Http\Controllers\Admin\ConductorController;
 use App\Http\Controllers\Admin\AuditController;
@@ -303,6 +304,20 @@ Route::middleware('auth')
             Route::patch('agenda-terreno/{trabajo}/estado', [AgendaTrabajoController::class, 'estado'])
                 ->whereNumber('trabajo')->name('agenda-terreno.estado');
         });
+        // Cuando el tecnico NO esta disponible: feriados, vacaciones, medias jornadas.
+        // Permiso PROPIO ('gestionar cierres agenda', del jefe de ventas): agendar un trabajo
+        // y cerrarle la agenda a todos no son la misma responsabilidad. Va ANTES del
+        // `agenda-terreno/crear` porque las dos son rutas fijas y no compiten, pero se lee
+        // mejor junto al resto de la agenda. El controlador exige el permiso otra vez.
+        Route::middleware('permission:gestionar cierres agenda')->group(function () {
+            Route::get('agenda-terreno/cierres', [AgendaCierreController::class, 'index'])
+                ->name('agenda-terreno.cierres.index');
+            Route::post('agenda-terreno/cierres', [AgendaCierreController::class, 'store'])
+                ->name('agenda-terreno.cierres.store');
+            Route::delete('agenda-terreno/cierres/{cierre}', [AgendaCierreController::class, 'destroy'])
+                ->whereNumber('cierre')->name('agenda-terreno.cierres.destroy');
+        });
+
         Route::middleware('permission:agendar servicio terreno')->group(function () {
             Route::get('agenda-terreno/crear', [AgendaTrabajoController::class, 'create'])
                 ->name('agenda-terreno.create');

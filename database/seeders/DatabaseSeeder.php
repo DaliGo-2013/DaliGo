@@ -45,6 +45,10 @@ class DatabaseSeeder extends Seeder
             // decisión del dueño 05-08): el deploy los crea solo, sin pasos
             // manuales por phpMyAdmin.
             CamionesSimulacionSeeder::class,
+            // Feriados legales de Chile (2026-2027) como cierres de la agenda del técnico:
+            // el formulario público deja de ofrecer días en que no hay nadie. No pisa los
+            // cierres que carga el jefe de ventas (origen 'manual').
+            FeriadosChileSeeder::class,
         ]);
     }
 }

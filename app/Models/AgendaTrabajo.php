@@ -223,7 +223,7 @@ class AgendaTrabajo extends Model implements AuditableContract
      * @param  int  $diasVentana  hasta dónde se busca el próximo libre. Si no aparece ninguno
      *                            dentro de la ventana devuelve null: «no sé» y «el 15» son
      *                            respuestas distintas y no se inventa una fecha.
-     * @return array{estado: string, ocupado: bool, desde: ?string, hasta: ?string, dias: int, proximo_libre: ?string}
+     * @return array{estado: string, ocupado: bool, desde: ?string, hasta: ?string, dias: int, proximo_libre: ?string, hora_hasta: ?string, motivo_cierre: ?string}
      */
     public static function disponibilidad(string $fecha, int $diasVentana = 90): array
     {
@@ -248,8 +248,14 @@ class AgendaTrabajo extends Model implements AuditableContract
             }
         }
 
-        // Un día se puede pedir si el técnico trabaja ese día Y no tiene nada encima.
-        $sePuede = fn (string $d) => static::esLaborable($d) && ! isset($ocupados[$d]);
+        // Feriados, vacaciones y medias jornadas, en UNA consulta para toda la ventana.
+        $cierres = AgendaCierre::mapaDeDias($pedida, $finVentana);
+        $estaCerrado = fn (string $d) => isset($cierres[$d]) && $cierres[$d]->tipo === AgendaCierre::TIPO_CERRADO;
+
+        // Un día se puede pedir si el técnico trabaja ese día, no está cerrado y no tiene
+        // nada encima. La media jornada NO lo saca de la lista: ese día sí se puede, hasta
+        // cierta hora — y eso se dice, no se esconde.
+        $sePuede = fn (string $d) => static::esLaborable($d) && ! $estaCerrado($d) && ! isset($ocupados[$d]);
 
         // EL PRÓXIMO LIBRE se busca con la MISMA condición, no solo esquivando trabajos: si
         // no, un viernes ocupado ofrecería el sábado y el cliente elegiría un día en que no
@@ -263,15 +269,23 @@ class AgendaTrabajo extends Model implements AuditableContract
         }
 
         if ($sePuede($pedida)) {
-            return ['estado' => 'libre', 'ocupado' => false, 'desde' => null, 'hasta' => null,
-                'dias' => 0, 'proximo_libre' => null];
+            // MEDIA JORNADA: el día está disponible, pero hasta cierta hora. Se avisa en vez
+            // de callarlo — que el cliente se entere el mismo día de que el técnico se iba a
+            // las 14 es exactamente el problema que este cartel vino a resolver.
+            $media = isset($cierres[$pedida]) ? $cierres[$pedida] : null;
+
+            return ['estado' => $media ? 'parcial' : 'libre', 'ocupado' => false,
+                'desde' => null, 'hasta' => null, 'dias' => 0, 'proximo_libre' => null,
+                'hora_hasta' => $media?->hora_corta, 'motivo_cierre' => null];
         }
 
-        // DÍA NO LABORABLE: no hay tramo que informar ni nada que contar. Y no se dice por
-        // qué más allá de eso — ver el encabezado de `esLaborable`.
+        // DÍA QUE NO SE PUEDE PEDIR Y NO ES POR UN TRABAJO: o el técnico no atiende ese día
+        // de la semana, o hay un cierre cargado (feriado, vacaciones…). Se distingue solo
+        // para elegir el TEXTO; hacia afuera ninguno de los dos dice el motivo de fondo.
         if (! isset($ocupados[$pedida])) {
             return ['estado' => 'cerrado', 'ocupado' => true, 'desde' => null, 'hasta' => null,
-                'dias' => 0, 'proximo_libre' => $siguiente];
+                'dias' => 0, 'proximo_libre' => $siguiente, 'hora_hasta' => null,
+                'motivo_cierre' => $estaCerrado($pedida) ? 'cierre' : 'no_laborable'];
         }
 
         $desde = $arranque ?? $pedida;
@@ -287,6 +301,8 @@ class AgendaTrabajo extends Model implements AuditableContract
             'hasta' => $hasta,
             'dias' => (int) Carbon::parse($desde)->diffInDays($hasta) + 1,
             'proximo_libre' => $siguiente,
+            'hora_hasta' => null,
+            'motivo_cierre' => null,
         ];
     }
 
@@ -294,11 +310,11 @@ class AgendaTrabajo extends Model implements AuditableContract
      * Días en que el técnico industrial atiende: LUNES A VIERNES (dueño, 13-08-2026: «trabaja
      * solo de lunes a viernes el técnico y los feriados no trabaja»).
      *
-     * Van como constante y no como configuración porque hoy es un dato del negocio, no una
-     * preferencia que alguien cambie desde una pantalla. Cuando entren los cierres que
-     * administra el jefe de ventas (vacaciones, feriados, días a media jornada), esta función
-     * es el lugar donde se consultan: el resto del sistema pregunta «¿se puede ese día?» y no
-     * tiene que saber por qué.
+     * Van como constante y no como configuración porque es un dato del negocio, no una
+     * preferencia que alguien cambie desde una pantalla. Lo que SÍ se carga —feriados,
+     * vacaciones, medias jornadas— vive en `AgendaCierre`, y `disponibilidad()` es el único
+     * lugar donde se juntan: el resto del sistema pregunta «¿se puede ese día?» y no tiene que
+     * saber por qué no.
      *
      * LO QUE EL CLIENTE NO TIENE POR QUÉ SABER (decisión del dueño): el motivo. «No es tan
      * importante que la gente sepa que está de vacaciones, simplemente no está disponible».
@@ -306,7 +322,7 @@ class AgendaTrabajo extends Model implements AuditableContract
      */
     public const DIAS_LABORABLES = [1, 2, 3, 4, 5];
 
-    /** ¿El técnico atiende ese día? (feriados y cierres: pendientes, ver `DIAS_LABORABLES`) */
+    /** ¿El técnico atiende ese día de la SEMANA? (los feriados y cierres van aparte) */
     public static function esLaborable(string $fecha): bool
     {
         return in_array(Carbon::parse($fecha)->isoWeekday(), self::DIAS_LABORABLES, true);
