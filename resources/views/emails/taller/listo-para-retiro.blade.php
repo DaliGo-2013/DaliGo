@@ -78,7 +78,10 @@
                                 <tr>
                                     <td style="padding:8px 14px; border-top:1px solid #f5f5f5; color:#737373; width:40%;">Dónde</td>
                                     <td style="padding:8px 14px; border-top:1px solid #f5f5f5; color:#171717;">
-                                        @if ($lugar) {{ $lugar }} @else Coordinaremos contigo el punto de entrega. @endif
+                                        {{-- El equipo se entrega en BODEGA (dueño 14-08): decirlo acá
+                                             y no solo en el texto de abajo es lo que evita que el
+                                             cliente entre por sala de ventas a preguntar. --}}
+                                        @if ($lugar) {{ $lugar }} — <strong>en bodega</strong> @else Coordinaremos contigo el punto de entrega. @endif
                                     </td>
                                 </tr>
                                 <tr>
@@ -87,12 +90,44 @@
                                 </tr>
                             </table>
 
-                            <p style="margin:0; font-size:14px; color:#525252; line-height:1.6;">
+                            {{-- EL ORDEN DEL RETIRO, cambiado el 14-08-2026 por el dueño: «se retira
+                                 en bodega el dispensador, primero pasa por bodega para corroborar sus
+                                 datos y luego a pagar por sala de ventas». Antes decía lo contrario
+                                 (primero sala de ventas), así que el cliente entraba por la puerta
+                                 equivocada y lo mandaban a caminar.
+
+                                 En garantía no hay pago: el paso por sala de ventas no aplica y no se
+                                 le nombra, para no hacerlo buscar un mostrador al que no tiene que ir. --}}
+                            <p style="margin:0 0 16px; font-size:14px; color:#525252; line-height:1.6;">
                                 @if ($esGarantia)
-                                    Si tienes dudas, responde este correo.
+                                    Pasa por <strong>bodega</strong>, donde corroboramos tus datos y te entregamos el equipo.
+                                    No tienes que pasar por sala de ventas: este trabajo va sin costo.
                                 @else
-                                    Pasa primero por <strong>sala de ventas</strong> para el pago y ahí mismo te entregamos el equipo.
+                                    Pasa primero por <strong>bodega</strong> para corroborar tus datos, después por
+                                    <strong>sala de ventas</strong> para el pago, y con el pago hecho retiras el equipo en bodega.
                                 @endif
+                            </p>
+
+                            {{-- LA GARANTÍA DE LA REPARACIÓN (dueño 14-08): tres meses desde la fecha
+                                 de reparación. Va con la fecha de VENCIMIENTO calculada y no solo con
+                                 «tres meses»: el cliente guarda este correo y así no tiene que contar
+                                 los meses ni discutir desde cuándo se cuentan.
+
+                                 Es la garantía del TRABAJO y no la del producto (esa es de 6 meses
+                                 desde la compra, ver OrdenServicio::GARANTIA_MESES). --}}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+                                <tr>
+                                    <td style="background-color:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:14px 18px; font-size:14px; color:#525252; line-height:1.6;">
+                                        <strong style="color:#171717;">Garantía de la reparación:
+                                        {{ $garantiaMeses }} meses</strong><br>
+                                        Corre desde la fecha de la reparación ({{ $garantiaDesde->format('d-m-Y') }})
+                                        y vence el {{ $garantiaVence->format('d-m-Y') }}. Guarda este correo: es tu respaldo.
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0; font-size:14px; color:#525252; line-height:1.6;">
+                                Si tienes dudas, responde este correo.
                             </p>
                         </td>
                     </tr>

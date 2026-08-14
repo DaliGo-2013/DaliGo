@@ -41,7 +41,16 @@ class EquipoListoParaRetiro extends Mailable
     {
         return new Content(
             view: 'emails.taller.listo-para-retiro',
-            with: ['esGarantia' => $this->orden->condicion_efectiva === 'garantia'],
+            with: [
+                'esGarantia' => $this->orden->condicion_efectiva === 'garantia',
+                // LA GARANTÍA DE LA REPARACIÓN (dueño 14-08-2026): tres meses desde el día en
+                // que se repara. Se calculan acá y no en la plantilla —una fecha de negocio no
+                // se arma en un Blade— y viajan las DOS puntas: al cliente le sirve más un
+                // «vence el 14-11-2026» que un «tres meses» que después hay que contar.
+                'garantiaDesde' => $this->orden->garantiaReparacionDesde(),
+                'garantiaVence' => $this->orden->garantiaReparacionVence(),
+                'garantiaMeses' => OrdenServicio::GARANTIA_REPARACION_MESES,
+            ],
         );
     }
 }
