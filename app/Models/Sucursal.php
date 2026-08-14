@@ -85,6 +85,18 @@ class Sucursal extends Model implements AuditableContract
      */
     public function getDiasReparacionAttribute(): int
     {
+        return $this->diasReparacionConfigurados()
+            ?? (int) config('servicio_tecnico.dias_reparacion_default', 15);
+    }
+
+    /**
+     * Los dias que esta sucursal tiene configurados A NOMBRE PROPIO, o null si no tiene entrada
+     * y por lo tanto usa el default. Es la diferencia que el listado de Sucursales muestra: un
+     * plazo heredado del default se ve igual que uno decidido, y esa confusion es la que dejo
+     * siete semanas de correos prometiendo 15 dias donde la regla decia 10.
+     */
+    public function diasReparacionConfigurados(): ?int
+    {
         $codigo = self::normalizaCodigo($this->codigo);
 
         // Las claves del mapa tambien se normalizan: si mañana alguien agrega 'buzeta' en
@@ -95,7 +107,27 @@ class Sucursal extends Model implements AuditableContract
             }
         }
 
-        return (int) config('servicio_tecnico.dias_reparacion_default', 15);
+        return null;
+    }
+
+    /** El plazo que se le promete al cliente sale del default y no de una decision propia. */
+    public function getPlazoEsPorDefectoAttribute(): bool
+    {
+        return $this->diasReparacionConfigurados() === null;
+    }
+
+    /**
+     * Esta sucursal RECIBE servicio tecnico (version en PHP de scopeRecepcionServicioTecnico,
+     * para preguntarselo a una fila que ya se cargo). Compara normalizado: el scope se apoya en
+     * que MySQL no distingue mayusculas y en PHP eso no vale.
+     */
+    public function getRecibeServicioTecnicoAttribute(): bool
+    {
+        return in_array(
+            self::normalizaCodigo($this->codigo),
+            array_map([self::class, 'normalizaCodigo'], config('servicio_tecnico.sucursales_recepcion', [])),
+            true,
+        );
     }
 
     /**
