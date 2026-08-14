@@ -31,10 +31,14 @@
                 <span class="text-neutral-500">Sucursal</span>
                 <span class="font-medium text-neutral-900">{{ $lote->sucursal?->nombre }}</span>
             </div>
-            <div class="flex justify-between py-1.5">
-                <span class="text-neutral-500">Entrega estimada</span>
-                <span class="font-medium text-neutral-900">{{ $lote->ordenes->first()?->fecha_entrega?->format('d-m-Y') }}</span>
-            </div>
+            {{-- EL PLAZO, NO UNA FECHA (dueño, 14-08-2026): ver el comentario de gracias.blade.php.
+                 Es el plazo de la sucursal que recibe, igual para todas las máquinas del lote. --}}
+            @if ($lote->sucursal)
+                <div class="flex justify-between py-1.5">
+                    <span class="text-neutral-500">Plazo de reparación</span>
+                    <span class="font-medium text-neutral-900">hasta {{ $lote->sucursal->dias_reparacion }} días hábiles</span>
+                </div>
+            @endif
         </div>
 
         <p class="mt-5 text-sm text-neutral-500">

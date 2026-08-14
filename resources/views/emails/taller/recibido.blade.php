@@ -46,13 +46,17 @@
                             {{-- Detalle --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px; color:#171717;">
                                 @php
+                                    // SIN FECHA DE ENTREGA (dueño, 14-08-2026): «no quiero que la app lo
+                                    // calcule, solo diga 15 días hábiles o 10 días, después el cliente lo
+                                    // calcula por sí solo». Si el técnico se enferma o sale de vacaciones,
+                                    // una fecha escrita es un compromiso que después trae reclamos; el
+                                    // plazo en días hábiles va abajo, en «INFORMACIÓN IMPORTANTE».
                                     $filas = [
                                         'Equipo' => $tipo,
                                         'Código' => $orden->producto ? $orden->producto->sku.' — '.$orden->producto->nombre : null,
                                         'N° de serie' => $orden->numero_serie,
                                         'Sucursal' => $orden->sucursal?->nombre,
                                         'Fecha de ingreso' => $orden->fecha_ingreso?->format('d-m-Y'),
-                                        'Entrega estimada' => $orden->fecha_entrega?->format('d-m-Y'),
                                         'RUT' => $orden->cliente_rut,
                                         'Teléfono' => $orden->cliente_telefono,
                                     ];
@@ -72,9 +76,56 @@
                             </table>
 
                             <p style="margin:24px 0 0; font-size:13px; color:#a3a3a3; line-height:1.5;">
-                                La fecha de entrega es estimada (días hábiles) y puede variar según el diagnóstico.
-                                Te avisaremos cuando el equipo esté listo para retirar.
+                                Te avisaremos por correo cuando el equipo esté listo para retirar; el plazo
+                                se cuenta en días hábiles y puede variar según el diagnóstico.
                             </p>
+
+                            {{-- ═══ INFORMACIÓN IMPORTANTE ═══
+                                 Es el recuadro del comprobante impreso del taller, que el dueño
+                                 pidió el 14-08-2026 que viaje también en el correo: el cliente que
+                                 ingresa por QR nunca ve el papel, y estas son justo las condiciones
+                                 que después se discuten en el mostrador (bodegaje, responsabilidad
+                                 por la caja, plazo).
+
+                                 EL PLAZO SALE DE LA SUCURSAL y no escrito a mano: cada una tiene el
+                                 suyo (Mirador repara en 10 días hábiles; Coquimbo y Abate Molina
+                                 mandan el equipo a Mirador y por eso son 15). Con un número fijo,
+                                 el correo prometería 10 días en una sucursal que tarda 15.
+
+                                 Y ES EL ÚNICO COMPROMISO DE TIEMPO QUE VIAJA: la fecha de entrega
+                                 calculada se saca (dueño, 14-08-2026) porque el técnico se enferma o
+                                 sale de vacaciones y una fecha escrita termina en reclamo. El plazo
+                                 lo cuenta el cliente. --}}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0; border:1px solid #e5e5e5; border-radius:8px;">
+                                <tr>
+                                    <td style="padding:10px 14px; background-color:#fafafa; border-bottom:1px solid #e5e5e5; font-size:13px; font-weight:bold; color:#171717; text-align:center; letter-spacing:1px;">
+                                        INFORMACIÓN IMPORTANTE
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px; font-size:13px; color:#525252; line-height:1.7;">
+                                        <div style="font-weight:bold; color:#171717;">
+                                            No nos hacemos responsables por entrega de dispensadores sin caja, por rayones o golpes.
+                                        </div>
+                                        @if ($plazoDias)
+                                            <div style="font-weight:bold; color:#171717; margin-top:6px;">
+                                                El plazo de reparación es de hasta {{ $plazoDias }} días hábiles.
+                                            </div>
+                                        @endif
+                                        <div style="margin-top:10px;">
+                                            · Cada pieza reparada tiene una garantía de {{ $garantiaMeses }} meses.<br>
+                                            · A partir de los {{ $bodegajeDesdeMeses }} meses se cobrará un costo de
+                                            {{ $bodegajeMensual }} + IVA mensual por concepto de bodegaje.<br>
+                                            · En caso de cumplir {{ $bodegajeLimiteMeses }} meses de bodegaje podemos vender,
+                                            regalar o dar de baja el dispensador según la Ley 19.496.
+                                        </div>
+                                        <div style="margin-top:10px; color:#737373;">
+                                            <strong style="color:#171717;">Horario de atención:</strong>
+                                            lunes a jueves de 09:00 a 13:00 y de 14:00 a 17:00 · viernes hasta las 16:00.
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
 

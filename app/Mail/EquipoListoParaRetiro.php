@@ -41,7 +41,15 @@ class EquipoListoParaRetiro extends Mailable
     {
         return new Content(
             view: 'emails.taller.listo-para-retiro',
-            with: ['esGarantia' => $this->orden->condicion_efectiva === 'garantia'],
+            with: [
+                'esGarantia' => $this->orden->condicion_efectiva === 'garantia',
+                // LA GARANTÍA DE LA REPARACIÓN (dueño 14-08-2026): tres meses desde la fecha de
+                // reparación, SIN fechas de desde/hasta — «no le pongas la fecha desde hasta
+                // cuándo, solo 3 meses y listo». Se probó con las dos fechas calculadas y le
+                // pareció de más. Los métodos del modelo (`garantiaReparacionDesde/Vence`) quedan:
+                // los usa la pantalla interna y no cuesta nada tenerlos bien definidos.
+                'garantiaMeses' => OrdenServicio::GARANTIA_REPARACION_MESES,
+            ],
         );
     }
 }

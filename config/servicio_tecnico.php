@@ -25,6 +25,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Condiciones del comprobante («INFORMACION IMPORTANTE»)
+    |--------------------------------------------------------------------------
+    |
+    | Son las condiciones del comprobante IMPRESO del taller, que desde el
+    | 14-08-2026 viajan tambien en el correo de ingreso (pedido del dueño): el
+    | cliente que ingresa por QR nunca ve el papel, y estas son justo las que
+    | despues se discuten en el mostrador.
+    |
+    | Viven en config y no escritas en la plantilla porque son numeros de negocio
+    | que cambian con el tiempo — sobre todo el cobro de bodegaje. Cambiarlos aca
+    | los cambia en el correo sin tocar el texto.
+    |
+    | La garantia de la reparacion NO esta aca: es OrdenServicio::GARANTIA_REPARACION_MESES,
+    | que ya la usa el correo de retiro. Un solo numero para las dos cartas.
+    |
+    */
+    'bodegaje' => [
+        'desde_meses' => 6,      // a partir de cuando se cobra bodegaje
+        'mensual_clp' => 3000,   // + IVA, por mes
+        'limite_meses' => 12,    // al cumplirlos se puede vender/regalar/dar de baja (Ley 19.496)
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Sucursales que RECIBEN servicio técnico
     |--------------------------------------------------------------------------
     |
