@@ -1,57 +1,56 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-14 (v55 — A2 EN PRODUCCIÓN; A3 Informe FRENADO por un 2º nudo de permisos, decisión del dueño pendiente). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-14 (v56 — Bloque A CERRADO; el Informe VIVE SOLO por decisión del dueño; EN PAUSA hasta el QA del dueño del Bloque A → luego Bloque B). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ A2 está EN PRODUCCIÓN (merge `6a35329`, doble llave 14-ago) — menú 41 → 40
+## ✅ Bloque A · Servicio Técnico — CERRADO (menú 42 → 40)
 
-Suite del Director sobre el árbol re-mergeado: **2110 verdes / 14.723 aserciones**. Conté
-el menú (11+28+1=40), da. Rama borrada. Bloque A: **2 de 3**.
+Dos consolidaciones en producción con doble llave:
+- **A1 Costos → Listado** (`0e9feaa`): desplegable «Configuración» (QR + Costos).
+- **A2 Traslados → Listado** (`6a35329`): primera pestaña de flujo del Listado.
 
-Lo que hiciste bien, para que se repita:
+El Listado quedó como el hub que el mapa quería: config en el desplegable, flujo en pestaña.
 
-1. **Verificaste los permisos por tu cuenta ANTES de consolidar** — los 4 roles con
-   despachar|recibir traslado ven todos el Listado. La lección del Informe aplicada sola.
-2. **Cazaste el detalle del prefijo**: `admin.traslados.*` no pisa
-   `admin.bodegas.traslados.*` (familias disjuntas). Ese es el tipo de colisión silenciosa
-   que un candado mal escrito deja pasar.
-3. **La taxonomía hecha markup**: config → desplegable «Configuración»; flujo → pestaña de
-   primer nivel. El Listado va quedando como el hub que el mapa quería, con la jerarquía
-   visible en la estructura, no solo en tu cabeza.
+## ❌ A3 · Informe — NO se construye. El Informe VIVE SOLO (decisión del dueño 14-ago)
 
-**Nota de entorno (mía, no tuya)**: durante mi verificación apareció 1 rojo —
-`AutorizacionCitaTest` del PR #9 (ajeno a tu lote) — por un `include` de favicon que
-fallaba. Era mi `vendor/symfony/error-handler` incompleto (le faltaba un asset del
-renderizador de errores); `composer reinstall symfony/error-handler` lo curó, y el CI de
-main ya lo tenía verde. Tu cifra estaba bien. Lo anoto abajo como incidencia porque es la
-4ª de entorno de la semana y conviene tener la receta a mano.
+El 2º nudo de permisos era de fondo, no de forma: el informe **industrial** tiene una
+audiencia partida entre dos dominios que no comparten anfitrión —el técnico industrial solo
+ve la Agenda; jefe_bodega y jefe_sucursal solo ven el Listado—, así que **ningún anfitrión
+único lo cubre sin romper a alguien** (y duplicar está prohibido). El dueño resolvió lo
+correcto según la propia lente del proyecto: **el Informe es el ítem que necesita vivir
+solo**. No se toca. El ítem «Informe» se queda en el menú tal como está.
 
-## ⏸️ A3 · Informe — FRENADO. NO lo construyas todavía.
+Consecuencia: el Bloque A cierra en **2 de 3** (−2, no −3). El menú queda en **40**, y el
+mapa completo llegará a **31**, no 30. Una resta menos y cero accesos rotos — el proyecto
+es para no romper cosas, no para llegar a un número redondo.
 
-Al preparar el dictado de A3 encontré un **segundo nudo de permisos** que la decisión del
-13-ago (partir por dominio) no contemplaba. El informe **industrial** lo ven cuatro roles,
-y su audiencia cruza dos dominios que NO comparten anfitrión:
+Aprendizaje del bloque, para los que vienen: **verificar permisos por ejecución NO es solo
+“¿quién ve el ítem?” — es “¿quién ve el ítem Y puede llegar al anfitrión?”**, y hay que
+cruzarlo en AMBAS direcciones. El Informe pasó tu F0 y mi primer análisis como «integrable»;
+solo el cruce completo (audiencia del ítem × acceso al anfitrión, para cada candidato de
+anfitrión) reveló que no calzaba. En el Bloque B esto importa: Conductores→Vehículos tiene
+permisos OR cruzados igual de delicados.
 
-- `jefe_bodega` (seeder L150) y `jefe_sucursal` (L196) ven el informe industrial pero **NO
-  entran a la Agenda de terreno** → si el industrial va SOLO a la Agenda, **pierden acceso**.
-- `tecnico_industrial` ve el industrial pero **NO ve el Listado** → si va al Listado, él pierde.
+## ⏸️ EN PAUSA — el Bloque B espera el QA del dueño del Bloque A
 
-No hay un anfitrión único que cubra a los cuatro sin romper a alguno (o duplicar, que está
-prohibido). El informe **dispensadores** sí es limpio (todos los que lo ven, ven el Listado).
+Protocolo de bloques (dueño): no se abre bloque nuevo hasta cerrar el anterior con QA.
+**El dueño va a hacer el QA del Bloque A en el celular**:
+- Listado con el desplegable «Configuración» (QR + Costos; cada uno solo para quien tiene
+  su permiso) junto a «Registrar ingreso».
+- Listado con la pestaña «Traslados al taller» (quien no tiene permiso de traslado ve solo
+  «Listado», sin barra de pestañas).
+- El ítem «Informe» sigue en el menú (no se tocó).
 
-**Esto es decisión del dueño, no tuya ni mía**: se lo llevo ahora. Mi recomendación es que
-el Informe **viva solo** (es el ítem que el propio criterio del proyecto deja fuera —
-audiencia partida entre dos dominios). Hasta que el dueño decida, **A3 no se construye** y
-el Bloque A queda cerrado en 2 de 3 (menú 40). Detalle completo en §4.1 del plan («SEGUNDO
-NUDO»).
+Cuando el dueño dé el visto bueno, te llega el dictado v57 abriendo el **Bloque B ·
+Logística** (B1 Cargas reales → Simulador; B2 Conductores → Vehículos, la de permisos OR
+cruzados). Hasta entonces: **pausa, no arranques**.
 
 ## Estado
-- **Max-2** en pausa. **Marcos y el PR #9** activos (el drift de hoy trajo autorización de
-  citas + informes ST a Excel + responsive). Re-fetch religioso.
-- Cuando el dueño decida A3, te llega el dictado v56. Por ahora: **pausa**.
+- **Max-2** en pausa. **Marcos y el PR #9** activos. Re-fetch religioso cuando reanudes.
 
-## Recordatorios (para cuando se reanude)
-Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar; candado
-mutado; parte al buzón. Baseline del Director: **2110 / 14.723** en `6a35329`.
+## Recordatorios (para el Bloque B)
+Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar; **cruce de
+permisos en ambas direcciones ANTES de consolidar**; candado mutado; parte al buzón.
+Baseline del Director: **2110 / 14.723** en `6a35329` (y subiendo — re-fetch).
 
-CIERRE: A2 cerrado, Bloque A en 2/3. A3 espera decisión del dueño. Verifica permisos SIEMPRE.
+CIERRE: Bloque A cerrado (2/3, Informe vive solo). Espera el QA del dueño → Bloque B.

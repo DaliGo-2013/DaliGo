@@ -119,8 +119,9 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
       lote — la densidad ganada se ve en un número. **Hoy: 40** (L1-L5 + A1 + A2 hechos; falta
-      A3 Informe para cerrar el Bloque A; los bloques B-E, a 30 — §4.1). **A3 EN ESPERA de
-      decisión del dueño (2º nudo de permisos del Informe, ver §4.1).**
+      A3 Informe para cerrar el Bloque A; los bloques B-E, a 31 — §4.1). **Bloque A CERRADO:
+      el Informe VIVE SOLO (decisión del dueño 14-ago, 2º nudo de permisos — §4.1). Pausa
+      hasta el QA del dueño del Bloque A → luego Bloque B.**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
@@ -140,13 +141,17 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 | Bloque | Lotes (en orden) | Δ | Nota |
 |---|---|---|---|
 | (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
-| **A · Servicio Técnico** (ABIERTA 13-ago) | ✅A1 Costos (`0e9feaa`) · ✅A2 Traslados (`6a35329`) · ⏸️A3 Informe (EN ESPERA — 2º nudo) | −3→−2/−3 | A1 y A2 HECHOS. A3 Informe FRENADO: el «partir por dominio» tiene un 2º nudo de permisos — ver hallazgo abajo. Decisión del dueño pendiente |
+| **A · Servicio Técnico** ✅ CERRADA (14-ago) | ✅A1 Costos (`0e9feaa`) · ✅A2 Traslados (`6a35329`) · ❌A3 Informe → **VIVE SOLO** (decisión del dueño 14-ago) | **−2** | A1 y A2 en producción. El Informe NO se consolida: su audiencia cruza dos dominios sin anfitrión común (ver «SEGUNDO NUDO» abajo). Bloque cierra en menú 40 |
 | **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
 | **E · Cierre (SOLA)** | E1 Configuración de producción (Máquinas·Tipos·Recetas·Moldes 4→1) | −3 | la mayor densidad y más riesgo; **aquí se salda la deuda del `<x-tab-nav>`** (4ª pestaña) |
 
-**Aritmética:** 44 → (L4) 43 → (L5) 42 → **A** 39 → **B** 37 → **C** 34 → **D** 33 → **E** 30.
+**Aritmética (actualizada 14-ago tras «Informe vive solo»):** 44 → (L4) 43 → (L5) 42 →
+**A** 40 (solo A1+A2; el Informe no se consolida) → **B** 38 → **C** 35 → **D** 34 →
+**E** 31. El mapa completo llega a **31**, no 30: el Informe es el ítem que el propio
+criterio del proyecto («¿puede integrarse o vive solo?») deja fuera — una resta menos, cero
+accesos rotos. Honestidad del proyecto por encima del número redondo.
 
 **Regla de apertura:** no se emite dictado de un bloque nuevo hasta que el anterior esté
 cerrado (todos sus lotes en producción + QA del dueño). El Bloque A abre cuando Lote 4 y 5
@@ -210,6 +215,11 @@ Listado (no la Agenda). **No existe un anfitrión único que cubra a todos**:
 4. **Duplicar** (industrial en Agenda Y Listado) — PROHIBIDO por el proyecto.
 Recomendación del Director: **opción 1** (vive solo) — es el ítem que el propio criterio
 del proyecto deja fuera. Menú final 31 en vez de 30; una resta menos, cero accesos rotos.
+
+**→ DECISIÓN DEL DUEÑO (14-ago): opción 1, el Informe VIVE SOLO.** A3 no se construye; el
+ítem «Informe» se queda como está. El Bloque A cierra con A1 (Costos) + A2 (Traslados) en
+producción, menú en **40**. En el mapa (§5.1) el veredicto del Informe pasa de «integrable»
+a **vive-solo** — audiencia partida entre taller y terreno, sin anfitrión común.
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 
