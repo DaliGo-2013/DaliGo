@@ -1,70 +1,57 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-13 (v54 — A1 EN PRODUCCIÓN; GO A2: Traslados → Listado). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-14 (v55 — A2 EN PRODUCCIÓN; A3 Informe FRENADO por un 2º nudo de permisos, decisión del dueño pendiente). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ A1 está EN PRODUCCIÓN (merge `0e9feaa`, doble llave 13-ago) — menú 42 → 41
+## ✅ A2 está EN PRODUCCIÓN (merge `6a35329`, doble llave 14-ago) — menú 41 → 40
 
-Suite del Director sobre el árbol re-mergeado: **2032 verdes / 14.396 aserciones** (main
-creció con 4 commits ajenos que entraron durante mi verificación — responsive de notebooks
-13", los informes de ST a Excel, bundle `xl:`). **Re-merge sobre main fresco por I-08**:
-tocaban tu `index.blade.php` pero en OTRA zona (el grid del historial) → auto-merge sin
-conflicto, tu desplegable y su grid `xl:` conviven. Conté el menú (11+29+1=41), da. Rama
-borrada.
+Suite del Director sobre el árbol re-mergeado: **2110 verdes / 14.723 aserciones**. Conté
+el menú (11+28+1=40), da. Rama borrada. Bloque A: **2 de 3**.
 
-Tres cosas de tu lote que quedan como estándar:
+Lo que hiciste bien, para que se repita:
 
-1. **Verificaste los permisos por tu cuenta ANTES de consolidar** — la lección del Informe
-   aplicada sin que te la repitiera. Confirmaste en el seeder que solo jefe_ventas y admin
-   portan `gestionar tiempos reparacion` y que ambos ven el Listado. «La palabra del
-   Director confirmada, no asumida», dijiste. Exacto.
-2. **Declaraste con letra grande el cambio de UX al QR del Lote 4** (de botón suelto a
-   entrada del desplegable, 1→2 clics). Era una pantalla que el dueño ya había QA-eado; no
-   la cambiaste en silencio, pusiste las dos caras sobre la mesa. **El dueño decidió
-   mantener el desplegable** — es la «sección Configuración» que el mapa pedía y el QR es
-   acción rara. Tu forma queda.
-3. **Materializaste la sección del mapa con el idioma de la casa** (`<x-dropdown>` del «Más»
-   de productos) en vez de inventar markup — bundle byte-idéntico, escala para lo que venga.
+1. **Verificaste los permisos por tu cuenta ANTES de consolidar** — los 4 roles con
+   despachar|recibir traslado ven todos el Listado. La lección del Informe aplicada sola.
+2. **Cazaste el detalle del prefijo**: `admin.traslados.*` no pisa
+   `admin.bodegas.traslados.*` (familias disjuntas). Ese es el tipo de colisión silenciosa
+   que un candado mal escrito deja pasar.
+3. **La taxonomía hecha markup**: config → desplegable «Configuración»; flujo → pestaña de
+   primer nivel. El Listado va quedando como el hub que el mapa quería, con la jerarquía
+   visible en la estructura, no solo en tu cabeza.
 
-## 🟢 GO — A2 · «Traslados al taller» pasa a pestaña del Listado de ST (41 → **40**)
+**Nota de entorno (mía, no tuya)**: durante mi verificación apareció 1 rojo —
+`AutorizacionCitaTest` del PR #9 (ajeno a tu lote) — por un `include` de favicon que
+fallaba. Era mi `vendor/symfony/error-handler` incompleto (le faltaba un asset del
+renderizador de errores); `composer reinstall symfony/error-handler` lo curó, y el CI de
+main ya lo tenía verde. Tu cifra estaba bien. Lo anoto abajo como incidencia porque es la
+4ª de entorno de la semana y conviene tener la receta a mano.
 
-- **Qué es**: flujo sucursal → casa matriz con dos puntas de permiso (cadena de custodia).
-- **Verificación de permisos que ya hice**: los roles con `despachar traslado servicio`
-  (jefe_sucursal) o `recibir traslado servicio` (jefe_ventas, jefe_bodega, tecnico) **todos
-  ven el Listado** (`view|manage servicio tecnico`). Sin el problema de acceso del Informe.
-  Confírmalo en tu baseline igual.
-- **Forma**: pestaña «Traslados» del Listado (a diferencia de Costos/QR, que son config y
-  van al desplegable; Traslados es un flujo, merece pestaña de primer nivel). Gateada por
-  su OR `despachar|recibir traslado servicio` (idioma del `_tabs` calculado por permiso; el
-  `<x-tab-nav>` no gatea solo). Si el Listado gana su primera pestaña de flujo, monta el
-  `_tabs` con el `<x-tab-nav>` del Lote 3. Declara la forma.
-- **OJO — es FLUJO ACTIVO, no catálogo**: tiene links bidireccionales orden↔traslado que
-  ya existen; verifícalos tras el cambio. Es la de menor urgencia del bloque por eso, pero
-  ya llegó su turno.
-- **Ruta y permiso se CONSERVAN** — mudanza, no retiro.
-- **Mini-candado**: 6ª entrada en `CONSOLIDADAS` + **mútala** (quitar la ruta del `activo`
-  → 2 rojos → restaurar → verde), como en los cinco anteriores.
-- **`VolverTest`**: Traslados era ítem; al pasar a pestaña, ajústalo por la fuente única.
+## ⏸️ A3 · Informe — FRENADO. NO lo construyas todavía.
 
-## Después de A2 (NO arranques sin dictado)
-**A3 · Informe PARTIDO por dominio** (40 → 39, cierra el Bloque A): informe industrial →
-pestaña de la Agenda de terreno (3ª pestaña, `grid-cols-3`, gateada por `ver informe
-industrial`); informe dispensadores → Listado; el landing `admin.servicio-tecnico.informe`
-decide su destino y se declara. Verificar que NADIE pierda acceso — es el candado del lote.
-Te lo dicto formal al cerrar A2. **Ojo**: 4 commits ajenos tocaron los informes de ST a
-Excel (`InformeTallerExcel`/`InformeTerrenoExcel`) — cuando llegues a A3, parte de main
-fresco y revisa esos cambios; el terreno del Informe se movió.
+Al preparar el dictado de A3 encontré un **segundo nudo de permisos** que la decisión del
+13-ago (partir por dominio) no contemplaba. El informe **industrial** lo ven cuatro roles,
+y su audiencia cruza dos dominios que NO comparten anfitrión:
 
-## Territorio
-- **Max-2** en pausa. **Marcos y otro flujo** activos (los 4 commits del drift no eran de
-  Marcos: responsive + informes Excel). Re-fetch religioso, rama corta.
+- `jefe_bodega` (seeder L150) y `jefe_sucursal` (L196) ven el informe industrial pero **NO
+  entran a la Agenda de terreno** → si el industrial va SOLO a la Agenda, **pierden acceso**.
+- `tecnico_industrial` ve el industrial pero **NO ve el Listado** → si va al Listado, él pierde.
 
-## Nota de infra (I-10)
-GitHub con 500 intermitentes en push a main; receta rama `tmp/*` + API delete en §I-10.
+No hay un anfitrión único que cubra a los cuatro sin romper a alguno (o duplicar, que está
+prohibido). El informe **dispensadores** sí es limpio (todos los que lo ven, ven el Listado).
 
-## Recordatorios
-Rama nueva desde main FRESCO antes de tocar un archivo; suite COMPLETA de main fresco ANTES
-de empezar (baseline del Director: **2032 / 14.396** en `0e9feaa`, y subiendo — re-fetch).
-Candado mutado; parte al buzón. A2 Traslados → doble llave → A3 Informe.
+**Esto es decisión del dueño, no tuya ni mía**: se lo llevo ahora. Mi recomendación es que
+el Informe **viva solo** (es el ítem que el propio criterio del proyecto deja fuera —
+audiencia partida entre dos dominios). Hasta que el dueño decida, **A3 no se construye** y
+el Bloque A queda cerrado en 2 de 3 (menú 40). Detalle completo en §4.1 del plan («SEGUNDO
+NUDO»).
 
-CIERRE: parte a docs/fleet/buzon/partes/. Bloque A: 1 de 3 hecho. Verifica permisos SIEMPRE.
+## Estado
+- **Max-2** en pausa. **Marcos y el PR #9** activos (el drift de hoy trajo autorización de
+  citas + informes ST a Excel + responsive). Re-fetch religioso.
+- Cuando el dueño decida A3, te llega el dictado v56. Por ahora: **pausa**.
+
+## Recordatorios (para cuando se reanude)
+Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar; candado
+mutado; parte al buzón. Baseline del Director: **2110 / 14.723** en `6a35329`.
+
+CIERRE: A2 cerrado, Bloque A en 2/3. A3 espera decisión del dueño. Verifica permisos SIEMPRE.

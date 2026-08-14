@@ -109,10 +109,18 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       clics) → **decisión del dueño: se mantiene el desplegable**. Permisos verificados
       (jefe_ventas + admin, ambos ven el Listado). Re-merge tras drift de 4 commits ajenos
       (auto-merge sin conflicto). Suite 2032/14.396. **Menú 42 → 41.**
+- [x] **Bloque A · A2 EN PRODUCCIÓN (14-ago, `6a35329`)**: «Traslados al taller» pasa a
+      pestaña del Listado (primera pestaña de FLUJO; la config va en el desplegable). Permisos
+      verificados (los 4 roles con despachar|recibir traslado ven el Listado). Prefijo
+      `admin.traslados.*` no pisa `admin.bodegas.traslados.*`. Suite 2110/14.723. **Menú 41 → 40.**
+      Nota: 1 rojo de ENTORNO durante la verificación (AutorizacionCitaTest del PR #9, ajeno;
+      vendor `symfony/error-handler` incompleto → `composer reinstall` lo curó; CI de main verde
+      lo confirmó). 4ª incidencia de entorno de la semana.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 41** (L1-L5 + A1 hechos; falta
-      A2 Traslados y A3 Informe para cerrar el Bloque A en 39; los bloques B-E, a 30 — §4.1).
+      lote — la densidad ganada se ve en un número. **Hoy: 40** (L1-L5 + A1 + A2 hechos; falta
+      A3 Informe para cerrar el Bloque A; los bloques B-E, a 30 — §4.1). **A3 EN ESPERA de
+      decisión del dueño (2º nudo de permisos del Informe, ver §4.1).**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
@@ -132,7 +140,7 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 | Bloque | Lotes (en orden) | Δ | Nota |
 |---|---|---|---|
 | (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
-| **A · Servicio Técnico** (ABIERTA 13-ago) | ✅A1 Costos→Listado (`0e9feaa`) · A2 Traslados→Listado · A3 Informe (PARTIDO por dominio) | −3 | A1 HECHO (desplegable «Configuración», QR adentro por decisión del dueño). Costos y Traslados verificados limpios. Informe último y REPLANTEADO: ver hallazgo abajo |
+| **A · Servicio Técnico** (ABIERTA 13-ago) | ✅A1 Costos (`0e9feaa`) · ✅A2 Traslados (`6a35329`) · ⏸️A3 Informe (EN ESPERA — 2º nudo) | −3→−2/−3 | A1 y A2 HECHOS. A3 Informe FRENADO: el «partir por dominio» tiene un 2º nudo de permisos — ver hallazgo abajo. Decisión del dueño pendiente |
 | **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
@@ -170,6 +178,38 @@ dejarlo solo):
   reapuntado). Verificar que nadie pierda acceso tras el cambio.
 - Aritmética intacta: el ítem «Informe» se retira igual (−1); sus dos caras son navegación
   interna, no rótulos del menú. Bloque A sigue −3 → 39.
+
+### SEGUNDO NUDO (Director, 14-ago, al preparar A3) — «partir por dominio» rompe a 2 jefaturas
+La decisión del 13-ago se tomó sin este dato. Cruce de permisos por ejecución (seeder):
+quién porta `ver informe industrial` vs quién entra a la Agenda de terreno
+(`ver agenda terreno`/`agendar servicio terreno`):
+
+| Rol | ve informe industrial | entra a la Agenda | ve el Listado |
+|---|---|---|---|
+| vendedor, jefe_ventas, admin | ✓ | ✓ | ✓ |
+| tecnico_industrial | ✓ | ✓ | **✗** |
+| **jefe_bodega** (seeder L150) | ✓ | **✗** | ✓ |
+| **jefe_sucursal** (seeder L196) | ✓ | **✗** | ✓ |
+
+El informe industrial tiene una audiencia que cruza DOS dominios disjuntos: el técnico
+industrial solo ve la Agenda (no el Listado); jefe_bodega y jefe_sucursal solo ven el
+Listado (no la Agenda). **No existe un anfitrión único que cubra a todos**:
+- Industrial → Agenda: **jefe_bodega y jefe_sucursal pierden acceso** (nudo 2).
+- Industrial → Listado: **el técnico industrial pierde acceso** (nudo 1, el original).
+- (Dispensadores → Listado sí es limpio: todos los que lo ven, ven el Listado.)
+
+**A3 FRENADO — vuelve a decisión del dueño (14-ago).** Opciones sobre la mesa:
+1. **Informe vive solo** (no consolidar) — el caso especial del Bloque A: su audiencia no
+   cabe en un anfitrión sin romper a alguien o duplicar. Nadie pierde. Densidad −2 en vez
+   de −3 (Bloque A cierra en 40→39 solo con dispensadores... en realidad el ítem se
+   quedaría; ver nota). La respuesta honesta a la lente del dueño: «necesita vivir solo».
+2. **Solo dispensadores → Listado; industrial se queda como su propia entrada** — resta
+   parcial y compleja (el landing bifurca hoy).
+3. **Ampliar permisos** (dar acceso a la Agenda a bodega/sucursal, o al Listado al técnico)
+   — cambio de accesos de negocio, decisión de gerencia.
+4. **Duplicar** (industrial en Agenda Y Listado) — PROHIBIDO por el proyecto.
+Recomendación del Director: **opción 1** (vive solo) — es el ítem que el propio criterio
+del proyecto deja fuera. Menú final 31 en vez de 30; una resta menos, cero accesos rotos.
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 
