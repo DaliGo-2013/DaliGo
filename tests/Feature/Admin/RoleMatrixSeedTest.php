@@ -29,7 +29,7 @@ class RoleMatrixSeedTest extends TestCase
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio', 'despachar traslado servicio', 'recibir traslado servicio',
-                'agendar servicio terreno', 'ver agenda terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'gestionar tiempos reparacion',
+                'agendar servicio terreno', 'ver agenda terreno', 'gestionar cierres agenda', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
                 'ver informe dispensadores', 'ver informe industrial',
                 'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
@@ -40,10 +40,10 @@ class RoleMatrixSeedTest extends TestCase
                 'manage hojas ruta', 'autorizar pagos ruta', 'autorizar ruta', 'autorizar carga',
             ],
             'member' => [],
-            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga'],
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga'],
             // UNIÓN del merge 04-08: devoluciones + simulador (M13/Marcos) y
             // la llave 1 de la hoja de ruta (P-DSP-08).
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su
@@ -59,7 +59,7 @@ class RoleMatrixSeedTest extends TestCase
             // — manda la cotización, repara si el cliente acepta y avisa que el
             // equipo está listo; el cobro es en sala de ventas al retiro.
             'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'ver informe dispensadores'],
-            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
+            'tecnico_industrial' => ['ver agenda terreno', 'ver servicios terreno', 'gestionar instalaciones', 'ver informe industrial'],
             'soplador' => ['report production'],
             // Jefe de logística (2026-08-04): nace con el módulo LOGÍSTICA.
             // Alcance ACOTADO a la flota a propósito — hoy logística es

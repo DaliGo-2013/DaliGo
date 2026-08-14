@@ -39,8 +39,10 @@ return [
         'aprobar solicitudes' => 'Aprobar solicitudes (bandeja)',
         'view aprobaciones' => 'Ver historial de aprobaciones',
         'crear lote servicio' => 'Ingresar lote de máquinas (conductor en ruta)',
-        'agendar servicio terreno' => 'Agendar trabajos en terreno + catálogo de servicios',
+        'agendar servicio terreno' => 'Agendar trabajos en terreno',
         'gestionar cierres agenda' => 'Cerrar días de la agenda del técnico (feriados, vacaciones, media jornada)',
+        'ver servicios terreno' => 'Ver el tarifario de servicios de terreno (precios y detalle, sin editar)',
+        'gestionar servicios terreno' => 'Editar el tarifario de servicios de terreno (crear y cambiar precios)',
         'ver agenda terreno' => 'Ver la agenda de terreno y marcar trabajos realizados',
         'gestionar instalaciones' => 'Gestionar instalaciones (terreno)',
         'gestionar tiempos reparacion' => 'Gestionar tiempos de reparación (costos generales)',
@@ -87,7 +89,10 @@ return [
         // el literal 'servicio tecnico', así que sin este keyword caían en
         // "Generales" en la pantalla de Roles.
         'Servicio técnico' => ['servicio tecnico', 'traslado servicio', 'lote servicio', 'reparacion', 'descuento', 'informe'],
-        'Terreno' => ['servicio terreno', 'agenda terreno', 'cierres agenda', 'instalaciones'],
+        // 'servicios terreno' va aparte de 'servicio terreno' a propósito: el patrón se compara
+        // como texto y el plural del permiso de vista (`ver servicios terreno`) no contiene al
+        // singular del de agendar. Sin esta entrada cae en «Generales».
+        'Terreno' => ['servicio terreno', 'servicios terreno', 'agenda terreno', 'cierres agenda', 'instalaciones'],
         'Producción' => ['production'],
         // Despachos (M07) va ANTES de Comercial: 'entrega' no colisiona con
         // ningún permiso de ST/terreno (verificado sobre la lista de labels).

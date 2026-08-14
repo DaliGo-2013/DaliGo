@@ -333,11 +333,29 @@ Route::middleware('auth')
                 ->whereNumber('trabajo')->name('agenda-terreno.rechazar');
             Route::delete('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'destroy'])
                 ->whereNumber('trabajo')->name('agenda-terreno.destroy');
+        });
 
-            // Catalogo de servicios de terreno (tarifario UF, editable).
+        // ═══ EL TARIFARIO DE TERRENO, CON PERMISOS PROPIOS ═══
+        //
+        // Pedido del dueño (14-08-2026): «que puedan elegir dar el permiso o no al perfil…
+        // separar el permiso de edicion del de agendar». Antes editar el tarifario venia pegado
+        // a 'agendar servicio terreno', asi que para dejar que alguien corrigiera un precio
+        // habia que dejarlo agendar trabajos tambien. Ahora son dos llaves distintas y gerencia
+        // decide cada una desde Administracion -> Roles, sin tocar codigo:
+        //
+        //   · ver servicios terreno       → consultar precios y detalle (el tecnico en terreno)
+        //   · gestionar servicios terreno → crear y editar el tarifario (decision comercial)
+        //
+        // NINGUNA de las dos vive en el grupo de la agenda: si estuvieran ahi adentro
+        // heredarian 'agendar servicio terreno' y la separacion no serviria de nada.
+        Route::get('servicios-terreno', [ServicioTerrenoController::class, 'index'])
+            ->middleware('permission:ver servicios terreno|gestionar servicios terreno')
+            ->name('servicios-terreno.index');
+
+        Route::middleware('permission:gestionar servicios terreno')->group(function () {
             Route::resource('servicios-terreno', ServicioTerrenoController::class)
                 ->parameters(['servicios-terreno' => 'servicio'])
-                ->only(['index', 'create', 'store', 'edit', 'update']);
+                ->only(['create', 'store', 'edit', 'update']);
         });
 
         // "Costos generales de reparación": catálogo de tiempos estándar por
