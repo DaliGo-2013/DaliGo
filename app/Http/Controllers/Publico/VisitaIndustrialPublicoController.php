@@ -90,10 +90,19 @@ class VisitaIndustrialPublicoController extends Controller
             'ocupado' => $d['ocupado'],
             'dias' => $d['dias'],
             'proximo_libre' => $d['proximo_libre'],
-            // El «por qué» que SÍ se puede decir: que ese día no se atiende. Nunca el motivo
-            // de fondo (vacaciones, feriado, lo que sea): decisión del dueño.
+            // El «por qué» que SÍ se puede decir: que ese día no se atiende. NUNCA el motivo
+            // de fondo (vacaciones, feriado, lo que sea): decisión del dueño. Por eso el
+            // texto sale del tipo de cierre y no del campo `motivo`, que es interno y ni
+            // siquiera llega hasta acá.
             'etiqueta_cerrado' => $d['estado'] === 'cerrado'
-                ? 'Ese día no se atiende: el técnico va a terreno de lunes a viernes.'
+                ? ($d['motivo_cierre'] === 'cierre'
+                    ? 'Ese día la agenda está cerrada.'
+                    : 'Ese día no se atiende: el técnico va a terreno de lunes a viernes.')
+                : null,
+            // MEDIA JORNADA: se puede pedir, pero hasta cierta hora.
+            'hora_hasta' => $d['hora_hasta'],
+            'etiqueta_parcial' => $d['estado'] === 'parcial'
+                ? 'Ese día hay disponibilidad hasta las '.$d['hora_hasta'].'.'
                 : null,
             'etiqueta_tramo' => $d['estado'] === 'ocupado'
                 ? ($d['dias'] > 1

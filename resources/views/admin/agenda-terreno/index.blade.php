@@ -6,6 +6,15 @@
                     {{-- El link «Catálogo de servicios» que vivía acá lo absorbió
                          la pestaña «Servicios de terreno» del tab-nav (Lote 5,
                          PLAN-MENU-DENSIDAD) — misma URL, mismo @can. --}}
+                    {{-- Cuándo NO se atiende (feriados, vacaciones, media jornada). Va acá y
+                         no escondido en un menú: es del jefe de ventas y se toca cuando se
+                         está mirando la agenda, no buscándolo en otra parte. --}}
+                    @can('gestionar cierres agenda')
+                        <a href="{{ route('admin.agenda-terreno.cierres.index') }}"
+                           class="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50">
+                            Cuándo no se atiende
+                        </a>
+                    @endcan
                     @can('agendar servicio terreno')
                         <x-button-link :href="route('admin.agenda-terreno.create')">
                             <x-icon.plus class="h-4 w-4" />

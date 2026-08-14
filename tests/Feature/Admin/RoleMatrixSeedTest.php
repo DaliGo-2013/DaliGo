@@ -29,7 +29,7 @@ class RoleMatrixSeedTest extends TestCase
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio', 'despachar traslado servicio', 'recibir traslado servicio',
-                'agendar servicio terreno', 'ver agenda terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
+                'agendar servicio terreno', 'ver agenda terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'gestionar tiempos reparacion',
                 'ver informe dispensadores', 'ver informe industrial',
                 'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
@@ -43,7 +43,7 @@ class RoleMatrixSeedTest extends TestCase
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga'],
             // UNIÓN del merge 04-08: devoluciones + simulador (M13/Marcos) y
             // la llave 1 de la hoja de ruta (P-DSP-08).
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta'],
+            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su

@@ -41,7 +41,8 @@
               servicioId: @js(old('servicio_terreno_id', '')),
               fecha: @js(old('fecha_preferida', '')),
               url: @js(route('visita-industrial.disponibilidad')),
-              estado: null, tramo: null, cerrado: null, proximo: null, proximoIso: null, dias: 0,
+              estado: null, tramo: null, cerrado: null, parcial: null,
+              proximo: null, proximoIso: null, dias: 0,
 
               async revisar() {
                   if (! this.fecha) { this.estado = null; return; }
@@ -54,6 +55,7 @@
                       this.dias = d.dias;
                       this.tramo = d.etiqueta_tramo;
                       this.cerrado = d.etiqueta_cerrado;
+                      this.parcial = d.etiqueta_parcial;
                       this.proximo = d.etiqueta_proximo;
                       this.proximoIso = d.proximo_libre;
                       // El servidor manda el estado; el cartel no lo deduce. Si mañana
@@ -132,6 +134,15 @@
                     <p class="mt-2 flex items-start gap-1.5 text-sm font-medium text-brand-700">
                         <span aria-hidden="true">✓</span>
                         <span>Ese día hay disponibilidad.</span>
+                    </p>
+                </template>
+
+                {{-- MEDIA JORNADA: se puede pedir, pero hasta cierta hora. Va con el ✓ y no
+                     con el ⚠ porque el día SÍ sirve; lo que cambia es hasta cuándo. --}}
+                <template x-if="estado === 'parcial'">
+                    <p class="mt-2 flex items-start gap-1.5 text-sm font-medium text-brand-700">
+                        <span aria-hidden="true">✓</span>
+                        <span x-text="parcial"></span>
                     </p>
                 </template>
 
