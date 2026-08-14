@@ -760,12 +760,22 @@ class AgendaTrabajo extends Model implements AuditableContract
      * que es exactamente la falla que esto viene a cerrar.
      *
      * @param  array<string, mixed>  $extra
+     * @param  int|null  $tambienA  id de un técnico que TAMBIÉN tiene que enterarse
+     *   (el anterior, cuando el trabajo se reasignó: si no, el trabajo desaparece
+     *   de su radar sin que nadie se lo diga)
      */
-    public function avisarAlTecnico(string $evento, array $extra = []): void
+    public function avisarAlTecnico(string $evento, array $extra = [], ?int $tambienA = null): void
     {
         $destinatarios = $this->tecnico
             ? collect([$this->tecnico])
             : User::role('tecnico_industrial')->get();
+
+        if ($tambienA !== null && $tambienA !== $this->tecnico_id) {
+            $destinatarios = $destinatarios->when(
+                User::find($tambienA),
+                fn ($c, $u) => $c->push($u)
+            );
+        }
 
         if ($destinatarios->isEmpty()) {
             return;
@@ -783,6 +793,10 @@ class AgendaTrabajo extends Model implements AuditableContract
             'telefono' => $this->cliente_telefono ?: 's/i',
             'servicio' => $this->servicio?->nombre ?: 'Fuera de tarifa',
             'descripcion' => $this->descripcion ?: '—',
+            // Quién quedó asignado: lo usa el aviso de «te lo movieron», que también
+            // le llega al técnico ANTERIOR cuando el trabajo se reasignó — es cómo
+            // se entera de que ya no es suyo.
+            'tecnico' => $this->tecnico?->name ?? 'sin asignar',
             'url' => route('admin.agenda-terreno.index', [
                 'anio' => $this->fecha?->year,
                 'mes' => $this->fecha?->month,
@@ -794,6 +808,51 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         $destinatarios->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /**
+     * ¿Hay que avisarle al técnico de este cambio? Decide y avisa.
+     *
+     * VIVE EN EL MODELO por la misma razón que `avisarAlCliente`, y la advertencia
+     * ya está escrita en el controlador: hay TRES caminos que le agendan un
+     * trabajo al técnico —crear la cita, editarla, y el jefe de ventas autorizando
+     * una cita días después— y con esta lógica dentro de un controlador el camino
+     * diferido sale sin avisarle a nadie. Un aviso que depende de por dónde entró
+     * el cambio es un aviso que se va a olvidar.
+     *
+     * Espeja exactamente los tres casos de `avisarClienteSiCorresponde`, porque
+     * son los mismos tres que le cambian el día al técnico: le agendaron algo, se
+     * lo movieron, o se lo cancelaron. Lo que cambia es el destinatario.
+     *
+     * @param  array{estado: string|null, fecha: string|null, hora: string|null, tecnico_id: int|null}  $antes
+     */
+    public function avisarAlTecnicoSiCorresponde(array $antes): void
+    {
+        if ($this->estado === 'agendado' && $this->fecha) {
+            if ($antes['estado'] !== 'agendado') {
+                $this->avisarAlTecnico('terreno.agendado');
+
+                return;
+            }
+
+            $moved = $antes['fecha'] !== $this->fecha?->toDateString()
+                || $antes['hora'] !== $this->hora_corta
+                || $antes['tecnico_id'] !== $this->tecnico_id;
+
+            if ($moved) {
+                $this->avisarAlTecnico('terreno.reagendado', [
+                    // Qué decía antes: sin esto el técnico recibe la cita nueva y
+                    // no sabe cuál de las suyas se movió.
+                    'antes' => trim(($antes['fecha'] ?? 'sin fecha').' '.($antes['hora'] ?? '')),
+                ], tambienA: $antes['tecnico_id']);
+            }
+
+            return;
+        }
+
+        if ($this->estado === 'cancelado' && $antes['estado'] === 'agendado') {
+            $this->avisarAlTecnico('terreno.cancelado', [], tambienA: $antes['tecnico_id']);
+        }
     }
 
     /**

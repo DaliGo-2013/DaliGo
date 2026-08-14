@@ -87,6 +87,14 @@ class Notificacion extends Model
         // hecho —hay que facturar/seguir— o no se pudo y hay que decidir qué sigue.
         'terreno.realizado' => 'Trabajo de terreno realizado',
         'terreno.no_realizado' => 'Trabajo de terreno NO realizado',
+        // Agenda de terreno · avisos PARA EL TÉCNICO sobre su propia agenda (dueño
+        // 14-08-2026: «cuando realizamos pruebas de testeo con instalaciones o
+        // reparaciones nunca le llegó una notificación»). Hasta hoy el rol
+        // `tecnico_industrial` no estaba en NINGUNA lista de destinatarios de la
+        // app: le agendaban el día y se enteraba abriendo la agenda a ver.
+        'terreno.agendado' => 'Te agendaron un trabajo en terreno',
+        'terreno.reagendado' => 'Te cambiaron un trabajo de la agenda',
+        'terreno.cancelado' => 'Te cancelaron un trabajo agendado',
         // Logística · vencimiento de documentos de la flota (decisión del dueño
         // 04-08): aviso 30 días antes y aviso cuando ya venció. Lo dispara el
         // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
@@ -197,7 +205,10 @@ class Notificacion extends Model
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada',
-            'terreno.realizado', 'terreno.no_realizado' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            'terreno.realizado', 'terreno.no_realizado',
+            // Los del técnico sobre su propia agenda: mismo gate, porque el destino
+            // es la misma pantalla (el técnico entra con 'ver agenda terreno').
+            'terreno.agendado', 'terreno.reagendado', 'terreno.cancelado' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
             // La ficha del traslado la abre quien despacha o quien recibe.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
             // La ficha del vehículo: mismo gate que su ruta en routes/web.php.
@@ -281,7 +292,8 @@ class Notificacion extends Model
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
             // ven en la agenda de terreno.
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada',
-            'terreno.realizado', 'terreno.no_realizado' => route('admin.agenda-terreno.index'),
+            'terreno.realizado', 'terreno.no_realizado',
+            'terreno.agendado', 'terreno.reagendado', 'terreno.cancelado' => route('admin.agenda-terreno.index'),
             // El traslado aterriza en SU ficha: es donde se confirma la recepcion
             // y donde se ve que maquina falta.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $this->notificable_id

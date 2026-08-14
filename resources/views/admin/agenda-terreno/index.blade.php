@@ -346,9 +346,16 @@
                                                             <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
                                                                 class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                                         </div>
+                                                        {{-- 48px táctiles en móvil: esta es la pantalla del
+                                                             técnico, que la usa de pie en la planta y a veces
+                                                             con guantes. Medido en el banco: con el `p-2`
+                                                             heredado del taller quedaba en 36px, bajo el
+                                                             mínimo de la doctrina de operario. Desde `sm:`
+                                                             vuelve al icono compacto. --}}
                                                         <button type="button" x-on:click="quitar(i)"
-                                                            class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
+                                                            class="flex min-h-12 w-12 shrink-0 items-center justify-center self-end rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:min-h-0 sm:w-auto sm:self-start sm:p-2" title="Quitar">
                                                             <x-icon.trash class="h-5 w-5" />
+                                                            <span class="sr-only">Quitar repuesto</span>
                                                         </button>
                                                     </div>
                                                 </div>

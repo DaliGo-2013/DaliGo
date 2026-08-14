@@ -102,5 +102,13 @@ class CitaTerreno implements AccionAprobable
         if (filled($trabajo->cliente_email)) {
             $trabajo->refresh()->avisarAlCliente('agendada');
         }
+
+        // Y EL TÉCNICO, por el mismo motivo: acá la cita se le agenda horas o días después de
+        // que el vendedor la pidió, así que es justo el camino donde el aviso hace más falta.
+        // El estado previo era 'solicitado' (lo exige la guarda de arriba), o sea: para el
+        // técnico esto es nuevo.
+        $trabajo->refresh()->avisarAlTecnicoSiCorresponde([
+            'estado' => 'solicitado', 'fecha' => null, 'hora' => null, 'tecnico_id' => null,
+        ]);
     }
 }

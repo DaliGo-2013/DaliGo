@@ -334,6 +334,41 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso al jefe de ventas y al vendedor del cliente cuando el técnico no pudo hacer el trabajo (falta un repuesto, el cliente no quiso, etc.).',
             ],
+            // AVISOS PARA EL TÉCNICO sobre su propia agenda (dueño 14-08-2026). Los
+            // escribe dirigidos a él y en segunda persona: el que los lee es el que
+            // tiene que subirse a la camioneta. El {hora} y la {direccion} van
+            // primero porque son lo que decide a qué hora sale y para dónde.
+            [
+                'clave' => 'notif_plantilla_terreno_agendado',
+                'valor' => json_encode([
+                    'asunto' => 'Te agendaron: {cliente} el {fecha} ({ciudad})',
+                    'cuerpo' => "Tienes un trabajo nuevo en la agenda.\n\n{fecha} · {hora}\n{cliente} — {tipo}\n{direccion}, {ciudad}\nTeléfono: {telefono}\nServicio: {servicio}\n\nQué hay que hacer:\n{descripcion}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al técnico industrial cuando le agendan un trabajo en terreno (o cuando el jefe de ventas autoriza la cita).',
+            ],
+            [
+                'clave' => 'notif_plantilla_terreno_reagendado',
+                'valor' => json_encode([
+                    'asunto' => 'Cambió tu visita a {cliente}: ahora {fecha}',
+                    // El {antes} es lo que permite saber CUÁL de sus trabajos se movió.
+                    'cuerpo' => "Te movieron un trabajo de la agenda.\n\nAntes: {antes}\nAhora: {fecha} · {hora}\n\n{cliente} — {tipo}\n{direccion}, {ciudad}\nTeléfono: {telefono}\nTécnico asignado: {tecnico}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al técnico industrial cuando le cambian la fecha, la hora o el técnico de un trabajo ya agendado.',
+            ],
+            [
+                'clave' => 'notif_plantilla_terreno_cancelado',
+                'valor' => json_encode([
+                    'asunto' => 'NO vayas: se canceló {cliente} del {fecha}',
+                    'cuerpo' => "Se canceló un trabajo que tenías agendado.\n\n{fecha} · {hora}\n{cliente} — {tipo}\n{direccion}, {ciudad}\n\nNo vayas: ventas te avisa si se vuelve a coordinar.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso al técnico industrial cuando le cancelan un trabajo que ya estaba agendado (para que no viaje al cliente).',
+            ],
             [
                 'clave' => 'notif_plantilla_terreno_confirmada',
                 'valor' => json_encode([

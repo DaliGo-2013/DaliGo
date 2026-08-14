@@ -163,6 +163,11 @@ class AgendaTrabajoController extends Controller
             $this->avisarClienteDeCita($trabajo, 'agendada');
         }
 
+        // Y AVÍSALE AL TÉCNICO, que es quien tiene que ir. El `$antes` es un
+        // trabajo que no existía, así que el estado previo es null y el modelo lo
+        // lee como «esto es nuevo».
+        $trabajo->avisarAlTecnicoSiCorresponde(['estado' => null, 'fecha' => null, 'hora' => null, 'tecnico_id' => null]);
+
         return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month, 'dia' => $trabajo->fecha->toDateString()])
             ->with('status', "Trabajo agendado para el {$trabajo->fecha->format('d-m-Y')} ({$trabajo->tipo_label}, {$trabajo->cliente_nombre}).");
     }
@@ -368,6 +373,10 @@ class AgendaTrabajoController extends Controller
         $trabajo->update($data);
 
         $this->avisarClienteSiCorresponde($trabajo->refresh(), $antes);
+        // El MISMO snapshot sirve para el técnico: los tres cambios que le avisamos
+        // al cliente (agendada / movida / anulada) son los tres que le cambian el
+        // día al técnico.
+        $trabajo->avisarAlTecnicoSiCorresponde($antes);
 
         // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
         $destino = $trabajo->fecha ?? \App\Support\FechaNegocio::ahora();
@@ -429,6 +438,11 @@ class AgendaTrabajoController extends Controller
             ]);
         }
 
+        // Estado previo: lo necesita el aviso al técnico de más abajo (una cita que
+        // se cancela DESPUÉS de estar agendada es la que no tiene que ir a hacer).
+        $estadoAntes = $trabajo->estado;
+        $tecnicoAntes = $trabajo->tecnico_id;
+
         $update = ['estado' => $data['estado']];
         if (array_key_exists('notas_tecnico', $data)) {
             $update['notas_tecnico'] = $data['notas_tecnico'];
@@ -462,6 +476,16 @@ class AgendaTrabajoController extends Controller
                 $data['estado'] === 'realizado' ? 'terreno.realizado' : 'terreno.no_realizado'
             );
         }
+
+        // Si le CANCELARON un trabajo que ya estaba agendado, el técnico tiene que
+        // saberlo antes de manejar hasta allá. El propio técnico cerrando su
+        // trabajo no se auto-avisa: el modelo solo mira agendado → cancelado.
+        $trabajo->refresh()->avisarAlTecnicoSiCorresponde([
+            'estado' => $estadoAntes,
+            'fecha' => $trabajo->fecha?->toDateString(),
+            'hora' => $trabajo->hora_corta,
+            'tecnico_id' => $tecnicoAntes,
+        ]);
 
         return back()->with('status', "Trabajo de {$trabajo->cliente_nombre} marcado como {$trabajo->estado_label}.");
     }
