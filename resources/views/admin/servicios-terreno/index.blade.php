@@ -1,12 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Catálogo de servicios de terreno" subtitle="Tarifario en UF del técnico industrial (editable).">
-            <x-slot name="action">
-                <x-button-link :href="route('admin.servicios-terreno.create')">
-                    <x-icon.plus class="h-4 w-4" />
-                    Nuevo servicio
-                </x-button-link>
-            </x-slot>
+        {{-- El subtítulo NO dice «editable» a quien no puede editar (pedido del dueño 14-08:
+             el técnico industrial ahora VE el tarifario, con `ver servicios terreno`). Decirle
+             «editable» y no darle ningún botón es la clase de detalle que hace dudar de la
+             pantalla en vez de dudar del permiso. --}}
+        <x-page-header title="Catálogo de servicios de terreno"
+                       :subtitle="auth()->user()->can('agendar servicio terreno')
+                            ? 'Tarifario en UF del técnico industrial (editable).'
+                            : 'Tarifario en UF del técnico industrial. Precios y detalle de cada servicio.'">
+            @can('agendar servicio terreno')
+                <x-slot name="action">
+                    <x-button-link :href="route('admin.servicios-terreno.create')">
+                        <x-icon.plus class="h-4 w-4" />
+                        Nuevo servicio
+                    </x-button-link>
+                </x-slot>
+            @endcan
         </x-page-header>
     </x-slot>
 
@@ -39,9 +48,13 @@
                                 <p class="mt-0.5 text-xs text-neutral-400">{{ $s->observaciones }}</p>
                             @endif
                         </div>
-                        <div class="shrink-0">
-                            <x-secondary-link :href="route('admin.servicios-terreno.edit', $s)">Editar</x-secondary-link>
-                        </div>
+                        {{-- Sin permiso de edición no se ofrece el botón: un enlace que termina
+                             en 403 es peor que no tenerlo. --}}
+                        @can('agendar servicio terreno')
+                            <div class="shrink-0">
+                                <x-secondary-link :href="route('admin.servicios-terreno.edit', $s)">Editar</x-secondary-link>
+                            </div>
+                        @endcan
                     </div>
                 </li>
             @empty

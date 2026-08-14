@@ -29,7 +29,7 @@ class RoleMatrixSeedTest extends TestCase
                 'manage roles', 'manage sucursales', 'manage settings', 'view audit',
                 'manage productos', 'manage clientes', 'report production', 'manage production',
                 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'autorizar reparacion', 'aplicar descuento servicio tecnico', 'crear lote servicio', 'despachar traslado servicio', 'recibir traslado servicio',
-                'agendar servicio terreno', 'ver agenda terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'gestionar tiempos reparacion',
+                'agendar servicio terreno', 'ver agenda terreno', 'gestionar cierres agenda', 'ver servicios terreno', 'gestionar instalaciones', 'gestionar tiempos reparacion',
                 'ver informe dispensadores', 'ver informe industrial',
                 'view notificaciones', 'gestionar notificaciones', 'aprobar solicitudes', 'view aprobaciones',
                 'manage despachos', 'confirmar entrega',
@@ -59,7 +59,7 @@ class RoleMatrixSeedTest extends TestCase
             // — manda la cotización, repara si el cliente acepta y avisa que el
             // equipo está listo; el cobro es en sala de ventas al retiro.
             'tecnico' => ['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'ver informe dispensadores'],
-            'tecnico_industrial' => ['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial'],
+            'tecnico_industrial' => ['ver agenda terreno', 'ver servicios terreno', 'gestionar instalaciones', 'ver informe industrial'],
             'soplador' => ['report production'],
             // Jefe de logística (2026-08-04): nace con el módulo LOGÍSTICA.
             // Alcance ACOTADO a la flota a propósito — hoy logística es

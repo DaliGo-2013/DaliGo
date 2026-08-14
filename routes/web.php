@@ -334,11 +334,21 @@ Route::middleware('auth')
             Route::delete('agenda-terreno/{trabajo}', [AgendaTrabajoController::class, 'destroy'])
                 ->whereNumber('trabajo')->name('agenda-terreno.destroy');
 
-            // Catalogo de servicios de terreno (tarifario UF, editable).
+            // Catalogo de servicios de terreno (tarifario UF): CREAR y EDITAR es de
+            // jefatura/ventas. El `index` esta afuera de este grupo — ver abajo.
             Route::resource('servicios-terreno', ServicioTerrenoController::class)
                 ->parameters(['servicios-terreno' => 'servicio'])
-                ->only(['index', 'create', 'store', 'edit', 'update']);
+                ->only(['create', 'store', 'edit', 'update']);
         });
+
+        // VER el tarifario: dos permisos, porque son dos necesidades distintas. Quien agenda lo
+        // edita; el tecnico industrial solo lo CONSULTA —en la planta del cliente le preguntan
+        // cuanto sale y que incluye— y hasta el 14-08 la pantalla no le aparecia (pedido del
+        // dueño: «para Carlos crear el permiso de vista»). Va FUERA del grupo de arriba para no
+        // heredar el permiso de edicion.
+        Route::get('servicios-terreno', [ServicioTerrenoController::class, 'index'])
+            ->middleware('permission:agendar servicio terreno|ver servicios terreno')
+            ->name('servicios-terreno.index');
 
         // "Costos generales de reparación": catálogo de tiempos estándar por
         // trabajo (jefatura). Fija la mano de obra que el técnico no puede editar.
