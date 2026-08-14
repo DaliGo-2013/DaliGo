@@ -59,14 +59,43 @@ class Sucursal extends Model implements AuditableContract
     }
 
     /**
+     * El codigo es una LLAVE, no un rotulo: normalizado a MAYUSCULAS y sin espacios para
+     * compararlo. Lo escribe una persona en el formulario de sucursales, y de ahi salen
+     * busquedas en config (el plazo de reparacion, las sucursales que reciben taller).
+     */
+    public static function normalizaCodigo(?string $codigo): string
+    {
+        return mb_strtoupper(trim((string) $codigo));
+    }
+
+    /**
      * Dias habiles de reparacion de esta sucursal (plazo de entrega estimado).
      * Configurable en config/servicio_tecnico.php por codigo de sucursal.
+     *
+     * SE COMPARA NORMALIZADO, y no es una precaucion teorica: en produccion el codigo de la
+     * casa matriz estaba guardado como «Mirador» (alguien lo retipeo al editar la ficha) y este
+     * metodo hacia `$map[$this->codigo]` — un indice de array de PHP, case-sensitive. El mapa
+     * tiene `MIRADOR`, asi que Mirador caia al default de 15 dias habiles y el correo le
+     * prometia al cliente 15 donde el dueño dijo 10 (hallazgo del 14-08-2026; es la diferencia
+     * exacta del correo real: ingreso 06-08 → entrega 27-08 en vez del 20-08).
+     *
+     * Nadie lo vio porque todo lo demas que usa el codigo pasa por SQL (`whereIn`) y en MySQL
+     * eso es case-insensitive por colacion: la sucursal aparecia en el selector del QR y
+     * funcionaba, menos el numero que el cliente recibe por escrito.
      */
     public function getDiasReparacionAttribute(): int
     {
-        $map = config('servicio_tecnico.dias_reparacion', []);
+        $codigo = self::normalizaCodigo($this->codigo);
 
-        return $map[$this->codigo] ?? (int) config('servicio_tecnico.dias_reparacion_default', 15);
+        // Las claves del mapa tambien se normalizan: si mañana alguien agrega 'buzeta' en
+        // config, tiene que valer igual que 'BUZETA'.
+        foreach (config('servicio_tecnico.dias_reparacion', []) as $clave => $dias) {
+            if (self::normalizaCodigo((string) $clave) === $codigo) {
+                return (int) $dias;
+            }
+        }
+
+        return (int) config('servicio_tecnico.dias_reparacion_default', 15);
     }
 
     /**

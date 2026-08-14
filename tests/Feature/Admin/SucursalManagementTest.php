@@ -213,6 +213,65 @@ class SucursalManagementTest extends TestCase
         $this->assertSame('EL MIRADOR', $otra->fresh()->nombre);
     }
 
+    /**
+     * EL CODIGO ES UNA LLAVE Y SE GUARDA NORMALIZADO (14-08-2026). En producción estaban
+     * «Mirador» y «Coquimbo» retipeados desde este mismo formulario, y con eso el plazo de
+     * reparación del correo caía al default de 15 días hábiles (ver
+     * Sucursal::getDiasReparacionAttribute y PlazoSinFechaPrometidaTest).
+     */
+    public function test_el_codigo_se_guarda_en_mayusculas(): void
+    {
+        $this->actingAs($this->admin())->post('/admin/sucursales', [
+            'nombre' => 'Mirador', 'codigo' => '  mirador-2  ', 'activa' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR-2']);
+    }
+
+    /** Y al editar tampoco se puede volver a minúsculas «sin querer». */
+    public function test_editar_tampoco_deja_el_codigo_en_minusculas(): void
+    {
+        $sucursal = Sucursal::create(['nombre' => 'Coquimbo', 'codigo' => 'COQUIMBO', 'activa' => true]);
+
+        $this->actingAs($this->admin())->put("/admin/sucursales/{$sucursal->id}", [
+            'nombre' => 'Coquimbo', 'codigo' => 'Coquimbo', 'ciudad' => 'Coquimbo', 'activa' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('COQUIMBO', $sucursal->fresh()->codigo);
+    }
+
+    /** Y la migración one-shot arregla los que ya están guardados así. */
+    public function test_la_migracion_normaliza_los_codigos_ya_guardados(): void
+    {
+        $mirador = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'Mirador', 'es_central' => true, 'activa' => true]);
+        $coquimbo = Sucursal::create(['nombre' => 'Coquimbo', 'codigo' => 'Coquimbo', 'activa' => true]);
+
+        $migracion = require database_path('migrations/2026_08_14_210000_normaliza_los_codigos_de_sucursal.php');
+        $migracion->up();
+
+        $this->assertSame('MIRADOR', $mirador->fresh()->codigo);
+        $this->assertSame('COQUIMBO', $coquimbo->fresh()->codigo);
+        // Y con eso el plazo vuelve a ser el que dictó el dueño.
+        $this->assertSame(10, $mirador->fresh()->dias_reparacion);
+        $this->assertSame(15, $coquimbo->fresh()->dias_reparacion);
+    }
+
+    /**
+     * La migración NO fuerza una colisión: dos sucursales que difieren solo en mayúsculas son un
+     * duplicado, y eso se resuelve moviendo órdenes y usuarios, no en una migración a ciegas.
+     */
+    public function test_la_migracion_no_pisa_un_codigo_ya_ocupado(): void
+    {
+        $buena = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR', 'es_central' => true, 'activa' => true]);
+        $duplicada = Sucursal::create(['nombre' => 'El Mirador', 'codigo' => 'Mirador', 'activa' => true]);
+
+        $migracion = require database_path('migrations/2026_08_14_210000_normaliza_los_codigos_de_sucursal.php');
+        $migracion->up();
+
+        $this->assertSame('MIRADOR', $buena->fresh()->codigo);
+        $this->assertSame('Mirador', $duplicada->fresh()->codigo, 'La migración pisó un código ya ocupado en vez de dejar el duplicado a la vista.');
+    }
+
     // ── P-M04-11 · guardas de eliminación COMPLETAS ────────────────────────
     // Cada FK con datos bloquea con un flash que dice QUÉ reasignar; el
     // RESTRICT de la BD es el cinturón, no la primera línea (un 500 no

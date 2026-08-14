@@ -35,16 +35,29 @@ Un plazo en días hábiles dice lo mismo sin fijar el día: el cliente lo cuenta
    [traslado-maquinas-a-reparar.md](traslado-maquinas-a-reparar.md) para el viaje que
    explica esos 5 días de diferencia.
 
-3. **Sin sucursal no se promete plazo** (ingreso por ruta): se omite la línea en vez
+3. **El código de la sucursal es una LLAVE, no un rótulo** (14-08-2026). El plazo se
+   busca por código, y esa búsqueda es un índice de array de PHP: distingue mayúsculas.
+   En producción el código de la casa matriz estaba guardado como `Mirador` —lo retipeó
+   alguien al editar la ficha, junto con `Coquimbo`— y con eso Mirador caía al default de
+   15 días hábiles: **el correo prometía 15 donde la regla dice 10**, que es la diferencia
+   exacta del correo real que mostró el dueño (ingreso 06-08 → entrega 27-08 en vez del
+   20-08). Nadie lo vio porque todo lo demás que usa el código pasa por SQL (`whereIn`) y
+   en MySQL eso es case-insensitive por colación: la sucursal aparecía en el selector del
+   QR y funcionaba todo, menos el número que el cliente recibe por escrito.
+   Queda cerrado por tres lados: el formulario normaliza al guardar
+   (`Sucursal::normalizaCodigo`), el accessor compara normalizado, y una migración one-shot
+   arregló los códigos ya guardados.
+
+4. **Sin sucursal no se promete plazo** (ingreso por ruta): se omite la línea en vez
    de inventar un número.
 
-4. **La fecha estimada NO se eliminó, se dejó de prometer.** `ordenes_servicio.fecha_entrega`
+5. **La fecha estimada NO se eliminó, se dejó de prometer.** `ordenes_servicio.fecha_entrega`
    sigue calculándose y guardándose: la usan el flujo de salidas del Inicio y el
    informe de gestión, y el taller la ve en la ficha. Lo que cambia es a quién se le
    muestra — adentro sí, al cliente no. El campo de la ficha lo dice en su ayuda, para
    que nadie la prometa por teléfono.
 
-5. **El plazo se dice con "hasta"** ("hasta 10 días hábiles"), y el correo agrega que
+6. **El plazo se dice con "hasta"** ("hasta 10 días hábiles"), y el correo agrega que
    se cuenta en días hábiles y puede variar según el diagnóstico.
 
 ## Candados
@@ -56,3 +69,10 @@ distingue "no se le manda al cliente" de "se eliminó de la app".
 
 `tests/Feature/Admin/InformacionImportanteCorreoTest.php` cubre el plazo dentro del
 bloque «INFORMACIÓN IMPORTANTE» del correo de ingreso, incluido el caso sin sucursal.
+
+Sobre el código como llave: `PlazoSinFechaPrometidaTest::test_el_plazo_no_depende_de_como_se_tipeo_el_codigo`
+(`Mirador`, `mirador`, ` MIRADOR ` → los tres 10) y, en
+`tests/Feature/Admin/SucursalManagementTest.php`, que el formulario guarda el código en
+mayúsculas al crear y al editar, que la migración normaliza los ya guardados y que **no**
+pisa un código ya ocupado (dos sucursales que difieren solo en mayúsculas son un duplicado
+y se resuelve moviendo órdenes, no en una migración a ciegas).
