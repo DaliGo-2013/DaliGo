@@ -109,19 +109,18 @@
                             </p>
 
                             {{-- LA GARANTÍA DE LA REPARACIÓN (dueño 14-08): tres meses desde la fecha
-                                 de reparación. Va con la fecha de VENCIMIENTO calculada y no solo con
-                                 «tres meses»: el cliente guarda este correo y así no tiene que contar
-                                 los meses ni discutir desde cuándo se cuentan.
+                                 de reparación, SIN fechas de desde/hasta — «no le pongas la fecha
+                                 desde hasta cuándo, solo 3 meses y listo» (14-08). Se probó con las
+                                 dos fechas calculadas y le pareció de más.
 
                                  Es la garantía del TRABAJO y no la del producto (esa es de 6 meses
-                                 desde la compra, ver OrdenServicio::GARANTIA_MESES). --}}
+                                 desde la compra, ver OrdenServicio::GARANTIA_MESES). Y es el mismo
+                                 número que promete el correo de INGRESO: una sola constante. --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
                                 <tr>
                                     <td style="background-color:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:14px 18px; font-size:14px; color:#525252; line-height:1.6;">
-                                        <strong style="color:#171717;">Garantía de la reparación:
-                                        {{ $garantiaMeses }} meses</strong><br>
-                                        Corre desde la fecha de la reparación ({{ $garantiaDesde->format('d-m-Y') }})
-                                        y vence el {{ $garantiaVence->format('d-m-Y') }}. Guarda este correo: es tu respaldo.
+                                        <strong style="color:#171717;">Garantía de la reparación: {{ $garantiaMeses }} meses</strong><br>
+                                        Corre a partir de la fecha de reparación. Guarda este correo: es tu respaldo.
                                     </td>
                                 </tr>
                             </table>

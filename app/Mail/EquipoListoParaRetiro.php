@@ -43,12 +43,11 @@ class EquipoListoParaRetiro extends Mailable
             view: 'emails.taller.listo-para-retiro',
             with: [
                 'esGarantia' => $this->orden->condicion_efectiva === 'garantia',
-                // LA GARANTÍA DE LA REPARACIÓN (dueño 14-08-2026): tres meses desde el día en
-                // que se repara. Se calculan acá y no en la plantilla —una fecha de negocio no
-                // se arma en un Blade— y viajan las DOS puntas: al cliente le sirve más un
-                // «vence el 14-11-2026» que un «tres meses» que después hay que contar.
-                'garantiaDesde' => $this->orden->garantiaReparacionDesde(),
-                'garantiaVence' => $this->orden->garantiaReparacionVence(),
+                // LA GARANTÍA DE LA REPARACIÓN (dueño 14-08-2026): tres meses desde la fecha de
+                // reparación, SIN fechas de desde/hasta — «no le pongas la fecha desde hasta
+                // cuándo, solo 3 meses y listo». Se probó con las dos fechas calculadas y le
+                // pareció de más. Los métodos del modelo (`garantiaReparacionDesde/Vence`) quedan:
+                // los usa la pantalla interna y no cuesta nada tenerlos bien definidos.
                 'garantiaMeses' => OrdenServicio::GARANTIA_REPARACION_MESES,
             ],
         );

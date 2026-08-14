@@ -73,17 +73,19 @@ class GarantiaYRetiroCorreoTest extends TestCase
     }
 
     /**
-     * Y con la fecha de vencimiento CALCULADA, no solo «tres meses»: el cliente guarda este
-     * correo, y así no tiene que contar los meses ni discutir desde cuándo se cuentan.
+     * SIN FECHAS DE DESDE/HASTA (dueño, 14-08, después de verlo renderizado): «no le pongas la
+     * fecha desde hasta cuándo, solo 3 meses y listo». Se había calculado el vencimiento
+     * pensando que le ahorraba una discusión; le pareció de más y manda él.
      */
-    public function test_el_correo_dice_desde_cuando_y_hasta_cuando(): void
+    public function test_el_correo_no_pone_fechas_de_la_garantia(): void
     {
         Carbon::setTestNow('2026-08-14 10:00:00');
 
         $html = $this->correo($this->orden());
 
-        $this->assertStringContainsString('14-08-2026', $html, 'Falta la fecha en que arranca la garantía.');
-        $this->assertStringContainsString('14-11-2026', $html, 'Falta la fecha de vencimiento (tres meses después).');
+        $this->assertStringNotContainsString('vence el', $html);
+        $this->assertStringNotContainsString('14-11-2026', $html, 'Volvió la fecha de vencimiento que el dueño pidió sacar.');
+        $this->assertStringContainsString('Corre a partir de la fecha de reparación', $html);
 
         Carbon::setTestNow();
     }

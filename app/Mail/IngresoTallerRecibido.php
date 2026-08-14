@@ -33,8 +33,23 @@ class IngresoTallerRecibido extends Mailable
 
     public function content(): Content
     {
+        $bodegaje = config('servicio_tecnico.bodegaje');
+
         return new Content(
             view: 'emails.taller.recibido',
+            with: [
+                // EL PLAZO SALE DE LA SUCURSAL, no escrito a mano: cada una tiene el suyo
+                // (Mirador repara; las otras mandan el equipo a Mirador y por eso tardan más).
+                // Con un número fijo, el mismo correo que muestra la entrega estimada se
+                // contradiría solo. Sin sucursal —ingreso por ruta— no se promete plazo.
+                'plazoDias' => $this->orden->sucursal?->dias_reparacion,
+                // La MISMA constante que usa el correo de retiro: un solo número para las dos
+                // cartas, así no puede prometerse una garantía al ingresar y otra al entregar.
+                'garantiaMeses' => OrdenServicio::GARANTIA_REPARACION_MESES,
+                'bodegajeDesdeMeses' => $bodegaje['desde_meses'],
+                'bodegajeMensual' => '$'.number_format((int) $bodegaje['mensual_clp'], 0, ',', '.'),
+                'bodegajeLimiteMeses' => $bodegaje['limite_meses'],
+            ],
         );
     }
 }
