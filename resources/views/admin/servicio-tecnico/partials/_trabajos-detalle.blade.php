@@ -5,11 +5,19 @@
      el motivo que escribió el técnico al cerrar, 14-08). --}}
 @php
     $modo = $modo ?? 'pendiente';
-    $etiquetaDetalle = match ($modo) {
+
+    // 'historial' = lista MEZCLADA (el historial de un cliente trae realizados,
+    // pendientes y no realizados juntos), así que la etiqueta no puede ser una para
+    // toda la lista: se deriva del estado de CADA fila. Con una etiqueta por lista,
+    // un trabajo que todavía no se hizo se leería como trabajo hecho — que en un
+    // historial que alguien mira para decidir es peor que no mostrarlo.
+    $etiquetaDe = fn (string $estado) => match ($estado) {
         'realizado' => 'Lo que se hizo',
         'no_realizado' => 'Por qué no se pudo',
         default => 'Lo que se va a realizar',
     };
+
+    $etiquetaDetalle = $modo === 'historial' ? null : $etiquetaDe($modo);
 @endphp
 <ul class="divide-y divide-neutral-100">
     @forelse ($trabajos as $t)
@@ -17,7 +25,8 @@
             // Realizado: prioriza las notas del técnico (lo efectivamente hecho);
             // si no las cargó, cae en la descripción del pedido. Pendiente: la
             // descripción de lo que se irá a hacer.
-            $detalle = in_array($modo, ['realizado', 'no_realizado'], true)
+            $modoFila = $modo === 'historial' ? (string) $t->estado : $modo;
+            $detalle = in_array($modoFila, ['realizado', 'no_realizado'], true)
                 ? ($t->notas_tecnico ?: $t->descripcion)
                 : $t->descripcion;
         @endphp
@@ -46,7 +55,7 @@
                 </x-badge>
             </div>
             <p class="mt-1.5 text-sm text-neutral-600">
-                <span class="text-xs font-medium uppercase tracking-wide text-neutral-400">{{ $etiquetaDetalle }}:</span>
+                <span class="text-xs font-medium uppercase tracking-wide text-neutral-400">{{ $etiquetaDetalle ?? $etiquetaDe($modoFila) }}:</span>
                 {{ $detalle ?: '—' }}
             </p>
 
@@ -65,6 +74,7 @@
             {{ match ($modo) {
                 'realizado' => 'Sin trabajos realizados en el período.',
                 'no_realizado' => 'Todos los trabajos del período se pudieron hacer.',
+                'historial' => 'Sin trabajos de este cliente en el período.',
                 default => 'Sin trabajos pendientes en el período.',
             } }}
         </li>

@@ -283,12 +283,35 @@ class ServicioTecnicoController extends Controller
             ->groupBy('tipo')->orderByDesc('cantidad')->get();
 
         // Clientes que más solicitan servicio industrial. Agrupa por RUT cuando
-        // existe; si no, por nombre (mismo criterio que el top de dispensadores).
-        $claveCliente = "COALESCE(NULLIF(cliente_rut, ''), cliente_nombre)";
+        // existe; si no, por nombre — el criterio vive en el MODELO porque el
+        // historial de abajo tiene que agrupar la misma colección en PHP.
+        $claveCliente = AgendaTrabajo::SQL_CLAVE_CLIENTE;
         $topClientes = $base()
-            ->selectRaw('MAX(cliente_nombre) AS nombre, MAX(cliente_rut) AS cliente_rut, COUNT(*) AS cantidad')
+            ->selectRaw("{$claveCliente} AS clave, MAX(cliente_nombre) AS nombre, MAX(cliente_rut) AS cliente_rut, COUNT(*) AS cantidad")
             ->groupBy(DB::raw($claveCliente))
             ->orderByDesc('cantidad')->limit(10)->get();
+
+        // QUÉ SE LE HIZO A CADA UNO DE ESOS CLIENTES (pedido del técnico Carlos,
+        // 14-08-2026): el ranking decía cuántas veces vino cada cliente pero no qué
+        // se hizo en esas visitas, que es lo que él necesita cuando lo llaman de
+        // vuelta — «a esta lavadora ya le cambiamos los rodamientos en junio».
+        //
+        // El detalle sale del texto que el propio técnico escribió al cerrar
+        // (`notas_tecnico`) más los repuestos que declaró; no hay un catálogo de
+        // trabajos que inventariar.
+        //
+        // UNA sola consulta para los 10 clientes (no una por cliente) y se agrupa
+        // en PHP con la MISMA clave que agrupó el SQL de arriba. Con la lista de
+        // claves vacía, `whereIn` no devuelve nada — que es lo correcto acá y no el
+        // `whereNotIn([])` que barre todo (bitácora 2026-06-12).
+        $historialClientes = $topClientes->isEmpty()
+            ? collect()
+            : $base()
+                ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
+                ->whereIn(DB::raw($claveCliente), $topClientes->pluck('clave')->all())
+                ->orderByDesc('fecha')->orderByDesc('id')
+                ->get()
+                ->groupBy(fn (AgendaTrabajo $t) => $t->claveCliente());
 
         // Servicios del catálogo más usados. MAX() por ONLY_FULL_GROUP_BY (5.7).
         // Los trabajos "fuera de tarifa" (servicio_terreno_id null) caen en su fila.
@@ -342,6 +365,7 @@ class ServicioTecnicoController extends Controller
             'porTipo' => $porTipo,
             'topServicios' => $topServicios,
             'topClientes' => $topClientes,
+            'historialClientes' => $historialClientes,
             'repuestos' => $repuestos->take(15)->values(),
             'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
             'totalNombresRepuestos' => $repuestos->count(),

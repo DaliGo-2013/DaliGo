@@ -179,13 +179,21 @@
             <div class="dg-enter rounded-2xl border border-neutral-200 bg-white shadow-sm xl:col-span-2">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Clientes que más solicitan</h3>
-                    <x-info-tip>Clientes con más trabajos de terreno en el período (agrupados por RUT).</x-info-tip>
+                    <x-info-tip>Clientes con más trabajos de terreno en el período (agrupados por RUT). <strong>Toca un cliente</strong> para ver qué se le hizo en cada visita: el detalle que escribió el técnico al cerrar y los repuestos que declaró.</x-info-tip>
                 </div>
+                {{-- Cada cliente se despliega y muestra SU historial del período
+                     (pedido del técnico Carlos, 14-08-2026): el ranking decía cuántas
+                     veces vino cada uno, pero no qué se le hizo — que es lo que hace
+                     falta cuando el cliente llama de vuelta («a esa lavadora ya le
+                     cambiamos los rodamientos»). El período lo fija el selector de
+                     arriba, así que con Mes muestra el mes y sin Mes el año completo. --}}
                 @include('admin.servicio-tecnico.partials._ranking', [
                     'items' => $topClientes->map(fn ($c) => (object) [
+                        'clave' => $c->clave,
                         'nombre' => trim(($c->nombre ?: 'Sin nombre').($c->cliente_rut ? ' · '.$c->cliente_rut : '')),
                         'cantidad' => $c->cantidad,
                     ]),
+                    'detalles' => $historialClientes,
                     'vacio' => 'Sin trabajos en el período.',
                 ])
             </div>

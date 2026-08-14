@@ -871,6 +871,28 @@ class AgendaTrabajo extends Model implements AuditableContract
      * Sin montos: el técnico no maneja precios. Ver AgendaTrabajoRepuesto.
      */
     /**
+     * CÓMO SE IDENTIFICA A UN CLIENTE en los agregados de terreno: por su RUT
+     * cuando lo tiene, y por su nombre cuando no (un cliente que entró por el QR
+     * sin RUT sigue siendo un cliente).
+     *
+     * LAS DOS FORMAS VIVEN JUNTAS Y NO ES DECORACIÓN: el ranking del informe
+     * agrupa en SQL y el historial de cada cliente tiene que agrupar en PHP la
+     * misma colección. Con las dos reglas escritas en lugares distintos, el día que
+     * alguien cambie una —por ejemplo, para normalizar el RUT— el historial deja de
+     * corresponder con el número que tiene al lado y no hay nada que lo delate.
+     * `AgendaTrabajoClaveClienteTest` verifica que coinciden.
+     */
+    public const SQL_CLAVE_CLIENTE = "COALESCE(NULLIF(cliente_rut, ''), cliente_nombre)";
+
+    /** La versión PHP de SQL_CLAVE_CLIENTE. Las dos tienen que dar lo mismo. */
+    public function claveCliente(): string
+    {
+        return filled($this->cliente_rut)
+            ? (string) $this->cliente_rut
+            : (string) $this->cliente_nombre;
+    }
+
+    /**
      * ¿Los repuestos de ESTE trabajo son un PRONÓSTICO o un CONSUMO?
      *
      * En una visita técnica Carlos no instala nada: va a ver qué hay que hacer y
