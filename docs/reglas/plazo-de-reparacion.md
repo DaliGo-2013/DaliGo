@@ -48,6 +48,14 @@ Un plazo en días hábiles dice lo mismo sin fijar el día: el cliente lo cuenta
    (`Sucursal::normalizaCodigo`), el accessor compara normalizado, y una migración one-shot
    arregló los códigos ya guardados.
 
+   Y por un cuarto, que es el que evita la próxima variante: **el listado de Sucursales
+   muestra el plazo de cada una** («Taller: hasta 10 días hábiles») con una ⓘ que dice que lo
+   decide el código. Antes esa pantalla mostraba el código **sin su consecuencia**, y por eso
+   el defecto vivió siete semanas a la vista de todos. Solo se muestra en las que **reciben**
+   taller (`sucursales_recepcion`): en Buzeta sería un número que no se usa. Si una sucursal
+   no tiene plazo propio en config, el listado lo dice — **«(por defecto)»** — porque un plazo
+   heredado se ve igual que uno decidido.
+
 4. **Sin sucursal no se promete plazo** (ingreso por ruta): se omite la línea en vez
    de inventar un número.
 
@@ -76,3 +84,7 @@ Sobre el código como llave: `PlazoSinFechaPrometidaTest::test_el_plazo_no_depen
 mayúsculas al crear y al editar, que la migración normaliza los ya guardados y que **no**
 pisa un código ya ocupado (dos sucursales que difieren solo en mayúsculas son un duplicado
 y se resuelve moviendo órdenes, no en una migración a ciegas).
+
+Sobre el plazo a la vista, en el mismo archivo (4, mutados): el listado lo muestra en las que
+reciben taller, **no** lo muestra en las que no, avisa «(por defecto)» cuando la sucursal no
+tiene plazo propio y **no** lo avisa cuando sí lo tiene.
