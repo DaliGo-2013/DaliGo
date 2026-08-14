@@ -127,6 +127,31 @@ class PlazoSinFechaPrometidaTest extends TestCase
         $this->assertSame(15, $this->sucursal('ABATE-MOLINA', 'Abate Molina')->dias_reparacion);
     }
 
+    /**
+     * EL PLAZO NO PUEDE DEPENDER DE CÓMO SE TIPEÓ EL CÓDIGO. Hallazgo del 14-08-2026 mirando el
+     * listado de Sucursales de producción: el código de la casa matriz estaba guardado como
+     * «Mirador» (alguien lo retipeó al editar la ficha), y el plazo se resolvía con
+     * `$map[$this->codigo]` — un índice de array de PHP, que sí distingue mayúsculas. El mapa
+     * tiene la clave `MIRADOR`, así que Mirador caía al default de 15 días hábiles y el correo
+     * prometía 15 donde el dueño dijo 10. Es EXACTAMENTE la diferencia del correo real que él
+     * mostró (ingreso 06-08 → entrega 27-08 en vez del 20-08).
+     *
+     * Por qué nadie lo vio: la consulta que arma el selector del QR usa `whereIn`, y en MySQL
+     * eso es case-insensitive por colación — o sea, la sucursal aparecía y funcionaba todo,
+     * menos el número que el cliente recibe por escrito.
+     */
+    public function test_el_plazo_no_depende_de_como_se_tipeo_el_codigo(): void
+    {
+        foreach (['Mirador', 'mirador', ' MIRADOR '] as $comoSeTipeo) {
+            $sucursal = new Sucursal(['codigo' => $comoSeTipeo]);
+
+            $this->assertSame(10, $sucursal->dias_reparacion, "Con el código «{$comoSeTipeo}» el plazo dejó de ser el de Mirador.");
+        }
+
+        // Y un código que de verdad no está en el mapa sigue cayendo al default.
+        $this->assertSame(15, (new Sucursal(['codigo' => 'BUZETA']))->dias_reparacion);
+    }
+
     // ─────────────────────────────────────────── adentro sí se ve
 
     /**

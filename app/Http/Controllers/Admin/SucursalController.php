@@ -91,6 +91,15 @@ class SucursalController extends Controller
      */
     private function validateData(Request $request, ?Sucursal $sucursal = null): array
     {
+        // EL CODIGO SE NORMALIZA ANTES DE VALIDAR (14-08-2026). Es una llave, no un rotulo: de
+        // el salen el plazo de reparacion y la lista de sucursales que reciben taller. Editando
+        // una ficha se habia retipeado «MIRADOR» como «Mirador» y el plazo del correo se cayo al
+        // default sin que nada se viera roto (ver Sucursal::getDiasReparacionAttribute).
+        // Normalizar ANTES y no despues es lo que hace que el `unique` compare lo mismo que se
+        // va a guardar; al reves, un «buzeta» pasaria la validacion y reventaria contra el
+        // indice al insertar.
+        $request->merge(['codigo' => Sucursal::normalizaCodigo($request->input('codigo'))]);
+
         $validated = $request->validate([
             'nombre' => ['required', 'string', 'max:191'],
             'codigo' => ['required', 'string', 'max:191', Rule::unique('sucursales', 'codigo')->ignore($sucursal)],
