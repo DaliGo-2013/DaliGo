@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\AgendaTrabajoAviso;
 use App\Models\AgendaTrabajo;
+use App\Models\Aprobacion;
 use App\Models\Cliente;
+use App\Models\ReglaAprobacion;
 use App\Models\ServicioTerreno;
 use App\Models\User;
 use App\Rules\RutChileno;
+use App\Services\Aprobaciones\Aprobaciones;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -145,6 +148,12 @@ class AgendaTrabajoController extends Controller
         $this->sincronizarCatalogo($request, $data);
         $data['creado_por'] = $request->user()->name;
 
+        // ¿ESTA CITA NECESITA EL VISTO BUENO DEL JEFE DE VENTAS? Si sí, el trabajo NACE «en
+        // espera» (ver `pedirAutorizacion`) y no ocupa la agenda hasta que la autorice.
+        if ($this->necesitaAutorizacion($request, $data)) {
+            return $this->pedirAutorizacion($request, $data);
+        }
+
         $trabajo = AgendaTrabajo::create($data);
 
         // Nace agendado con fecha y correo → confírmaselo al cliente de una.
@@ -154,6 +163,159 @@ class AgendaTrabajoController extends Controller
 
         return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month, 'dia' => $trabajo->fecha->toDateString()])
             ->with('status', "Trabajo agendado para el {$trabajo->fecha->format('d-m-Y')} ({$trabajo->tipo_label}, {$trabajo->cliente_nombre}).");
+    }
+
+    /**
+     * ¿Esta cita la tiene que autorizar el jefe de ventas?
+     *
+     * Pedido del dueño (13-08-2026): «cuando un vendedor fije una cita con un cliente por
+     * mantención, reparación o instalación le tiene que llegar una notificación al jefe de
+     * ventas para autorizar eso».
+     *
+     * TRES CONDICIONES, y las tres importan:
+     *
+     *  1. Que sea una CITA: estado 'agendado' con fecha. Guardar una solicitud sin fecha no
+     *     compromete al técnico y no hay nada que autorizar.
+     *  2. Que sea uno de los TRES TIPOS que él nombró. La visita técnica queda afuera: es la
+     *     que pide el cliente por el QR y el vendedor solo la coordina.
+     *  3. Que el que agenda NO sea quien autoriza. Acá solo se pregunta si existe una regla
+     *     activa que lo obligue; la exención del jefe de ventas (y de admin) la resuelve el
+     *     motor, que es donde vive esa lógica para los tres consumidores.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function necesitaAutorizacion(Request $request, array $data): bool
+    {
+        // El default de la TABLA es 'agendado', así que un `estado` ausente no significa «sin
+        // estado»: significa agendado. Leerlo como null dejaba pasar sin autorización a
+        // cualquier petición que no mandara el campo — y el control quedaba decorativo.
+        $estado = $data['estado'] ?? 'agendado';
+
+        if ($estado !== 'agendado' || blank($data['fecha'] ?? null)) {
+            return false;
+        }
+
+        if (! in_array($data['tipo'] ?? null, AgendaTrabajo::TIPOS_QUE_AUTORIZA_JEFATURA, true)) {
+            return false;
+        }
+
+        // Si el usuario porta el rol aprobador, el motor auto-aprueba: se agenda derecho y sin
+        // dar una vuelta que termina en el mismo lugar (y sin ensuciar la bandeja con una
+        // solicitud que nadie tiene que mirar).
+        $regla = ReglaAprobacion::activas()
+            ->where('tipo_accion', Aprobacion::ACCION_AGENDA_CITA)
+            ->first();
+
+        return $regla !== null && ! $request->user()->hasRole($regla->rol_aprobador);
+    }
+
+    /**
+     * Crea la cita EN ESPERA y le pide autorización al jefe de ventas.
+     *
+     * La cita queda con estado 'solicitado' y la fecha pedida en `fecha_preferida` /
+     * `hora_preferida` — decisión del dueño: «queda en espera», no ocupa la agenda. No se
+     * inventó un estado nuevo porque 'solicitado' + fecha preferida ya significaba eso, y es
+     * lo que muestra el bloque «Por coordinar». Ver `Acciones\CitaTerreno` para el detalle.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function pedirAutorizacion(Request $request, array $data): RedirectResponse
+    {
+        // Lo que el vendedor pidió viaja en el payload de la aprobación; el trabajo se guarda
+        // sin fecha real para que no cuente como ocupado en ningún cálculo.
+        $pedido = [
+            'fecha' => $data['fecha'],
+            'fecha_fin' => $data['fecha_fin'] ?? null,
+            'hora' => $data['hora'] ?? null,
+            'hora_fin' => $data['hora_fin'] ?? null,
+            'tecnico_id' => $data['tecnico_id'] ?? null,
+        ];
+
+        $trabajo = AgendaTrabajo::create(array_merge($data, [
+            'estado' => 'solicitado',
+            'fecha' => null,
+            'fecha_fin' => null,
+            'hora' => null,
+            'hora_fin' => null,
+            'fecha_preferida' => $data['fecha'],
+            'hora_preferida' => $data['hora'] ?? null,
+        ]));
+
+        $fecha = \Illuminate\Support\Carbon::parse($data['fecha']);
+
+        app(Aprobaciones::class)->solicitar(
+            tipoAccion: Aprobacion::ACCION_AGENDA_CITA,
+            aprobable: $trabajo,
+            solicitante: $request->user(),
+            motivo: "{$trabajo->tipo_label} para {$trabajo->cliente_nombre} el {$fecha->format('d-m-Y')}"
+                .($pedido['hora'] ? " a las {$pedido['hora']}" : ''),
+            datos: [
+                'nuevo' => $pedido,
+                // El snapshot es el contrato del motor: si el trabajo cambia entre la solicitud
+                // y la resolución, el handler rechaza en vez de aplicar un payload viejo.
+                'objetivo_updated_at' => $trabajo->updated_at?->toJSON(),
+            ],
+            descripcion: "Cita de terreno · {$trabajo->tipo_label} · {$trabajo->cliente_nombre}",
+        );
+
+        return redirect()->route('admin.agenda-terreno.index', ['anio' => $fecha->year, 'mes' => $fecha->month])
+            ->with('status', "La cita quedó ESPERANDO la autorización del jefe de ventas ({$trabajo->tipo_label}, {$trabajo->cliente_nombre}, {$fecha->format('d-m-Y')}). Le llegó el aviso; cuando la autorice queda agendada y se le avisa al cliente.");
+    }
+
+    /**
+     * Lo mismo, pero editando una cita que YA existe (el camino «Coordinar»).
+     *
+     * Se guarda todo MENOS lo que compromete al técnico: los datos del cliente, la descripción
+     * y el servicio se actualizan igual —son correcciones, no compromisos— y la fecha, la hora
+     * y el técnico viajan a la aprobación.
+     *
+     * Si ya hay una solicitud esperando para esta cita, NO se crea otra: el jefe vería dos
+     * pedidos de lo mismo y aprobaría uno sin saber qué pasa con el otro.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function pedirAutorizacionAlEditar(Request $request, AgendaTrabajo $trabajo, array $data): RedirectResponse
+    {
+        $fecha = \Illuminate\Support\Carbon::parse($data['fecha']);
+
+        if ($trabajo->esperandoAutorizacion()) {
+            return back()->with('status', "Esta cita YA está esperando la autorización del jefe de ventas ({$trabajo->fecha_preferida?->format('d-m-Y')}). Cuando la resuelva vas a poder cambiarla.");
+        }
+
+        $pedido = [
+            'fecha' => $data['fecha'],
+            'fecha_fin' => $data['fecha_fin'] ?? null,
+            'hora' => $data['hora'] ?? null,
+            'hora_fin' => $data['hora_fin'] ?? null,
+            'tecnico_id' => $data['tecnico_id'] ?? null,
+        ];
+
+        // Se aparta lo que compromete al técnico y se guarda el resto.
+        $trabajo->update(array_merge($data, [
+            'estado' => 'solicitado',
+            'fecha' => null,
+            'fecha_fin' => null,
+            'hora' => null,
+            'hora_fin' => null,
+            'fecha_preferida' => $data['fecha'],
+            'hora_preferida' => $data['hora'] ?? null,
+        ]));
+
+        app(Aprobaciones::class)->solicitar(
+            tipoAccion: Aprobacion::ACCION_AGENDA_CITA,
+            aprobable: $trabajo->refresh(),
+            solicitante: $request->user(),
+            motivo: "{$trabajo->tipo_label} para {$trabajo->cliente_nombre} el {$fecha->format('d-m-Y')}"
+                .($pedido['hora'] ? " a las {$pedido['hora']}" : ''),
+            datos: [
+                'nuevo' => $pedido,
+                'objetivo_updated_at' => $trabajo->updated_at?->toJSON(),
+            ],
+            descripcion: "Cita de terreno · {$trabajo->tipo_label} · {$trabajo->cliente_nombre}",
+        );
+
+        return redirect()->route('admin.agenda-terreno.index', ['anio' => $fecha->year, 'mes' => $fecha->month])
+            ->with('status', "Se guardaron los datos, y la FECHA quedó esperando la autorización del jefe de ventas ({$fecha->format('d-m-Y')}). Cuando la autorice queda agendada y se le avisa al cliente.");
     }
 
     public function edit(AgendaTrabajo $trabajo): View
@@ -178,6 +340,20 @@ class AgendaTrabajoController extends Controller
         $data = $this->validateData($request, editando: true);
         $this->bloquearSiOcupado($request, $data, $trabajo->id);
         $this->sincronizarCatalogo($request, $data);
+
+        // ═══ EL AGUJERO QUE ESTE CHEQUEO TAPA ═══
+        //
+        // Sin esto, la autorización era decorativa: el vendedor creaba la cita (que quedaba
+        // esperando, en «Por coordinar»), apretaba «Coordinar», ponía la fecha y la guardaba
+        // AGENDADA por este camino — sin que el jefe viera nada. Cualquier control que se pueda
+        // saltar por la pantalla de al lado no es un control.
+        //
+        // Acá la edición SÍ se guarda (datos del cliente, descripción, servicio…): lo único
+        // que se aparta es la parte que compromete al técnico —fecha, hora y técnico—, que
+        // viaja a la aprobación y se aplica cuando el jefe la autoriza.
+        if ($this->necesitaAutorizacion($request, $data)) {
+            return $this->pedirAutorizacionAlEditar($request, $trabajo, $data);
+        }
 
         // Estado ANTES de guardar, para decidir si hay que avisar al cliente.
         $antes = [
@@ -430,23 +606,14 @@ class AgendaTrabajoController extends Controller
      * confirmación reseteando la respuesta previa; anulada no). Secundario: un
      * fallo de correo no debe tumbar el guardado del trabajo.
      */
+    /**
+     * El aviso vive en el MODELO (`AgendaTrabajo::avisarAlCliente`): hay dos caminos que
+     * llegan a avisar —este, y el jefe de ventas autorizando una cita días después— y con la
+     * lógica acá adentro el camino diferido salía sin avisarle a nadie.
+     */
     private function avisarClienteDeCita(AgendaTrabajo $trabajo, string $motivo): void
     {
-        try {
-            if ($motivo !== 'anulada') {
-                // Solo se le pide CONFIRMAR si la fecha agendada difiere de la que
-                // pidió (si la respetamos, ya la eligió → correo informativo sin
-                // botón, para no pedir una confirmación redundante).
-                if ($trabajo->requiereConfirmacionCliente()) {
-                    $trabajo->prepararConfirmacionCliente();
-                } else {
-                    $trabajo->marcarAvisoSinConfirmacion();
-                }
-            }
-            Mail::to($trabajo->cliente_email)->send(new AgendaTrabajoAviso($trabajo, $motivo));
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        $trabajo->avisarAlCliente($motivo);
     }
 
     private function validateData(Request $request, bool $editando = false): array

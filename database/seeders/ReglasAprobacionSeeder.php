@@ -44,5 +44,26 @@ class ReglasAprobacionSeeder extends Seeder
                 'rol_escalamiento' => null,
             ],
         );
+
+        // Cita de terreno fijada por un VENDEDOR (dueño 13-08-2026): «que él siempre esté al
+        // tanto de lo que hacen sus vendedores».
+        //
+        // SIN UMBRAL (`umbral_config` null): una cita no tiene monto que medir, así que la
+        // regla matchea SIEMPRE y toda cita de vendedor espera autorización. El jefe de ventas
+        // agendando no se auto-solicita nada — el motor exime a quien porta el rol aprobador.
+        //
+        // Sin escalamiento: si el jefe no contesta, la cita sigue esperando y el vendedor la ve
+        // pendiente en «Mis solicitudes». Escalar a admin una decisión comercial sería mover la
+        // responsabilidad a quien no habla con el cliente.
+        ReglaAprobacion::firstOrCreate(
+            ['tipo_accion' => Aprobacion::ACCION_AGENDA_CITA],
+            [
+                'descripcion' => 'Cita de terreno (mantención, reparación o instalación) fijada por un vendedor',
+                'activa' => true,
+                'umbral_config' => null,
+                'rol_aprobador' => 'jefe_ventas',
+                'rol_escalamiento' => null,
+            ],
+        );
     }
 }
