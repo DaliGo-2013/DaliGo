@@ -36,7 +36,10 @@ class AccesosDashboard
         ],
         'Administración' => [
             'usuarios' => ['label' => 'Usuarios', 'desc' => 'Cuentas y roles del equipo', 'route' => 'admin.users.index', 'permiso' => 'view users', 'icon' => 'users', 'color' => 'gris'],
-            'roles' => ['label' => 'Roles', 'desc' => 'Permisos por rol', 'route' => 'admin.roles.index', 'permiso' => 'manage roles', 'icon' => 'shield-check', 'color' => 'gris'],
+            // La card «Roles» se retiró con la consolidación C1: es pestaña de
+            // Usuarios (a un clic de esta card, cuya descripción ya dice «y
+            // roles»). Las preferencias de color guardadas toleran la key
+            // huérfana (D-013), igual que con «Precios» en F1.
             'sucursales' => ['label' => 'Sucursales', 'desc' => 'Mirador, Coquimbo, Abate Molina, Buzeta', 'route' => 'admin.sucursales.index', 'permiso' => 'manage sucursales', 'icon' => 'building-storefront', 'color' => 'gris'],
             'configuracion' => ['label' => 'Configuración', 'desc' => 'Parámetros globales de la app', 'route' => 'admin.configuracion.index', 'permiso' => 'manage settings', 'icon' => 'adjustments-horizontal', 'color' => 'gris'],
             'auditoria' => ['label' => 'Auditoría', 'desc' => 'Quién cambió qué y cuándo', 'route' => 'admin.audits.index', 'permiso' => 'view audit', 'icon' => 'document-magnifying-glass', 'color' => 'gris'],

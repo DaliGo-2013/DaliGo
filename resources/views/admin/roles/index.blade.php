@@ -17,6 +17,10 @@
     <div class="py-12">
         <x-status-alert :status="session('status')" class="mb-6" />
 
+        <div class="mb-6">
+            @include('admin.users._tabs')
+        </div>
+
         <x-list-card title="Roles" :count="$roles->count()" :countLabel="\Illuminate\Support\Str::plural('rol', $roles->count())">
             @foreach ($roles as $role)
                 {{-- La fila abre la edicion del rol (patron 03-08: fuera el lapiz).
