@@ -130,8 +130,14 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       ofrece un 403); cards del Inicio 3→1; rastro del QA 15-07 preservado; mutación DOBLE
       del candado. Bloque C COMPLETO (C1 `fc47fd1` + C2) — 3 lotes en un día con cero
       rojos propios (incluye hotfix Director `5892eea`, bomba de calendario en
-      VisitaIndustrialTest). Pausa hasta el QA del dueño del Bloque C → luego Bloque D
-      (Kardex, ex-huérfana) → E (4→1 + deuda tab-nav grid-cols-4).**
+      VisitaIndustrialTest). QA del dueño del Bloque C ✅ (17-ago) → **Bloque D ABIERTO:
+      GO D1 Kardex→Producción dictado (v62)**. Reconocimiento del Director: permiso
+      idéntico por construcción (`manage production`, mismo string); mudanza sin tab-nav
+      (el panel ya tiene el botón «Kardex»); el candado P-NAV-06 (ex-huérfanas en
+      VolverTest) se pone rojo A PROPÓSITO y su propio texto dicta la salida — Kardex
+      pasa a hija y recupera su `<x-volver>`, sale de la lista con rastro, 11ª entrada
+      del mini-candado vigila. `activo` de Producción es lista explícita a propósito
+      (prefijo compartido con el soplador) — ruta exacta, sin wildcard.**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/

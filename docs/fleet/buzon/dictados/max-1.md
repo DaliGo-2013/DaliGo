@@ -1,50 +1,74 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-17 (v61 — C2 EN PRODUCCIÓN: Bloque C COMPLETO. EN PAUSA hasta el QA del dueño → luego Bloque D). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-17 (v62 — QA del dueño del Bloque C ✅: GO Bloque D, lote D1 Kardex→Producción). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ C2 está EN PRODUCCIÓN (merge `6fa64cd`, doble llave 17-ago) — menú 38 → 36
+## ✅ QA del Bloque C aprobado por el dueño (17-ago)
 
-Suite del Director sobre el árbol mergeado: **2186 verdes / 15.184, CERO rojos** (calcada
-al parte). Conté el menú (36), da. Rama borrada. **Bloque C COMPLETO** — la primera
-consolidación múltiple de la casa quedó en producción en un solo lote.
+Verificado en celular: Administración con 3 ítems, pestañas de Usuarios y del Registro
+funcionando, bandeja y campanita intactas, Inicio con una card. **Bloque C cerrado con
+QA.** Marcador: 47 → 36 en producción.
 
-Lo que quedó fino en C2 (para la bitácora de los moldes):
+## 🔨 GO — Lote D1: «Kardex» entra al ítem «Producción» (36 → 35)
 
-1. **Ítem con `view audit` a secas y no canAny** — decisión tuya, declarada, con la
-   doctrina bien enunciada: *el menú jamás ofrece un 403*. Esa frase queda como regla
-   citable para D y E.
-2. **El rastro del QA 15-07 preservado por contexto** (bandeja vs historial): comentario +
-   docblock + campanita con el nombre largo. Reemplazar el porqué viejo con el porqué
-   nuevo, sin borrar la historia.
-3. **El amolde L409 anti verde-engañoso** (negar una cadena que ya no existe no vigila
-   nada) — cazado a la primera, con la bitácora 29-07 citada. Y verificaste que
-   `AprobacionBandejaTest` sigue verde POR LA SUPERFICIE CORRECTA, no por accidente.
-4. **Mutación DOBLE** — las dos mitades del candado discriminan por separado. El molde
-   para las consolidaciones múltiples que vienen (E es 4→1).
+El lote más corto del mapa — pero con un candado CON HISTORIA que hay que tratar con
+respeto. El reconocimiento del Director:
 
-## ⏸️ EN PAUSA — el Bloque D espera el QA del dueño del Bloque C
+### El cruce (hecho): permiso IDÉNTICO por construcción
 
-El dueño va a hacer el QA del Bloque C completo en el celular:
-- Administración con 3 ítems (Usuarios, Sucursales, Registro del sistema).
-- Usuarios con pestañas «Usuarios · Roles» (la de Roles solo para quien porta
-  `manage roles`).
-- El Registro con sus tres pestañas en una fila (`grid-cols-3`) en pantalla chica.
-- La bandeja «Aprobaciones» intacta con su badge; la campanita con sus 4 links.
-- El Inicio con UNA card «Registro del sistema», sin las de Notificaciones/Aprobaciones
-  ni la de Roles.
+Kardex (`admin.produccion.movimientos`) e ítem Producción comparten el MISMO string de
+permiso: `manage production` (MenuPrincipal L83 y L86). Una sola audiencia definida una
+vez — la precondición limpia de B1. **Sin gateo, sin canAny, sin nudo.**
 
-Cuando dé el visto bueno, llega el v62 con el **Bloque D · Kardex→Producción**. Adelanto
-para el radar (NO arranques): es **ex-huérfana** (candado duro además del mini-candado),
-entra al patrón `activo` del ítem Producción — un lote corto. Y tras D viene **E**, el
-cierre: Configuración de producción 4→1, donde se paga la deuda del `<x-tab-nav>` a 4
-pestañas (`grid-cols-4` no existe todavía: hoy el componente resuelve 3 ? cols-3 : cols-2
-y con 4 caería a 2 columnas sin avisar).
+### La forma (mudanza, no pestaña)
+
+D1 NO lleva tab-nav: el panel de Producción YA tiene el botón «Kardex» en su cabecera
+(`produccion/index.blade.php` L7) y el reporte enlaza «Ver kardex completo» (L232). La
+entrada existe; lo que sobra es el ítem del menú.
+
+1. **`MenuPrincipal`**: fuera el ítem `kardex` (L86); `admin.produccion.movimientos`
+   entra a la lista explícita del `activo` de `produccion` (L83). OJO: ese `activo` es
+   lista explícita A PROPÓSITO (el prefijo `admin.produccion.*` lo comparten las rutas
+   del soplador que viven en «Mi producción») — respeta la lista, no metas wildcard.
+2. **El candado P-NAV-06 (`VolverTest::test_las_ex_huerfanas_estan_en_el_menu`) se pone
+   ROJO a propósito** — es la mitad del lote. Su propio texto dicta la salida: «si
+   alguien las SACA del menú, vuelven a quedar huérfanas y necesitan su Volver de
+   vuelta». Kardex pasa de ítem a HIJA del panel:
+   - `movimientos.blade.php` recupera su **`<x-volver>`** (se lo quitaron cuando subió a
+     ítem — P-NAV-06 27-jul; ahora el flujo es menú Producción → botón Kardex → Volver).
+   - En el candado, la ruta **sale de la lista de ex-huérfanas CON RASTRO**: comentario
+     que cuente las dos vidas (huérfana → ítem 27-jul → hija con Volver por D1 17-ago,
+     vigilada ahora por la 11ª entrada del mini-candado). La historia no se borra.
+   - Si `test_ningun_item_del_menu_lleva_volver` u otro derivado de la fuente única se
+     mueve solo, decláralo — nunca amoldes a mano lo que deriva.
+3. **`MenuConsolidacionesTest`: 11ª entrada** (`admin.produccion.movimientos` →
+   anfitrión `produccion`; forma exacta del mapa como esté el candado). **Mutación**:
+   quitar la ruta del `activo` → rojos exactos → restaurar → verde.
+4. **Cards del Inicio**: revisa `AccesosDashboard` por card «Kardex» — si existe, misma
+   decisión C1/C2 (retirar o reapuntar con porqué; Producción ya tendrá la suya).
+5. Prefijos: `admin.produccion.movimientos` es ruta EXACTA en el activo (sin comodín) —
+   cero riesgo de encender al soplador. Corre igual tu `Str::is` contra
+   `mi-produccion`/rutas del soplador y decláralo.
+6. Comentario con rastro en MenuPrincipal si el ítem kardex tenía nota defendiéndolo.
+
+### Verificación (invariante)
+Rama `feature/menu-d1-kardex-produccion` desde main FRESCO. Suite COMPLETA de main
+fresco ANTES (baseline Director: **2186/15.184** en `6fa64cd`). Batería dirigida: Volver +
+MenuConsolidaciones + Sidebar + MenuPrincipal + Navigation + Dashboard +
+**ProduccionKardexTest y la carpeta Produccion completa** (el kardex real: backflush,
+filtros, permiso). Conteo tinker: **35**. Parte al buzón; espera doble llave. NO
+arranques E.
+
+## 📡 Después de D1 — el CIERRE: Bloque E (v63)
+QA del dueño del Bloque D (corto: Producción resalta en el Kardex, Volver funciona,
+sidebar sin el ítem) → **E1 Configuración de producción 4→1** (Máquinas · Tipos de
+botellón · Recetas · Moldes, todas bajo `manage production`): la mayor densidad del mapa
+(−3), anfitrión nuevo, y ahí se paga la deuda del `<x-tab-nav>`: **`grid-cols-4` NO
+existe** (hoy `count===3 ? cols-3 : cols-2` — con 4 caería a 2 columnas sin avisar).
+Máquinas y Tipos de botellón son TAMBIÉN ex-huérfanas de P-NAV-06 — mismo trato que
+Kardex hoy: este lote es el ensayo del molde.
 
 ## Estado
-- Marcador: **47 → 36 en diez lotes** + 2 vive-solos con evidencia. Mapa final: 32.
-- Max-2 en pausa (v24). Marcos activo en visita pública/agenda.
-- Baseline del Director: **2186/15.184** en `6fa64cd`.
+Max-2 en pausa (v24). Marcos activo. Baseline: 2186/15.184 en `6fa64cd`.
 
-CIERRE: sin acción. Bloque C completo — récord de la casa: 3 lotes en un día con cero
-rojos propios. Espera el QA del dueño.
+CIERRE: GO D1. Un lote, un parte, una llave. El penúltimo — fierro.
