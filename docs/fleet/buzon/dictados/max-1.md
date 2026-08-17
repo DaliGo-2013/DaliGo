@@ -1,61 +1,62 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-14 (v58 — B1 EN PRODUCCIÓN; Bloque B CERRADO; EN PAUSA hasta el QA del dueño del Bloque B → luego Bloque C). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-14 (v59 — QA del dueño del Bloque B ✅: GO Bloque C, lote C1 Roles→Usuarios). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ B1 está EN PRODUCCIÓN (merge `c67d882`, doble llave 14-ago) — menú 40 → 39
+## ✅ QA del Bloque B aprobado por el dueño (14-ago) — se abre el Bloque C · Administración
 
-Suite del Director sobre el árbol re-mergeado: **2182 verdes / 15.096 aserciones**. Conté
-el menú (11+27+1=39), da. **Re-merge por I-08**: durante mi verificación entró un drift de
-Sucursales + plazos (territorio disjunto del tuyo) → auto-merge sin conflicto, suite entera
-re-corrida. Rama borrada. **Bloque B CERRADO en un solo lote** (B2 Conductores vive solo).
+El dueño verificó en celular: pestañas «Simulador · Cargas reales» funcionando, Cargas
+reales operando igual, sidebar sin el ítem suelto. **Bloque B cerrado con QA.** Marcador:
+47 → 39 en producción.
 
-Lo que quedó fino en B1:
+## 🔨 GO — Lote C1: «Roles» vive como pestaña de «Usuarios» (39 → 38)
 
-1. **Verificaste el permiso y confirmaste que era limpio POR CONSTRUCCIÓN** (las 5 rutas en
-   el mismo grupo `permission:simular carga`) — no asumiste «mismo permiso», lo mostraste.
-2. **Reescribiste el comentario del ítem-aparte dejando el rastro** (estándar del QR): la
-   nota vieja defendía el ítem separado por el momento de uso; la nueva explica que el
-   dueño resolvió que ese matiz no pesa frente a la densidad. Reemplazar con el porqué
-   escrito, no borrar. Así se pisa una decisión previa: a la vista.
-3. **Cazaste el detalle del prefijo con `Str::is`**: `admin.carga.*` no matchea
-   `admin.cargas-reales.index` (el punto corta). Tercer prefijo tramposo que atrapas
-   (traslados/bodegas, dte, ahora carga). Es un reflejo ya.
+### El cruce de audiencias YA ESTÁ HECHO (por el Director, seeder como piso)
 
-## 📊 El marcador del proyecto: 47 → 39 en producción
+- **`manage roles` (Roles): SOLO admin** — vive únicamente en la lista maestra que recibe
+  el rol admin (`RolesAndPermissionsSeeder` L125); ningún otro rol lo recibe.
+- **`view users` (anfitrión Usuarios): admin, jefe_ventas, jefe_bodega, jefe_sucursal.**
+- **Dirección 1** (¿alguien define roles sin ver Usuarios?): NO — {admin} ⊂ audiencia del
+  anfitrión. Nadie pierde el camino.
+- **Dirección 2** (¿alguien ve Usuarios sin manage roles?): SÍ — los tres jefes. Por eso la
+  pestaña «Roles» va **GATEADA por `manage roles`** (patrón A2 Costos: pestaña con gateo).
+- Caveat de siempre: el seeder es piso aditivo (la UI puede haber sumado). Verifícalo tú
+  también y decláralo en el parte. Riesgo real ≈ solo-admin.
 
-Ocho lotes ejecutados (L1-L5 + A1 + A2 + B1) y **dos vive-solos decididos con evidencia**
-(Informe, Conductores) — ambos por el mismo patrón: audiencia partida entre dos dominios
-sin anfitrión común. El mapa final: **32** (Bloques C+D+E restan 7 más).
+### La forma (los moldes de la casa, nada nuevo)
 
-## ⏸️ EN PAUSA — el Bloque C espera el QA del dueño del Bloque B
+1. `admin/users/_tabs.blade.php`: «Usuarios · Roles», pestaña Roles solo si
+   `can('manage roles')` — como A2. `<x-tab-nav>` 2 pestañas, `aria-current="true"`.
+2. Montaje en `users/index` y `roles/index` (+ pantallas hijas de roles si las hay — revisa
+   `admin.roles.*`: si hay create/edit, la pestaña se monta solo en index, como Documentos).
+3. `MenuPrincipal`: fuera el ítem `roles`; su patrón `admin.roles.*` entra al `activo` de
+   `usuarios`. Comentario con rastro si había nota defendiendo el ítem aparte.
+4. `MenuConsolidacionesTest`: 8ª entrada + **mutación** (quitar patrón → 2 rojos exactos →
+   restaurar → verde).
+5. Prefijos: `admin.users.*` vs `admin.roles.*` — sin colisión posible (nombres disjuntos),
+   pero corre tu reflejo del `Str::is` igual y decláralo.
+6. Volver de `roles/index`: la pestaña es su navegación (fuente única, VolverTest deriva).
 
-Protocolo de bloques: no se abre el siguiente hasta cerrar el anterior con QA. **El dueño
-va a hacer el QA del Bloque B en el celular**:
-- El Simulador de carga con las pestañas «Simulador · Cargas reales» arriba (ambas visibles
-  a todo portador de `simular carga`).
-- Cargas reales operando igual (anotar, borrar, el factor por combinación).
-- La sidebar de Logística sin el ítem «Cargas reales» suelto.
+### Verificación (invariante)
+Rama nueva `feature/menu-c1-roles-usuarios` desde main FRESCO (PR #18 acaba de entrar:
+plazo en Sucursales — re-fetch). Suite COMPLETA de main fresco ANTES (baseline del
+Director: 2182/15.096 en `c67d882`, y main ya se movió — recuenta). Batería dirigida +
+carpeta Users/Roles completa. Conteo tinker: debe dar **38**. Parte al buzón; espera doble
+llave. NO arranques C2.
 
-Cuando el dueño dé el visto bueno, te llega el dictado v59 abriendo el **Bloque C ·
-Administración**. Adelanto para que lo tengas en el radar (NO arranques):
-- **C1 Roles → Usuarios**: pestaña «Roles». Cruzaré `manage roles` (Roles) vs `view users`
-  (anfitrión Usuarios) en ambas direcciones ANTES de dictar — quién define roles pero no
-  ve Usuarios, y viceversa.
-- **C2 «Registro del sistema» (3→1)**: la primera consolidación de MÚLTIPLES ítems en un
-  anfitrión — Auditoría + Notificaciones + Historial de aprobaciones, cada una con su
-  permiso. Tab-nav triple (`grid-cols-3`, existe). Cruzaré los tres permisos igual.
+## 📡 Radar C2 (NO arranques — llega como v60 tras C1)
 
-Hasta el dictado v59: **pausa, no arranques**.
+«Registro del sistema» 3→1: Auditoría anfitriona + Notificaciones + Historial de
+aprobaciones. El cruce del Director ya dio: **los 3 permisos (`view audit`,
+`view notificaciones`, `view aprobaciones`) viven SOLO en la lista maestra → audiencia
+idéntica (admin) por construcción.** Sin nudo. Detalles que te esperan: tab-nav triple
+(`grid-cols-3` existe), 2 cards del Inicio en `AccesosDashboard` se reapuntan, los links de
+la campanita sobreviven (apuntan a rutas que se conservan), y `admin.notificaciones.prueba`
+comparte prefijo con index (mismo `activo`, sin lío).
 
 ## Estado
-- **Max-2** en pausa (dictado v24: sin lote seguro; retoma con ronda 2 de Luis o dos-manos).
-- **Marcos y el PR #9** muy activos (el drift de hoy: Sucursales, plazos, cierres de
-  agenda). Re-fetch religioso al reanudar.
+- Max-2 en pausa (v24). Marcos + PR #9/#18 activos — re-fetch religioso.
+- Tras C2: Bloque D (Kardex, ex-huérfana) → E (Configuración de producción 4→1 + deuda
+  `<x-tab-nav>` a 4 pestañas). Mapa final: 32.
 
-## Recordatorios (para el Bloque C)
-Rama nueva desde main FRESCO; suite COMPLETA de main fresco ANTES de empezar; **cruce de
-permisos en ambas direcciones ANTES de consolidar**; candado mutado; parte al buzón.
-Baseline del Director: **2182 / 15.096** en `c67d882` (y subiendo — re-fetch).
-
-CIERRE: Bloques A y B cerrados (47→39). Espera el QA del dueño → Bloque C. Buen ritmo.
+CIERRE: GO C1. Un lote, un parte, una llave. Buen fierro.

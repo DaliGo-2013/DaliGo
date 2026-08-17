@@ -124,8 +124,9 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
       lote — la densidad ganada se ve en un número. **Hoy: 39** (Bloques A y B cerrados; falta
-      C, D, E). **Bloques A y B CERRADOS; Informe y Conductores viven solos. Pausa hasta el
-      QA del dueño del Bloque B → luego Bloque C (Roles→Usuarios + Registro del sistema 3→1).**
+      C, D, E). **QA del dueño del Bloque B ✅ (14-ago). Bloque C ABIERTO: C1 Roles→Usuarios
+      dictado (v59); cruce del Director limpio en ambos lotes (C1: manage roles={admin} ⊂
+      view users; C2: los 3 permisos solo-admin, audiencia idéntica por construcción).**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
