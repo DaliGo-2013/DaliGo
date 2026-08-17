@@ -173,8 +173,12 @@ class MenuPrincipal
             'label' => 'Administración',
             'icon' => 'shield-check',
             'items' => [
-                'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*'], 'permiso' => 'view users'],
-                'roles' => ['label' => 'Roles', 'route' => 'admin.roles.index', 'activo' => ['admin.roles.*'], 'permiso' => 'manage roles'],
+                // Consolidación C1 (PLAN-MENU-DENSIDAD): «Roles» dejó de ser
+                // ítem y vive como pestaña de Usuarios (admin/users/_tabs),
+                // GATEADA por `manage roles` — Usuarios lo ven los tres jefes
+                // y definir roles es solo del admin. Su ruta va AQUÍ, en el
+                // `activo` del anfitrión (candado en MenuConsolidacionesTest).
+                'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*', 'admin.roles.*'], 'permiso' => 'view users'],
                 'sucursales' => ['label' => 'Sucursales', 'route' => 'admin.sucursales.index', 'activo' => ['admin.sucursales.*'], 'permiso' => 'manage sucursales'],
                 // Configuración NO va aquí: es de cuenta, no de negocio-por-módulo
                 // (ver self::CUENTA más abajo) — pedido del dueño 2026-07-24.

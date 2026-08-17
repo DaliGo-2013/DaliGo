@@ -15,6 +15,12 @@
     <div class="py-12">
         <x-status-alert :status="session('status')" class="mb-6" />
 
+        {{-- El margen va acá y no en el componente: estas dos pantallas usan
+             `py-12` sin `space-y-*`, así que el nav pone el suyo. --}}
+        <div class="mb-6">
+            @include('admin.users._tabs')
+        </div>
+
         <x-list-card title="Cuentas" :count="$users->count()" :countLabel="\Illuminate\Support\Str::plural('cuenta', $users->count())">
             @foreach ($users as $user)
                 {{-- La fila abre la edicion (pedido del dueño 03-08: fuera el lapiz,
