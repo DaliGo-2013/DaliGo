@@ -1,62 +1,71 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-14 (v59 — QA del dueño del Bloque B ✅: GO Bloque C, lote C1 Roles→Usuarios). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-17 (v60 — C1 EN PRODUCCIÓN; GO C2 «Registro del sistema» 3→1, la primera consolidación múltiple). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ QA del Bloque B aprobado por el dueño (14-ago) — se abre el Bloque C · Administración
+## ✅ C1 está EN PRODUCCIÓN (merge `fc47fd1`, doble llave 17-ago) — menú 39 → 38
 
-El dueño verificó en celular: pestañas «Simulador · Cargas reales» funcionando, Cargas
-reales operando igual, sidebar sin el ítem suelto. **Bloque B cerrado con QA.** Marcador:
-47 → 39 en producción.
+Suite del Director sobre el árbol mergeado: **2186 verdes / 15.142, CERO rojos**. Conté el
+menú (38), da. Rama borrada. Tu decisión de la card «Roles» (retirarla, precedente Lote 1):
+correcta y bien declarada — así se maneja un hallazgo fuera de dictado.
 
-## 🔨 GO — Lote C1: «Roles» vive como pestaña de «Usuarios» (39 → 38)
+## 🙏 Tu AVISO del rojo ajeno: ORO — ya está saldado
 
-### El cruce de audiencias YA ESTÁ HECHO (por el Director, seeder como piso)
+Tu diagnóstico era exacto y el Director lo llevó una capa más abajo: no era solo «test
+stale», era **bomba de calendario** — `addDays(5)` cae en fin de semana los lunes y martes,
+y la regla nueva de `684a989` (lunes a viernes) lo rechaza. Por eso a mí me dio verde el
+viernes (B1) y a ti rojo hoy lunes, dos veces, determinista. **Hotfix del Director directo
+a main (`5892eea`, con llave del dueño): `addWeekdays(5)` + comentario del porqué.** CI
+Tests de main de vuelta en verde. Aislar el rojo en baseline limpia y NO tocarlo por ser
+territorio ajeno: exactamente el protocolo. Sigue así.
 
-- **`manage roles` (Roles): SOLO admin** — vive únicamente en la lista maestra que recibe
-  el rol admin (`RolesAndPermissionsSeeder` L125); ningún otro rol lo recibe.
-- **`view users` (anfitrión Usuarios): admin, jefe_ventas, jefe_bodega, jefe_sucursal.**
-- **Dirección 1** (¿alguien define roles sin ver Usuarios?): NO — {admin} ⊂ audiencia del
-  anfitrión. Nadie pierde el camino.
-- **Dirección 2** (¿alguien ve Usuarios sin manage roles?): SÍ — los tres jefes. Por eso la
-  pestaña «Roles» va **GATEADA por `manage roles`** (patrón A2 Costos: pestaña con gateo).
-- Caveat de siempre: el seeder es piso aditivo (la UI puede haber sumado). Verifícalo tú
-  también y decláralo en el parte. Riesgo real ≈ solo-admin.
+## 🔨 GO — Lote C2: «Registro del sistema» (3→1) — menú 38 → 36
 
-### La forma (los moldes de la casa, nada nuevo)
+La PRIMERA consolidación de MÚLTIPLES ítems en un anfitrión. El cruce ya lo hicimos los
+dos: `view audit`, `view notificaciones`, `view aprobaciones` viven SOLO en la lista
+maestra → **audiencia idéntica (admin) por construcción**. Sin nudo. Aún así: pestañas
+gateadas cada una por SU permiso (en render, como C1) — si la UI sumó permisos a alguien,
+la forma aguanta sola.
 
-1. `admin/users/_tabs.blade.php`: «Usuarios · Roles», pestaña Roles solo si
-   `can('manage roles')` — como A2. `<x-tab-nav>` 2 pestañas, `aria-current="true"`.
-2. Montaje en `users/index` y `roles/index` (+ pantallas hijas de roles si las hay — revisa
-   `admin.roles.*`: si hay create/edit, la pestaña se monta solo en index, como Documentos).
-3. `MenuPrincipal`: fuera el ítem `roles`; su patrón `admin.roles.*` entra al `activo` de
-   `usuarios`. Comentario con rastro si había nota defendiendo el ítem aparte.
-4. `MenuConsolidacionesTest`: 8ª entrada + **mutación** (quitar patrón → 2 rojos exactos →
-   restaurar → verde).
-5. Prefijos: `admin.users.*` vs `admin.roles.*` — sin colisión posible (nombres disjuntos),
-   pero corre tu reflejo del `Str::is` igual y decláralo.
-6. Volver de `roles/index`: la pestaña es su navegación (fuente única, VolverTest deriva).
+### La forma
+
+1. **Anfitrión: Auditoría** (`admin.audits.index`), rebautizada en el menú como
+   **«Registro del sistema»**. Fuera los ítems `notificaciones` y `historial-aprobaciones`;
+   sus patrones (`admin.notificaciones.*`, `admin.aprobaciones.*`) entran al `activo` del
+   anfitrión. −2 rótulos.
+2. **`admin/audits/_tabs.blade.php`**: «Cambios · Notificaciones · Aprobaciones» —
+   **tab-nav TRIPLE** (`grid-cols-3` ya existe en el componente; primera vez que se usa en
+   una consolidación). Cada pestaña bajo su `can(...)`.
+3. Montaje en los 3 index. Revisa el layout de cada uno (¿`py-12` sin `space-y`? — el
+   `div.mb-6` de C1 si aplica).
+4. **`MenuConsolidacionesTest`: entradas 9ª y 10ª** (`admin.notificaciones.` y
+   `admin.aprobaciones.` → anfitrión; respeta la forma exacta del mapa del candado, ruta
+   hoja o `{prefijo}index`). **Mutación DOBLE**: quitar cada patrón por separado → sus 2
+   rojos exactos cada uno → restaurar → verde.
+5. **Cards del Inicio: son 3, no 2** (el radar v59 se quedó corto — L45-47 de
+   `AccesosDashboard`: auditoria, notificaciones, aprobaciones). Decisión dictada, con el
+   precedente C1/Lote 1: **queda UNA card «Registro del sistema»** (ruta del anfitrión,
+   desc que abarque: «Cambios, notificaciones y aprobaciones») y se RETIRAN las otras dos,
+   con comentario del porqué. Si el candado Dashboard exige otra cosa, decláralo.
+6. **Sobreviven**: los links de la campanita (apuntan a rutas conservadas) y
+   `admin.notificaciones.prueba` (mismo prefijo que su index — cae en el `activo` sin lío).
+7. Comentarios con rastro si algún ítem tenía nota defendiendo su lugar.
+8. Prefijos: corre tu `Str::is` entre `admin.audits.*` y los dos nuevos patrones — disjuntos
+   a ojo, pero decláralo.
 
 ### Verificación (invariante)
-Rama nueva `feature/menu-c1-roles-usuarios` desde main FRESCO (PR #18 acaba de entrar:
-plazo en Sucursales — re-fetch). Suite COMPLETA de main fresco ANTES (baseline del
-Director: 2182/15.096 en `c67d882`, y main ya se movió — recuenta). Batería dirigida +
-carpeta Users/Roles completa. Conteo tinker: debe dar **38**. Parte al buzón; espera doble
-llave. NO arranques C2.
+Rama `feature/menu-c2-registro-sistema` desde main FRESCO (`fc47fd1` o posterior — el
+hotfix del calendario ya está dentro). Suite COMPLETA de main fresco ANTES (baseline
+Director: **2186/15.142** en `fc47fd1`). Batería dirigida + Dashboard/DashboardColores +
+las carpetas Audits/Notificaciones/Aprobaciones. Conteo tinker: **36**. Parte al buzón;
+espera doble llave. NO arranques D.
 
-## 📡 Radar C2 (NO arranques — llega como v60 tras C1)
-
-«Registro del sistema» 3→1: Auditoría anfitriona + Notificaciones + Historial de
-aprobaciones. El cruce del Director ya dio: **los 3 permisos (`view audit`,
-`view notificaciones`, `view aprobaciones`) viven SOLO en la lista maestra → audiencia
-idéntica (admin) por construcción.** Sin nudo. Detalles que te esperan: tab-nav triple
-(`grid-cols-3` existe), 2 cards del Inicio en `AccesosDashboard` se reapuntan, los links de
-la campanita sobreviven (apuntan a rutas que se conservan), y `admin.notificaciones.prueba`
-comparte prefijo con index (mismo `activo`, sin lío).
+## 📡 Después de C2
+QA del dueño del Bloque C completo (Usuarios·Roles + Registro del sistema) → Bloque D
+(Kardex→Producción, ex-huérfana, candado duro) → E (Configuración de producción 4→1 + la
+deuda del `<x-tab-nav>` a 4 pestañas). Mapa final: **32**.
 
 ## Estado
-- Max-2 en pausa (v24). Marcos + PR #9/#18 activos — re-fetch religioso.
-- Tras C2: Bloque D (Kardex, ex-huérfana) → E (Configuración de producción 4→1 + deuda
-  `<x-tab-nav>` a 4 pestañas). Mapa final: 32.
+Max-2 en pausa (v24). Marcos activísimo en visita pública/agenda — re-fetch religioso.
 
-CIERRE: GO C1. Un lote, un parte, una llave. Buen fierro.
+CIERRE: GO C2. El lote más denso hasta ahora — un lote, un parte, una llave. Fierro.

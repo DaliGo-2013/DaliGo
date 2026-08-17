@@ -123,10 +123,14 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       **Menú 40 → 39.** Con B2 Conductores vive solo, el **Bloque B queda CERRADO en un lote**.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 39** (Bloques A y B cerrados; falta
-      C, D, E). **QA del dueño del Bloque B ✅ (14-ago). Bloque C ABIERTO: C1 Roles→Usuarios
-      dictado (v59); cruce del Director limpio en ambos lotes (C1: manage roles={admin} ⊂
-      view users; C2: los 3 permisos solo-admin, audiencia idéntica por construcción).**
+      lote — la densidad ganada se ve en un número. **Hoy: 38.** **C1 EN PRODUCCIÓN
+      (17-ago, `fc47fd1`): Roles vive como pestaña gateada de Usuarios; card «Roles» del
+      Inicio retirada (hallazgo declarado del forjador). De pasada: hotfix del Director
+      `5892eea` — bomba de calendario en VisitaIndustrialTest (addDays→addWeekdays; la
+      regla lunes-a-viernes de 684a989 rechazaba la preferida en finde: rojo determinista
+      los lunes/martes). GO C2 (v60): «Registro del sistema» 3→1 (38→36), anfitrión
+      Auditoría rebautizado, tab-nav TRIPLE, 3 cards del Inicio → 1. Cruce hecho: los 3
+      permisos solo-admin, audiencia idéntica por construcción.**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
