@@ -1,71 +1,50 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-17 (v60 — C1 EN PRODUCCIÓN; GO C2 «Registro del sistema» 3→1, la primera consolidación múltiple). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-17 (v61 — C2 EN PRODUCCIÓN: Bloque C COMPLETO. EN PAUSA hasta el QA del dueño → luego Bloque D). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ C1 está EN PRODUCCIÓN (merge `fc47fd1`, doble llave 17-ago) — menú 39 → 38
+## ✅ C2 está EN PRODUCCIÓN (merge `6fa64cd`, doble llave 17-ago) — menú 38 → 36
 
-Suite del Director sobre el árbol mergeado: **2186 verdes / 15.142, CERO rojos**. Conté el
-menú (38), da. Rama borrada. Tu decisión de la card «Roles» (retirarla, precedente Lote 1):
-correcta y bien declarada — así se maneja un hallazgo fuera de dictado.
+Suite del Director sobre el árbol mergeado: **2186 verdes / 15.184, CERO rojos** (calcada
+al parte). Conté el menú (36), da. Rama borrada. **Bloque C COMPLETO** — la primera
+consolidación múltiple de la casa quedó en producción en un solo lote.
 
-## 🙏 Tu AVISO del rojo ajeno: ORO — ya está saldado
+Lo que quedó fino en C2 (para la bitácora de los moldes):
 
-Tu diagnóstico era exacto y el Director lo llevó una capa más abajo: no era solo «test
-stale», era **bomba de calendario** — `addDays(5)` cae en fin de semana los lunes y martes,
-y la regla nueva de `684a989` (lunes a viernes) lo rechaza. Por eso a mí me dio verde el
-viernes (B1) y a ti rojo hoy lunes, dos veces, determinista. **Hotfix del Director directo
-a main (`5892eea`, con llave del dueño): `addWeekdays(5)` + comentario del porqué.** CI
-Tests de main de vuelta en verde. Aislar el rojo en baseline limpia y NO tocarlo por ser
-territorio ajeno: exactamente el protocolo. Sigue así.
+1. **Ítem con `view audit` a secas y no canAny** — decisión tuya, declarada, con la
+   doctrina bien enunciada: *el menú jamás ofrece un 403*. Esa frase queda como regla
+   citable para D y E.
+2. **El rastro del QA 15-07 preservado por contexto** (bandeja vs historial): comentario +
+   docblock + campanita con el nombre largo. Reemplazar el porqué viejo con el porqué
+   nuevo, sin borrar la historia.
+3. **El amolde L409 anti verde-engañoso** (negar una cadena que ya no existe no vigila
+   nada) — cazado a la primera, con la bitácora 29-07 citada. Y verificaste que
+   `AprobacionBandejaTest` sigue verde POR LA SUPERFICIE CORRECTA, no por accidente.
+4. **Mutación DOBLE** — las dos mitades del candado discriminan por separado. El molde
+   para las consolidaciones múltiples que vienen (E es 4→1).
 
-## 🔨 GO — Lote C2: «Registro del sistema» (3→1) — menú 38 → 36
+## ⏸️ EN PAUSA — el Bloque D espera el QA del dueño del Bloque C
 
-La PRIMERA consolidación de MÚLTIPLES ítems en un anfitrión. El cruce ya lo hicimos los
-dos: `view audit`, `view notificaciones`, `view aprobaciones` viven SOLO en la lista
-maestra → **audiencia idéntica (admin) por construcción**. Sin nudo. Aún así: pestañas
-gateadas cada una por SU permiso (en render, como C1) — si la UI sumó permisos a alguien,
-la forma aguanta sola.
+El dueño va a hacer el QA del Bloque C completo en el celular:
+- Administración con 3 ítems (Usuarios, Sucursales, Registro del sistema).
+- Usuarios con pestañas «Usuarios · Roles» (la de Roles solo para quien porta
+  `manage roles`).
+- El Registro con sus tres pestañas en una fila (`grid-cols-3`) en pantalla chica.
+- La bandeja «Aprobaciones» intacta con su badge; la campanita con sus 4 links.
+- El Inicio con UNA card «Registro del sistema», sin las de Notificaciones/Aprobaciones
+  ni la de Roles.
 
-### La forma
-
-1. **Anfitrión: Auditoría** (`admin.audits.index`), rebautizada en el menú como
-   **«Registro del sistema»**. Fuera los ítems `notificaciones` y `historial-aprobaciones`;
-   sus patrones (`admin.notificaciones.*`, `admin.aprobaciones.*`) entran al `activo` del
-   anfitrión. −2 rótulos.
-2. **`admin/audits/_tabs.blade.php`**: «Cambios · Notificaciones · Aprobaciones» —
-   **tab-nav TRIPLE** (`grid-cols-3` ya existe en el componente; primera vez que se usa en
-   una consolidación). Cada pestaña bajo su `can(...)`.
-3. Montaje en los 3 index. Revisa el layout de cada uno (¿`py-12` sin `space-y`? — el
-   `div.mb-6` de C1 si aplica).
-4. **`MenuConsolidacionesTest`: entradas 9ª y 10ª** (`admin.notificaciones.` y
-   `admin.aprobaciones.` → anfitrión; respeta la forma exacta del mapa del candado, ruta
-   hoja o `{prefijo}index`). **Mutación DOBLE**: quitar cada patrón por separado → sus 2
-   rojos exactos cada uno → restaurar → verde.
-5. **Cards del Inicio: son 3, no 2** (el radar v59 se quedó corto — L45-47 de
-   `AccesosDashboard`: auditoria, notificaciones, aprobaciones). Decisión dictada, con el
-   precedente C1/Lote 1: **queda UNA card «Registro del sistema»** (ruta del anfitrión,
-   desc que abarque: «Cambios, notificaciones y aprobaciones») y se RETIRAN las otras dos,
-   con comentario del porqué. Si el candado Dashboard exige otra cosa, decláralo.
-6. **Sobreviven**: los links de la campanita (apuntan a rutas conservadas) y
-   `admin.notificaciones.prueba` (mismo prefijo que su index — cae en el `activo` sin lío).
-7. Comentarios con rastro si algún ítem tenía nota defendiendo su lugar.
-8. Prefijos: corre tu `Str::is` entre `admin.audits.*` y los dos nuevos patrones — disjuntos
-   a ojo, pero decláralo.
-
-### Verificación (invariante)
-Rama `feature/menu-c2-registro-sistema` desde main FRESCO (`fc47fd1` o posterior — el
-hotfix del calendario ya está dentro). Suite COMPLETA de main fresco ANTES (baseline
-Director: **2186/15.142** en `fc47fd1`). Batería dirigida + Dashboard/DashboardColores +
-las carpetas Audits/Notificaciones/Aprobaciones. Conteo tinker: **36**. Parte al buzón;
-espera doble llave. NO arranques D.
-
-## 📡 Después de C2
-QA del dueño del Bloque C completo (Usuarios·Roles + Registro del sistema) → Bloque D
-(Kardex→Producción, ex-huérfana, candado duro) → E (Configuración de producción 4→1 + la
-deuda del `<x-tab-nav>` a 4 pestañas). Mapa final: **32**.
+Cuando dé el visto bueno, llega el v62 con el **Bloque D · Kardex→Producción**. Adelanto
+para el radar (NO arranques): es **ex-huérfana** (candado duro además del mini-candado),
+entra al patrón `activo` del ítem Producción — un lote corto. Y tras D viene **E**, el
+cierre: Configuración de producción 4→1, donde se paga la deuda del `<x-tab-nav>` a 4
+pestañas (`grid-cols-4` no existe todavía: hoy el componente resuelve 3 ? cols-3 : cols-2
+y con 4 caería a 2 columnas sin avisar).
 
 ## Estado
-Max-2 en pausa (v24). Marcos activísimo en visita pública/agenda — re-fetch religioso.
+- Marcador: **47 → 36 en diez lotes** + 2 vive-solos con evidencia. Mapa final: 32.
+- Max-2 en pausa (v24). Marcos activo en visita pública/agenda.
+- Baseline del Director: **2186/15.184** en `6fa64cd`.
 
-CIERRE: GO C2. El lote más denso hasta ahora — un lote, un parte, una llave. Fierro.
+CIERRE: sin acción. Bloque C completo — récord de la casa: 3 lotes en un día con cero
+rojos propios. Espera el QA del dueño.

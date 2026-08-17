@@ -123,14 +123,15 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       **Menú 40 → 39.** Con B2 Conductores vive solo, el **Bloque B queda CERRADO en un lote**.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 38.** **C1 EN PRODUCCIÓN
-      (17-ago, `fc47fd1`): Roles vive como pestaña gateada de Usuarios; card «Roles» del
-      Inicio retirada (hallazgo declarado del forjador). De pasada: hotfix del Director
-      `5892eea` — bomba de calendario en VisitaIndustrialTest (addDays→addWeekdays; la
-      regla lunes-a-viernes de 684a989 rechazaba la preferida en finde: rojo determinista
-      los lunes/martes). GO C2 (v60): «Registro del sistema» 3→1 (38→36), anfitrión
-      Auditoría rebautizado, tab-nav TRIPLE, 3 cards del Inicio → 1. Cruce hecho: los 3
-      permisos solo-admin, audiencia idéntica por construcción.**
+      lote — la densidad ganada se ve en un número. **Hoy: 36.** **C2 EN PRODUCCIÓN
+      (17-ago, `6fa64cd`): «Registro del sistema» 3→1 — Auditoría rebautizada (key
+      `auditoria` conservada) absorbe Notificaciones + Historial de aprobaciones; tab-nav
+      TRIPLE gateada por permiso; ítem con `view audit` a secas (doctrina: el menú jamás
+      ofrece un 403); cards del Inicio 3→1; rastro del QA 15-07 preservado; mutación DOBLE
+      del candado. Bloque C COMPLETO (C1 `fc47fd1` + C2) — 3 lotes en un día con cero
+      rojos propios (incluye hotfix Director `5892eea`, bomba de calendario en
+      VisitaIndustrialTest). Pausa hasta el QA del dueño del Bloque C → luego Bloque D
+      (Kardex, ex-huérfana) → E (4→1 + deuda tab-nav grid-cols-4).**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
