@@ -182,11 +182,16 @@ class MenuPrincipal
                 'sucursales' => ['label' => 'Sucursales', 'route' => 'admin.sucursales.index', 'activo' => ['admin.sucursales.*'], 'permiso' => 'manage sucursales'],
                 // Configuración NO va aquí: es de cuenta, no de negocio-por-módulo
                 // (ver self::CUENTA más abajo) — pedido del dueño 2026-07-24.
-                'auditoria' => ['label' => 'Auditoría', 'route' => 'admin.audits.index', 'activo' => ['admin.audits.*'], 'permiso' => 'view audit'],
-                'notificaciones' => ['label' => 'Notificaciones', 'route' => 'admin.notificaciones.index', 'activo' => ['admin.notificaciones.*'], 'permiso' => 'view notificaciones'],
-                // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
-                // igual que la bandeja confunde (hallazgo #1 del acta).
-                'historial-aprobaciones' => ['label' => 'Historial de aprobaciones', 'route' => 'admin.aprobaciones.index', 'activo' => ['admin.aprobaciones.*'], 'permiso' => 'view aprobaciones'],
+                // Consolidación C2 (PLAN-MENU-DENSIDAD, la primera de MÚLTIPLES
+                // ítems): Auditoría + Notificaciones + Historial de aprobaciones
+                // son UN ítem — pestañas de admin/audits/_tabs, cada una gateada
+                // por SU permiso (los tres hoy son solo-admin por construcción).
+                // El «Historial de…» que defendía el QA 15-07 (hallazgo #1: no
+                // confundir con la bandeja) sobrevive por contexto: la pestaña
+                // «Aprobaciones» vive DENTRO del Registro, la bandeja sigue sola
+                // en la sidebar y la campanita conserva su link con el nombre
+                // largo. Rutas consolidadas vigiladas en MenuConsolidacionesTest.
+                'auditoria' => ['label' => 'Registro del sistema', 'route' => 'admin.audits.index', 'activo' => ['admin.audits.*', 'admin.notificaciones.*', 'admin.aprobaciones.*'], 'permiso' => 'view audit'],
             ],
         ],
         'mi-produccion' => [

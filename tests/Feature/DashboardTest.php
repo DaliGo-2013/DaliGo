@@ -100,8 +100,8 @@ class DashboardTest extends TestCase
             ->assertSee('Accesos directos')
             ->assertSee('Comercial')
             ->assertSee('Administración')
-            ->assertSee('Auditoría')
-            ->assertSee('Aprobaciones') // historial del motor, ahora en el zócalo
+            ->assertSee('Registro del sistema') // card C2 (absorbe Auditoría/Notificaciones/Aprobaciones)
+            ->assertSee('Aprobaciones') // la bandeja del menú (el historial es pestaña del Registro)
             ->assertSee('Personalizar'); // modo de color de las cards (D-013)
 
         $this->assertSame([], $res->viewData('excepciones'));
@@ -406,7 +406,10 @@ class DashboardTest extends TestCase
         // vendedor: solo Comercial (Clientes); nada de Operación/Administración.
         $res = $this->actingAs($this->userWithRole('vendedor'))->get('/dashboard');
         $res->assertOk()->assertSee('Accesos directos')->assertSee('Clientes')
-            ->assertDontSee('Auditoría')
+            // «Registro del sistema» y no «Auditoría»: tras C2 el string viejo no
+            // existe en ninguna superficie y un assertDontSee suyo sería inerte
+            // (verde-engañoso, bitácora 29-07).
+            ->assertDontSee('Registro del sistema')
             ->assertDontSee('Inventario');
 
         $grupos = $res->viewData('accesos');

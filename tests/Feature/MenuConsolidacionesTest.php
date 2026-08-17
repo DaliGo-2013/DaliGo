@@ -41,6 +41,8 @@ class MenuConsolidacionesTest extends TestCase
         'admin.traslados.' => 'servicio-tecnico.listado', // A2: Traslados al taller → pestaña del Listado
         'admin.cargas-reales.' => 'logistica.carga', // B1: Cargas reales → pestaña del Simulador
         'admin.roles.' => 'administracion.usuarios', // C1: Roles → pestaña de Usuarios
+        'admin.notificaciones.' => 'administracion.auditoria', // C2: Notificaciones → pestaña del Registro del sistema
+        'admin.aprobaciones.' => 'administracion.auditoria', // C2: Historial de aprobaciones → pestaña del Registro del sistema
     ];
 
     private function admin(): User

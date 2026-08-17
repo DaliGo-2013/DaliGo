@@ -14,6 +14,8 @@
 
         <x-status-alert :status="session('status')" />
 
+        @include('admin.audits._tabs')
+
         {{-- Filtros --}}
         <form method="GET" action="{{ route('admin.notificaciones.index') }}"
               class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 sm:flex-row sm:items-end">

@@ -42,9 +42,12 @@ class AccesosDashboard
             // huérfana (D-013), igual que con «Precios» en F1.
             'sucursales' => ['label' => 'Sucursales', 'desc' => 'Mirador, Coquimbo, Abate Molina, Buzeta', 'route' => 'admin.sucursales.index', 'permiso' => 'manage sucursales', 'icon' => 'building-storefront', 'color' => 'gris'],
             'configuracion' => ['label' => 'Configuración', 'desc' => 'Parámetros globales de la app', 'route' => 'admin.configuracion.index', 'permiso' => 'manage settings', 'icon' => 'adjustments-horizontal', 'color' => 'gris'],
-            'auditoria' => ['label' => 'Auditoría', 'desc' => 'Quién cambió qué y cuándo', 'route' => 'admin.audits.index', 'permiso' => 'view audit', 'icon' => 'document-magnifying-glass', 'color' => 'gris'],
-            'notificaciones' => ['label' => 'Notificaciones', 'desc' => 'Envíos, reintentos y fallas', 'route' => 'admin.notificaciones.index', 'permiso' => 'view notificaciones', 'icon' => 'bell', 'color' => 'gris'],
-            'aprobaciones' => ['label' => 'Aprobaciones', 'desc' => 'Historial del motor de aprobaciones', 'route' => 'admin.aprobaciones.index', 'permiso' => 'view aprobaciones', 'icon' => 'check-badge', 'color' => 'gris'],
+            // Consolidación C2: las cards «Notificaciones» y «Aprobaciones» se
+            // retiraron — sus pantallas son pestañas del Registro del sistema
+            // (a un clic de esta card, cuya desc las abarca). La key `auditoria`
+            // se conserva para las preferencias de color guardadas; las keys
+            // huérfanas de las retiradas se toleran (D-013), igual que en F1/C1.
+            'auditoria' => ['label' => 'Registro del sistema', 'desc' => 'Cambios, notificaciones y aprobaciones', 'route' => 'admin.audits.index', 'permiso' => 'view audit', 'icon' => 'document-magnifying-glass', 'color' => 'gris'],
         ],
     ];
 

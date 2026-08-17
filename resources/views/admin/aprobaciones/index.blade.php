@@ -5,6 +5,8 @@
 
     <div class="space-y-6 py-12">
 
+        @include('admin.audits._tabs')
+
         {{-- Filtros (responsive: apilan en móvil, grilla en pantallas anchas) --}}
         <form method="GET" action="{{ route('admin.aprobaciones.index') }}"
               class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
