@@ -220,7 +220,10 @@ class VisitaIndustrialTest extends TestCase
     {
         $sucursal = $this->sucursal();
         $servicio = ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T']);
-        $preferida = now()->addDays(5)->toDateString();
+        // addWeekdays y no addDays: el tecnico atiende de lunes a viernes, y
+        // una preferida que cae en fin de semana se rechaza con error de
+        // validacion — addDays(5) hacia fallar este test los lunes y martes.
+        $preferida = now()->addWeekdays(5)->toDateString();
 
         $this->post(route('visita-industrial.store'), $this->payload($sucursal, [
             'servicio_terreno_id' => $servicio->id,
