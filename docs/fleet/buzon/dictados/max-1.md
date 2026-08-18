@@ -1,83 +1,65 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-18 (v69 — DASH-1 EN PRODUCCIÓN: el molde de fase B quedó sellado. GO DASH-2: cortes de antigüedad + el desacople del $d7). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-18 (v70 — DASH-2 EN PRODUCCIÓN. GO DASH-3: la card Sucursales deja de nombrar las sucursales a mano — cierre del módulo Dashboard). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ DASH-1 está EN PRODUCCIÓN (merge `bcbfb00`, doble llave 18-ago)
+## ✅ DASH-2 está EN PRODUCCIÓN (merge `0c2bcad`, doble llave 18-ago)
 
-Suite del Director sobre el árbol mergeado: **2200 verdes / 15.358, CERO rojos** —
-delta exacto +4, cero cifras viejas cambiadas: la regla de oro verificada viva. Rama
-borrada. **El bloque `E-PARAM` nació en RUTA-MAESTRA con este merge** — el proyecto ya
-se ve en /plan con pasos de verdad.
+Suite del Director: **2204 verdes / 15.421, CERO rojos** — delta exacto +4, cero
+amoldes. Rama borrada; `P-PAR-DASH-2` marcado en E-PARAM. Tres cosas de este lote ya
+son doctrina del proyecto: el desacople ANTES de la perilla, el clamp reforzado del par
+(`max($corteReciente + 1, …)`), y `PARES_ORDENADOS` como mecanismo (el próximo par de
+cualquier módulo es una línea).
 
-Lo que quedó fino (ya es doctrina del proyecto):
-1. **El snake_case sobre la letra del dictado** — el idioma de la casa manda; la
-   desviación declarada con evidencia (las 15+ claves existentes) es exactamente cómo
-   se pisa un dictado.
-2. **El candado de independencia CON CIFRA CALCULADA** (el reporte en día -9 que mueve
-   el promedio de 10% a 30%) — no solo el rótulo: el cálculo. Ese es el estándar.
-3. **El mecanismo `RANGOS`** — reutilizable, DASH-2 solo agrega entradas.
-4. **El clamp `max(2,…)`** — la UI valida, pero un valor roto por fuera de la UI
-   tampoco puede romper la pantalla. Cinturón y tirantes.
+## 🔨 GO — Lote DASH-3: la card Sucursales deriva de la BD (#5) — cierre del módulo
 
-## 🔨 GO — Lote DASH-2: cortes de antigüedad del taller (#3) + desacople del $d7 (#4)
+El hallazgo estrella de tu mapa: `AccesosDashboard.php:43` dice «Mirador, Coquimbo,
+Abate Molina, Buzeta» a mano. Sucursal nueva → el Inicio miente hasta que un
+programador edite el archivo. Se acaba hoy.
 
-El lote M del módulo — el que tiene la trampa que tú mismo cazaste en el mapa.
+### La forma (con las decisiones que el radar v69 te delegó, ahora dictadas)
 
-### La forma
-
-1. **PRIMERO el desacople** (tu alerta del parte F0): la «última semana» del flujo del
-   taller (`DashboardController` :201-202) deja de reusar `$d7` y recibe **variable
-   propia con 7 FIJO** + comentario nivel 3 del porqué («una semana es una semana —
-   veredicto del dueño 18-ago, mapa F0-DASH #4»). Sin este paso, mover el corte
-   arrastraría el flujo semanal en silencio.
-2. **Dos claves nuevas** (patrón DASH-1, snake_case):
-   - `dashboard_corte_taller_reciente` — default **7**.
-   - `dashboard_corte_taller_antiguo` — default **30**.
-   Seeder idempotente con ayuda en español («Dónde termina el tramo reciente de los
-   equipos activos del taller (días)», «Desde cuántos días un equipo activo cuenta como
-   antiguo»).
-3. **Buckets y rótulos derivados**: los tramos (:185-192) leen de las claves (con el
-   clamp de la casa); los textos «0-7 días · 8-30 · 30+» y «llevan 30+ días»
-   (`dashboard.blade.php` :113, :124) se construyen desde los valores. OJO al ±1 del
-   tramo del medio: hoy es 8-30 porque parte en corte_reciente+1 — que el rótulo derive
-   esa aritmética exacta, no la repita a mano.
-4. **UI**: dos entradas nuevas en `RANGOS` (reciente [2,60], antiguo [7,180] — o los
-   rangos que el código pida con sentido) + **la validación cruzada nueva:
-   reciente < antiguo** — al guardar CUALQUIERA de las dos, si el par queda invertido
-   o igual, se rechaza con mensaje en español que nombre a la otra clave. Esta lógica
-   es nueva (RANGOS es por-clave); decide dónde vive y decláralo.
-5. **Candados** (molde DASH-1 + los propios):
-   - Default idéntico: BD virgen → tramos 0-7/8-30/30+, rótulos de hoy, y la «última
-     semana» sigue en 7.
-   - Mover reciente (p.ej. 10) → tramos 0-10/11-30/30+ CON CIFRA (un equipo de 9 días
-     cambia de bucket) + rótulos derivados + **la última semana NO se mueve** (el
-     candado del desacople — el que faltaba en el código de hoy).
-   - Mover antiguo (p.ej. 45) → ídem por su lado.
-   - Validación cruzada: reciente=30/antiguo=30 rechazado; reciente=31/antiguo=30
-     rechazado; el mensaje nombra el conflicto.
-   - Mutación: default 7→9 del corte → rojo exacto el candado de default → restaurar →
-     verde.
-6. **Regla de oro**: cero tests existentes con cifra cambiada. El `assertSee` viejo de
-   los rótulos del aging (si existe en DashboardTest) debe seguir verde SIN tocarse con
-   BD virgen — si hay que amoldar algo, se declara con el porqué.
+1. **La desc de la card `sucursales` deriva de la tabla `sucursales`**: nombres de las
+   sucursales ACTIVAS (el scope/columna que ya usa el módulo M04 — `en_operacion` o el
+   idioma real de la tabla, verifícalo), orden estable (alfabético o el orden que la
+   pantalla de Sucursales ya use — consistencia sobre gusto), unidos con «, ».
+2. **Dónde vive el query — decisión dictada**: `AccesosDashboard` hoy es
+   constante/estático; la derivación va en el punto donde el dashboard ARMA las cards
+   (el composer o el método que ya inyecta datos vivos — mira cómo llegan los badges).
+   NO conviertas toda la constante en query: SOLO la desc de esa card se resuelve al
+   render. Si el código real te pide otra forma, contra-evidencia en el parte ANTES de
+   forjar distinto.
+3. **Fallback con tabla vacía** (entornos de test sin seeder, BD recién migrada): desc
+   genérica **«Plazos y datos por sucursal»** — jamás un join de lista vacía ni un
+   error. Candado propio.
+4. **Sin clave de configuración**: este hallazgo es nivel 1 por «deriva de fuente
+   viva», no por perilla — no hay número que mover. No agregues clave que nadie pidió.
+5. **Candados** (molde del proyecto adaptado):
+   - **Fuente viva**: con las 4 sucursales sembradas, la desc las nombra igual que hoy
+     (byte a byte — la regla de oro de este lote).
+   - **Sucursal nueva aparece sola**: crear una 5ª activa → la desc la incluye SIN
+     tocar código.
+   - **Sucursal desactivada desaparece**: apagar una → la desc la omite.
+   - **Fallback**: tabla vacía → «Plazos y datos por sucursal», página 200.
+   - **Mutación**: rompe la derivación (hardcodea de nuevo la lista en tu rama) → el
+     candado de sucursal-nueva se pone rojo → restaurar → verde.
+6. **Regla de oro**: con el seeder actual (las 4 de siempre), la card se ve IDÉNTICA a
+   hoy. Cero tests existentes con cifra cambiada; el candado Dashboard de cards⊆menú ni
+   se entera.
 
 ### Verificación (invariante)
-Rama `feature/param-dash-2-cortes` desde main FRESCO (`bcbfb00` o posterior). Suite
-COMPLETA de main fresco ANTES (baseline: **2200/15.358**). Batería dirigida:
-ParametrosDashboard + Dashboard completo + ConfiguracionManagement. Parte al buzón;
-espera doble llave. NO arranques DASH-3.
+Rama `feature/param-dash-3-card-sucursales` desde main FRESCO. Suite COMPLETA de main
+fresco ANTES (baseline: **2204/15.421** en `0c2bcad`). Batería dirigida: Dashboard +
+DashboardColores + ParametrosDashboard + Sucursal*. Parte al buzón; espera doble llave.
 
-## 📡 Radar DASH-3 (cierre del módulo, llega como v70)
-#5: la desc de la card Sucursales (`AccesosDashboard:43`) deriva de la tabla
-`sucursales` (activas, orden estable). Detalles que te esperan: `AccesosDashboard` es
-estático/constante hoy — derivar de BD implica query en el composer del dashboard o en
-el punto de render (decidir con el código a la vista, declarar); candado «sucursal
-nueva activa aparece en la desc sin tocar código»; cuidado con entornos de test sin
-seeder (fallback genérico «Plazos y datos por sucursal» si la tabla está vacía).
-Tras DASH-3: QA del dueño del módulo Dashboard completo → auditoría de Comercial (v71).
+## 📡 Después de DASH-3
+Módulo Dashboard COMPLETO (mapa F0-DASH saldado: 4 nivel 1 ejecutados, 4 nivel 3 con
+porqué, 6 cross anotados) → **QA del dueño del módulo** (las 4 perillas en Configuración
++ la card viva + el Inicio idéntico sin tocar nada) → **v71 abre la auditoría de
+Comercial** (fase A, solo docs, mismo formato del mapa).
 
 ## Estado
-Max-2 en pausa (v24). Marcos activo. Baseline: **2200/15.358** en `bcbfb00`.
+Max-2 en pausa (v24). Marcos activo. Baseline: **2204/15.421** en `0c2bcad`.
 
-CIERRE: GO DASH-2. El desacople primero, después las perillas. Fierro.
+CIERRE: GO DASH-3. El hallazgo que define el proyecto — que la pantalla deje de mentir
+sola. Fierro.
