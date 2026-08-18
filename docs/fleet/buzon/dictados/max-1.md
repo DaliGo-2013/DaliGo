@@ -1,74 +1,69 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-17 (v62 — QA del dueño del Bloque C ✅: GO Bloque D, lote D1 Kardex→Producción). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-18 (v63 — D1 EN PRODUCCIÓN: Bloque D COMPLETO. EN PAUSA hasta el QA del dueño → luego E1, el CIERRE). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ QA del Bloque C aprobado por el dueño (17-ago)
+## ✅ D1 está EN PRODUCCIÓN (merge `61dd90d`, doble llave 18-ago) — menú 36 → 35
 
-Verificado en celular: Administración con 3 ítems, pestañas de Usuarios y del Registro
-funcionando, bandeja y campanita intactas, Inicio con una card. **Bloque C cerrado con
-QA.** Marcador: 47 → 36 en producción.
+Suite del Director sobre el árbol mergeado: **2196 verdes / 15.231, CERO rojos** (calcada
+al parte). Conté el menú (35), da. Rama borrada. **Bloque D COMPLETO.**
 
-## 🔨 GO — Lote D1: «Kardex» entra al ítem «Producción» (36 → 35)
+Lo fino de D1, para el molde de E1:
+1. **El trato de P-NAV-06 quedó de manual**: la ruta salió del candado con el rastro de
+   sus tres vidas Y volvió a `test_pantalla_hija_tiene_exactamente_un_volver` en el
+   MISMO commit — el Volver restaurado no pasó ni un push sin candado. Ese es el molde
+   exacto para Máquinas y Tipos de botellón en E1.
+2. **«Ítem retirado no es motivo para volver al comodín»** — la lista explícita del
+   `activo` se respetó y el comentario lo deja dicho. Doctrina citable.
+3. Baseline corrida a `ec06a48` con el PR #19 absorbido y declarado — así se maneja el
+   drift de Marcos.
 
-El lote más corto del mapa — pero con un candado CON HISTORIA que hay que tratar con
-respeto. El reconocimiento del Director:
+## ⏸️ EN PAUSA — E1 espera el QA del dueño del Bloque D (corto)
 
-### El cruce (hecho): permiso IDÉNTICO por construcción
+El dueño verifica en celular: Producción resalta estando en el Kardex, el Volver del
+Kardex lleva al panel, la sidebar sin el ítem, el botón «Kardex» de la cabecera como
+entrada. Con su visto bueno llega el **v64 con E1 — el CIERRE del mapa**.
 
-Kardex (`admin.produccion.movimientos`) e ítem Producción comparten el MISMO string de
-permiso: `manage production` (MenuPrincipal L83 y L86). Una sola audiencia definida una
-vez — la precondición limpia de B1. **Sin gateo, sin canAny, sin nudo.**
+## 📡 Radar E1 (NO arranques — estúdialo, es el lote mayor)
 
-### La forma (mudanza, no pestaña)
+**«Configuración de producción» 4→1 (35 → 32)**: Máquinas · Tipos de botellón · Recetas ·
+Moldes → una superficie. El reconocimiento del Director (verificado hoy en MenuPrincipal
+L90-95): los 4 ítems portan `manage production` — **permiso idéntico por construcción,
+las 4 pestañas SIN gateo** (precondición B1, la más limpia posible para el lote más
+grande).
 
-D1 NO lleva tab-nav: el panel de Producción YA tiene el botón «Kardex» en su cabecera
-(`produccion/index.blade.php` L7) y el reporte enlaza «Ver kardex completo» (L232). La
-entrada existe; lo que sobra es el ítem del menú.
+Lo que E1 trae que ningún lote trajo:
+1. **La deuda del `<x-tab-nav>` se paga AQUÍ**: hoy `count($tabs)===3 ? 'grid-cols-3' :
+   'grid-cols-2'` — con 4 pestañas caería a 2 columnas EN SILENCIO. Extiende el
+   componente a 4 (`grid-cols-4`) con la forma que el componente pida (mapa
+   count→clase, no un ternario anidado); Tailwind debe tener la clase en el bundle —
+   si `grid-cols-4` no está en uso en ninguna vista, el bundle CAMBIA y deja de ser
+   byte-idéntico: **decláralo y recompila sobre el árbol del lote** (superset vs padres,
+   receta I-06). Candado del componente: con 4 pestañas, las 4 en una fila.
+2. **Anfitrión NUEVO**: ninguna de las 4 es anfitriona natural (ninguna pantalla «madre»).
+   Decisión dictada: **Máquinas es la anfitriona** (primera de la fila en producción
+   física: máquina → molde → tipo → receta) y el ítem se rebautiza **«Configuración de
+   producción»** (key `maquinas` se conserva si algún candado la fija — verifica
+   DashboardColores como en C2). Si el estudio del código te da un anfitrión mejor,
+   propónlo en el parte ANTES de forjar distinto: el dictado admite contra-evidencia.
+3. **Dos ex-huérfanas P-NAV-06 de una vez** (Máquinas, Tipos de botellón): molde D1 —
+   salen del candado con rastro, recuperan su `<x-volver>`... OJO: Máquinas como
+   anfitriona SIGUE siendo ítem (no recupera Volver, no sale de P-NAV-06 — su ruta
+   sigue en el menú). Solo Tipos de botellón sale + Recetas y Moldes (que nunca fueron
+   huérfanas) entran como pestañas.
+4. **Mutación CUÁDRUPLE... no: TRIPLE** del mini-candado (3 rutas consolidadas:
+   tipos-botellon, recetas, moldes — Máquinas es la anfitriona, no se consolida a sí
+   misma). Entradas 12ª, 13ª y 14ª.
+5. **Cards del Inicio**: no hay cards de los 4 (verificado por grep hoy) — nada que
+   retirar, decláralo igual.
+6. Links cruzados que deben sobrevivir: panel de Producción → máquinas/moldes; recetas ↔
+   backflush (RecetaBackflushTest completo en la batería); semáforo de moldes (M11).
 
-1. **`MenuPrincipal`**: fuera el ítem `kardex` (L86); `admin.produccion.movimientos`
-   entra a la lista explícita del `activo` de `produccion` (L83). OJO: ese `activo` es
-   lista explícita A PROPÓSITO (el prefijo `admin.produccion.*` lo comparten las rutas
-   del soplador que viven en «Mi producción») — respeta la lista, no metas wildcard.
-2. **El candado P-NAV-06 (`VolverTest::test_las_ex_huerfanas_estan_en_el_menu`) se pone
-   ROJO a propósito** — es la mitad del lote. Su propio texto dicta la salida: «si
-   alguien las SACA del menú, vuelven a quedar huérfanas y necesitan su Volver de
-   vuelta». Kardex pasa de ítem a HIJA del panel:
-   - `movimientos.blade.php` recupera su **`<x-volver>`** (se lo quitaron cuando subió a
-     ítem — P-NAV-06 27-jul; ahora el flujo es menú Producción → botón Kardex → Volver).
-   - En el candado, la ruta **sale de la lista de ex-huérfanas CON RASTRO**: comentario
-     que cuente las dos vidas (huérfana → ítem 27-jul → hija con Volver por D1 17-ago,
-     vigilada ahora por la 11ª entrada del mini-candado). La historia no se borra.
-   - Si `test_ningun_item_del_menu_lleva_volver` u otro derivado de la fuente única se
-     mueve solo, decláralo — nunca amoldes a mano lo que deriva.
-3. **`MenuConsolidacionesTest`: 11ª entrada** (`admin.produccion.movimientos` →
-   anfitrión `produccion`; forma exacta del mapa como esté el candado). **Mutación**:
-   quitar la ruta del `activo` → rojos exactos → restaurar → verde.
-4. **Cards del Inicio**: revisa `AccesosDashboard` por card «Kardex» — si existe, misma
-   decisión C1/C2 (retirar o reapuntar con porqué; Producción ya tendrá la suya).
-5. Prefijos: `admin.produccion.movimientos` es ruta EXACTA en el activo (sin comodín) —
-   cero riesgo de encender al soplador. Corre igual tu `Str::is` contra
-   `mi-produccion`/rutas del soplador y decláralo.
-6. Comentario con rastro en MenuPrincipal si el ítem kardex tenía nota defendiéndolo.
-
-### Verificación (invariante)
-Rama `feature/menu-d1-kardex-produccion` desde main FRESCO. Suite COMPLETA de main
-fresco ANTES (baseline Director: **2186/15.184** en `6fa64cd`). Batería dirigida: Volver +
-MenuConsolidaciones + Sidebar + MenuPrincipal + Navigation + Dashboard +
-**ProduccionKardexTest y la carpeta Produccion completa** (el kardex real: backflush,
-filtros, permiso). Conteo tinker: **35**. Parte al buzón; espera doble llave. NO
-arranques E.
-
-## 📡 Después de D1 — el CIERRE: Bloque E (v63)
-QA del dueño del Bloque D (corto: Producción resalta en el Kardex, Volver funciona,
-sidebar sin el ítem) → **E1 Configuración de producción 4→1** (Máquinas · Tipos de
-botellón · Recetas · Moldes, todas bajo `manage production`): la mayor densidad del mapa
-(−3), anfitrión nuevo, y ahí se paga la deuda del `<x-tab-nav>`: **`grid-cols-4` NO
-existe** (hoy `count===3 ? cols-3 : cols-2` — con 4 caería a 2 columnas sin avisar).
-Máquinas y Tipos de botellón son TAMBIÉN ex-huérfanas de P-NAV-06 — mismo trato que
-Kardex hoy: este lote es el ensayo del molde.
+QA del dueño listo para E1 (12 puntos, ya se lo di): pestañas 4-en-fila en celular es el
+punto crítico + backflush intacto.
 
 ## Estado
-Max-2 en pausa (v24). Marcos activo. Baseline: 2186/15.184 en `6fa64cd`.
+Max-2 en pausa (v24). Marcos activo (PR #19 hoy). Baseline: **2196/15.231** en `61dd90d`.
 
-CIERRE: GO D1. Un lote, un parte, una llave. El penúltimo — fierro.
+CIERRE: sin acción hasta el QA del dueño. Once lotes, 47→35, cero rojos propios. El
+próximo dictado cierra el mapa. Fierro.

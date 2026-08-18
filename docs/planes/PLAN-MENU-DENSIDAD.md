@@ -130,14 +130,17 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       ofrece un 403); cards del Inicio 3→1; rastro del QA 15-07 preservado; mutación DOBLE
       del candado. Bloque C COMPLETO (C1 `fc47fd1` + C2) — 3 lotes en un día con cero
       rojos propios (incluye hotfix Director `5892eea`, bomba de calendario en
-      VisitaIndustrialTest). QA del dueño del Bloque C ✅ (17-ago) → **Bloque D ABIERTO:
-      GO D1 Kardex→Producción dictado (v62)**. Reconocimiento del Director: permiso
-      idéntico por construcción (`manage production`, mismo string); mudanza sin tab-nav
-      (el panel ya tiene el botón «Kardex»); el candado P-NAV-06 (ex-huérfanas en
-      VolverTest) se pone rojo A PROPÓSITO y su propio texto dicta la salida — Kardex
-      pasa a hija y recupera su `<x-volver>`, sale de la lista con rastro, 11ª entrada
-      del mini-candado vigila. `activo` de Producción es lista explícita a propósito
-      (prefijo compartido con el soplador) — ruta exacta, sin wildcard.**
+      VisitaIndustrialTest). QA Bloque C ✅ → **D1 EN PRODUCCIÓN (18-ago, `61dd90d`):
+      Kardex vuelve a ser hija del panel de Producción — Bloque D COMPLETO, menú 35.**
+      P-NAV-06 despedido con rastro (tres vidas) y el Volver restaurado con candado en el
+      mismo commit; ruta exacta al `activo` sin volver al comodín («ítem retirado no es
+      motivo para volver al comodín», gate 28-07); baseline absorbió PR #19 de Marcos.
+      **Pausa hasta el QA del dueño del Bloque D → v64 abre E1, el CIERRE: Configuración
+      de producción 4→1 (35→32)** — anfitriona Máquinas rebautizada (propuesta del
+      Director, contra-evidencia admitida), 4 pestañas sin gateo (permiso idéntico por
+      construcción), deuda del `<x-tab-nav>` a grid-cols-4 (bundle puede dejar de ser
+      byte-idéntico: recompilar + superset I-06), Tipos de botellón sale de P-NAV-06 con
+      molde D1, mutación TRIPLE (entradas 12ª-14ª), backflush en la batería.**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
