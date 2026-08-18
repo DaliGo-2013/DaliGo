@@ -82,8 +82,46 @@ de su flujo. Los módulos avanzan de a uno: auditoría → veredictos → lotes 
 
 ## 5. Anexos por módulo (los llena la fase A de cada uno)
 
-### §5.1 Dashboard — mapa F0-DASH (pendiente: dictado v67 en manos de Max-1)
-Semillas ya vistas por el Director (el mapa debe confirmarlas y completarlas):
-- `DashboardController`: serie de producción de **7 días**; referencia de merma de los
-  **7 días anteriores**; cortes de antigüedad de órdenes **0-7 / 8-30 / 30+**.
-- `AccesosDashboard` / `DashboardColores`: revisar si hay valores de negocio (no de UI).
+### §5.1 Dashboard — mapa F0-DASH (auditoría Max-1, 2026-08-18, sobre `a81b21d`)
+
+Barridos completos: `DashboardController` (324 líneas), `DashboardColoresController`,
+`AccesosDashboard`, `dashboard.blade.php`, `components/dashboard/acceso.blade.php` +
+la aguas-arriba mínima que el pulso consume. Las 3 semillas del Director quedaron
+confirmadas (#1, #2, #3). `DashboardColoresController` y `acceso.blade.php` no tienen
+valores de negocio: validación estructural y UI pura.
+
+**Resumen: 8 hallazgos — 4 propuestos nivel 1 · 0 nivel 2 · 4 nivel 3 (2 con duplicado
+marcado) · 6 anotaciones cross-módulo.** Los veredictos son PROPUESTOS: decide el dueño.
+
+| # | Valor | Dónde vive (file:line) | Qué controla EN PANTALLA | Repetido en | Veredicto propuesto | Esfuerzo |
+|---|---|---|---|---|---|---|
+| 1 | **7 días** (serie de producción) | `DashboardController.php:144` (`subDays(6)`, incluye hoy) | Cuántos días de producción muestran las mini-barras del Inicio | El texto «Últimos 7 días» (`dashboard.blade.php:100`) — si se mueve el valor sin el texto, el rótulo miente | **1** — puro alcance visual, moverlo en caliente no rompe nada; validación de rango (2-31) y el rótulo pasa a derivar del parámetro | S |
+| 2 | **7 días anteriores** (referencia de merma) | `DashboardController.php:163` (`subDays(7)`; el borde «hasta ayer» es `:164`) | Contra cuántos días previos se compara la merma de hoy — el «prom. 7 días» junto a la merma | El texto «prom. 7 días» (`dashboard.blade.php:89`) | **1** — misma naturaleza que #1; es OTRA ventana aunque también diga 7 (parámetros separados) | S |
+| 3 | **7 y 30 días** (cortes de antigüedad del taller) | `DashboardController.php:185-186`, buckets `:190-192` | Dónde parten los tramos 0-7 / 8-30 / 30+ de los equipos activos (la barra segmentada y el «N llevan 30+ días») | Los textos «llevan 30+ días» (`dashboard.blade.php:113`) y «0-7 días · 8-30 · 30+» (`:124`) — y la variable `$d7` la REUSA el flujo semanal (#4) | **1** — es la vara de «esto lleva mucho en el taller» y es del dueño; OJO al desacople: hoy mover `$d7` movería también la «última semana» de #4 | M |
+| 4 | **7 días** («última semana» del flujo del taller) | `DashboardController.php:201-202` (reusa el `$d7` de `:185`) | Cuántos días cubre el «Última semana: entraron N · salieron N» del taller | El texto «Última semana» (`dashboard.blade.php:127`) + ACOPLADO por variable al corte 0-7 de #3 | **3** — una semana es una semana: mover el número dejaría el rótulo mintiendo. El acoplamiento con #3 sí se paga en su lote (variable propia) | S (el desacople) |
+| 5 | **«Mirador, Coquimbo, Abate Molina, Buzeta»** | `AccesosDashboard.php:43` (desc de la card Sucursales) | El texto bajo la card Sucursales del Inicio nombra las sucursales una a una — si se abre o cierra una sucursal, el Inicio queda mintiendo hasta que un programador lo edite | La tabla `sucursales` de la BD (fuente viva del mismo dato) | **1** — string de negocio + lista que crece; derivar de la BD existente (sin clave nueva) o volverlo genérico. Decisión del dueño | S |
+| 6 | **48 / 24 / 1 horas** (edad legible) | `DashboardController.php:312-318` | Cómo se redondea el «el más antiguo espera hace X» de las excepciones (días desde 48 h, «1 día» desde 24 h, horas desde 1 h) | — | **3** — convención de presentación temporal, no decisión de negocio; cambiarla no cambia ninguna acción | — |
+| 7 | **Paleta de 8 colores** (personalización de cards) | `dashboard.blade.php:140-149` (`$paleta`, clases) **+** `AccesosDashboard.php:15` (`COLORES`, keys) | Qué colores puede elegir cada usuario para sus cards del Inicio | **Duplicado estructural en 2 sitios** — intencional y documentado: las clases DEBEN ser literales en un Blade (anti-purga Tailwind v4) y las keys las valida el controller | **3** — doctrina D-013 (paleta curada por el dueño) + restricción técnica del duplicado; agregar un 9º color seguirá siendo tocar 2 archivos, y el porqué está escrito en ambos | — |
+| 8 | **Topes visuales de barras** (`min(100,…)`, `max(4,…)`, `max(1,…)`) | `dashboard.blade.php:86,96,117` + `DashboardController.php:154` | Que la barra de avance no desborde el 100 %, que un día con poca producción igual pinte una barrita visible (4 %) y que no haya división por cero | — | **3** — aritmética defensiva de presentación, sin significado de negocio | — |
+
+**Anotaciones cross-módulo** (el hardcode vive aguas arriba o su dueño es otro módulo —
+quedan para la auditoría de ese módulo, regla del dictado v67):
+
+- **Servicio Técnico** — estados del taller como strings sueltos en las tarjetas del
+  Inicio: `'entregado'` (`DashboardController.php:227`), `'recibido'`+`'cotizacion'`
+  (`:240`, y `'recibido,cotizacion'` como query en `:241`), `'reparado'` (`:247`).
+  **Duplican el catálogo de estados de `OrdenServicio`** — duplicado marcado aunque el
+  veredicto probable sea 3 (claves de máquina): unificar a constantes ya paga solo.
+- **Servicio Técnico** — qué cuenta como «equipo activo» del taller:
+  `OrdenServicio::ESTADOS_PENDIENTES_TECNICO` (`OrdenServicio.php:868-871`). Lista que
+  crece con el flujo de estados.
+- **Servicio Técnico** — qué recepciones esperan confirmación:
+  `OrdenServicio::FUENTES_POR_CONFIRMAR` (`:846-849`).
+- **Administración (Notificaciones)** — la definición de notificación «caída terminal»
+  (estado FALLIDA + sin reintento programado) está escrita como condición en
+  `DashboardController.php:118-119`; el modelo de reintentos es del módulo de
+  notificaciones.
+- **Aprobaciones** — la excepción «Aprobaciones pendientes» espeja `Aprobacion::bandejaDe()`
+  a propósito (el número = lo que se ve al hacer click); sin valores propios acá.
+- **Operación (Producción)** — «reportes por aprobar» = `ProduccionReporte::pendientes()`
+  (= estado ENVIADO, `ProduccionReporte.php:283-286`); definición del módulo dueño.
