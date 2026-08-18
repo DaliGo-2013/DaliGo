@@ -15,6 +15,8 @@
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.maquinas._tabs')
+
         <x-list-card title="Moldes" :count="$moldes->count()" :countLabel="\Illuminate\Support\Str::plural('molde', $moldes->count())">
             @forelse ($moldes as $molde)
                 @php

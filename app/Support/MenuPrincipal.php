@@ -89,15 +89,19 @@ class MenuPrincipal
                 // entrada de MenuConsolidacionesTest. La lista sigue explícita:
                 // ítem retirado no es motivo para volver al comodín.
                 'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*', 'admin.produccion.vivo', 'admin.produccion.notas.*', 'admin.produccion.movimientos'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
-                // Recetas (P-M11-10): rutas con prefijo propio admin.recetas.*
-                // — fuera de la enumeración del ítem `produccion`, cero riesgo
-                // de doble aria-current.
-                'recetas' => ['label' => 'Recetas', 'route' => 'admin.recetas.index', 'activo' => ['admin.recetas.*'], 'permiso' => 'manage production'],
-                'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
-                // Moldes (P-M11-12): prefijo propio admin.moldes.* — fuera de
-                // la enumeración de `produccion`, cero doble aria-current.
-                'moldes' => ['label' => 'Moldes', 'route' => 'admin.moldes.index', 'activo' => ['admin.moldes.*'], 'permiso' => 'manage production'],
-                'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
+                // Consolidación E1 (PLAN-MENU-DENSIDAD, el cierre del mapa):
+                // Máquinas + Tipos de botellón + Recetas + Moldes son UN ítem —
+                // pestañas de admin/maquinas/_tabs, SIN gateo (los cuatro
+                // comparten `manage production` por construcción). Anfitriona
+                // Máquinas por ser la primera de la fila física (máquina →
+                // molde → tipo → receta); la key `maquinas` se conserva (menos
+                // churn, precedente C2). Los cuatro wildcards son limpios
+                // porque cada familia tiene prefijo propio — la razón por la
+                // que Recetas (P-M11-10) y Moldes (P-M11-12) nacieron fuera de
+                // la enumeración de `produccion`, y sigue vigente. Tipos de
+                // botellón recuperó su Volver al salir del menú (P-NAV-06 —
+                // ver VolverTest). Rutas vigiladas en MenuConsolidacionesTest.
+                'maquinas' => ['label' => 'Configuración de producción', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*', 'admin.tipos-botellon.*', 'admin.recetas.*', 'admin.moldes.*'], 'permiso' => 'manage production'],
                 // Despachos se fue a LOGÍSTICA el 05-08 (pedido del dueño).
                 // Devoluciones (M13, flujo A-12): el cliente declara por el
                 // link público; bodega recibe/categoriza/resuelve acá.

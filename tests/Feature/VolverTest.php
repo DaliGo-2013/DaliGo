@@ -49,7 +49,10 @@ class VolverTest extends TestCase
         // El Kardex salió de esta lista en P-NAV-06 (pasó a ítem del menú y
         // perdió su Volver) y VOLVIÓ con la consolidación D1 (17-ago): de
         // nuevo es hija del panel de Producción, con el Volver de vuelta.
-        foreach (['admin.produccion.dia', 'admin.produccion.movimientos'] as $ruta) {
+        // Tipos de botellón repite el molde con E1 (18-ago): dejó de ser ítem
+        // (es pestaña de Configuración de producción) y su Volver volvió,
+        // ahora apuntando a la anfitriona.
+        foreach (['admin.produccion.dia', 'admin.produccion.movimientos', 'admin.tipos-botellon.index'] as $ruta) {
             $html = $this->actingAs($this->admin())->get(route($ruta))->assertOk()->getContent();
 
             $this->assertSame(1, $this->cuantosVolver($html),
@@ -170,8 +173,16 @@ class VolverTest extends TestCase
     public function test_las_ex_huerfanas_estan_en_el_menu(): void
     {
         $exHuerfanas = [
+            // Máquinas SIGUE aquí a propósito: con la consolidación E1 es la
+            // ANFITRIONA de «Configuración de producción» — su ruta sigue
+            // siendo la del ítem, así que nunca quedó huérfana.
             'admin.maquinas.index',
-            'admin.tipos-botellon.index',
+            // Tipos de botellón salió de esta lista con la consolidación E1
+            // (18-ago), molde D1: al salir del menú recuperó su <x-volver>
+            // (tercera vida: huérfana con Volver al panel → ítem P-NAV-06
+            // 27-jul → pestaña de Configuración de producción con Volver a la
+            // anfitriona). Su resaltado lo vigila MenuConsolidacionesTest y su
+            // Volver volvió a test_pantalla_hija_tiene_exactamente_un_volver.
             // El Kardex (admin.produccion.movimientos) salió de esta lista con
             // la consolidación D1 (17-ago) — exactamente el caso que este
             // candado anuncia: al sacarlo del menú recuperó su <x-volver>
