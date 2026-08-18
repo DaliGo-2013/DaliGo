@@ -43,6 +43,7 @@ class MenuConsolidacionesTest extends TestCase
         'admin.roles.' => 'administracion.usuarios', // C1: Roles → pestaña de Usuarios
         'admin.notificaciones.' => 'administracion.auditoria', // C2: Notificaciones → pestaña del Registro del sistema
         'admin.aprobaciones.' => 'administracion.auditoria', // C2: Historial de aprobaciones → pestaña del Registro del sistema
+        'admin.produccion.movimientos' => 'operacion.produccion', // D1: Kardex → hija del panel de Producción (botón de la cabecera + Volver)
     ];
 
     private function admin(): User
