@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Configuracion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ConfiguracionController extends Controller
@@ -20,6 +22,20 @@ class ConfiguracionController extends Controller
     private const RANGOS = [
         'dashboard_dias_serie_produccion' => [2, 31],
         'dashboard_dias_referencia_merma' => [2, 31],
+        'dashboard_corte_taller_reciente' => [2, 60],
+        'dashboard_corte_taller_antiguo' => [7, 180],
+    ];
+
+    /**
+     * Pares de claves que deben mantenerse ESTRICTAMENTE ordenados
+     * (menor < mayor). DASH-2: los dos cortes de antigüedad del taller — un
+     * par invertido o igual deja los tramos del Inicio sin sentido. La
+     * validación corre al guardar CUALQUIERA de las dos puntas y el mensaje
+     * nombra a la otra clave. El consumidor además fuerza el orden al leer
+     * (clamp), por si un par roto entra por fuera de esta UI.
+     */
+    private const PARES_ORDENADOS = [
+        ['dashboard_corte_taller_reciente', 'dashboard_corte_taller_antiguo'],
     ];
 
     /**
@@ -40,6 +56,7 @@ class ConfiguracionController extends Controller
     public function update(Request $request, Configuracion $configuracion): RedirectResponse
     {
         $valor = $this->validateValor($request, $configuracion);
+        $this->validarParOrdenado($configuracion, $valor);
 
         Configuracion::set($configuracion->clave, $valor);
 
@@ -75,5 +92,37 @@ class ConfiguracionController extends Controller
         };
 
         return $request->validate(['valor' => $rules])['valor'];
+    }
+
+    /**
+     * Rechaza el guardado si el valor rompe el orden de su par (ver
+     * PARES_ORDENADOS). Si la otra punta no está sembrada, no hay par que
+     * cruzar y el rango simple de RANGOS es la única vara.
+     */
+    private function validarParOrdenado(Configuracion $configuracion, mixed $valor): void
+    {
+        foreach (self::PARES_ORDENADOS as [$claveMenor, $claveMayor]) {
+            if ($configuracion->clave !== $claveMenor && $configuracion->clave !== $claveMayor) {
+                continue;
+            }
+
+            $otraClave = $configuracion->clave === $claveMenor ? $claveMayor : $claveMenor;
+            $otro = Configuracion::get($otraClave);
+            if ($otro === null) {
+                continue;
+            }
+
+            $menor = (int) ($configuracion->clave === $claveMenor ? $valor : $otro);
+            $mayor = (int) ($configuracion->clave === $claveMayor ? $valor : $otro);
+
+            if ($menor >= $mayor) {
+                $rotulo = Str::headline($otraClave);
+                throw ValidationException::withMessages([
+                    'valor' => $configuracion->clave === $claveMenor
+                        ? "Debe quedar por debajo de «{$rotulo}» (hoy {$mayor})."
+                        : "Debe quedar por encima de «{$rotulo}» (hoy {$menor}).",
+                ]);
+            }
+        }
     }
 }

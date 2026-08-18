@@ -111,7 +111,8 @@
                         <p class="mt-3 text-3xl font-semibold tabular-nums text-neutral-900">
                             {{ number_format($pulsoTaller['activos'], 0, ',', '.') }}
                             @if ($pulsoTaller['aging']['d30'] > 0)
-                                <span class="text-base font-normal text-neutral-500">— {{ $pulsoTaller['aging']['d30'] }} llevan 30+ días</span>
+                                {{-- El «A+» deriva del corte configurable (DASH-2). --}}
+                                <span class="text-base font-normal text-neutral-500">— {{ $pulsoTaller['aging']['d30'] }} llevan {{ $pulsoTaller['corteAntiguo'] }}+ días</span>
                             @endif
                         </p>
                         {{-- Antigüedad como barra segmentada: intensidades de un matiz (oscuro = más viejo) --}}
@@ -122,7 +123,10 @@
                             <div class="h-2 bg-neutral-800" style="width: {{ round($pulsoTaller['aging']['d30'] / $totalActivos * 100) }}%"></div>
                         </div>
                         <p class="mt-2 text-sm tabular-nums text-neutral-500">
-                            {{ $pulsoTaller['aging']['d0_7'] }} de 0-7 días · {{ $pulsoTaller['aging']['d8_30'] }} de 8-30 · <span class="font-medium text-neutral-900">{{ $pulsoTaller['aging']['d30'] }} de 30+</span>
+                            {{-- Los tramos derivan de los cortes (DASH-2); el «+1» del tramo
+                                 medio es la MISMA aritmética del bucket del controller, no un
+                                 número repetido a mano. --}}
+                            {{ $pulsoTaller['aging']['d0_7'] }} de 0-{{ $pulsoTaller['corteReciente'] }} días · {{ $pulsoTaller['aging']['d8_30'] }} de {{ $pulsoTaller['corteReciente'] + 1 }}-{{ $pulsoTaller['corteAntiguo'] }} · <span class="font-medium text-neutral-900">{{ $pulsoTaller['aging']['d30'] }} de {{ $pulsoTaller['corteAntiguo'] }}+</span>
                         </p>
                         <p class="mt-3 text-sm tabular-nums text-neutral-500">
                             Última semana: entraron {{ $pulsoTaller['entradasSemana'] }} · salieron {{ $pulsoTaller['salidasSemana'] }}
