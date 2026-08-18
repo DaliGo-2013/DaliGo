@@ -135,12 +135,16 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       P-NAV-06 despedido con rastro (tres vidas) y el Volver restaurado con candado en el
       mismo commit; ruta exacta al `activo` sin volver al comodín («ítem retirado no es
       motivo para volver al comodín», gate 28-07); baseline absorbió PR #19 de Marcos.
-      **Pausa hasta el QA del dueño del Bloque D → v64 abre E1, el CIERRE: Configuración
-      de producción 4→1 (35→32)** — anfitriona Máquinas rebautizada (propuesta del
-      Director, contra-evidencia admitida), 4 pestañas sin gateo (permiso idéntico por
-      construcción), deuda del `<x-tab-nav>` a grid-cols-4 (bundle puede dejar de ser
-      byte-idéntico: recompilar + superset I-06), Tipos de botellón sale de P-NAV-06 con
-      molde D1, mutación TRIPLE (entradas 12ª-14ª), backflush en la batería.**
+      QA del dueño del Bloque D ✅ (18-ago) → **E1 DICTADO (v64): el CIERRE, 35→32.**
+      Reconocimiento final del Director corrige al radar: `grid-cols-4` YA está en el
+      bundle (aprobaciones/carga/devoluciones/instalaciones) → byte-idéntico alcanzable;
+      `DashboardColoresTest` NO fija la key `maquinas` (se conserva igual, menos churn).
+      Anfitriona Máquinas rebautizada «Configuración de producción» (contra-evidencia
+      admitida); 4 pestañas SIN gateo; deuda del tab-nav = ternario→mapa count→clase con
+      batería sobre TODOS sus consumidores; solo Tipos de botellón sale de P-NAV-06
+      (molde D1, mismo commit); mutación TRIPLE (12ª-14ª); sin cards que retirar;
+      backflush + moldes M11 + OEE en la batería. Con E1 en producción + QA: **PLAN
+      CERRADO 47→32**.
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/

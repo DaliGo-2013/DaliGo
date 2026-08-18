@@ -1,69 +1,85 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-18 (v63 — D1 EN PRODUCCIÓN: Bloque D COMPLETO. EN PAUSA hasta el QA del dueño → luego E1, el CIERRE). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-18 (v64 — QA del dueño del Bloque D ✅: GO E1 «Configuración de producción» 4→1 — EL CIERRE DEL MAPA). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ D1 está EN PRODUCCIÓN (merge `61dd90d`, doble llave 18-ago) — menú 36 → 35
+## ✅ QA del Bloque D aprobado por el dueño (18-ago)
 
-Suite del Director sobre el árbol mergeado: **2196 verdes / 15.231, CERO rojos** (calcada
-al parte). Conté el menú (35), da. Rama borrada. **Bloque D COMPLETO.**
+Verificado: Producción resalta en el Kardex, Volver al panel, sidebar limpia, botón de la
+cabecera como entrada. **Bloque D cerrado con QA.** Marcador: 47 → 35.
 
-Lo fino de D1, para el molde de E1:
-1. **El trato de P-NAV-06 quedó de manual**: la ruta salió del candado con el rastro de
-   sus tres vidas Y volvió a `test_pantalla_hija_tiene_exactamente_un_volver` en el
-   MISMO commit — el Volver restaurado no pasó ni un push sin candado. Ese es el molde
-   exacto para Máquinas y Tipos de botellón en E1.
-2. **«Ítem retirado no es motivo para volver al comodín»** — la lista explícita del
-   `activo` se respetó y el comentario lo deja dicho. Doctrina citable.
-3. Baseline corrida a `ec06a48` con el PR #19 absorbido y declarado — así se maneja el
-   drift de Marcos.
+## 🔨 GO — Lote E1: «Configuración de producción» 4→1 (35 → 32) — EL CIERRE
 
-## ⏸️ EN PAUSA — E1 espera el QA del dueño del Bloque D (corto)
+Máquinas · Tipos de botellón · Recetas · Moldes → un ítem. El lote mayor del mapa (−3),
+guardado para el final y solo, como pidió el dueño. El reconocimiento del Director,
+TERMINADO hoy:
 
-El dueño verifica en celular: Producción resalta estando en el Kardex, el Volver del
-Kardex lleva al panel, la sidebar sin el ítem, el botón «Kardex» de la cabecera como
-entrada. Con su visto bueno llega el **v64 con E1 — el CIERRE del mapa**.
+### Cruce de audiencias (hecho): las 4 bajo `manage production`
+MenuPrincipal L90-95: permiso IDÉNTICO por construcción en los 4 ítems. **Las 4 pestañas
+SIN gateo** — la precondición B1, la más limpia, para el lote más grande. (El soplador
+con `report production` no ve nada de esto, como siempre.)
 
-## 📡 Radar E1 (NO arranques — estúdialo, es el lote mayor)
+### Novedad del reconocimiento que CORRIGE al radar v63 (buenas noticias × 2)
+1. **`grid-cols-4` YA está en el bundle** — lo usan aprobaciones/carga/devoluciones/
+   instalaciones. Extender el tab-nav NO cambia el CSS compilado: **bundle byte-idéntico
+   alcanzable**. La receta I-06 queda de respaldo por si otra clase nueva aparece.
+2. **`DashboardColoresTest` NO fija la key `maquinas`** (verificado por grep). Igual:
+   **conserva la key `maquinas`** — menos churn, precedente C2 (key `auditoria`).
 
-**«Configuración de producción» 4→1 (35 → 32)**: Máquinas · Tipos de botellón · Recetas ·
-Moldes → una superficie. El reconocimiento del Director (verificado hoy en MenuPrincipal
-L90-95): los 4 ítems portan `manage production` — **permiso idéntico por construcción,
-las 4 pestañas SIN gateo** (precondición B1, la más limpia posible para el lote más
-grande).
+### La forma
 
-Lo que E1 trae que ningún lote trajo:
-1. **La deuda del `<x-tab-nav>` se paga AQUÍ**: hoy `count($tabs)===3 ? 'grid-cols-3' :
-   'grid-cols-2'` — con 4 pestañas caería a 2 columnas EN SILENCIO. Extiende el
-   componente a 4 (`grid-cols-4`) con la forma que el componente pida (mapa
-   count→clase, no un ternario anidado); Tailwind debe tener la clase en el bundle —
-   si `grid-cols-4` no está en uso en ninguna vista, el bundle CAMBIA y deja de ser
-   byte-idéntico: **decláralo y recompila sobre el árbol del lote** (superset vs padres,
-   receta I-06). Candado del componente: con 4 pestañas, las 4 en una fila.
-2. **Anfitrión NUEVO**: ninguna de las 4 es anfitriona natural (ninguna pantalla «madre»).
-   Decisión dictada: **Máquinas es la anfitriona** (primera de la fila en producción
-   física: máquina → molde → tipo → receta) y el ítem se rebautiza **«Configuración de
-   producción»** (key `maquinas` se conserva si algún candado la fija — verifica
-   DashboardColores como en C2). Si el estudio del código te da un anfitrión mejor,
-   propónlo en el parte ANTES de forjar distinto: el dictado admite contra-evidencia.
-3. **Dos ex-huérfanas P-NAV-06 de una vez** (Máquinas, Tipos de botellón): molde D1 —
-   salen del candado con rastro, recuperan su `<x-volver>`... OJO: Máquinas como
-   anfitriona SIGUE siendo ítem (no recupera Volver, no sale de P-NAV-06 — su ruta
-   sigue en el menú). Solo Tipos de botellón sale + Recetas y Moldes (que nunca fueron
-   huérfanas) entran como pestañas.
-4. **Mutación CUÁDRUPLE... no: TRIPLE** del mini-candado (3 rutas consolidadas:
-   tipos-botellon, recetas, moldes — Máquinas es la anfitriona, no se consolida a sí
-   misma). Entradas 12ª, 13ª y 14ª.
-5. **Cards del Inicio**: no hay cards de los 4 (verificado por grep hoy) — nada que
-   retirar, decláralo igual.
-6. Links cruzados que deben sobrevivir: panel de Producción → máquinas/moldes; recetas ↔
-   backflush (RecetaBackflushTest completo en la batería); semáforo de moldes (M11).
+1. **Anfitriona: Máquinas** (primera de la fila física: máquina → molde → tipo → receta),
+   ítem rebautizado **«Configuración de producción»**, key `maquinas` conservada.
+   `activo`: `['admin.maquinas.*', 'admin.tipos-botellon.*', 'admin.recetas.*',
+   'admin.moldes.*']` — wildcards limpios (prefijos únicos, sin vecinos que enciendan).
+   Si tu estudio del código da una anfitriona mejor, propónla en el parte ANTES de
+   forjar distinto — contra-evidencia admitida, como en el Lote 5.
+2. **La deuda del `<x-tab-nav>` se paga aquí** (`tab-nav.blade.php` L19): fuera el
+   ternario `count===3 ? cols-3 : cols-2` → **mapa count→clase** (2,3,4; con default
+   sano). Con 4 pestañas: las 4 en UNA fila. Es el primer cambio al componente
+   compartido desde su nacimiento en el Lote 3 — la batería debe incluir a TODOS sus
+   consumidores (Catálogo, Documentos, Agenda, Usuarios, Registro del sistema,
+   Simulador).
+3. **`admin/maquinas/_tabs.blade.php`**: «Máquinas · Tipos de botellón · Recetas ·
+   Moldes», sin gateo. Montaje SOLO en los 4 index (hijas fuera: moldes tiene
+   show/mantencion, máquinas y tipos create/edit — precedente Documentos/C1). Revisa el
+   layout de cada index (¿`space-y-6` o el `div.mb-6` de C1?).
+4. **Ítems `tipos-botellon`, `recetas`, `moldes` FUERA del menú.** Comentarios con
+   rastro donde haya notas defendiendo lugar propio.
+5. **P-NAV-06, molde D1 exacto — SOLO para Tipos de botellón**: sale del candado con
+   rastro (sus vidas) + recupera su `<x-volver>` (al index de Máquinas o al panel — lo
+   que el flujo pida) + entra a `test_pantalla_hija_tiene_exactamente_un_volver` en el
+   MISMO commit. **Máquinas NO sale**: sigue siendo ítem (anfitriona) — su ruta sigue
+   en el menú y el candado la sigue viendo. Recetas y Moldes nunca fueron huérfanas:
+   solo pierden el ítem, la pestaña es su navegación (VolverTest deriva — declara lo
+   que se mueva solo).
+6. **`MenuConsolidacionesTest`: entradas 12ª, 13ª y 14ª** (tipos-botellon, recetas,
+   moldes → anfitrión). **Mutación TRIPLE**: quitar cada patrón por separado → sus
+   rojos exactos → restaurar → verde. La escala nueva del molde C2.
+7. **Cards del Inicio: NO hay de los 4** (verificado por grep) — nada que retirar;
+   decláralo con el grep en el parte.
+8. **Links cruzados que deben sobrevivir** (batería dirigida): panel de Producción →
+   máquinas/moldes; **backflush completo** (`RecetaBackflushTest` + `RecetaCrudTest`);
+   **semáforo/mantención de moldes M11** (`ProduccionMoldeTest` + `moldes.mantencion`);
+   OEE si toca máquinas. El kardex de D1 ni se toca.
+9. Reflejos: `Str::is` entre los 4 patrones nuevos y los del `activo` de `produccion`
+   (lista explícita) + `produccion.mi.*` del soplador — todo disjunto a ojo, decláralo.
 
-QA del dueño listo para E1 (12 puntos, ya se lo di): pestañas 4-en-fila en celular es el
-punto crítico + backflush intacto.
+### Verificación (invariante, con el peso del cierre)
+Rama `feature/menu-e1-configuracion-produccion` desde main FRESCO. Suite COMPLETA de
+main fresco ANTES (baseline Director: **2196/15.231** en `61dd90d`; Marcos sigue activo —
+recuenta). Batería dirigida = la de siempre + TODOS los consumidores del tab-nav + la
+carpeta Producción completa. Conteo tinker: **32**. Bundle: si quedó byte-idéntico,
+decláralo; si no, I-06 (recompilar sobre el árbol del lote + superset vs ambos padres).
+Parte al buzón; espera doble llave. Con E1 en producción **el mapa F0 queda CERRADO**.
+
+## 📡 Después de E1
+QA del dueño (los 12 puntos ya entregados; críticos: 4-en-fila en celular + backflush
+intacto) → **PLAN-MENU-DENSIDAD CERRADO: 47 → 32**. El Director prepara el acta de
+cierre del proyecto y el veredicto de qué sigue (decisión del dueño).
 
 ## Estado
-Max-2 en pausa (v24). Marcos activo (PR #19 hoy). Baseline: **2196/15.231** en `61dd90d`.
+Max-2 en pausa (v24). Marcos activo. Baseline: 2196/15.231 en `61dd90d`.
 
-CIERRE: sin acción hasta el QA del dueño. Once lotes, 47→35, cero rojos propios. El
-próximo dictado cierra el mapa. Fierro.
+CIERRE: GO E1. El último lote del mapa — un lote, un parte, una llave. A cerrar con la
+misma mano que abrió: fierro.
