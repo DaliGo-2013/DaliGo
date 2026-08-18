@@ -135,16 +135,20 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       P-NAV-06 despedido con rastro (tres vidas) y el Volver restaurado con candado en el
       mismo commit; ruta exacta al `activo` sin volver al comodín («ítem retirado no es
       motivo para volver al comodín», gate 28-07); baseline absorbió PR #19 de Marcos.
-      QA del dueño del Bloque D ✅ (18-ago) → **E1 DICTADO (v64): el CIERRE, 35→32.**
-      Reconocimiento final del Director corrige al radar: `grid-cols-4` YA está en el
-      bundle (aprobaciones/carga/devoluciones/instalaciones) → byte-idéntico alcanzable;
-      `DashboardColoresTest` NO fija la key `maquinas` (se conserva igual, menos churn).
-      Anfitriona Máquinas rebautizada «Configuración de producción» (contra-evidencia
-      admitida); 4 pestañas SIN gateo; deuda del tab-nav = ternario→mapa count→clase con
-      batería sobre TODOS sus consumidores; solo Tipos de botellón sale de P-NAV-06
-      (molde D1, mismo commit); mutación TRIPLE (12ª-14ª); sin cards que retirar;
-      backflush + moldes M11 + OEE en la batería. Con E1 en producción + QA: **PLAN
-      CERRADO 47→32**.
+      QA del dueño del Bloque D ✅ → **E1 EN PRODUCCIÓN (18-ago, `8fb0c5c`): EL MAPA F0
+      COMPLETO — menú 32, el número final.** Anfitriona Máquinas rebautizada
+      «Configuración de producción» (key conservada); 4 pestañas sin gateo; deuda del
+      tab-nav PAGADA (ternario → mapa count→clase, literales anti-purga; primer cambio
+      al componente desde el Lote 3, batería sobre todos sus consumidores). HALLAZGO del
+      forjador que corrigió al recon del Director: `grid-cols-4` base NO estaba en el
+      bundle (el grep contó el substring de `xl:grid-cols-4`, lección 30-07) → I-06
+      completa, +1 regla exacta / 0 caídas, verificada por comm en ambas direcciones por
+      forjador Y Director. Solo Tipos de botellón salió de P-NAV-06 (molde D1, Volver a
+      la anfitriona, mismo commit); Máquinas sigue en el candado como ítem. Mutación
+      TRIPLE; CERO amoldes. Observación UX declarada al QA: Volver + pestaña «Máquinas»
+      conviven en Tipos de botellón (quitar = 1 línea, decisión del dueño).
+      **PLAN-MENU-DENSIDAD: 47 → 32 en DOCE lotes + 2 vive-solos con evidencia, cero
+      rojos propios. Falta SOLO el QA final del dueño → acta de cierre.**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
