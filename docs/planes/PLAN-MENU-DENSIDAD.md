@@ -1,9 +1,38 @@
 # PLAN-MENU-DENSIDAD · Consolidar la interfaz — menos menús, pantallas más densas
 
-> **Estado: VIGENTE (definido por el dueño, 2026-08-11)** — proyecto de ritmo LENTO por
-> decisión explícita: «poco a poco, lento pero seguro, y tomar las decisiones con
-> calma». Sin fecha objetivo. Un lote = una consolidación. Autor: Director, sobre la
-> directriz textual del dueño.
+> **Estado: ✅ CERRADO (QA final del dueño, 2026-08-18 — «quedó de diez»)** — nació el
+> 2026-08-11 con la directriz «poco a poco, lento pero seguro, decisiones con calma» y
+> cerró en una semana sin romperla: un lote = un merge = una doble llave, siempre.
+
+## ACTA DE CIERRE (Director, 2026-08-18)
+
+**El número: menú 47 → 32** (11 primer nivel + 20 subítems + 1 cuenta). Subítems 35→20.
+
+- **Doce lotes en producción**, cada uno con doble llave del dueño, suite completa local
+  del forjador Y del Director, CI verde y QA en celular por bloque:
+  L1 Precios→Catálogo (`ca91422`) · L2 retiro boceto Seguimiento (`ee1a72c`) · L3
+  Estado→Documentos (`47785ad`) · L4 QR→botón Listado ST (`6d6a2ce`) · L5
+  Servicios→Agenda (`c5f5b47`) · A1 Costos→Listado ST (`0e9feaa`) · A2 Traslados→Listado
+  ST · B1 Cargas reales→Simulador (`c67d882`) · C1 Roles→Usuarios (`fc47fd1`) · C2
+  Registro del sistema 3→1 (`6fa64cd`) · D1 Kardex→Producción (`61dd90d`) · E1
+  Configuración de producción 4→1 (`8fb0c5c`).
+- **Dos vive-solos con evidencia** (mejor que consolidar mal): Informe ST y Conductores —
+  ambos por el mismo patrón: audiencia partida entre dominios sin anfitrión común.
+- **Cero pantallas perdidas, cero permisos perdidos, cero rojos propios** en todo el
+  proyecto. Todos los amoldes de tests, declarados y justificados; el resto derivó de la
+  fuente única.
+- **Infraestructura que queda en la casa**: `<x-tab-nav>` (mapa count→clase, hasta 4
+  columnas, anti-purga) · `MenuConsolidacionesTest` con 14 entradas (candado mutado en
+  cada lote) · molde P-NAV-06 para entrar/salir del menú con rastro (ensayado en Kardex
+  y Tipos de botellón) · doctrinas citables: «el menú jamás ofrece un 403», «ítem
+  retirado no es motivo para volver al comodín», «pestañas se calculan por permiso y con
+  una sola el nav no se dibuja».
+- **De pasada**: hotfix `5892eea` (bomba de calendario en VisitaIndustrialTest,
+  territorio ajeno, diagnosticado por el forjador y saldado por el Director).
+- Observación de UX (Volver + pestaña «Máquinas» conviven en Tipos de botellón):
+  presentada al QA final — **el dueño la aceptó como está**.
+
+> Historia original del plan desde aquí hacia abajo, intacta como registro.
 
 ## 0. El problema en una frase
 
