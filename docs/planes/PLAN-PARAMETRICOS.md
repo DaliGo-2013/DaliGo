@@ -125,3 +125,10 @@ quedan para la auditoría de ese módulo, regla del dictado v67):
   a propósito (el número = lo que se ve al hacer click); sin valores propios acá.
 - **Operación (Producción)** — «reportes por aprobar» = `ProduccionReporte::pendientes()`
   (= estado ENVIADO, `ProduccionReporte.php:283-286`); definición del módulo dueño.
+
+**VEREDICTOS DEL DUEÑO (2026-08-18, al Director):** los 4 nivel 1 APROBADOS (#1, #2,
+#3, #5) y los 4 nivel 3 CONFIRMADOS como propuso el forjador (#4, #6, #7, #8). Fase B
+del Dashboard en 3 lotes: **DASH-1** = #1+#2 (dos ventanas simples, dictado v68) →
+**DASH-2** = #3 + desacople de #4 (cortes de antigüedad, esfuerzo M) → **DASH-3** = #5
+(card Sucursales desde la BD). Un lote por dictado; el bloque `E-PARAM` de RUTA-MAESTRA
+nace con el merge de DASH-1.
