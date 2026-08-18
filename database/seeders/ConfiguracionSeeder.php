@@ -50,6 +50,25 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'dashboard',
                 'descripcion' => 'Contra cuántos días previos se compara la merma de hoy en el Inicio (el «prom. N días»). Rango 2-31.',
             ],
+            // Cortes de antigüedad del taller (DASH-2, hallazgo #3): definen
+            // los tramos 0-R / (R+1)-A / A+ de los equipos activos del Inicio.
+            // Par ORDENADO: reciente < antiguo (validación cruzada en la UI +
+            // clamp al leer). La «última semana» del flujo NO es parámetro:
+            // quedó fija en 7 con su porqué (veredicto del dueño al #4).
+            [
+                'clave' => 'dashboard_corte_taller_reciente',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Dónde termina el tramo reciente de los equipos activos del taller (días). Rango 2-60, menor que el corte antiguo.',
+            ],
+            [
+                'clave' => 'dashboard_corte_taller_antiguo',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Desde cuántos días un equipo activo del taller cuenta como antiguo. Rango 7-180, mayor que el corte reciente.',
+            ],
             // Feriados de Chile para calcular días hábiles (App\Support\DiasHabiles):
             // hoy los usa la cita de retiro tras un rechazo (dueño 07-08). 2026 está
             // completo; de 2027 van los de fecha fija + Semana Santa — los MOVIBLES

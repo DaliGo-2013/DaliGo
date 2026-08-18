@@ -28,8 +28,9 @@ use Illuminate\View\View;
 class DashboardController extends Controller
 {
     /**
-     * Ventanas del pulso (DASH-1, PLAN-PARAMETRICOS): configurables en caliente
-     * desde la UI de Configuración (grupo `dashboard`, rango 2-31). Estos
+     * Ventanas y cortes del pulso (DASH-1/DASH-2, PLAN-PARAMETRICOS):
+     * configurables en caliente desde la UI de Configuración (grupo
+     * `dashboard`, rangos en ConfiguracionController::RANGOS). Estos
      * defaults son el valor HISTÓRICO y rigen si la clave no está en la BD —
      * la regla de oro del plan: parametrizar no cambia el comportamiento.
      * El default vive SOLO acá (el seeder siembra el mismo número como valor
@@ -38,6 +39,10 @@ class DashboardController extends Controller
     private const DIAS_SERIE_PRODUCCION_DEFAULT = 7;
 
     private const DIAS_REFERENCIA_MERMA_DEFAULT = 7;
+
+    private const CORTE_TALLER_RECIENTE_DEFAULT = 7;
+
+    private const CORTE_TALLER_ANTIGUO_DEFAULT = 30;
 
     public function index(Request $request): View
     {
@@ -206,26 +211,45 @@ class DashboardController extends Controller
         $pulsoTaller = null;
 
         if ($user->can('manage servicio tecnico')) {
-            // Buckets de antigüedad con límites en PHP + whereDate (portable):
-            // 0-7 / 8-30 / 30+ días desde el ingreso, solo órdenes activas.
-            $d7 = \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString();
-            $d30 = \App\Support\FechaNegocio::ahora()->subDays(30)->toDateString();
+            // Cortes de antigüedad configurables (DASH-2): tramos 0-R, (R+1)-A
+            // y A+ días desde el ingreso, solo órdenes activas. Límites en PHP
+            // + whereDate (portable). Clamp de la casa: la UI valida rango y
+            // orden (reciente < antiguo), pero un par roto que entre por fuera
+            // tampoco puede dejar tramos sin sentido — el segundo max() fuerza
+            // antiguo por encima de reciente. Las keys d0_7/d8_30/d30 son
+            // nombres INTERNOS históricos (contrato con la vista y los tests);
+            // los números reales derivan de los cortes.
+            $corteReciente = max(2, (int) Configuracion::get('dashboard_corte_taller_reciente', self::CORTE_TALLER_RECIENTE_DEFAULT));
+            $corteAntiguo = max($corteReciente + 1, (int) Configuracion::get('dashboard_corte_taller_antiguo', self::CORTE_TALLER_ANTIGUO_DEFAULT));
+            $dReciente = \App\Support\FechaNegocio::ahora()->subDays($corteReciente)->toDateString();
+            $dAntiguo = \App\Support\FechaNegocio::ahora()->subDays($corteAntiguo)->toDateString();
             $activas = fn () => OrdenServicio::pendientesTecnico();
 
             $aging = [
-                'd0_7' => $activas()->whereDate('fecha_ingreso', '>=', $d7)->count(),
-                'd8_30' => $activas()->whereDate('fecha_ingreso', '<', $d7)->whereDate('fecha_ingreso', '>=', $d30)->count(),
-                'd30' => $activas()->whereDate('fecha_ingreso', '<', $d30)->count(),
+                'd0_7' => $activas()->whereDate('fecha_ingreso', '>=', $dReciente)->count(),
+                'd8_30' => $activas()->whereDate('fecha_ingreso', '<', $dReciente)->whereDate('fecha_ingreso', '>=', $dAntiguo)->count(),
+                'd30' => $activas()->whereDate('fecha_ingreso', '<', $dAntiguo)->count(),
             ];
 
             // Flujo de los últimos 7 días: entradas por fecha_ingreso; salidas
             // por fecha_entrega (histórico puede venir NULL — se subestima, no
-            // se inventa).
+            // se inventa). El 7 es FIJO y con variable PROPIA a propósito
+            // (nivel 3, veredicto del dueño 18-ago al hallazgo #4 del mapa
+            // F0-DASH): «una semana es una semana» — el rótulo «Última semana»
+            // lo fija. Antes reusaba el $d7 del aging, y mover el corte habría
+            // arrastrado esta ventana en silencio (alerta del parte F0-DASH).
+            $dSemana = \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString();
+
             $pulsoTaller = [
                 'activos' => array_sum($aging),
                 'aging' => $aging,
-                'entradasSemana' => OrdenServicio::whereDate('fecha_ingreso', '>=', $d7)->count(),
-                'salidasSemana' => OrdenServicio::whereDate('fecha_entrega', '>=', $d7)->count(),
+                // Los rótulos de la vista DERIVAN de los cortes («0-R días ·
+                // (R+1)-A · A+», «llevan A+ días») — el número en pantalla no
+                // puede decir una cosa y el bucket cortar en otra.
+                'corteReciente' => $corteReciente,
+                'corteAntiguo' => $corteAntiguo,
+                'entradasSemana' => OrdenServicio::whereDate('fecha_ingreso', '>=', $dSemana)->count(),
+                'salidasSemana' => OrdenServicio::whereDate('fecha_entrega', '>=', $dSemana)->count(),
                 'href' => route('admin.servicio-tecnico.index'),
             ];
         }

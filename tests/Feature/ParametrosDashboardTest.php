@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Configuracion;
+use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
 use App\Models\User;
@@ -136,5 +137,118 @@ class ParametrosDashboardTest extends TestCase
                 ->assertSessionHasNoErrors();
             $this->assertSame($bueno, Configuracion::get('dashboard_dias_serie_produccion'));
         }
+    }
+
+    // --- DASH-2: cortes de antigüedad del taller + el desacople del flujo ---
+
+    private function tecnico(): User
+    {
+        return tap(User::factory()->create())->assignRole('tecnico');
+    }
+
+    /** Orden activa del taller con la edad pedida (estado FIJO: la factory lo sortea). */
+    private function ordenActivaDeHace(int $dias): OrdenServicio
+    {
+        return OrdenServicio::factory()->create([
+            'estado' => 'recibido',
+            'fecha_ingreso' => now()->subDays($dias)->toDateString(),
+        ]);
+    }
+
+    public function test_sin_claves_en_bd_el_taller_rinde_identico_al_historico(): void
+    {
+        // BD virgen (sin ConfiguracionSeeder): tramos 0-7/8-30/30+ y la
+        // «última semana» en 7, exacto como antes de parametrizar.
+        $this->freezeTime();
+        $this->ordenActivaDeHace(3);
+        $this->ordenActivaDeHace(10);
+        $this->ordenActivaDeHace(40);
+
+        $res = $this->actingAs($this->tecnico())->get('/dashboard')->assertOk();
+
+        $pulso = $res->viewData('pulsoTaller');
+        $this->assertSame(['d0_7' => 1, 'd8_30' => 1, 'd30' => 1], $pulso['aging']);
+        $this->assertSame(7, $pulso['corteReciente']);
+        $this->assertSame(30, $pulso['corteAntiguo']);
+        $this->assertSame(1, $pulso['entradasSemana']);
+        $res->assertSee('de 0-7 días')->assertSee('de 8-30')->assertSee('de 30+')
+            ->assertSee('llevan 30+ días')->assertSee('Última semana');
+    }
+
+    public function test_mover_el_corte_reciente_mueve_el_bucket_y_no_la_ultima_semana(): void
+    {
+        $this->freezeTime();
+        $this->seed(ConfiguracionSeeder::class);
+        $this->ordenActivaDeHace(3);
+        $this->ordenActivaDeHace(9);
+
+        // Default: la de 9 días cae en el tramo medio y NO cuenta en la semana.
+        $res = $this->actingAs($this->tecnico())->get('/dashboard');
+        $this->assertSame(['d0_7' => 1, 'd8_30' => 1, 'd30' => 0], $res->viewData('pulsoTaller')['aging']);
+        $this->assertSame(1, $res->viewData('pulsoTaller')['entradasSemana']);
+
+        Configuracion::set('dashboard_corte_taller_reciente', 10);
+
+        $res = $this->actingAs($this->tecnico())->get('/dashboard')->assertOk();
+        // La orden de 9 días CAMBIA de bucket (la cifra, no solo el rótulo)…
+        $this->assertSame(['d0_7' => 2, 'd8_30' => 0, 'd30' => 0], $res->viewData('pulsoTaller')['aging']);
+        $res->assertSee('de 0-10 días')->assertSee('de 11-30');
+        // …y la «última semana» NO se mueve: con el $d7 compartido de antes,
+        // la de 9 días habría entrado a las entradas (el candado del desacople).
+        $this->assertSame(1, $res->viewData('pulsoTaller')['entradasSemana']);
+    }
+
+    public function test_mover_el_corte_antiguo_mueve_el_bucket_y_sus_rotulos(): void
+    {
+        $this->freezeTime();
+        $this->seed(ConfiguracionSeeder::class);
+        $this->ordenActivaDeHace(35);
+        $this->ordenActivaDeHace(40);
+        $this->ordenActivaDeHace(50);
+
+        // Default: las tres son «30+».
+        $res = $this->actingAs($this->tecnico())->get('/dashboard');
+        $this->assertSame(3, $res->viewData('pulsoTaller')['aging']['d30']);
+        $res->assertSee('llevan 30+ días');
+
+        Configuracion::set('dashboard_corte_taller_antiguo', 45);
+
+        $res = $this->actingAs($this->tecnico())->get('/dashboard')->assertOk();
+        // 35 y 40 bajan al tramo medio; solo la de 50 sigue antigua (cifra).
+        $this->assertSame(['d0_7' => 0, 'd8_30' => 2, 'd30' => 1], $res->viewData('pulsoTaller')['aging']);
+        $res->assertSee('de 8-45')->assertSee('de 45+')->assertSee('llevan 45+ días')
+            ->assertSee('de 0-7 días'); // el corte reciente NO se movió
+    }
+
+    public function test_la_validacion_cruzada_rechaza_el_par_invertido_o_igual(): void
+    {
+        $this->seed(ConfiguracionSeeder::class);
+        $admin = tap(User::factory()->create())->assignRole('admin');
+        $reciente = Configuracion::where('clave', 'dashboard_corte_taller_reciente')->firstOrFail();
+        $antiguo = Configuracion::where('clave', 'dashboard_corte_taller_antiguo')->firstOrFail();
+
+        // Igual (30 = 30) e invertido (31 > 30): rechazados, y el mensaje
+        // nombra a la otra clave del par.
+        foreach ([30, 31] as $malo) {
+            $this->actingAs($admin)
+                ->put(route('admin.configuracion.update', $reciente), ['valor' => $malo])
+                ->assertInvalid(['valor' => 'por debajo de «Dashboard Corte Taller Antiguo»']);
+        }
+        $this->assertSame(7, Configuracion::get('dashboard_corte_taller_reciente'));
+
+        // La otra punta también valida: antiguo ≤ reciente se rechaza.
+        $this->actingAs($admin)
+            ->put(route('admin.configuracion.update', $antiguo), ['valor' => 7])
+            ->assertInvalid(['valor' => 'por encima de «Dashboard Corte Taller Reciente»']);
+
+        // El par sano pasa por las dos puntas.
+        $this->actingAs($admin)
+            ->put(route('admin.configuracion.update', $reciente), ['valor' => 10])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($admin)
+            ->put(route('admin.configuracion.update', $antiguo), ['valor' => 60])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(10, Configuracion::get('dashboard_corte_taller_reciente'));
+        $this->assertSame(60, Configuracion::get('dashboard_corte_taller_antiguo'));
     }
 }
