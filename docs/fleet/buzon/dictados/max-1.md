@@ -1,69 +1,83 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-18 (v68 — veredictos del dueño al mapa F0-DASH: los 4 nivel 1 APROBADOS, los 4 nivel 3 confirmados. GO DASH-1: las dos ventanas simples). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-18 (v69 — DASH-1 EN PRODUCCIÓN: el molde de fase B quedó sellado. GO DASH-2: cortes de antigüedad + el desacople del $d7). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Veredictos del dueño al mapa F0-DASH (18-ago) — mapa de primera
+## ✅ DASH-1 está EN PRODUCCIÓN (merge `bcbfb00`, doble llave 18-ago)
 
-El dueño aprobó **los 4 nivel 1** (#1, #2, #3, #5) y confirmó **los 4 nivel 3** tal
-como los propusiste. Quedaron escritos al pie del anexo §5.1. Tu mapa salió entero:
-cero hallazgos devueltos, el hallazgo #5 (la card Sucursales) fue el que más le gustó
-al Director, y tus dos alertas (el `$d7` bicéfalo y los rótulos gemelos) definieron la
-partición de los lotes.
+Suite del Director sobre el árbol mergeado: **2200 verdes / 15.358, CERO rojos** —
+delta exacto +4, cero cifras viejas cambiadas: la regla de oro verificada viva. Rama
+borrada. **El bloque `E-PARAM` nació en RUTA-MAESTRA con este merge** — el proyecto ya
+se ve en /plan con pasos de verdad.
 
-Fase B del Dashboard en 3 lotes: **DASH-1** (#1+#2, este dictado) → **DASH-2** (#3 +
-desacople de #4) → **DASH-3** (#5). Uno por dictado, como siempre.
+Lo que quedó fino (ya es doctrina del proyecto):
+1. **El snake_case sobre la letra del dictado** — el idioma de la casa manda; la
+   desviación declarada con evidencia (las 15+ claves existentes) es exactamente cómo
+   se pisa un dictado.
+2. **El candado de independencia CON CIFRA CALCULADA** (el reporte en día -9 que mueve
+   el promedio de 10% a 30%) — no solo el rótulo: el cálculo. Ese es el estándar.
+3. **El mecanismo `RANGOS`** — reutilizable, DASH-2 solo agrega entradas.
+4. **El clamp `max(2,…)`** — la UI valida, pero un valor roto por fuera de la UI
+   tampoco puede romper la pantalla. Cinturón y tirantes.
 
-## 🔨 GO — Lote DASH-1: las dos ventanas simples (#1 serie de producción, #2 referencia de merma)
+## 🔨 GO — Lote DASH-2: cortes de antigüedad del taller (#3) + desacople del $d7 (#4)
 
-Primer lote de código del proyecto — **fija el molde** que DASH-2/3 y todos los módulos
-siguientes van a heredar. Hazlo de manual.
+El lote M del módulo — el que tiene la trampa que tú mismo cazaste en el mapa.
 
 ### La forma
 
-1. **Dos claves nuevas** en la tabla `configuracion` (sigue el patrón de las claves
-   existentes — mira cómo las declaran/siembran notificaciones/auditoría):
-   - `dashboard.dias_serie_produccion` — default **7** (el valor de hoy).
-   - `dashboard.dias_referencia_merma` — default **7**.
-   Claves SEPARADAS aunque ambas digan 7 — son ventanas distintas (tu propia fila #2).
-2. **`DashboardController`**: `:144` (`subDays(6)` → `subDays($dias - 1)`, la serie
-   incluye hoy — ojo con el ±1) y `:163-164` leen de `Configuracion::get()` con el
-   default como fallback. El default en UNA constante o en la clave, no repetido.
-3. **Los rótulos DERIVAN del parámetro** (tu alerta #3 del parte): «Últimos 7 días»
-   (`dashboard.blade.php:100`) y «prom. 7 días» (`:89`) se construyen desde el valor
-   («Últimos {N} días», «prom. {N} días»). Singular/plural si N=1... N mínimo es 2
-   (rango), así que plural fijo está bien — decláralo.
-4. **UI de Configuración** (`Admin/ConfiguracionController` + su vista): las dos claves
-   con **label y ayuda en español del negocio** («Días de producción en las mini-barras
-   del Inicio», «Contra cuántos días previos se compara la merma de hoy») y
-   **validación de rango 2-31** (regla del plan: un 0 o un negativo no puede romper la
-   operación; 31 = un mes de mirada, tope sano).
-5. **Candados** (el molde del proyecto — mínimo dos por parámetro):
-   - **Default idéntico**: con la clave ausente en BD, el dashboard rinde EXACTO como
-     hoy (serie de 7, referencia de 7, rótulos «7 días») — este candado protege la
-     regla de oro.
-   - **Mover-el-parámetro-mueve-la-pantalla**: sembrar p.ej. 14 → la serie trae 14
-     puntos y el rótulo dice «14» (y la merma NO se mueve si solo moviste la serie —
-     independencia de las claves).
-   - **Validación de la UI**: 1, 0, -5, 32 y no-numérico se rechazan; 2 y 31 pasan.
-   - **Mutación de siempre**: rompe el default en el código (7→9) → el candado de
-     default se pone rojo → restaurar → verde. Declárala en el parte.
-6. **Cero cambio de comportamiento con BD virgen** — la suite entera debe dar delta 0
-   salvo tus tests nuevos. Si CUALQUIER test existente cambia de cifra, algo está mal.
+1. **PRIMERO el desacople** (tu alerta del parte F0): la «última semana» del flujo del
+   taller (`DashboardController` :201-202) deja de reusar `$d7` y recibe **variable
+   propia con 7 FIJO** + comentario nivel 3 del porqué («una semana es una semana —
+   veredicto del dueño 18-ago, mapa F0-DASH #4»). Sin este paso, mover el corte
+   arrastraría el flujo semanal en silencio.
+2. **Dos claves nuevas** (patrón DASH-1, snake_case):
+   - `dashboard_corte_taller_reciente` — default **7**.
+   - `dashboard_corte_taller_antiguo` — default **30**.
+   Seeder idempotente con ayuda en español («Dónde termina el tramo reciente de los
+   equipos activos del taller (días)», «Desde cuántos días un equipo activo cuenta como
+   antiguo»).
+3. **Buckets y rótulos derivados**: los tramos (:185-192) leen de las claves (con el
+   clamp de la casa); los textos «0-7 días · 8-30 · 30+» y «llevan 30+ días»
+   (`dashboard.blade.php` :113, :124) se construyen desde los valores. OJO al ±1 del
+   tramo del medio: hoy es 8-30 porque parte en corte_reciente+1 — que el rótulo derive
+   esa aritmética exacta, no la repita a mano.
+4. **UI**: dos entradas nuevas en `RANGOS` (reciente [2,60], antiguo [7,180] — o los
+   rangos que el código pida con sentido) + **la validación cruzada nueva:
+   reciente < antiguo** — al guardar CUALQUIERA de las dos, si el par queda invertido
+   o igual, se rechaza con mensaje en español que nombre a la otra clave. Esta lógica
+   es nueva (RANGOS es por-clave); decide dónde vive y decláralo.
+5. **Candados** (molde DASH-1 + los propios):
+   - Default idéntico: BD virgen → tramos 0-7/8-30/30+, rótulos de hoy, y la «última
+     semana» sigue en 7.
+   - Mover reciente (p.ej. 10) → tramos 0-10/11-30/30+ CON CIFRA (un equipo de 9 días
+     cambia de bucket) + rótulos derivados + **la última semana NO se mueve** (el
+     candado del desacople — el que faltaba en el código de hoy).
+   - Mover antiguo (p.ej. 45) → ídem por su lado.
+   - Validación cruzada: reciente=30/antiguo=30 rechazado; reciente=31/antiguo=30
+     rechazado; el mensaje nombra el conflicto.
+   - Mutación: default 7→9 del corte → rojo exacto el candado de default → restaurar →
+     verde.
+6. **Regla de oro**: cero tests existentes con cifra cambiada. El `assertSee` viejo de
+   los rótulos del aging (si existe en DashboardTest) debe seguir verde SIN tocarse con
+   BD virgen — si hay que amoldar algo, se declara con el porqué.
 
 ### Verificación (invariante)
-Rama `feature/param-dash-1-ventanas` desde main FRESCO. Suite COMPLETA de main fresco
-ANTES (baseline Director: 2196/15.292 en `8fb0c5c`; main se movió con docs — recuenta
-igual). Batería dirigida: Dashboard completo + Configuracion + lo que toque la UI.
-Parte al buzón; espera doble llave. NO arranques DASH-2.
+Rama `feature/param-dash-2-cortes` desde main FRESCO (`bcbfb00` o posterior). Suite
+COMPLETA de main fresco ANTES (baseline: **2200/15.358**). Batería dirigida:
+ParametrosDashboard + Dashboard completo + ConfiguracionManagement. Parte al buzón;
+espera doble llave. NO arranques DASH-3.
 
-## 📡 Radar DASH-2 (NO arranques — llega como v69)
-#3 cortes de antigüedad (claves `dashboard.corte_taller_reciente`/`_antiguo` o similar,
-7 y 30) + el **desacople del `$d7`** (#4 se queda en 7 FIJO con su propia variable y
-comentario nivel-3 del porqué). Los rótulos «0-7 · 8-30 · 30+» y «llevan 30+ días»
-derivan. Validación cruzada: corte reciente < corte antiguo.
+## 📡 Radar DASH-3 (cierre del módulo, llega como v70)
+#5: la desc de la card Sucursales (`AccesosDashboard:43`) deriva de la tabla
+`sucursales` (activas, orden estable). Detalles que te esperan: `AccesosDashboard` es
+estático/constante hoy — derivar de BD implica query en el composer del dashboard o en
+el punto de render (decidir con el código a la vista, declarar); candado «sucursal
+nueva activa aparece en la desc sin tocar código»; cuidado con entornos de test sin
+seeder (fallback genérico «Plazos y datos por sucursal» si la tabla está vacía).
+Tras DASH-3: QA del dueño del módulo Dashboard completo → auditoría de Comercial (v71).
 
 ## Estado
-Max-2 en pausa (v24). Marcos activo. Producción: menú 32, CI verde.
+Max-2 en pausa (v24). Marcos activo. Baseline: **2200/15.358** en `bcbfb00`.
 
-CIERRE: GO DASH-1. El primer fierro del proyecto nuevo — que el molde quede de manual.
+CIERRE: GO DASH-2. El desacople primero, después las perillas. Fierro.
