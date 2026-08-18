@@ -8,6 +8,8 @@
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.maquinas._tabs')
+
         <x-list-card title="Botellones" :count="$botellones->count()" :countLabel="\Illuminate\Support\Str::plural('receta', $botellones->count())">
             @forelse ($botellones as $botellon)
                 @php

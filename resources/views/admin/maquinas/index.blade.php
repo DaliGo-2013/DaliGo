@@ -14,6 +14,12 @@
     <div class="py-12">
         <x-status-alert :status="session('status')" class="mb-6" />
 
+        {{-- El margen va acá y no en el componente: esta pantalla usa
+             `py-12` sin `space-y-*`, así que el nav pone el suyo (idioma C1). --}}
+        <div class="mb-6">
+            @include('admin.maquinas._tabs')
+        </div>
+
         <x-list-card title="Máquinas" :count="$maquinas->count()" :countLabel="\Illuminate\Support\Str::plural('máquina', $maquinas->count())">
             @forelse ($maquinas as $maquina)
                 {{-- La fila abre la edicion (patron 03-08: fuera el lapiz). El enlace
