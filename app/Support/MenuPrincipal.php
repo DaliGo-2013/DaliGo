@@ -74,16 +74,21 @@ class MenuPrincipal
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
                 // Los patrones de Producción se ENUMERAN (no `admin.produccion.*`)
-                // porque el Kardex es ítem propio desde P-NAV-06: con el comodín,
-                // su página resaltaba DOS ítems a la vez (gate 28-07). Misma
-                // convención que el ítem `listado` de ST, que usa la ruta exacta
-                // para no comerse lote/qr/informe. Lo vigila
+                // — convención del gate 28-07, cuando el comodín se comía la ruta
+                // del Kardex (entonces ítem propio) y resaltaba DOS ítems a la
+                // vez. Misma convención que el ítem `listado` de ST. Lo vigila
                 // SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item,
                 // que falla tanto si dos ítems colisionan como si una ruta queda sin dueño.
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*', 'admin.produccion.vivo', 'admin.produccion.notas.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
-                // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
-                // perdieron su «Volver» (doctrina P-NAV-08).
-                'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
+                //
+                // `admin.produccion.movimientos` (Kardex) entró a la lista por la
+                // consolidación D1 (PLAN-MENU-DENSIDAD): tiene dos vidas — nació
+                // huérfana con Volver, subió a ítem del menú en P-NAV-06 (27-jul,
+                // perdió el Volver por P-NAV-08) y volvió a HIJA del panel el
+                // 17-ago (el botón «Kardex» de la cabecera de produccion/index es
+                // la entrada; el Volver está de vuelta). Vigilada por la 11ª
+                // entrada de MenuConsolidacionesTest. La lista sigue explícita:
+                // ítem retirado no es motivo para volver al comodín.
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*', 'admin.produccion.vivo', 'admin.produccion.notas.*', 'admin.produccion.movimientos'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
                 // Recetas (P-M11-10): rutas con prefijo propio admin.recetas.*
                 // — fuera de la enumeración del ítem `produccion`, cero riesgo
                 // de doble aria-current.

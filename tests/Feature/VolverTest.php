@@ -46,9 +46,10 @@ class VolverTest extends TestCase
      */
     public function test_pantalla_hija_tiene_exactamente_un_volver(): void
     {
-        // El Kardex (admin.produccion.movimientos) salió de esta lista en
-        // P-NAV-06: pasó a ítem del menú y perdió su Volver.
-        foreach (['admin.produccion.dia'] as $ruta) {
+        // El Kardex salió de esta lista en P-NAV-06 (pasó a ítem del menú y
+        // perdió su Volver) y VOLVIÓ con la consolidación D1 (17-ago): de
+        // nuevo es hija del panel de Producción, con el Volver de vuelta.
+        foreach (['admin.produccion.dia', 'admin.produccion.movimientos'] as $ruta) {
             $html = $this->actingAs($this->admin())->get(route($ruta))->assertOk()->getContent();
 
             $this->assertSame(1, $this->cuantosVolver($html),
@@ -171,7 +172,14 @@ class VolverTest extends TestCase
         $exHuerfanas = [
             'admin.maquinas.index',
             'admin.tipos-botellon.index',
-            'admin.produccion.movimientos',
+            // El Kardex (admin.produccion.movimientos) salió de esta lista con
+            // la consolidación D1 (17-ago) — exactamente el caso que este
+            // candado anuncia: al sacarlo del menú recuperó su <x-volver>
+            // (tercera vida: huérfana con Volver → ítem P-NAV-06 27-jul → hija
+            // del panel de Producción). Ya no queda huérfana: su entrada es el
+            // botón «Kardex» de la cabecera del panel, su resaltado lo vigila
+            // la 11ª entrada de MenuConsolidacionesTest y su Volver volvió a
+            // test_pantalla_hija_tiene_exactamente_un_volver.
             'admin.conductores.index',
         ];
 
