@@ -29,6 +29,27 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'cotizaciones',
                 'descripcion' => 'Días de vigencia por defecto de una cotización.',
             ],
+            // --- Dashboard (PLAN-PARAMETRICOS, DASH-1) ---
+            // Ventanas del pulso del Inicio. El default (7) es el valor histórico
+            // y vive también como fallback en DashboardController: parametrizar
+            // NO cambia el comportamiento con BD virgen (regla de oro del plan).
+            // Claves SEPARADAS a propósito: son ventanas distintas aunque ambas
+            // digan 7 (hallazgos #1 y #2 del mapa F0-DASH). Rango 2-31 validado
+            // en la UI (ConfiguracionController::RANGOS) y clampeado al leer.
+            [
+                'clave' => 'dashboard_dias_serie_produccion',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Días de producción que muestran las mini-barras del Inicio (incluye hoy). Rango 2-31.',
+            ],
+            [
+                'clave' => 'dashboard_dias_referencia_merma',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Contra cuántos días previos se compara la merma de hoy en el Inicio (el «prom. N días»). Rango 2-31.',
+            ],
             // Feriados de Chile para calcular días hábiles (App\Support\DiasHabiles):
             // hoy los usa la cita de retiro tras un rechazo (dueño 07-08). 2026 está
             // completo; de 2027 van los de fecha fija + Semana Santa — los MOVIBLES

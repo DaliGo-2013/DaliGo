@@ -11,6 +11,18 @@ use Illuminate\View\View;
 class ConfiguracionController extends Controller
 {
     /**
+     * Rango [min, max] por clave para enteros cuyo valor fuera de rango deja
+     * una pantalla sin sentido (PLAN-PARAMETRICOS, exigencia del nivel 1:
+     * «un 0 o un negativo no puede romper la operación»). El consumidor
+     * además clampa al leer, por si el valor entró por fuera de esta UI.
+     * 31 = un mes de mirada, tope sano (dictado DASH-1).
+     */
+    private const RANGOS = [
+        'dashboard_dias_serie_produccion' => [2, 31],
+        'dashboard_dias_referencia_merma' => [2, 31],
+    ];
+
+    /**
      * Listado de parametros agrupados por `grupo`.
      */
     public function index(): View
@@ -46,8 +58,12 @@ class ConfiguracionController extends Controller
             return $request->boolean('valor');
         }
 
+        $rango = self::RANGOS[$configuracion->clave] ?? null;
+
         $rules = match ($configuracion->tipo) {
-            Configuracion::TIPO_INTEGER => ['required', 'integer'],
+            Configuracion::TIPO_INTEGER => $rango
+                ? ['required', 'integer', 'min:'.$rango[0], 'max:'.$rango[1]]
+                : ['required', 'integer'],
             Configuracion::TIPO_DECIMAL => ['required', 'numeric'],
             Configuracion::TIPO_JSON => ['required', 'string', function ($attribute, $value, $fail) {
                 json_decode($value);

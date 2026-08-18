@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Aprobacion;
+use App\Models\Configuracion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
@@ -26,6 +27,18 @@ use Illuminate\View\View;
  */
 class DashboardController extends Controller
 {
+    /**
+     * Ventanas del pulso (DASH-1, PLAN-PARAMETRICOS): configurables en caliente
+     * desde la UI de Configuración (grupo `dashboard`, rango 2-31). Estos
+     * defaults son el valor HISTÓRICO y rigen si la clave no está en la BD —
+     * la regla de oro del plan: parametrizar no cambia el comportamiento.
+     * El default vive SOLO acá (el seeder siembra el mismo número como valor
+     * inicial de la fila, que es otro rol: la fila se edita, esto es fallback).
+     */
+    private const DIAS_SERIE_PRODUCCION_DEFAULT = 7;
+
+    private const DIAS_REFERENCIA_MERMA_DEFAULT = 7;
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -140,8 +153,12 @@ class DashboardController extends Controller
                 (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
             );
 
-            // Serie de 7 días (incluye hoy) para las mini-barras, con ceros.
-            $desde7 = \App\Support\FechaNegocio::ahora()->subDays(6)->toDateString();
+            // Serie de N días (incluye hoy) para las mini-barras, con ceros.
+            // El -1 es porque hoy cuenta como día 1 de la ventana. El clamp
+            // inferior espeja el rango de la UI (2-31): un valor roto en la BD
+            // no puede dejar la serie vacía (idioma de devolucion_fotos_min).
+            $diasSerie = max(2, (int) Configuracion::get('dashboard_dias_serie_produccion', self::DIAS_SERIE_PRODUCCION_DEFAULT));
+            $desde7 = \App\Support\FechaNegocio::ahora()->subDays($diasSerie - 1)->toDateString();
             $porDia = ProduccionReporte::seriePorDia($desde7, $hoy);
             $serie = [];
             for ($cursor = Carbon::parse($desde7); $cursor->toDateString() <= $hoy; $cursor->addDay()) {
@@ -157,10 +174,13 @@ class DashboardController extends Controller
             }
             unset($dia);
 
-            // Referencia de merma: los 7 días ANTERIORES a hoy (hoy no puede
+            // Referencia de merma: los N días ANTERIORES a hoy (hoy no puede
             // ser su propia vara). Sin datos previos queda null (sin referencia).
+            // Ventana INDEPENDIENTE de la serie aunque ambas partan en 7
+            // (hallazgo #2 del mapa F0-DASH: parámetros separados).
+            $diasMerma = max(2, (int) Configuracion::get('dashboard_dias_referencia_merma', self::DIAS_REFERENCIA_MERMA_DEFAULT));
             $prev = ProduccionReporte::seriePorDia(
-                \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString(),
+                \App\Support\FechaNegocio::ahora()->subDays($diasMerma)->toDateString(),
                 \App\Support\FechaNegocio::ahora()->subDay()->toDateString(),
             );
             $prevP1 = (int) $prev->sum('p1');
@@ -172,6 +192,12 @@ class DashboardController extends Controller
             $pulsoProduccion = $resumen + [
                 'mermaProm7' => $mermaProm7,
                 'serie' => $serie,
+                // Los rótulos de la vista DERIVAN de estas ventanas («Últimos
+                // N días», «prom. N días») — el número en pantalla no puede
+                // decir una cosa y el cálculo hacer otra (alerta del parte
+                // F0-DASH: los textos gemelos driftean).
+                'diasSerie' => $diasSerie,
+                'diasMerma' => $diasMerma,
                 'href' => route('admin.produccion.index'),
             ];
         }
