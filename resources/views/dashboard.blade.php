@@ -86,10 +86,11 @@
                             <div class="h-2 rounded-full bg-brand-600" style="width: {{ min(100, $pulsoProduccion['avance']) }}%"></div>
                         </div>
                         <p class="mt-2 text-sm tabular-nums text-neutral-500">
-                            Merma {{ $pulsoProduccion['merma_pct'] }}%@if (! is_null($pulsoProduccion['mermaProm7'])) <span class="text-neutral-400">· prom. 7 días {{ $pulsoProduccion['mermaProm7'] }}%</span>@endif
+                            {{-- El «N días» deriva del parámetro (DASH-1): plural fijo porque el rango de la clave parte en 2. --}}
+                            Merma {{ $pulsoProduccion['merma_pct'] }}%@if (! is_null($pulsoProduccion['mermaProm7'])) <span class="text-neutral-400">· prom. {{ $pulsoProduccion['diasMerma'] }} días {{ $pulsoProduccion['mermaProm7'] }}%</span>@endif
                             · Tasa 1ª {{ $pulsoProduccion['tasa1'] }}%
                         </p>
-                        {{-- Mini-serie de 7 días (hoy destacado); altura por style, Tailwind purga clases dinámicas --}}
+                        {{-- Mini-serie de N días (configurable, DASH-1; hoy destacado); altura por style, Tailwind purga clases dinámicas --}}
                         <div class="mt-4 flex h-12 items-end gap-1">
                             @foreach ($pulsoProduccion['serie'] as $dia)
                                 <div class="flex-1 rounded-t {{ $loop->last ? 'bg-brand-600' : 'bg-brand-200' }}"
@@ -97,7 +98,7 @@
                                     title="{{ \Illuminate\Support\Carbon::parse($dia['fecha'])->format('d-m') }}: {{ number_format($dia['producido'], 0, ',', '.') }}"></div>
                             @endforeach
                         </div>
-                        <p class="mt-1 text-xs text-neutral-400">Últimos 7 días · hoy destacado</p>
+                        <p class="mt-1 text-xs text-neutral-400">Últimos {{ $pulsoProduccion['diasSerie'] }} días · hoy destacado</p>
                     </div>
                 @endif
 
