@@ -50,6 +50,14 @@ construido sobre lo que ya existe.
 - **F1+ — Lotes**: un lote = un merge = una doble llave del dueño; parte al buzón;
   verificación invariante del Director; QA del dueño en celular al cierre.
 
+## 3.5 Espejo en Trello (pedido del dueño 19-ago)
+
+Cinco tarjetas «Chat interno · <etapa>» en el tablero del dueño (Diseño · Motor de
+mensajes · Pantallas · Actualización automática · Entrada en el menú), movidas POR EL
+DIRECTOR por API: «Tareas DaliGo» → «En Curso DaliGo» (al dictar el lote) → «Terminadas
+DaliGo» (al merge con doble llave, con los hallazgos como comentarios en lenguaje de
+negocio). Los forjadores no tocan Trello.
+
 ## 4. Coordinación de flota
 
 - **Max-2 forja** (su primer proyecto fuera del territorio PWA/M11) — modelo Fable 5
