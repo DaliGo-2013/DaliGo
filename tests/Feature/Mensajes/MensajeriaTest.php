@@ -11,7 +11,6 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Route;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -246,27 +245,12 @@ class MensajeriaTest extends TestCase
             ->where('canal', Notificacion::CANAL_DATABASE)->firstOrFail();
     }
 
-    public function test_sin_la_ruta_de_msg2_el_destino_es_nulo_y_no_revienta(): void
+    public function test_el_destino_navega_solo_para_el_participante_con_permiso(): void
     {
-        // MSG-1 no registra rutas de pantalla: el guard Route::has evita el
-        // RouteNotFoundException en la bandeja (la rama vive, apagada).
-        $ana = $this->usuario();
-        $beto = $this->usuario();
-
-        $notificacion = $this->notificacionDe($ana, $beto);
-
-        $this->assertNull($notificacion->urlDestino());
-        $this->assertNull($notificacion->urlDestinoPara($beto));
-    }
-
-    public function test_con_la_ruta_el_participante_navega_y_el_tercero_no(): void
-    {
-        // La ruta que MSG-2 registrara, simulada aqui para probar la logica
-        // real. El refresh es obligatorio: una ruta nombrada en runtime no
-        // entra sola al lookup de nombres y Route::has() no la veria.
-        Route::get('/mensajes/{conversacion}', fn () => 'ok')->name('mensajes.show');
-        Route::getRoutes()->refreshNameLookups();
-
+        // En MSG-1 la ruta no existia y el guard Route::has dejaba el destino
+        // en null (habia un candado temporal con la ruta registrada en
+        // runtime); MSG-2 registro mensajes.show y la rama se encendio SOLA —
+        // este test corre contra la ruta real y retiro aquel temporal.
         $ana = $this->usuario();
         $beto = $this->usuario();
         $tercero = $this->usuario();
