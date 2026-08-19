@@ -69,6 +69,25 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'dashboard',
                 'descripcion' => 'Desde cuántos días un equipo activo del taller cuenta como antiguo. Rango 7-180, mayor que el corte reciente.',
             ],
+            // --- Comercial (PLAN-PARAMETRICOS, COM-1) ---
+            // Las dos listas del negocio, editables una-por-línea en la UI
+            // (ConfiguracionController::LISTAS_SIMPLES). Los defaults son los
+            // valores históricos; los fallbacks viven en Cliente::SEGMENTOS y
+            // ProductoController::PRESETS_CATEGORIA_INTERNA (regla de oro).
+            [
+                'clave' => 'clientes_segmentos',
+                'valor' => json_encode(['mayorista', 'retail', 'recurrente'], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'comercial',
+                'descripcion' => 'Segmentos para clasificar clientes (uno por línea). Agregar es libre; quitar uno con clientes asignados se rechaza.',
+            ],
+            [
+                'clave' => 'catalogo_categorias_sugeridas',
+                'valor' => json_encode(['Repuestos industriales'], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'comercial',
+                'descripcion' => 'Categorías internas que el corrector del catálogo sugiere aunque ningún producto las use todavía (una por línea).',
+            ],
             // Feriados de Chile para calcular días hábiles (App\Support\DiasHabiles):
             // hoy los usa la cita de retiro tras un rechazo (dueño 07-08). 2026 está
             // completo; de 2027 van los de fecha fija + Semana Santa — los MOVIBLES

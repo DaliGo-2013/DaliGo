@@ -42,8 +42,11 @@ class ProductoController extends Controller
     private const NUMERICAS = ['peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'];
 
     /**
-     * Categorías internas SUGERIDAS: siempre disponibles para corregir (aparecen
-     * en el filtro y el datalist) aunque todavía no las use ningún producto.
+     * Default HISTÓRICO de las categorías internas sugeridas (COM-1,
+     * PLAN-PARAMETRICOS): la lista viva se edita en Configuración
+     * (`catalogo_categorias_sugeridas`, una por línea) y siempre aparece en
+     * el filtro y el datalist aunque ningún producto la use todavía. Esta
+     * constante rige si la clave no está en la BD.
      */
     private const PRESETS_CATEGORIA_INTERNA = ['Repuestos industriales'];
 
@@ -452,17 +455,23 @@ class ProductoController extends Controller
      */
     private function formData(): array
     {
+        $sugeridas = \App\Models\Configuracion::getLista('catalogo_categorias_sugeridas', self::PRESETS_CATEGORIA_INTERNA);
+
         return [
             // Categorías EFECTIVAS distintas (corregida en DaliGo si existe, si no
             // la de Bsale) + las sugeridas (siempre disponibles): alimentan el
             // filtro y el datalist de corrección.
-            'categorias' => collect(self::PRESETS_CATEGORIA_INTERNA)
+            'categorias' => collect($sugeridas)
                 ->merge(Producto::query()
                     ->selectRaw('COALESCE(categoria_interna, categoria) as cat')
                     ->whereRaw('COALESCE(categoria_interna, categoria) IS NOT NULL')
                     ->distinct()->pluck('cat'))
                 ->unique()->sort()->values(),
             'marcas' => Producto::whereNotNull('marca')->distinct()->orderBy('marca')->pluck('marca'),
+            // El «Ej. …» del corrector masivo DERIVA de la primera sugerida —
+            // antes el mismo string vivía retipeado en la vista (duplicado
+            // marcado en el mapa F0-COMERCIAL, muerto en COM-1).
+            'categoriaEjemplo' => $sugeridas[0] ?? 'Repuestos industriales',
         ];
     }
 

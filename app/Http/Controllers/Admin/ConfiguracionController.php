@@ -39,6 +39,22 @@ class ConfiguracionController extends Controller
     ];
 
     /**
+     * Claves JSON que son LISTAS SIMPLES de strings (COM-1): el dueño las
+     * edita UNA POR LÍNEA (nada de corchetes ni comillas de programador) y
+     * acá se convierten a array normalizado antes de guardarse como JSON.
+     * Tercer mecanismo declarativo por clave, hermano de RANGOS y
+     * PARES_ORDENADOS. Las claves JSON de OBJETO (plantillas, feriados)
+     * siguen con su textarea JSON.
+     */
+    private const LISTAS_SIMPLES = [
+        'clientes_segmentos',
+        'catalogo_categorias_sugeridas',
+    ];
+
+    /** Tope sano de elementos de una lista simple (nadie clasifica con 50+ opciones). */
+    private const MAX_ELEMENTOS_LISTA = 50;
+
+    /**
      * Listado de parametros agrupados por `grupo`.
      */
     public function index(): View
@@ -50,13 +66,17 @@ class ConfiguracionController extends Controller
 
     public function edit(Configuracion $configuracion): View
     {
-        return view('admin.configuracion.edit', ['configuracion' => $configuracion]);
+        return view('admin.configuracion.edit', [
+            'configuracion' => $configuracion,
+            'esLista' => in_array($configuracion->clave, self::LISTAS_SIMPLES, true),
+        ]);
     }
 
     public function update(Request $request, Configuracion $configuracion): RedirectResponse
     {
         $valor = $this->validateValor($request, $configuracion);
         $this->validarParOrdenado($configuracion, $valor);
+        $this->validarSegmentosEnUso($configuracion, $valor);
 
         Configuracion::set($configuracion->clave, $valor);
 
@@ -73,6 +93,13 @@ class ConfiguracionController extends Controller
         // Booleano: el checkbox puede no enviarse => boolean() normaliza la ausencia.
         if ($configuracion->tipo === Configuracion::TIPO_BOOLEAN) {
             return $request->boolean('valor');
+        }
+
+        // Lista simple (COM-1): el textarea trae UN valor por línea. Se
+        // normaliza acá (trim, sin vacíos, sin duplicados case-insensitive)
+        // y se devuelve como array — set() lo serializa a JSON.
+        if (in_array($configuracion->clave, self::LISTAS_SIMPLES, true)) {
+            return $this->parseListaSimple($request);
         }
 
         $rango = self::RANGOS[$configuracion->clave] ?? null;
@@ -92,6 +119,75 @@ class ConfiguracionController extends Controller
         };
 
         return $request->validate(['valor' => $rules])['valor'];
+    }
+
+    /**
+     * Parsea el textarea de una LISTA SIMPLE (un valor por línea) a un array
+     * normalizado: trim, fuera los vacíos y los duplicados (case-insensitive,
+     * conservando la primera forma escrita). Rechaza la lista vacía, un
+     * elemento más largo que el esquema (191) y el tope de elementos.
+     *
+     * @return array<int, string>
+     */
+    private function parseListaSimple(Request $request): array
+    {
+        $crudo = (string) $request->validate(['valor' => ['required', 'string']])['valor'];
+
+        $items = [];
+        foreach (preg_split('/\R/', $crudo) ?: [] as $linea) {
+            $linea = trim($linea);
+            if ($linea === '') {
+                continue;
+            }
+            if (mb_strlen($linea) > 191) {
+                throw ValidationException::withMessages([
+                    'valor' => 'Cada valor debe tener 191 caracteres o menos: revisa «'.mb_substr($linea, 0, 40).'…».',
+                ]);
+            }
+            $k = mb_strtolower($linea);
+            if (! array_key_exists($k, $items)) {
+                $items[$k] = $linea;
+            }
+        }
+
+        if ($items === []) {
+            throw ValidationException::withMessages(['valor' => 'La lista no puede quedar vacía: escribe al menos un valor (uno por línea).']);
+        }
+
+        if (count($items) > self::MAX_ELEMENTOS_LISTA) {
+            throw ValidationException::withMessages(['valor' => 'Máximo '.self::MAX_ELEMENTOS_LISTA.' valores en la lista.']);
+        }
+
+        return array_values($items);
+    }
+
+    /**
+     * La regla de seguridad de COM-1 (dictada por el dueño en el veredicto
+     * del mapa): AGREGAR un segmento es libre; QUITAR uno que tenga clientes
+     * asignados se rechaza nombrando cuántos lo usan — si no, esos clientes
+     * quedan con un segmento que el filtro ya no ofrece. Validación por clave
+     * CON LÓGICA (el hermano con código de RANGOS/PARES_ORDENADOS).
+     */
+    private function validarSegmentosEnUso(Configuracion $configuracion, mixed $valor): void
+    {
+        if ($configuracion->clave !== 'clientes_segmentos' || ! is_array($valor)) {
+            return;
+        }
+
+        $nuevos = array_map('mb_strtolower', $valor);
+
+        foreach (\App\Models\Cliente::segmentos() as $vigente) {
+            if (in_array(mb_strtolower($vigente), $nuevos, true)) {
+                continue;
+            }
+
+            $enUso = \App\Models\Cliente::where('segmento', $vigente)->count();
+            if ($enUso > 0) {
+                throw ValidationException::withMessages([
+                    'valor' => "No puedes quitar «{$vigente}»: {$enUso} cliente(s) lo tienen asignado. Reasígnalos primero desde el listado de Clientes.",
+                ]);
+            }
+        }
     }
 
     /**

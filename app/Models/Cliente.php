@@ -19,7 +19,26 @@ class Cliente extends Model implements AuditableContract
     /** @use HasFactory<\Database\Factories\ClienteFactory> */
     use HasFactory, AuditableTrait;
 
+    /**
+     * Default HISTÓRICO de los segmentos (COM-1, PLAN-PARAMETRICOS): la lista
+     * viva se edita en Configuración (`clientes_segmentos`, una por línea) y
+     * se lee con segmentos(); esta constante rige si la clave no está en la
+     * BD — la regla de oro: parametrizar no cambia el comportamiento.
+     */
     public const SEGMENTOS = ['mayorista', 'retail', 'recurrente'];
+
+    /**
+     * Los segmentos VIGENTES para clasificar clientes (selector de la ficha,
+     * filtro del listado y validación). Quitar un segmento con clientes
+     * asignados lo rechaza la UI de Configuración
+     * (ConfiguracionController::validarSegmentosEnUso).
+     *
+     * @return array<int, string>
+     */
+    public static function segmentos(): array
+    {
+        return Configuracion::getLista('clientes_segmentos', self::SEGMENTOS);
+    }
 
     protected $table = 'clientes';
 
