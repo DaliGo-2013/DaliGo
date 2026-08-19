@@ -59,4 +59,8 @@
             </ul>
         </div>
     </div>
+
+    {{-- Refresco automático (MSG-3): firma global del chat — mensaje nuevo,
+         leído en otra pestaña o hilo nuevo recargan la lista sola. --}}
+    <x-poll-recarga :url="route('mensajes.conteo')" :firma="$firmaChat" />
 </x-app-layout>

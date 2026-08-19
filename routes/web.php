@@ -122,9 +122,9 @@ Route::middleware(['auth', 'permission:usar mensajes'])
     ->name('mensajes.')
     ->group(function () {
         Route::get('/', [MensajeController::class, 'index'])->name('index');
-        // Literales ANTES del parametro (doctrina de mi-historial). RESERVA
-        // MSG-3: la ruta 'conteo' del poll se registra AQUI, antes de
-        // {conversacion} (doctrina del conteo de despachos/vivo).
+        // Literales ANTES del parametro (doctrina de mi-historial; el conteo
+        // del poll en el lugar que MSG-2 dejo reservado).
+        Route::get('conteo', [MensajeController::class, 'conteo'])->name('conteo');
         Route::get('nuevo', [MensajeController::class, 'create'])->name('create');
         Route::post('nuevo', [MensajeController::class, 'store'])->name('store');
         Route::get('{conversacion}', [MensajeController::class, 'show'])->whereNumber('conversacion')->name('show');

@@ -69,4 +69,9 @@
             </form>
         </div>
     </div>
+
+    {{-- Refresco automático (MSG-3): la firma es GLOBAL del chat — un cambio
+         en OTRO hilo también recarga (espurio aceptado: marcarLeida del GET es
+         idempotente y el contrato es «cambió algo → recarga»). --}}
+    <x-poll-recarga :url="route('mensajes.conteo')" :firma="$firmaChat" />
 </x-app-layout>
