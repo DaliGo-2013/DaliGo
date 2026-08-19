@@ -186,6 +186,8 @@ marcado) · 2 anotaciones cross.** Los veredictos son PROPUESTOS: decide el due�
   ST; el modelo de Comercial solo aloja el mecanismo (con normalización tolerante y
   lista-vacía-no-filtra ya documentadas).
 
+**VEREDICTOS DEL DUEÑO (2026-08-19, al Director):** #1 y #2 (los dos nivel 1) APROBADOS → lote **COM-1** (claves JSON `clientes_segmentos` + `catalogo_categorias_sugeridas`, dictado v73); mini-lote de higiene de los 4 duplicados APROBADO → **COM-2** (v74); los 7 nivel 3 CONFIRMADOS con sus porqués.
+
 Convenciones revisadas y sin fila a propósito: `max:191` (el `defaultStringLength` de
 MySQL 5.7 utf8mb4, doctrina de la casa), `Precio::formatear` (formato chileno CLP,
 convención de presentación) y los `orderBy` de los listados (alfabéticos, consistentes).
