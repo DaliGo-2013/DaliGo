@@ -56,6 +56,22 @@ jobs:
             exit 0
           fi
 
+          # ── 0.5. Solo lo que se hizo a la WEB genera tarjeta ─────────────────────────
+          # Pedido del dueño (19-08-2026): el tablero informa funcionalidades y
+          # correcciones de DaliGo, no la dinámica interna de la flota. Los dictados,
+          # partes y planes viven en docs/ y también despliegan (push a main = deploy),
+          # así que sin este filtro cada movimiento de coordinación crearía una tarjeta.
+          # Regla: si TODOS los archivos del commit son de coordinación (docs/, .claude/,
+          # .github/ o un .md suelto en la raíz), no se anota. Uno solo de la app basta.
+          ARCHIVOS="$(gh api "repos/${REPO}/commits/${SHA}" --jq '.files[].filename' 2>/dev/null || true)"
+          if [ -n "${ARCHIVOS}" ]; then
+            DE_LA_APP="$(printf '%s\n' "${ARCHIVOS}" | grep -vcE '^(docs/|\.claude/|\.github/|[^/]+\.md$)' || true)"
+            if [ "${DE_LA_APP:-0}" -eq 0 ]; then
+              echo "::notice::Deploy solo de coordinación/documentación (docs, dictados, CI). No se anota en Trello."
+              exit 0
+            fi
+          fi
+
           CORTO="${SHA:0:7}"
           MARCA="[deploy ${CORTO}]"
 
@@ -114,12 +130,31 @@ jobs:
           DESC="$(printf 'Salió a producción.\n\nCommit: %s\nhttps://github.com/%s/commit/%s\n%s\nAutor: %s\nDeploy: %s\nAmbiente: Producción\n\n%s' \
                     "${CORTO}" "${REPO}" "${SHA}" "${PR_LINEA}" "${AUTOR}" "${CORRIDA}" "${MARCA}")"
 
+          # El dueño va como miembro de cada tarjeta (pedido 19-08-2026). El id se
+          # resuelve del dueño del TOKEN en runtime y no se pega en el repo: cero ids
+          # opacos, misma doctrina de la lista por nombre.
+          MIEMBRO="$(curl -sf --get 'https://api.trello.com/1/members/me' \
+                       --data-urlencode 'fields=id' \
+                       --data-urlencode "key=${TRELLO_KEY}" \
+                       --data-urlencode "token=${TRELLO_TOKEN}" | jq -r '.id // empty')"
+
           RESP="$(curl -sf -X POST 'https://api.trello.com/1/cards' \
                     --data-urlencode "idList=${ID_LISTA}" \
                     --data-urlencode "name=${TITULO}" \
                     --data-urlencode "desc=${DESC}" \
                     --data-urlencode 'pos=top' \
+                    --data-urlencode "idMembers=${MIEMBRO}" \
                     --data-urlencode "key=${TRELLO_KEY}" \
                     --data-urlencode "token=${TRELLO_TOKEN}")"
+
+          # Portada naranja (pedido 19-08-2026, tamaño normal como la captura del dueño).
+          # El cover SOLO se acepta como JSON en el body — como query param devuelve 200
+          # y no aplica nada (verificado a mano el 19-08). Fallo suave: la portada es
+          # cosmética y la tarjeta ya existe.
+          ID_CARD="$(printf '%s' "${RESP}" | jq -r '.id')"
+          curl -sf -X PUT "https://api.trello.com/1/cards/${ID_CARD}?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d '{"cover":{"color":"orange","size":"normal"}}' -o /dev/null \
+            || echo "::warning::La tarjeta quedó sin portada naranja (el PUT del cover falló)."
 
           echo "::notice::Tarjeta creada: $(printf '%s' "${RESP}" | jq -r '.shortUrl')"
