@@ -40,7 +40,12 @@ class AccesosDashboard
             // Usuarios (a un clic de esta card, cuya descripción ya dice «y
             // roles»). Las preferencias de color guardadas toleran la key
             // huérfana (D-013), igual que con «Precios» en F1.
-            'sucursales' => ['label' => 'Sucursales', 'desc' => 'Mirador, Coquimbo, Abate Molina, Buzeta', 'route' => 'admin.sucursales.index', 'permiso' => 'manage sucursales', 'icon' => 'building-storefront', 'color' => 'gris'],
+            // La desc REAL de esta card deriva de la tabla `sucursales` al
+            // render (DashboardController, DASH-3 — hallazgo #5 del mapa
+            // F0-DASH: la lista escrita a mano mentía al abrir o cerrar una
+            // sucursal). Esta constante es el FALLBACK: rige solo con la
+            // tabla vacía (BD recién migrada, tests sin seeder).
+            'sucursales' => ['label' => 'Sucursales', 'desc' => 'Plazos y datos por sucursal', 'route' => 'admin.sucursales.index', 'permiso' => 'manage sucursales', 'icon' => 'building-storefront', 'color' => 'gris'],
             'configuracion' => ['label' => 'Configuración', 'desc' => 'Parámetros globales de la app', 'route' => 'admin.configuracion.index', 'permiso' => 'manage settings', 'icon' => 'adjustments-horizontal', 'color' => 'gris'],
             // Consolidación C2: las cards «Notificaciones» y «Aprobaciones» se
             // retiraron — sus pantallas son pestañas del Registro del sistema

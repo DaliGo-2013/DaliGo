@@ -8,6 +8,7 @@ use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
+use App\Models\Sucursal;
 use App\Support\AccesosDashboard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -319,6 +320,19 @@ class DashboardController extends Controller
         // Definición central en AccesosDashboard; el color de cada card
         // respeta la preferencia del usuario (D-013) — solo keys de paleta
         // válidas: una pref legacy/corrupta cae al default sin reventar.
+        // La desc de la card Sucursales deriva de la TABLA (DASH-3, hallazgo
+        // #5 del mapa F0-DASH): las activas, unidas con «, ». Orden por id =
+        // el orden histórico de la casa (la central primero, después por
+        // antigüedad de apertura) — es el ÚNICO que reproduce byte a byte la
+        // desc que la card decía a mano (regla de oro; la pantalla de
+        // Sucursales ordena por nombre, pero acá manda no cambiar lo que se
+        // ve). Query solo si el usuario puede ver la card; tabla vacía →
+        // string vacío → cae al fallback de la constante («Plazos y datos
+        // por sucursal»), jamás un error.
+        $descSucursales = $user->can('manage sucursales')
+            ? Sucursal::where('activa', true)->orderBy('id')->pluck('nombre')->implode(', ')
+            : '';
+
         $prefs = $user->dashboard_colores ?? [];
         $accesos = collect(AccesosDashboard::GRUPOS)
             ->map(fn (array $items) => collect($items)
@@ -326,7 +340,7 @@ class DashboardController extends Controller
                 ->map(fn (array $def, string $key) => [
                     'key' => $key,
                     'label' => $def['label'],
-                    'desc' => $def['desc'],
+                    'desc' => $key === 'sucursales' && $descSucursales !== '' ? $descSucursales : $def['desc'],
                     'href' => route($def['route']),
                     'icon' => $def['icon'],
                     'color' => in_array($prefs[$key] ?? null, AccesosDashboard::COLORES, true)
