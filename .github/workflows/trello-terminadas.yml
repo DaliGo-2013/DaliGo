@@ -64,7 +64,13 @@ jobs:
           # tarjeta no dice nada. El título del PR sí.
           TITULO="$(printf '%s' "${MENSAJE}" | head -n 1)"
           PR_LINEA=""
-          if PR="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq '.[0] | "\(.number)\t\(.title)\t\(.html_url)"' 2>/dev/null)" && [ -n "${PR}" ] && [ "${PR}" != "null" ]; then
+          # `.[0] // empty` y no `.[0]` a secas: un commit SIN PR (todo push directo a
+          # main, que es como entra la mayor parte del trabajo del Director) deja el
+          # array vacio, y jq interpolando null escribe la cadena "null". La primera
+          # tarjeta real (deploy 94fa1b8, 19-08-2026) salio titulada «null» y con
+          # «PR #null: null» en la descripcion. Con `// empty` la variable queda vacia
+          # y manda el titulo del commit, que es lo que el bloque de abajo ya esperaba.
+          if PR="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq '.[0] // empty | "\(.number)\t\(.title)\t\(.html_url)"' 2>/dev/null)" && [ -n "${PR}" ] && [ "${PR}" != "null" ]; then
             PR_NUM="$(printf '%s' "${PR}" | cut -f1)"
             PR_TIT="$(printf '%s' "${PR}" | cut -f2)"
             PR_URL="$(printf '%s' "${PR}" | cut -f3)"
