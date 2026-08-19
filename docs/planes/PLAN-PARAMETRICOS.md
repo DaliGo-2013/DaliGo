@@ -140,7 +140,9 @@ del Dashboard en 3 lotes: **DASH-1** = #1+#2 (dos ventanas simples, dictado v68)
 (card Sucursales desde la BD). Un lote por dictado; el bloque `E-PARAM` de RUTA-MAESTRA
 nace con el merge de DASH-1.
 
-### §5.2 Comercial — mapa F0-COMERCIAL (auditoría Max-1, 2026-08-19, sobre `1edbc8ec`)
+### §5.2 Comercial — SALDADO ✅ (QA del dueño 19-ago; COM-1 `8f40a96` + COM-2 `c594182` en producción)
+
+Mapa F0-COMERCIAL (auditoría Max-1, 2026-08-19, sobre `1edbc8ec`):
 
 Barridos completos: `ClienteController` (154 líneas) + `Cliente`, `ProductoController`
 (564 — CRUD + import/export CSV + plantillas + clasificación interna) + `Producto`,
