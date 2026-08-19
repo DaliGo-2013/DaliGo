@@ -680,6 +680,21 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a producción cuando un reporte aprobado trae parada «Molde dañado» (M11 F3; la correctiva nace pendiente, una por reporte).',
             ],
+
+            // ── MSG-1 · Chat interno (PLAN-MENSAJES) ───────────────────────
+            // Clave nueva → el firstOrCreate del seeder la crea en el deploy,
+            // sin one-shot. Anti-spam de RÁFAGA: se dispara solo al pasar de
+            // 0 no-leídos en el hilo, así que un chat activo manda UN aviso.
+            [
+                'clave' => 'notif_plantilla_mensaje_recibido',
+                'valor' => json_encode([
+                    'asunto' => 'Mensaje de {emisor}',
+                    'cuerpo' => "{emisor} te escribió por el chat interno:\n\n«{extracto}»\n\nRespóndele desde Mensajes en DaliGo.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso de mensaje del chat interno (MSG-1; ráfaga: solo el primero mientras el receptor no lea el hilo).',
+            ],
         ];
 
         foreach ($ajustes as $a) {

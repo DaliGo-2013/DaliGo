@@ -60,6 +60,8 @@ return [
         'ver vehiculos' => 'Ver la flota de vehículos y sus vencimientos',
         'manage vehiculos' => 'Gestionar la flota (crear, editar, dar de baja)',
         'simular carga' => 'Usar el simulador de carga (¿cuánto entra en cada camión?)',
+        // Chat interno (MSG-1, PLAN-MENSAJES): apagable por rol sin deploy.
+        'usar mensajes' => 'Usar la mensajería interna (chat entre usuarios)',
         // Devoluciones (M13, 04-08).
         'view devoluciones' => 'Ver devoluciones',
         'manage devoluciones' => 'Gestionar devoluciones (recibir, categorizar, resolver)',
@@ -116,6 +118,8 @@ return [
         'Usuarios y accesos' => ['users', 'roles'],
         'Aprobaciones' => ['aprobaciones', 'solicitudes'],
         'Notificaciones' => ['notificaciones'],
+        // Chat interno (MSG-1): sin keyword propio caería en "Generales".
+        'Mensajes' => ['mensajes'],
         'Sistema' => ['settings', 'sucursales', 'audit', 'plan proyecto'],
     ],
 ];

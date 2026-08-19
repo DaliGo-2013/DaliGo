@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Notificacion del motor M15: una fila por (evento disparado × canal).
@@ -132,6 +133,10 @@ class Notificacion extends Model
         // molde); la correctiva nace de una parada «Molde dañado».
         'molde.umbral_mantencion' => 'Al molde le toca mantención (umbral de ciclos)',
         'molde.correctiva_pendiente' => 'Molde dañado: mantención correctiva pendiente',
+        // MSG-1 · Chat interno (PLAN-MENSAJES): lo dispara Mensajeria con
+        // anti-spam de RAFAGA — solo al pasar de 0 no-leidos en ese hilo;
+        // mientras el receptor no lea, los siguientes mensajes callan.
+        'mensaje.recibido' => 'Mensaje interno recibido',
     ];
 
     protected $fillable = [
@@ -227,6 +232,11 @@ class Notificacion extends Model
             'produccion.meta_en_riesgo' => $user->can('manage production'),
             // La ficha del molde: mismo gate que sus rutas (P-M11-12).
             'molde.umbral_mantencion', 'molde.correctiva_pendiente' => $user->can('manage production'),
+            // El hilo del chat (MSG-1): mismo gate que tendran sus rutas en
+            // MSG-2 (permiso) + SOLO un participante navega — el morph es la
+            // Conversacion.
+            'mensaje.recibido' => $user->can('usar mensajes')
+                && ($this->notificable?->esParticipante($user) ?? false),
             default => false,
         };
 
@@ -334,6 +344,14 @@ class Notificacion extends Model
             'molde.umbral_mantencion', 'molde.correctiva_pendiente' => $this->notificable_id
                 ? route('admin.moldes.show', $this->notificable_id)
                 : route('admin.moldes.index'),
+            // El mensaje aterriza en su HILO (el morph es la Conversacion).
+            // Guard Route::has: MSG-1 entrega el evento SIN las rutas de
+            // pantalla (llegan en MSG-2) — sin el guard, una campanita de
+            // mensaje reventaria la bandeja con RouteNotFoundException. La
+            // rama nace apagada y se enciende sola cuando exista la ruta.
+            'mensaje.recibido' => $this->notificable_id && Route::has('mensajes.show')
+                ? route('mensajes.show', $this->notificable_id)
+                : null,
             default => null,
         };
     }

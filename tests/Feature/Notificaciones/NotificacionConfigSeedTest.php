@@ -48,6 +48,8 @@ class NotificacionConfigSeedTest extends TestCase
         'notif_plantilla_produccion_meta_en_riesgo',
         'notif_plantilla_molde_umbral_mantencion',
         'notif_plantilla_molde_correctiva_pendiente',
+        // MSG-1 · Chat interno (aviso por ráfaga)
+        'notif_plantilla_mensaje_recibido',
     ];
 
     public function test_seeder_es_idempotente_no_duplica_claves(): void
