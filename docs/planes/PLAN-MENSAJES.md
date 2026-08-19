@@ -268,3 +268,10 @@ al final — si algo se atrasa, nunca queda un ítem de menú apuntando a media 
 Coordinación: MSG-1 toca `Notificacion::EVENTOS` y MSG-4 toca `MenuPrincipal` —
 los dos archivos compartidos con PLAN-PARAMETRICOS; el Director secuencia esos
 merges (§4).
+
+---
+**VEREDICTOS DEL DUEÑO AL DISEÑO F0 (2026-08-19, al Director): APROBADO ENTERO.**
+Las 5 recomendaciones ratificadas: ítem de primer nivel «Mensajes» (menú 32→33, badge
+de no-leídos) · aviso por RÁFAGA · permiso `usar mensajes` en todos los roles ·
+online-only en v1 · retención para siempre en v1. Fase de código: MSG-1 (backend puro,
+dictado v26) → MSG-2 (pantallas) → MSG-3 (poll) → MSG-4 (menú+badge, al final).

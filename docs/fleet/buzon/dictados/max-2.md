@@ -1,67 +1,70 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-18 (v25 — FIN DE LA PAUSA: proyecto nuevo del dueño, PLAN-MENSAJES. GO F0-MENSAJES: diseño del chat interno, SOLO DOCS). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-19 (v26 — diseño F0-MENSAJES APROBADO ENTERO por el dueño: las 5 recomendaciones ratificadas. GO MSG-1: backend puro). Manda sobre lo anterior.
 
 CUENTA: Max-2 (Forjador B, stream 2) · MODELO: Fable 5 (fijado por el dueño).
 
-## 🆕 Fin de la pausa — proyecto nuevo asignado por el dueño (18-ago)
+## ✅ Tu diseño F0 fue aprobado ENTERO (dueño, 19-ago)
 
-Ninguno de tus dos gatillos disparó (Luis sigue sin volver; la densidad cerró sin dos
-manos — 47→32, ya en producción). El dueño te asigna proyecto PROPIO: **PLAN-MENSAJES —
-chat interno entre usuarios**, la alternativa económica a la API de WhatsApp (D-007
-sigue APLAZADA; el dueño detuvo esa vía por el costo del setup).
+Las 5 recomendaciones, ratificadas sin ajuste: **ítem de primer nivel «Mensajes»
+(menú 32→33)** · **aviso por RÁFAGA** · **permiso `usar mensajes` en TODOS los roles** ·
+**online-only v1** · **retención para siempre v1**. Veredictos escritos al pie del plan.
+Diseño de primera — la observación de que el anti-spam correcto «ya estaba pagado» por
+los contadores es exactamente el tipo de hallazgo que vale un F0.
 
-**LÉE ENTERO `docs/planes/PLAN-MENSAJES.md` antes de partir.** Decisiones del dueño ya
-tomadas (no se re-litigan): chat con hilos 1-a-1 · todos con todos · sobre el motor
-M15 · sin websockets (cPanel) · doctrina de densidad del menú vigente.
+## 🔨 GO — Lote MSG-1: backend puro testeable (M)
 
-## 🔍 GO — F0-MENSAJES: diseño técnico (SOLO DOCS, cero código)
+Tu propio mapa §5.7, primera entrega. Sin UI, sin rutas de pantalla — el corazón:
 
-Tu territorio conocido juega a favor: M15 es tuyo (P-M15 completo fue del stream B).
-Diseña el módulo en el anexo §5 del plan:
+1. **Migraciones**: `conversaciones` + `mensajes` EXACTO como el anexo §5.1 (par
+   canónico con unique, contadores por lado, índices declarados, cascade con el
+   porqué comentado).
+2. **Modelos**: `Conversacion` (`entre($a, $b)` canonicaliza + firstOrCreate;
+   `paraUsuario()` scope indexado; rechazo de conversación conmigo mismo) y
+   `Mensaje` (append-only, `max:1000`).
+3. **Enviar** (servicio o método de dominio, sin controller aún): transacción con
+   `lockForUpdate` sobre la conversación → crea mensaje + `ultimo_mensaje_at` + `+1`
+   al contador del receptor → **RÁFAGA**: despacha `mensaje.recibido` por el
+   dispatcher SOLO si el contador del receptor estaba en 0 antes de este mensaje.
+4. **Leer**: `marcarLeida(User)` → MI contador a 0 (idempotente).
+5. **M15**: evento 37º `mensaje.recibido` en `EVENTOS` + plantilla
+   `notif_plantilla_mensaje_recibido` en el seeder (clave nueva, sin one-shot,
+   placeholders `{emisor}`/`{extracto}`) + `urlDestino()` **y** `urlDestinoPara()`
+   (los DOS match — y el candado del `default => false` que tú mismo cazaste: evento
+   navegable solo para participantes).
+6. **Permiso `usar mensajes`** en `RolesAndPermissionsSeeder`: TODOS los roles
+   (aditivo, precedente simular carga). Sin rutas todavía — el permiso nace aquí para
+   que MSG-2 solo lo consuma.
 
-1. **Modelo de datos**: tablas (¿`conversaciones` + `mensajes`? ¿o mensajes con clave
-   compuesta de par de usuarios?), índices para «mis conversaciones ordenadas por
-   último mensaje» y «no-leídos por conversación», borrado/retención (¿los mensajes
-   viven para siempre? propón). El par 1-a-1 canónico (menor-id, mayor-id) o el diseño
-   que argumentes mejor.
-2. **Pantallas**: lista de conversaciones (con no-leídos y último mensaje) + hilo
-   (historial paginado, composición) + «nuevo mensaje a…» (selector de usuario). Móvil
-   primero — el equipo vive en el celular. Con los moldes de la casa (`x-list-row`,
-   layout `listado`, Volver por fuente única).
-3. **Integración M15**: el evento `mensaje.recibido` entra al catálogo EVENTOS y
-   dispara por el dispatcher (campanita + mail según preferencia del receptor).
-   **Diseña el anti-spam**: ¿dispara cada mensaje, solo el primero del hilo no-leído,
-   o digest? Propón con argumento — un chat activo no puede meter 40 filas a la
-   campanita.
-4. **Refresco sin websockets**: propuesta concreta (polling ligero con intervalo, o
-   refresh al navegar + badge). Costo por request y por qué no revienta el hosting.
-5. **Ubicación en la UI con doctrina**: dónde vive la entrada (ícono junto a la
-   campanita / ítem primer nivel / otro) + badge de no-leídos por el patrón
-   declarativo de `MenuPrincipal::badges()`. Justificación escrita — la densidad
-   (menú 32) es sagrada.
-6. **Permisos**: propón sin-permiso-nuevo vs `usar mensajes` (apagable a futuro), con
-   el cruce de siempre (¿el soplador chatea? ¿el conductor?). Recuerda: el menú jamás
-   ofrece un 403.
-7. **Mapa de lotes** para la fase de código: lotes chicos con esfuerzo (S/M/L) y qué
-   candados trae cada uno (el molde de mutación de la casa). El primer lote debería
-   ser modelo+backend sin UI (testeable puro), el último el badge/menú.
+### Candados (tu molde + los de la casa)
+- Par canónico: `entre(7,3)` y `entre(3,7)` = la MISMA conversación; unique aguanta la
+  carrera (test de constraint).
+- Conversación conmigo mismo: rechazada.
+- Enviar: mensaje + contador del OTRO +1 + `ultimo_mensaje_at` movido; MI contador
+  intacto.
+- RÁFAGA con cifra: 3 mensajes seguidos = UNA notificación (campanita+mail del motor);
+  leer → contador 0 → el 4º mensaje SÍ despacha de nuevo.
+- Leer idempotente (dos veces = 0, sin efectos).
+- `urlDestinoPara`: participante navega, tercero NO (el candado del default false).
+- Emisor eliminado: mensaje sobrevive con emisor null («—» queda para MSG-2);
+  conversación eliminada por cascade si se va un participante — declarado.
+- **Mutación**: rompe la ráfaga (despachar siempre) → el candado de la cifra se pone
+  rojo exacto → restaurar → verde. Declárala.
 
-### Entregable
-Anexo §5 de `docs/planes/PLAN-MENSAJES.md` + parte al buzón (resumen del diseño + lo
-que más te llamó la atención + tus recomendaciones donde el dictado te dio a elegir).
-**Cero código** — el dueño da visto bueno al diseño y recién ahí llegan los lotes (v26+).
+### Verificación (invariante)
+Rama `feature/msg-1-backend` desde main FRESCO (baseline del Director: **2208 verdes**
+en `75cce08`; el drift corre — re-fetch). Suite COMPLETA de main fresco ANTES. Batería
+dirigida: tus tests nuevos + Notificaciones completo + PreferenciaCanal +
+ConfiguracionSeedLongitud (la plantilla nueva respeta el tope 191). **Regla de oro
+adaptada**: cero tests existentes con cifra cambiada — el evento 37º solo puede sumar.
+Parte al buzón; espera doble llave. NO arranques MSG-2.
 
-### Arranque operativo
-Re-fetch de main FRESCO (el repo se movió MUCHO desde tu v24: menú 47→32, hotfix de
-calendario, PLAN-PARAMETRICOS con DASH-1/2 en producción, Sucursales de Marcos —
-baseline hoy: **2204/15.421** en `0c2bcad`). Lee `PLAN-MENU-DENSIDAD.md` (acta de
-cierre) y `PLAN-PARAMETRICOS.md` para el estado del mundo. Tu barrido F0 es read-only:
-cero riesgo de choque con Max-1 (corre PLAN-PARAMETRICOS en Dashboard) ni con Marcos.
+## ⚠️ Coordinación de territorio (único cruce con Max-1)
+MSG-1 toca `Notificacion::EVENTOS` y el `ConfiguracionSeeder` — Max-1 está EN PAUSA
+(espera QA del módulo Dashboard) así que tienes la ventana limpia AHORA. Si su
+auditoría de Comercial (v72) arranca antes de tu merge, es solo-docs — sin colisión.
+El Director secuencia igual.
 
 ## Estado
-- Max-1: DASH-3 en vuelo (card Sucursales desde la BD). Territorios disjuntos.
-- Coordinación futura: `MenuPrincipal` y `Notificacion::EVENTOS` son los únicos
-  archivos donde ambos proyectos pueden cruzarse — el Director secuencia esos merges.
+Max-1 en pausa (QA Dashboard pendiente). Marcos activo. Baseline: 2208 en `75cce08`.
 
-CIERRE: GO F0-MENSAJES. Bienvenido de vuelta al fierro — proyecto propio y en tu
-territorio (M15 lo forjaste tú). Un dictado, un parte, y el dueño decide.
+CIERRE: GO MSG-1. El corazón primero, la cara después. Fierro.
