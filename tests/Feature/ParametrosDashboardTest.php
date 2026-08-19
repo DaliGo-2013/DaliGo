@@ -6,9 +6,11 @@ use App\Models\Configuracion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
+use App\Models\Sucursal;
 use App\Models\User;
 use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Database\Seeders\SucursalSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -250,5 +252,59 @@ class ParametrosDashboardTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertSame(10, Configuracion::get('dashboard_corte_taller_reciente'));
         $this->assertSame(60, Configuracion::get('dashboard_corte_taller_antiguo'));
+    }
+
+    // --- DASH-3: la desc de la card Sucursales deriva de la tabla ------------
+    // Nivel 1 por FUENTE VIVA, no por perilla: sin clave de configuración.
+
+    private function adminConSucursales(): User
+    {
+        return tap(User::factory()->create())->assignRole('admin');
+    }
+
+    public function test_la_card_sucursales_nombra_las_activas_igual_que_hoy(): void
+    {
+        // Regla de oro del lote: con el seeder de siempre, la desc queda BYTE
+        // A BYTE como la que estaba escrita a mano (orden por id = el orden
+        // histórico; la pantalla de Sucursales ordena por nombre, pero acá
+        // manda no cambiar lo que el Inicio venía mostrando).
+        $this->seed(SucursalSeeder::class);
+
+        $this->actingAs($this->adminConSucursales())->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Mirador, Coquimbo, Abate Molina, Buzeta');
+    }
+
+    public function test_una_sucursal_nueva_aparece_en_la_card_sin_tocar_codigo(): void
+    {
+        // El hallazgo que define el proyecto: antes, abrir una sucursal
+        // dejaba el Inicio mintiendo hasta que un programador editara la
+        // constante. Ahora la fila nueva basta.
+        $this->seed(SucursalSeeder::class);
+        Sucursal::factory()->create(['nombre' => 'Rancagua', 'activa' => true]);
+
+        $this->actingAs($this->adminConSucursales())->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Mirador, Coquimbo, Abate Molina, Buzeta, Rancagua');
+    }
+
+    public function test_una_sucursal_desactivada_desaparece_de_la_card(): void
+    {
+        $this->seed(SucursalSeeder::class);
+        Sucursal::where('codigo', 'BUZETA')->firstOrFail()->update(['activa' => false]);
+
+        $this->actingAs($this->adminConSucursales())->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Mirador, Coquimbo, Abate Molina')
+            ->assertDontSee('Buzeta');
+    }
+
+    public function test_con_la_tabla_vacia_la_card_cae_al_fallback_generico(): void
+    {
+        // BD recién migrada / tests sin seeder: desc genérica, jamás un join
+        // de lista vacía ni un error.
+        $this->actingAs($this->adminConSucursales())->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Plazos y datos por sucursal');
     }
 }
