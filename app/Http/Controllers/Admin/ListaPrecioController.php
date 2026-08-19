@@ -39,7 +39,7 @@ class ListaPrecioController extends Controller
             ->orderBy('productos.nombre')
             ->select('precios.*')
             ->with('producto')
-            ->paginate(25)
+            ->paginate(self::POR_PAGINA)
             ->withQueryString();
 
         return view('admin.listas-precios.show', [

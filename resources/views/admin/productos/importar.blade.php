@@ -22,6 +22,10 @@
 
                 @if (! empty($resultado['errores']))
                     <div class="mt-4 overflow-hidden rounded-lg border border-neutral-200">
+                        {{-- Tope de errores MOSTRADOS (el resto se resume abajo):
+                             una sola variable — el 50 vivía retipeado 3 veces en
+                             esta vista (duplicado del mapa F0-COMERCIAL, COM-2). --}}
+                        @php $maxErrores = 50; @endphp
                         <table class="min-w-full divide-y divide-neutral-100 text-sm">
                             <thead class="bg-neutral-50 text-left text-xs font-medium uppercase tracking-wide text-neutral-500">
                                 <tr>
@@ -30,7 +34,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-neutral-100">
-                                @foreach (array_slice($resultado['errores'], 0, 50) as $e)
+                                @foreach (array_slice($resultado['errores'], 0, $maxErrores) as $e)
                                     <tr>
                                         <td class="px-4 py-2 text-neutral-500">{{ $e['fila'] }}</td>
                                         <td class="px-4 py-2 text-neutral-700">{{ $e['error'] }}</td>
@@ -38,9 +42,9 @@
                                 @endforeach
                             </tbody>
                         </table>
-                        @if (count($resultado['errores']) > 50)
+                        @if (count($resultado['errores']) > $maxErrores)
                             <p class="bg-neutral-50 px-4 py-2 text-xs text-neutral-500">
-                                … y {{ count($resultado['errores']) - 50 }} errores más.
+                                … y {{ count($resultado['errores']) - $maxErrores }} errores más.
                             </p>
                         @endif
                     </div>

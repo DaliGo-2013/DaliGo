@@ -18,7 +18,7 @@ class ClienteController extends Controller
     {
         $clientes = $this->filteredQuery($request)
             ->orderBy('razon_social')
-            ->paginate(25)
+            ->paginate(self::POR_PAGINA)
             ->withQueryString();
 
         return view('admin.clientes.index', array_merge([
