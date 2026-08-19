@@ -79,6 +79,11 @@ de su flujo. Los módulos avanzan de a uno: auditoría → veredictos → lotes 
   muestra con pasos de verdad, no un mapa vacío).
 - Partes al buzón como siempre; veredictos del dueño quedan escritos en el anexo del
   módulo.
+- **Espejo en Trello (pedido del dueño 19-ago)**: cada módulo tiene su tarjeta
+  «Paramétricos · <Módulo>» en el tablero del dueño — el DIRECTOR la mueve por API:
+  «Tareas DaliGo» (pendiente) → «En Curso DaliGo» (al dictar su auditoría) →
+  «Terminadas DaliGo» (al cierre con QA, con los hallazgos como comentarios en
+  lenguaje de negocio). Los forjadores no tocan Trello.
 
 ## 5. Anexos por módulo (los llena la fase A de cada uno)
 
