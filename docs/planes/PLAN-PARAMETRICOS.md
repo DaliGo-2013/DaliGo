@@ -193,3 +193,72 @@ marcado) · 2 anotaciones cross.** Los veredictos son PROPUESTOS: decide el due�
 Convenciones revisadas y sin fila a propósito: `max:191` (el `defaultStringLength` de
 MySQL 5.7 utf8mb4, doctrina de la casa), `Precio::formatear` (formato chileno CLP,
 convención de presentación) y los `orderBy` de los listados (alfabéticos, consistentes).
+
+### §5.3 Operación — mapa F0-OPERACIÓN (auditoría Max-1, 2026-08-19, sobre `32406f28`)
+
+Barridos completos: `ProduccionController` (838 líneas — panel, drill-downs, asignar,
+aprobar, kardex, kaizen) + `ProduccionVivoController`, los 4 servicios de producción
+(`Oee`, `CorteSic`, `Moldes`, `SemaforoPreformas`), los modelos del módulo (Reporte,
+Registro, Asignación, Movimiento, Parada, Corte, Mejora, Maquina, Molde, Receta,
+TipoBotellon, Bodega, Stock), los 4 controllers del hub E1 + `BodegaController` +
+`ProduccionNotaController`, y las vistas. Con respeto de autor (M11 es de Max-2): los
+porqués citados existen en el código y calzan.
+
+**El hallazgo-marco: el módulo más denso es el MEJOR parametrizado del proyecto.** M11
+se construyó ya con la doctrina de la casa (D-003, «hipótesis editables») — lo que en
+Dashboard/Comercial fue cacería acá es mayormente CENSO de lo ya vivo:
+
+**Ya parametrizado (nivel 1/BD+UI vivos — nada que hacer):** `produccion_minutos_turno`
+(duración del turno, clave con clamp) · `produccion_turnos` (horarios por turno, clave
+JSON con validación y fallback) · `produccion_umbral_proyeccion` (el % del semáforo SIC,
+clave, default 85) · `umbral_ajuste_produccion_unidades` (el umbral del motor M14 para
+ajustes del jefe, vía `ReglaAprobacion.umbral_config`) · `oee_target` (meta OEE POR
+MÁQUINA, columna nullable) · `umbral_mantencion` y `cavidades` (POR MOLDE, columnas) ·
+`ciclo_ideal_seg` (POR RECETA, BD+UI) · bodegas 100 % paramétricas (M04) · la meta del
+semáforo de preformas = las asignadas del turno (dato vivo, cero umbral fijo).
+
+**Resumen: 13 hallazgos — 3 propuestos nivel 1 · 1 nivel 2 · 9 nivel 3 (4 con
+duplicado/adopción marcada) · 2 grupos cross.** Los veredictos son PROPUESTOS.
+
+| # | Valor | Dónde vive (file:line) | Qué controla EN PANTALLA | Repetido en | Veredicto propuesto | Esfuerzo |
+|---|---|---|---|---|---|---|
+| 1 | **7 días (panel) / 30 días (informes)** | `ProduccionController.php:125` (`$ventana = 6`) · `:306` y `:351` (`rango($request, 29)`) | Cuántos días miran, al abrirse, el panel del jefe y los informes por máquina y por tipo | El `29` ×2 (máquina y tipo) | **1** — primo exacto del #1 del mapa Dashboard que el dueño YA aprobó (misma naturaleza: ventana de mirada); claves separadas panel/informes | M |
+| 2 | **92 días** (tope del filtro de fechas) | `:138-139` (el valor ×2 contiguo) | Hasta dónde se puede estirar el rango de los informes (la tabla diaria se arma en PHP) | ×2 en el mismo statement | **3** — límite de render comentado en el código; el duplicado contiguo se unifica al pasar | S |
+| 3 | **`%preforma%` / `%dañada%`** | `:448` (categoría LIKE) · `:472-473` (exclusión, closure compartida con la validación `:497` ✓) | Qué productos del catálogo aparecen como «preforma del turno» al asignar — y cuáles quedan fuera por dañados | Los literales viven una vez cada uno (el criterio ya es closure única) | **2** — primo exacto de `categorias_equipo` de ST (config de despliegue): moverlo en caliente puede vaciar el selector en medio de un turno; el fallback todos-los-activos ya degrada con gracia | S/M |
+| 4 | **Turnos `dia` / `noche`** (los NOMBRES) | `ProduccionController.php:26` (`TURNOS`, Rule::in) + claves del default de `produccion_turnos` (`CorteSic.php:42`) | Qué turnos existen al asignar producción | Los HORARIOS ya son clave viva, pero los NOMBRES están en constante — **acoplamiento declarado**: agregar un turno «tarde» a la clave de horarios NO lo haría asignable | **3** — abrir un tercer turno es cambio de flujo (asignar, reportes, SIC, avisos), lote de código con tests, no perilla. El acoplamiento queda anotado para ese día | — |
+| 5 | **`max:100000`** (tope anti-dedazo) | `:492` (asignar) y `:798-802` (ajustar, ×5) | El máximo que aceptan las cantidades del jefe antes de rechazar («revisa el número») | **×6 en el archivo** (+ los de Mi producción, cross) | **3** — guardia anti-typo comentada, no capacidad de negocio; el duplicado se marca: constante única al pasar (primo COM-2) | S (unificar) |
+| 6 | **Racha crítica: 2 cortes** | `CorteSic.php:152` (`$racha >= 2`) | Cuándo el semáforo del panel vivo pasa de «en riesgo» (naranjo) a «crítico» (rojo): dos cortes seguidos bajo el umbral sin recuperarse | — | **3** — definición de escalamiento con su porqué escrito; el % del umbral SÍ es perilla y ya existe (`produccion_umbral_proyeccion`) | — |
+| 7 | **60 minutos mínimos para proyectar** | `CorteSic.php:52` | Cuánto turno debe haber pasado antes de que el panel vivo proyecte la meta (con menos, la proyección lineal es ruido) | — | **3** — guardia estadística del motor, comentada (además evita la división por cero) | — |
+| 8 | **20 segundos** (refresco del panel vivo) | `vivo.blade.php:122` (`20000`) | Cada cuánto se actualiza sola la pantalla del panel vivo | — | **3** — frecuencia técnica: más rápido es más carga al hosting compartido, no es decisión de negocio | — |
+| 9 | **Motivos de parada** (7) **+ subconjunto planificado** (2) | `ProduccionParada.php:43` y `:55` | Qué motivos puede tocar el operario al registrar una parada de máquina — y cuáles NO descuentan la disponibilidad del OEE (mantención y cambio de molde son «planificadas») | Fuente única ✓ (validación, chips y clase derivan de las constantes) | **1 con OJO** — lista que crece del taller (molde COM-1: LISTAS_SIMPLES); exige el par planificados ⊆ motivos y el matiz de que la clase se PERSISTE al crear la parada (cambiar la lista solo afecta paradas futuras — el OEE histórico no se reescribe, verificado en `claseDe()`) | M |
+| 10 | **Propósitos de bodega** (6) | `Bodega.php:31` (`PROPOSITOS`) | La clasificación de cada bodega del espejo (física, virtual, tránsito, insumos, taller, cerrada) que filtra listados y decide qué mira el semáforo de preformas | Fuente única ✓ | **3** — claves con lógica colgada (filtros, semáforo, wizard de baja): agregar o renombrar es código, no dato | — |
+| 11 | **Rangos del hub** (cavidades hasta 64, umbral de molde hasta 100 M, ciclo ideal hasta 600 s, cantidades de receta hasta 1000) | `MoldeController.php:93-94`, `RecetaController.php:52-58` | Los topes que aceptan los formularios de Configuración de producción | — | **3** — espejan la física del proceso y el esquema; el DATO que importa ya es por-fila (BD+UI) | — |
+| 12 | **`paginate(25)` ×2** | `ProduccionController.php:698` (kardex) · `BodegaController.php:51` | Filas por página del kardex y del inventario | La convención global (×15 en la app) | **3** — adopción de `Controller::POR_PAGINA` pendiente (el mecanismo quedó listo en COM-2) | S |
+| 13 | **Procedencias `saco` / `caja`** | `ProduccionAsignacion.php:15` (`PROCEDENCIAS`) | En qué formato llegó la preforma del turno (selector del form de asignar) | Fuente única ✓ (selector + validación) | **1** — lista chica que crece con la logística real (¿granel?); molde COM-1 exacto | S |
+
+**Semillas del dictado, respondidas:**
+
+- **#1 (`pendientes()` y el censo de catálogos de estado)**: TODOS los catálogos de
+  estado del módulo son claves de máquina con flujo colgado — estados de reporte
+  (borrador/enviado/devuelto/aprobado), clases y orígenes de parada, estados de molde,
+  decisiones de mejora (kaizen). **Ninguno es lista-que-crece**: nivel 3 en bloque, sin
+  fila propia. Las listas que sí crecen son las de la tabla (#9, #13).
+- **#2 (`categorias_equipo`)**: dueño ST, consumidor Operación vía
+  `Producto::scopeEquipoTaller` — **sin drift** (un solo consumidor, normalización
+  tolerante y lista-vacía-no-filtra ya documentadas). Nada que mudar.
+- **#3 (umbrales M11)**: censados arriba — casi todos YA parametrizados (ver el
+  hallazgo-marco); lo que queda fijo (#6, #7) es aritmética del motor con porqué.
+- **#4 (residuales M04)**: cero encontrados — bodegas 100 % BD+UI, el semáforo de
+  preformas deriva su meta de las asignadas del turno y su universo de los propósitos.
+
+**Anotaciones cross** (para la auditoría de su módulo):
+
+- **Mi producción** — los **45 días** del historial del operario
+  (`ProduccionReporte.php:32`, constante fuente-única consumida por
+  `MiProduccionController:69,109` y `mi-historial.blade.php`); los catálogos de motivos
+  del soplador (`ProduccionRegistro::MOTIVOS_DEFECTO`,
+  `ProduccionReporte::MOTIVOS_DIFERENCIA`, `::NOTAS_COMUNES` — candidatas naturales a
+  LISTAS_SIMPLES cuando toque ese apartado); y sus `max:100000` de tandas. Las
+  constantes viven en modelos de ESTE módulo pero la pantalla es del otro: se auditan
+  allá, con la nota de que la fuente es compartida.
+- **Servicio Técnico** — `categorias_equipo` (semilla #2: sin drift, solo constancia).
