@@ -82,11 +82,11 @@
             </div>
         </div>
 
-        {{-- Producción por periodo (rango; default últimos 7 días) --}}
+        {{-- Producción por periodo (rango; el default en días es configurable — OPE-1) --}}
         @php
             $tp = $periodo['totales'];
             $rangoLabel = $periodo['esDefault']
-                ? 'Últimos 7 días'
+                ? 'Últimos ' . $diasPanel . ' días'
                 : \Illuminate\Support\Carbon::parse($periodo['desde'])->translatedFormat('d M') . ' – ' . \Illuminate\Support\Carbon::parse($periodo['hasta'])->translatedFormat('d M');
         @endphp
         <div class="dg-enter mb-6 rounded-2xl border border-neutral-200 bg-white shadow-sm">

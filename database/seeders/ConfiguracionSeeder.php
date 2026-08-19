@@ -547,6 +547,30 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Minutos que dura un turno de producción (día o noche). Lo usa el OEE como tiempo planificado por turno trabajado. Mantener coherente con produccion_turnos.',
             ],
+            // --- Ventanas del panel y de los informes (OPE-1, PLAN-PARAMETRICOS §5.3 #1) ---
+            // Son el DEFAULT del rango al abrir cada pantalla: el filtro de fechas
+            // de la propia pantalla siempre puede pedir otro periodo (hasta 92 días).
+            [
+                'clave' => 'produccion_dias_panel',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'produccion',
+                'descripcion' => 'Días que muestra al abrirse la sección «Producción por periodo» del panel del jefe (hoy incluido). El filtro de fechas del panel puede pedir otro rango cuando haga falta.',
+            ],
+            [
+                'clave' => 'produccion_dias_informe_maquina',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'produccion',
+                'descripcion' => 'Días que mira al abrirse el informe de rendimiento por máquina (hoy incluido). El filtro de fechas del informe puede pedir otro rango cuando haga falta.',
+            ],
+            [
+                'clave' => 'produccion_dias_informe_tipo',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'produccion',
+                'descripcion' => 'Días que mira al abrirse el informe de producción por tipo de botellón (hoy incluido). El filtro de fechas del informe puede pedir otro rango cuando haga falta.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',
