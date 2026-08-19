@@ -1,79 +1,52 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-19 (v73 — veredictos del dueño al mapa F0-COMERCIAL: los 2 nivel 1 APROBADOS + mini-lote de higiene APROBADO + los 7 nivel 3 confirmados. GO COM-1: las dos listas del negocio editables). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-19 (v74 — COM-1 EN PRODUCCIÓN. GO COM-2: la higiene de duplicados — cierre del módulo Comercial). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Veredictos del dueño al mapa F0-COMERCIAL (19-ago) — otro mapa que salió entero
+## ✅ COM-1 está EN PRODUCCIÓN (merge `8f40a96`, doble llave 19-ago)
 
-Aprobados #1 (segmentos de cliente) y #2 (categorías internas sugeridas) como nivel 1;
-el mini-lote de higiene que ofreciste, APROBADO como COM-2; los 7 nivel 3 confirmados
-con tus porqués. Quedaron escritos al pie del anexo §5.2. Tu resolución de las semillas
-(el paginate ×3 con el criterio de UNA-clave-global-o-ninguna, y el barrido limpio de
-lista_precios_ventas) — fina.
+Suite del Director sobre el árbol combinado CON MSG-1 de Max-2 (la secuencia I-08 del
+seeder compartido funcionó de libro): **2227 / 15.510, CERO rojos**, delta exacto +6.
+Rama borrada.
 
-Fase B de Comercial = 2 lotes: **COM-1** (este dictado) → **COM-2** (higiene, v74).
+Lo que quedó fino: la UX «una por línea» (el criterio que te delegué, resuelto con la
+vara correcta: el JSON crudo no era digno del dueño), `getLista()` como clamp del
+consumidor, y `LISTAS_SIMPLES` como tercer mecanismo declarativo por clave — RANGOS,
+PARES_ORDENADOS y ahora listas: la familia completa para lo que viene del proyecto.
 
-## 🔨 GO — Lote COM-1: los segmentos de cliente y las categorías sugeridas se editan sin programador
+## 🔨 GO — Lote COM-2: higiene de duplicados (S) — cierra el módulo Comercial
 
-### El mecanismo (verificado por el Director: la casa YA soporta listas)
-`Configuracion::TIPO_JSON` existe (`Configuracion.php:30`, decode a array en `:99`).
-Las dos listas van como **claves JSON de configuracion** — NO se inventa CRUD nuevo:
-- `clientes_segmentos` — default `["mayorista","retail","recurrente"]` (los de hoy).
-- `catalogo_categorias_sugeridas` — default `["Repuestos industriales", …]` (las de hoy
-  en `PRESETS_CATEGORIA_INTERNA`).
-Si al abrir el código la UI de Configuración no edita bien claves JSON de lista (mírala
-con ojos de QA: ¿un textarea JSON crudo es digno del dueño?), tu criterio decide entre
-mejorar ESA edición para listas simples (p. ej. una-por-línea → JSON) o proponer otra
-forma con contra-evidencia ANTES de forjar distinto. La vara: el dueño edita solo, sin
-sintaxis de programador.
+Tu propio radar del v73, sin sorpresas. Los 4 duplicados nivel 3 del mapa §5.2 a
+constante única:
+1. **25 por página ×3** (`ClienteController:21`, `ProductoController:54`,
+   `ListaPrecioController:42`) → UNA constante compartida (propón dónde vive: ¿una
+   clase de convenciones del módulo? ¿constante por controller que referencia una
+   común? — lo que el idioma de la casa pida, con el porqué).
+2. **50 errores mostrados ×3** (`productos/importar.blade.php:33,41,43`) → una
+   variable única en la vista.
+3. **chunk(500) ×2** (`ProductoController:314`, `:366`) → constante.
+4. **Topes de peso/medidas ×2** (las 4 reglas repetidas en `:251-254` y `:433-436`) →
+   las reglas a una constante compartida (import y form las referencian).
 
-### La forma
-1. **`Cliente::SEGMENTOS` deriva de la clave** (constante pasa a default del fallback):
-   filtro, validación y formularios ya leen la fuente única (`:78`, `:120`, `:151` del
-   mapa) — el cambio es el origen del dato, no los consumidores.
-2. **La regla de seguridad del mapa (dictada)**: AGREGAR segmento = libre. QUITAR un
-   segmento que tenga clientes asignados → la UI de Configuración lo RECHAZA con
-   mensaje que nombre cuántos clientes lo usan («No puedes quitar “retail”: 12 clientes
-   lo tienen asignado»). Mecanismo de validación por clave: propón dónde vive (primo de
-   RANGOS/PARES_ORDENADOS — la casa ya valida por-clave; una validación por-clave-JSON
-   es el tercer hermano).
-3. **`PRESETS_CATEGORIA_INTERNA` deriva de su clave**; el placeholder «Ej. Repuestos
-   industriales» (`productos/index:123`) DERIVA del primer elemento de la lista — el
-   duplicado del mapa muere aquí.
-4. **Normalización**: trim, sin vacíos, sin duplicados (case-insensitive), tope sano de
-   elementos (propón) — una lista rota por fuera de la UI no puede tumbar el selector
-   (clamp de la casa, cinturón y tirantes).
-5. **Seeder**: las 2 claves con ayuda en español del negocio (una explica la regla de
-   quitar-segmento). Grupo `comercial`.
-6. **Candados (molde DASH adaptado a listas)**:
-   - Default idéntico: BD virgen → los 3 segmentos y las categorías de hoy, byte a byte.
-   - Agregar «horeca» a la clave → aparece en selector, filtro y validación del cliente
-     SIN tocar código (el candado estrella del lote).
-   - Quitar con clientes adentro → rechazado con el mensaje y la cifra.
-   - Placeholder deriva (cambiar el primer elemento → el «Ej. …» cambia).
-   - Normalización: lista con duplicados/vacíos por fuera de la UI → selector sano.
-   - **Mutación**: romper la derivación (volver a la constante) → rojo exacto el
-     candado de agregar-sin-código → restaurar → verde.
-7. **Regla de oro**: cero tests existentes con cifra cambiada; con BD virgen todo
-   idéntico a hoy.
+**Regla de oro estricta**: CERO cambio de conducta — delta 0 tests EXACTO (ni un test
+nuevo salvo que decidas fijar una constante con candado, declarándolo). La suite
+entera debe dar la MISMA cifra que la baseline. Es el lote más chico del proyecto:
+que sea el más limpio.
 
 ### Verificación (invariante)
-Rama `feature/param-com-1-listas` desde main FRESCO. Suite COMPLETA de main fresco
-ANTES (baseline Director: **2208 verdes** en `75cce08` + solo docs después — recuenta).
-Batería dirigida: Cliente* + Producto* + ListaPrecio* + ConfiguracionManagement +
-ConfiguracionSeedLongitud. Parte al buzón; espera doble llave. NO arranques COM-2.
+Rama `feature/param-com-2-higiene` desde main FRESCO (baseline: **2227 / 15.510** en
+`8f40a96`). Suite COMPLETA antes y después — misma cifra. Batería dirigida: las
+carpetas de los 3 controllers + el import completo. Parte al buzón; espera doble
+llave. Con COM-2 en producción, el módulo Comercial queda listo para el QA del dueño.
 
-## 📡 Radar COM-2 (higiene, llega como v74)
-Los 4 duplicados nivel 3 a constante única (25/pág ×3, 50 errores ×3, chunk 500 ×2,
-topes de peso/medidas ×2). Cero cambio de conducta — delta 0 tests exacto, sin candados
-nuevos salvo que un duplicado unificado ya tenga test que lo fije.
-
-## ⚠️ Coordinación
-Max-2 (MSG-1) toca `ConfiguracionSeeder` — TU lote también lo toca (2 claves nuevas).
-El Director secuencia los merges; forja tranquilo, el que llegue segundo se re-mergea
-sobre fresco con la suite entera (protocolo I-08 de siempre).
+## 📡 Después de COM-2
+QA del dueño del módulo Comercial (las 2 listas editables + todo lo demás idéntico) →
+**v75 abre F0-OPERACIÓN** (el tercero del orden: Producción, kardex, inventario,
+configuración de producción — territorio grande, con los cross-módulo del mapa DASH
+esperando: `ProduccionReporte::pendientes()`).
 
 ## Estado
-Marcos activo. Trello espejando (asunto del Director). Baseline 2208 en `75cce08`.
+Max-2 forjando MSG-2 (pantallas del chat — puede tocar rutas/vistas, disjunto de tu
+lote). Marcos activo. Trello espejando. Baseline: **2227/15.510** en `8f40a96`.
 
-CIERRE: GO COM-1. Las dos listas del negocio a manos del dueño. Fierro.
+CIERRE: GO COM-2. El lote más chico — delta cero exacto y a cerrar Comercial. Fierro.
