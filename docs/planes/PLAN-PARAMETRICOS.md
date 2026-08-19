@@ -139,3 +139,53 @@ del Dashboard en 3 lotes: **DASH-1** = #1+#2 (dos ventanas simples, dictado v68)
 **DASH-2** = #3 + desacople de #4 (cortes de antigüedad, esfuerzo M) → **DASH-3** = #5
 (card Sucursales desde la BD). Un lote por dictado; el bloque `E-PARAM` de RUTA-MAESTRA
 nace con el merge de DASH-1.
+
+### §5.2 Comercial — mapa F0-COMERCIAL (auditoría Max-1, 2026-08-19, sobre `1edbc8ec`)
+
+Barridos completos: `ClienteController` (154 líneas) + `Cliente`, `ProductoController`
+(564 — CRUD + import/export CSV + plantillas + clasificación interna) + `Producto`,
+`ListaPrecioController` + `ListaPrecio` + `Precio`, y las 12 vistas del módulo
+(clientes, productos, listas-precios, catalogo/_tabs). Las 3 semillas del Director
+quedaron resueltas: la #1 creció (el `paginate(25)` es ×3, no ×2), la #2 y la #3
+salieron limpias (ver declaraciones bajo la tabla).
+
+**Resumen: 9 hallazgos — 2 propuestos nivel 1 · 0 nivel 2 · 7 nivel 3 (4 con duplicado
+marcado) · 2 anotaciones cross.** Los veredictos son PROPUESTOS: decide el dueño.
+
+| # | Valor | Dónde vive (file:line) | Qué controla EN PANTALLA | Repetido en | Veredicto propuesto | Esfuerzo |
+|---|---|---|---|---|---|---|
+| 1 | **Segmentos de cliente** (`mayorista`, `retail`, `recurrente`) | `Cliente::SEGMENTOS` (`Cliente.php:22`) | Las opciones del selector «Segmento» de la ficha del cliente y de su filtro en el listado — la clasificación comercial de la cartera | Fuente única bien hecha: filtro (`ClienteController:78`), validación (`:120`) y formularios (`:151`) leen la constante | **1** — lista que crece con el negocio: abrir un segmento nuevo (p. ej. «horeca») hoy es un deploy. OJO en la ayuda: AGREGAR es seguro; QUITAR deja clientes con un segmento que el filtro ya no ofrece | S/M |
+| 2 | **«Repuestos industriales»** (categorías internas sugeridas) | `ProductoController::PRESETS_CATEGORIA_INTERNA` (`:48`) | Las categorías que el corrector masivo del catálogo SUGIERE aunque ningún producto las use todavía (datalist del filtro y de la corrección) | El placeholder «Ej. Repuestos industriales» (`productos/index.blade.php:123`) — el mismo string a mano | **1** — string de negocio + lista que crece: la próxima categoría curada del dueño no debería necesitar programador. El placeholder pasa a derivar | S |
+| 3 | **25 por página** | `ClienteController:21`, `ProductoController:54`, `ListaPrecioController:42` | Cuántas filas muestran los listados de Clientes, Catálogo y el detalle de una lista de precios | **×3 en el módulo** (y es la convención de toda la app) | **3** — densidad de listado uniforme: una perilla fragmentaría la UX entre módulos y nadie pidió moverla. El DUPLICADO sí se marca: unificar a una constante compartida paga solo. Si el dueño la quiere perilla, que sea UNA global, no tres | S (unificar) |
+| 4 | **50 errores mostrados** (resultado del import) | `productos/importar.blade.php:33,41,43` | Cuántas filas con error lista la pantalla tras importar un CSV (el resto se resume en «… y N más») | **×3 en la misma vista** (el slice, el if y la resta) | **3** — presentación defensiva (no inundar la pantalla); el duplicado se marca: una variable única en la vista | S (unificar) |
+| 5 | **5 MB** (tope del CSV de import) | `ProductoController:143` (`max:5120`) | El tamaño máximo del archivo que acepta el import del catálogo | — | **3** — está acotado por los límites PHP del hosting compartido (`upload_max_filesize`): una perilla en caliente que prometa más de lo que la infra da sería inerte y confusa — la vara de daligo.php | — |
+| 6 | **Lotes de 500** (streaming del export) | `ProductoController:314` y `:366` (`chunk(500)`) | Invisible en pantalla: cuántas filas carga en memoria por tanda el export y la plantilla de medidas | **×2** | **3** — aritmética de memoria, no negocio; duplicado marcado (constante única) | S (unificar) |
+| 7 | **Topes de peso/medidas** (`9999999.999` / `99999999.99`) | `ProductoController:251-254` (import) y `:433-436` (formulario) | El máximo que aceptan peso y dimensiones de un producto antes de rechazar el dato | **×2** (las mismas 4 reglas en el import y en el form) | **3** — espejan el esquema (`decimal(10,3)/(10,2)`, comentado en el código: evitan el «Out of range» de MySQL); duplicado marcado (extraer las reglas a una constante compartida) | S (unificar) |
+| 8 | **Tolerancias del import** (tokens `si/sí/true/verdadero/activo`…, extensiones `csv/txt`) | `ProductoController:554-559` y `:147` | Qué escrituras de «activo» entiende el CSV y qué extensiones de archivo se aceptan | — | **3** — whitelist de entrada: ampliarla es código con test (un token mal interpretado desactiva productos en silencio, el riesgo que el propio código documenta) | — |
+| 9 | **Roles de cartera** (`vendedor`, `jefe_ventas`) | `ClienteController:142` | Qué usuarios aparecen como «Vendedor» asignable en la ficha del cliente | Única en Comercial (las `ROLES_AVISO_*` de ST/Agenda son OTRO concepto: destinatarios de avisos, no cartera) | **3** — estructura de permisos: un rol de ventas nuevo llega con código y seeder, no en caliente | — |
+
+**Semillas #2 y #3 del dictado — declaradas limpias:**
+
+- **`daligo.lista_precios_ventas` SIN desvíos en el módulo**: `Producto::precioVentaConIva()`
+  (`Producto.php:126-152`) es la fuente única y respeta la clave; su fallback al
+  «criterio antiguo» solo corre si la clave NO está configurada (entornos de prueba,
+  documentado en el propio método). La pantalla de edición del producto muestra TODAS
+  las listas espejadas a propósito — es espejo informativo de Bsale, no una elección
+  de lista. Cero rincones eligiendo lista por su cuenta.
+- **Comercial NO tiene cotizaciones propias** (grep cero en sus 7 PHP): la vigencia
+  (`cotizacion_vigencia_dias`) es de ST, sin mezcla.
+
+**Anotaciones cross** (para la auditoría de su módulo):
+
+- **Infra Bsale (sin apartado propio en el orden — que el Director decida dónde cae)**:
+  `ListaPrecio::COIN_CLP = 1` (`ListaPrecio.php:26`) — el id de la moneda CLP en Bsale,
+  contrato del espejo. Bien tenido: constante única con 2 consumidores (los badges CLP
+  de `listas-precios/index:20` y `show:13`).
+- **Servicio Técnico**: `config('servicio_tecnico.categorias_equipo')` (consumida por
+  `Producto::scopeEquipoTaller`, `Producto.php:88-115`) — nivel 2 YA parametrizado y de
+  ST; el modelo de Comercial solo aloja el mecanismo (con normalización tolerante y
+  lista-vacía-no-filtra ya documentadas).
+
+Convenciones revisadas y sin fila a propósito: `max:191` (el `defaultStringLength` de
+MySQL 5.7 utf8mb4, doctrina de la casa), `Precio::formatear` (formato chileno CLP,
+convención de presentación) y los `orderBy` de los listados (alfabéticos, consistentes).
