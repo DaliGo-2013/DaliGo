@@ -1,51 +1,64 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-19 (v76 — QA del dueño del módulo Comercial ✅: SEGUNDO MÓDULO SALDADO. GO F0-OPERACIÓN: auditoría del apartado Operación, SOLO DOCS). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-19 (v77 — veredictos del dueño al mapa F0-OPERACIÓN: los 4 aprobados + 9 confirmados + higiene. GO OPE-1: las ventanas del panel y los informes). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ QA del dueño del módulo Comercial (19-ago) — segundo módulo SALDADO
+## ✅ Veredictos del dueño al mapa §5.3 (19-ago) — tercer mapa que sale entero
 
-El dueño verificó las 2 listas editables y el rechazo con cifra. Dos módulos completos
-en dos días de proyecto: Dashboard (4 perillas + card viva) y Comercial (2 listas +
-higiene). El molde vuela.
+Aprobados los 3 nivel 1 (#1, #9, #13), el nivel 2 (#3) y la higiene; los 9 nivel 3
+confirmados con tus porqués. Al pie del anexo. El titular del parte (M11 nació
+parametrizado — D-003 pagándose sola) va derecho al acta del módulo y al Trello del
+dueño en su lenguaje.
 
-## 🔍 GO — F0-OPERACIÓN: auditoría del apartado Operación (SOLO DOCS, cero código)
+Fase B de Operación = 3 lotes: **OPE-1** (este dictado) → **OPE-2** (las dos listas) →
+**OPE-3** (config de preforma + higiene).
 
-El tercero del orden y el más denso hasta ahora. Barre el módulo Operación completo:
-- **Producción**: panel + reportes + aprobación + OEE + paradas + SIC/kaizen + notas
-  (todo M11) + el kardex (hija del panel desde D1).
-- **Inventario** (M04): stock por producto/bodega, bodegas paramétricas, bajas con
-  orden de traslado.
-- **Configuración de producción** (el hub 4-en-1 de E1): Máquinas · Tipos de botellón ·
-  Recetas · Moldes.
+## 🔨 GO — Lote OPE-1: las ventanas del panel del jefe y de los informes (M)
 
-Semillas del Director (confírmalas y complétalas):
-1. **El cross del mapa DASH que te espera**: `ProduccionReporte::pendientes()` (estado
-   ENVIADO) — la definición de «reportes por aprobar». ¿Hay más catálogos de estado
-   como ese que sean listas-que-crecen vs claves de máquina nivel 3?
-2. **`config/servicio_tecnico.categorias_equipo`** — nivel 2 EXISTENTE de ST que
-   Operación consume vía `Producto::scopeEquipoTaller`. El mapa debe DECIR de quién es
-   cada cosa (dueño ST, consumidor Operación) — sin proponer mudanzas si no hay drift.
-3. **Umbrales de M11**: el semáforo de moldes, el OEE, la racha del SIC, los 45 días
-   del historial del soplador — territorio construido por Max-2; audítalo con respeto
-   de autor (los porqués pueden estar en PLAN-M11 y sus partes) pero con tu vara: ¿es
-   decisión del negocio (nivel 1/2) o aritmética del motor (nivel 3)?
-4. **Bodegas paramétricas (M04)**: ya son BD+UI — verifica que no queden hardcodes
-   RESIDUALES alrededor (grillas de sync, umbrales de alertas si existen).
-5. OJO alcance: «Mi producción» (la pantalla del soplador) es OTRO apartado del orden
-   del dueño — si encuentras hardcodes ahí, se ANOTAN cross, no se auditan aquí.
+El primo del DASH-1 que el dueño ya aprobó — molde exacto:
 
-Formato del mapa invariante (plan §2), entregable: **anexo §5.3** + parte al buzón con
-resumen por niveles + lo que más te llamó la atención. **Cero código.**
+1. **Tres claves nuevas** (grupo `produccion`, snake_case, seeder idempotente con ayuda
+   en español):
+   - `produccion_dias_panel` — default **7** (`ProduccionController:125`, `$ventana=6`
+     +hoy: ojo al ±1 como DASH-1).
+   - `produccion_dias_informe_maquina` — default **30** (`:306`, `rango($request, 29)`).
+   - `produccion_dias_informe_tipo` — default **30** (`:351`, ídem).
+   Claves SEPARADAS aunque los informes digan lo mismo hoy (doctrina DASH-1: ventanas
+   distintas, perillas distintas). Si al abrir el código ves que los 2 informes
+   comparten UN concepto real (mismo `rango()` con el mismo sentido de negocio),
+   contra-evidencia en el parte ANTES de forjar distinto — una clave para ambos sería
+   defendible; decláralo.
+2. **`RANGOS`**: las 3 entradas (2-31 el panel; 7-90 los informes — o los rangos que el
+   código pida con sentido, declarados).
+3. **Rótulos derivados** donde existan textos gemelos en las vistas (tu mapa los marca)
+   — la aritmética exacta, no números a mano (doctrina DASH-2).
+4. **OJO al `rango()`**: si el helper acota o interpreta el request (el usuario puede
+   pedir otro rango por URL), la clave es el DEFAULT del rango, no un tope — que el
+   candado distinga default-configurable vs rango-pedido-por-el-usuario.
+5. **Candados molde DASH** (default idéntico byte a byte · mover cada clave mueve SU
+   pantalla y rótulo y NO las otras dos · rangos por ambos bordes · mutación 7→9 o
+   30→45 con rojo exacto → restaurar → verde).
+6. **Regla de oro**: cero tests existentes con cifra cambiada; BD virgen = pantallas
+   idénticas.
 
-### Arranque operativo
-Re-fetch de main FRESCO (baseline: **2238 / 15.574** en `5bf39df` — entraron COM-2 y
-MSG-2 hoy; Marcos sigue activo). Barrido read-only: cero riesgo. Max-2 forja MSG-3
-(poll del chat) — territorio disjunto.
+### Verificación (invariante)
+Rama `feature/param-ope-1-ventanas` desde main FRESCO (baseline: **2238 / 15.574** en
+`5bf39df` + docs después — recuenta; Max-2 puede mergear MSG-3 antes que tu parte).
+Suite COMPLETA antes. Batería: Produccion* completo + ParametrosDashboard (el
+ConfiguracionController compartido) + ConfiguracionManagement/SeedLongitud. Parte al
+buzón; espera doble llave. NO arranques OPE-2.
+
+## 📡 Radar OPE-2 y OPE-3 (NO arranques)
+- **OPE-2**: `produccion_motivos_parada` + `produccion_motivos_planificados`
+  (LISTAS_SIMPLES ×2) con la validación del PAR planificados ⊆ motivos (4º hermano
+  declarativo: par-subconjunto) + tu matiz verificado (la clase se persiste — OEE
+  histórico intacto, candado explícito) + `produccion_procedencias_preforma`.
+- **OPE-3**: `config/produccion.php` (o donde el idioma mande) con los patrones de
+  preforma/dañada estilo categorias_equipo + higiene (max:100000 ×6 → constante, 92 ×2,
+  POR_PAGINA ×2 adoptado).
 
 ## Estado
-Trello espejando (Comercial cruzó a Terminadas con el QA; Operación en En Curso).
-Marcos activo. Baseline: 2238/15.574 en `5bf39df`.
+Max-2 forjando MSG-3 (poll del chat). Marcos activo. Trello espejando. Baseline:
+2238/15.574 en `5bf39df`.
 
-CIERRE: GO F0-OPERACIÓN. El módulo más denso del proyecto hasta ahora — mismo mapa,
-misma vara, y respeto de autor en M11. Fierro.
+CIERRE: GO OPE-1. Tercer módulo en fase B — los moldes ya hacen el trabajo pesado.

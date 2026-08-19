@@ -262,3 +262,12 @@ duplicado/adopción marcada) · 2 grupos cross.** Los veredictos son PROPUESTOS.
   constantes viven en modelos de ESTE módulo pero la pantalla es del otro: se auditan
   allá, con la nota de que la fuente es compartida.
 - **Servicio Técnico** — `categorias_equipo` (semilla #2: sin drift, solo constancia).
+
+**VEREDICTOS DEL DUEÑO AL MAPA §5.3 (2026-08-19, al Director):** los 3 nivel 1
+APROBADOS (#1 ventanas panel/informes, #9 motivos de parada con su subconjunto
+planificado, #13 procedencias) + el nivel 2 APROBADO (#3 criterio de preforma a config
+de despliegue) + los 9 nivel 3 CONFIRMADOS + mini-lote de higiene APROBADO. Fase B de
+Operación en 3 lotes: **OPE-1** (ventanas, molde DASH-1, dictado v77) → **OPE-2** (las
+dos listas: motivos con par planificados⊆motivos + procedencias, molde COM-1) →
+**OPE-3** (config de preforma estilo categorias_equipo + higiene: max:100000 ×6 a
+constante, 92 ×2, adopción de POR_PAGINA ×2).
