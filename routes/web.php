@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\VehiculoDocumentoTipoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MensajeController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
 use App\Http\Controllers\PlanProyectoController;
@@ -109,6 +110,25 @@ Route::middleware(['auth', 'permission:aprobar solicitudes'])
         Route::get('/', [AprobacionController::class, 'index'])->name('index');
         Route::post('{aprobacion}/aprobar', [AprobacionController::class, 'aprobar'])->name('aprobar');
         Route::post('{aprobacion}/rechazar', [AprobacionController::class, 'rechazar'])->name('rechazar');
+    });
+
+// Chat interno (MSG-2, PLAN-MENSAJES): las pantallas del chat. El permiso
+// 'usar mensajes' (apagable por rol) gatea las rutas; adentro el gate es ser
+// PARTICIPANTE del hilo (403 en el controller). Registrar mensajes.show
+// ENCIENDE el guard Route::has de MSG-1: la campanita de un mensaje pasa a
+// navegar al hilo sin tocar Notificacion.
+Route::middleware(['auth', 'permission:usar mensajes'])
+    ->prefix('mensajes')
+    ->name('mensajes.')
+    ->group(function () {
+        Route::get('/', [MensajeController::class, 'index'])->name('index');
+        // Literales ANTES del parametro (doctrina de mi-historial). RESERVA
+        // MSG-3: la ruta 'conteo' del poll se registra AQUI, antes de
+        // {conversacion} (doctrina del conteo de despachos/vivo).
+        Route::get('nuevo', [MensajeController::class, 'create'])->name('create');
+        Route::post('nuevo', [MensajeController::class, 'store'])->name('store');
+        Route::get('{conversacion}', [MensajeController::class, 'show'])->whereNumber('conversacion')->name('show');
+        Route::post('{conversacion}', [MensajeController::class, 'responder'])->whereNumber('conversacion')->name('responder');
     });
 
 // Administracion: cada ruta declara su permiso especifico (granular).

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use InvalidArgumentException;
 
 /**
@@ -73,6 +74,16 @@ class Conversacion extends Model
     public function mensajes(): HasMany
     {
         return $this->hasMany(Mensaje::class, 'conversacion_id');
+    }
+
+    /**
+     * El ultimo mensaje del hilo, eager-loadable para la lista (MSG-2). Va
+     * por latestOfMany a proposito: un limit() dentro de un eager load es
+     * GLOBAL, no por padre — la trampa clasica del preview de listas.
+     */
+    public function ultimoMensaje(): HasOne
+    {
+        return $this->hasOne(Mensaje::class, 'conversacion_id')->latestOfMany();
     }
 
     public function esParticipante(User $user): bool
