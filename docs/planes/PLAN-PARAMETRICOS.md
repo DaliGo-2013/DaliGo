@@ -87,7 +87,9 @@ de su flujo. Los módulos avanzan de a uno: auditoría → veredictos → lotes 
 
 ## 5. Anexos por módulo (los llena la fase A de cada uno)
 
-### §5.1 Dashboard — mapa F0-DASH (auditoría Max-1, 2026-08-18, sobre `a81b21d`)
+### §5.1 Dashboard — SALDADO ✅ (QA del dueño 19-ago; 4 perillas + card viva en producción: `bcbfb00`, `0c2bcad`, `75cce08`)
+
+Mapa F0-DASH (auditoría Max-1, 2026-08-18, sobre `a81b21d`):
 
 Barridos completos: `DashboardController` (324 líneas), `DashboardColoresController`,
 `AccesosDashboard`, `dashboard.blade.php`, `components/dashboard/acceso.blade.php` +
