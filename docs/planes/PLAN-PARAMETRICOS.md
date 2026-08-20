@@ -404,3 +404,19 @@ siluetas por largo) — motor con porqués escritos. · Los formatos de los 3 Ex
 - **Inventario/M04 (§5.3)** — sin doble conteo: acá solo entró el ciclo de baja/
   traslado; el umbral `0.0001` de «llegó stock nuevo» (`BajaDeBodegas.php:27`) es
   motor de comparación de decimales (nivel 3, porqué evidente).
+
+**VEREDICTOS DEL DUEÑO AL MAPA §5.4 (2026-08-20, al Director):** los 4 nivel 1
+APROBADOS (#1 franja de la flota con rótulos derivando, #2 métodos de cobro en
+puerta, #3 relación del receptor, #4 tarjetas del monitor) + higiene APROBADA
+ENTERA («sí a todo»: fix INMEDIATO del texto falso «cada 15 minutos» + familia de
+rótulos gemelos #9 + los 6 nivel-3 de duplicados/drift: #10 constante 188, #11
+POR_PAGINA, #12 yaSalioDeBodega(), #13 correo por permisos, #14 topes alineados,
+#7 el 90 % unificado) + los demás nivel 3 confirmados. **FUNCIONES NUEVAS
+elegidas por el dueño (cola post-fase-B, lotes de función aparte):** buscador de
+folios en despacho/hoja (#5-nota) · caducidad del QR de despacho (#6) · topes de
+monto en la cadena R11. La pantalla CRUD de camiones del simulador NO fue
+seleccionada en esta ronda (queda constatada). Fase B de Logística en 4 lotes:
+**LOG-1** (textos-que-mienten, el fix urgente primero) → **LOG-2** (franja de la
+flota + la hermana DIAS_VENTANA_VENCIDO a criterio declarado del forjador) →
+**LOG-3** (las 2 listas del conductor + tarjetas del TV) → **LOG-4** (higiene de
+duplicados restante).
