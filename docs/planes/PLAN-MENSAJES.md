@@ -1,11 +1,22 @@
 # PLAN-MENSAJES · Chat interno entre usuarios — mensajería propia, costo cero de terceros
 
-> **Estado: VIGENTE (definido por el dueño, 2026-08-18)** — nació como alternativa
-> económica a la API de WhatsApp (D-007, que sigue APLAZADA): mensajería DENTRO de la
-> app, sobre el motor propio. Decisiones del dueño ya tomadas: **chat con hilos 1-a-1**
-> (pantalla propia con conversaciones e historial) · **todos con todos** (cualquier
-> usuario interno escribe a cualquier otro). Forja: **Max-2** (stream B). Ritmo de la
-> casa: lento y seguro, un lote = un merge = una doble llave.
+> **Estado: 🏁 CERRADO (QA final del dueño 2026-08-20: «quedó de diez y está
+> suuuuper rápido, es casi instantáneo» — su propio caso de las capturas
+> verificado: el texto permanece).** Acta: 5 lotes con doble llave en 2 días
+> (MSG-1 motor `c89867e` → MSG-2 pantallas `5bf39df` → MSG-3 refresco `1d7ad3e`
+> → MSG-4 menú `1c044df` → MSG-5 chat vivo `1a45026`), CERO rojos propios de
+> Max-2 en todo el proyecto. Del «detengamos WhatsApp, propongo algo económico»
+> al chat vivo en producción: hilos 1-a-1 todos-con-todos, aviso con anti-ráfaga,
+> burbujas que aparecen solas en ~4 s sin perder lo escrito — sin websockets
+> (imposibles en el hosting) y sin costos de terceros. Deuda futura anotada:
+> instantáneo real (0 s) = migrar a VPS (decisión de negocio); retención
+> configurable = candidato nivel-1 de PARAMETRICOS cuando toque Mensajes.
+>
+> (Histórico: VIGENTE desde 2026-08-18 — nació como alternativa económica a la
+> API de WhatsApp (D-007, que sigue APLAZADA): mensajería DENTRO de la app,
+> sobre el motor propio. Decisiones del dueño: **chat con hilos 1-a-1** ·
+> **todos con todos**. Forja: **Max-2** (stream B). Ritmo de la casa: un lote =
+> un merge = una doble llave.)
 
 ## 0. El pedido en una frase
 
@@ -300,3 +311,14 @@ instantáneo real = migrar a VPS (decisión de negocio futura). **El dueño elig
 poll fino → lote MSG-5** (4 s solo en chat + el hilo trae-y-appendea sin reload
 conservando el composer + tick inmediato al volver a la pestaña). MSG-5 es ahora
 el lote de cierre del plan.
+
+**MSG-5 EN PRODUCCIÓN — CONSTRUCCIÓN 5/5 (2026-08-20, merge `1a45026`, doble
+llave):** endpoint `nuevos?desde=X` pintado por el server (partial `_burbuja`
+compartido con el render — XSS por construcción), el hilo appendea SIN reload
+(salió de `<x-poll-recarga>`, candado estructural ajustado), marcar-leído
+solo-cuando-trae, tick-al-volver heredado por los 3 consumidores del
+componente, append solo página 1, lista a 4 s. E2E medido en browser real por
+Max-2 ANTES del reporte del dueño (que llegó con capturas del caso exacto —
+diagnóstico confirmado: era el reload de MSG-3). Suite 2291/16.002 + re-suite
+árbol final 2299/16.029. **PENDIENTE: QA final del dueño (su mismo caso:
+escribir sin enviar, recibir mensaje → el texto queda) → ACTA DE CIERRE.**

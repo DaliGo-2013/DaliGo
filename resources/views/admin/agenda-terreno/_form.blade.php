@@ -241,7 +241,10 @@
         @if ($tecnicos->isEmpty())
             <x-input-hint>No hay usuarios con rol «técnico industrial» todavía (se crean en Usuarios).</x-input-hint>
         @elseif ($tecnicos->count() === 1)
-            <x-input-hint>Pre-seleccionado {{ $tecnicos->first()->name }} (único técnico industrial). Puedes cambiarlo si hace falta.</x-input-hint>
+            {{-- ESTA SE QUEDA A LA VISTA, cortita: no explica el campo, avisa POR QUÉ ya viene
+                 lleno. Escondida en una ⓘ el usuario no la busca y no entiende el valor
+                 pre-elegido (la regla de la ⓘ es para las explicaciones, no para el estado). --}}
+            <x-input-hint>Pre-seleccionado: {{ $tecnicos->first()->name }} (único técnico industrial).</x-input-hint>
         @endif
         <x-input-error :messages="$errors->get('tecnico_id')" class="mt-2" />
     </div>

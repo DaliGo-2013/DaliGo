@@ -94,6 +94,22 @@ jobs:
             PR_LINEA="PR #${PR_NUM}: ${PR_URL}"
           fi
 
+          # Un push cuyo HEAD es un merge de sincronización deja de título «Merge
+          # remote-tracking branch …» — jerga git que no dice nada en el tablero
+          # (pasó con los pushes directos de Marcos, 20-08-2026: hubo que renombrar
+          # a mano). El trabajo real es el commit no-merge más reciente DEL MISMO
+          # AUTOR del push (los padres del merge no sirven: quien mergea main hacia
+          # su rama deja main de segundo padre — verificado con 3b1fc9d). Fallo
+          # suave: si la consulta no encuentra nada, queda el título que había.
+          case "${TITULO}" in
+            "Merge remote-tracking branch"*|"Merge branch"*|"Merge pull request"*)
+              TITULO_REAL="$(gh api "repos/${REPO}/commits?sha=${SHA}&per_page=15" 2>/dev/null \
+                | jq -r --arg a "${AUTOR}" '[.[] | select((.commit.message | startswith("Merge") | not) and (.commit.author.name == $a))][0].commit.message // empty' \
+                | head -n 1)"
+              [ -n "${TITULO_REAL}" ] && TITULO="${TITULO_REAL}"
+              ;;
+          esac
+
           # ── 2. ¿Ya se anotó? ──────────────────────────────────────────────────────────
           # Un deploy se puede volver a correr a mano desde Actions, y eso dispara esto otra
           # vez. La marca con el hash evita la tarjeta duplicada.
@@ -130,13 +146,30 @@ jobs:
           DESC="$(printf 'Salió a producción.\n\nCommit: %s\nhttps://github.com/%s/commit/%s\n%s\nAutor: %s\nDeploy: %s\nAmbiente: Producción\n\n%s' \
                     "${CORTO}" "${REPO}" "${SHA}" "${PR_LINEA}" "${AUTOR}" "${CORRIDA}" "${MARCA}")"
 
-          # El dueño va como miembro de cada tarjeta (pedido 19-08-2026). El id se
-          # resuelve del dueño del TOKEN en runtime y no se pega en el repo: cero ids
-          # opacos, misma doctrina de la lista por nombre.
-          MIEMBRO="$(curl -sf --get 'https://api.trello.com/1/members/me' \
-                       --data-urlencode 'fields=id' \
-                       --data-urlencode "key=${TRELLO_KEY}" \
-                       --data-urlencode "token=${TRELLO_TOKEN}" | jq -r '.id // empty')"
+          # El miembro de la tarjeta es el AUTOR REAL del commit (pedido 20-08-2026:
+          # «necesito que lo mío y lo de él queden correctamente identificados» — las
+          # tarjetas de Marcos salían con el dueño de miembro porque la API actúa como
+          # el dueño del token). Si el autor es Marcos se busca SU usuario entre los
+          # miembros del tablero; si aún no aceptó la invitación, la tarjeta va SIN
+          # miembro (cuando acepte, engancha solo — cero config). Cualquier otro autor
+          # (el dueño, la flota) → members/me como siempre. Ids en runtime, no en el
+          # repo: misma doctrina de la lista por nombre.
+          case "${AUTOR}" in
+            *[Mm]arcos*)
+              MIEMBRO="$(curl -sf --get "https://api.trello.com/1/boards/${TRELLO_BOARD}/members" \
+                           --data-urlencode 'fields=id,fullName,username' \
+                           --data-urlencode "key=${TRELLO_KEY}" \
+                           --data-urlencode "token=${TRELLO_TOKEN}" \
+                         | jq -r 'first(.[] | select((.fullName + " " + .username) | test("marcos"; "i")) | .id) // empty')"
+              [ -z "${MIEMBRO}" ] && echo "::notice::Autor Marcos sin usuario en el tablero todavía — tarjeta sin miembro (engancha solo cuando acepte la invitación)."
+              ;;
+            *)
+              MIEMBRO="$(curl -sf --get 'https://api.trello.com/1/members/me' \
+                           --data-urlencode 'fields=id' \
+                           --data-urlencode "key=${TRELLO_KEY}" \
+                           --data-urlencode "token=${TRELLO_TOKEN}" | jq -r '.id // empty')"
+              ;;
+          esac
 
           RESP="$(curl -sf -X POST 'https://api.trello.com/1/cards' \
                     --data-urlencode "idList=${ID_LISTA}" \

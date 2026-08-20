@@ -129,6 +129,10 @@ Route::middleware(['auth', 'permission:usar mensajes'])
         Route::post('nuevo', [MensajeController::class, 'store'])->name('store');
         Route::get('{conversacion}', [MensajeController::class, 'show'])->whereNumber('conversacion')->name('show');
         Route::post('{conversacion}', [MensajeController::class, 'responder'])->whereNumber('conversacion')->name('responder');
+        // Chat vivo (MSG-5): los mensajes nuevos del hilo, pintados por el
+        // server, para el append sin reload. Segmento FIJO tras el parametro
+        // (mismo caso seguro que mi-reporte/{reporte}/paradas).
+        Route::get('{conversacion}/nuevos', [MensajeController::class, 'nuevos'])->whereNumber('conversacion')->name('nuevos');
     });
 
 // Administracion: cada ruta declara su permiso especifico (granular).

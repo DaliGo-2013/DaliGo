@@ -79,6 +79,11 @@ de su flujo. Los módulos avanzan de a uno: auditoría → veredictos → lotes 
   muestra con pasos de verdad, no un mapa vacío).
 - Partes al buzón como siempre; veredictos del dueño quedan escritos en el anexo del
   módulo.
+- **DOS FORJADORES (decisión del dueño 20-ago)**: al llegar el F0-LOGÍSTICA de
+  Max-1, el plan pasa a dos manos — el Director dicta el reparto de módulos con
+  territorios disjuntos (auditorías F0 en paralelo; lotes de fase B secuenciados
+  por el Director cuando toquen `ConfiguracionController`/`Seeder`, la
+  coreografía ya probada en MSG-1/COM-1). Max-2 entra tras cerrar PLAN-MENSAJES.
 - **Espejo en Trello (pedido del dueño 19-ago)**: cada módulo tiene su tarjeta
   «Paramétricos · <Módulo>» en el tablero del dueño — el DIRECTOR la mueve por API:
   «Tareas DaliGo» (pendiente) → «En Curso DaliGo» (al dictar su auditoría) →
@@ -277,3 +282,22 @@ constante, 92 ×2, adopción de POR_PAGINA ×2).
 grupo `produccion`, rótulos e info-tip derivando (rebote v77.1: el tip del panel
 decía «últimos 7» en prosa — cazado por el Director, derivado con +3 aserciones).
 Suite combinada con MSG-4: 2253/15.764 cero rojos. Quedan OPE-2 (dictado v78) y OPE-3.
+
+**OPE-2 EN PRODUCCIÓN (2026-08-20, merge `576ad95`, doble llave):** 3 claves TIPO_JSON
+(`produccion_motivos_parada` = los 7 vivos, `produccion_motivos_planificados` = 2,
+`produccion_procedencias_preforma` = saco/caja, LISTAS_SIMPLES) + **`PARES_SUBCONJUNTO`
+(4º hermano declarativo)**: hijo⊆madre validado en las dos direcciones con RECHAZO que
+nombra a la otra clave (sin auto-arreglo — la lista gobierna el OEE). Candado
+OEE-histórico-intacto en 2 escenarios (la clase se persiste; etiqueta del Pareto viva
+declarada cosmética). Suite combinada con MSG-5: 2291/16.002 cero rojos. Queda OPE-3
+(dictado v79 — cierra el módulo).
+
+**OPE-3 EN PRODUCCIÓN (2026-08-20, merge `ab0a8d1`, doble llave) — FASE B DE
+OPERACIÓN COMPLETA.** `config/produccion.php` nuevo (patrones %preforma%/%dañada%
+con el porqué del nivel 2 en el archivo; la doble vuelta de la Ñ derivada;
+selector y validación moviéndose juntos, candado con config() en runtime) +
+higiene delta-cero (TOPE_CANTIDAD, MAX_DIAS_RANGO con candado de 93 filas,
+POR_PAGINA ×2 adoptado). Suite 2303/16.048 (+4/+19 exacto, sin +24 — sin claves
+de seeder, predicho). La mutación puso rojo un candado VIEJO: la constante es lo
+que ese test ya vigilaba. **Los 4 hallazgos aprobados del mapa §5.3 forjados en
+3 lotes. PENDIENTE: QA del dueño del módulo completo → card a Terminadas.**

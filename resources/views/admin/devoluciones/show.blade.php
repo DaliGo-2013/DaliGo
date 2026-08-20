@@ -245,10 +245,11 @@
                         </div>
 
                         <div x-show="salida === 'reembolso'" x-cloak>
-                            <x-input-label for="monto_reembolso" value="Monto a reembolsar (CLP) *" />
+                            <x-input-label for="monto_reembolso" value="Monto a reembolsar (CLP) *">
+                                <x-slot:ayuda>Sobre el umbral configurado queda pendiente de aprobación (M14); bajo él se aplica al tiro con registro.</x-slot:ayuda>
+                            </x-input-label>
                             <x-text-input id="monto_reembolso" name="monto_reembolso" type="number" min="1" class="mt-1.5 block w-40"
                                           :value="old('monto_reembolso')" x-bind:required="salida === 'reembolso'" />
-                            <x-input-hint>Sobre el umbral configurado queda pendiente de aprobación (M14); bajo él se aplica al tiro con registro.</x-input-hint>
                             <x-input-error :messages="$errors->get('monto_reembolso')" class="mt-1.5" />
                         </div>
 
