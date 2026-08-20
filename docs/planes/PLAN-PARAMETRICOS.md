@@ -300,3 +300,107 @@ POR_PAGINA ×2 adoptado). Suite 2303/16.048 (+4/+19 exacto, sin +24 — sin clav
 de seeder, predicho). La mutación puso rojo un candado VIEJO: la constante es lo
 que ese test ya vigilaba. **Los 4 hallazgos aprobados del mapa §5.3 forjados en
 3 lotes. PENDIENTE: QA del dueño del módulo completo → card a Terminadas.**
+
+### §5.4 Logística — mapa F0-LOGÍSTICA (auditoría Max-1, 2026-08-20, sobre `bea00037`)
+
+Barridos completos por sub-bloques: **Despachos** (controller + `DespachoService` +
+modelos + cola/QR/escaneo + monitor de bodega), **Hojas de ruta** (controller +
+`HojaRutaService` + cadena R11 + vistas), **Cargas/Simulador** (los 5 servicios de
+`Carga/`, el catálogo `camiones_simulacion`, cargas reales, link público),
+**Vehículos M18 + Conductores** (flota, documentos, avisos, `FlotaExcel`) y
+**Traslados por baja de bodega** (residual M04, deslindado de §5.3). Además la **PWA
+del conductor** (`Entregas/EntregaConductorController` + `offline-queue.js`), que no
+cuelga de Admin. Método: censo por sub-bloques en paralelo (fleet de 5 censadores)
+sobre `bea00037` + **verificación propia con `sed -n` de cada `file:line` citado** y
+veredictos con la vara de `daligo.php` — la garantía del mapa es la misma de los
+tres F0 anteriores.
+
+**El hallazgo-marco: la ESTRUCTURA está parametrizada; lo que falta son PANTALLAS y
+lo que sobra son RÓTULOS GEMELOS.** El catálogo del simulador
+(`camiones_simulacion`) tiene TODO por columna-por-fila (medidas, peso máximo,
+pasillo, geometría y topes de ejes, silueta, activo) y el motor no tiene ni un
+número de camión hardcodeado — pero los VALORES solo se editan en
+`CamionesSimulacionSeeder` (deploy): el pedido de Trello del dueño («capacidad de
+carga») se resuelve con **una pantalla CRUD sobre la tabla que ya existe**, no con
+una parametrización. La flota M18 es el módulo mejor parametrizado-por-fila del
+proyecto (fechas, capacidades, tipos de documento en BD con su UI). El lastre real
+es una familia de **textos que repiten a mano el número que ya vive en el dato** —
+incluido uno que miente HOY.
+
+**Ya parametrizado (nada que hacer):** `camiones_simulacion` completo por fila
+(estructura) · flota M18: capacidades/medidas/5 fechas de ley por columna + tipos de
+documento nuevos en BD con UI (`vehiculo_documento_tipos`) · zonas, sucursales,
+conductores (rol spatie + tabla `conductores`), flota activa y cobro-por-parada de
+las hojas de ruta: todo BD por fila · factor real de aprovechamiento: calculado de
+`cargas_reales` · plantillas de los correos (claves `notif_plantilla_*`) · vigencia
+del link público del plan de carga: constante única con rótulo derivado
+(`PlanCargaPublicoController::DIAS_VIGENCIA = 7`) · tope de apilado/estiba/pallet:
+editables por el usuario en pantalla · `MAX_INTENTOS = 5` de la cola offline
+(`offline-queue.js:32`): motor anti-bucle con porqué escrito, compartido con las
+tandas de Mi producción (cross).
+
+**Resumen: 14 hallazgos destacados — 4 propuestos nivel 1 · 0 nivel 2 · 10 nivel 3
+(6 con duplicado/drift marcado) · 3 bloques nivel 3 en masa · 2 respuestas de
+semilla que no son parametrización.** Los veredictos son PROPUESTOS.
+
+| # | Valor | Dónde vive (file:line) | Qué controla EN PANTALLA | Repetido en | Veredicto propuesto | Esfuerzo |
+|---|---|---|---|---|---|---|
+| 1 | **30 días «Por vencer»** de la flota | `Vehiculo.php:29` (`DIAS_AVISO`) | Cuándo un documento del vehículo deja de estar «Al día» y pasa a badge naranjo — en el listado, la ficha, el Excel y los hitos del aviso diario | El «30» EN PROSA ×3: `vehiculos/index.blade.php:51` («Por vencer (30 días)»), `FlotaExcel.php:129`, descripción del comando | **1** — primo exacto de los cortes DASH-2 (misma naturaleza: franja de antigüedad); los 3 rótulos gemelos se DERIVAN en el mismo lote (doctrina DASH-2). La `DIAS_VENTANA_VENCIDO = 30` del comando (`VehiculosAvisarVencimientos.php:43`, cuánto hacia atrás se re-avisa un vencido) es OTRO concepto: clave hermana o nivel 3, a veredicto | M |
+| 2 | **Métodos de cobro en puerta** (`efectivo`/`cheque`/`transbank`) | `EntregaConductorController.php:103` (y `:121`, el required condicional) | Qué opciones ve el conductor al cobrar en la entrega — la plata que rinde al volver | ×2 en el mismo archivo | **1** — lista-que-crece real (¿transferencia?); molde OPE-2 (LISTAS_SIMPLES). Ojo: NO confundir con `estado_cobro` de la parada (`pagado`/`cobrar_en_entrega`/`credito`), que es flujo (nivel 3) | S/M |
+| 3 | **Relación del receptor** (`empresa`/`conserje`/`otro`) | `EntregaConductorController.php:102` | Quién recibió en la puerta (evidencia de la entrega) | Fuente única ✓ | **1** — lista chica que crece (¿familiar?, ¿vecino?); mismo molde, mismo lote que #2 | S |
+| 4 | **12 tarjetas** del monitor de bodega | `DespachoController.php:178` (`limit(12)`) | Cuántas cargas muestra el TV colgado en bodega (cola «McDonald's»); el resto queda como «Se muestran las 12 más antiguas de N» | El rótulo YA deriva del count ✓ | **1** chico — densidad de pantalla que depende del TV del local, decisión del dueño | S |
+| 5 | **100 folios** del selector | `DespachoController.php:71` · `HojaRutaController.php:61` | Cuántos documentos sin despachar se ofrecen al crear despacho/hoja: con 100+ pendientes el folio viejo «no está» y NO hay buscador | ×2 (mismos 100, pantallas distintas) | **3 con nota UX** — subir el tope no arregla el fondo (falta buscador, se anota como mejora aparte); el duplicado se unifica al pasar | S |
+| 6 | **La vigencia del QR del despacho NO EXISTE** | `Despacho.php:139` (`signedRoute`, no `temporal`) | El QR pegado en la carga no caduca jamás; el único control temporal es el ESTADO (un QR ya retirado grita «doble retiro») | — | **Semilla respondida, no hallazgo**: hoy no hay perilla que mover. Introducir caducidad sería FUNCIÓN nueva (cambia comportamiento) — lote aparte si el dueño la pide | — |
+| 7 | **90 %** del aviso «Al filo de la carga máxima» | `carga/index.blade.php:339` (`* 0.9`) | Cuándo la barra de peso del simulador se pone roja antes de pasarse | ×2 (`_numeros.blade.php:44`) | **3** — margen de advertencia del motor; el duplicado se unifica (constante o var compartida) | S |
+| 8 | **3 cargas para «confiable» / historial 100** | `CargaRealController.php:37` (`MINIMO_PARA_PROMEDIAR`) · `:44` | Cuándo el factor real de una combinación camión+producto se declara promediable, y sobre cuántas cargas se promedia | Rótulo deriva ✓ | **3** — decisión estadística del motor con constante nombrada; el dueño ES el usuario y no la ha pedido | — |
+| 9 | **Textos-que-mienten (familia)** — el gemelo en prosa del dato | «cada 15 minutos» (`bodegas/traslados/show.blade.php:57`) **HOY FALSO**: el sync corre `hourlyAt(45)` (`routes/console.php:38`) · «folio 1000» (`hojas-ruta/index.blade.php:67` vs `FOLIO_PISO=999`) · «15 MB» ×2 (`VehiculoController.php:390` vs `max:15360` real) · «llave N de 3» ×3 (`HojaRutaController.php:124…`) · medidas del pallet en prosa (`carga/index.blade.php:1331`) · los «30 días» de #1 | Lo que el usuario LEE vs lo que el sistema HACE | Multi-sitio | **Higiene fase B (prioridad)** — derivar cada rótulo del dato que describe; el «cada 15 minutos» es FIX inmediato (promesa activa falsa: la baja se cierra en ≤1 h, no ≤15 min) | S |
+| 10 | **188** (recorte de textos de evidencia) | `DespachoService.php:151`, `:210`, `:357` (`Str::limit`) · `DespachoController.php:217` · `EntregaConductorController.php` ×2 (`max:188`) | Cuánto sobrevive del «qué quedó pendiente», del motivo de rechazo en puerta y de la evidencia del escaneo (con recorte SILENCIOSO en el service) | ×6 | **3** — constante única con su porqué (191 de BD − «…»); unificar al pasar | S |
+| 11 | **`paginate(25)` ×2** | `DespachoController.php:52` · `HojaRutaController.php:36` | Filas por página de despachos y hojas de ruta | La convención global | **3** — adopción `Controller::POR_PAGINA` (molde COM-2/OPE-3) | S |
+| 12 | **`[RETIRADO, EN_RUTA]` ×4** («ya salió de bodega») | `DespachoService.php:128`, `:199` · `Despacho.php:145`, `:177` | El corazón del anti-fraude: qué estados gritan «doble retiro», cuáles admiten cierre de entrega y qué cuenta como «en reparto» | ×4 | **3** — extraer a UN método/scope con nombre (`Despacho::yaSalioDeBodega()` o similar): hoy agregar un estado obliga a encontrar los 4 | S |
+| 13 | **Correo por ROLES vs campanita por PERMISOS** (mismo evento) | `DespachoService.php:396` (`User::role([jefe_despacho, jefe_logistica, admin])`) vs `Notificacion.php:226` (`canAny([...])`) | Quién se entera de una entrega rechazada en puerta: el correo va a una lista de roles a mano y la campanita se resuelve por permisos | Inconsistencia interna | **3** — unificar por PERMISOS (la lección del técnico industrial, bitácora 14-08: un rol fuera de la lista es un aviso que no existe) | S |
+| 14 | **Topes desalineados UI vs servidor** en cubicar | `carga/_cubicar.blade.php:147` (1.200 cm) vs `SimuladorCargaController.php:122` (1.500/300) · `_cubicar.blade.php:184` (9.999) vs `:111` (100.000) | El panel rechaza en el borde lo que el servidor aceptaría — drift real entre las dos puertas | ×2 pares | **3** — alinear derivando la UI del mismo número del servidor | S |
+
+**Bloques nivel 3 en masa (claves de máquina con flujo — sin fila propia):** los
+estados de `Despacho` (5), la cadena R11 completa de `HojaDeRuta` (estados +
+transiciones + resultados/cobros de parada), los veredictos de `EscaneoDespacho`,
+los estados de `BodegaTraslado`, y los catálogos de `Vehiculo`
+(estados/tipos/combustibles/orden-de-prioridad del semáforo) — TODOS con lógica
+colgada; agregar o renombrar es código. · La aritmética del motor de carga
+(apilabilidad `SOPORTA_ENCIMA`, redondeos, factor ≤ 1.0, imán de 4 cm del acomodo,
+siluetas por largo) — motor con porqués escritos. · Los formatos de los 3 Excel
+(columnas/anchos/colores/nombres de archivo) y los `d-m-Y H:i` — presentación.
+
+**Semillas del dictado, respondidas:**
+
+- **#1 (capacidades/dimensiones del simulador)**: la estructura YA es por-vehículo
+  (tabla `camiones_simulacion`, columnas completas incl. ejes y pasillo; el motor
+  lee `CamionSimulacion::paraCalculo()` sin un solo número hardcodeado); los
+  VALORES se editan solo por seeder (deploy) — con la historia del 204→200 escrita
+  encima (bitácoras 07-08 y seeder). **El pedido de Trello se resuelve con una
+  pantalla CRUD** (lote de función, no de parametrización), y las medidas «se miden,
+  no se estiman» seguiría siendo la doctrina de esa pantalla. Aparte: la caja del
+  vehículo REAL (M18) ya es editable en su ficha (`largo/ancho/alto_util_cm`).
+- **#2 (PWA conductor, umbrales de cola)**: `MAX_INTENTOS = 5` — MOTOR (anti-bucle
+  con servidor caído, porqué escrito, recargar fuerza otro intento); compartido con
+  Mi producción. Nivel 3.
+- **#3 (QR anti-fraude, ventanas de validez)**: no existen (fila #6) — el control
+  es por estado, y la firma es permanente a propósito (el QR va IMPRESO en la
+  carga). Caducidad = función nueva, no perilla.
+- **#4 (`paginate(25)`)**: ×2, fila #11 (molde listo de OPE-3).
+- **#5 (`max:` y topes)**: censados — el grueso son guardias anti-dedazo con
+  sentido (`100000000` de pesos en el cobro de puerta, `100000` de unidades,
+  15 MB de fotos); lo accionable son los DESALINEADOS (fila #14) y el `100000`
+  ×N del simulador que se unifica si se toca ese archivo.
+
+**Anotaciones cross** (para el anexo de su módulo):
+
+- **Servicio Técnico** — `TrasladoServicio` es de ST (traslado de máquinas al
+  taller; verificado: sus filas son `OrdenServicio`, permisos
+  `despachar/recibir traslado servicio`). Pendientes anotados para su F0:
+  `TrasladoServicioController.php:29` y `:32` (listas const
+  `ROLES_AVISO_TALLER`/`ROLES_AVISO_DIFERENCIA` — la misma familia de la fila #13).
+- **Mi producción** — `MAX_INTENTOS` de `offline-queue.js` es compartido (la cola
+  de tandas): si algún día se toca, es UNA constante para los dos módulos.
+- **Inventario/M04 (§5.3)** — sin doble conteo: acá solo entró el ciclo de baja/
+  traslado; el umbral `0.0001` de «llegó stock nuevo» (`BajaDeBodegas.php:27`) es
+  motor de comparación de decimales (nivel 3, porqué evidente).
