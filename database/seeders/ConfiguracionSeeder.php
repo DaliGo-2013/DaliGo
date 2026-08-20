@@ -571,6 +571,44 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Días que mira al abrirse el informe de producción por tipo de botellón (hoy incluido). El filtro de fechas del informe puede pedir otro rango cuando haga falta.',
             ],
+            // --- Listas de motivos y procedencias (OPE-2, PLAN-PARAMETRICOS §5.3 #9 y #13) ---
+            // Defaults = las constantes vivas EXACTAS (ProduccionParada::MOTIVOS /
+            // MOTIVOS_PLANIFICADOS y ProduccionAsignacion::PROCEDENCIAS, regla de
+            // oro). El par planificados ⊆ motivos lo valida la UI de Configuración;
+            // motivo y clase se PERSISTEN en cada parada, así que editar las listas
+            // solo gobierna paradas futuras — el OEE histórico no se reescribe.
+            [
+                'clave' => 'produccion_motivos_parada',
+                'valor' => json_encode([
+                    'Faltaron preformas',
+                    'Falla de máquina',
+                    'Mantención de máquina',
+                    'Cambio de molde',
+                    'Molde dañado',
+                    'Corte de luz',
+                    'Scrap de arranque',
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Motivos que puede tocar el operario al registrar una parada de máquina (uno por línea). Quitar uno marcado como planificado se rechaza; las paradas ya registradas conservan su motivo.',
+            ],
+            [
+                'clave' => 'produccion_motivos_planificados',
+                'valor' => json_encode([
+                    'Mantención de máquina',
+                    'Cambio de molde',
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Motivos de parada que cuentan como PLANIFICADOS para el OEE (no descuentan disponibilidad). Deben existir en la lista de motivos de parada; el cambio solo afecta paradas futuras.',
+            ],
+            [
+                'clave' => 'produccion_procedencias_preforma',
+                'valor' => json_encode(['saco', 'caja'], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Formatos en que puede llegar la preforma del turno (uno por línea): el selector opcional del formulario de asignar producción. Las asignaciones viejas conservan el suyo.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',

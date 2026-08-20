@@ -306,7 +306,7 @@ class MiProduccionController extends Controller
         $validated = $request->validate([
             'cliente_uuid' => ['nullable', 'uuid'],
             'parada_maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
-            'parada_motivo' => ['required', Rule::in(ProduccionParada::MOTIVOS)],
+            'parada_motivo' => ['required', Rule::in(ProduccionParada::motivos())],
             'parada_origen' => ['required', Rule::in(ProduccionParada::ORIGENES)],
             'parada_inicio' => ['required', 'date_format:H:i'],
             // Cronologia: fin >= inicio (candado 2 del dictado). Una parada

@@ -464,7 +464,7 @@ class ProduccionController extends Controller
             'sopladores' => User::permission('report production')->orderBy('name')->get(),
             'turnos' => self::TURNOS,
             'preformas' => $this->preformasParaSelector(),
-            'procedencias' => ProduccionAsignacion::PROCEDENCIAS,
+            'procedencias' => ProduccionAsignacion::procedencias(),
         ]);
     }
 
@@ -530,7 +530,7 @@ class ProduccionController extends Controller
             'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinPreformasDanadas())],
             // Procedencia de la preforma (saco o caja). Opcional; el select
             // no elegido llega '' y ConvertEmptyStringsToNull lo vuelve null.
-            'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::PROCEDENCIAS)],
+            'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::procedencias())],
         ], [
             'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
