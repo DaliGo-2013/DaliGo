@@ -64,7 +64,7 @@ Piezas transversales de M01 (base de todo):
   y se redirige con mensaje amable + `withInput`.
 - **Hardening HTTPS** en producción: `trustProxies(at: '*')` + `URL::forceScheme('https')` (solo en `production`).
 - **Librería de componentes Blade** madura (ver sección 6) — **reutilízala, no reinventes markup**.
-- **CI/CD**: `git push origin main` dispara **GitHub Actions** → SSH al servidor → `deploy.sh` (sección 5).
+- **CI/CD**: `git push origin main` dispara **GitHub Actions** → cadena inline por SSH al servidor (sección 5; `deploy.sh` quedó congelado y ya NO se usa).
 - **Suite de tests verde** (PHPUnit, SQLite en memoria): gestión de usuarios (13), roles (11),
   dominio en login (2), + tests estándar de Breeze (login/logout/verificación/reset) + perfil.
 
@@ -108,18 +108,20 @@ Piezas transversales de M01 (base de todo):
 
 ## 5. Despliegue (CI/CD) — **`git push origin main` = deploy automático**
 
-GitHub Actions (`.github/workflows/deploy.yml`) entra por **SSH (cliente OpenSSH nativo del runner**, *no* `appleboy/ssh-action` — ver bitácora) y corre **`deploy.sh`** en `/home4/impdali/daligo`. `deploy.sh` hace, en orden:
+GitHub Actions (`.github/workflows/deploy.yml`) entra por **SSH (cliente OpenSSH nativo del runner**, *no* `appleboy/ssh-action` — ver bitácora) y ejecuta una **cadena de comandos inline** en `/home4/impdali/daligo`. También se puede disparar a mano desde la pestaña Actions ("Run workflow"); los deploys se **serializan** (nunca corren dos a la vez). **NO corre `deploy.sh`**: el `deploy.sh` del servidor quedó **congelado** en una versión vieja (skip-worktree — explicado en el comentario de `deploy.yml`) y ya no participa del deploy. La cadena inline hace, en orden:
 
-1. `git checkout -- public/.htaccess` (cPanel reinyecta un bloque handler; hay que descartarlo antes del pull)
-2. `git pull --ff-only`
-3. `composer install --no-dev --optimize-autoloader`
-4. `php artisan migrate --force`
-5. `php artisan db:seed --class=RolesAndPermissionsSeeder --force` *(el plan lo cambia a `db:seed --force`, ver sección 8)*
-6. `php artisan storage:link` (`--force`)
-7. `config:cache` + `route:cache` + `view:cache`
-8. `php artisan permission:cache-reset`
+1. `git fetch origin main`
+2. Limpia los flags `assume-unchanged`/`skip-worktree` de todos los archivos **excepto `.htaccess`** (cPanel reinyecta un bloque handler que hay que conservar)
+3. `git reset --hard FETCH_HEAD`
+4. `composer dump-autoload -o --no-interaction --no-scripts` — **solo regenera el autoloader, NO instala dependencias**
+5. `php artisan migrate --force`
+6. `php artisan db:seed --force` (DatabaseSeeder completo; idempotente)
+7. `php artisan storage:link --force`
+8. `optimize:clear` → `config:cache` → `route:cache`
+9. `php artisan permission:cache-reset`
 
 **Reglas de oro del deploy:**
+- ⚠️ **Dependencias nuevas NO se instalan solas.** El deploy solo hace `composer dump-autoload`. Si agregas o actualizas un paquete en `composer.json`, hay que correr a mano por SSH o Terminal de cPanel, en `/home4/impdali/daligo`: `/opt/cpanel/ea-php83/root/usr/bin/php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader` — si no, producción falla con "Class not found".
 - **No** correr seeds/cachés a mano en producción; ya están cubiertos.
 - `public/build/` **está versionado** (el server no tiene Node) → tras tocar Blade/CSS/JS hay que `npm run build` y **commitear `public/build/` junto con el cambio**, o el CSS/JS sale viejo (Tailwind v4 purga clases no usadas).
 - Vigilar el avance en la pestaña **Actions** del repo. Verificar luego en `staging.impdali.cl`.
@@ -183,7 +185,7 @@ resources/views/components/             # librería de componentes (ver sección
 resources/views/admin/{users,roles}/    # vistas index/create/edit (patrones a copiar)
 resources/views/layouts/{app,navigation}.blade.php
 .github/workflows/deploy.yml            # CI/CD (OpenSSH nativo)
-deploy.sh                               # pasos de despliegue (sección 5)
+deploy.sh                               # OBSOLETO: el deploy real es la cadena inline de deploy.yml (sección 5)
 public/build/                           # ASSETS COMPILADOS — versionados, commitear tras npm run build
 CLAUDE.md                               # reglas vivas + bitácora de errores
 ```
@@ -259,7 +261,7 @@ CLAUDE.md                               # reglas vivas + bitácora de errores
 
 ### Cableado transversal (al integrar los incrementos)
 - `DatabaseSeeder` llama (idempotente) a Roles + Sucursal + Configuracion seeders.
-- `deploy.sh`: cambiar el seed a `php artisan db:seed --force` (DatabaseSeeder completo); mantener `permission:cache-reset`.
+- ~~`deploy.sh`: cambiar el seed a `php artisan db:seed --force`~~ **YA RESUELTO a nivel workflow**: la cadena inline de `deploy.yml` corre `db:seed --force` (DatabaseSeeder completo) y `permission:cache-reset` en cada deploy (sección 5).
 
 ### Verificación de cada incremento
 - **Local (SQLite):** `php artisan migrate:fresh --seed` → `php artisan test` (todo verde) → `npm run build` → `php artisan serve` y probar a mano (admin ve la sección nueva; no-admin → 403).
