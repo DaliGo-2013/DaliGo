@@ -93,13 +93,54 @@ class PantallasMensajesTest extends TestCase
             ->assertDontSee('mensajes sin leer');
     }
 
-    public function test_el_volver_de_la_huerfana_temporal_apunta_al_inicio(): void
+    public function test_la_lista_ya_no_lleva_volver(): void
     {
-        // Hasta MSG-4 «Mensajes» no tiene item de menu: la pantalla madre lleva
-        // su Volver al Inicio (precedente P-NAV-06). MSG-4 lo quita.
+        // INVERTIDO en MSG-4: la huerfana temporal de MSG-2 dejo de serlo —
+        // «Mensajes» es item del menu y el menu ES el camino (P-NAV-06/08).
+        // VolverTest::test_ningun_item_del_menu_lleva_volver ahora la cubre
+        // solo (deriva de MenuPrincipal::items()); este assert es el gemelo
+        // directo. Las hijas (hilo, nuevo) CONSERVAN su Volver a la lista.
         $this->actingAs($this->usuario())->get(route('mensajes.index'))
             ->assertOk()
-            ->assertSee('href="'.route('dashboard').'" data-dg-volver', false);
+            ->assertDontSee('data-dg-volver', false);
+    }
+
+    // ---------------------------------------------------------------
+    // El item del menu con su badge (MSG-4 — cierra el chat)
+    // ---------------------------------------------------------------
+
+    public function test_el_item_del_menu_aparece_solo_con_permiso(): void
+    {
+        // «33 con chat, 32 sin»: presencia de la route en la sidebar, no un
+        // conteo magico (los tests del menu no hardcodean totales).
+        $this->actingAs($this->usuario())->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee(route('mensajes.index'));
+
+        $this->actingAs(User::factory()->create())->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee(route('mensajes.index'));
+    }
+
+    public function test_el_badge_del_menu_cuenta_mis_no_leidos(): void
+    {
+        $ana = $this->usuario();
+        $beto = $this->usuario();
+        $this->enviar($beto, $ana, 'Uno');
+        $this->enviar($beto, $ana, 'Dos');
+
+        // Contrato del title (molde SidebarTest): el badge declara su porque.
+        $this->actingAs($ana)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('title="2 mensaje(s) sin leer"', false);
+
+        // En cero, el badge desaparece (y con el, su title).
+        Conversacion::entre($ana, $beto)->marcarLeida($ana);
+        \Illuminate\Support\Facades\Cache::flush(); // el badge cachea 10s (TTL de la casa)
+
+        $this->actingAs($ana)->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('mensaje(s) sin leer');
     }
 
     // ---------------------------------------------------------------
