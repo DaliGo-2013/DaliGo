@@ -273,15 +273,24 @@
                             if (sel) sel.addEventListener('change', set);
                         },
                      }">
-                    <x-input-label for="causa_falla">Causa de la falla <span x-show="exige" class="text-red-500">*</span></x-input-label>
+                    {{-- Las DOS ayudas que tenía este campo se fueron a la ⓘ (dueño, 17-08-2026,
+                         mirando esta pantalla): cada una pasaba sola el corte de 95 caracteres,
+                         pero apiladas son dos renglones de prosa. Que sea obligatoria ya lo dice
+                         el asterisco, que aparece con el mismo `exige`. --}}
+                    <x-input-label for="causa_falla">
+                        Causa de la falla <span x-show="exige" class="text-red-500">*</span>
+                        <x-slot:ayuda>
+                            ¿La máquina falló por mal uso del cliente, desgaste normal o defecto de fábrica?
+                            Es el <strong>diagnóstico final</strong>: se vuelve obligatoria para cerrar la orden
+                            como «Reparado» o «Sin solución».
+                        </x-slot:ayuda>
+                    </x-input-label>
                     <x-select id="causa_falla" name="causa_falla" class="mt-1.5" x-bind:required="exige">
                         <option value="">Sin determinar</option>
                         @foreach ($causasFalla as $c)
                             <option value="{{ $c }}" @selected(old('causa_falla', $orden->causa_falla) === $c)>{{ \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$c] }}</option>
                         @endforeach
                     </x-select>
-                    <x-input-hint>¿La máquina falló por mal uso del cliente, desgaste normal o defecto de fábrica?</x-input-hint>
-                    <x-input-hint x-show="exige" x-cloak>Obligatoria para cerrar la orden como «Reparado» o «Sin solución» (diagnóstico final).</x-input-hint>
                     <x-input-error :messages="$errors->get('causa_falla')" class="mt-2" />
                 </div>
 

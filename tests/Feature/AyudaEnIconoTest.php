@@ -34,7 +34,12 @@ class AyudaEnIconoTest extends TestCase
      *
      * @var array<string, string>
      */
-    private const EXCEPCIONES = [];
+    private const EXCEPCIONES = [
+        // Dos líneas cortas, y la segunda NO es ayuda: es un aviso de ESTADO (aparece solo
+        // cuando la máquina es propia, y en color de marca) que dice que el RUT deja de ser
+        // obligatorio. El estado se muestra; lo que se esconde son las explicaciones.
+        'components/cliente-ingreso.blade.php:57' => 'la segunda línea es un aviso de estado, no ayuda',
+    ];
 
     /** @return array<int, array{0: string, 1: int, 2: int, 3: string}> archivo, línea, largo, texto */
     private function parrafosVisibles(string $subdirectorio): array
@@ -121,5 +126,96 @@ class AyudaEnIconoTest extends TestCase
             $componente,
             'La ⓘ quedó DENTRO del <label>: tocar la ayuda va a enfocar o conmutar el campo.',
         );
+    }
+
+    /**
+     * Y LO QUE SE ACUMULA EN UN MISMO CAMPO, que es el hueco que dejó la primera versión de esta
+     * regla: el dueño volvió con una captura de «Causa de la falla», que tenía DOS ayudas de 80 y
+     * 86 caracteres. Cada una pasaba sola el corte —ninguna es un párrafo— y apiladas eran dos
+     * renglones de prosa bajo el campo. Se mide por CAMPO, no por texto.
+     *
+     * Alternativas no suman: dos ayudas separadas por un `@else`/`@elseif` no pueden verse a la
+     * vez (una es la rama de crear y la otra la de editar), así que se cuentan por grupo.
+     */
+    public function test_ningun_campo_interno_acumula_prosa(): void
+    {
+        $hallazgos = [];
+
+        foreach (['admin', 'components'] as $subdirectorio) {
+            foreach (File::allFiles(resource_path('views/'.$subdirectorio)) as $archivo) {
+                if (! str_ends_with($archivo->getFilename(), '.blade.php')) {
+                    continue;
+                }
+
+                $relativo = $subdirectorio.'/'.str_replace(DIRECTORY_SEPARATOR, '/', $archivo->getRelativePathname());
+                $html = File::get($archivo->getPathname());
+
+                foreach ($this->gruposDeAyuda($html) as $grupo) {
+                    $suma = array_sum(array_column($grupo, 'largo'));
+
+                    if (count($grupo) < 2 && $suma <= self::TOPE) {
+                        continue;
+                    }
+
+                    $clave = $relativo.':'.$grupo[0]['linea'];
+
+                    if (isset(self::EXCEPCIONES[$clave])) {
+                        continue;
+                    }
+
+                    $hallazgos[] = $clave.'  ('.count($grupo).' ayudas, '.$suma.' caracteres)';
+                }
+            }
+        }
+
+        $this->assertSame([], $hallazgos, "Estos CAMPOS acumulan prosa bajo el control. Dejá una sola línea corta\n"
+            ."con lo operativo y mové el resto a la ⓘ de la etiqueta:\n\n  ".implode("\n  ", $hallazgos)."\n");
+    }
+
+    /**
+     * Las ayudas agrupadas por campo (la etiqueta más cercana hacia arriba), y dentro del campo
+     * separadas por rama: un `@else`/`@elseif` entre dos ayudas significa que son alternativas.
+     *
+     * @return array<int, array<int, array{linea: int, largo: int}>>
+     */
+    private function gruposDeAyuda(string $html): array
+    {
+        if (! preg_match_all('#<x-input-hint(\s[^>]*)?>(.*?)</x-input-hint>#s', $html, $coincidencias, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+
+        $porCampo = [];
+
+        foreach ($coincidencias as $hint) {
+            $antes = substr($html, 0, $hint[0][1]);
+            $etiqueta = strrpos($antes, '<x-input-label');
+
+            $porCampo[$etiqueta === false ? 'sin-etiqueta' : $etiqueta][] = [
+                'linea' => substr_count($antes, "\n") + 1,
+                'largo' => mb_strlen(trim(preg_replace('/\s+/u', ' ', strip_tags($hint[2][0])))),
+                'desde' => $hint[0][1],
+            ];
+        }
+
+        $grupos = [];
+
+        foreach ($porCampo as $hints) {
+            $actual = [array_shift($hints)];
+
+            foreach ($hints as $hint) {
+                $entre = substr($html, $actual[count($actual) - 1]['desde'], $hint['desde'] - $actual[count($actual) - 1]['desde']);
+
+                if (preg_match('/@(else|elseif)\b/', $entre)) {
+                    $grupos[] = $actual;
+                    $actual = [];
+                }
+
+                $actual[] = $hint;
+            }
+
+            $grupos[] = $actual;
+        }
+
+        return $grupos;
     }
 }
