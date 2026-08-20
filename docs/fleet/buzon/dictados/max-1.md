@@ -1,55 +1,65 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-20 (v77.1 — OPE-1 verificado: 99%
-> impecable, UN gemelo sin derivar. REBOTE QUIRÚRGICO: el info-tip del panel).
-> Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-20 (v78 — OPE-1 EN PRODUCCIÓN con el rebote
+> incluido. GO OPE-2: las dos listas de motivos + procedencias — el 4º hermano
+> declarativo). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Verificación del Director sobre `feature/param-ope-1-ventanas` (434a31e)
+## ✅ OPE-1 está EN PRODUCCIÓN (merge `47513bc`, doble llave 20-ago)
 
-Trial merge limpio; spot-checks TODOS verdes: seeder 7/30/30 TIPO_INTEGER ·
-RANGOS 2-31/7-90 con el tope 92 comentado · el ±1 del `rango()` documentado en
-el código · request-gana-a-la-clave · constantes con el porqué · rótulo grande
-de las 3 vistas derivando · contra-evidencia de las claves separadas bien
-argumentada (duplicación de VALOR, no concepto — aceptada) · delta 100%
-atribuido con los +24 de los candados-iteradores explicados.
+Suite del Director sobre el árbol combinado con MSG-4 de Max-2: **2253 / 15.764,
+CERO rojos** — tu 2251 +2 de MSG-4, delta clavado por tercera vez consecutiva.
+Rama borrada. Lo que quedó fino del ciclo: el rebote resuelto en una línea + 3
+aserciones con la ASIMETRÍA de la mutación declarada (el porqué del assert
+nuevo), y el criterio merge-no-rebase argumentado (rama publicada) — ambos
+directo al acta.
 
-## 🔧 REBOTE (S, una línea + un assert) — el tip del panel miente al mover la perilla
+## 🔨 GO — Lote OPE-2: las listas de motivos y las procedencias (M)
 
-`resources/views/admin/produccion/index.blade.php:97` — el `<x-info-tip>` de
-«Producción por periodo» dice **«(por defecto, últimos 7)»** con el 7 EN PROSA.
-El rótulo grande ya deriva (`'Últimos ' . $diasPanel . ' días'`) pero este
-gemelo quedó a mano: perilla en 14 → la pantalla dice 14 y la ayudita jura 7.
-Doctrina DASH-2 (la aritmética exacta, no números a mano).
+Hallazgos #9 y #13 del mapa §5.3, aprobados por el dueño. Molde COM-1
+(LISTAS_SIMPLES) + UNA pieza nueva:
 
-1. **Derivar**: `(por defecto, últimos {{ $diasPanel }})` — mismo texto, cifra
-   viva.
-2. **Candado**: el test `mover_la_ventana_del_panel...` (o un assert nuevo en
-   él) exige que el TIP también diga la cifra movida y deje de decir 7 — el
-   mismo patrón tuyo de asserts-a-la-pantalla.
-3. **Mismo lote**: commit encima en TU rama `feature/param-ope-1-ventanas`.
-   Re-parte CORTO (delta del delta: +0 tests si extiendes el assert, o +1 si
-   lo separas — decláralo).
+1. **`produccion_motivos_parada`** (grupo `produccion`, TIPO_JSON, LISTAS_SIMPLES
+   — UI una-por-línea): default = la lista viva de hoy EXACTA (la que el código
+   tenga — decláralo con la fuente). Regla del mapa: AGREGAR motivo es libre;
+   QUITAR uno con paradas históricas NO rompe nada (ver candado 4).
+2. **`produccion_motivos_planificados`** (ídem): subconjunto que cuenta como
+   parada planificada para el OEE.
+3. **El PAR planificados ⊆ motivos — el 4º hermano declarativo**: mecanismo
+   `PARES_SUBCONJUNTO` (o el nombre que el idioma de la casa mande) en
+   `ConfiguracionController`, declarativo como RANGOS/PARES_ORDENADOS/
+   LISTAS_SIMPLES: guardar planificados con un motivo que no está en la lista
+   madre → rechazo con mensaje en español; editar la madre quitando un motivo
+   que vive en planificados → rechazo o ajuste guiado (propón con el código a
+   la vista, decláralo). El mecanismo queda para el próximo par (ya hay
+   candidatos en el radar de otros módulos).
+4. **CANDADO OEE-HISTÓRICO-INTACTO (tu matiz verificado del F0, ahora en test)**:
+   la clase de la parada SE PERSISTE en la fila — cambiar las listas HOY no
+   reescribe el OEE de AYER. Test explícito: parada histórica con motivo
+   retirado de la lista → OEE del período histórico byte-idéntico + la parada
+   visible con su motivo legado (ítem retirado no es motivo para el comodín).
+5. **`produccion_procedencias_preforma`** (#13): misma LISTAS_SIMPLES, default =
+   {saco, caja} (o lo que el código diga — fuente declarada).
+6. **Regla de oro + candados molde**: BD virgen = pantallas idénticas · mover
+   cada lista mueve SU selector y NO el otro · par-subconjunto por ambos lados ·
+   mutación tuya declarada con rojo exacto.
 
-## OJO — main se movió: MSG-3 de Max-2 mergeado (`1d7ad3e`, +6/+20)
+### Verificación (invariante)
+Rama `feature/param-ope-2-listas` desde main FRESCO (baseline: **2253 / 15.764**
+en `1c044df` — recuenta tú; los ±5 de aserciones docs-sensibles ya conocidos).
+Suite COMPLETA antes. Batería: Produccion* + Configuracion* + ParametrosOperacion.
+OJO ConfiguracionSeeder: MSG-4 NO lo tocó — sin drift esperado. Parte al buzón;
+espera doble llave. NO arranques OPE-3.
 
-Tu rama nace de `94934cf`; el temido conflicto del `ConfiguracionSeeder` NO
-existe (MSG-3 no lo toca — tu advertencia era del MSG-1 ya mergeado). Verifiqué
-tu rama sobre main+MSG-3: merge limpio. Para el re-parte: re-ancla a main
-fresco (merge de main a tu rama o rebase, tu criterio declarado) y suite
-COMPLETA sobre el árbol re-anclado — baseline nuevo: **2244 / 15.594** en
-`1d7ad3e`. Esperado con tu lote: ~2251 / ~15.719+ (recuenta exacto tú).
-
-## 📡 Radar OPE-2 y OPE-3 (NO arranques — sin cambios desde v77)
-- **OPE-2**: `produccion_motivos_parada` + `produccion_motivos_planificados`
-  (LISTAS_SIMPLES ×2) con el PAR planificados ⊆ motivos (4º hermano
-  declarativo) + candado OEE-histórico-intacto + `produccion_procedencias_preforma`.
-- **OPE-3**: `config/produccion.php` con los patrones %preforma%/%dañada% +
-  higiene (max:100000 ×6, 92 ×2, POR_PAGINA ×2).
+## 📡 Radar OPE-3 (NO arranques)
+`config/produccion.php` con los patrones %preforma%/%dañada% estilo
+categorias_equipo (nivel 2 aprobado #3) + higiene (max:100000 ×6 → constante,
+92 ×2, POR_PAGINA ×2 adoptado). Cierra el módulo → QA del dueño → Trello a
+Terminadas → F0-LOGÍSTICA.
 
 ## Estado
-Max-2: GO MSG-4 (menú 32→33 — NO toca tu territorio; MenuPrincipal es de él
-este ciclo, tú no lo tocas en el rebote). Marcos activo. Trello espejando.
+Max-2: chat 4/4 CONSTRUIDO (MSG-4 mergeado en el mismo ciclo) — en pausa hasta
+QA del dueño en celular. Marcos activo. Trello espejando. Baseline: 2253/15.764
+en `1c044df`.
 
-CIERRE: rebote de una línea — el molde funcionó, solo se escapó un gemelo de
-prosa. Re-parte y va la doble llave.
+CIERRE: GO OPE-2. El 4º hermano declarativo — la familia crece con molde.

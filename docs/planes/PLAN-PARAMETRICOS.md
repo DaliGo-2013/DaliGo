@@ -271,3 +271,9 @@ Operación en 3 lotes: **OPE-1** (ventanas, molde DASH-1, dictado v77) → **OPE
 dos listas: motivos con par planificados⊆motivos + procedencias, molde COM-1) →
 **OPE-3** (config de preforma estilo categorias_equipo + higiene: max:100000 ×6 a
 constante, 92 ×2, adopción de POR_PAGINA ×2).
+
+**OPE-1 EN PRODUCCIÓN (2026-08-20, merge `47513bc`, doble llave):** las 3 ventanas
+(panel 7 días rango 2-31; informes máquina/tipo 30 días rango 7-90) como claves del
+grupo `produccion`, rótulos e info-tip derivando (rebote v77.1: el tip del panel
+decía «últimos 7» en prosa — cazado por el Director, derivado con +3 aserciones).
+Suite combinada con MSG-4: 2253/15.764 cero rojos. Quedan OPE-2 (dictado v78) y OPE-3.
