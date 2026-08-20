@@ -79,11 +79,10 @@ de su flujo. Los módulos avanzan de a uno: auditoría → veredictos → lotes 
   muestra con pasos de verdad, no un mapa vacío).
 - Partes al buzón como siempre; veredictos del dueño quedan escritos en el anexo del
   módulo.
-- **DOS FORJADORES (decisión del dueño 20-ago)**: al llegar el F0-LOGÍSTICA de
-  Max-1, el plan pasa a dos manos — el Director dicta el reparto de módulos con
-  territorios disjuntos (auditorías F0 en paralelo; lotes de fase B secuenciados
-  por el Director cuando toquen `ConfiguracionController`/`Seeder`, la
-  coreografía ya probada en MSG-1/COM-1). Max-2 entra tras cerrar PLAN-MENSAJES.
+- **UN SOLO FORJADOR (decisión del dueño 20-ago tarde, reemplaza el reparto del
+  mismo día)**: TODO el PLAN-PARAMETRICOS es de **Max-1**, módulo a módulo en el
+  orden de la sidebar como hasta ahora. Max-2 sigue en el frente de Mensajes
+  (fase 2 del chat, alcance por definir con el dueño).
 - **Espejo en Trello (pedido del dueño 19-ago)**: cada módulo tiene su tarjeta
   «Paramétricos · <Módulo>» en el tablero del dueño — el DIRECTOR la mueve por API:
   «Tareas DaliGo» (pendiente) → «En Curso DaliGo» (al dictar su auditoría) →
@@ -199,7 +198,7 @@ Convenciones revisadas y sin fila a propósito: `max:191` (el `defaultStringLeng
 MySQL 5.7 utf8mb4, doctrina de la casa), `Precio::formatear` (formato chileno CLP,
 convención de presentación) y los `orderBy` de los listados (alfabéticos, consistentes).
 
-### §5.3 Operación — mapa F0-OPERACIÓN (auditoría Max-1, 2026-08-19, sobre `32406f28`)
+### §5.3 Operación — SALDADO ✅ (QA del dueño 20-ago «todo ok»; fase B completa en producción: OPE-1 `47513bc` + OPE-2 `576ad95` + OPE-3 `ab0a8d1`) — mapa F0-OPERACIÓN (auditoría Max-1, 2026-08-19, sobre `32406f28`)
 
 Barridos completos: `ProduccionController` (838 líneas — panel, drill-downs, asignar,
 aprobar, kardex, kaizen) + `ProduccionVivoController`, los 4 servicios de producción
