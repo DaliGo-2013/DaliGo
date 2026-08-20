@@ -158,7 +158,16 @@
                         texto: @js((string) $textoInicial),
                         get trabajo() { return this.texto.trim() },
                      }">
-                    <x-input-label for="trabajo_realizado_lista" value="Trabajo realizado" />
+                    <x-input-label for="trabajo_realizado_lista" value="Trabajo realizado">
+                        <x-slot:ayuda>
+                            Elige una respuesta de la lista y queda escrita en el campo de abajo; después la
+                            puedes ajustar o escribir la tuya.
+                            <strong>Este texto lo lee el cliente</strong> en el correo del retiro y en la
+                            cotización: cuenta qué se hizo y cómo quedó, como las respuestas de la lista.
+                            El navegador te subraya en rojo lo que esté mal escrito — clic derecho sobre la
+                            palabra para ver las sugerencias.
+                        </x-slot:ayuda>
+                    </x-input-label>
 
                     {{-- El rellenador: elegir una respuesta la ESCRIBE en el campo de abajo. Sin
                          `name` a propósito — lo que se guarda es el texto, no la opción. Vuelve a
@@ -176,7 +185,9 @@
                             </optgroup>
                         @endforeach
                     </x-select>
-                    <x-input-hint>Elige la que más se acerque y queda escrita abajo; después la puedes ajustar o escribir la tuya.</x-input-hint>
+                    {{-- Queda UNA línea visible, la que explica el mecanismo raro del control (elegir
+                         acá ESCRIBE abajo); el resto está en la ⓘ de la etiqueta. --}}
+                    <x-input-hint>Se escribe abajo y la puedes ajustar.</x-input-hint>
 
                     {{-- El texto, SIEMPRE visible y editable. `spellcheck` + `lang="es"` = el
                          subrayado rojo del navegador con sugerencias al hacer clic derecho. El
@@ -193,11 +204,6 @@
                             spellcheck="true" lang="es" autocapitalize="sentences"
                             maxlength="{{ \App\Models\OrdenServicio::TRABAJO_MAX }}"
                             placeholder="Ej. Cambio de bomba y limpieza de circuito — funciona normal">{{ $textoInicial }}</x-textarea>
-                        <x-input-hint>
-                            Lo lee el cliente en el correo del retiro: escribe qué se hizo y cómo quedó, como las
-                            respuestas de la lista. El navegador te subraya en rojo lo que esté mal escrito
-                            (clic derecho sobre la palabra para ver las sugerencias).
-                        </x-input-hint>
                         <x-input-error :messages="$errors->get('trabajo_realizado_otro')" class="mt-2" />
                     </div>
                     {{-- Mano de obra FIJA por el trabajo: informativa (la fija jefatura). --}}
@@ -251,14 +257,15 @@
                 {{-- Categoría de cierre: SOLO para máquinas propias (IMP. DALI). --}}
                 @if ($orden->es_propia)
                     <div>
-                        <x-input-label for="categoria" value="Categoría (para reventa)" />
+                        <x-input-label for="categoria" value="Categoría (para reventa)">
+                            <x-slot:ayuda>Máquina propia (IMP. DALI): con qué calidad queda para revender — Primera, Segunda o Desarme (repuestos).</x-slot:ayuda>
+                        </x-input-label>
                         <x-select id="categoria" name="categoria" class="mt-1.5">
                             <option value="">— Sin determinar —</option>
                             @foreach (\App\Models\OrdenServicio::CATEGORIAS as $cat)
                                 <option value="{{ $cat }}" @selected(old('categoria', $orden->categoria) === $cat)>{{ \App\Models\OrdenServicio::CATEGORIA_ETIQUETAS[$cat] }}</option>
                             @endforeach
                         </x-select>
-                        <x-input-hint>Máquina propia (IMP. DALI): con qué calidad queda para revender — Primera, Segunda o Desarme (repuestos).</x-input-hint>
                         <x-input-error :messages="$errors->get('categoria')" class="mt-2" />
                     </div>
                 @endif

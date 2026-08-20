@@ -11,7 +11,9 @@
                 @csrf
 
                 <div>
-                    <x-input-label for="documento_venta_id" value="Documento de venta *" />
+                    <x-input-label for="documento_venta_id" value="Documento de venta *">
+                        <x-slot:ayuda>Se listan los últimos documentos espejados sin despacho. Un DTE anulado en Bsale se rechaza al crear.</x-slot:ayuda>
+                    </x-input-label>
                     <x-select id="documento_venta_id" name="documento_venta_id" class="mt-1.5" required>
                         <option value="">Elige un documento…</option>
                         @foreach ($documentos as $doc)
@@ -23,7 +25,6 @@
                             </option>
                         @endforeach
                     </x-select>
-                    <x-input-hint>Se listan los últimos documentos espejados sin despacho. Un DTE anulado en Bsale se rechaza al crear.</x-input-hint>
                     <x-input-error :messages="$errors->get('documento_venta_id')" class="mt-2" />
                 </div>
 

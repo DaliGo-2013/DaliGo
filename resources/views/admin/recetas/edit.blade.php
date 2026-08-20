@@ -22,31 +22,31 @@
 
                 <x-seccion titulo="Preforma">
                     <div>
-                        <x-input-label for="cantidad_preforma" value="Preformas por unidad" />
+                        <x-input-label for="cantidad_preforma" value="Preformas por unidad">
+                            <x-slot:ayuda>La preforma concreta del movimiento es la que el jefe asigna al turno; acá solo se define cuántas consume una unidad. La merma también consume.</x-slot:ayuda>
+                        </x-input-label>
                         <x-text-input id="cantidad_preforma" name="cantidad_preforma" type="number"
                                       step="0.0001" min="0.0001" max="1000" required class="mt-1.5 w-full"
                                       :value="old('cantidad_preforma', (float) ($preforma->cantidad ?? 1))" />
                         <x-input-error class="mt-2" :messages="$errors->get('cantidad_preforma')" />
-                        <x-input-hint class="mt-2">
-                            La preforma concreta del movimiento es la que el jefe asigna al turno; acá solo se define cuántas consume una unidad. La merma también consume.
-                        </x-input-hint>
                     </div>
 
                     <div>
-                        <x-input-label for="ciclo_ideal_seg" value="Ciclo ideal (segundos por unidad)" />
+                        <x-input-label for="ciclo_ideal_seg" value="Ciclo ideal (segundos por unidad)">
+                            <x-slot:ayuda>Segundos que tarda un ciclo de soplado de este botellón en condiciones normales. Lo usa el rendimiento del OEE; vacío = el informe dirá «sin ciclo cargado».</x-slot:ayuda>
+                        </x-input-label>
                         <x-text-input id="ciclo_ideal_seg" name="ciclo_ideal_seg" type="number"
                                       step="1" min="1" max="600" class="mt-1.5 w-full"
                                       :value="old('ciclo_ideal_seg', $preforma->ciclo_ideal_seg ?? null)" />
                         <x-input-error class="mt-2" :messages="$errors->get('ciclo_ideal_seg')" />
-                        <x-input-hint class="mt-2">
-                            Segundos que tarda un ciclo de soplado de este botellón en condiciones normales. Lo usa el rendimiento del OEE; vacío = el informe dirá «sin ciclo cargado».
-                        </x-input-hint>
                     </div>
                 </x-seccion>
 
                 <x-seccion titulo="Tapa">
                     <div>
-                        <x-input-label for="componente_tapa" value="Producto tapa" />
+                        <x-input-label for="componente_tapa" value="Producto tapa">
+                            <x-slot:ayuda>Sin producto enlazado, el consumo de tapas igual se registra en el kardex (sin producto) hasta que lo enlaces.</x-slot:ayuda>
+                        </x-input-label>
                         <x-select id="componente_tapa" name="componente_tapa" class="mt-1.5 w-full">
                             <option value="">— Sin enlazar todavía —</option>
                             @foreach ($tapas as $opcion)
@@ -56,9 +56,6 @@
                             @endforeach
                         </x-select>
                         <x-input-error class="mt-2" :messages="$errors->get('componente_tapa')" />
-                        <x-input-hint class="mt-2">
-                            Sin producto enlazado, el consumo de tapas igual se registra en el kardex (sin producto) hasta que lo enlaces.
-                        </x-input-hint>
                     </div>
 
                     <div>

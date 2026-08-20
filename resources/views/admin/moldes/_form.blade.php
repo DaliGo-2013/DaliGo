@@ -25,21 +25,23 @@
 </div>
 
 <div>
-    <x-input-label for="umbral_mantencion" value="Umbral de mantención (ciclos)" />
+    <x-input-label for="umbral_mantencion" value="Umbral de mantención (ciclos)">
+        <x-slot:ayuda>Al cruzarlo, producción recibe el aviso «le toca mantención» (una vez por cruce). Vacío = sin umbral.</x-slot:ayuda>
+    </x-input-label>
     <x-text-input id="umbral_mantencion" class="mt-1.5 w-full" type="number" name="umbral_mantencion" min="1" step="1" :value="old('umbral_mantencion', $molde->umbral_mantencion)" placeholder="Ej. 50000" />
     <x-input-error :messages="$errors->get('umbral_mantencion')" class="mt-2" />
-    <x-input-hint class="mt-2">Al cruzarlo, producción recibe el aviso «le toca mantención» (una vez por cruce). Vacío = sin umbral.</x-input-hint>
 </div>
 
 <div>
-    <x-input-label for="estado" value="Estado" />
+    <x-input-label for="estado" value="Estado">
+        <x-slot:ayuda>Solo los moldes ACTIVOS reciben ciclos y aparecen al aprobar reportes; un retirado conserva su historia.</x-slot:ayuda>
+    </x-input-label>
     <x-select id="estado" name="estado" class="mt-1.5 w-full" required>
         @foreach (\App\Models\Molde::ESTADOS as $valor => $label)
             <option value="{{ $valor }}" @selected(old('estado', $molde->estado) === $valor)>{{ $label }}</option>
         @endforeach
     </x-select>
     <x-input-error :messages="$errors->get('estado')" class="mt-2" />
-    <x-input-hint class="mt-2">Solo los moldes ACTIVOS reciben ciclos y aparecen al aprobar reportes; un retirado conserva su historia.</x-input-hint>
 </div>
 
 <div>

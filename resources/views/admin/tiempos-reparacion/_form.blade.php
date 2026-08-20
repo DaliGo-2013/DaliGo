@@ -8,7 +8,9 @@
 
 <div class="space-y-5">
     <div>
-        <x-input-label for="trabajo">Trabajo <span class="text-red-500">*</span></x-input-label>
+        <x-input-label for="trabajo">Trabajo <span class="text-red-500">*</span>
+            <x-slot:ayuda>Debe coincidir con la respuesta de «Trabajo realizado» del parte del técnico. Empieza a escribir y aparecen las de la lista.</x-slot:ayuda>
+        </x-input-label>
         <x-text-input id="trabajo" name="trabajo" type="text" class="mt-1.5 w-full" list="trabajos-sugeridos" required
             maxlength="191" :value="old('trabajo', $t?->trabajo)" placeholder="Ej. Cambio de caldera — funciona normal" />
         <datalist id="trabajos-sugeridos">
@@ -16,16 +18,16 @@
                 <option value="{{ $tr }}"></option>
             @endforeach
         </datalist>
-        <x-input-hint>Debe coincidir con la respuesta de «Trabajo realizado» del parte del técnico. Empieza a escribir y aparecen las de la lista.</x-input-hint>
         <x-input-error :messages="$errors->get('trabajo')" class="mt-2" />
     </div>
 
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-            <x-input-label for="horas">Horas estándar <span class="text-red-500">*</span></x-input-label>
+            <x-input-label for="horas">Horas estándar <span class="text-red-500">*</span>
+                <x-slot:ayuda>Acepta coma decimal (1,5). Con esto se calcula la mano de obra (horas × valor hora); el técnico no la puede cambiar.</x-slot:ayuda>
+            </x-input-label>
             <x-text-input id="horas" name="horas" type="text" class="mt-1.5 w-full" inputmode="decimal" required
                 placeholder="Ej. 1, 1,5, 2" :value="old('horas', $t?->horas_fmt)" />
-            <x-input-hint>Acepta coma decimal (1,5). Con esto se calcula la mano de obra (horas × valor hora); el técnico no la puede cambiar.</x-input-hint>
             <x-input-error :messages="$errors->get('horas')" class="mt-2" />
         </div>
         <div>

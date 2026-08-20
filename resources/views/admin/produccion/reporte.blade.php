@@ -276,7 +276,9 @@
                  y dentro del MISMO form de Autorizar. --}}
             @if ($reporte->esPendienteDeRevision() && $moldesAmbiguos->isNotEmpty())
                 <div class="rounded-2xl border border-brand-100 bg-brand-50 p-4 sm:p-6">
-                    <x-input-label for="molde_id" value="¿Qué molde trabajó el turno?" />
+                    <x-input-label for="molde_id" value="¿Qué molde trabajó el turno?">
+                        <x-slot:ayuda>Hay más de un molde activo para un tipo de este reporte: el contador de ciclos necesita saber cuál corrió.</x-slot:ayuda>
+                    </x-input-label>
                     <x-select id="molde_id" name="molde_id" form="form-autorizar" class="mt-1.5 w-full bg-white">
                         <option value="">— Elige un molde —</option>
                         @foreach ($moldesAmbiguos as $candidato)
@@ -286,7 +288,6 @@
                         @endforeach
                     </x-select>
                     <x-input-error :messages="$errors->get('molde_id')" class="mt-2" />
-                    <x-input-hint class="mt-2">Hay más de un molde activo para un tipo de este reporte: el contador de ciclos necesita saber cuál corrió.</x-input-hint>
                 </div>
             @endif
 
