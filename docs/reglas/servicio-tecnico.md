@@ -171,7 +171,16 @@ información»*.
 | Pantalla | Qué es | Qué se puede hacer |
 |---|---|---|
 | **Parte del técnico** | LA pantalla de la orden | Editar todo: etapa, trabajo, causa, repuestos **con precio**, descuento (solo jefatura), fechas — y **enviar** la cotización al cliente |
-| **Cotización** | Vista previa de lo que el cliente lee | Nada. Solo mirar: subtotal de repuestos, mano de obra, descuento, total con IVA, y la constancia de lo enviado |
+| **Cotización** | Vista previa de lo que el cliente lee | Nada. Solo mirar: subtotal de repuestos, mano de obra, descuento y total con IVA |
+
+La constancia de lo enviado (el historial de cotizaciones) y la tarjeta de **«listo
+para retirar»** también viven en el parte, por el mismo motivo: estaban repetidas en
+las dos pantallas. **Excepción con nombre: en garantía siguen en la pestaña
+Cotización**, porque ahí el parte no las incluye —no hay cotización que enviar— y esa
+pestaña es la única pantalla con el botón de avisar el retiro. Y como esas dos
+acciones avisan al cliente, el redirect vuelve a donde está la tarjeta que acaba de
+cambiar (`ServicioTecnicoController::pantallaDeConstancia`): si no, el usuario aterriza
+en una pantalla que ya no muestra lo que hizo.
 
 **Por qué está escrito acá y no solo en un commit:** antes había **dos formularios
 escribiendo el mismo dinero**, y eso ya se cobró una vez — la regla del descuento

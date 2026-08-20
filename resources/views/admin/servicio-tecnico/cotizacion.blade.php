@@ -101,9 +101,10 @@
                  información» y el descuento «que pase a la parte del técnico».
 
                  Así que acá NO hay formulario, ni filas de repuestos, ni selector de
-                 descuento, ni botón de enviar: todo eso vive en el parte del técnico,
-                 en una sola definición. Lo que queda es el DINERO que el cliente va a
-                 leer, y abajo la constancia de lo que ya se le mandó. --}}
+                 descuento, ni botón de enviar — y desde el segundo pedido del mismo
+                 día, tampoco la constancia de lo enviado ni «listo para retirar»:
+                 todo eso vive en el parte del técnico, en una sola definición.
+                 Lo único que queda es el DINERO que el cliente va a leer. --}}
             <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Lo que se le cotiza al cliente</h3>
