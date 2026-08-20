@@ -27,7 +27,65 @@ enciclopedia.
 
 ---
 
-## 1. El descuento de inventario cuando se factura — PENDIENTE DE DECISIÓN
+## 1. Las garantías: son CUATRO y no se mezclan
+
+Decisión del dueño, 20-08-2026. Nacieron de un pedido concreto: *«esto es importante
+para que todos los clientes sepan al momento de llevar a cabo un arreglo»*.
+
+**Lo que más importa de este apartado es que son dos servicios distintos con plazos
+distintos, y que juntarlos sería prometerle al cliente por escrito una cobertura que
+el negocio no dio.** Al dictar los plazos industriales se le preguntó expresamente si
+reemplazaban a los del taller; respondió que no.
+
+### Taller (dispensadores) — Fernando
+
+| Qué cubre | Plazo | Desde | Dónde vive |
+|---|---|---|---|
+| El **producto** | 6 meses | la compra | `OrdenServicio::GARANTIA_MESES` |
+| La **reparación** | 3 meses | el día en que se repara | `OrdenServicio::GARANTIA_REPARACION_MESES` |
+
+Los 6 meses del producto **no son solo informativos**: son el número que decide si un
+ingreso al taller se cobra o entra en garantía. Tocarlos es tocar plata.
+
+### Industrial / terreno — Carlos
+
+| Qué cubre | Plazo | Desde |
+|---|---|---|
+| **Llenadora** nueva | 1 año | su instalación |
+| **Lavadora** nueva | 6 meses | su instalación |
+| **Planta de osmosis** nueva | 1 año | su instalación |
+| La **reparación** | 1 mes | el día en que se repara |
+| La **instalación** (el armado) | 1 mes | que queda funcionando |
+
+La garantía del equipo nuevo corre **desde su instalación**, con las palabras del
+dueño: *«todo por instalación, o sea la primera vez cuando se arma todo»*.
+
+Los plazos industriales viven en `config/servicio_tecnico.php` →
+`garantias_industrial`, y se leen con `App\Support\GarantiasIndustrial`. Están en
+config y no escritos en las plantillas porque son política comercial: cambiarlos ahí
+los cambia en todas las superficies que los muestren.
+
+### Dónde los ve el cliente hoy
+
+- **Correo de la visita de terreno** (`emails/terreno/aviso.blade.php`) — las cinco
+  filas industriales, en las variantes «agendada» y «reprogramada». En una visita
+  **anulada no van**: no va a haber trabajo, y prometer garantías a quien se le acaba
+  de cancelar el servicio confunde en vez de informar.
+- **Las tres cartas del taller** ya mencionaban sus propios plazos desde el 14-08.
+
+Candados en `tests/Feature/GarantiasIndustrialTest.php`. El central verifica que las
+dos tablas **no converjan**: mutando el plazo industrial a los 3 meses del taller, se
+ponen rojos tres tests.
+
+### Superficies donde todavía NO están (candidatos naturales)
+
+La cotización industrial y la pantalla pública del QR de terreno. El bloque ya es un
+partial reusable (`emails/partials/_garantias-industrial.blade.php`), así que
+agregarlo es un `@include` — pero no se hizo sin pedirlo.
+
+---
+
+## 2. El descuento de inventario cuando se factura — PENDIENTE DE DECISIÓN
 
 **Estado:** abierta · **Decide:** el dueño (con contabilidad) · **Anotada:** 20-08-2026
 a pedido del dueño, para que no se pierda cuando DaliGo se independice de Bsale.
@@ -103,7 +161,8 @@ queda registrado**. La 2 y la 3 no se excluyen.
 
 ---
 
-## 2. Historial de cambios de este apartado
+## 3. Historial de cambios de este apartado
 
-- **20-08-2026** — nace el apartado con §1 (descuento de inventario al facturar y el
-  hueco de la garantía), a pedido del dueño.
+- **20-08-2026** — nace el apartado. §2 (descuento de inventario al facturar y el hueco
+  de la garantía) y §1 (la tabla de las cuatro garantías, con los plazos industriales
+  nuevos y la advertencia de no mezclarlos con los del taller).
