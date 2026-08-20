@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aprobacion;
+use App\Models\Configuracion;
 use App\Models\Maquina;
 use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
@@ -24,6 +25,31 @@ use Illuminate\View\View;
 class ProduccionController extends Controller
 {
     private const TURNOS = ['dia', 'noche'];
+
+    /**
+     * Ventanas por defecto (en días VISIBLES, hoy incluido) del panel y de los
+     * dos informes de rendimiento. Son los DEFAULTS del rango: el usuario puede
+     * pedir otro por URL (?desde/?hasta) y eso siempre gana. Editables en
+     * Configuración (`produccion_dias_panel`, `produccion_dias_informe_maquina`,
+     * `produccion_dias_informe_tipo`, OPE-1); estos valores son el histórico y
+     * el fallback con BD virgen. Claves separadas a propósito: ventanas
+     * distintas, perillas distintas (doctrina DASH-1).
+     */
+    private const DIAS_PANEL_DEFAULT = 7;
+
+    private const DIAS_INFORME_MAQUINA_DEFAULT = 30;
+
+    private const DIAS_INFORME_TIPO_DEFAULT = 30;
+
+    /**
+     * Lee una ventana configurable en días y la devuelve clampeada (≥2: una
+     * "serie" de menos de dos días no es serie). El clamp protege al consumidor
+     * si el valor entró por fuera de la UI de Configuración (que valida rango).
+     */
+    private function diasConfigurados(string $clave, int $default): int
+    {
+        return max(2, (int) Configuracion::get($clave, $default));
+    }
 
     /**
      * Panel del jefe: alertas de accion + resumen de hoy + produccion por
@@ -78,8 +104,10 @@ class ProduccionController extends Controller
         );
         $hoyResumen['sopladores'] = $reportes->pluck('soplador_id')->unique()->count();
 
-        // --- Produccion por periodo (rango; default ultimos 7 dias) + desgloses ---
-        [$desde, $hasta, $esDefault] = $this->rango($request);
+        // --- Produccion por periodo (rango; default configurable, OPE-1) + desgloses ---
+        // rango() recibe dias HACIA ATRAS desde hoy: N dias visibles = N-1 (el ±1 de DASH-1).
+        $diasPanel = $this->diasConfigurados('produccion_dias_panel', self::DIAS_PANEL_DEFAULT);
+        [$desde, $hasta, $esDefault] = $this->rango($request, $diasPanel - 1);
         $periodo = $this->construirTendencia($desde, $hasta, $this->reportesPorDia($desde, $hasta), $this->asignadasPorDia($desde, $hasta))
             + ['desde' => $desde, 'hasta' => $hasta, 'esDefault' => $esDefault];
         $rankingSopladores = $this->desgloseSopladores($desde, $hasta);
@@ -100,6 +128,7 @@ class ProduccionController extends Controller
             ->get();
 
         return view('admin.produccion.index', [
+            'diasPanel' => $diasPanel,
             'mejorasAbiertas' => $mejorasAbiertas,
             'oeePorMaquina' => $oeePorMaquina,
             'reportes' => $reportes,
@@ -303,7 +332,8 @@ class ProduccionController extends Controller
      */
     public function maquinaRendimiento(Request $request, Maquina $maquina): View
     {
-        [$desde, $hasta, $esDefault] = $this->rango($request, 29);
+        $diasInforme = $this->diasConfigurados('produccion_dias_informe_maquina', self::DIAS_INFORME_MAQUINA_DEFAULT);
+        [$desde, $hasta, $esDefault] = $this->rango($request, $diasInforme - 1);
 
         $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'maquina_id', $maquina->id));
 
@@ -314,6 +344,7 @@ class ProduccionController extends Controller
             'desde' => $desde,
             'hasta' => $hasta,
             'esDefault' => $esDefault,
+            'diasInforme' => $diasInforme,
             'tendencia' => $tendencia,
             'porTipo' => $this->desgloseRegistros($desde, $hasta, 'tipo_botellon_id', 'tipos_botellon', 'maquina_id', $maquina->id),
             'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'maquina_id', $maquina->id),
@@ -348,7 +379,8 @@ class ProduccionController extends Controller
      */
     public function tipoRendimiento(Request $request, TipoBotellon $tipoBotellon): View
     {
-        [$desde, $hasta, $esDefault] = $this->rango($request, 29);
+        $diasInforme = $this->diasConfigurados('produccion_dias_informe_tipo', self::DIAS_INFORME_TIPO_DEFAULT);
+        [$desde, $hasta, $esDefault] = $this->rango($request, $diasInforme - 1);
 
         $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'tipo_botellon_id', $tipoBotellon->id));
 
@@ -357,6 +389,7 @@ class ProduccionController extends Controller
             'desde' => $desde,
             'hasta' => $hasta,
             'esDefault' => $esDefault,
+            'diasInforme' => $diasInforme,
             'tendencia' => $tendencia,
             'porMaquina' => $this->desgloseRegistros($desde, $hasta, 'maquina_id', 'maquinas', 'tipo_botellon_id', $tipoBotellon->id),
             'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'tipo_botellon_id', $tipoBotellon->id),

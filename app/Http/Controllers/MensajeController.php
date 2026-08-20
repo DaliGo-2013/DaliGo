@@ -64,9 +64,9 @@ class MensajeController extends Controller
             ->get(['id', 'user_menor_id', 'no_leidos_menor', 'no_leidos_mayor']);
 
         $maxMensaje = (int) Mensaje::whereIn('conversacion_id', $conversaciones->pluck('id'))->max('id');
-        $misNoLeidos = $conversaciones->sum(
-            fn (Conversacion $c) => $c->user_menor_id === $user->id ? $c->no_leidos_menor : $c->no_leidos_mayor,
-        );
+        // FUENTE UNICA con el badge del menu (MSG-4): si el badge y la firma
+        // contaran distinto, el menu diria una cosa y el refresco otra.
+        $misNoLeidos = Conversacion::noLeidosDeUsuario($user->id);
 
         return md5($maxMensaje.'|'.$misNoLeidos.'|'.$conversaciones->count());
     }
