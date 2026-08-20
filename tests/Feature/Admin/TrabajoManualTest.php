@@ -198,7 +198,16 @@ class TrabajoManualTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('Otro — lo escribo yo', $html);
+        // Escribirlo YA NO EXIGE elegir «Otro» en la lista: desde el 20-08 el campo de
+        // texto está siempre, y la lista solo lo COMPLETA con un clic (pedido del
+        // dueño: «dejá las dos opciones»). Antes esta línea buscaba «Otro — lo escribo
+        // yo», la puerta de entrada al campo, que dejó de existir porque ya no hace
+        // falta una puerta. Se assertea la propiedad más fuerte —el campo está sin
+        // tener que elegir nada— y la lista, que sigue ahí para rellenar.
+        // Las dos formas conviviendo las cubre TrabajoRealizadoDosFormasTest.
+        $this->assertStringNotContainsString('Otro — lo escribo yo', $html);
+        $this->assertStringContainsString('id="trabajo_realizado_lista"', $html);
+
         // El subrayado rojo que pidió el dueño lo dibuja el navegador: spellcheck + idioma.
         $this->assertMatchesRegularExpression(
             '/<textarea[^>]*name="trabajo_realizado_otro"[^>]*>/s',
