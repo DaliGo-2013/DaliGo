@@ -14,7 +14,7 @@
     (function () {
         var base = @js($firma);
         var url = @js($url);
-        setInterval(function () {
+        function comprobar() {
             if (document.visibilityState !== 'visible') return;
             fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                 .then(function (r) { return r.ok ? r.json() : null; })
@@ -22,6 +22,13 @@
                     if (d && d.firma !== base) window.location.reload();
                 })
                 .catch(function () {});
-        }, {{ (int) $intervalo }});
+        }
+        setInterval(comprobar, {{ (int) $intervalo }});
+        // MSG-5: tick INMEDIATO al volver a la pestaña/app — cero cambio de
+        // conducta (misma comprobacion; nadie recarga si la firma no cambio),
+        // solo se adelanta el proximo tick. Los 3 consumidores lo heredan.
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') comprobar();
+        });
     })();
 </script>
