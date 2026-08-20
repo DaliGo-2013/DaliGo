@@ -1328,7 +1328,7 @@
                     </div>
 
                     <p class="text-xs leading-relaxed text-neutral-400">
-                        La tarima estándar mide 14,4 cm y acá se usan 15 enteros: redondear la base
+                        La tarima estándar mide 14,4 cm y acá se usan {{ \App\Services\Carga\PalletSimulado::BASE_CM }} enteros: redondear la base
                         hacia arriba deja menos altura útil, y todo error tiene que ir hacia abajo. En la
                         práctica el pallet armado va entre 1,60 y 2,20 m de alto total.
                     </p>

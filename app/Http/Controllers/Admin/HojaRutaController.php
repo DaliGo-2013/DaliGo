@@ -121,7 +121,7 @@ class HojaRutaController extends Controller
     {
         $service->autorizarPagos($hoja, $request->user());
 
-        return $this->vuelta($hoja, 'Pagos autorizados (llave 1 de 3).');
+        return $this->vuelta($hoja, 'Pagos autorizados (llave 1 de '.HojaDeRuta::TOTAL_LLAVES.').');
     }
 
     /** Llave 2 · jefe de despacho (permiso 'autorizar ruta'). */
@@ -129,7 +129,7 @@ class HojaRutaController extends Controller
     {
         $service->autorizarRuta($hoja, $request->user());
 
-        return $this->vuelta($hoja, 'Ruta autorizada (llave 2 de 3).');
+        return $this->vuelta($hoja, 'Ruta autorizada (llave 2 de '.HojaDeRuta::TOTAL_LLAVES.').');
     }
 
     /** Llave 3 · jefe de bodega (permiso 'autorizar carga'). */
@@ -137,7 +137,7 @@ class HojaRutaController extends Controller
     {
         $service->autorizarCarga($hoja, $request->user());
 
-        return $this->vuelta($hoja, 'Carga autorizada (llave 3 de 3).');
+        return $this->vuelta($hoja, 'Carga autorizada (llave 3 de '.HojaDeRuta::TOTAL_LLAVES.').');
     }
 
     /** La salida del camión: la registra bodega (mismo permiso que la llave 3). */

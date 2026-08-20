@@ -32,14 +32,27 @@ class RespaldoDeDocumento
     public const DISCO = 'local';
 
     /**
-     * Reglas del archivo. 15 MB de ENTRADA porque una foto de teléfono son 3-8; la
-     * salida pesa 100-250 KB y eso lo garantiza el compresor, no quien sube.
+     * Tope de ENTRADA en KB (15 MB): una foto de teléfono son 3-8 MB; la salida
+     * pesa 100-250 KB y eso lo garantiza el compresor, no quien sube. Los
+     * mensajes de error que nombran el tope DERIVAN de acá (LOG-1: el «15 MB»
+     * vivía retipeado en dos controllers y mentiría al cambiar esto).
+     */
+    public const MAX_KB = 15360;
+
+    /**
+     * Reglas del archivo.
      *
      * @return list<string>
      */
     public static function reglas(): array
     {
-        return ['file', 'max:15360', 'mimes:jpg,jpeg,png,webp,pdf'];
+        return ['file', 'max:'.self::MAX_KB, 'mimes:jpg,jpeg,png,webp,pdf'];
+    }
+
+    /** El tope legible para mensajes al usuario («15 MB»), derivado de MAX_KB. */
+    public static function topeLegible(): string
+    {
+        return round(self::MAX_KB / 1024).' MB';
     }
 
     public function __construct(private CompresorDeDocumentos $compresor) {}

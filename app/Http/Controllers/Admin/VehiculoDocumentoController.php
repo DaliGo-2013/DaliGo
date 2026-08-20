@@ -48,7 +48,7 @@ class VehiculoDocumentoController extends Controller
 
         $request->validate(
             ['archivo' => ['required', ...RespaldoDeDocumento::reglas()]],
-            ['archivo.max' => 'El archivo no puede superar los 15 MB.'],
+            ['archivo.max' => 'El archivo no puede superar los '.RespaldoDeDocumento::topeLegible().'.'],
         );
 
         $doc = $this->respaldos->guardar($vehiculo, $documento, $request->file('archivo'), $request->user()->id);

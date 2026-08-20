@@ -65,6 +65,15 @@ class HojaDeRuta extends Model implements AuditableContract
     /** El folio arranca en 1000 (pedido de Luis, R25): max(folio, 999) + 1. */
     public const FOLIO_PISO = 999;
 
+    /**
+     * Cuántas LLAVES de autorización tiene la cadena R11: pagos (ventas) →
+     * ruta (jefe de despacho) → carga (jefe de bodega). La SALIDA del camión
+     * no es llave (la registra bodega con el mismo permiso de la 3ª). Los
+     * mensajes «llave N de X» derivan de acá (LOG-1): si algún día se suma
+     * una 4ª autorización, se cambia UNA constante y ningún texto miente.
+     */
+    public const TOTAL_LLAVES = 3;
+
     protected $fillable = [
         'folio',
         'sucursal_id',
