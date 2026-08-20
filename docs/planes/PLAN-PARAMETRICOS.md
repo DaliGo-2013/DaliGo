@@ -277,3 +277,12 @@ constante, 92 ×2, adopción de POR_PAGINA ×2).
 grupo `produccion`, rótulos e info-tip derivando (rebote v77.1: el tip del panel
 decía «últimos 7» en prosa — cazado por el Director, derivado con +3 aserciones).
 Suite combinada con MSG-4: 2253/15.764 cero rojos. Quedan OPE-2 (dictado v78) y OPE-3.
+
+**OPE-2 EN PRODUCCIÓN (2026-08-20, merge `576ad95`, doble llave):** 3 claves TIPO_JSON
+(`produccion_motivos_parada` = los 7 vivos, `produccion_motivos_planificados` = 2,
+`produccion_procedencias_preforma` = saco/caja, LISTAS_SIMPLES) + **`PARES_SUBCONJUNTO`
+(4º hermano declarativo)**: hijo⊆madre validado en las dos direcciones con RECHAZO que
+nombra a la otra clave (sin auto-arreglo — la lista gobierna el OEE). Candado
+OEE-histórico-intacto en 2 escenarios (la clase se persiste; etiqueta del Pareto viva
+declarada cosmética). Suite combinada con MSG-5: 2291/16.002 cero rojos. Queda OPE-3
+(dictado v79 — cierra el módulo).
