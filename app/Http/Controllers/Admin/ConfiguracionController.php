@@ -24,6 +24,13 @@ class ConfiguracionController extends Controller
         'dashboard_dias_referencia_merma' => [2, 31],
         'dashboard_corte_taller_reciente' => [2, 60],
         'dashboard_corte_taller_antiguo' => [7, 180],
+        // OPE-1: ventanas por defecto del módulo Producción. El panel comparte
+        // el tope de mirada del pulso (31 = un mes); los informes admiten hasta
+        // 90 porque su tabla diaria se arma en PHP con tope duro de 92 filas
+        // (ProduccionController::rango) — 90 queda DENTRO de ese límite.
+        'produccion_dias_panel' => [2, 31],
+        'produccion_dias_informe_maquina' => [7, 90],
+        'produccion_dias_informe_tipo' => [7, 90],
     ];
 
     /**
