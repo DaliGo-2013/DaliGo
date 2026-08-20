@@ -27,6 +27,21 @@ class ProduccionController extends Controller
     private const TURNOS = ['dia', 'noche'];
 
     /**
+     * Guardia anti-dedazo de las cantidades del jefe (asignar y ajustar): un
+     * cero de mas ensucia metricas y kardex aunque a la BD (unsigned int) le
+     * quepa. No es capacidad de negocio — es el umbral de "revisa el numero".
+     */
+    private const TOPE_CANTIDAD = 100000;
+
+    /**
+     * Tope del rango de fechas de los informes: la tabla por dia se arma en
+     * PHP, asi que se acota a ~92 filas (un trimestre). Limite de RENDER, no
+     * perilla de negocio (nivel 3 del mapa §5.3) — las ventanas por DEFECTO
+     * si son claves de Configuracion (OPE-1) y su RANGOS respeta este techo.
+     */
+    private const MAX_DIAS_RANGO = 92;
+
+    /**
      * Ventanas por defecto (en días VISIBLES, hoy incluido) del panel y de los
      * dos informes de rendimiento. Son los DEFAULTS del rango: el usuario puede
      * pedir otro por URL (?desde/?hasta) y eso siempre gana. Editables en
@@ -163,9 +178,9 @@ class ProduccionController extends Controller
         if ($desde > $hasta) {
             $desde = $hasta;
         }
-        // La tabla por dia se arma en PHP: acotar a ~92 filas.
-        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > 92) {
-            $desde = Carbon::parse($hasta)->subDays(92)->toDateString();
+        // La tabla por dia se arma en PHP: acotar (ver MAX_DIAS_RANGO).
+        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > self::MAX_DIAS_RANGO) {
+            $desde = Carbon::parse($hasta)->subDays(self::MAX_DIAS_RANGO)->toDateString();
         }
 
         return [$desde, $hasta, ! $request->filled('desde') && ! $request->filled('hasta')];
@@ -470,15 +485,16 @@ class ProduccionController extends Controller
 
     /**
      * Productos elegibles como preforma del turno: activos cuya categoria
-     * menciona "preforma", excluyendo las preformas DANADAS (registran merma
-     * en el catalogo, no son material asignable a un turno). Fallback: todos
-     * los activos (para no bloquear si la categorizacion del catalogo aun no
-     * distingue preformas), con la misma exclusion.
+     * calza el patron de config/produccion.php (default: menciona "preforma"),
+     * excluyendo las preformas DANADAS (registran merma en el catalogo, no son
+     * material asignable a un turno). Fallback: todos los activos (para no
+     * bloquear si la categorizacion del catalogo aun no distingue preformas),
+     * con la misma exclusion.
      */
     private function preformasParaSelector()
     {
         $preformas = Producto::query()->where('activo', true)
-            ->where('categoria', 'like', '%preforma%')
+            ->where('categoria', 'like', config('produccion.patron_preforma'))
             ->where($this->sinPreformasDanadas())
             ->orderBy('nombre')
             ->get(['id', 'sku', 'nombre']);
@@ -501,9 +517,13 @@ class ProduccionController extends Controller
      */
     private function sinPreformasDanadas(): \Closure
     {
-        return function ($query) {
-            $query->where('nombre', 'not like', '%dañada%')
-                ->where('nombre', 'not like', '%DAÑADA%');
+        // El patrón vive en config/produccion.php (OPE-3, nivel 2 deploy). La
+        // segunda vuelta en MAYÚSCULAS conserva el gotcha de la Ñ tal cual.
+        $patron = (string) config('produccion.patron_danada');
+
+        return function ($query) use ($patron) {
+            $query->where('nombre', 'not like', $patron)
+                ->where('nombre', 'not like', mb_strtoupper($patron));
         };
     }
 
@@ -520,9 +540,8 @@ class ProduccionController extends Controller
             'soplador_id' => ['required', 'integer', 'exists:users,id'],
             'turno' => ['required', 'in:'.implode(',', self::TURNOS)],
             'fecha' => ['required', 'date'],
-            // max como guardia anti-dedazo: un cero de mas ensucia metricas y
-            // kardex aunque a la BD (unsigned int) le quepa.
-            'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
+            // max como guardia anti-dedazo (ver TOPE_CANTIDAD).
+            'asignadas' => ['required', 'integer', 'min:1', 'max:'.self::TOPE_CANTIDAD],
             // Preforma del turno (producto del catalogo). Opcional: si no se
             // elige, el consumo del kardex queda sin enlace a producto. Se
             // restringe a productos ACTIVOS y NO dañados (mismo universo que
@@ -728,7 +747,7 @@ class ProduccionController extends Controller
         $resumen = (clone $query)->selectRaw('tipo, COALESCE(SUM(cantidad), 0) AS total')
             ->groupBy('tipo')->pluck('total', 'tipo');
 
-        $movimientos = $query->latest('fecha')->latest('id')->paginate(25)->withQueryString();
+        $movimientos = $query->latest('fecha')->latest('id')->paginate(self::POR_PAGINA)->withQueryString();
 
         return view('admin.produccion.movimientos', [
             'movimientos' => $movimientos,
@@ -828,11 +847,11 @@ class ProduccionController extends Controller
         }
 
         $validated = $request->validate([
-            'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
-            'primera' => ['required', 'integer', 'min:0', 'max:100000'],
-            'segunda' => ['required', 'integer', 'min:0', 'max:100000'],
-            'malo' => ['required', 'integer', 'min:0', 'max:100000'],
-            'danada' => ['required', 'integer', 'min:0', 'max:100000'],
+            'asignadas' => ['required', 'integer', 'min:1', 'max:'.self::TOPE_CANTIDAD],
+            'primera' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
+            'segunda' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
+            'malo' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
+            'danada' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
             // notIn: el centinela nunca puede guardarse como motivo real.
             'motivo_ajuste' => ['required', 'string', 'max:255', Rule::notIn([ProduccionReporte::MOTIVO_OTRO])],
         ], [
