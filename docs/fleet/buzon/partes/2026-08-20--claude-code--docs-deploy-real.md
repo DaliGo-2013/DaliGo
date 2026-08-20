@@ -4,7 +4,7 @@
 CUENTA: claude-code (asiento del dueño; tarea encargada directa por Mauricio)
 TAREA: fuera de tablero — solo-docs: HANDOFF.md y CLAUDE.md describían el deploy viejo (deploy.sh + composer install)
 ESTADO: HECHA
-EVIDENCIA: commit 2b68db8 (HANDOFF.md + CLAUDE.md, 2 archivos, solo docs)
+EVIDENCIA: commit 363e694 (HANDOFF.md + CLAUDE.md, 2 archivos, solo docs)
 TESTS: no aplica (cambio solo-docs; no se tocó código ni bundle)
 /usage INICIO → FIN: no disponible en este asiento
 SIGUIENTE: nada pendiente; si el Director quiere, replicar la advertencia en docs/delegacion/ donde se cite deploy.sh
