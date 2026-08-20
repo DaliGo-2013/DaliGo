@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Bodega;
 use App\Models\Configuracion;
 use App\Models\Maquina;
+use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionParada;
 use App\Models\ProduccionRegistro;
@@ -483,5 +485,78 @@ class ParametrosOperacionTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.configuracion.update', $madre), ['valor' => $sinCorteDeLuz])
             ->assertSessionHasNoErrors();
+    }
+
+    // =====================================================================
+    //  OPE-3: config de preforma (nivel 2, config/produccion.php) + higiene
+    //  (hallazgo #3 del mapa §5.3 + tope de rango + POR_PAGINA)
+    // =====================================================================
+
+    public function test_el_patron_de_preforma_vive_en_config_y_moverlo_mueve_el_selector(): void
+    {
+        $preforma = Producto::create(['sku' => 'PREF-1', 'nombre' => 'Preforma 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
+        Producto::create(['sku' => 'PREF-D', 'nombre' => 'Preforma dañada 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
+        $botellon = Producto::create(['sku' => 'BOT-1', 'nombre' => 'Botellon 20L', 'categoria' => 'Botellones', 'activo' => true]);
+        $jefe = $this->jefe();
+
+        // Config default = conducta de hoy (regla de oro): preformas sanas.
+        $res = $this->actingAs($jefe)->get(route('admin.produccion.asignar'))->assertOk();
+        $this->assertSame([$preforma->id], $res->viewData('preformas')->pluck('id')->all());
+
+        // El criterio de QUÉ es preforma sigue a la config (deploy, nivel 2).
+        config(['produccion.patron_preforma' => '%botellon%']);
+        $res = $this->actingAs($jefe)->get(route('admin.produccion.asignar'))->assertOk();
+        $this->assertSame([$botellon->id], $res->viewData('preformas')->pluck('id')->all());
+    }
+
+    public function test_el_patron_de_danada_mueve_la_exclusion_y_la_validacion_la_comparte(): void
+    {
+        $preforma = Producto::create(['sku' => 'PREF-1', 'nombre' => 'Preforma 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
+        $danada = Producto::create(['sku' => 'PREF-D', 'nombre' => 'Preforma dañada 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
+        $rota = Producto::create(['sku' => 'PREF-R', 'nombre' => 'Preforma rota 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
+        $jefe = $this->jefe();
+        $base = fn () => ['soplador_id' => $this->soplador()->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+
+        // Default: la dañada queda fuera del selector Y de la validación
+        // (closure única: mismo universo en las dos puertas).
+        $res = $this->actingAs($jefe)->get(route('admin.produccion.asignar'))->assertOk();
+        $this->assertSame([$preforma->id, $rota->id], $res->viewData('preformas')->pluck('id')->all());
+        $this->actingAs($jefe)->post(route('admin.produccion.asignar.store'), $base() + ['preforma_id' => $danada->id])
+            ->assertSessionHasErrors('preforma_id');
+
+        // Con el patrón movido, la exclusión cambia de producto en AMBAS puertas.
+        config(['produccion.patron_danada' => '%rota%']);
+        $res = $this->actingAs($jefe)->get(route('admin.produccion.asignar'))->assertOk();
+        $this->assertSame([$preforma->id, $danada->id], $res->viewData('preformas')->pluck('id')->all());
+        $this->actingAs($jefe)->post(route('admin.produccion.asignar.store'), $base() + ['preforma_id' => $danada->id])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($jefe)->post(route('admin.produccion.asignar.store'), $base() + ['preforma_id' => $rota->id])
+            ->assertSessionHasErrors('preforma_id');
+    }
+
+    public function test_el_tope_de_92_dias_acota_el_rango_pedido(): void
+    {
+        // Límite de RENDER (nivel 3, ahora constante MAX_DIAS_RANGO): pedir
+        // 200 días devuelve la tabla acotada a 92 hacia atrás + el día hasta.
+        $res = $this->actingAs($this->jefe())->get(route('admin.produccion.maquina', [
+            'maquina' => $this->maquina->id,
+            'desde' => now()->subDays(200)->toDateString(),
+            'hasta' => now()->toDateString(),
+        ]))->assertOk();
+
+        $this->assertCount(93, $res->viewData('tendencia')['dias']);
+    }
+
+    public function test_el_kardex_y_el_inventario_paginan_con_la_convencion_de_la_casa(): void
+    {
+        // Adopción de Controller::POR_PAGINA (molde COM-2): el valor vive UNA
+        // vez en el padre; estos dos eran los paginate(25) del módulo.
+        $kardex = $this->actingAs($this->jefe())->get(route('admin.produccion.movimientos'))->assertOk();
+        $this->assertSame(\App\Http\Controllers\Controller::POR_PAGINA, $kardex->viewData('movimientos')->perPage());
+
+        $bodega = Bodega::factory()->create();
+        $gestor = tap(User::factory()->create())->givePermissionTo('manage productos');
+        $inventario = $this->actingAs($gestor)->get(route('admin.bodegas.show', $bodega))->assertOk();
+        $this->assertSame(\App\Http\Controllers\Controller::POR_PAGINA, $inventario->viewData('stocks')->perPage());
     }
 }
