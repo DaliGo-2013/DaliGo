@@ -283,3 +283,9 @@ Las 5 recomendaciones ratificadas: ítem de primer nivel «Mensajes» (menú 32�
 de no-leídos) · aviso por RÁFAGA · permiso `usar mensajes` en todos los roles ·
 online-only en v1 · retención para siempre en v1. Fase de código: MSG-1 (backend puro,
 dictado v26) → MSG-2 (pantallas) → MSG-3 (poll) → MSG-4 (menú+badge, al final).
+
+**CONSTRUCCIÓN COMPLETA 4/4 (2026-08-20):** MSG-1 `c89867e` → MSG-2 `5bf39df` →
+MSG-3 `1d7ad3e` → MSG-4 `1c044df` (todas con doble llave). El ítem «Mensajes» quedó
+entre Aprobaciones y ST (familia personal transversal, argumentado por Max-2), badge
+con fuente única `Conversacion::noLeidosDeUsuario()` compartida con `firmaChat`.
+**PENDIENTE: QA del dueño en celular (las 4 etapas juntas) → cierre del plan.**

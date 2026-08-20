@@ -1,58 +1,41 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-20 (v29 — MSG-3 EN PRODUCCIÓN: el chat se
-> refresca solo. GO MSG-4: la entrada en el menú con contador — el ÚLTIMO lote
-> del chat). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-20 (v30 — MSG-4 EN PRODUCCIÓN: el chat
+> quedó CONSTRUIDO COMPLETO 4/4. PAUSA hasta el QA del dueño en celular).
+> Manda sobre lo anterior.
 
 CUENTA: Max-2 (Forjador B, stream 2) · MODELO: Fable 5 (fijado por el dueño).
 
-## ✅ MSG-3 está EN PRODUCCIÓN (merge `1d7ad3e`, doble llave 20-ago)
+## ✅ MSG-4 está EN PRODUCCIÓN (merge `1c044df`, doble llave 20-ago) — CHAT 4/4
 
-Suite del Director sobre el árbol combinado: **2244 / 15.594, CERO rojos** —
-delta exacto +6/+20 como declaraste. Rama borrada. Card «Actualización
-automática» en Terminadas con comentario.
+Suite del Director sobre el árbol combinado con OPE-1 de Max-1: **2253 / 15.764,
+CERO rojos** — tu +2 exacto. Rama borrada. Card «Entrada en el menú» en
+Terminadas; PLAN-MENSAJES marcado 4/4 construido.
 
-Lo que quedó fino: la firma horneada DESPUÉS de `marcarLeida` con el porqué
-comentado (el candado que evita el falso-recargo al abrir el hilo); el
-`<x-poll-recarga>` con la coexistencia de ST declarada como el `_tabs`; y los
-2 gotchas re-cazados por tus propios candados ANTES del commit (el `@js()` que
-escapa barras y el needle prosa-vs-código) — eso es el sistema funcionando.
+Lo que quedó fino del lote: la posición por VECINDAD argumentada (la familia
+personal transversal — eso es criterio de diseño, no relleno); la FUENTE ÚNICA
+del contador con el porqué en el código (el menú y el poll no pueden contar
+distinto); los candados estructurales derivando SOLOS (77/77 sin tocarlos — el
+sistema de tests de menú pagándose de nuevo); y el cruce con AccesosDashboard
+EVITADO y declarado (respeto de territorio — la card del Inicio queda para el
+dueño si la pide tras el QA).
 
-## 🔨 GO — Lote MSG-4: la entrada en el menú con contador (S) — CIERRA el chat
+## ⏸️ PAUSA — el chat queda en manos del dueño
 
-Tu diseño §5.5, veredicto del dueño ya dado (menú 32→33):
+El proyecto PLAN-MENSAJES tiene sus 4 etapas en producción: motor → pantallas →
+refresco → menú. Falta SOLO el **QA del dueño en celular** (entrar por el menú,
+badge, hilo, refresco automático, aviso campanita/correo con anti-ráfaga).
 
-1. **Ítem «Mensajes» de primer nivel** en `MenuPrincipal` — la posición que tu
-   diseño argumente (vecindad de uso, no alfabeto), gateado por el permiso
-   `usar mensajes` (doctrina «el menú jamás ofrece un 403»).
-2. **Badge de no-leídos DECLARATIVO** (el patrón de badges del menú — cuenta
-   al render, SIN poll: la doctrina de la campanita sigue). La cifra = suma de
-   MIS contadores (la misma media firma que ya calculas — si extraes un
-   contadorNoLeidos() compartido con firmaChat, decláralo).
-3. **Retiro del `<x-volver>` de la huérfana temporal** (`mensajes/index` deja
-   de ser huérfana al entrar al menú — P-NAV-06/08: el Volver era el puente
-   mientras no había ítem; ahora el menú ES el camino).
-4. **Candados**: MenuPrincipal deriva (item aparece con permiso, NO aparece
-   sin él — 33 con chat, 32 sin) · badge con cifra exacta y ausente en cero ·
-   huérfana ya no huérfana (Volver fuera, el test de VolverTest que la
-   toleraba vuelve a su forma estricta si la listaba) · mutación tuya
-   declarada.
-5. **Cruce MenuPrincipal**: Max-1 NO lo toca en OPE-1 (su lote vive en
-   ProduccionController/seeder/vistas de producción) — vía libre AHORA; el
-   Director re-secuencia si su fix se cruza (no debería).
+- **QA verde** → el Director cierra el plan (acta, /plan si el dueño lo pide,
+  Trello) y te dicta stream nuevo.
+- **QA con hallazgos** → dictado de fixes (serán S — el molde ya probó).
 
-### Verificación (invariante)
-Rama `feature/msg-4-menu` desde main FRESCO (baseline: **2244 / 15.594** en
-`1d7ad3e` — recuenta tú; OPE-1 de Max-1 puede mergear antes que tu parte:
-+7/+125 esperados de él, sin archivos tuyos). Suite COMPLETA antes. Bundle:
-clases nuevas → I-06 declarado. Parte al buzón; espera doble llave.
-
-## 📡 Después de MSG-4
-QA del dueño del chat COMPLETO en celular (las 4 etapas juntas) → cierre del
-PLAN-MENSAJES en /plan y Trello. Después: el Director te asigna stream nuevo.
+NO forjes nada mientras tanto. NO toques territorio de Max-1 (OPE-2 corre en
+Producción/Configuración).
 
 ## Estado
-Max-1: OPE-1 en rebote quirúrgico (un info-tip con el 7 en prosa — v77.1);
-luego OPE-2/OPE-3. Marcos activo. Trello espejando. Baseline: 2244/15.594 en
-`1d7ad3e`.
+Max-1: GO OPE-2 (las listas de motivos + par planificados⊆motivos + procedencias
+— 4º hermano declarativo). Marcos activo. Trello espejando. Baseline:
+2253/15.764 en `1c044df`.
 
-CIERRE: GO MSG-4. El último ladrillo — la puerta del chat se abre en el menú.
+CIERRE: chat construido de punta a punta en 4 lotes, cero rojos propios en todo
+el proyecto. Fierro — ahora que lo estrene el dueño.
