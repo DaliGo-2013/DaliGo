@@ -1,11 +1,12 @@
 {{-- Form compartido crear/editar. Recibe $nota (null al crear) y $sopladores. --}}
 <div class="space-y-4">
     <div>
-        <x-input-label for="texto" value="Nota" />
+        <x-input-label for="texto" value="Nota">
+            <x-slot:ayuda>Lo que el soplador va a leer en su pantalla. Corto y fáctico («Hoy llegan preformas nuevas a las 15:00»).</x-slot:ayuda>
+        </x-input-label>
         <x-text-input id="texto" name="texto" type="text" class="mt-1.5 block w-full"
                       maxlength="191" required
                       :value="old('texto', $nota?->texto)" />
-        <x-input-hint>Lo que el soplador va a leer en su pantalla. Corto y fáctico («Hoy llegan preformas nuevas a las 15:00»).</x-input-hint>
         <x-input-error :messages="$errors->get('texto')" class="mt-2" />
     </div>
 

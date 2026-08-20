@@ -188,21 +188,30 @@
     </div>
 
     <div>
-        <x-input-label for="fecha_entrega" value="Fecha de entrega (estimada)" />
         {{-- REFERENCIA INTERNA. Al cliente no se le manda esta fecha (dueño, 14-08-2026): en
              el correo y en la pantalla del QR va el PLAZO en días hábiles y él lo cuenta.
              Sirve para el taller (flujo de salidas del dashboard, informe de gestión), no
-             para prometerla por teléfono. --}}
+             para prometerla por teléfono.
+
+             La explicación va en la ⓘ (una sola, para las dos ramas) y abajo queda solo lo
+             operativo, que es lo único que cambia entre crear y editar. --}}
+        <x-input-label for="fecha_entrega" value="Fecha de entrega (estimada)">
+            <x-slot:ayuda>
+                Se calcula sola según la sucursal: días hábiles, sin contar fines de semana ni feriados.
+                Es <strong>referencia interna</strong> del taller — al cliente se le informa el plazo en
+                días hábiles, no una fecha, así que no se la prometas por teléfono.
+            </x-slot:ayuda>
+        </x-input-label>
         @if ($esCreacion)
             {{-- Solo informativa: la calcula el servidor (sucursal + dias habiles);
                  el JS la muestra en vivo al elegir sucursal/fecha. --}}
             <x-text-input id="fecha_entrega" class="mt-1.5 pointer-events-none bg-neutral-50 text-neutral-500" type="date" name="fecha_entrega"
                 x-model="fechaEntrega" readonly tabindex="-1" />
-            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Es referencia interna: al cliente se le informa el plazo en días hábiles, no una fecha.</x-input-hint>
+            <x-input-hint>Se calcula sola.</x-input-hint>
         @else
             <x-text-input id="fecha_entrega" class="mt-1.5" type="date" name="fecha_entrega"
                 x-model="fechaEntrega" x-on:input="entregaManual = true" />
-            <x-input-hint>Se calcula sola según la sucursal (días hábiles, sin fines de semana ni feriados). Puedes editarla. Es referencia interna: al cliente se le informa el plazo en días hábiles, no una fecha.</x-input-hint>
+            <x-input-hint>Se calcula sola; puedes editarla.</x-input-hint>
         @endif
         <x-input-error :messages="$errors->get('fecha_entrega')" class="mt-2" />
     </div>
@@ -217,9 +226,10 @@
     {{-- Falla observada por el TECNICO: aparte de la del cliente, para no mezclar
          ni cambiar lo que dijo. El tecnico agrega lo que el cliente no indico. --}}
     <div class="sm:col-span-2">
-        <x-input-label for="falla_tecnico" value="Condiciones de entrega" />
+        <x-input-label for="falla_tecnico" value="Condiciones de entrega">
+            <x-slot:ayuda>Opcional. Condiciones en que se recibe o entrega el equipo (estado, accesorios, acuerdos con el cliente).</x-slot:ayuda>
+        </x-input-label>
         <x-textarea id="falla_tecnico" class="mt-1.5" name="falla_tecnico" rows="2">{{ old('falla_tecnico', $o?->falla_tecnico) }}</x-textarea>
-        <x-input-hint>Opcional. Condiciones en que se recibe o entrega el equipo (estado, accesorios, acuerdos con el cliente).</x-input-hint>
         <x-input-error :messages="$errors->get('falla_tecnico')" class="mt-2" />
     </div>
 </div>

@@ -268,10 +268,11 @@
                                     @csrf
                                     @method('PATCH')
                                     <div>
-                                        <x-input-label :for="'notas-'.$t->id" value="¿Qué hiciste? Paso a paso" />
+                                        <x-input-label :for="'notas-'.$t->id" value="¿Qué hiciste? Paso a paso">
+                                            <x-slot:ayuda>Esto es lo que le llega al jefe de ventas y al vendedor del cliente. Si no se pudo hacer, cuenta por qué.</x-slot:ayuda>
+                                        </x-input-label>
                                         <x-textarea :id="'notas-'.$t->id" name="notas_tecnico" rows="4" class="mt-1.5"
                                             placeholder="Ej. 1) Revisé la bomba booster: sin presión. 2) Cambié la membrana y el filtro de papel. 3) Purgué el sistema y medí 65 psi. 4) Dejé funcionando y el cliente lo probó.">{{ old('notas_tecnico', $t->notas_tecnico) }}</x-textarea>
-                                        <x-input-hint>Esto es lo que le llega al jefe de ventas y al vendedor del cliente. Si no se pudo hacer, cuenta por qué.</x-input-hint>
                                         <x-input-error :messages="$errors->get('notas_tecnico')" class="mt-2" />
                                     </div>
 
@@ -306,12 +307,15 @@
                                              rótulo se deriva del tipo (`repuestosTitulo`), no de
                                              un campo que alguien tenga que acordarse de marcar. --}}
                                         <div class="flex items-center justify-between">
-                                            <x-input-label :value="$t->repuestosEtiquetaFormulario()" />
+                                            {{-- La ayuda va en la ⓘ, pero CONDICIONAL igual que antes: en un
+                                                 trabajo que no es pronóstico ese texto sería falso. --}}
+                                            <x-input-label :value="$t->repuestosEtiquetaFormulario()">
+                                                @if ($t->repuestosSonPronostico())
+                                                    <x-slot:ayuda>Esta es la visita de revisión: anota lo que vas a NECESITAR. Con esto ventas arma la cotización para cuando vuelvas a hacer el trabajo.</x-slot:ayuda>
+                                                @endif
+                                            </x-input-label>
                                             <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
                                         </div>
-                                        @if ($t->repuestosSonPronostico())
-                                            <x-input-hint>Esta es la visita de revisión: anota lo que vas a NECESITAR. Con esto ventas arma la cotización para cuando vuelvas a hacer el trabajo.</x-input-hint>
-                                        @endif
 
                                         <div class="mt-2 space-y-2">
                                             <template x-for="(r, i) in repuestos" :key="i">

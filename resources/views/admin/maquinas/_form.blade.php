@@ -17,11 +17,12 @@
 </div>
 
 <div>
-    <x-input-label for="oee_target" value="Meta de OEE (%)" />
+    <x-input-label for="oee_target" value="Meta de OEE (%)">
+        <x-slot:ayuda>El informe de rendimiento pinta el OEE del período contra esta meta. Vacío = sin meta declarada.</x-slot:ayuda>
+    </x-input-label>
     <x-text-input id="oee_target" class="mt-1.5" type="number" name="oee_target" min="1" max="100" step="1"
                   :value="old('oee_target', $maquina?->oee_target)" placeholder="Ej. 85" />
     <x-input-error :messages="$errors->get('oee_target')" class="mt-2" />
-    <x-input-hint class="mt-2">El informe de rendimiento pinta el OEE del período contra esta meta. Vacío = sin meta declarada.</x-input-hint>
 </div>
 
 <div class="space-y-2">
