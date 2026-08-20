@@ -47,10 +47,52 @@
             </div>
         </div>
 
-        {{-- KPIs del período: trabajos (total/realizados/pendientes/visitas) + repuestos.
-             Realizados y Pendientes son cliqueables: despliegan la lista de trabajos que
-             hay detrás del número (lo hecho / lo por hacer) sin salir del informe. --}}
+        {{-- KPIs del período, en dos filas y en este orden (dueño 20-08-2026):
+             PRIMERO las cuatro tarjetas por TIPO de trabajo —lo más importante— y
+             después el ESTADO del período (total, realizados, no realizados).
+
+             Salieron de esta grilla, «por el momento», las tarjetas de Pendientes,
+             Repuestos usados y Repuestos distintos. Cada bloque quitado dejó dicho
+             dónde vive el dato ahora y qué hace falta para devolverlo.
+
+             Realizados y No realizados siguen siendo cliqueables: despliegan la lista
+             de trabajos que hay detrás del número sin salir del informe. --}}
         <div x-data="{ abierto: null }" class="dg-enter space-y-4">
+            {{-- LAS CUATRO TARJETAS MÁS IMPORTANTES, Y VAN PRIMERAS (dueño 20-08-2026:
+                 «esas cuatro tarjetas son las más importantes, como en primera fila»).
+                 Una por tipo de trabajo: visita técnica, mantención, reparación e
+                 instalación. Antes existía solo la de «Visitas técnicas» y los otros
+                 tres tipos había que leerlos del ranking de más abajo (14-08).
+
+                 SIN TÍTULO a propósito: el panel de más abajo ya se llama «Por tipo de
+                 trabajo», y dos bloques con el mismo rótulo se leen como si uno
+                 contradijera al otro. Cada tarjeta trae su nombre, así que la fila se
+                 explica sola.
+
+                 Siempre las cuatro, incluso en 0 (atenuado): que un mes no haya
+                 reparaciones es información, y una tarjeta ausente se lee como «esto no
+                 se mide» y manda a alguien a buscar el dato a otra parte. --}}
+            <div>
+                <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    @foreach ($tiposResumen as $t)
+                        <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+                            <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $t['label'] }}</p>
+                            <p class="mt-1 text-2xl font-semibold {{ $t['total'] > 0 ? 'text-neutral-900' : 'text-neutral-300' }}">{{ number_format($t['total'], 0, ',', '.') }}</p>
+                            <p class="text-xs text-neutral-400">{{ $t['pct'] }}% del período · {{ $t['realizados'] }} {{ $t['realizados'] === 1 ? 'realizado' : 'realizados' }}</p>
+                            <span class="absolute right-2 top-2">
+                                <x-info-tip>
+                                    @if ($t['tipo'] === 'visita_tecnica')
+                                        Visitas de revisión: el técnico va, estudia qué hay que hacer y con eso ventas cotiza el trabajo. Es la primera visita, no el trabajo.
+                                    @else
+                                        Trabajos de {{ mb_strtolower($t['label']) }} con fecha en el período, y cuántos ya se realizaron.
+                                    @endif
+                                </x-info-tip>
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                     <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Trabajos en el período</p>
@@ -72,21 +114,12 @@
                     </button>
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos ya realizados y su porcentaje sobre el total del período (cumplimiento). Clic en el número para ver la lista.</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border bg-white p-3 shadow-sm sm:p-4 transition"
-                     :class="abierto === 'pendientes' ? 'border-brand-400 ring-1 ring-brand-200' : 'border-neutral-200'">
-                    <button type="button" class="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2 rounded-lg"
-                            @click="abierto = abierto === 'pendientes' ? null : 'pendientes'"
-                            :aria-expanded="abierto === 'pendientes' ? 'true' : 'false'">
-                        <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Pendientes</p>
-                        <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($pendientes, 0, ',', '.') }}</p>
-                        <p class="text-xs text-neutral-400">{{ $pctPendientes }}% del período · agendados sin realizar</p>
-                        <span class="mt-1 inline-flex items-center gap-0.5 text-xs font-medium text-brand-600">
-                            <span x-text="abierto === 'pendientes' ? 'Ocultar detalle' : 'Ver detalle'">Ver detalle</span>
-                            <svg class="h-3.5 w-3.5 transition-transform" :class="abierto === 'pendientes' && 'rotate-180'" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
-                        </span>
-                    </button>
-                    <span class="absolute right-2 top-2"><x-info-tip>Trabajos agendados en el período que aún no se marcan como realizados, y su % del total. Clic en el número para ver la lista.</x-info-tip></span>
-                </div>
+                {{-- La tarjeta PENDIENTES salió el 20-08 («sácala por el momento»), y con
+                     ella su panel desplegable: una tarjeta que no está no puede abrir
+                     nada, y dejar el panel huérfano sería markup que nunca se muestra.
+                     El conteo sigue llegando a la vista ($pendientes / $pctPendientes /
+                     $pendientesLista), así que volver a mostrarla es pegar de vuelta este
+                     bloque y su panel. --}}
                 {{-- NO REALIZADOS (14-08): el técnico fue y no se pudo hacer. Es su
                      propia categoría y no «pendientes»: contarlos como pendientes diría
                      que falta ir, cuando ya se fue. Rojo porque es lo que hay que mirar. --}}
@@ -105,50 +138,13 @@
                     </button>
                     <span class="absolute right-2 top-2"><x-info-tip>Trabajos a los que el técnico fue y no se pudieron hacer (faltó un repuesto, el cliente no quiso…), con el motivo que escribió al cerrar. Clic en el número para ver la lista y decidir si se vuelve.</x-info-tip></span>
                 </div>
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-                    <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos usados</p>
-                    <p class="mt-1 text-2xl font-semibold text-brand-600">{{ number_format($totalUnidadesRepuestos, 0, ',', '.') }}</p>
-                    <p class="text-xs text-neutral-400">unidades</p>
-                    <span class="absolute right-2 top-2"><x-info-tip>Unidades de repuestos efectivamente USADAS en los trabajos del período. <strong>No cuenta las visitas técnicas</strong>: ahí el técnico anota lo que se va a necesitar para cotizar la segunda visita, y sumarlo acá contaría dos veces el mismo repuesto. Ese pronóstico está en el Excel, en la columna «Registro».</x-info-tip></span>
-                </div>
-                <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-                    <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Repuestos distintos</p>
-                    <p class="mt-1 text-2xl font-semibold text-neutral-900">{{ number_format($totalNombresRepuestos, 0, ',', '.') }}</p>
-                    <span class="absolute right-2 top-2"><x-info-tip>Cantidad de repuestos distintos usados en el período.</x-info-tip></span>
-                </div>
-            </div>
-
-            {{-- POR TIPO DE TRABAJO, una tarjeta cada uno (dueño 14-08-2026): antes
-                 solo existía la de «Visitas técnicas» y los otros tres tipos había
-                 que leerlos del ranking de más abajo.
-
-                 Van en su PROPIA fila y no sumadas a la grilla de arriba: esa mide
-                 el ESTADO de los trabajos (hechos, pendientes, no realizados) y esta
-                 mide de QUÉ son. Diez tarjetas seguidas se leen como una pared;
-                 cuatro, agrupadas y rotuladas, se leen de un vistazo.
-
-                 Siempre las cuatro, incluso en 0: que un mes no haya reparaciones es
-                 información, y una tarjeta ausente se lee como «esto no se mide». --}}
-            <div>
-                <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Por tipo de trabajo</h3>
-                <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                    @foreach ($tiposResumen as $t)
-                        <div class="relative rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-                            <p class="pr-6 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $t['label'] }}</p>
-                            <p class="mt-1 text-2xl font-semibold {{ $t['total'] > 0 ? 'text-neutral-900' : 'text-neutral-300' }}">{{ number_format($t['total'], 0, ',', '.') }}</p>
-                            <p class="text-xs text-neutral-400">{{ $t['pct'] }}% del período · {{ $t['realizados'] }} {{ $t['realizados'] === 1 ? 'realizado' : 'realizados' }}</p>
-                            <span class="absolute right-2 top-2">
-                                <x-info-tip>
-                                    @if ($t['tipo'] === 'visita_tecnica')
-                                        Visitas de revisión: el técnico va, estudia qué hay que hacer y con eso ventas cotiza el trabajo. Es la primera visita, no el trabajo.
-                                    @else
-                                        Trabajos de {{ mb_strtolower($t['label']) }} con fecha en el período, y cuántos ya se realizaron.
-                                    @endif
-                                </x-info-tip>
-                            </span>
-                        </div>
-                    @endforeach
-                </div>
+                {{-- Las dos tarjetas de REPUESTOS («usados» y «distintos») salieron el
+                     20-08 por pedido del dueño: «sácalas por el momento». El dato NO se
+                     perdió — la tabla «Uso de repuestos en el período», más abajo, tiene
+                     el desglose completo por repuesto con unidades y trabajos, que es
+                     donde se mira para reponer stock. Las cifras siguen llegando a la
+                     vista ($totalUnidadesRepuestos / $totalNombresRepuestos), así que
+                     devolver las tarjetas es pegar este bloque de vuelta. --}}
             </div>
 
             {{-- Paneles desplegables del detalle (uno a la vez). --}}
@@ -160,14 +156,7 @@
                 </div>
                 @include('admin.servicio-tecnico.partials._trabajos-detalle', ['trabajos' => $realizadosLista, 'modo' => 'realizado'])
             </div>
-            <div x-show="abierto === 'pendientes'" x-transition x-cloak
-                 class="overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-sm">
-                <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">
-                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Pendientes — {{ $periodoLabel }}</h3>
-                    <span class="text-xs text-neutral-400">· {{ number_format($pendientes, 0, ',', '.') }} {{ $pendientes === 1 ? 'trabajo' : 'trabajos' }}</span>
-                </div>
-                @include('admin.servicio-tecnico.partials._trabajos-detalle', ['trabajos' => $pendientesLista, 'modo' => 'pendiente'])
-            </div>
+            {{-- (El panel de PENDIENTES vivía acá; se fue con su tarjeta el 20-08.) --}}
             <div x-show="abierto === 'no_realizados'" x-transition x-cloak
                  class="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
                 <div class="flex items-center gap-1.5 border-b border-neutral-100 px-4 py-3 sm:px-6">

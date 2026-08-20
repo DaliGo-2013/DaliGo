@@ -319,24 +319,84 @@ class ServicioTecnicoInformeIndustrialTest extends TestCase
             ->assertViewHas('pendientesLista', fn (Collection $l) => $l->pluck('id')->all() === [$pendiente->id]);
     }
 
-    public function test_la_vista_muestra_el_detalle_de_lo_hecho_y_lo_por_hacer(): void
+    /**
+     * El panel de REALIZADOS se renderiza en el servidor (Alpine solo lo muestra u
+     * oculta), así que su detalle está en el HTML aunque arranque cerrado.
+     *
+     * ANTES ESTE TEST TAMBIÉN MIRABA «lo por hacer», y hay que contar por qué se
+     * quitó esa mitad: la tarjeta Pendientes y su panel salieron el 20-08 por
+     * pedido del dueño, y aun así las aserciones de un trabajo AGENDADO seguían
+     * pasando — las satisfacía el historial por cliente («Clientes que más
+     * solicitan»), que renderiza todos los trabajos del período con el mismo
+     * partial. O sea el test quedó verde por una razón distinta de la que decía su
+     * nombre: habría seguido pasando aunque el detalle de lo pendiente no se
+     * mostrara en ninguna parte. Ese caso lo cubre HistorialClienteTerrenoTest, que
+     * sí sabe de qué superficie está hablando.
+     */
+    public function test_el_panel_de_realizados_trae_su_detalle_en_el_html(): void
     {
         AgendaTrabajo::factory()->create([
             'fecha' => '2026-07-10', 'estado' => 'realizado',
             'cliente_nombre' => 'Cliente Hecho', 'notas_tecnico' => 'Se cambio la membrana',
         ]);
-        AgendaTrabajo::factory()->create([
-            'fecha' => '2026-07-20', 'estado' => 'agendado',
-            'cliente_nombre' => 'Cliente Por Hacer', 'descripcion' => 'Revisar bomba dosificadora',
-        ]);
 
-        // Los paneles se renderizan en el servidor (Alpine solo los muestra/oculta),
-        // así que el detalle está en el HTML aunque el panel arranque cerrado.
         $this->actingAs($this->admin())->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
             ->assertOk()
             ->assertSee('Cliente Hecho')
-            ->assertSee('Se cambio la membrana')
-            ->assertSee('Cliente Por Hacer')
-            ->assertSee('Revisar bomba dosificadora');
+            ->assertSee('Se cambio la membrana');
+    }
+
+    /**
+     * LAS TRES TARJETAS QUE EL DUEÑO PIDIÓ SACAR (20-08): Pendientes, Repuestos
+     * usados y Repuestos distintos. El candado existe para que no vuelvan sin
+     * decisión —es una pantalla que él revisa— y para dejar constancia de qué se
+     * quitó, que es lo que un `git log` no muestra de un vistazo.
+     *
+     * Se mira el rótulo de la TARJETA, no la palabra suelta: «Repuestos» sigue
+     * apareciendo en la tabla de uso de repuestos de más abajo, que se queda.
+     */
+    public function test_las_tarjetas_que_se_pidio_sacar_no_estan(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'fecha' => '2026-07-10', 'estado' => 'agendado', 'tipo' => 'mantencion',
+        ]);
+
+        $html = $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->getContent();
+
+        foreach (['Repuestos usados', 'Repuestos distintos'] as $rotulo) {
+            $this->assertStringNotContainsString($rotulo, $html, "La tarjeta «{$rotulo}» volvió sin decisión.");
+        }
+
+        // «Pendientes» se verifica por su tarjeta (el texto completo que la
+        // identificaba), no por la palabra: podría aparecer en otro contexto.
+        $this->assertStringNotContainsString('agendados sin realizar', $html);
+        $this->assertStringNotContainsString("abierto === 'pendientes'", $html);
+
+        // Y la tabla de uso de repuestos SIGUE ahí: sacar las tarjetas no era
+        // sacar el dato.
+        $this->assertStringContainsString('Uso de repuestos en el período', $html);
+    }
+
+    /** Las cuatro tarjetas por tipo van PRIMERAS (dueño 20-08): son las importantes. */
+    public function test_las_tarjetas_por_tipo_van_antes_que_las_de_estado(): void
+    {
+        AgendaTrabajo::factory()->create([
+            'fecha' => '2026-07-10', 'estado' => 'realizado', 'tipo' => 'instalacion',
+        ]);
+
+        $html = $this->actingAs($this->admin())
+            ->get('/admin/servicio-tecnico/informe/industrial?anio=2026&mes=7')
+            ->assertOk()
+            ->getContent();
+
+        $posTipo = strpos($html, 'Instalación');
+        $posEstado = strpos($html, 'Trabajos en el período');
+
+        $this->assertNotFalse($posTipo, 'No se encontró la tarjeta de Instalación.');
+        $this->assertNotFalse($posEstado, 'No se encontró la tarjeta de Trabajos en el período.');
+        $this->assertLessThan($posEstado, $posTipo, 'Las tarjetas por tipo tienen que ir primeras.');
     }
 }
