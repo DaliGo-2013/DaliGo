@@ -1,10 +1,7 @@
 <x-app-layout ancho="formulario">
     <div class="py-8">
-        {{-- HUÉRFANA TEMPORAL (MSG-2): hasta que MSG-4 meta «Mensajes» al menú,
-             esta pantalla no tiene ítem — lleva su Volver al Inicio (precedente
-             P-NAV-06). MSG-4 lo quita; VolverTest lo exigirá solo. --}}
-        <x-volver :href="route('dashboard')" titulo="Volver al Inicio" class="mb-3" />
-
+        {{-- Sin Volver: desde MSG-4 «Mensajes» es ítem del menú (el menú ES el
+             camino) — la huérfana temporal de MSG-2 dejó de serlo. --}}
         <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-lg font-semibold leading-tight text-neutral-900">Mensajes</h2>
             <x-button-link :href="route('mensajes.create')">

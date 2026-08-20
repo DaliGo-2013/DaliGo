@@ -129,6 +129,18 @@ class Conversacion extends Model
     }
 
     /**
+     * MIS mensajes sin leer, sumados sobre todos mis hilos. FUENTE UNICA del
+     * contador (MSG-4): la usan el badge del menu Y la firma del poll — si
+     * contaran distinto, el badge diria una cosa y el refresco otra. Dos sums
+     * indexados por lado, sin raw.
+     */
+    public static function noLeidosDeUsuario(int $userId): int
+    {
+        return (int) static::where('user_menor_id', $userId)->sum('no_leidos_menor')
+            + (int) static::where('user_mayor_id', $userId)->sum('no_leidos_mayor');
+    }
+
+    /**
      * Las conversaciones donde participa el usuario. El orWhere va AGRUPADO
      * en su closure para no fugarse del resto del query.
      */

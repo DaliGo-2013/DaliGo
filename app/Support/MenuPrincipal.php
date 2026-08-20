@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AgendaTrabajo;
 use App\Models\Aprobacion;
+use App\Models\Conversacion;
 use App\Models\Devolucion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
@@ -234,6 +235,20 @@ class MenuPrincipal
             'badge_title' => ':n solicitud(es) por aprobar',
             'imprenta' => true,
         ],
+        // Chat interno (MSG-4, PLAN-MENSAJES §5.5 — veredicto del dueño 32→33):
+        // link de primer nivel por la MISMA doctrina que sus vecinos — es una
+        // superficie personal transversal a todos los roles (todos con todos),
+        // sin modulo de dominio que pueda ser su anfitrion. El badge cuenta
+        // MIS mensajes sin leer (accion anclada al item donde se resuelve).
+        'mensajes' => [
+            'label' => 'Mensajes',
+            'icon' => 'chat-bubble-left-right',
+            'route' => 'mensajes.index',
+            'activo' => ['mensajes.*'],
+            'permiso' => 'usar mensajes',
+            'badge' => 'mensajes_no_leidos',
+            'badge_title' => ':n mensaje(s) sin leer',
+        ],
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',
             'icon' => 'wrench-screwdriver',
@@ -447,6 +462,12 @@ class MenuPrincipal
             // nunca ha solicitado nada no necesita verlo (y el candado de
             // AprobacionAccionableTest exige que ninguna superficie ajena
             // a la fila aporte ese href para un usuario sin historia).
+            // Chat interno (MSG-4): MIS mensajes sin leer — la MISMA fuente
+            // que la firma del poll (Conversacion::noLeidosDeUsuario), asi el
+            // badge y el refresco no pueden contar distinto.
+            'mensajes_no_leidos' => ($user && $user->can('usar mensajes'))
+                ? Conversacion::noLeidosDeUsuario($user->id)
+                : 0,
             'mis_solicitudes' => $user
                 ? Aprobacion::where('solicitante_id', $user->id)->count()
                 : 0,
