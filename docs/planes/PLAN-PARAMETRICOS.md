@@ -291,3 +291,13 @@ nombra a la otra clave (sin auto-arreglo — la lista gobierna el OEE). Candado
 OEE-histórico-intacto en 2 escenarios (la clase se persiste; etiqueta del Pareto viva
 declarada cosmética). Suite combinada con MSG-5: 2291/16.002 cero rojos. Queda OPE-3
 (dictado v79 — cierra el módulo).
+
+**OPE-3 EN PRODUCCIÓN (2026-08-20, merge `ab0a8d1`, doble llave) — FASE B DE
+OPERACIÓN COMPLETA.** `config/produccion.php` nuevo (patrones %preforma%/%dañada%
+con el porqué del nivel 2 en el archivo; la doble vuelta de la Ñ derivada;
+selector y validación moviéndose juntos, candado con config() en runtime) +
+higiene delta-cero (TOPE_CANTIDAD, MAX_DIAS_RANGO con candado de 93 filas,
+POR_PAGINA ×2 adoptado). Suite 2303/16.048 (+4/+19 exacto, sin +24 — sin claves
+de seeder, predicho). La mutación puso rojo un candado VIEJO: la constante es lo
+que ese test ya vigilaba. **Los 4 hallazgos aprobados del mapa §5.3 forjados en
+3 lotes. PENDIENTE: QA del dueño del módulo completo → card a Terminadas.**
