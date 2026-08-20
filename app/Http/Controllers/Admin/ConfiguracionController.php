@@ -56,6 +56,26 @@ class ConfiguracionController extends Controller
     private const LISTAS_SIMPLES = [
         'clientes_segmentos',
         'catalogo_categorias_sugeridas',
+        'produccion_motivos_parada',
+        'produccion_motivos_planificados',
+        'produccion_procedencias_preforma',
+    ];
+
+    /**
+     * Pares [hijo, madre] donde el HIJO debe ser SUBCONJUNTO de la madre
+     * (OPE-2: un motivo planificado que no existe como motivo deja al OEE
+     * clasificando contra un fantasma). Cuarto mecanismo declarativo, hermano
+     * de RANGOS / PARES_ORDENADOS / LISTAS_SIMPLES. Valida en las DOS
+     * direcciones al guardar cualquiera de las puntas: el hijo no puede traer
+     * un elemento fuera de la madre, y la madre no puede soltar uno que el
+     * hijo todavía nombra (RECHAZO con la otra clave nombrada, mismo criterio
+     * que quitar un segmento en uso). Comparación case-insensitive, la misma
+     * de parseListaSimple/getLista. Como en PARES_ORDENADOS: si la otra punta
+     * no está sembrada no hay par que cruzar (la UI solo edita filas
+     * existentes y el seeder siembra ambas juntas).
+     */
+    private const PARES_SUBCONJUNTO = [
+        ['produccion_motivos_planificados', 'produccion_motivos_parada'],
     ];
 
     /** Tope sano de elementos de una lista simple (nadie clasifica con 50+ opciones). */
@@ -83,6 +103,7 @@ class ConfiguracionController extends Controller
     {
         $valor = $this->validateValor($request, $configuracion);
         $this->validarParOrdenado($configuracion, $valor);
+        $this->validarParSubconjunto($configuracion, $valor);
         $this->validarSegmentosEnUso($configuracion, $valor);
 
         Configuracion::set($configuracion->clave, $valor);
@@ -192,6 +213,44 @@ class ConfiguracionController extends Controller
             if ($enUso > 0) {
                 throw ValidationException::withMessages([
                     'valor' => "No puedes quitar «{$vigente}»: {$enUso} cliente(s) lo tienen asignado. Reasígnalos primero desde el listado de Clientes.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Rechaza el guardado si el valor rompe la relación hijo ⊆ madre de su
+     * par (ver PARES_SUBCONJUNTO). Corre al guardar CUALQUIERA de las dos
+     * puntas y el mensaje nombra a la otra clave con lo que hay que hacer
+     * primero.
+     */
+    private function validarParSubconjunto(Configuracion $configuracion, mixed $valor): void
+    {
+        foreach (self::PARES_SUBCONJUNTO as [$claveHijo, $claveMadre]) {
+            if ($configuracion->clave !== $claveHijo && $configuracion->clave !== $claveMadre) {
+                continue;
+            }
+
+            $otraClave = $configuracion->clave === $claveHijo ? $claveMadre : $claveHijo;
+            $otro = Configuracion::get($otraClave);
+            if (! is_array($otro) || ! is_array($valor)) {
+                continue;
+            }
+
+            $hijo = $configuracion->clave === $claveHijo ? $valor : $otro;
+            $madre = $configuracion->clave === $claveMadre ? $valor : $otro;
+            $madreNormalizada = array_map(fn ($i) => mb_strtolower(trim((string) $i)), $madre);
+
+            foreach ($hijo as $item) {
+                if (in_array(mb_strtolower(trim((string) $item)), $madreNormalizada, true)) {
+                    continue;
+                }
+
+                $item = trim((string) $item);
+                throw ValidationException::withMessages([
+                    'valor' => $configuracion->clave === $claveHijo
+                        ? "«{$item}» no está en «".Str::headline($claveMadre).'»: agrégalo allá primero (esta lista debe ser un subconjunto de aquella).'
+                        : "No puedes quitar «{$item}»: «".Str::headline($claveHijo).'» todavía lo nombra. Quítalo de allá primero.',
                 ]);
             }
         }
