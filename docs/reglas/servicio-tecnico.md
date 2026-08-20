@@ -161,8 +161,41 @@ queda registrado**. La 2 y la 3 no se excluyen.
 
 ---
 
-## 3. Historial de cambios de este apartado
+## 3. El presupuesto del taller se arma en UNA pantalla
+
+Decisión del dueño, 20-08-2026, después de hablarlo con el técnico: *«toda la
+información en un solo apartado»*, *«que la cotización no tenga opción de
+modificarse»*, *«el detalle de los repuestos se repite… sácalo, sino es como doble
+información»*.
+
+| Pantalla | Qué es | Qué se puede hacer |
+|---|---|---|
+| **Parte del técnico** | LA pantalla de la orden | Editar todo: etapa, trabajo, causa, repuestos **con precio**, descuento (solo jefatura), fechas — y **enviar** la cotización al cliente |
+| **Cotización** | Vista previa de lo que el cliente lee | Nada. Solo mirar: subtotal de repuestos, mano de obra, descuento, total con IVA, y la constancia de lo enviado |
+
+**Por qué está escrito acá y no solo en un commit:** antes había **dos formularios
+escribiendo el mismo dinero**, y eso ya se cobró una vez — la regla del descuento
+(«solo jefatura lo aplica») estaba copiada en los dos, y una copia se arregla y la otra
+no. Hoy la única acción que escribe el presupuesto es `reparacion.guardar`; la pestaña
+Cotización **no tiene PUT**. Si alguien vuelve a poner un formulario ahí, el candado
+`CotizacionGuardarTest::test_la_pestana_de_cotizacion_es_solo_lectura` se pone rojo por
+tres vías distintas.
+
+Dos reglas que van con esto y son fáciles de romper sin darse cuenta:
+
+- **El precio del repuesto se exige al ENVIAR, no al guardar.** El técnico anota el
+  repuesto con la máquina delante y le busca el precio después; lo que no puede salir
+  al cliente es un repuesto en $0, porque ahí se cobra de menos y nadie lo nota. Mismo
+  criterio que la mano de obra sin tiempo estándar.
+- **En garantía la pantalla no muestra dinero:** solo qué repuestos se usaron, igual
+  que el correo que recibe el cliente. Garantía no se cobra, así que un «Costo total a
+  pagar» ahí es una contradicción a la vista del técnico.
+
+---
+
+## 4. Historial de cambios de este apartado
 
 - **20-08-2026** — nace el apartado. §2 (descuento de inventario al facturar y el hueco
   de la garantía) y §1 (la tabla de las cuatro garantías, con los plazos industriales
-  nuevos y la advertencia de no mezclarlos con los del taller).
+  nuevos y la advertencia de no mezclarlos con los del taller). Más tarde ese día, §3:
+  el presupuesto se arma en una sola pantalla y la cotización queda de solo lectura.
