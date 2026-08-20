@@ -139,51 +139,60 @@
                      no como una opción muerta del select): así se le puede corregir la falta de
                      ortografía que ya tiene, que es justo el punto. --}}
                 @php
-                    $opcionesTrabajo = collect($respuestasTrabajo)->flatten()->all();
-                    $guardado = (string) $orden->trabajo_realizado;
-                    $esManualGuardado = filled($guardado) && ! in_array($guardado, $opcionesTrabajo, true);
-
-                    if (old('trabajo_realizado') !== null) {
-                        // Volvemos de un error de validación: manda lo que se acaba de enviar.
-                        $opcionInicial = (string) old('trabajo_realizado');
-                        $manualInicial = (string) old('trabajo_realizado_otro', '');
-                    } else {
-                        $opcionInicial = $esManualGuardado ? \App\Models\OrdenServicio::TRABAJO_OTRO : $guardado;
-                        $manualInicial = $esManualGuardado ? $guardado : '';
-                    }
+                    // LAS DOS FORMAS A LA VEZ (dueño, 20-08-2026): la lista completa el texto
+                    // con un clic Y el texto queda editable. Antes eran excluyentes —había que
+                    // elegir «Otro» en el select para recién poder escribir—, así que ajustarle
+                    // una palabra a una respuesta de la lista obligaba a re-escribirla entera.
+                    //
+                    // El texto del textarea es AHORA LA ÚNICA respuesta. El select es un
+                    // rellenador sin `name`: no viaja al servidor. El contrato con el
+                    // controlador queda IGUAL que antes (`trabajo_realizado` = centinela y
+                    // `trabajo_realizado_otro` = el texto), así que su validación, su colapso de
+                    // espacios —esto se pega desde WhatsApp— y su tope de 191 siguen aplicando
+                    // sin tocar una línea de PHP.
+                    $textoInicial = old('trabajo_realizado_otro', old('trabajo_realizado') !== null ? '' : (string) $orden->trabajo_realizado);
                 @endphp
                 <div x-data="{
                         mapa: @js($tiemposMap),
                         valorHora: {{ (int) ($precioHoraServicio ?? 0) }},
-                        opcion: @js($opcionInicial),
-                        manual: @js($manualInicial),
-                        get esManual() { return this.opcion === @js(\App\Models\OrdenServicio::TRABAJO_OTRO) },
-                        get trabajo() { return this.esManual ? this.manual.trim() : this.opcion },
+                        texto: @js((string) $textoInicial),
+                        get trabajo() { return this.texto.trim() },
                      }">
-                    <x-input-label for="trabajo_realizado" value="Trabajo realizado" />
-                    <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5" x-model="opcion">
-                        <option value="">— Selecciona —</option>
+                    <x-input-label for="trabajo_realizado_lista" value="Trabajo realizado" />
+
+                    {{-- El rellenador: elegir una respuesta la ESCRIBE en el campo de abajo. Sin
+                         `name` a propósito — lo que se guarda es el texto, no la opción. Vuelve a
+                         «— Elige para completar —» después de rellenar: no es un estado que se
+                         conserve, es una acción, y dejarlo marcado hacía creer que el texto
+                         editado seguía siendo esa respuesta. --}}
+                    <x-select id="trabajo_realizado_lista" class="mt-1.5"
+                              x-on:change="if ($event.target.value) { texto = $event.target.value; $event.target.value = '' }">
+                        <option value="">— Elige para completar —</option>
                         @foreach ($respuestasTrabajo as $grupo => $opciones)
                             <optgroup label="{{ $grupo }}">
                                 @foreach ($opciones as $op)
-                                    <option value="{{ $op }}" @selected($opcionInicial === $op)>{{ $op }}</option>
+                                    <option value="{{ $op }}">{{ $op }}</option>
                                 @endforeach
                             </optgroup>
                         @endforeach
-                        <option value="{{ \App\Models\OrdenServicio::TRABAJO_OTRO }}" @selected($opcionInicial === \App\Models\OrdenServicio::TRABAJO_OTRO)>Otro — lo escribo yo</option>
                     </x-select>
-                    <x-input-hint>Elige la respuesta que más se acerque al trabajo hecho, o «Otro» para escribirlo.</x-input-hint>
+                    <x-input-hint>Elige la que más se acerque y queda escrita abajo; después la puedes ajustar o escribir la tuya.</x-input-hint>
 
-                    {{-- El campo manual. `spellcheck` + `lang="es"` = el subrayado rojo del
-                         navegador con sugerencias al hacer clic derecho. El `lang` va explícito
-                         y no heredado del <html>: así el diccionario es el español aunque la app
-                         corra con otro locale. --}}
-                    <div x-show="esManual" x-cloak class="mt-2">
-                        <x-textarea name="trabajo_realizado_otro" rows="2" x-model="manual"
+                    {{-- El texto, SIEMPRE visible y editable. `spellcheck` + `lang="es"` = el
+                         subrayado rojo del navegador con sugerencias al hacer clic derecho. El
+                         `lang` va explícito y no heredado del <html>: así el diccionario es el
+                         español aunque la app corra con otro locale.
+
+                         El centinela viaja en un hidden y SOLO cuando hay texto: vacío significa
+                         «todavía no hay respuesta», que es un caso válido (se guarda el parte sin
+                         cerrar el trabajo) y el controlador lo trata como nullable. --}}
+                    <input type="hidden" name="trabajo_realizado"
+                           x-bind:value="trabajo ? @js(\App\Models\OrdenServicio::TRABAJO_OTRO) : ''">
+                    <div class="mt-2">
+                        <x-textarea name="trabajo_realizado_otro" rows="2" x-model="texto"
                             spellcheck="true" lang="es" autocapitalize="sentences"
                             maxlength="{{ \App\Models\OrdenServicio::TRABAJO_MAX }}"
-                            placeholder="Ej. Cambio de bomba y limpieza de circuito — funciona normal"
-                            x-bind:required="esManual">{{ $manualInicial }}</x-textarea>
+                            placeholder="Ej. Cambio de bomba y limpieza de circuito — funciona normal">{{ $textoInicial }}</x-textarea>
                         <x-input-hint>
                             Lo lee el cliente en el correo del retiro: escribe qué se hizo y cómo quedó, como las
                             respuestas de la lista. El navegador te subraya en rojo lo que esté mal escrito
@@ -204,6 +213,11 @@
                             <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
                                 Este trabajo no tiene tiempo estándar → mano de obra $0. Jefatura puede agregarlo en «Costos generales de reparación».
                                 Guardar sí se puede; la cotización no se envía hasta que ese tiempo exista.
+                                {{-- Desde el 20-08 el texto se puede editar, así que hay una forma
+                                     nueva de caer acá: ajustarle una palabra a una respuesta de la
+                                     lista. Se dice, porque si no el técnico ve desaparecer la mano
+                                     de obra sin entender qué la hizo desaparecer. --}}
+                                <span class="mt-1 block text-amber-600">Si ajustaste una respuesta de la lista, su tiempo estándar aplica solo con el texto exacto: dejalo tal cual para recuperarlo.</span>
                             </p>
                         </template>
                     </div>
