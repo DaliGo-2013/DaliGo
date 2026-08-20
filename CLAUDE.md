@@ -160,11 +160,18 @@ Si algo no existe y se va a usar seguido, créalo siguiendo el formato de los co
 
 ### Deploy
 - **`git push origin main` = despliegue automático.** GitHub Actions (`.github/workflows/deploy.yml`)
-  entra por **SSH** al servidor y corre **`deploy.sh`** en `/home4/impdali/daligo`.
-- `deploy.sh` ya hace, en orden: descartar `public/.htaccess` → `git pull --ff-only` →
-  `composer install --no-dev` → `migrate --force` → `db:seed --force` (DatabaseSeeder: roles/permisos + sucursales) →
-  `storage:link` → `config:cache` + `route:cache` + `view:cache` → `permission:cache-reset`.
+  entra por **SSH** al servidor y ejecuta una **cadena de comandos inline** en `/home4/impdali/daligo`.
+  **NO corre `deploy.sh`**: el del servidor quedó congelado en una versión vieja (skip-worktree —
+  ver comentario en `deploy.yml`) y ya no participa del deploy.
+- La cadena inline hace, en orden: `git fetch origin main` + limpiar flags skip-worktree (excepto
+  `.htaccess`) → `git reset --hard FETCH_HEAD` → `composer dump-autoload -o` (**NO instala
+  dependencias**) → `migrate --force` → `db:seed --force` (DatabaseSeeder completo; idempotente) →
+  `storage:link --force` → `optimize:clear` + `config:cache` + `route:cache` → `permission:cache-reset`.
   **No corras seeds/cachés a mano en producción**; ya están cubiertos.
+- ⚠️ **Paquete nuevo o actualizado en `composer.json` = `composer install` MANUAL** por SSH/Terminal
+  de cPanel en `/home4/impdali/daligo` (`/opt/cpanel/ea-php83/root/usr/bin/php
+  /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader`); el deploy NO lo hace y
+  producción falla con "Class not found".
 - Mirar el avance en la pestaña **Actions** del repo `DaliGo-2013/DaliGo`. Staging: **staging.impdali.cl**.
 - Servidor: HostGator compartido (cPanel + LiteSpeed), PHP **ea-php83**, BD **MySQL 5.7** (`impdali_daligo`), **sin Node**.
 - **Cron del scheduler** (one-time en cPanel/SSH, no lo crea el deploy): `*/15 * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home4/impdali/daligo/artisan schedule:run >> /dev/null 2>&1` (+ una línea gemela `*/15` de `queue:work --stop-when-empty --max-time=840`). **NO es `* * * * *`**: HostGator reescribe los crons <15 min (I-01, ver bitácora [2026-07-07]) → grilla `*/15` que dispara :00/:15/:30/:45, y TODA tarea de `routes/console.php` debe caer EXACTO en esos minutos (`hourly()`/`hourlyAt(15|30|45)`) o no correrá jamás. Latencia de cola/notificaciones ≤15 min, aceptada.
