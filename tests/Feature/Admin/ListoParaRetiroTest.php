@@ -79,8 +79,10 @@ class ListoParaRetiroTest extends TestCase
         $tecnico = $this->tecnico();
         $orden = $this->reparada();
 
+        // Vuelve a la pantalla donde está la tarjeta que acaba de cambiar: el parte
+        // del técnico (dueño 20-08: la constancia se mudó ahí desde la cotización).
         $this->avisar($orden, $tecnico)
-            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         Mail::assertSent(EquipoListoParaRetiro::class, fn ($m) => $m->hasTo('cliente@example.com'));
 
@@ -183,24 +185,66 @@ class ListoParaRetiroTest extends TestCase
 
     // --- Pantalla ---
 
-    public function test_la_pestana_cotizacion_ofrece_el_boton_y_luego_la_constancia(): void
+    /**
+     * EL BOTÓN Y SU CONSTANCIA VIVEN EN EL PARTE DEL TÉCNICO (dueño 20-08-2026: los
+     * sacó de la pestaña Cotización porque estaban repetidos —«ya aparece abajo en la
+     * vista de parte del técnico»—). El test mira las DOS pantallas: si volvieran a
+     * aparecer en la cotización, se pone rojo.
+     */
+    public function test_el_boton_y_la_constancia_estan_en_el_parte_y_no_en_la_cotizacion(): void
     {
         $tecnico = $this->tecnico();
         $orden = $this->reparada();
 
         $this->actingAs($tecnico)
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
             ->assertSee('Avisar que está listo para retirar')
             ->assertSee('sala de ventas');
 
-        $this->avisar($orden, $tecnico);
-
         $this->actingAs($tecnico)
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
+            ->assertDontSee('Avisar que está listo para retirar');
+
+        $this->avisar($orden, $tecnico);
+
+        $this->actingAs($tecnico)
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
             ->assertDontSee('Avisar que está listo para retirar')
             ->assertSee('Ya se le avisó al cliente');
+
+        // Y la vista previa sigue sin la constancia: es solo lo que paga el cliente.
+        $this->actingAs($tecnico)
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertDontSee('Ya se le avisó al cliente')
+            ->assertDontSee('Enviada al cliente');
+    }
+
+    /**
+     * EN GARANTÍA NO SE TOCA: ahí el parte no incluye estas tarjetas (no hay
+     * cotización que enviar) y la pestaña Cotización es la única pantalla donde
+     * existe el botón. Sacarlas de ahí no sería quitar una repetición: sería borrar
+     * la función.
+     */
+    public function test_en_garantia_el_boton_sigue_en_la_pestana_cotizacion(): void
+    {
+        $orden = $this->reparada([
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => '123',
+            'garantia_doc_fecha' => now()->subMonths(2)->toDateString(),
+            'fecha_ingreso' => now()->toDateString(),
+        ]);
+
+        $this->assertSame('garantia', $orden->condicion_efectiva, 'La garantía tiene que estar vigente para que el caso pruebe algo.');
+
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('Avisar que está listo para retirar');
     }
 
     public function test_antes_de_reparar_la_pantalla_explica_que_falta(): void
@@ -208,7 +252,7 @@ class ListoParaRetiroTest extends TestCase
         $orden = $this->reparada(['estado' => 'cotizacion']);
 
         $this->actingAs($this->tecnico())
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
             ->assertDontSee('Avisar que está listo para retirar')
             ->assertSee('marca la orden como «Reparado» en Parte del técnico');

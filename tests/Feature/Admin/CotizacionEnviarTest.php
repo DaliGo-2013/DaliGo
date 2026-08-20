@@ -230,7 +230,9 @@ class CotizacionEnviarTest extends TestCase
             'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
         ])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
+            // Vuelve al parte, que es de donde se envió Y donde quedó la constancia
+            // (dueño 20-08: el historial se mudó ahí desde la pestaña Cotización).
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $c = OrdenServicioCotizacion::first();
         $this->assertNotNull($c, 'El botón «Enviar» debe crear la cotización, no solo guardar.');
@@ -267,7 +269,7 @@ class CotizacionEnviarTest extends TestCase
 
         $this->actingAs($this->tecnico());
         $this->guardarParte($orden, ['enviar' => '1', 'descuento_pct' => 0, 'repuestos' => []])
-            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertSessionHas('status', fn (string $s) => str_contains($s, '$0'));
 
         $this->assertSame(0, OrdenServicioCotizacion::count());

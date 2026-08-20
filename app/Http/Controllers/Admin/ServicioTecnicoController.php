@@ -687,7 +687,9 @@ class ServicioTecnicoController extends Controller
 
         return view('admin.servicio-tecnico.cotizacion', [
             'orden' => $orden,
-            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
+            // `cotizaciones` ya no viaja: el historial de envíos se mudó al parte del
+            // técnico (dueño 20-08). Esta pantalla no lo muestra, así que tampoco lo
+            // consulta — una consulta que nadie usa es la que después nadie borra.
             // Valor hora vigente (para mostrar cómo se compone la mano de obra fija).
             'precioHoraServicio' => $this->precioHoraServicio(),
             // Precio de venta del equipo: si la reparación supera el 40% se advierte.
@@ -755,6 +757,27 @@ class ServicioTecnicoController extends Controller
      * de ventas. Null si el SKU no existe o no tiene precio ahí (mismo criterio
      * que buscarRepuesto: Producto::precioVentaConIva).
      */
+    /**
+     * A qué pantalla volver después de avisarle algo al cliente: la que muestra la
+     * CONSTANCIA de ese aviso.
+     *
+     * Desde el 20-08-2026 el historial de envíos y la tarjeta de «listo para
+     * retirar» viven en el PARTE DEL TÉCNICO (el dueño las sacó de la pestaña
+     * Cotización porque estaban repetidas). En GARANTÍA siguen en la pestaña
+     * Cotización, que es su pantalla de envío — el parte no las incluye. Sin esto,
+     * después de avisar el usuario aterrizaba en una pantalla que ya no muestra lo
+     * que acababa de hacer.
+     *
+     * Espeja la condición con la que las vistas incluyen `_envio-historial` /
+     * `_listo-retiro`: si esa condición cambia, esta también.
+     */
+    private function pantallaDeConstancia(OrdenServicio $orden): string
+    {
+        return $orden->condicion_efectiva === 'reparacion'
+            ? 'admin.servicio-tecnico.reparacion'
+            : 'admin.servicio-tecnico.cotizacion';
+    }
+
     private function precioHoraServicio(): ?int
     {
         $sku = config('servicio_tecnico.sku_hora_servicio');
@@ -1005,14 +1028,16 @@ class ServicioTecnicoController extends Controller
      * secundaria (try/catch): si el SMTP falla, la cotización queda registrada
      * con `correo_enviado_at` null y aparece el botón "Reintentar".
      *
-     * Aterriza SIEMPRE en la pestaña Cotización (no `back()`): desde 07-08 el
-     * botón es un submit del formulario de guardar, y ese POST puede llegar sin
-     * cabecera Referer — con `back()` el usuario caería en el Inicio.
+     * Aterriza en una ruta con NOMBRE y no en `back()`: el botón es un submit del
+     * formulario de guardar, y ese POST puede llegar sin cabecera Referer — con
+     * `back()` el usuario caería en el Inicio. El destino es la pantalla que
+     * muestra la constancia (ver pantallaDeConstancia): desde el 20-08 el parte del
+     * técnico, que es de donde se envía y donde queda el historial.
      */
     public function enviarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
         $volver = fn (string $mensaje) => redirect()
-            ->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->route($this->pantallaDeConstancia($orden), $orden)
             ->with('status', $mensaje);
 
         // Mismas condiciones que habilitan el botón (defensa server-side).
@@ -1143,8 +1168,10 @@ class ServicioTecnicoController extends Controller
      */
     public function avisarListoParaRetiro(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        // Vuelve a donde está la tarjeta que acaba de cambiar (parte del técnico en
+        // reparación, pestaña Cotización en garantía). Ver pantallaDeConstancia.
         $volver = fn (string $mensaje) => redirect()
-            ->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->route($this->pantallaDeConstancia($orden), $orden)
             ->with('status', $mensaje);
 
         if ($orden->estado !== 'reparado') {

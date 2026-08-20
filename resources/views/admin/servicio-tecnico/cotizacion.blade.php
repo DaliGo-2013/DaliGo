@@ -86,8 +86,6 @@
             @include('admin.servicio-tecnico._listo-retiro')
         @else
             @php
-                $ultima = $cotizaciones->first();
-
                 // MANO DE OBRA VIGENTE, no la columna guardada: el parte la recalcula
                 // desde el catálogo cada vez que guarda, así que mostrar la guardada
                 // sería prometer un total que el próximo guardado baja (bitácora
@@ -199,7 +197,15 @@
                 </p>
             </div>
 
-            @include('admin.servicio-tecnico.partials._envio-historial')
+            {{-- NI CONSTANCIA NI «LISTO PARA RETIRAR» ACÁ (dueño 20-08-2026, señalando
+                 las dos tarjetas): «se repite, ya aparece abajo en la vista de parte
+                 del técnico». Las dos viven en el parte, que es la pantalla de la
+                 orden; esta pestaña es solo la vista previa de lo que paga el cliente.
+
+                 OJO: en GARANTÍA sí siguen arriba, en su propia rama — ahí el parte no
+                 las incluye (no hay cotización que enviar) y esta pestaña es la única
+                 pantalla donde existe el botón de avisar el retiro. Sacarlas de ahí no
+                 sería quitar una repetición: sería borrar la función. --}}
         @endif
     </div>
 </x-app-layout>
