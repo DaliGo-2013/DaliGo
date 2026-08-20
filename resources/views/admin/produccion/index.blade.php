@@ -94,7 +94,7 @@
                 <div>
                     <div class="flex items-center gap-1.5">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por periodo</h3>
-                        <x-info-tip>Producción de los días del rango elegido (por defecto, últimos 7): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
+                        <x-info-tip>Producción de los días del rango elegido (por defecto, últimos {{ $diasPanel }}): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
                     </div>
                     <p class="mt-0.5 text-sm text-neutral-500">{{ $rangoLabel }}</p>
                 </div>

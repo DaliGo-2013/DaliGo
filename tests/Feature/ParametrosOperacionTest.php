@@ -106,7 +106,9 @@ class ParametrosOperacionTest extends TestCase
         $this->assertSame(7, $panel->viewData('diasPanel'));
         $this->assertCount(7, $panel->viewData('periodo')['dias']);
         $this->assertSame(100, $panel->viewData('periodo')['totales']['producido']); // el día -7 queda FUERA
-        $panel->assertSee('Últimos 7 días');
+        // El rótulo grande Y el info-tip (v77.1): la forma «por defecto,
+        // últimos N» es ÚNICA del tip — el rótulo dice «Últimos N días».
+        $panel->assertSee('Últimos 7 días')->assertSee('por defecto, últimos 7');
 
         $maquina = $this->actingAs($jefe)->get(route('admin.produccion.maquina', $this->maquina))->assertOk();
         $this->assertSame(30, $maquina->viewData('diasInforme'));
@@ -133,6 +135,9 @@ class ParametrosOperacionTest extends TestCase
         $this->assertCount(14, $panel->viewData('periodo')['dias']);
         $this->assertSame(140, $panel->viewData('periodo')['totales']['producido']); // el día -7 ENTRA
         $panel->assertSee('Últimos 14 días')->assertDontSee('Últimos 7 días');
+        // El info-tip también deriva (rebote v77.1): con la perilla en 14 la
+        // ayudita no puede seguir jurando 7.
+        $panel->assertSee('por defecto, últimos 14')->assertDontSee('por defecto, últimos 7');
 
         // Las ventanas hermanas NO se movieron.
         $maquina = $this->actingAs($jefe)->get(route('admin.produccion.maquina', $this->maquina))->assertOk();
