@@ -11,16 +11,32 @@
             $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
         ])->filter()->implode(' · ');
 
-        // El precio viaja OCULTO (se ingresa en Cotización): así re-guardar el
-        // parte del técnico no borra lo que se cotizó.
         $repuestosInit = $orden->repuestos->map(fn ($r) => [
             'nombre' => $r->nombre,
-            // El SKU también viaja oculto: es lo que después se factura como código
-            // de catálogo (regla 4 de Contabilidad).
+            // El SKU viaja para no perderlo al re-guardar: es lo que después se
+            // factura como código de catálogo (regla 4 de Contabilidad).
             'sku' => $r->sku,
             'cantidad' => $r->cantidad,
             'precio_unitario' => $r->precio_unitario,
         ])->values();
+
+        // --- Lo que el presupuesto y el historial necesitan, ahora que viven acá ---
+        $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
+        $ultima = $cotizaciones->first();
+
+        // Qué falta para poder enviarle la cotización al cliente (espejo de la
+        // validación del servidor). LA ETAPA NO VA ACÁ: se elige en el select de esta
+        // misma pantalla, así que la decide Alpine con el valor en pantalla
+        // (`puedeEnviar` en el pie). Un `$faltas` estático diciendo «ya pasó la etapa»
+        // se contradiría con el select en cuanto el técnico eligiera «Cotizacion».
+        // El total en $0 tampoco va: el botón se deshabilita con el total EN PANTALLA,
+        // porque enviar guarda primero.
+        $faltas = collect([
+            blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
+            // Sin mano de obra calculable no sale al cliente: el total le cobraría de
+            // menos sin que nadie lo note. Guardar sigue libre.
+            $faltaManoObra,
+        ])->filter();
     @endphp
 
     <x-slot name="header">
@@ -114,7 +130,12 @@
             {{-- ===================== EDICIÓN (formulario) ===================== --}}
             <form x-show="editando" x-cloak id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
                 class="space-y-6" data-una-vez
-                x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) ($orden->mano_obra ?? 0) }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
+                {{-- `manoObra` se siembra con la VIGENTE del catálogo (lo que va a quedar
+                     al guardar), NO con `$orden->mano_obra`: si el trabajo perdió su
+                     tiempo estándar, el total no puede prometer un monto que el guardado
+                     baja a $0. Antes acá daba igual porque esta pantalla no mostraba el
+                     total; ahora sí lo muestra (bitácora 2026-08-07). --}}
+                x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) $manoObraVigente }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
                 @csrf
                 @method('PUT')
 
@@ -263,74 +284,17 @@
                     </div>
                 @endif
 
-                {{-- Repuestos usados: el técnico declara QUÉ usó y CUÁNTOS.
-                     El precio se pone en la pestaña Cotización (aquí va oculto). --}}
-                <div>
-                    <div class="flex items-center justify-between">
-                        <x-input-label value="Repuestos usados" />
-                        <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
-                    </div>
+                {{-- EL PRESUPUESTO COMPLETO, dentro del parte del tecnico (dueno
+                     20-08-2026: «que no exista un apartado… en la parte del tecnico se
+                     pueda modificar la informacion»). Trae los repuestos CON su precio,
+                     la mano de obra fija del catalogo, el descuento (solo si tenes el
+                     permiso de jefatura) y el total con su IVA.
 
-                    <div class="mt-2 space-y-2">
-                        <template x-for="(r, i) in repuestos" :key="i">
-                            <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start sm:gap-2 sm:rounded-none sm:border-0 sm:p-0">
-                                {{-- Precio conservado (oculto): se edita en Cotización. --}}
-                                <input type="hidden" :name="`repuestos[${i}][precio_unitario]`" :value="r.precio_unitario ?? 0">
-                                {{-- SKU del catálogo (oculto): lo pone el buscador al elegir un
-                                     repuesto y viaja hasta el documento tributario, que se
-                                     factura con el código de catálogo (regla 4 de Contabilidad).
-                                     Vacío si el repuesto se escribió a mano. --}}
-                                <input type="hidden" :name="`repuestos[${i}][sku]`" :value="r.sku ?? ''">
-
-                                <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrarSugerencias()">
-                                    <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
-                                        placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
-                                        x-on:input.debounce.250ms="buscarRepuesto(i)"
-                                        x-on:focus="buscarRepuesto(i)"
-                                        x-on:keydown.escape="cerrarSugerencias()"
-                                        class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-
-                                    <div x-show="filaActiva === i && (buscandoRepuesto || sugerencias.length)" x-cloak
-                                        class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
-                                        <template x-if="buscandoRepuesto && sugerencias.length === 0">
-                                            <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
-                                        </template>
-                                        <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
-                                            <template x-for="(s, si) in sugerencias" :key="si">
-                                                <li>
-                                                    <button type="button" x-on:click="elegirRepuesto(i, s)"
-                                                        class="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
-                                                        <span class="min-w-0">
-                                                            <span x-show="s.sku" class="font-mono text-xs text-neutral-400" x-text="s.sku"></span>
-                                                            <span x-text="s.nombre"></span>
-                                                        </span>
-                                                    </button>
-                                                </li>
-                                            </template>
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                {{-- Cantidad + quitar. --}}
-                                <div class="flex items-start gap-2">
-                                    <div class="w-20 sm:w-16">
-                                        <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
-                                        <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
-                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                    </div>
-                                    <button type="button" x-on:click="quitar(i)"
-                                        class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
-                                        <x-icon.trash class="h-5 w-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        </template>
-
-                        <p x-show="repuestos.length === 0" class="py-2 text-sm text-neutral-400">
-                            Sin repuestos. Usa «Agregar repuesto» si corresponde.
-                        </p>
-                    </div>
-                </div>
+                     Reemplaza al bloque que declaraba solo nombre y cantidad y mandaba el
+                     precio en un campo OCULTO para que re-guardar el parte no borrara lo
+                     cotizado. Ese truco existia porque los precios vivian en otra pantalla;
+                     con un solo formulario no hace falta. --}}
+                @include('admin.servicio-tecnico.partials._presupuesto-campos')
 
                 {{-- Fechas de aviso y retiro --}}
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -350,14 +314,71 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 border-t border-neutral-100 pt-5">
+                {{-- EL PIE: Guardar y ENVIAR LA COTIZACIÓN, en la misma fila (dueño
+                     20-08-2026, señalando este recuadro). «Enviar» es submit de ESTE
+                     formulario con enviar=1: guarda y manda en un paso, así lo que sale
+                     al cliente es lo que está en pantalla — pegado a «Guardar», mandar
+                     el snapshot viejo sin darse cuenta era demasiado fácil.
+
+                     EL BOTÓN DEPENDE DE LA ETAPA, y esa se edita en este mismo
+                     formulario: el servidor rechaza el envío si la orden ya pasó
+                     «Cotización», con un mensaje que manda a cambiar la etapa… en esta
+                     pantalla. Así que el botón se muestra según el estado ELEGIDO en el
+                     select (Alpine, `puedeEnviar`), no según el guardado, y cuando no
+                     corresponde se dice por qué en vez de ofrecer un botón que se va a
+                     negar. Las etapas previas (recibido, en revisión) sí se pueden
+                     enviar: el servidor las adelanta solo. --}}
+                <div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-neutral-100 pt-5"
+                     x-data="{
+                        etapasQueEnvian: @js(['recibido', 'en_revision', 'cotizacion']),
+                        etapa: @js((string) old('estado', $orden->estado)),
+                        init() {
+                            const sel = document.getElementById('estado');
+                            if (sel) sel.addEventListener('change', () => { this.etapa = sel.value });
+                        },
+                        get puedeEnviar() { return this.etapasQueEnvian.includes(this.etapa) },
+                     }">
+                    @if ($esReparacion)
+                        <p class="mr-auto max-w-sm text-xs text-neutral-400">
+                            @if ($faltas->isNotEmpty())
+                                Para enviarla al cliente: {{ $faltas->implode('; ') }}.
+                            @else
+                                <span x-show="puedeEnviar" x-cloak>
+                                    «Enviar» guarda y manda la carta a {{ $orden->cliente_email }}.
+                                    @if ($ultima && $ultima->estado === 'enviada') Reemplaza la anterior. @endif
+                                </span>
+                                <span x-show="! puedeEnviar" x-cloak>
+                                    La orden pasó la etapa de cotización: para re-cotizar, elegí «Cotizacion» en Estado / etapa.
+                                </span>
+                            @endif
+                        </p>
+                    @endif
                     <button type="button" x-on:click="editando = false"
                         class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
-                    <x-primary-button>
-                        <x-icon.check class="h-4 w-4" /> Guardar
-                    </x-primary-button>
+                    <div class="flex items-center gap-2">
+                        @if ($esReparacion && $faltas->isEmpty())
+                            <x-secondary-button type="submit" name="enviar" value="1"
+                                                x-show="puedeEnviar" x-cloak
+                                                x-bind:disabled="total <= 0"
+                                                x-bind:title="total <= 0 ? 'Pon precios antes de enviar' : ''"
+                                                x-on:click="if (! confirm('Se guardará y se enviará la cotización por ' + clp(total) + ' a ' + {{ Js::from($orden->cliente_email) }} + '. ¿Continuar?')) $event.preventDefault()">
+                                {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Enviar cotización nueva' : 'Enviar cotización' }}
+                            </x-secondary-button>
+                        @endif
+                        <x-primary-button>
+                            <x-icon.check class="h-4 w-4" /> Guardar
+                        </x-primary-button>
+                    </div>
                 </div>
             </form>
+
+            {{-- Y ABAJO, EN LA MISMA PANTALLA, lo que ya se le envió al cliente y su
+                 historial: cuándo salió la carta, qué respondió y por qué, y cuándo
+                 quedó listo para retirar (dueño 20-08: «toda la información en un solo
+                 apartado»). Fuera del <form> a propósito: son datos, no campos. --}}
+            @if ($esReparacion)
+                @include('admin.servicio-tecnico.partials._envio-historial')
+            @endif
         </div>
     </div>
 </x-app-layout>

@@ -644,8 +644,13 @@ class ServicioTecnicoController extends Controller
      */
     public function reparacion(OrdenServicio $orden): View
     {
+        // Desde el 20-08 esta pantalla es LA pantalla de la orden (dueño: «toda la
+        // información en un solo apartado»), así que necesita todo lo que antes solo
+        // pedía la pestaña Cotización: el presupuesto, sus candados y el historial.
+        $orden->load(['producto.precios.lista', 'repuestos']);
+
         return view('admin.servicio-tecnico.reparacion', [
-            'orden' => $orden->load(['producto', 'repuestos']),
+            'orden' => $orden,
             'estados' => OrdenServicio::ESTADOS,
             'causasFalla' => OrdenServicio::CAUSAS_FALLA,
             // Respuestas fijas de "Trabajo realizado" agrupadas (config).
@@ -656,6 +661,13 @@ class ServicioTecnicoController extends Controller
             // Mapa trabajo -> horas estándar (catálogo) para mostrar en vivo la
             // mano de obra FIJA que implica el trabajo elegido (no editable).
             'tiemposMap' => TiempoReparacion::where('activo', true)->pluck('horas', 'trabajo')->map(fn ($h) => (float) $h),
+            // --- Lo que el presupuesto y el historial necesitan (antes solo en la
+            //     pestaña Cotización; ver cotizacion() para el porqué de cada uno).
+            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
+            'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
+            'manoObraVigente' => $this->manoObraDe($orden->trabajo_realizado),
+            'faltaManoObra' => $this->faltaManoObra($orden),
         ]);
     }
 
@@ -736,25 +748,11 @@ class ServicioTecnicoController extends Controller
             throw ValidationException::withMessages($errores);
         }
 
-        // El descuento es decisión COMERCIAL: solo quien tiene el permiso lo
-        // cambia (jefatura de ventas / admin). Si no lo tiene (p. ej. el técnico
-        // que arma la cotización), se conserva el descuento ya guardado — no puede
-        // aplicarlo ni quitarlo por más que manipule el formulario.
-        if ($request->user()->can('aplicar descuento servicio tecnico')) {
-            $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
-            $descuentoMotivo = $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null;
-        } else {
-            $descuentoPct = (int) $orden->descuento_pct;
-            $descuentoMotivo = $orden->descuento_motivo;
-        }
-
         $orden->update([
             // Mano de obra FIJA por el trabajo (no se edita aquí): se recalcula
             // por si jefatura cambió el tiempo estándar en el ínterin.
             'mano_obra' => $this->manoObraDe($orden->trabajo_realizado),
-            'descuento_pct' => $descuentoPct,
-            'descuento_motivo' => $descuentoMotivo,
-        ]);
+        ] + $this->descuentoAplicable($request, $orden, $data));
 
         // Reemplazo de repuestos ya con precio. Nombre, SKU y cantidad vienen del
         // parte del técnico como campos ocultos (aquí son de solo lectura).
@@ -786,6 +784,42 @@ class ServicioTecnicoController extends Controller
 
         return redirect()->route('admin.servicio-tecnico.cotizacion', $orden)
             ->with('status', "Cotización de la orden {$orden->folio} actualizada (total {$total}).");
+    }
+
+    /**
+     * El descuento que corresponde guardar, como par de columnas listo para el
+     * `update()`.
+     *
+     * EL DESCUENTO ES DECISIÓN COMERCIAL: solo lo cambia quien tiene el permiso
+     * (jefatura de ventas / admin). Quien no lo tiene —el técnico que arma el
+     * presupuesto— conserva el ya guardado: no puede aplicarlo ni quitarlo por más
+     * que manipule el formulario, porque el permiso se chequea acá y no en la vista.
+     *
+     * VIVE EN UN SOLO LUGAR desde el 20-08, cuando el presupuesto pasó a poder
+     * guardarse desde DOS acciones (el parte del técnico y la cotización). Con la
+     * regla copiada, un día una de las dos dejaría aplicar un descuento a quien no
+     * puede — y sería la copia que nadie mira.
+     *
+     * @param  array<string, mixed>  $data  el ya validado
+     * @return array{descuento_pct: int, descuento_motivo: string|null}
+     */
+    private function descuentoAplicable(Request $request, OrdenServicio $orden, array $data): array
+    {
+        if (! $request->user()->can('aplicar descuento servicio tecnico')) {
+            return [
+                'descuento_pct' => (int) $orden->descuento_pct,
+                'descuento_motivo' => $orden->descuento_motivo,
+            ];
+        }
+
+        $pct = (int) ($data['descuento_pct'] ?? 0);
+
+        return [
+            'descuento_pct' => $pct,
+            // Sin descuento no hay motivo que guardar: dejarlo colgado haría que la
+            // ficha explicara un descuento que no existe.
+            'descuento_motivo' => $pct > 0 ? ($data['descuento_motivo'] ?? null) : null,
+        ];
     }
 
     /**
@@ -879,6 +913,11 @@ class ServicioTecnicoController extends Controller
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             // Categoría de cierre: solo aplica a máquinas propias (IMP. DALI).
             'categoria' => ['nullable', Rule::in(OrdenServicio::CATEGORIAS)],
+            // Descuento: desde el 20-08 el presupuesto se arma en esta misma pantalla
+            // (dueño). Sigue siendo decisión COMERCIAL — abajo solo se aplica si el
+            // usuario tiene el permiso.
+            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
+            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
             'fecha_aviso' => ['nullable', 'date'],
             'fecha_retiro' => ['nullable', 'date'],
             'repuestos' => ['array'],
@@ -900,10 +939,16 @@ class ServicioTecnicoController extends Controller
         }
         unset($data['trabajo_realizado_otro']);
 
-        // Validacion por fila: el tecnico solo declara QUE repuesto uso y cuantos;
-        // si empezo a llenar una fila, exige el nombre (min 3). El PRECIO ya no se
-        // ingresa aqui —se pone en la pestaña Cotización— pero se preserva si viene
-        // (campo oculto) para no perderlo al re-guardar el parte del técnico.
+        // Validacion por fila: si empezo a llenar una fila, exige el nombre (min 3).
+        //
+        // EL PRECIO SE EXIGE SOLO AL ENVIAR (dueño 20-08, al unificar las pantallas):
+        // guardar tiene que seguir siendo libre —el tecnico registra el repuesto
+        // cuando lo pone y le busca el precio despues— pero lo que sale AL CLIENTE no
+        // puede llevar un repuesto en $0, porque ahi se cobra de menos y nadie lo
+        // nota. Es el mismo criterio con el que `faltaManoObra` bloquea el envio y no
+        // el guardado.
+        $vaAEnviar = $request->boolean('enviar');
+
         $errores = [];
         foreach ($request->input('repuestos', []) as $i => $r) {
             $nombre = trim((string) ($r['nombre'] ?? ''));
@@ -917,6 +962,9 @@ class ServicioTecnicoController extends Controller
 
             if (mb_strlen($nombre) < 3) {
                 $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
+            }
+            if ($vaAEnviar && $nombre !== '' && $precio < 1) {
+                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0) antes de enviar la cotización.';
             }
         }
         if ($errores) {
@@ -936,12 +984,11 @@ class ServicioTecnicoController extends Controller
             // La categoría solo se guarda para máquinas propias (IMP. DALI).
             'categoria' => $orden->es_propia ? ($data['categoria'] ?? null) : null,
             // Mano de obra FIJA por el trabajo (horas estándar × valor hora): el
-            // técnico no la ingresa ni la edita. El descuento NO se toca aquí (lo
-            // maneja la pestaña Cotización).
+            // técnico no la ingresa ni la edita.
             'mano_obra' => $this->manoObraDe($data['trabajo_realizado'] ?? null),
             'fecha_aviso' => $data['fecha_aviso'] ?? null,
             'fecha_retiro' => $data['fecha_retiro'] ?? null,
-        ]);
+        ] + $this->descuentoAplicable($request, $orden, $data));
 
         // Reemplazo total de los repuestos: se borran y se recrean los que
         // tengan nombre (las filas vacias del formulario se ignoran).
@@ -1006,6 +1053,16 @@ class ServicioTecnicoController extends Controller
             false => ' No se pudo enviar el correo al cliente: hay que llamarlo.',
             null => $cerroAhora('sin_solucion') ? ' La orden no tiene correo del cliente: hay que llamarlo.' : '',
         };
+
+        // El botón «Enviar cotización» es un submit de ESTE formulario con enviar=1
+        // (dueño 20-08: lo quiere en este pie): se guarda primero y se manda después,
+        // así lo que sale al cliente es lo que estaba en pantalla. Pegado a
+        // «Guardar», mandar el snapshot anterior sin darse cuenta era demasiado
+        // fácil. Si el envío no procede (etapa posterior, sin correo, total $0),
+        // enviarCotizacion lo explica y lo guardado no se pierde.
+        if ($request->boolean('enviar')) {
+            return $this->enviarCotizacion($request, $orden->fresh());
+        }
 
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
         // el técnico puede enviar la cotización enseguida —"guarda antes de
