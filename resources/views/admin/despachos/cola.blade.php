@@ -71,24 +71,9 @@
         @endif
     </div>
 
-    {{-- Script inline: el layout no expone un @stack('scripts') (mismo idioma
-         que el poll del listado de Servicio Técnico). --}}
-    <script>
-        (function () {
-            // Se compara la FIRMA del contenido, no el total: un total igual no
-            // significa la misma cola (entra una carga, sale otra) y el monitor
-            // se quedaría mostrando una carga ya retirada como «Esperando».
-            var base = '{{ $firma }}';
-            var url = '{{ route('admin.despachos.cola.conteo') }}';
-            setInterval(function () {
-                if (document.visibilityState !== 'visible') return;
-                fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
-                    .then(function (r) { return r.ok ? r.json() : null; })
-                    .then(function (d) {
-                        if (d && d.firma !== base) window.location.reload();
-                    })
-                    .catch(function () {});
-            }, 20000);
-        })();
-    </script>
+    {{-- Se compara la FIRMA del contenido, no el total: un total igual no
+         significa la misma cola (entra una carga, sale otra) y el monitor se
+         quedaría mostrando una carga ya retirada como «Esperando». Migrado a
+         <x-poll-recarga> en MSG-3 (4º uso del molde), cero cambio de conducta. --}}
+    <x-poll-recarga :url="route('admin.despachos.cola.conteo')" :firma="$firma" />
 </x-app-layout>

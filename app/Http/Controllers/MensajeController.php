@@ -6,6 +6,7 @@ use App\Models\Conversacion;
 use App\Models\Mensaje;
 use App\Models\User;
 use App\Services\Mensajes\Mensajeria;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -35,7 +36,39 @@ class MensajeController extends Controller
         return view('mensajes.index', [
             'conversaciones' => $conversaciones,
             'usuario' => $user,
+            'firmaChat' => $this->firmaChat($user),
         ]);
+    }
+
+    /**
+     * JSON liviano para el poll (MSG-3): total no hace falta — el contrato es
+     * «cambió algo → recarga» y la firma lo dice sola.
+     */
+    public function conteo(Request $request): JsonResponse
+    {
+        return response()->json(['firma' => $this->firmaChat($request->user())]);
+    }
+
+    /**
+     * Firma barata del estado del chat del usuario, GLOBAL a proposito (una
+     * sola para lista e hilo — v28): max id de mensajes en MIS hilos (mensaje
+     * nuevo la mueve), suma de MIS contadores (leer en otra pestaña tambien) y
+     * count de hilos (conversacion nueva). LA MISMA funcion alimenta las
+     * vistas y el endpoint del poll: si divergieran, el monitor recargaria en
+     * loop o nunca (doctrina del panel vivo). La recarga espuria del hilo
+     * cuando cambia OTRO hilo esta aceptada: marcarLeida es idempotente.
+     */
+    private function firmaChat(User $user): string
+    {
+        $conversaciones = Conversacion::paraUsuario($user->id)
+            ->get(['id', 'user_menor_id', 'no_leidos_menor', 'no_leidos_mayor']);
+
+        $maxMensaje = (int) Mensaje::whereIn('conversacion_id', $conversaciones->pluck('id'))->max('id');
+        $misNoLeidos = $conversaciones->sum(
+            fn (Conversacion $c) => $c->user_menor_id === $user->id ? $c->no_leidos_menor : $c->no_leidos_mayor,
+        );
+
+        return md5($maxMensaje.'|'.$misNoLeidos.'|'.$conversaciones->count());
     }
 
     /**
@@ -101,6 +134,9 @@ class MensajeController extends Controller
             'mensajes' => $mensajes,
             'otro' => $conversacion->otroLado($user),
             'usuario' => $user,
+            // DESPUES de marcarLeida: la firma horneada debe reflejar el
+            // estado que el poll va a leer, o recargaria al tiro en falso.
+            'firmaChat' => $this->firmaChat($user),
         ]);
     }
 

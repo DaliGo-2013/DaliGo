@@ -103,23 +103,8 @@
         @endif
     </div>
 
-    {{-- Script inline: el layout no expone un @stack('scripts') (mismo idioma
-         que el poll de la cola de bodega). --}}
-    <script>
-        (function () {
-            // Se compara la FIRMA del contenido, no el total: los minutos de
-            // una parada abierta cambian sin que cambie el total de filas.
-            var base = '{{ $firma }}';
-            var url = '{{ route('admin.produccion.vivo.conteo') }}';
-            setInterval(function () {
-                if (document.visibilityState !== 'visible') return;
-                fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
-                    .then(function (r) { return r.ok ? r.json() : null; })
-                    .then(function (d) {
-                        if (d && d.firma !== base) window.location.reload();
-                    })
-                    .catch(function () {});
-            }, 20000);
-        })();
-    </script>
+    {{-- Se compara la FIRMA del contenido, no el total: los minutos de una
+         parada abierta cambian sin que cambie el total de filas. Migrado a
+         <x-poll-recarga> en MSG-3 (4º uso del molde), cero cambio de conducta. --}}
+    <x-poll-recarga :url="route('admin.produccion.vivo.conteo')" :firma="$firma" />
 </x-app-layout>
