@@ -1,61 +1,64 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-14 (v57 — QA del Bloque A OK; se ABRE el Bloque B · Logística; GO B1: Cargas reales → Simulador. B2 Conductores VIVE SOLO). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-19 (v77 — veredictos del dueño al mapa F0-OPERACIÓN: los 4 aprobados + 9 confirmados + higiene. GO OPE-1: las ventanas del panel y los informes). Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ El dueño hizo el QA del Bloque A — todo funcionando. Se ABRE el Bloque B.
+## ✅ Veredictos del dueño al mapa §5.3 (19-ago) — tercer mapa que sale entero
 
-El Bloque A cerró en producción (menú 40; Costos + Traslados en el Listado, Informe vive
-solo). Arranca **B · Logística**. Antes de dictar crucé los permisos de las DOS
-consolidaciones en ambas direcciones (la lección del Informe). Resultado: **una consolida
-limpia, la otra vive sola.**
+Aprobados los 3 nivel 1 (#1, #9, #13), el nivel 2 (#3) y la higiene; los 9 nivel 3
+confirmados con tus porqués. Al pie del anexo. El titular del parte (M11 nació
+parametrizado — D-003 pagándose sola) va derecho al acta del módulo y al Trello del
+dueño en su lenguaje.
 
-## 🟢 GO — B1 · «Cargas reales» pasa a pestaña del «Simulador de carga» (40 → **39**)
+Fase B de Operación = 3 lotes: **OPE-1** (este dictado) → **OPE-2** (las dos listas) →
+**OPE-3** (config de preforma + higiene).
 
-- **Permiso IDÉNTICO**: ambos bajo `simular carga` (Cargas reales calibra la misma
-  calculadora). Quien ve el Simulador ve Cargas reales → **consolidación limpia**, cero
-  riesgo de acceso. Confírmalo en tu baseline igual.
-- **Anfitrión**: Simulador de carga. Pestaña «Cargas reales» con el `<x-tab-nav>` del Lote
-  3. El Simulador ya CONSUME Cargas reales (el factor «medido en terreno») y la enlaza
-  dos veces — los links se reapuntan a la pestaña.
-- **⚠️ Reemplaza una decisión previa del código, CON conciencia**: el comentario de
-  `MenuPrincipal` (hoy L139-143) dice que Cargas reales «va como ítem aparte a propósito»
-  porque el Simulador se usa ANTES de cargar y esto se anota DESPUÉS. **El dueño decidió
-  consolidar igual** (14-ago): la pestaña no impide anotarla después — solo agrupa bajo un
-  ítem. **Actualiza ese comentario** a la nueva decisión (no lo borres sin más: explica que
-  antes vivía aparte por el momento de uso y que el dueño resolvió que ese matiz no pesa lo
-  suficiente frente a la densidad). Es el mismo estándar del QR: la decisión previa se
-  reemplaza dejando rastro del porqué.
-- **Mini-candado**: 7ª entrada en `CONSOLIDADAS` + **mútala** (quitar la ruta del `activo`
-  del anfitrión → 2 rojos → restaurar → verde).
-- **`VolverTest`**: Cargas reales era ítem; al pasar a pestaña, ajústalo por la fuente única.
-- **Ruta y permiso se CONSERVAN** — mudanza, no retiro.
+## 🔨 GO — Lote OPE-1: las ventanas del panel del jefe y de los informes (M)
 
-## ❌ B2 · Conductores — NO se construye. Conductores VIVE SOLO (decisión del dueño 14-ago)
+El primo del DASH-1 que el dueño ya aprobó — molde exacto:
 
-El cruce de permisos (que hice ANTES de dictar, no a mitad) dio el mismo nudo del Informe:
-`jefe_ventas` y `tecnico` administran Conductores hoy (por `manage servicio tecnico`) pero
-**NO** tienen `ver|manage vehiculos` → **no pueden entrar a Vehículos**; solo `jefe_logistica`
-y `admin` (por `manage vehiculos`) ven ambos. Conductores tiene audiencia partida entre
-servicio-técnico y logística, sin anfitrión común. El mapa F0 asumió que gatear la pestaña
-bastaba, pero el problema es LLEGAR al anfitrión, no ver la pestaña.
+1. **Tres claves nuevas** (grupo `produccion`, snake_case, seeder idempotente con ayuda
+   en español):
+   - `produccion_dias_panel` — default **7** (`ProduccionController:125`, `$ventana=6`
+     +hoy: ojo al ±1 como DASH-1).
+   - `produccion_dias_informe_maquina` — default **30** (`:306`, `rango($request, 29)`).
+   - `produccion_dias_informe_tipo` — default **30** (`:351`, ídem).
+   Claves SEPARADAS aunque los informes digan lo mismo hoy (doctrina DASH-1: ventanas
+   distintas, perillas distintas). Si al abrir el código ves que los 2 informes
+   comparten UN concepto real (mismo `rango()` con el mismo sentido de negocio),
+   contra-evidencia en el parte ANTES de forjar distinto — una clave para ambos sería
+   defendible; decláralo.
+2. **`RANGOS`**: las 3 entradas (2-31 el panel; 7-90 los informes — o los rangos que el
+   código pida con sentido, declarados).
+3. **Rótulos derivados** donde existan textos gemelos en las vistas (tu mapa los marca)
+   — la aritmética exacta, no números a mano (doctrina DASH-2).
+4. **OJO al `rango()`**: si el helper acota o interpreta el request (el usuario puede
+   pedir otro rango por URL), la clave es el DEFAULT del rango, no un tope — que el
+   candado distinga default-configurable vs rango-pedido-por-el-usuario.
+5. **Candados molde DASH** (default idéntico byte a byte · mover cada clave mueve SU
+   pantalla y rótulo y NO las otras dos · rangos por ambos bordes · mutación 7→9 o
+   30→45 con rojo exacto → restaurar → verde).
+6. **Regla de oro**: cero tests existentes con cifra cambiada; BD virgen = pantallas
+   idénticas.
 
-**Decisión del dueño: Conductores vive solo.** No se toca. En el mapa (§5.1) su veredicto
-pasa de «integrable → Vehículos» a **vive-solo**. Es el 2º ítem (con el Informe) que el
-criterio del proyecto deja fuera por audiencia partida.
+### Verificación (invariante)
+Rama `feature/param-ope-1-ventanas` desde main FRESCO (baseline: **2238 / 15.574** en
+`5bf39df` + docs después — recuenta; Max-2 puede mergear MSG-3 antes que tu parte).
+Suite COMPLETA antes. Batería: Produccion* completo + ParametrosDashboard (el
+ConfiguracionController compartido) + ConfiguracionManagement/SeedLongitud. Parte al
+buzón; espera doble llave. NO arranques OPE-2.
 
-## Consecuencia y cola
-El Bloque B es **un solo lote** (B1). Tras B1 en producción + QA del dueño, se abre el
-**Bloque C · Administración** (C1 Roles→Usuarios, C2 «Registro del sistema» 3→1). Menú
-final del mapa: **32** (no 30 — Informe y Conductores viven solos).
+## 📡 Radar OPE-2 y OPE-3 (NO arranques)
+- **OPE-2**: `produccion_motivos_parada` + `produccion_motivos_planificados`
+  (LISTAS_SIMPLES ×2) con la validación del PAR planificados ⊆ motivos (4º hermano
+  declarativo: par-subconjunto) + tu matiz verificado (la clase se persiste — OEE
+  histórico intacto, candado explícito) + `produccion_procedencias_preforma`.
+- **OPE-3**: `config/produccion.php` (o donde el idioma mande) con los patrones de
+  preforma/dañada estilo categorias_equipo + higiene (max:100000 ×6 → constante, 92 ×2,
+  POR_PAGINA ×2 adoptado).
 
 ## Estado
-- **Max-2** en pausa. **Marcos y el PR #9** activos (main creció: servicios terreno,
-  autorización de citas, jefe_logistica/jefe_despacho nuevos). Re-fetch religioso.
+Max-2 forjando MSG-3 (poll del chat). Marcos activo. Trello espejando. Baseline:
+2238/15.574 en `5bf39df`.
 
-## Recordatorios
-Rama nueva desde main FRESCO (`589754a` o posterior — re-fetch); suite COMPLETA de main
-fresco ANTES de empezar; candado mutado; parte al buzón. **Cruce de permisos en ambas
-direcciones ANTES de consolidar** — ya nos ahorró romper el Informe y Conductores.
-
-CIERRE: parte a docs/fleet/buzon/partes/. B1 Cargas reales → doble llave → QA → Bloque C.
+CIERRE: GO OPE-1. Tercer módulo en fase B — los moldes ya hacen el trabajo pesado.

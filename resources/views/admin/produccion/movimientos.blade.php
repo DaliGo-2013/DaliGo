@@ -1,8 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Ítem del menú desde P-NAV-06: sin Volver (doctrina P-NAV-08). --}}
+        {{-- Hija del panel de Producción desde la consolidación D1 (17-ago):
+             se llega por el botón «Kardex» de la cabecera del panel, así que
+             el Volver volvió (fue ítem del menú entre P-NAV-06 y D1). --}}
         <x-page-header title="Kardex de producción"
-                       subtitle="Movimientos generados al aprobar reportes. Ledger local; no toca el stock de Bsale." />
+                       subtitle="Movimientos generados al aprobar reportes. Ledger local; no toca el stock de Bsale."
+                       :back="route('admin.produccion.index')"
+                       backTitle="Volver al panel de Producción" />
     </x-slot>
 
     <div class="space-y-6 py-12">

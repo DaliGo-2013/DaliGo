@@ -29,6 +29,65 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'cotizaciones',
                 'descripcion' => 'Días de vigencia por defecto de una cotización.',
             ],
+            // --- Dashboard (PLAN-PARAMETRICOS, DASH-1) ---
+            // Ventanas del pulso del Inicio. El default (7) es el valor histórico
+            // y vive también como fallback en DashboardController: parametrizar
+            // NO cambia el comportamiento con BD virgen (regla de oro del plan).
+            // Claves SEPARADAS a propósito: son ventanas distintas aunque ambas
+            // digan 7 (hallazgos #1 y #2 del mapa F0-DASH). Rango 2-31 validado
+            // en la UI (ConfiguracionController::RANGOS) y clampeado al leer.
+            [
+                'clave' => 'dashboard_dias_serie_produccion',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Días de producción que muestran las mini-barras del Inicio (incluye hoy). Rango 2-31.',
+            ],
+            [
+                'clave' => 'dashboard_dias_referencia_merma',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Contra cuántos días previos se compara la merma de hoy en el Inicio (el «prom. N días»). Rango 2-31.',
+            ],
+            // Cortes de antigüedad del taller (DASH-2, hallazgo #3): definen
+            // los tramos 0-R / (R+1)-A / A+ de los equipos activos del Inicio.
+            // Par ORDENADO: reciente < antiguo (validación cruzada en la UI +
+            // clamp al leer). La «última semana» del flujo NO es parámetro:
+            // quedó fija en 7 con su porqué (veredicto del dueño al #4).
+            [
+                'clave' => 'dashboard_corte_taller_reciente',
+                'valor' => '7',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Dónde termina el tramo reciente de los equipos activos del taller (días). Rango 2-60, menor que el corte antiguo.',
+            ],
+            [
+                'clave' => 'dashboard_corte_taller_antiguo',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'dashboard',
+                'descripcion' => 'Desde cuántos días un equipo activo del taller cuenta como antiguo. Rango 7-180, mayor que el corte reciente.',
+            ],
+            // --- Comercial (PLAN-PARAMETRICOS, COM-1) ---
+            // Las dos listas del negocio, editables una-por-línea en la UI
+            // (ConfiguracionController::LISTAS_SIMPLES). Los defaults son los
+            // valores históricos; los fallbacks viven en Cliente::SEGMENTOS y
+            // ProductoController::PRESETS_CATEGORIA_INTERNA (regla de oro).
+            [
+                'clave' => 'clientes_segmentos',
+                'valor' => json_encode(['mayorista', 'retail', 'recurrente'], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'comercial',
+                'descripcion' => 'Segmentos para clasificar clientes (uno por línea). Agregar es libre; quitar uno con clientes asignados se rechaza.',
+            ],
+            [
+                'clave' => 'catalogo_categorias_sugeridas',
+                'valor' => json_encode(['Repuestos industriales'], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'comercial',
+                'descripcion' => 'Categorías internas que el corrector del catálogo sugiere aunque ningún producto las use todavía (una por línea).',
+            ],
             // Feriados de Chile para calcular días hábiles (App\Support\DiasHabiles):
             // hoy los usa la cita de retiro tras un rechazo (dueño 07-08). 2026 está
             // completo; de 2027 van los de fecha fija + Semana Santa — los MOVIBLES
@@ -639,6 +698,21 @@ class ConfiguracionSeeder extends Seeder
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a producción cuando un reporte aprobado trae parada «Molde dañado» (M11 F3; la correctiva nace pendiente, una por reporte).',
+            ],
+
+            // ── MSG-1 · Chat interno (PLAN-MENSAJES) ───────────────────────
+            // Clave nueva → el firstOrCreate del seeder la crea en el deploy,
+            // sin one-shot. Anti-spam de RÁFAGA: se dispara solo al pasar de
+            // 0 no-leídos en el hilo, así que un chat activo manda UN aviso.
+            [
+                'clave' => 'notif_plantilla_mensaje_recibido',
+                'valor' => json_encode([
+                    'asunto' => 'Mensaje de {emisor}',
+                    'cuerpo' => "{emisor} te escribió por el chat interno:\n\n«{extracto}»\n\nRespóndele desde Mensajes en DaliGo.",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso de mensaje del chat interno (MSG-1; ráfaga: solo el primero mientras el receptor no lea el hilo).',
             ],
         ];
 

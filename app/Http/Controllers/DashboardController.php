@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Aprobacion;
+use App\Models\Configuracion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionReporte;
+use App\Models\Sucursal;
 use App\Support\AccesosDashboard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -26,6 +28,23 @@ use Illuminate\View\View;
  */
 class DashboardController extends Controller
 {
+    /**
+     * Ventanas y cortes del pulso (DASH-1/DASH-2, PLAN-PARAMETRICOS):
+     * configurables en caliente desde la UI de Configuración (grupo
+     * `dashboard`, rangos en ConfiguracionController::RANGOS). Estos
+     * defaults son el valor HISTÓRICO y rigen si la clave no está en la BD —
+     * la regla de oro del plan: parametrizar no cambia el comportamiento.
+     * El default vive SOLO acá (el seeder siembra el mismo número como valor
+     * inicial de la fila, que es otro rol: la fila se edita, esto es fallback).
+     */
+    private const DIAS_SERIE_PRODUCCION_DEFAULT = 7;
+
+    private const DIAS_REFERENCIA_MERMA_DEFAULT = 7;
+
+    private const CORTE_TALLER_RECIENTE_DEFAULT = 7;
+
+    private const CORTE_TALLER_ANTIGUO_DEFAULT = 30;
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -140,8 +159,12 @@ class DashboardController extends Controller
                 (int) ProduccionAsignacion::whereDate('fecha', $hoy)->sum('asignadas'),
             );
 
-            // Serie de 7 días (incluye hoy) para las mini-barras, con ceros.
-            $desde7 = \App\Support\FechaNegocio::ahora()->subDays(6)->toDateString();
+            // Serie de N días (incluye hoy) para las mini-barras, con ceros.
+            // El -1 es porque hoy cuenta como día 1 de la ventana. El clamp
+            // inferior espeja el rango de la UI (2-31): un valor roto en la BD
+            // no puede dejar la serie vacía (idioma de devolucion_fotos_min).
+            $diasSerie = max(2, (int) Configuracion::get('dashboard_dias_serie_produccion', self::DIAS_SERIE_PRODUCCION_DEFAULT));
+            $desde7 = \App\Support\FechaNegocio::ahora()->subDays($diasSerie - 1)->toDateString();
             $porDia = ProduccionReporte::seriePorDia($desde7, $hoy);
             $serie = [];
             for ($cursor = Carbon::parse($desde7); $cursor->toDateString() <= $hoy; $cursor->addDay()) {
@@ -157,10 +180,13 @@ class DashboardController extends Controller
             }
             unset($dia);
 
-            // Referencia de merma: los 7 días ANTERIORES a hoy (hoy no puede
+            // Referencia de merma: los N días ANTERIORES a hoy (hoy no puede
             // ser su propia vara). Sin datos previos queda null (sin referencia).
+            // Ventana INDEPENDIENTE de la serie aunque ambas partan en 7
+            // (hallazgo #2 del mapa F0-DASH: parámetros separados).
+            $diasMerma = max(2, (int) Configuracion::get('dashboard_dias_referencia_merma', self::DIAS_REFERENCIA_MERMA_DEFAULT));
             $prev = ProduccionReporte::seriePorDia(
-                \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString(),
+                \App\Support\FechaNegocio::ahora()->subDays($diasMerma)->toDateString(),
                 \App\Support\FechaNegocio::ahora()->subDay()->toDateString(),
             );
             $prevP1 = (int) $prev->sum('p1');
@@ -172,6 +198,12 @@ class DashboardController extends Controller
             $pulsoProduccion = $resumen + [
                 'mermaProm7' => $mermaProm7,
                 'serie' => $serie,
+                // Los rótulos de la vista DERIVAN de estas ventanas («Últimos
+                // N días», «prom. N días») — el número en pantalla no puede
+                // decir una cosa y el cálculo hacer otra (alerta del parte
+                // F0-DASH: los textos gemelos driftean).
+                'diasSerie' => $diasSerie,
+                'diasMerma' => $diasMerma,
                 'href' => route('admin.produccion.index'),
             ];
         }
@@ -180,26 +212,45 @@ class DashboardController extends Controller
         $pulsoTaller = null;
 
         if ($user->can('manage servicio tecnico')) {
-            // Buckets de antigüedad con límites en PHP + whereDate (portable):
-            // 0-7 / 8-30 / 30+ días desde el ingreso, solo órdenes activas.
-            $d7 = \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString();
-            $d30 = \App\Support\FechaNegocio::ahora()->subDays(30)->toDateString();
+            // Cortes de antigüedad configurables (DASH-2): tramos 0-R, (R+1)-A
+            // y A+ días desde el ingreso, solo órdenes activas. Límites en PHP
+            // + whereDate (portable). Clamp de la casa: la UI valida rango y
+            // orden (reciente < antiguo), pero un par roto que entre por fuera
+            // tampoco puede dejar tramos sin sentido — el segundo max() fuerza
+            // antiguo por encima de reciente. Las keys d0_7/d8_30/d30 son
+            // nombres INTERNOS históricos (contrato con la vista y los tests);
+            // los números reales derivan de los cortes.
+            $corteReciente = max(2, (int) Configuracion::get('dashboard_corte_taller_reciente', self::CORTE_TALLER_RECIENTE_DEFAULT));
+            $corteAntiguo = max($corteReciente + 1, (int) Configuracion::get('dashboard_corte_taller_antiguo', self::CORTE_TALLER_ANTIGUO_DEFAULT));
+            $dReciente = \App\Support\FechaNegocio::ahora()->subDays($corteReciente)->toDateString();
+            $dAntiguo = \App\Support\FechaNegocio::ahora()->subDays($corteAntiguo)->toDateString();
             $activas = fn () => OrdenServicio::pendientesTecnico();
 
             $aging = [
-                'd0_7' => $activas()->whereDate('fecha_ingreso', '>=', $d7)->count(),
-                'd8_30' => $activas()->whereDate('fecha_ingreso', '<', $d7)->whereDate('fecha_ingreso', '>=', $d30)->count(),
-                'd30' => $activas()->whereDate('fecha_ingreso', '<', $d30)->count(),
+                'd0_7' => $activas()->whereDate('fecha_ingreso', '>=', $dReciente)->count(),
+                'd8_30' => $activas()->whereDate('fecha_ingreso', '<', $dReciente)->whereDate('fecha_ingreso', '>=', $dAntiguo)->count(),
+                'd30' => $activas()->whereDate('fecha_ingreso', '<', $dAntiguo)->count(),
             ];
 
             // Flujo de los últimos 7 días: entradas por fecha_ingreso; salidas
             // por fecha_entrega (histórico puede venir NULL — se subestima, no
-            // se inventa).
+            // se inventa). El 7 es FIJO y con variable PROPIA a propósito
+            // (nivel 3, veredicto del dueño 18-ago al hallazgo #4 del mapa
+            // F0-DASH): «una semana es una semana» — el rótulo «Última semana»
+            // lo fija. Antes reusaba el $d7 del aging, y mover el corte habría
+            // arrastrado esta ventana en silencio (alerta del parte F0-DASH).
+            $dSemana = \App\Support\FechaNegocio::ahora()->subDays(7)->toDateString();
+
             $pulsoTaller = [
                 'activos' => array_sum($aging),
                 'aging' => $aging,
-                'entradasSemana' => OrdenServicio::whereDate('fecha_ingreso', '>=', $d7)->count(),
-                'salidasSemana' => OrdenServicio::whereDate('fecha_entrega', '>=', $d7)->count(),
+                // Los rótulos de la vista DERIVAN de los cortes («0-R días ·
+                // (R+1)-A · A+», «llevan A+ días») — el número en pantalla no
+                // puede decir una cosa y el bucket cortar en otra.
+                'corteReciente' => $corteReciente,
+                'corteAntiguo' => $corteAntiguo,
+                'entradasSemana' => OrdenServicio::whereDate('fecha_ingreso', '>=', $dSemana)->count(),
+                'salidasSemana' => OrdenServicio::whereDate('fecha_entrega', '>=', $dSemana)->count(),
                 'href' => route('admin.servicio-tecnico.index'),
             ];
         }
@@ -269,6 +320,19 @@ class DashboardController extends Controller
         // Definición central en AccesosDashboard; el color de cada card
         // respeta la preferencia del usuario (D-013) — solo keys de paleta
         // válidas: una pref legacy/corrupta cae al default sin reventar.
+        // La desc de la card Sucursales deriva de la TABLA (DASH-3, hallazgo
+        // #5 del mapa F0-DASH): las activas, unidas con «, ». Orden por id =
+        // el orden histórico de la casa (la central primero, después por
+        // antigüedad de apertura) — es el ÚNICO que reproduce byte a byte la
+        // desc que la card decía a mano (regla de oro; la pantalla de
+        // Sucursales ordena por nombre, pero acá manda no cambiar lo que se
+        // ve). Query solo si el usuario puede ver la card; tabla vacía →
+        // string vacío → cae al fallback de la constante («Plazos y datos
+        // por sucursal»), jamás un error.
+        $descSucursales = $user->can('manage sucursales')
+            ? Sucursal::where('activa', true)->orderBy('id')->pluck('nombre')->implode(', ')
+            : '';
+
         $prefs = $user->dashboard_colores ?? [];
         $accesos = collect(AccesosDashboard::GRUPOS)
             ->map(fn (array $items) => collect($items)
@@ -276,7 +340,7 @@ class DashboardController extends Controller
                 ->map(fn (array $def, string $key) => [
                     'key' => $key,
                     'label' => $def['label'],
-                    'desc' => $def['desc'],
+                    'desc' => $key === 'sucursales' && $descSucursales !== '' ? $descSucursales : $def['desc'],
                     'href' => route($def['route']),
                     'icon' => $def['icon'],
                     'color' => in_array($prefs[$key] ?? null, AccesosDashboard::COLORES, true)

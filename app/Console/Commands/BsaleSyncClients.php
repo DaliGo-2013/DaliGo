@@ -43,6 +43,13 @@ class BsaleSyncClients extends Command
 
         if ($stats['duplicados'] > 0) {
             $this->line("  {$stats['duplicados']} cliente(s) omitido(s) por RUT ya existente en otra ficha — esperado (Bsale trae varios registros por RUT), no es error.");
+            $this->line('  RUTs duplicados a revisar en Bsale (para limpiar el origen):');
+            foreach (array_slice($stats['duplicados_ruts'], 0, 50) as $dup) {
+                $this->line("    · {$dup['rut']}  ·  Bsale id {$dup['client_id']}");
+            }
+            if (count($stats['duplicados_ruts']) > 50) {
+                $this->line('    … y '.(count($stats['duplicados_ruts']) - 50).' más (ver el log completo).');
+            }
         }
 
         foreach (array_slice($stats['errores'], 0, 20) as $err) {

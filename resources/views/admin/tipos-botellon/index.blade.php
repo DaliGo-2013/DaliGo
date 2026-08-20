@@ -1,7 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Ítem del menú desde P-NAV-06: sin Volver (doctrina P-NAV-08). --}}
-        <x-page-header title="Tipos de botellón" subtitle="Los formatos que el soplador selecciona al registrar producción.">
+        {{-- Pestaña de «Configuración de producción» desde la consolidación
+             E1 (18-ago): salió del menú y recuperó su Volver, ahora a la
+             anfitriona (fue ítem entre P-NAV-06 y E1; antes de eso, huérfana
+             con Volver al panel de Producción). --}}
+        <x-page-header title="Tipos de botellón" subtitle="Los formatos que el soplador selecciona al registrar producción."
+                       :back="route('admin.maquinas.index')" backTitle="Volver a Configuración de producción">
             <x-slot name="action">
                 <x-button-link :href="route('admin.tipos-botellon.create')">
                     <x-icon.plus class="h-4 w-4" />
@@ -13,6 +17,12 @@
 
     <div class="py-12">
         <x-status-alert :status="session('status')" class="mb-6" />
+
+        {{-- Mismo detalle de layout que maquinas/index: `py-12` sin
+             `space-y-*`, el nav pone su margen (idioma C1). --}}
+        <div class="mb-6">
+            @include('admin.maquinas._tabs')
+        </div>
 
         <x-list-card title="Tipos de botellón" :count="$tipos->count()" :countLabel="\Illuminate\Support\Str::plural('tipo', $tipos->count())">
             @forelse ($tipos as $tipo)

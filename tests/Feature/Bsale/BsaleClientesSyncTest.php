@@ -196,6 +196,11 @@ class BsaleClientesSyncTest extends TestCase
         $this->assertSame(1, $stats['omitidos']);   // duplicado sigue contando como omitido
         $this->assertEmpty($stats['errores']);       // pero NO es un error
         $this->assertSame(1, Cliente::where('rut', '12345678-5')->count());
+
+        // Se registra QUÉ RUT/id se descartó, para poder limpiar Bsale.
+        $this->assertCount(1, $stats['duplicados_ruts']);
+        $this->assertSame('12345678-5', $stats['duplicados_ruts'][0]['rut']);
+        $this->assertSame(2, $stats['duplicados_ruts'][0]['client_id']);
     }
 
     public function test_foreigner_code_is_kept_raw_not_mutilated(): void

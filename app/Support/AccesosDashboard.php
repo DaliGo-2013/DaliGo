@@ -36,12 +36,23 @@ class AccesosDashboard
         ],
         'Administración' => [
             'usuarios' => ['label' => 'Usuarios', 'desc' => 'Cuentas y roles del equipo', 'route' => 'admin.users.index', 'permiso' => 'view users', 'icon' => 'users', 'color' => 'gris'],
-            'roles' => ['label' => 'Roles', 'desc' => 'Permisos por rol', 'route' => 'admin.roles.index', 'permiso' => 'manage roles', 'icon' => 'shield-check', 'color' => 'gris'],
-            'sucursales' => ['label' => 'Sucursales', 'desc' => 'Mirador, Coquimbo, Abate Molina, Buzeta', 'route' => 'admin.sucursales.index', 'permiso' => 'manage sucursales', 'icon' => 'building-storefront', 'color' => 'gris'],
+            // La card «Roles» se retiró con la consolidación C1: es pestaña de
+            // Usuarios (a un clic de esta card, cuya descripción ya dice «y
+            // roles»). Las preferencias de color guardadas toleran la key
+            // huérfana (D-013), igual que con «Precios» en F1.
+            // La desc REAL de esta card deriva de la tabla `sucursales` al
+            // render (DashboardController, DASH-3 — hallazgo #5 del mapa
+            // F0-DASH: la lista escrita a mano mentía al abrir o cerrar una
+            // sucursal). Esta constante es el FALLBACK: rige solo con la
+            // tabla vacía (BD recién migrada, tests sin seeder).
+            'sucursales' => ['label' => 'Sucursales', 'desc' => 'Plazos y datos por sucursal', 'route' => 'admin.sucursales.index', 'permiso' => 'manage sucursales', 'icon' => 'building-storefront', 'color' => 'gris'],
             'configuracion' => ['label' => 'Configuración', 'desc' => 'Parámetros globales de la app', 'route' => 'admin.configuracion.index', 'permiso' => 'manage settings', 'icon' => 'adjustments-horizontal', 'color' => 'gris'],
-            'auditoria' => ['label' => 'Auditoría', 'desc' => 'Quién cambió qué y cuándo', 'route' => 'admin.audits.index', 'permiso' => 'view audit', 'icon' => 'document-magnifying-glass', 'color' => 'gris'],
-            'notificaciones' => ['label' => 'Notificaciones', 'desc' => 'Envíos, reintentos y fallas', 'route' => 'admin.notificaciones.index', 'permiso' => 'view notificaciones', 'icon' => 'bell', 'color' => 'gris'],
-            'aprobaciones' => ['label' => 'Aprobaciones', 'desc' => 'Historial del motor de aprobaciones', 'route' => 'admin.aprobaciones.index', 'permiso' => 'view aprobaciones', 'icon' => 'check-badge', 'color' => 'gris'],
+            // Consolidación C2: las cards «Notificaciones» y «Aprobaciones» se
+            // retiraron — sus pantallas son pestañas del Registro del sistema
+            // (a un clic de esta card, cuya desc las abarca). La key `auditoria`
+            // se conserva para las preferencias de color guardadas; las keys
+            // huérfanas de las retiradas se toleran (D-013), igual que en F1/C1.
+            'auditoria' => ['label' => 'Registro del sistema', 'desc' => 'Cambios, notificaciones y aprobaciones', 'route' => 'admin.audits.index', 'permiso' => 'view audit', 'icon' => 'document-magnifying-glass', 'color' => 'gris'],
         ],
     ];
 

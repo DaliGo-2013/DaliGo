@@ -42,8 +42,31 @@ class ProductoController extends Controller
     private const NUMERICAS = ['peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'];
 
     /**
-     * Categorías internas SUGERIDAS: siempre disponibles para corregir (aparecen
-     * en el filtro y el datalist) aunque todavía no las use ningún producto.
+     * Filas por tanda del streaming CSV (export y plantilla de medidas):
+     * aritmética de memoria, no negocio. Vivía repetido ×2 (COM-2).
+     */
+    private const CSV_CHUNK = 500;
+
+    /**
+     * Reglas de peso/dimensiones, COMPARTIDAS por el import y el formulario
+     * (vivían copiadas ×2 — duplicado del mapa F0-COMERCIAL, unificado en
+     * COM-2). Los max espejan el esquema `decimal(10,3)/(10,2)`: sin ellos,
+     * un valor gigante gatilla "Out of range" en MySQL en vez de un mensaje
+     * de validación.
+     */
+    private const REGLAS_MEDIDAS = [
+        'peso_kg' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
+        'alto_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+        'ancho_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+        'largo_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+    ];
+
+    /**
+     * Default HISTÓRICO de las categorías internas sugeridas (COM-1,
+     * PLAN-PARAMETRICOS): la lista viva se edita en Configuración
+     * (`catalogo_categorias_sugeridas`, una por línea) y siempre aparece en
+     * el filtro y el datalist aunque ningún producto la use todavía. Esta
+     * constante rige si la clave no está en la BD.
      */
     private const PRESETS_CATEGORIA_INTERNA = ['Repuestos industriales'];
 
@@ -51,7 +74,7 @@ class ProductoController extends Controller
     {
         $productos = $this->filteredQuery($request)
             ->orderBy('nombre')
-            ->paginate(25)
+            ->paginate(self::POR_PAGINA)
             ->withQueryString();
 
         $activos = Producto::where('activo', true)->count();
@@ -241,17 +264,13 @@ class ProductoController extends Controller
 
         // Validar solo las columnas presentes. 'nombre' presente no puede ir vacio
         // (la columna es NOT NULL; vaciarla seria un error de digitacion).
-        // max: acorde a decimal(10,3)/(10,2) para no gatillar "Out of range" en MySQL.
         $reglas = [
             'sku' => ['required', 'string', 'max:64'],
             'nombre' => ['required', 'string', 'max:191'],
             'descripcion' => ['nullable', 'string'],
             'categoria' => ['nullable', 'string', 'max:191'],
             'marca' => ['nullable', 'string', 'max:191'],
-            'peso_kg' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
-            'alto_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'ancho_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'largo_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            ...self::REGLAS_MEDIDAS,
         ];
         $validator = Validator::make($data, array_intersect_key($reglas, $data + ['sku' => true]));
 
@@ -311,7 +330,7 @@ class ProductoController extends Controller
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
             fputcsv($out, self::CSV_HEADERS, ';');
 
-            $query->chunk(500, function ($rows) use ($out) {
+            $query->chunk(self::CSV_CHUNK, function ($rows) use ($out) {
                 foreach ($rows as $p) {
                     fputcsv($out, [
                         $p->sku, $p->nombre, $p->descripcion, $p->categoria, $p->marca,
@@ -363,7 +382,7 @@ class ProductoController extends Controller
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, ['sku', 'producto', 'categoria_ref', 'codigo_barras', 'peso_kg', 'alto_cm', 'ancho_cm', 'largo_cm'], ';');
 
-            $query->chunk(500, function ($rows) use ($out) {
+            $query->chunk(self::CSV_CHUNK, function ($rows) use ($out) {
                 foreach ($rows as $p) {
                     fputcsv($out, [
                         $p->sku, $p->nombre, $p->categoria, $p->barcode,
@@ -430,10 +449,7 @@ class ProductoController extends Controller
             'descripcion' => ['nullable', 'string'],
             'categoria' => ['nullable', 'string', 'max:191'],
             'marca' => ['nullable', 'string', 'max:191'],
-            'peso_kg' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
-            'alto_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'ancho_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'largo_cm' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            ...self::REGLAS_MEDIDAS,
             // bsale_variant_id / bsale_product_id NO se validan ni persisten aqui:
             // el form no los expone y la sync es la unica duena del enlace (un POST
             // manipulado podria duplicar un variant_id y romper el espejo de precios).
@@ -452,17 +468,23 @@ class ProductoController extends Controller
      */
     private function formData(): array
     {
+        $sugeridas = \App\Models\Configuracion::getLista('catalogo_categorias_sugeridas', self::PRESETS_CATEGORIA_INTERNA);
+
         return [
             // Categorías EFECTIVAS distintas (corregida en DaliGo si existe, si no
             // la de Bsale) + las sugeridas (siempre disponibles): alimentan el
             // filtro y el datalist de corrección.
-            'categorias' => collect(self::PRESETS_CATEGORIA_INTERNA)
+            'categorias' => collect($sugeridas)
                 ->merge(Producto::query()
                     ->selectRaw('COALESCE(categoria_interna, categoria) as cat')
                     ->whereRaw('COALESCE(categoria_interna, categoria) IS NOT NULL')
                     ->distinct()->pluck('cat'))
                 ->unique()->sort()->values(),
             'marcas' => Producto::whereNotNull('marca')->distinct()->orderBy('marca')->pluck('marca'),
+            // El «Ej. …» del corrector masivo DERIVA de la primera sugerida —
+            // antes el mismo string vivía retipeado en la vista (duplicado
+            // marcado en el mapa F0-COMERCIAL, muerto en COM-1).
+            'categoriaEjemplo' => $sugeridas[0] ?? 'Repuestos industriales',
         ];
     }
 

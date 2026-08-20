@@ -18,6 +18,8 @@
 
         <x-status-alert :status="session('status')" />
 
+        @include('admin.carga._tabs')
+
         {{-- ① EL FACTOR, que es la conclusión --}}
         @if ($resumen !== [])
             <x-list-card title="Factor por combinación" :count="count($resumen)"

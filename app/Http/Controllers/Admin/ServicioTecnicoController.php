@@ -863,9 +863,19 @@ class ServicioTecnicoController extends Controller
         // ConvertEmptyStringsToNull, asi que 'Sin determinar' no pasa el required.
         $exigeDiagnostico = in_array($request->input('estado'), ['reparado', 'sin_solucion'], true);
 
+        // «Otro — lo escribo yo» (dueño, 14-08-2026): el select manda un centinela y el texto
+        // viaja aparte. El largo se corta ACÁ, en 191, porque la cotización guarda su snapshot
+        // del trabajo en un VARCHAR(191): un texto más largo pasa en SQLite y revienta en MySQL
+        // al ENVIAR la cotización, o sea lejos de donde se escribió.
+        $escribeElTrabajo = $request->input('trabajo_realizado') === OrdenServicio::TRABAJO_OTRO;
+
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
+            'trabajo_realizado_otro' => [
+                Rule::requiredIf($escribeElTrabajo),
+                'nullable', 'string', 'min:3', 'max:'.OrdenServicio::TRABAJO_MAX,
+            ],
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             // Categoría de cierre: solo aplica a máquinas propias (IMP. DALI).
             'categoria' => ['nullable', Rule::in(OrdenServicio::CATEGORIAS)],
@@ -878,7 +888,17 @@ class ServicioTecnicoController extends Controller
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
             'causa_falla.required' => 'Indica la causa de la falla (diagnóstico final) para cerrar la orden como «Reparado» o «Sin solución».',
+            'trabajo_realizado_otro.required' => 'Escribe el trabajo realizado, o elige una respuesta de la lista.',
+            'trabajo_realizado_otro.min' => 'Escribe el trabajo realizado con algo más de detalle: lo lee el cliente.',
+            'trabajo_realizado_otro.max' => 'El trabajo realizado no puede pasar de :max caracteres (es lo que entra en la cotización).',
         ]);
+
+        // El centinela NUNCA se guarda como trabajo: se reemplaza por el texto, con los espacios
+        // y saltos de línea colapsados (se pega desde WhatsApp y llega con saltos adentro).
+        if ($escribeElTrabajo) {
+            $data['trabajo_realizado'] = trim(preg_replace('/\s+/u', ' ', (string) ($data['trabajo_realizado_otro'] ?? '')));
+        }
+        unset($data['trabajo_realizado_otro']);
 
         // Validacion por fila: el tecnico solo declara QUE repuesto uso y cuantos;
         // si empezo a llenar una fila, exige el nombre (min 3). El PRECIO ya no se

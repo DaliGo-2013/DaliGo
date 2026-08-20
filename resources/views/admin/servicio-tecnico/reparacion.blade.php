@@ -129,32 +129,68 @@
                     <x-input-error :messages="$errors->get('estado')" class="mt-2" />
                 </div>
 
-                {{-- Trabajo realizado: respuestas FIJAS del historial (el técnico
-                     solo elige, no escribe). Agrupadas por resultado. Si la orden
-                     ya trae un texto histórico que no está en la lista, se preserva
-                     como opción seleccionada para no perderlo. --}}
+                {{-- Trabajo realizado: respuestas FIJAS del historial, agrupadas por resultado,
+                     MÁS la opción de escribirlo a mano (dueño, 14-08-2026: «que quede la
+                     respuesta manual»). El texto libre va en un textarea con corrección
+                     ortográfica del navegador —el subrayado rojo que pidió— porque este texto
+                     LO LEE EL CLIENTE: sale en el correo del retiro y en la cotización.
+
+                     Un texto histórico fuera de la lista abre el campo manual con ese texto (y
+                     no como una opción muerta del select): así se le puede corregir la falta de
+                     ortografía que ya tiene, que es justo el punto. --}}
                 @php
-                    $trabajoActual = old('trabajo_realizado', $orden->trabajo_realizado);
                     $opcionesTrabajo = collect($respuestasTrabajo)->flatten()->all();
-                    $trabajoFueraDeLista = filled($trabajoActual) && ! in_array($trabajoActual, $opcionesTrabajo, true);
+                    $guardado = (string) $orden->trabajo_realizado;
+                    $esManualGuardado = filled($guardado) && ! in_array($guardado, $opcionesTrabajo, true);
+
+                    if (old('trabajo_realizado') !== null) {
+                        // Volvemos de un error de validación: manda lo que se acaba de enviar.
+                        $opcionInicial = (string) old('trabajo_realizado');
+                        $manualInicial = (string) old('trabajo_realizado_otro', '');
+                    } else {
+                        $opcionInicial = $esManualGuardado ? \App\Models\OrdenServicio::TRABAJO_OTRO : $guardado;
+                        $manualInicial = $esManualGuardado ? $guardado : '';
+                    }
                 @endphp
-                <div x-data="{ mapa: @js($tiemposMap), valorHora: {{ (int) ($precioHoraServicio ?? 0) }}, trabajo: @js(old('trabajo_realizado', $orden->trabajo_realizado)) }">
+                <div x-data="{
+                        mapa: @js($tiemposMap),
+                        valorHora: {{ (int) ($precioHoraServicio ?? 0) }},
+                        opcion: @js($opcionInicial),
+                        manual: @js($manualInicial),
+                        get esManual() { return this.opcion === @js(\App\Models\OrdenServicio::TRABAJO_OTRO) },
+                        get trabajo() { return this.esManual ? this.manual.trim() : this.opcion },
+                     }">
                     <x-input-label for="trabajo_realizado" value="Trabajo realizado" />
-                    <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5" x-model="trabajo">
+                    <x-select id="trabajo_realizado" name="trabajo_realizado" class="mt-1.5" x-model="opcion">
                         <option value="">— Selecciona —</option>
-                        @if ($trabajoFueraDeLista)
-                            {{-- Valor histórico (texto libre anterior): se conserva. --}}
-                            <option value="{{ $trabajoActual }}" selected>{{ $trabajoActual }}</option>
-                        @endif
                         @foreach ($respuestasTrabajo as $grupo => $opciones)
                             <optgroup label="{{ $grupo }}">
                                 @foreach ($opciones as $op)
-                                    <option value="{{ $op }}" @selected($trabajoActual === $op)>{{ $op }}</option>
+                                    <option value="{{ $op }}" @selected($opcionInicial === $op)>{{ $op }}</option>
                                 @endforeach
                             </optgroup>
                         @endforeach
+                        <option value="{{ \App\Models\OrdenServicio::TRABAJO_OTRO }}" @selected($opcionInicial === \App\Models\OrdenServicio::TRABAJO_OTRO)>Otro — lo escribo yo</option>
                     </x-select>
-                    <x-input-hint>Elige la respuesta que más se acerque al trabajo hecho.</x-input-hint>
+                    <x-input-hint>Elige la respuesta que más se acerque al trabajo hecho, o «Otro» para escribirlo.</x-input-hint>
+
+                    {{-- El campo manual. `spellcheck` + `lang="es"` = el subrayado rojo del
+                         navegador con sugerencias al hacer clic derecho. El `lang` va explícito
+                         y no heredado del <html>: así el diccionario es el español aunque la app
+                         corra con otro locale. --}}
+                    <div x-show="esManual" x-cloak class="mt-2">
+                        <x-textarea name="trabajo_realizado_otro" rows="2" x-model="manual"
+                            spellcheck="true" lang="es" autocapitalize="sentences"
+                            maxlength="{{ \App\Models\OrdenServicio::TRABAJO_MAX }}"
+                            placeholder="Ej. Cambio de bomba y limpieza de circuito — funciona normal"
+                            x-bind:required="esManual">{{ $manualInicial }}</x-textarea>
+                        <x-input-hint>
+                            Lo lee el cliente en el correo del retiro: escribe qué se hizo y cómo quedó, como las
+                            respuestas de la lista. El navegador te subraya en rojo lo que esté mal escrito
+                            (clic derecho sobre la palabra para ver las sugerencias).
+                        </x-input-hint>
+                        <x-input-error :messages="$errors->get('trabajo_realizado_otro')" class="mt-2" />
+                    </div>
                     {{-- Mano de obra FIJA por el trabajo: informativa (la fija jefatura). --}}
                     <div class="mt-2 text-sm" x-cloak>
                         <template x-if="trabajo && mapa[trabajo] !== undefined">
@@ -167,6 +203,7 @@
                         <template x-if="trabajo && mapa[trabajo] === undefined">
                             <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
                                 Este trabajo no tiene tiempo estándar → mano de obra $0. Jefatura puede agregarlo en «Costos generales de reparación».
+                                Guardar sí se puede; la cotización no se envía hasta que ese tiempo exista.
                             </p>
                         </template>
                     </div>

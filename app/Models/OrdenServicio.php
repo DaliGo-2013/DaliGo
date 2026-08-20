@@ -177,6 +177,23 @@ class OrdenServicio extends Model implements AuditableContract
      */
     public const GARANTIA_REPARACION_MESES = 3;
 
+    /**
+     * Centinela del «Otro — lo escribo yo» del selector de «Trabajo realizado» (dueño,
+     * 14-08-2026: «que quede la respuesta manual»). El texto viaja aparte, en
+     * `trabajo_realizado_otro`; el centinela NUNCA se guarda como trabajo. Mismo idioma que
+     * ProduccionReporte::MOTIVO_OTRO.
+     */
+    public const TRABAJO_OTRO = '__otro__';
+
+    /**
+     * Largo maximo del trabajo realizado. NO es un numero elegido: la cotizacion guarda su
+     * propio snapshot del texto en `orden_servicio_cotizaciones.trabajo_realizado`, que es
+     * VARCHAR(191). En SQLite (local y tests) un texto mas largo entra igual; en MySQL revienta
+     * con «Data too long» al ENVIAR la cotizacion, o sea lejos de donde se escribio. Se corta
+     * donde se escribe. Candado: TrabajoManualTest.
+     */
+    public const TRABAJO_MAX = 191;
+
     // Los precios del catálogo (repuestos, valor hora) se guardan CON IVA, así
     // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
     public const TASA_IVA = 0.19;

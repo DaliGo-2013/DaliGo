@@ -39,6 +39,14 @@ class MenuConsolidacionesTest extends TestCase
         'admin.servicios-terreno.' => 'servicio-tecnico.agenda-terreno', // Lote 5: Servicios de terreno → pestaña de la Agenda
         'admin.tiempos-reparacion.' => 'servicio-tecnico.listado', // A1: Costos generales → desplegable «Configuración» del Listado
         'admin.traslados.' => 'servicio-tecnico.listado', // A2: Traslados al taller → pestaña del Listado
+        'admin.cargas-reales.' => 'logistica.carga', // B1: Cargas reales → pestaña del Simulador
+        'admin.roles.' => 'administracion.usuarios', // C1: Roles → pestaña de Usuarios
+        'admin.notificaciones.' => 'administracion.auditoria', // C2: Notificaciones → pestaña del Registro del sistema
+        'admin.aprobaciones.' => 'administracion.auditoria', // C2: Historial de aprobaciones → pestaña del Registro del sistema
+        'admin.produccion.movimientos' => 'operacion.produccion', // D1: Kardex → hija del panel de Producción (botón de la cabecera + Volver)
+        'admin.tipos-botellon.' => 'operacion.maquinas', // E1: Tipos de botellón → pestaña de Configuración de producción
+        'admin.recetas.' => 'operacion.maquinas', // E1: Recetas → pestaña de Configuración de producción
+        'admin.moldes.' => 'operacion.maquinas', // E1: Moldes → pestaña de Configuración de producción
     ];
 
     private function admin(): User

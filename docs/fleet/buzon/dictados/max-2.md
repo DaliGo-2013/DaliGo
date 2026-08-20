@@ -1,42 +1,54 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-14 (v24 — sigue EN PAUSA, decisión del dueño; el trabajo activo no admite segunda mano sin colisión). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-19 (v28 — MSG-2 EN PRODUCCIÓN: el chat ya se usa. GO MSG-3: el refresco automático). Manda sobre lo anterior.
 
 CUENTA: Max-2 (Forjador B, stream 2) · MODELO: Fable 5 (fijado por el dueño).
 
-## Respuesta a tu parte de situación: EN PAUSA — confirmado por el dueño (14-ago)
+## ✅ MSG-2 está EN PRODUCCIÓN (merge `5bf39df`, doble llave 19-ago)
 
-Recibí tu parte (asiento libre con ventana, `4a3c314`). Llevé la decisión al dueño y su
-respuesta es: **sigues en pausa**. No es falta de ganas de usar la ventana — es que hoy no
-hay un lote SEGURO y desbloqueado para tu stream. El detalle, para que sepas exactamente
-por qué y cuándo vuelves:
+Suite del Director sobre el árbol combinado con COM-2 de Max-1: **2238 / 15.574, CERO
+rojos** — delta exacto +12/−1 como declaraste. Rama borrada. **El chat ya se puede usar
+por URL.**
 
-1. **La densidad del menú (lo único activo) es de UN forjador.** Max-1 la corre lote a lote
-   con doble llave, y la directiva raíz del dueño para ese proyecto es «lento pero seguro,
-   decisiones con calma». Meter una segunda mano ahí colisiona en `MenuPrincipal::MODULOS`,
-   el `_tabs`/`<x-tab-nav>` y el `MenuConsolidacionesTest` compartido — territorio que hoy
-   toca Max-1 en cada lote. Dos manos ahí romperían el ritmo que el dueño pidió a propósito.
-2. **P-DSP-10 (cierre + bono de despachos), tu candidata #1, sigue BLOQUEADA** por la ronda
-   2 de datos con Luis, que no ha vuelto. Sin esos datos no arranca.
-3. **PLAN-M11-FINAL está 100% construido** (tu propio v23 lo cerró). No hay backlog abierto
-   en tu territorio.
+Lo que quedó fino: la mutación que DOCUMENTÓ la defensa en profundidad (cegar el gate
+del controller y el del modelo atrapa igual — eso es un hallazgo de arquitectura, no
+solo un test); los asserts mirando la PANTALLA y no el shell (los 3 rojos propios
+cazados antes del commit); y el volcado móvil con el apóstrofo real en el fixture.
 
-## Cuándo retomas (dos gatillos claros)
+## 🔨 GO — Lote MSG-3: el refresco automático (S)
 
-- **Vuelve la ronda 2 de Luis** → GO P-DSP-10 (cierre + bono), tu territorio, sin colisión.
-- **El dueño decide dos manos en densidad** → te dicto un bloque futuro (C/D/E) con
-  coordinación estricta de territorio con Max-1. Hoy el dueño lo descartó (prefiere el
-  ritmo de un lote a la vez).
+Tu diseño §5.4, el 4º uso del molde de poll:
 
-Cualquiera de los dos te llega como dictado v25. Hasta entonces: **pausa**.
+1. **Ruta `GET /mensajes/conteo`** (`mensajes.conteo`) — ANTES de `{conversacion}`
+   (el orden que dejaste reservado). Devuelve la firma barata del estado: propón la
+   forma exacta (tu diseño hablaba de firma tipo vivo/cola-bodega — suma de contadores
+   + último id o lo que argumentes; el contrato es «cambió algo → recarga»).
+2. **Poll de 20s SOLO en las pantallas del chat** (lista + hilo), molde vivo/cola:
+   `document.hidden` respeta (pestaña oculta no pega), y al detectar cambio recarga la
+   pantalla (sin websockets, sin estados a medias — doctrina del refresco de la casa).
+3. **La campanita/menú SIN poll** (doctrina vigente — el badge del menú llega en MSG-4
+   por el patrón declarativo, no por poll).
+4. **Si el molde de poll amerita extraerse a componente** (4º uso — tu propia nota del
+   F0): tu criterio decide, declarándolo; si lo extraes, los 3 consumidores viejos
+   migran con cero cambio de conducta y sus tests intactos (regla de oro).
+5. **Candados**: conteo requiere auth+permiso (401/403 sin sesión/permiso — es endpoint
+   nuevo); la firma cambia cuando llega mensaje y NO cambia cuando no pasa nada; el
+   poll no corre fuera del chat (grep de la señal en otras vistas = 0); mutación tuya
+   declarada.
 
-## Mantén tu ventaja
-Tu contexto fresco (cola offline idempotente, mi-reporte y sus ramas, panel del jefe, M15,
-FechaNegocio/DST, doctrinas de gate) es lo que hace baratos los lotes de tu territorio.
-Cuando llegue el v25, re-fetch de main FRESCO al arrancar (Marcos y el PR #9 lo mueven
-seguido) y suite completa antes de tocar nada.
+### Verificación (invariante)
+Rama `feature/msg-3-poll` desde main FRESCO (baseline: **2238 / 15.574** en `5bf39df`).
+Suite COMPLETA antes. Si extraes componente de poll: batería sobre los 4 consumidores.
+Bundle: si tocas JS/Blade con clases nuevas → I-06 declarado. Parte al buzón; espera
+doble llave. NO arranques MSG-4.
 
-## Estado del frente (para tu contexto, no para actuar)
-Densidad 47→40 en producción; Bloque B abierto (B1 Cargas reales→Simulador en manos de
-Max-1); Informe y Conductores viven solos (audiencia partida). Nada de esto es tuyo hoy.
+## 📡 Después de MSG-3
+MSG-4 (v29): el ítem «Mensajes» de primer nivel (menú 32→33, veredicto del dueño) +
+badge de no-leídos declarativo + retiro del Volver de la huérfana temporal + candados
+de MenuPrincipal/Sidebar/Volver derivando. ÚNICO cruce con Max-1: `MenuPrincipal` — el
+Director secuencia. Tras MSG-4: QA del dueño del chat COMPLETO en celular.
 
-CIERRE: sin acción. Revisa el buzón al recibir la próxima orden del dueño.
+## Estado
+Max-1: módulo Comercial completo, en pausa hasta QA del dueño; luego F0-OPERACIÓN
+(territorio disjunto del tuyo). Marcos activo. Trello espejando.
+
+CIERRE: GO MSG-3. El chat que se refresca solo — sin websockets y sin drama. Fierro.
