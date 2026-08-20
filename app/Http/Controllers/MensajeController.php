@@ -134,9 +134,46 @@ class MensajeController extends Controller
             'mensajes' => $mensajes,
             'otro' => $conversacion->otroLado($user),
             'usuario' => $user,
-            // DESPUES de marcarLeida: la firma horneada debe reflejar el
-            // estado que el poll va a leer, o recargaria al tiro en falso.
-            'firmaChat' => $this->firmaChat($user),
+            // MSG-5: el hilo ya no usa la firma (migro de firma-reload a
+            // fetch-append); la lista y el conteo la siguen usando.
+        ]);
+    }
+
+    /**
+     * Chat vivo (MSG-5): los mensajes NUEVOS del hilo (> desde), pintados por
+     * el server con el MISMO partial del render inicial — cero divergencia
+     * visual por construccion. El request marca leido SOLO si trae nuevos
+     * (estas mirando el hilo; sin novedad no se escribe cada 4 s).
+     */
+    public function nuevos(Request $request, Conversacion $conversacion): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($conversacion->esParticipante($user), 403);
+
+        $validated = $request->validate([
+            'desde' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $nuevos = $conversacion->mensajes()
+            ->with('emisor:id,name')
+            ->where('id', '>', (int) $validated['desde'])
+            ->orderBy('id')
+            ->get();
+
+        if ($nuevos->isEmpty()) {
+            return response()->json(['ultimo' => (int) $validated['desde'], 'html' => '']);
+        }
+
+        $conversacion->marcarLeida($user);
+
+        $html = $nuevos->map(
+            fn (Mensaje $mensaje) => view('mensajes._burbuja', ['mensaje' => $mensaje, 'usuario' => $user])->render(),
+        )->implode('');
+
+        return response()->json([
+            'ultimo' => (int) $nuevos->last()->id,
+            'html' => $html,
         ]);
     }
 

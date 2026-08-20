@@ -15,19 +15,12 @@
             <div class="mb-4">{{ $mensajes->links() }}</div>
         @endif
 
-        <div class="dg-enter space-y-3">
+        {{-- Burbujas por el partial compartido con el endpoint `nuevos` (MSG-5):
+             la misma vista pinta el render inicial y el append — cero
+             divergencia. El texto SIEMPRE por {{ }}: lo escribe un usuario. --}}
+        <div id="hilo-mensajes" class="dg-enter space-y-3">
             @forelse ($mensajes->reverse() as $mensaje)
-                @php $esMio = $mensaje->emisor_id === $usuario->id; @endphp
-                <div class="flex {{ $esMio ? 'justify-end' : 'justify-start' }}">
-                    {{-- Burbuja paleta-4: mía = brand suave, del otro = neutro. El
-                         texto SIEMPRE por {{ }} (jamás {!! !!}): lo escribe un usuario. --}}
-                    <div class="max-w-[85%] rounded-2xl px-4 py-2.5 {{ $esMio ? 'bg-brand-50 text-brand-900 ring-1 ring-inset ring-brand-100' : 'bg-neutral-100 text-neutral-900' }}">
-                        <p class="whitespace-pre-line break-words text-sm">{{ $mensaje->texto }}</p>
-                        <p class="mt-1 text-xs {{ $esMio ? 'text-brand-700/70' : 'text-neutral-400' }}">
-                            @unless ($esMio){{ $mensaje->emisor?->name ?? '—' }} · @endunless{{ $mensaje->created_at?->enChile()->format('d-m H:i') }}
-                        </p>
-                    </div>
-                </div>
+                @include('mensajes._burbuja', ['mensaje' => $mensaje, 'usuario' => $usuario])
             @empty
                 <p class="py-6 text-center text-sm text-neutral-500">Todavía no hay mensajes en esta conversación.</p>
             @endforelse
@@ -70,8 +63,38 @@
         </div>
     </div>
 
-    {{-- Refresco automático (MSG-3): la firma es GLOBAL del chat — un cambio
-         en OTRO hilo también recarga (espurio aceptado: marcarLeida del GET es
-         idempotente y el contrato es «cambió algo → recarga»). --}}
-    <x-poll-recarga :url="route('mensajes.conteo')" :firma="$firmaChat" />
+    {{-- Chat vivo (MSG-5): el hilo TRAE y APPENDEA sin reload — el composer
+         conserva lo escrito (el hallazgo del QA del dueño). Solo en la página
+         1 ($mensajes->onFirstPage()): en las históricas se lee, no se
+         conversa. Guard de reentrada + visibilitychange = tick inmediato al
+         volver a la app. Script inline: el layout no expone @stack. --}}
+    @if ($mensajes->onFirstPage())
+        <script>
+            (function () {
+                var desde = @js((int) ($mensajes->max('id') ?? 0));
+                var url = @js(route('mensajes.nuevos', $conversacion));
+                var contenedor = document.getElementById('hilo-mensajes');
+                var pidiendo = false;
+                function tick() {
+                    if (document.visibilityState !== 'visible' || pidiendo || !contenedor) return;
+                    pidiendo = true;
+                    fetch(url + '?desde=' + desde, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                        .then(function (r) { return r.ok ? r.json() : null; })
+                        .then(function (d) {
+                            if (!d || !d.html) return;
+                            contenedor.insertAdjacentHTML('beforeend', d.html);
+                            desde = d.ultimo;
+                            var burbujas = contenedor.querySelectorAll('[data-mensaje-id]');
+                            if (burbujas.length) burbujas[burbujas.length - 1].scrollIntoView({ behavior: 'smooth', block: 'end' });
+                        })
+                        .catch(function () {})
+                        .finally(function () { pidiendo = false; });
+                }
+                setInterval(tick, 4000);
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'visible') tick();
+                });
+            })();
+        </script>
+    @endif
 </x-app-layout>

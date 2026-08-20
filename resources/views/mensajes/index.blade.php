@@ -57,7 +57,9 @@
         </div>
     </div>
 
-    {{-- Refresco automático (MSG-3): firma global del chat — mensaje nuevo,
-         leído en otra pestaña o hilo nuevo recargan la lista sola. --}}
-    <x-poll-recarga :url="route('mensajes.conteo')" :firma="$firmaChat" />
+    {{-- Refresco automático (MSG-3; a 4 s desde MSG-5 — QA del dueño): firma
+         global del chat — mensaje nuevo, leído en otra pestaña o hilo nuevo
+         recargan la lista sola. Aquí la recarga completa está bien: no hay
+         composer que perder (el hilo, que sí lo tiene, appendea sin reload). --}}
+    <x-poll-recarga :url="route('mensajes.conteo')" :firma="$firmaChat" :intervalo="4000" />
 </x-app-layout>
