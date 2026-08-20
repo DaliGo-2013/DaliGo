@@ -1,54 +1,58 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-19 (v28 — MSG-2 EN PRODUCCIÓN: el chat ya se usa. GO MSG-3: el refresco automático). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-20 (v29 — MSG-3 EN PRODUCCIÓN: el chat se
+> refresca solo. GO MSG-4: la entrada en el menú con contador — el ÚLTIMO lote
+> del chat). Manda sobre lo anterior.
 
 CUENTA: Max-2 (Forjador B, stream 2) · MODELO: Fable 5 (fijado por el dueño).
 
-## ✅ MSG-2 está EN PRODUCCIÓN (merge `5bf39df`, doble llave 19-ago)
+## ✅ MSG-3 está EN PRODUCCIÓN (merge `1d7ad3e`, doble llave 20-ago)
 
-Suite del Director sobre el árbol combinado con COM-2 de Max-1: **2238 / 15.574, CERO
-rojos** — delta exacto +12/−1 como declaraste. Rama borrada. **El chat ya se puede usar
-por URL.**
+Suite del Director sobre el árbol combinado: **2244 / 15.594, CERO rojos** —
+delta exacto +6/+20 como declaraste. Rama borrada. Card «Actualización
+automática» en Terminadas con comentario.
 
-Lo que quedó fino: la mutación que DOCUMENTÓ la defensa en profundidad (cegar el gate
-del controller y el del modelo atrapa igual — eso es un hallazgo de arquitectura, no
-solo un test); los asserts mirando la PANTALLA y no el shell (los 3 rojos propios
-cazados antes del commit); y el volcado móvil con el apóstrofo real en el fixture.
+Lo que quedó fino: la firma horneada DESPUÉS de `marcarLeida` con el porqué
+comentado (el candado que evita el falso-recargo al abrir el hilo); el
+`<x-poll-recarga>` con la coexistencia de ST declarada como el `_tabs`; y los
+2 gotchas re-cazados por tus propios candados ANTES del commit (el `@js()` que
+escapa barras y el needle prosa-vs-código) — eso es el sistema funcionando.
 
-## 🔨 GO — Lote MSG-3: el refresco automático (S)
+## 🔨 GO — Lote MSG-4: la entrada en el menú con contador (S) — CIERRA el chat
 
-Tu diseño §5.4, el 4º uso del molde de poll:
+Tu diseño §5.5, veredicto del dueño ya dado (menú 32→33):
 
-1. **Ruta `GET /mensajes/conteo`** (`mensajes.conteo`) — ANTES de `{conversacion}`
-   (el orden que dejaste reservado). Devuelve la firma barata del estado: propón la
-   forma exacta (tu diseño hablaba de firma tipo vivo/cola-bodega — suma de contadores
-   + último id o lo que argumentes; el contrato es «cambió algo → recarga»).
-2. **Poll de 20s SOLO en las pantallas del chat** (lista + hilo), molde vivo/cola:
-   `document.hidden` respeta (pestaña oculta no pega), y al detectar cambio recarga la
-   pantalla (sin websockets, sin estados a medias — doctrina del refresco de la casa).
-3. **La campanita/menú SIN poll** (doctrina vigente — el badge del menú llega en MSG-4
-   por el patrón declarativo, no por poll).
-4. **Si el molde de poll amerita extraerse a componente** (4º uso — tu propia nota del
-   F0): tu criterio decide, declarándolo; si lo extraes, los 3 consumidores viejos
-   migran con cero cambio de conducta y sus tests intactos (regla de oro).
-5. **Candados**: conteo requiere auth+permiso (401/403 sin sesión/permiso — es endpoint
-   nuevo); la firma cambia cuando llega mensaje y NO cambia cuando no pasa nada; el
-   poll no corre fuera del chat (grep de la señal en otras vistas = 0); mutación tuya
+1. **Ítem «Mensajes» de primer nivel** en `MenuPrincipal` — la posición que tu
+   diseño argumente (vecindad de uso, no alfabeto), gateado por el permiso
+   `usar mensajes` (doctrina «el menú jamás ofrece un 403»).
+2. **Badge de no-leídos DECLARATIVO** (el patrón de badges del menú — cuenta
+   al render, SIN poll: la doctrina de la campanita sigue). La cifra = suma de
+   MIS contadores (la misma media firma que ya calculas — si extraes un
+   contadorNoLeidos() compartido con firmaChat, decláralo).
+3. **Retiro del `<x-volver>` de la huérfana temporal** (`mensajes/index` deja
+   de ser huérfana al entrar al menú — P-NAV-06/08: el Volver era el puente
+   mientras no había ítem; ahora el menú ES el camino).
+4. **Candados**: MenuPrincipal deriva (item aparece con permiso, NO aparece
+   sin él — 33 con chat, 32 sin) · badge con cifra exacta y ausente en cero ·
+   huérfana ya no huérfana (Volver fuera, el test de VolverTest que la
+   toleraba vuelve a su forma estricta si la listaba) · mutación tuya
    declarada.
+5. **Cruce MenuPrincipal**: Max-1 NO lo toca en OPE-1 (su lote vive en
+   ProduccionController/seeder/vistas de producción) — vía libre AHORA; el
+   Director re-secuencia si su fix se cruza (no debería).
 
 ### Verificación (invariante)
-Rama `feature/msg-3-poll` desde main FRESCO (baseline: **2238 / 15.574** en `5bf39df`).
-Suite COMPLETA antes. Si extraes componente de poll: batería sobre los 4 consumidores.
-Bundle: si tocas JS/Blade con clases nuevas → I-06 declarado. Parte al buzón; espera
-doble llave. NO arranques MSG-4.
+Rama `feature/msg-4-menu` desde main FRESCO (baseline: **2244 / 15.594** en
+`1d7ad3e` — recuenta tú; OPE-1 de Max-1 puede mergear antes que tu parte:
++7/+125 esperados de él, sin archivos tuyos). Suite COMPLETA antes. Bundle:
+clases nuevas → I-06 declarado. Parte al buzón; espera doble llave.
 
-## 📡 Después de MSG-3
-MSG-4 (v29): el ítem «Mensajes» de primer nivel (menú 32→33, veredicto del dueño) +
-badge de no-leídos declarativo + retiro del Volver de la huérfana temporal + candados
-de MenuPrincipal/Sidebar/Volver derivando. ÚNICO cruce con Max-1: `MenuPrincipal` — el
-Director secuencia. Tras MSG-4: QA del dueño del chat COMPLETO en celular.
+## 📡 Después de MSG-4
+QA del dueño del chat COMPLETO en celular (las 4 etapas juntas) → cierre del
+PLAN-MENSAJES en /plan y Trello. Después: el Director te asigna stream nuevo.
 
 ## Estado
-Max-1: módulo Comercial completo, en pausa hasta QA del dueño; luego F0-OPERACIÓN
-(territorio disjunto del tuyo). Marcos activo. Trello espejando.
+Max-1: OPE-1 en rebote quirúrgico (un info-tip con el 7 en prosa — v77.1);
+luego OPE-2/OPE-3. Marcos activo. Trello espejando. Baseline: 2244/15.594 en
+`1d7ad3e`.
 
-CIERRE: GO MSG-3. El chat que se refresca solo — sin websockets y sin drama. Fierro.
+CIERRE: GO MSG-4. El último ladrillo — la puerta del chat se abre en el menú.

@@ -1,64 +1,55 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-19 (v77 — veredictos del dueño al mapa F0-OPERACIÓN: los 4 aprobados + 9 confirmados + higiene. GO OPE-1: las ventanas del panel y los informes). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-20 (v77.1 — OPE-1 verificado: 99%
+> impecable, UN gemelo sin derivar. REBOTE QUIRÚRGICO: el info-tip del panel).
+> Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Veredictos del dueño al mapa §5.3 (19-ago) — tercer mapa que sale entero
+## ✅ Verificación del Director sobre `feature/param-ope-1-ventanas` (434a31e)
 
-Aprobados los 3 nivel 1 (#1, #9, #13), el nivel 2 (#3) y la higiene; los 9 nivel 3
-confirmados con tus porqués. Al pie del anexo. El titular del parte (M11 nació
-parametrizado — D-003 pagándose sola) va derecho al acta del módulo y al Trello del
-dueño en su lenguaje.
+Trial merge limpio; spot-checks TODOS verdes: seeder 7/30/30 TIPO_INTEGER ·
+RANGOS 2-31/7-90 con el tope 92 comentado · el ±1 del `rango()` documentado en
+el código · request-gana-a-la-clave · constantes con el porqué · rótulo grande
+de las 3 vistas derivando · contra-evidencia de las claves separadas bien
+argumentada (duplicación de VALOR, no concepto — aceptada) · delta 100%
+atribuido con los +24 de los candados-iteradores explicados.
 
-Fase B de Operación = 3 lotes: **OPE-1** (este dictado) → **OPE-2** (las dos listas) →
-**OPE-3** (config de preforma + higiene).
+## 🔧 REBOTE (S, una línea + un assert) — el tip del panel miente al mover la perilla
 
-## 🔨 GO — Lote OPE-1: las ventanas del panel del jefe y de los informes (M)
+`resources/views/admin/produccion/index.blade.php:97` — el `<x-info-tip>` de
+«Producción por periodo» dice **«(por defecto, últimos 7)»** con el 7 EN PROSA.
+El rótulo grande ya deriva (`'Últimos ' . $diasPanel . ' días'`) pero este
+gemelo quedó a mano: perilla en 14 → la pantalla dice 14 y la ayudita jura 7.
+Doctrina DASH-2 (la aritmética exacta, no números a mano).
 
-El primo del DASH-1 que el dueño ya aprobó — molde exacto:
+1. **Derivar**: `(por defecto, últimos {{ $diasPanel }})` — mismo texto, cifra
+   viva.
+2. **Candado**: el test `mover_la_ventana_del_panel...` (o un assert nuevo en
+   él) exige que el TIP también diga la cifra movida y deje de decir 7 — el
+   mismo patrón tuyo de asserts-a-la-pantalla.
+3. **Mismo lote**: commit encima en TU rama `feature/param-ope-1-ventanas`.
+   Re-parte CORTO (delta del delta: +0 tests si extiendes el assert, o +1 si
+   lo separas — decláralo).
 
-1. **Tres claves nuevas** (grupo `produccion`, snake_case, seeder idempotente con ayuda
-   en español):
-   - `produccion_dias_panel` — default **7** (`ProduccionController:125`, `$ventana=6`
-     +hoy: ojo al ±1 como DASH-1).
-   - `produccion_dias_informe_maquina` — default **30** (`:306`, `rango($request, 29)`).
-   - `produccion_dias_informe_tipo` — default **30** (`:351`, ídem).
-   Claves SEPARADAS aunque los informes digan lo mismo hoy (doctrina DASH-1: ventanas
-   distintas, perillas distintas). Si al abrir el código ves que los 2 informes
-   comparten UN concepto real (mismo `rango()` con el mismo sentido de negocio),
-   contra-evidencia en el parte ANTES de forjar distinto — una clave para ambos sería
-   defendible; decláralo.
-2. **`RANGOS`**: las 3 entradas (2-31 el panel; 7-90 los informes — o los rangos que el
-   código pida con sentido, declarados).
-3. **Rótulos derivados** donde existan textos gemelos en las vistas (tu mapa los marca)
-   — la aritmética exacta, no números a mano (doctrina DASH-2).
-4. **OJO al `rango()`**: si el helper acota o interpreta el request (el usuario puede
-   pedir otro rango por URL), la clave es el DEFAULT del rango, no un tope — que el
-   candado distinga default-configurable vs rango-pedido-por-el-usuario.
-5. **Candados molde DASH** (default idéntico byte a byte · mover cada clave mueve SU
-   pantalla y rótulo y NO las otras dos · rangos por ambos bordes · mutación 7→9 o
-   30→45 con rojo exacto → restaurar → verde).
-6. **Regla de oro**: cero tests existentes con cifra cambiada; BD virgen = pantallas
-   idénticas.
+## OJO — main se movió: MSG-3 de Max-2 mergeado (`1d7ad3e`, +6/+20)
 
-### Verificación (invariante)
-Rama `feature/param-ope-1-ventanas` desde main FRESCO (baseline: **2238 / 15.574** en
-`5bf39df` + docs después — recuenta; Max-2 puede mergear MSG-3 antes que tu parte).
-Suite COMPLETA antes. Batería: Produccion* completo + ParametrosDashboard (el
-ConfiguracionController compartido) + ConfiguracionManagement/SeedLongitud. Parte al
-buzón; espera doble llave. NO arranques OPE-2.
+Tu rama nace de `94934cf`; el temido conflicto del `ConfiguracionSeeder` NO
+existe (MSG-3 no lo toca — tu advertencia era del MSG-1 ya mergeado). Verifiqué
+tu rama sobre main+MSG-3: merge limpio. Para el re-parte: re-ancla a main
+fresco (merge de main a tu rama o rebase, tu criterio declarado) y suite
+COMPLETA sobre el árbol re-anclado — baseline nuevo: **2244 / 15.594** en
+`1d7ad3e`. Esperado con tu lote: ~2251 / ~15.719+ (recuenta exacto tú).
 
-## 📡 Radar OPE-2 y OPE-3 (NO arranques)
+## 📡 Radar OPE-2 y OPE-3 (NO arranques — sin cambios desde v77)
 - **OPE-2**: `produccion_motivos_parada` + `produccion_motivos_planificados`
-  (LISTAS_SIMPLES ×2) con la validación del PAR planificados ⊆ motivos (4º hermano
-  declarativo: par-subconjunto) + tu matiz verificado (la clase se persiste — OEE
-  histórico intacto, candado explícito) + `produccion_procedencias_preforma`.
-- **OPE-3**: `config/produccion.php` (o donde el idioma mande) con los patrones de
-  preforma/dañada estilo categorias_equipo + higiene (max:100000 ×6 → constante, 92 ×2,
-  POR_PAGINA ×2 adoptado).
+  (LISTAS_SIMPLES ×2) con el PAR planificados ⊆ motivos (4º hermano
+  declarativo) + candado OEE-histórico-intacto + `produccion_procedencias_preforma`.
+- **OPE-3**: `config/produccion.php` con los patrones %preforma%/%dañada% +
+  higiene (max:100000 ×6, 92 ×2, POR_PAGINA ×2).
 
 ## Estado
-Max-2 forjando MSG-3 (poll del chat). Marcos activo. Trello espejando. Baseline:
-2238/15.574 en `5bf39df`.
+Max-2: GO MSG-4 (menú 32→33 — NO toca tu territorio; MenuPrincipal es de él
+este ciclo, tú no lo tocas en el rebote). Marcos activo. Trello espejando.
 
-CIERRE: GO OPE-1. Tercer módulo en fase B — los moldes ya hacen el trabajo pesado.
+CIERRE: rebote de una línea — el molde funcionó, solo se escapó un gemelo de
+prosa. Re-parte y va la doble llave.
