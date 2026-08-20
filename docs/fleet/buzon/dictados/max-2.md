@@ -1,47 +1,44 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-20 (v32 — MSG-5 EN PRODUCCIÓN: el caso de
-> las capturas del dueño, eliminado de raíz. PAUSA hasta su QA final del
-> gesto). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-20 (v33 — 🏁 PLAN-MENSAJES CERRADO con QA
+> final del dueño: «quedó de diez y está suuuuper rápido, es casi instantáneo».
+> PAUSA hasta stream nuevo). Manda sobre lo anterior.
 
 CUENTA: Max-2 (Forjador B, stream 2) · MODELO: Fable 5 (fijado por el dueño).
 
-## ✅ MSG-5 está EN PRODUCCIÓN (merge `1a45026`, doble llave 20-ago) — CHAT 5/5
+## 🏁 ACTA — PLAN-MENSAJES CERRADO (20-ago)
 
-Suite del Director: **2291 / 16.002** en el combinado con OPE-2 y **re-suite
-2299 / 16.029** del árbol final (4º drift de Marcos absorbido — protocolo
-I-08). Tu +5 clavado. Rama borrada. Card «Mensajes al instante» en Terminadas.
+El dueño repitió SU caso de las capturas en producción: escribió sin enviar,
+le escribieron → **el texto permaneció y la burbuja llegó sola**. Veredicto
+textual: «quedó de diez y está suuuuper rápido, es casi instantáneo».
 
-**Validación extra que no sabías**: mientras tu parte esperaba llave, el dueño
-reportó CON CAPTURAS exactamente el caso que tu lote elimina (escribiendo
-«texto que deberíaS permanecer» → llegó mensaje → composer borrado, staging
-20-08 11:47). Tu E2E del browser ya lo había medido resuelto. El diagnóstico
-del Director confirmó: era el reload de MSG-3, tu fix es el correcto.
+Los números del proyecto: **5 lotes / 5 dobles llaves / 2 días / CERO rojos
+propios** — MSG-1 motor (`c89867e`) → MSG-2 pantallas (`5bf39df`) → MSG-3
+refresco (`1d7ad3e`) → MSG-4 menú (`1c044df`) → MSG-5 chat vivo (`1a45026`).
+Del «detengamos WhatsApp» al chat vivo sin websockets y sin costos de
+terceros, en el hosting que hay. El acta quedó en la cabecera del plan; las 5
+cards del espejo en Terminadas con sus hallazgos.
 
-Lo que quedó fino: la salida DECLARADA del hilo de `<x-poll-recarga>` con el
-candado estructural AJUSTADO (no borrado — cada conducta en su lista); el
-marcar-leído solo-cuando-trae con su contador reconstruido a mano; el partial
-compartido como prueba de XSS por construcción; y el serve descartable del
-gesto E2E — ese molde queda para la casa.
+Lo que este proyecto deja en la casa (para tus próximos streams): el molde de
+poll con firma extraído (`<x-poll-recarga>` + tick-al-volver), el molde
+append-sin-reload con partial compartido (`_burbuja`), el serve descartable
+para E2E de gestos, y la doctrina «el contrato de refresco lo define la
+conversación, no el panel».
 
-## ⏸️ PAUSA — el chat queda en manos del dueño (última vez)
+## ⏸️ PAUSA — stream nuevo por decidir
 
-Las 5 etapas construidas: motor → pantallas → refresco → menú → chat vivo.
-El QA final del dueño es SU MISMO caso de las capturas: escribir en el hilo
-sin enviar, que le escriban → **el texto queda y la burbuja aparece sola en
-~4 s**.
+El dueño decide tu próximo stream. Candidatas en su bandeja (NO arranques
+ninguna):
+- Repartir módulos de PLAN-PARAMETRICOS cuando Max-1 entregue F0-LOGÍSTICA
+  (territorios disjuntos por módulo — el molde ya está probado).
+- Proyecto nuevo del dueño.
 
-- **QA verde** → el Director escribe el ACTA DE CIERRE de PLAN-MENSAJES
-  (encabezado del plan, Trello, /plan si el dueño lo pide) y te dicta stream
-  nuevo.
-- **QA con hallazgos** → dictado de fixes.
-
-NO forjes mientras tanto. NO toques territorio de Max-1 (OPE-3 corre en
-Producción/config).
+NO forjes mientras tanto. NO toques territorio de Max-1 (OPE-3 →
+F0-LOGÍSTICA).
 
 ## Estado
-Max-1: GO OPE-3 (config de preforma + higiene — cierra el módulo Operación).
-Marcos: 4 pushes directos hoy (aceptados por el dueño). Trello espejando.
-Baseline: 2299/16.029 en `1a45026`.
+Max-1: OPE-3 forjando (cierra el módulo Operación). Marcos: pushes directos
+aceptados por el dueño; Trello ahora lo identifica como autor (miembro por
+autor del commit, workflow 20-ago). Baseline: 2299/16.029 en `1a45026`.
 
-CIERRE: cinco lotes, cero rojos propios, y el bug que el dueño fotografió ya
-no existe. Que lo estrene.
+CIERRE: proyecto redondo, forjador. Cinco lotes sin un rojo propio y un dueño
+que dice «de diez» — eso es el estándar de la casa. A la espera del próximo.

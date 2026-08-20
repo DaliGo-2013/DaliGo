@@ -1,11 +1,22 @@
 # PLAN-MENSAJES · Chat interno entre usuarios — mensajería propia, costo cero de terceros
 
-> **Estado: VIGENTE (definido por el dueño, 2026-08-18)** — nació como alternativa
-> económica a la API de WhatsApp (D-007, que sigue APLAZADA): mensajería DENTRO de la
-> app, sobre el motor propio. Decisiones del dueño ya tomadas: **chat con hilos 1-a-1**
-> (pantalla propia con conversaciones e historial) · **todos con todos** (cualquier
-> usuario interno escribe a cualquier otro). Forja: **Max-2** (stream B). Ritmo de la
-> casa: lento y seguro, un lote = un merge = una doble llave.
+> **Estado: 🏁 CERRADO (QA final del dueño 2026-08-20: «quedó de diez y está
+> suuuuper rápido, es casi instantáneo» — su propio caso de las capturas
+> verificado: el texto permanece).** Acta: 5 lotes con doble llave en 2 días
+> (MSG-1 motor `c89867e` → MSG-2 pantallas `5bf39df` → MSG-3 refresco `1d7ad3e`
+> → MSG-4 menú `1c044df` → MSG-5 chat vivo `1a45026`), CERO rojos propios de
+> Max-2 en todo el proyecto. Del «detengamos WhatsApp, propongo algo económico»
+> al chat vivo en producción: hilos 1-a-1 todos-con-todos, aviso con anti-ráfaga,
+> burbujas que aparecen solas en ~4 s sin perder lo escrito — sin websockets
+> (imposibles en el hosting) y sin costos de terceros. Deuda futura anotada:
+> instantáneo real (0 s) = migrar a VPS (decisión de negocio); retención
+> configurable = candidato nivel-1 de PARAMETRICOS cuando toque Mensajes.
+>
+> (Histórico: VIGENTE desde 2026-08-18 — nació como alternativa económica a la
+> API de WhatsApp (D-007, que sigue APLAZADA): mensajería DENTRO de la app,
+> sobre el motor propio. Decisiones del dueño: **chat con hilos 1-a-1** ·
+> **todos con todos**. Forja: **Max-2** (stream B). Ritmo de la casa: un lote =
+> un merge = una doble llave.)
 
 ## 0. El pedido en una frase
 
