@@ -61,6 +61,21 @@ class ListoParaRetiroTest extends TestCase
             ->post(route('admin.servicio-tecnico.listo-para-retiro', $orden));
     }
 
+    /**
+     * El `<div>` que ENVUELVE a un título en el HTML, para poder preguntarle si es
+     * una tarjeta (`rounded-2xl`) o una sección separada por una línea
+     * (`border-t`). Se mira la estructura porque «unificar dos cards» es un cambio
+     * de marco: los textos son idénticos antes y después.
+     */
+    private function envoltorioDe(string $html, string $titulo): string
+    {
+        $pos = strpos($html, $titulo);
+        $this->assertNotFalse($pos, "No está en la página: {$titulo}");
+        $antes = substr($html, 0, $pos);
+
+        return substr($antes, strrpos($antes, '<div'));
+    }
+
     // --- Acceso ---
 
     public function test_sin_manage_no_puede_avisar(): void
@@ -221,6 +236,57 @@ class ListoParaRetiroTest extends TestCase
             ->assertOk()
             ->assertDontSee('Ya se le avisó al cliente')
             ->assertDontSee('Enviada al cliente');
+    }
+
+    /**
+     * LAS DOS TARJETAS SON UNA (dueño 20-08-2026: «quiero unificar estas dos partes
+     * que parecen cards»). Se verifica por ESTRUCTURA y no por texto: los textos son
+     * los mismos antes y después del cambio, lo que cambia es el marco. «Listo para
+     * retirar» tiene que quedar como sección de la tarjeta de la cotización enviada
+     * —separada por una línea— y no abrir un marco propio.
+     */
+    public function test_la_constancia_y_el_retiro_van_en_una_sola_tarjeta(): void
+    {
+        $orden = $this->reparada();   // ya trae la cotización enviada y aceptada
+
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->getContent();
+
+        $envio = strpos($html, 'Enviada al cliente');
+        $retiro = strpos($html, 'Listo para retirar');
+        $this->assertNotFalse($envio);
+        $this->assertNotFalse($retiro);
+        $this->assertGreaterThan($envio, $retiro, '«Listo para retirar» va después de la constancia del envío.');
+
+        // Entre las dos NO se cierra ni se abre una tarjeta.
+        $tramo = substr($html, $envio, $retiro - $envio);
+        $this->assertStringNotContainsString('rounded-2xl', $tramo, 'Volvieron a abrir una tarjeta aparte para «Listo para retirar».');
+
+        // Y su envoltorio es una sección con línea divisoria, no un marco.
+        $envoltorio = $this->envoltorioDe($html, 'Listo para retirar');
+        $this->assertStringContainsString('border-t', $envoltorio);
+        $this->assertStringNotContainsString('rounded-2xl', $envoltorio);
+    }
+
+    /**
+     * SIN NADA ENVIADO no hay tarjeta con la que unificarse, así que conserva la
+     * suya: si no, quedaría un bloque flotando sin marco en medio de la pantalla.
+     */
+    public function test_sin_cotizacion_enviada_el_retiro_conserva_su_tarjeta(): void
+    {
+        $orden = $this->reparada();
+        $orden->cotizaciones()->delete();
+
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertDontSee('Enviada al cliente')
+            ->getContent();
+
+        $envoltorio = $this->envoltorioDe($html, 'Listo para retirar');
+        $this->assertStringContainsString('rounded-2xl', $envoltorio);
     }
 
     /**

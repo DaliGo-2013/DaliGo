@@ -46,7 +46,16 @@
                         </ul>
                     </div>
                 @endif
-            </div>
-            @endif
 
-            @include('admin.servicio-tecnico._listo-retiro')
+                {{-- «Listo para retirar» va DENTRO de esta misma tarjeta (dueño 20-08:
+                     «quiero unificar estas dos partes que parecen cards»): es el paso
+                     siguiente del mismo hilo —se cotizó, el cliente aceptó, ahora se
+                     le avisa que pase a retirar—, así que dos marcos partían una sola
+                     conversación en dos. Separadas por una línea, no por un borde. --}}
+                @include('admin.servicio-tecnico._listo-retiro', ['enTarjeta' => true])
+            </div>
+            @else
+                {{-- Nada enviado todavía: no hay tarjeta con la que unificarse, así que
+                     va sola y conserva su marco. --}}
+                @include('admin.servicio-tecnico._listo-retiro')
+            @endif

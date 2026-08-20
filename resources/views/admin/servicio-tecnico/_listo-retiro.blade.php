@@ -6,8 +6,15 @@
     Un aviso por orden: después queda la constancia de quién avisó y cuándo.
     Espera la orden en «Reparado» — «está listo» significa trabajo cerrado con su
     causa de la falla, y eso lo garantiza el parte del técnico.
+
+    `$enTarjeta = true` lo dibuja como SECCIÓN de la tarjeta de arriba (separada por
+    una línea) en vez de como tarjeta propia: es lo que pidió el dueño el 20-08
+    —«unificar estas dos partes que parecen cards»— cuando ya hay una cotización
+    enviada, porque es el paso siguiente del mismo hilo. Sin cotización enviada no
+    hay tarjeta que compartir y vuelve a ser una sola, con su marco.
 --}}
 @php
+    $enTarjeta = $enTarjeta ?? false;
     $aceptada = $orden->cotizaciones()->where('estado', 'aceptada')->latest('id')->first();
     $esGarantiaRetiro = $orden->condicion_efectiva === 'garantia';
     $cobro = match (true) {
@@ -16,7 +23,7 @@
         default => 'Sin cotización aceptada: la carta manda a coordinar el costo en sala de ventas.',
     };
 @endphp
-<div class="mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+<div class="{{ $enTarjeta ? 'mt-5 border-t border-neutral-100 pt-5' : 'mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6' }}">
     <h3 class="text-sm font-semibold text-neutral-900">Listo para retirar</h3>
 
     @if ($orden->listo_avisado_at)
