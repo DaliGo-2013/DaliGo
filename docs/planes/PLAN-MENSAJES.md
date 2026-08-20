@@ -289,3 +289,14 @@ MSG-3 `1d7ad3e` → MSG-4 `1c044df` (todas con doble llave). El ítem «Mensajes
 entre Aprobaciones y ST (familia personal transversal, argumentado por Max-2), badge
 con fuente única `Conversacion::noLeidosDeUsuario()` compartida con `firmaChat`.
 **PENDIENTE: QA del dueño en celular (las 4 etapas juntas) → cierre del plan.**
+
+**QA DEL DUEÑO (2026-08-20, teléfono y PC): funcional APROBADO con UN hallazgo —
+la viveza.** «Hay que recargar para ver los mensajes, no es instantáneo»: el poll
+de 20 s con recarga completa cumple su contrato pero se siente lento en una
+conversación (y el reload pierde texto a medio escribir). Veredicto de infra del
+Director: websockets/Reverb DESCARTADOS en HostGator compartido (sin daemons —
+el proveedor mata procesos; la restricción §Restricciones ya lo decía);
+instantáneo real = migrar a VPS (decisión de negocio futura). **El dueño eligió:
+poll fino → lote MSG-5** (4 s solo en chat + el hilo trae-y-appendea sin reload
+conservando el composer + tick inmediato al volver a la pestaña). MSG-5 es ahora
+el lote de cierre del plan.
