@@ -478,8 +478,10 @@ Route::middleware('auth')
             Route::put('servicio-tecnico/{orden}/reparacion', [ServicioTecnicoController::class, 'guardarReparacion'])
                 ->name('servicio-tecnico.reparacion.guardar');
 
-            // Pestaña Cotización (ver + enviar): desglose guardado + envío al
-            // cliente. GET propio; el POST de abajo (mismo path) es el envío.
+            // Pestaña Cotización: VISTA PREVIA de solo lectura de lo que se le cotiza
+            // al cliente. No tiene PUT: el presupuesto se guarda por
+            // `reparacion.guardar` y nada más (dueño 20-08-2026). El PUT que había
+            // acá era el segundo lugar donde se editaba el mismo dinero.
             Route::get('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'cotizacion'])
                 ->whereNumber('orden')->name('servicio-tecnico.cotizacion');
 
@@ -488,10 +490,6 @@ Route::middleware('auth')
             // defecto del modelo es el token (para el link público).
             Route::post('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'enviarCotizacion'])
                 ->name('servicio-tecnico.cotizacion.enviar');
-            // Guardar el desglose de precios (repuestos, mano de obra, descuento)
-            // que arma la cotización. PUT sobre el mismo path (POST = enviar).
-            Route::put('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'guardarCotizacion'])
-                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.guardar');
             Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/reintentar', [ServicioTecnicoController::class, 'reintentarCorreoCotizacion'])
                 ->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.reintentar');
             // Garantía: enviar al cliente el DETALLE del trabajo (sin cobro).

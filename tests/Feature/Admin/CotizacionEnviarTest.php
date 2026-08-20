@@ -54,6 +54,11 @@ class CotizacionEnviarTest extends TestCase
             'facturacion' => 'reparacion',
             'cliente_email' => 'cliente@example.com',
             'mano_obra' => 10000,
+            // A PROPÓSITO fuera de la lista de causas: es un dato HISTÓRICO (texto
+            // libre de antes de que existiera el enum, o un valor renombrado). Las
+            // pantallas tienen que resolverlo por el accessor y mostrar «Sin
+            // determinar»; indexando la constante daban 500 —así se descubrió, al
+            // pasar el envío al parte del técnico, que sí muestra la causa.
             'causa_falla' => 'Filtración interna',
             'trabajo_realizado' => 'Cambio de caldera — funciona normal',
         ], $overrides));
@@ -83,6 +88,28 @@ class CotizacionEnviarTest extends TestCase
     {
         return $this->actingAs($user ?? $this->tecnico())
             ->post(route('admin.servicio-tecnico.cotizacion.enviar', $orden));
+    }
+
+    /**
+     * Guarda el parte del técnico —la única acción que escribe el presupuesto desde
+     * el 20-08-2026— con `enviar=1` cuando corresponda. `estado` y el trabajo van
+     * siempre: el parte los guarda, así que omitirlos apagaría la mano de obra y el
+     * envío se bloquearía por otra razón que la que prueba el test.
+     */
+    private function guardarParte(OrdenServicio $orden, array $payload)
+    {
+        // Sin trabajo no se manda el centinela: `trabajo_realizado_otro` sería
+        // obligatorio y el test fallaría por un error de validación en vez de por lo
+        // que prueba.
+        $trabajo = blank($orden->trabajo_realizado) ? [] : [
+            'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+            'trabajo_realizado_otro' => $orden->trabajo_realizado,
+        ];
+
+        return $this->put(
+            route('admin.servicio-tecnico.reparacion.guardar', $orden),
+            array_merge(['estado' => $orden->estado], $trabajo, $payload),
+        );
     }
 
     // --- Acceso ---
@@ -195,13 +222,14 @@ class CotizacionEnviarTest extends TestCase
             ['horas' => 1.5, 'activo' => true],
         );
 
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'enviar' => '1',
-                'descuento_pct' => 0,
-                // El técnico acaba de corregir el precio en pantalla: 4000 → 7000.
-                'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
-            ])
+        $this->actingAs($this->tecnico());
+        $this->guardarParte($orden, [
+            'enviar' => '1',
+            'descuento_pct' => 0,
+            // El técnico acaba de corregir el precio en pantalla: 4000 → 7000.
+            'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
+        ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
 
         $c = OrdenServicioCotizacion::first();
@@ -218,12 +246,11 @@ class CotizacionEnviarTest extends TestCase
         // efectos bien distintos.
         $orden = $this->ordenCotizable();
 
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'descuento_pct' => 0,
-                'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
-            ])
-            ->assertRedirect();
+        $this->actingAs($this->tecnico());
+        $this->guardarParte($orden, [
+            'descuento_pct' => 0,
+            'repuestos' => [['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 7000]],
+        ])->assertRedirect();
 
         $this->assertSame(0, OrdenServicioCotizacion::count());
         Mail::assertNothingSent();
@@ -238,8 +265,8 @@ class CotizacionEnviarTest extends TestCase
             'cliente_email' => 'x@example.com', 'mano_obra' => 0,
         ]);
 
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), ['enviar' => '1', 'descuento_pct' => 0])
+        $this->actingAs($this->tecnico());
+        $this->guardarParte($orden, ['enviar' => '1', 'descuento_pct' => 0, 'repuestos' => []])
             ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertSessionHas('status', fn (string $s) => str_contains($s, '$0'));
 
@@ -249,15 +276,18 @@ class CotizacionEnviarTest extends TestCase
 
     public function test_los_dos_botones_van_juntos_y_la_tarjeta_de_envio_no_ocupa_espacio_de_mas(): void
     {
-        // Candado de layout (dueño 07-08): «Enviar» y «Guardar» en la MISMA fila
-        // del formulario, y sin nada enviado la tarjeta de constancia no se dibuja.
+        // Candado de layout (dueño 07-08 y 20-08): «Enviar» y «Guardar» en la MISMA
+        // fila del formulario —ahora el del PARTE DEL TÉCNICO, que es donde el dueño
+        // pidió el botón— y sin nada enviado la constancia no se dibuja.
         $orden = $this->ordenCotizable();
 
         $html = $this->actingAs($this->tecnico())
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
             ->assertSee('Enviar cotización')
             ->assertDontSee('Enviada al cliente')   // nada enviado todavía → sin tarjeta
+            // La causa histórica de la orden no está en la lista: se muestra, no revienta.
+            ->assertSee('Sin determinar')
             ->getContent();
 
         // El botón de enviar es un submit del formulario que GUARDA (el del
@@ -271,8 +301,16 @@ class CotizacionEnviarTest extends TestCase
         $this->assertStringContainsString('PUT', $tramo, 'El botón «Enviar» debe vivir en el formulario que guarda (PUT).');
         $this->assertStringNotContainsString('</form>', $tramo, 'Volvieron a separar el botón en su propio formulario.');
 
-        $guardar = strpos($html, 'Guardar cotización');
-        $this->assertGreaterThan($enviar, $guardar, '«Enviar» va a la izquierda de «Guardar», en la misma fila.');
+        // Y «Guardar» va DESPUÉS de «Enviar» pero ANTES de que cierre el formulario:
+        // misma fila, mismo form. (Se mide contra el cierre y no contra una posición
+        // absoluta porque abajo, fuera del form, hay más botones.)
+        // Se busca en el tramo POSTERIOR a «Enviar» (así un «Guardar» de otro texto
+        // más arriba —el aviso ámbar dice «Guardar sí se puede»— no lo satisface).
+        $resto = substr($html, $enviar);
+        $guardar = strpos($resto, 'Guardar');
+        $cierra = strpos($resto, '</form>');
+        $this->assertNotFalse($guardar, 'Falta el botón «Guardar» después de «Enviar».');
+        $this->assertLessThan($cierra, $guardar, '«Enviar» y «Guardar» tienen que quedar en la misma fila del formulario.');
     }
 
     public function test_enviar_desde_una_etapa_previa_pasa_la_orden_a_cotizacion(): void

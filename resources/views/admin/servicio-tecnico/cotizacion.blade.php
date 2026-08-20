@@ -2,7 +2,6 @@
     @php
         $clp = fn ($n) => '$'.number_format((int) $n, 0, ',', '.');
         $esGarantia = $orden->condicion_efectiva === 'garantia';
-        $esReparacion = ! $esGarantia;
         // tipo_equipo_label + el `modelo` que escribió el cliente (ver reparacion.blade.php).
         $equipo = collect([
             $orden->tipo_equipo_label,
@@ -10,16 +9,6 @@
             $orden->producto?->sku,
             $orden->numero_serie ? 'N° '.$orden->numero_serie : null,
         ])->filter()->implode(' · ');
-
-        // Repuestos que dejó el técnico (nombre + cantidad): aquí se les pone precio.
-        $repInit = $orden->repuestos->map(fn ($r) => [
-            'nombre' => $r->nombre,
-            // El SKU viaja para no perderlo al re-guardar (el documento tributario
-            // se factura con el código de catálogo, regla 4 de Contabilidad).
-            'sku' => $r->sku,
-            'cantidad' => $r->cantidad,
-            'precio_unitario' => $r->precio_unitario,
-        ])->values();
     @endphp
 
     <x-slot name="header">
@@ -35,7 +24,9 @@
         @if ($esGarantia)
             {{-- ===================== GARANTÍA: detalle sin cobro ===================== --}}
             @php
-                $causaTxt = filled($orden->causa_falla) ? \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$orden->causa_falla] : null;
+                // Accessor del modelo: indexar la constante revienta con una causa
+                // guardada fuera de la lista (dato histórico). Ver reparacion.blade.php.
+                $causaTxt = $orden->causa_falla_label;
                 $faltas = collect([
                     blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
                     blank($orden->trabajo_realizado) ? 'registra el trabajo realizado en «Parte del técnico»' : null,
@@ -96,66 +87,117 @@
         @else
             @php
                 $ultima = $cotizaciones->first();
-                // Qué falta para poder enviar (espejo de la validación del server).
-                // Las etapas PREVIAS ya no bloquean: al enviar, la orden pasa sola a
-                // «Cotización» (dueño 06-08). El total en $0 tampoco: el botón vive
-                // dentro del formulario y se habilita con el total EN PANTALLA
-                // (x-bind:disabled), porque enviar guarda primero.
-                $faltas = collect([
-                    in_array($orden->estado, ['recibido', 'en_revision', 'cotizacion'], true) ? null : 'la orden ya pasó la etapa de cotización (para re-cotizar, vuélvela a «Cotización» en Parte del técnico)',
-                    blank($orden->cliente_email) ? 'la orden no tiene correo del cliente (agrégalo en la recepción)' : null,
-                    // Sin mano de obra calculable no sale al cliente: el total le
-                    // cobraría de menos sin que nadie lo note. Guardar sigue libre.
-                    $faltaManoObra,
-                ])->filter();
+
+                // MANO DE OBRA VIGENTE, no la columna guardada: el parte la recalcula
+                // desde el catálogo cada vez que guarda, así que mostrar la guardada
+                // sería prometer un total que el próximo guardado baja (bitácora
+                // 2026-08-07). Se pisa el atributo EN MEMORIA —esto es un GET, no se
+                // guarda nada— para que el total, el neto, el IVA y el descuento salgan
+                // de los accessors del modelo y no de una segunda cuenta escrita acá:
+                // dos cuentas del mismo dinero es exactamente lo que un día difiere.
+                $orden->mano_obra = $manoObraVigente;
             @endphp
-            {{-- ===================== REPARACIÓN: armar el precio ===================== --}}
-            <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.guardar', $orden) }}"
-                  class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8" data-una-vez
-                  {{-- `manoObra` se siembra con la VIGENTE del catálogo (lo que va a
-                       quedar al guardar), no con `$orden->mano_obra`: si el trabajo
-                       perdió su tiempo estándar, el total no puede prometer un monto
-                       que el guardado baja a $0. --}}
-                  x-data="reparacionForm({ repuestos: @js($repInit), manoObra: {{ (int) $manoObraVigente }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
-                @csrf
-                @method('PUT')
+            {{-- ============ REPARACIÓN: VISTA PREVIA, SIN EDITAR NADA ============
+                 Dueño 20-08-2026: «que la cotización no tenga opción de modificarse»,
+                 «el detalle de los repuestos se repite… sácalo, sino es doble
+                 información» y el descuento «que pase a la parte del técnico».
 
-                @include('admin.servicio-tecnico.partials._presupuesto-campos')
+                 Así que acá NO hay formulario, ni filas de repuestos, ni selector de
+                 descuento, ni botón de enviar: todo eso vive en el parte del técnico,
+                 en una sola definición. Lo que queda es el DINERO que el cliente va a
+                 leer, y abajo la constancia de lo que ya se le mandó. --}}
+            <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Lo que se le cotiza al cliente</h3>
+                    <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Editar en parte del técnico →</a>
+                </div>
 
-                {{-- Los dos botones en la MISMA fila (dueño 07-08: no gastar una
-                     tarjeta entera en el envío). «Enviar» es submit de ESTE
-                     formulario con enviar=1: guarda y manda en un paso, así lo que
-                     sale es lo que está en pantalla — pegado a «Guardar», mandar el
-                     snapshot viejo sin darse cuenta era demasiado fácil. Queda
-                     secundario a propósito: sale un correo al cliente, no debe
-                     pesar lo mismo que guardar. --}}
-                <div class="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-neutral-100 pt-5">
-                    {{-- La ayuda ocupa el hueco de la izquierda (mr-auto): si no cabe,
-                         se parte ELLA. Los dos botones van en su propio flex para que
-                         nunca se separen — es justo lo que pidió el dueño. --}}
-                    <p class="mr-auto max-w-sm text-xs text-neutral-400">
-                        @if ($faltas->isEmpty())
-                            «Enviar» guarda y manda la carta a {{ $orden->cliente_email }}.
-                            @if ($ultima && $ultima->estado === 'enviada') Reemplaza la anterior. @endif
-                        @else
-                            Para enviarla al cliente: {{ $faltas->implode('; ') }}.
-                        @endif
-                    </p>
-                    <div class="flex items-center gap-2">
-                        @if ($faltas->isEmpty())
-                            <x-secondary-button type="submit" name="enviar" value="1"
-                                                x-bind:disabled="total <= 0"
-                                                x-bind:title="total <= 0 ? 'Pon precios antes de enviar' : ''"
-                                                x-on:click="if (! confirm('Se guardará y se enviará la cotización por ' + clp(total) + ' a ' + {{ Js::from($orden->cliente_email) }} + '. ¿Continuar?')) $event.preventDefault()">
-                                {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Enviar cotización nueva' : 'Enviar cotización' }}
-                            </x-secondary-button>
-                        @endif
-                        <x-primary-button>
-                            <x-icon.check class="h-4 w-4" /> Guardar cotización
-                        </x-primary-button>
+                <dl class="divide-y divide-neutral-100 rounded-xl border border-neutral-200 text-sm">
+                    <div class="flex items-start justify-between gap-4 px-4 py-3">
+                        <dt class="text-neutral-500">Trabajo realizado</dt>
+                        <dd class="text-right text-neutral-900">{{ $orden->trabajo_realizado ?: '—' }}</dd>
+                    </div>
+                    <div class="flex items-start justify-between gap-4 px-4 py-3">
+                        <dt class="text-neutral-500">
+                            Repuestos
+                            <span class="block text-xs text-neutral-400">{{ $orden->repuestos->count() }} {{ \Illuminate\Support\Str::plural('ítem', $orden->repuestos->count()) }} · el detalle está en el parte del técnico</span>
+                        </dt>
+                        <dd class="text-right text-neutral-900">{{ $clp($orden->costo_repuestos) }}</dd>
+                    </div>
+                    <div class="flex items-start justify-between gap-4 px-4 py-3">
+                        <dt class="text-neutral-500">
+                            Mano de obra
+                            {{-- Por qué es ese monto — y cuando es $0 por un hueco de
+                                 datos, se dice (el envío queda bloqueado hasta cerrarlo). --}}
+                            @if (blank($orden->trabajo_realizado))
+                                <span class="block text-xs text-neutral-400">Falta el «Trabajo realizado» en el parte del técnico.</span>
+                            @elseif ($horasTrabajo === null)
+                                <span class="block text-xs text-amber-700">El trabajo «{{ $orden->trabajo_realizado }}» no tiene tiempo estándar: queda en $0 hasta que jefatura lo cargue.</span>
+                            @elseif (! $precioHoraServicio)
+                                <span class="block text-xs text-amber-700">El código de hora de servicio técnico ({{ config('servicio_tecnico.sku_hora_servicio') }}) no tiene precio en la lista oficial de ventas.</span>
+                            @else
+                                <span class="block text-xs text-neutral-400">
+                                    {{ rtrim(rtrim(number_format((float) $horasTrabajo, 1, ',', ''), '0'), ',') }} h
+                                    × ${{ number_format($precioHoraServicio, 0, ',', '.') }} · la fija jefatura
+                                </span>
+                            @endif
+                        </dt>
+                        <dd class="text-right text-neutral-900">{{ $clp($orden->mano_obra) }}</dd>
+                    </div>
+                    <div class="flex items-start justify-between gap-4 px-4 py-3">
+                        <dt class="text-neutral-500">Descuento
+                            <span class="block text-xs text-neutral-400">Lo aplica jefatura de ventas en el parte del técnico.</span>
+                        </dt>
+                        <dd class="text-right text-neutral-900">
+                            @if ($orden->descuento_pct > 0)
+                                −{{ $clp($orden->descuento_monto) }}
+                                <span class="block text-xs text-neutral-400">{{ $orden->descuento_pct }}% · {{ $orden->descuento_motivo_label }}</span>
+                            @else
+                                <span class="text-neutral-400">Sin descuento</span>
+                            @endif
+                        </dd>
+                    </div>
+                </dl>
+
+                <div class="mt-4 rounded-lg border border-brand-200 bg-brand-50 p-4">
+                    <p class="text-sm text-neutral-600">Costo total a pagar (IVA incluido)</p>
+                    <p class="mt-0.5 text-2xl font-semibold text-neutral-900">{{ $clp($orden->costo_total) }}</p>
+                    <div class="mt-1.5 space-y-0.5 border-t border-brand-200 pt-1.5 text-xs text-neutral-600">
+                        <div class="flex justify-between"><span>Neto</span><span>{{ $clp($orden->costo_neto) }}</span></div>
+                        <div class="flex justify-between"><span>IVA (19%)</span><span>{{ $clp($orden->costo_iva) }}</span></div>
                     </div>
                 </div>
-            </form>
+
+                {{-- Advertencia de gasto alto: la misma regla del parte (>40% del valor
+                     del equipo), acá calculada en el servidor porque no hay nada que
+                     recalcular en vivo. --}}
+                @if ($precioVentaEquipo && $orden->costo_total > (int) round($precioVentaEquipo * \App\Models\OrdenServicio::UMBRAL_REPARACION_ALTA))
+                    <div class="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+                        <p class="font-semibold">⚠️ Costo de reparación alto</p>
+                        <p class="mt-0.5">
+                            El total ({{ $clp($orden->costo_total) }}) es el
+                            <span class="font-semibold">{{ (int) round($orden->costo_total / $precioVentaEquipo * 100) }}%</span>
+                            del valor del equipo ({{ $clp($precioVentaEquipo) }}) y supera el 40%.
+                            <span class="font-medium">Consulta con el cliente</span> si le conviene reparar o cambiar el equipo.
+                        </p>
+                    </div>
+                @endif
+
+                {{-- Dónde se envía. No es un botón: el envío guarda primero, y lo que
+                     se guarda se escribe en el parte — un «Enviar» acá mandaría el
+                     snapshot de otra pantalla. --}}
+                <p class="mt-4 border-t border-neutral-100 pt-4 text-xs text-neutral-500">
+                    @if ($faltaManoObra)
+                        Todavía no se puede enviar al cliente: {{ $faltaManoObra }}.
+                    @elseif (blank($orden->cliente_email))
+                        Todavía no se puede enviar al cliente: la orden no tiene correo (agrégalo en la recepción).
+                    @else
+                        Se envía desde
+                        <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="font-medium text-brand-600 hover:text-brand-700">Parte del técnico</a>,
+                        con el botón «Enviar cotización» junto a «Guardar».
+                    @endif
+                </p>
+            </div>
 
             @include('admin.servicio-tecnico.partials._envio-historial')
         @endif

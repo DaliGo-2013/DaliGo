@@ -65,16 +65,26 @@
                         <span class="ml-1 text-xs text-neutral-500">Garantía vigente: la reparación no se cobra.</span>
                     @endunless
                 </p>
-                <p class="mt-2 text-xs text-neutral-500">
-                    Los precios (repuestos, mano de obra y total) se ingresan en la pestaña
-                    <a href="{{ route('admin.servicio-tecnico.cotizacion', $orden) }}" class="font-medium text-brand-600 hover:text-brand-700">Cotización</a>.
-                </p>
+                {{-- Los precios se ingresan ACÁ desde el 20-08. Esta nota decía lo
+                     contrario («se ingresan en la pestaña Cotización») y era justo la
+                     instrucción que el dueño mandó a borrar. --}}
+                @if ($esReparacion)
+                    <p class="mt-2 text-xs text-neutral-500">
+                        Los precios y el total se arman en esta pantalla; la pestaña
+                        <a href="{{ route('admin.servicio-tecnico.cotizacion', $orden) }}" class="font-medium text-brand-600 hover:text-brand-700">Cotización</a>
+                        muestra lo que le llega al cliente.
+                    </p>
+                @endif
             </div>
 
             {{-- ===================== INFORME (solo lectura) ===================== --}}
             @php
                 $trabajoTxt = $orden->trabajo_realizado;
-                $causaTxt = filled($orden->causa_falla) ? \App\Models\OrdenServicio::CAUSA_FALLA_ETIQUETAS[$orden->causa_falla] : null;
+                // Por el ACCESSOR del modelo, no indexando la constante: una causa
+                // guardada fuera de la lista (dato histórico, o un valor renombrado)
+                // reventaba la pantalla con «Undefined array key». El accessor cae en
+                // «Sin determinar», que es la misma etiqueta que usa el informe.
+                $causaTxt = $orden->causa_falla_label;
             @endphp
             <div x-show="!editando">
                 <div class="mb-4 flex items-center justify-between">
@@ -293,8 +303,12 @@
                      Reemplaza al bloque que declaraba solo nombre y cantidad y mandaba el
                      precio en un campo OCULTO para que re-guardar el parte no borrara lo
                      cotizado. Ese truco existia porque los precios vivian en otra pantalla;
-                     con un solo formulario no hace falta. --}}
-                @include('admin.servicio-tecnico.partials._presupuesto-campos')
+                     con un solo formulario no hace falta.
+
+                     EN GARANTIA va SIN precios: solo qué repuestos se usaron. Un «Costo
+                     total a pagar» en una orden que no se cobra contradice al resto de la
+                     app y al correo que recibe el cliente (repuestos sin precios). --}}
+                @include('admin.servicio-tecnico.partials._presupuesto-campos', ['conPrecios' => $esReparacion])
 
                 {{-- Fechas de aviso y retiro --}}
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">

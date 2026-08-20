@@ -6,13 +6,21 @@
      informacion»). Una sola definicion: si estuviera copiado, un dia las dos
      pantallas cobrarian distinto.
 
+     `$conPrecios = false` deja SOLO los repuestos (nombre y cantidad): es el caso
+     GARANTIA, donde no hay cobro. Sin ese modo, la pantalla de una garantia mostraba
+     un «Costo total a pagar» que contradice a toda la app —y al correo que recibe el
+     cliente, que lista los repuestos SIN precios.
+
      Espera estar DENTRO de un formulario con `x-data="reparacionForm(...)"` — de ahi
      salen `repuestos`, `manoObra`, `descuentoPct`, `total` y `clp()`.
      Requiere: $orden, $precioHoraServicio, $precioVentaEquipo, $horasTrabajo, $clp.
 --}}
+@php $conPrecios = $conPrecios ?? true; @endphp
                 <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del presupuesto</h3>
-                    <a href="{{ route('admin.servicio-tecnico.reparacion', $orden) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Ver parte del técnico →</a>
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $conPrecios ? 'Detalle del presupuesto' : 'Repuestos usados' }}</h3>
+                    @unless ($conPrecios)
+                        <span class="text-xs text-neutral-400">Garantía: no se cobra</span>
+                    @endunless
                 </div>
 
                 {{-- Repuestos: se pueden agregar buscándolos del catálogo, con precio.
@@ -66,16 +74,24 @@
                                         <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
                                             class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                     </div>
-                                    <div class="flex-1 sm:w-28 sm:flex-none">
-                                        <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Precio c/u</label>
-                                        <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
-                                            placeholder="Precio"
-                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                                    </div>
-                                    <div class="w-24 shrink-0 text-right text-sm text-neutral-600">
-                                        <span class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Subtotal</span>
-                                        <span class="block sm:pt-2" x-text="clp(subtotal(r))"></span>
-                                    </div>
+                                    @if ($conPrecios)
+                                        <div class="flex-1 sm:w-28 sm:flex-none">
+                                            <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Precio c/u</label>
+                                            <input type="number" min="0" step="1" x-model.number="r.precio_unitario" :name="`repuestos[${i}][precio_unitario]`"
+                                                placeholder="Precio"
+                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                        </div>
+                                        <div class="w-24 shrink-0 text-right text-sm text-neutral-600">
+                                            <span class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Subtotal</span>
+                                            <span class="block sm:pt-2" x-text="clp(subtotal(r))"></span>
+                                        </div>
+                                    @else
+                                        {{-- Garantía: el precio no se muestra, pero VIAJA igual.
+                                             El guardado reemplaza los repuestos, así que un campo
+                                             ausente los dejaría en $0 — y si mañana la garantía se
+                                             cae (documento vencido) esos precios harían falta. --}}
+                                        <input type="hidden" :name="`repuestos[${i}][precio_unitario]`" :value="r.precio_unitario ?? 0">
+                                    @endif
                                     <button type="button" x-on:click="quitar(i)"
                                         class="shrink-0 self-end rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:self-start" title="Quitar">
                                         <x-icon.trash class="h-5 w-5" />
@@ -91,8 +107,10 @@
                     <div class="mt-1 hidden gap-3 text-xs text-neutral-400 sm:flex">
                         <span class="flex-1">Repuesto</span>
                         <span class="w-16 text-center">Cant.</span>
-                        <span class="w-28">Precio c/u</span>
-                        <span class="w-24 text-right">Subtotal</span>
+                        @if ($conPrecios)
+                            <span class="w-28">Precio c/u</span>
+                            <span class="w-24 text-right">Subtotal</span>
+                        @endif
                         <span class="w-9"></span>
                     </div>
                     @php $errBag = $errors->getMessages(); @endphp
@@ -103,7 +121,10 @@
                     @endforeach
                 </div>
 
-                {{-- Mano de obra + descuento --}}
+                {{-- Mano de obra + descuento. TODO EL DINERO cuelga de $conPrecios: en
+                     garantía no hay cobro, así que no hay mano de obra que fijar, ni
+                     descuento que aplicar, ni total que mostrar. --}}
+                @if ($conPrecios)
                 <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="space-y-3">
                         {{-- Mano de obra FIJA por el trabajo (no editable aquí):
@@ -204,3 +225,4 @@
                         </p>
                     </div>
                 @endif
+                @endif {{-- $conPrecios --}}

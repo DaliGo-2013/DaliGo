@@ -672,10 +672,14 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Pestaña Cotización (ver + enviar): muestra el desglose GUARDADO de la
-     * reparación (repuestos, mano de obra, descuento, total) y la tarjeta para
-     * enviar la cotización al cliente + historial. Los números se ingresan en la
-     * etapa de reparación; aquí solo se ven y se envían.
+     * Pestaña Cotización: VISTA PREVIA de solo lectura de lo que se le cotiza al
+     * cliente (total, mano de obra, descuento) + la constancia de lo ya enviado.
+     *
+     * NO se edita ni se envía nada desde acá (dueño 20-08-2026: «que la cotización
+     * no tenga opción de modificarse»): el presupuesto se arma y se manda en el
+     * parte del técnico, que es la pantalla de la orden. Antes esta pestaña tenía su
+     * propio formulario con las MISMAS filas de repuestos —dos lugares para el mismo
+     * número— y era lo que el dueño mandó a sacar.
      */
     public function cotizacion(OrdenServicio $orden): View
     {
@@ -704,89 +708,6 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Guarda el desglose de PRECIOS que arma la cotización: precio de cada
-     * repuesto, mano de obra y descuento → total a pagar. El técnico solo deja
-     * QUÉ repuestos usó (nombre + cantidad) en su parte; aquí se les pone precio.
-     * Solo aplica a reparaciones (garantía no se cobra, no se cotiza).
-     */
-    public function guardarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
-    {
-        if ($orden->condicion_efectiva !== 'reparacion') {
-            return back()->with('status', 'Equipo en garantía vigente: no se cotiza (no hay cobro).');
-        }
-
-        $data = $request->validate([
-            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
-            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
-            'repuestos' => ['array'],
-            'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
-            'repuestos.*.sku' => ['nullable', 'string', 'max:191'],
-            'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
-            'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
-        ], [
-            'descuento_motivo.required' => 'Indica el motivo del descuento.',
-        ]);
-
-        // Validacion por fila: las filas vacias se ignoran; una fila con nombre
-        // exige nombre (min 3) y precio (>0), porque aqui es donde se cobra. Se
-        // pueden agregar repuestos con el buscador del catalogo, igual que en el
-        // parte del tecnico.
-        $errores = [];
-        foreach ($request->input('repuestos', []) as $i => $r) {
-            $nombre = trim((string) ($r['nombre'] ?? ''));
-            if ($nombre === '') {
-                continue;
-            }
-            if (mb_strlen($nombre) < 3) {
-                $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
-            }
-            if ((int) ($r['precio_unitario'] ?? 0) < 1) {
-                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0).';
-            }
-        }
-        if ($errores) {
-            throw ValidationException::withMessages($errores);
-        }
-
-        $orden->update([
-            // Mano de obra FIJA por el trabajo (no se edita aquí): se recalcula
-            // por si jefatura cambió el tiempo estándar en el ínterin.
-            'mano_obra' => $this->manoObraDe($orden->trabajo_realizado),
-        ] + $this->descuentoAplicable($request, $orden, $data));
-
-        // Reemplazo de repuestos ya con precio. Nombre, SKU y cantidad vienen del
-        // parte del técnico como campos ocultos (aquí son de solo lectura).
-        $orden->repuestos()->delete();
-        foreach ($data['repuestos'] ?? [] as $r) {
-            if (empty($r['nombre'])) {
-                continue;
-            }
-            $orden->repuestos()->create([
-                'nombre' => $r['nombre'],
-                'sku' => $r['sku'] ?? null,
-                'cantidad' => $r['cantidad'] ?? 1,
-                'precio_unitario' => $r['precio_unitario'] ?? 0,
-            ]);
-        }
-
-        // El botón «Enviar cotización» vive DENTRO de este formulario (dueño
-        // 07-08: los dos botones en la misma fila), así que envía con enviar=1 y
-        // aquí se guarda primero y se manda después: lo que sale al cliente es lo
-        // que estaba en pantalla. Pegado a «Guardar», mandar el snapshot anterior
-        // sin darse cuenta era demasiado fácil. Si el envío no procede (etapa
-        // posterior, sin correo, total $0), enviarCotizacion lo explica y lo
-        // guardado no se pierde.
-        if ($request->boolean('enviar')) {
-            return $this->enviarCotizacion($request, $orden->fresh());
-        }
-
-        $total = '$'.number_format((int) $orden->fresh()->costo_total, 0, ',', '.');
-
-        return redirect()->route('admin.servicio-tecnico.cotizacion', $orden)
-            ->with('status', "Cotización de la orden {$orden->folio} actualizada (total {$total}).");
-    }
-
-    /**
      * El descuento que corresponde guardar, como par de columnas listo para el
      * `update()`.
      *
@@ -800,12 +721,18 @@ class ServicioTecnicoController extends Controller
      * regla copiada, un día una de las dos dejaría aplicar un descuento a quien no
      * puede — y sería la copia que nadie mira.
      *
+     * UN CAMPO AUSENTE NO ES UN CERO: si el formulario no trae `descuento_pct` se
+     * conserva el guardado. Lo necesita el parte de una GARANTÍA, que no dibuja el
+     * selector (no hay cobro) y por lo tanto no lo manda: sin esta guarda, que
+     * jefatura guardara ese parte borraría un descuento en silencio. Quitarlo sigue
+     * siendo posible — mandando un 0 explícito, que es lo que hace el selector.
+     *
      * @param  array<string, mixed>  $data  el ya validado
      * @return array{descuento_pct: int, descuento_motivo: string|null}
      */
     private function descuentoAplicable(Request $request, OrdenServicio $orden, array $data): array
     {
-        if (! $request->user()->can('aplicar descuento servicio tecnico')) {
+        if (! $request->has('descuento_pct') || ! $request->user()->can('aplicar descuento servicio tecnico')) {
             return [
                 'descuento_pct' => (int) $orden->descuento_pct,
                 'descuento_motivo' => $orden->descuento_motivo,
