@@ -96,9 +96,12 @@
             `quitar` a propósito: llamarlo igual lo haría llamarse a sí mismo para siempre
             (el x-data de acá tapa el del formulario, como pasa con `agregar`). */
          quitarDelCamion(i) {
-             if (this.lineas.length < 2) return;
+             /* También con la última línea (dueño 21-08: «quiero cargar lo que yo
+                quiera sin previas»): se saca, y si no queda nada NO se recalcula —
+                un formulario sin líneas devolvería la pantalla al otro modo. El
+                armador queda en su estado vacío, que desde hoy es legítimo. */
              this.quitar(i);
-             this.recalcular();
+             if (this.lineas.length) this.recalcular();
          },
 
          /* Recalcular SIN cerrar el panel. El `cubicar=1` viaja en el formulario, así que
@@ -255,7 +258,7 @@
                                      mirar. El `p-1.5` no es estético: el ícono mide 14 px y solo
                                      con el relleno el área de toque llega a 26, que es lo mínimo
                                      usable en el teléfono. --}}
-                                <button type="button" @click="quitarDelCamion(i)" x-show="lineas.length > 1"
+                                <button type="button" @click="quitarDelCamion(i)"
                                         class="shrink-0 rounded p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
                                         :title="`Quitar ${resumen(l)} de la carga`"
                                         :aria-label="`Quitar ${resumen(l)} de la carga`">

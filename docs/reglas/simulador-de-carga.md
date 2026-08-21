@@ -1519,6 +1519,49 @@ hoja sin marcador / zoom sin envoltorio), rojo exacto en cada uno.
 Supersede: «cada sección es un DESPLEGABLE» (ampliación del 06-08 en §4.1nonies). El resto
 de esa sección sigue vigente.
 
+### 4.1nonies-quater QA del dueño a la Cabina recién desplegada: rótulos con palabra, y el armador arranca VACÍO (21-08-2026, misma tarde)
+
+El dueño probó la Cabina en producción y volvió con dos cosas, las dos legítimas:
+
+**1. «¿Los botones # y ABC qué hacen? les doy clic y no pasa nada.»** Hacían lo de
+siempre (prender y apagar los rótulos del dibujo), pero con el camión VACÍO no hay
+bloques que rotular — cero efecto visible — y el glifo no se explica solo. La lección:
+**un toggle cuyo efecto puede ser invisible necesita su palabra**; el tooltip no alcanza
+porque en táctil no existe y en escritorio llega tarde. Los rótulos vuelven a decir
+«Códigos» y «Nombres» en su propia fila de la cabecera (la ✕ de cerrar subió junto a las
+vistas). Los iconos se quedan donde el efecto es inmediato y evidente: las vistas y el
+zoom, que mueven el dibujo al instante.
+
+**2. «Salen siempre predeterminado los bidones y no quiero, quiero cargar lo que yo
+quiera sin previas.»** Es la SEGUNDA vez que lo dice (12-08: «siempre comienza la opción
+con bidones… no encuentro ninguna opción para quitar»). La respuesta del 12-08 hizo
+visible el quitar pero lo escondió con una sola línea (`lineas.length > 1`) — o sea en el
+caso EXACTO del reclamo, la línea única precargada, seguía sin poder sacarse. Esta vez se
+va a la raíz, en cuatro piezas:
+
+- **El armador arranca con CERO líneas** (antes: primer producto del catálogo × 100). El
+  estado vacío tiene su cartel con el próximo paso, y «Calcular la carga» se apaga solo
+  (`:disabled` por Alpine) mientras no haya nada que calcular.
+- **La línea nueva nace sin producto elegido**: el selector arranca en «Elegí un
+  producto…» (option `value=""` disabled). OJO al contrato: `aMedida()` pasó de chequear
+  falsy a **`tipo === 0` estricto** — con el chequeo falsy, la línea nueva (`tipo: ''`)
+  mostraba el formulario de medidas en vez del selector. Y en `lineasSel` el tipo vacío
+  se CONSERVA como `''`: el `(int) (tipo ?? 0)` de antes la devolvía convertida en bulto
+  a medida (el «?? 0 sobre un dato que se conserva» de la bitácora [2026-08-20]). El
+  motor ya descartaba líneas sin producto; nada de eso cambió.
+- **Quitar se ofrece SIEMPRE**, también con la última línea: en la cabecera de la
+  tarjeta, en el pie de la tarjeta, en «En el camión» del cubicaje (que si vacía la
+  carga NO recalcula — un formulario sin líneas devolvería la pantalla al otro modo — y
+  deja el estado vacío a la vista) **y en la lista de resultados** «La carga, producto
+  por producto», que es donde el dueño lo buscó esta vez: ahí quitar recalcula, salvo
+  que fuera la última.
+- El candado del 12-08 (`test_con_un_solo_producto_no_se_ofrece_quitar`) queda
+  **INVERTIDO** por `test_quitar_se_ofrece_tambien_con_una_sola_linea` — el razonamiento
+  viejo («el botón que deja la carga vacía solo sabe fallar») murió porque vacío ya es
+  un estado legítimo. Candados nuevos: `test_el_armador_arranca_sin_previas` y
+  `test_una_linea_sin_elegir_no_vuelve_convertida_en_bulto_a_medida`. Los tres mutados
+  con rojo exacto.
+
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 
 Cuarta cabina propia. Las fotos son de un **Chevrolet NQR (Isuzu N-Series)** con furgón, y lo

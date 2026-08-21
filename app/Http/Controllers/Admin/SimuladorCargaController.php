@@ -358,7 +358,10 @@ class SimuladorCargaController extends Controller
                 ->map(fn (array $l) => [
                     // 0 = bulto a medida: el <select> del formulario usa ese valor
                     // para mostrar los campos de medidas en vez del catálogo.
-                    'tipo' => (int) ($l['tipo'] ?? 0),
+                    // '' = «sin elegir» (la línea nueva del 21-08) y se CONSERVA:
+                    // castearla con ?? 0 la devolvería convertida en bulto a medida
+                    // — el borrado/mutación silencioso de la bitácora [2026-08-20].
+                    'tipo' => ($l['tipo'] ?? '') === '' ? '' : (int) $l['tipo'],
                     'cantidad' => (int) $l['cantidad'],
                     // 0/1 y no true/false: es el valor del <select> del formulario, y
                     // Alpine lo compara con las opciones tal cual viene.

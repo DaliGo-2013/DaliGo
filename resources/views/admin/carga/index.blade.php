@@ -56,9 +56,11 @@
                     // sin abrir la ficha del producto.
                     'apilable_max' => $b->apilable_max,
                 ])->values();
-                $lineasIniciales = $lineasSel->isNotEmpty()
-                    ? $lineasSel
-                    : collect([['tipo' => $bultos->first()?->id, 'cantidad' => 100, 'estiba' => 'auto']]);
+                // EL ARMADOR ARRANCA VACÍO (pedido del dueño 21-08, QA de la Cabina:
+                // «salen siempre predeterminado los bidones y no quiero, quiero cargar
+                // lo que yo quiera sin previas»). Antes se sembraba una línea con el
+                // primer producto del catálogo × 100 — la «previa» exacta del reclamo.
+                $lineasIniciales = $lineasSel->isNotEmpty() ? $lineasSel : collect([]);
                 // Los MISMOS colores que el lienzo (COLORES_3D). El chip de cada línea
                 // tiene que ser el color de su bloque en el dibujo: si divergieran, la
                 // lista mentiría sobre cuál es cuál — que es justo lo que el color
@@ -93,7 +95,11 @@
                     /* Una línea es «a medida» cuando no apunta al catálogo: tipo 0.
                        Es el mismo contrato que ya valida el controlador — una línea
                        vale si trae UNA de las dos cosas, producto o medidas. */
-                    aMedida(l) { return ! l.tipo && ! this.enPallet(l); },
+                    {{-- ESTRICTO === 0 y no falsy: desde el 21-08 una línea nueva nace con
+                         tipo '' («elegí un producto», aún sin elección) y ese estado NO es
+                         un bulto a medida — con el chequeo falsy de antes, la línea recién
+                         agregada mostraba el formulario de medidas en vez del selector. --}}
+                    aMedida(l) { return l.tipo === 0 && ! this.enPallet(l); },
 
                     /* LA CAJA A MEDIDA, DIBUJADA. Proyección isométrica a mano: el largo
                        va hacia la derecha-abajo, el ancho hacia la izquierda-abajo y el
@@ -153,6 +159,7 @@
                             const d = [l.medida_largo, l.medida_ancho, l.medida_alto].filter(Boolean);
                             return d.length === 3 ? d.join(' × ') + ' cm' : 'Falta alguna medida';
                         }
+                        if (l.tipo === '') return 'Elegí un producto…';
                         const b = this.bultos.find(b => b.id === l.tipo);
                         if (this.enPallet(l)) return 'Pallet ' + this.pallets[l.pallet] + ' · ' + (b ? b.nombre : '—');
                         return b ? b.nombre : '—';
@@ -178,7 +185,10 @@
                         this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
                     },
 
-                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: this.bultos[0]?.id, cantidad: 10, estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    {{-- La línea nueva nace SIN producto elegido (dueño 21-08: «sin
+                         previas») — el selector arranca en «Elegí un producto…». Una
+                         línea que queda así el servidor la descarta sin reclamar. --}}
+                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: '', cantidad: 10, estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
                     agregarMedida() { if (this.lineas.length < 8) { this.lineas.push({ tipo: 0, cantidad: 1, estiba: 'auto', pallet: '', medida_nombre: '', medida_largo: '', medida_ancho: '', medida_alto: '', medida_peso: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
                     /* Un botón propio y no «elegí pallet en el desplegable de la tarjeta»:
                        la lección de la pestaña que nadie encontró (10-08) es que una
@@ -504,6 +514,22 @@
                                                     </button>
                                                 </p>
                                             @endif
+
+                                            {{-- QUITAR DESDE EL RESULTADO (dueño 21-08: «quiero la
+                                                 opción de eliminar o borrar» — y esta lista fue la que
+                                                 marcó). Saca la línea del formulario y recalcula, así
+                                                 el dibujo sigue diciendo lo que el motor verificó. Si
+                                                 era la última, no se manda un formulario vacío: queda
+                                                 el estado vacío del armador, listo para partir de cero. --}}
+                                            <x-slot name="actions">
+                                                <button type="button"
+                                                        @click="quitar({{ $i }}); lineas.length && $nextTick(() => $refs.formMixta?.requestSubmit())"
+                                                        class="rounded-lg p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+                                                        title="Quitar {{ $fila['modelo']->nombre }} de la carga y recalcular">
+                                                    <x-icon.trash class="h-4 w-4" />
+                                                    <span class="sr-only">Quitar {{ $fila['modelo']->nombre }} de la carga</span>
+                                                </button>
+                                            </x-slot>
                                         </x-list-row>
                                     @endforeach
                                 </x-list-card>
@@ -913,10 +939,13 @@
                                              anidado en algo clicable: la cabecera es un `div` con
                                              `@click`, así que esto es HTML válido.
 
-                                             Con UNA sola línea no se ofrece: una carga sin ningún
-                                             producto no es una carga, y el formulario no tendría qué
-                                             calcular. --}}
-                                        <button type="button" @click.stop="quitar(i)" x-show="lineas.length > 1"
+                                             Se ofrece SIEMPRE, también con una sola línea (dueño
+                                             21-08: «quiero la opción de eliminar o borrar… quiero
+                                             cargar lo que yo quiera sin previas»). La regla vieja de
+                                             esconderlo con una línea protegía la carga de quedar
+                                             vacía; hoy vacía es un estado legítimo — es como ARRANCA —
+                                             y el botón de calcular se deshabilita solo. --}}
+                                        <button type="button" @click.stop="quitar(i)"
                                                 class="shrink-0 rounded-lg p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
                                                 :title="`Quitar ${resumen(linea)} de la carga`"
                                                 :aria-label="`Quitar ${resumen(linea)} de la carga`">
@@ -951,6 +980,11 @@
                                                    x-text="enPallet(linea) ? 'Qué va encima del pallet' : 'Qué se carga'"></label>
                                             <select :name="`lineas[${i}][tipo]`" x-model.number="linea.tipo" @change="ensuciar()"
                                                     class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                {{-- El marcador de la línea recién nacida (dueño 21-08:
+                                                     «sin previas»): nada viene pre-elegido. `disabled`
+                                                     para que no se pueda VOLVER a «sin producto» una vez
+                                                     elegido — solo existe como punto de partida. --}}
+                                                <option value="" disabled>Elegí un producto…</option>
                                                 {{-- EN PALLET SOLO VAN CAJAS (§3.3.6, dueño 07-08). No es un
                                                      límite del motor sino cómo se trabaja en bodega, y
                                                      ofrecer la bolsa de botellones acá devolvería «0 cajas
@@ -1120,7 +1154,7 @@
                                             </template>
                                             <button type="button" @click="duplicar(i)" x-show="lineas.length < 8"
                                                     class="rounded-lg px-2 py-1.5 text-neutral-500 transition hover:bg-neutral-200">Duplicar</button>
-                                            <button type="button" @click="quitar(i)" x-show="lineas.length > 1"
+                                            <button type="button" @click="quitar(i)"
                                                     class="ml-auto rounded-lg px-2 py-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
                                                     title="Quitar producto">Quitar</button>
                                         </div>
@@ -1128,6 +1162,18 @@
                                 </div>
                             </template>
                         </div>
+
+                        {{-- EL ESTADO VACÍO es legítimo desde el 21-08: la carga arranca sin
+                             previas y también se puede vaciar quitando la última línea. El
+                             texto dice el próximo paso para que el hueco no se lea como que
+                             algo falló. --}}
+                        <p x-show="lineas.length === 0" x-cloak
+                           class="rounded-xl border border-neutral-200 bg-white px-4 py-5 text-center text-sm text-neutral-500">
+                            La carga arranca vacía: sumá lo que quieras con
+                            <span class="font-medium text-neutral-700">+ Agregar producto</span>,
+                            <span class="font-medium text-neutral-700">+ Pallet</span> o
+                            <span class="font-medium text-neutral-700">+ Bulto a medida</span>.
+                        </p>
 
                         <div class="mt-3 flex flex-wrap items-center gap-3">
                             <x-secondary-button type="button" @click="agregar()" x-show="lineas.length < 8">
@@ -1164,7 +1210,12 @@
                                  resultado del servidor, y sin esta señal alguien leería un
                                  camión que ya no corresponde a los números que acaba de
                                  tipear. Antes avisar que disimular. --}}
-                            <x-primary-button ::class="sucio && 'ring-2 ring-amber-400 ring-offset-1'">
+                            {{-- Sin líneas no hay qué calcular: el botón se apaga en vez de
+                                 mandar un formulario vacío (es la contraparte de que quitar
+                                 se ofrezca siempre). --}}
+                            <x-primary-button ::class="sucio && 'ring-2 ring-amber-400 ring-offset-1'"
+                                              ::disabled="lineas.length === 0"
+                                              class="disabled:cursor-not-allowed disabled:opacity-50">
                                 <span x-show="! sucio">Calcular la carga</span>
                                 <span x-show="sucio" x-cloak>Recalcular ·  hay cambios</span>
                             </x-primary-button>

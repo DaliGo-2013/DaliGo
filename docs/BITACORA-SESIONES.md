@@ -21,6 +21,15 @@
 
 ## Sesiones
 
+### [2026-08-21 · tarde] QA del dueño a la Cabina en producción: los rótulos recuperan su palabra y el armador arranca sin previas
+- **Quién:** Marcos + Claude (Fable 5) — continuación de la sesión de la mañana.
+- **Objetivo declarado:** dos reclamos del dueño probando la Cabina recién desplegada: *«¿los botones # y ABC qué hacen? les doy clic y no pasa nada»* y *«quiero la opción de eliminar o borrar… salen siempre predeterminado los bidones y no quiero, quiero cargar lo que yo quiera sin previas»*.
+- **Qué se hizo:** (1) los rótulos vuelven a decir «Códigos»/«Nombres» en fila propia de la cabecera — un toggle cuyo efecto puede ser invisible (camión vacío = nada que rotular) necesita su palabra; (2) el armador arranca con CERO líneas, la línea nueva nace en «Elegí un producto…», quitar se ofrece SIEMPRE (cabecera, pie, «En el camión» y la lista de resultados que el dueño marcó), y «Calcular» se apaga sin líneas. Detalle §4.1nonies-quater.
+- **Las trampas cazadas en el camino:** `aMedida()` chequeaba falsy y la línea sin elegir (`tipo: ''`) se disfrazaba de bulto a medida → estricto `=== 0`; y `lineasSel` re-sembraba con `(int)(tipo ?? 0)` → la línea sin elegir VOLVÍA del servidor convertida en a-medida (el «?? 0 sobre un dato que se conserva» de [2026-08-20]) → el `''` se conserva.
+- **Decisiones:** el candado del 12-08 «con una sola línea no se ofrece quitar» queda **INVERTIDO** por decisión del dueño (era la segunda vez que reclamaba lo mismo; la respuesta del 12-08 había esquivado el caso exacto del reclamo).
+- **Candados:** 3 nuevos/invertidos, mutados con rojo exacto. Batería Carga 242 verdes.
+- **Próximo paso:** que el dueño arme una carga desde cero (vacío → agregar → calcular → quitar desde el resultado).
+
 ### [2026-08-21] El menú del simulador se rediseñó ELIGIENDO sobre un canvas: 4 propuestas con tradeoff declarado, y el dueño se quedó con la «Cabina»
 - **Quién:** Marcos + Claude (Opus 4.8 / Fable 5)
 - **Objetivo declarado:** pedido del dueño, fuera de plan: *«quiero una reinterpretación de esta interfaz de simulador de carga, con énfasis en simplificar los menús… como está a la izquierda me agrada pero quiero más prolijidad, dame varias propuestas de vista»*.

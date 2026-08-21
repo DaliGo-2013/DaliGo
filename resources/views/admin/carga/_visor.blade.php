@@ -225,53 +225,57 @@
                      arrastre. El JS les alterna las clases de activo
                      (bg-brand-600 / text-white), por eso conservan la receta
                      bg-white / text-neutral-700 del resto de los botones. --}}
-                <div class="grid grid-cols-4 gap-1">
+                <div class="flex items-stretch gap-1">
                     <button type="button" id="carga3dVista3d" aria-pressed="false" title="3D"
-                            class="{{ $btnIcono }} h-9">
+                            class="{{ $btnIcono }} h-9 flex-1">
                         <x-icon.cube class="h-4 w-4" /><span class="sr-only">3D</span>
                     </button>
                     <button type="button" id="carga3dVistacostado" aria-pressed="false" title="Costado"
-                            class="{{ $btnIcono }} h-9">
+                            class="{{ $btnIcono }} h-9 flex-1">
                         <x-icon.vista-costado class="h-4 w-4" /><span class="sr-only">Costado</span>
                     </button>
                     <button type="button" id="carga3dVistaplanta" aria-pressed="false" title="Planta"
-                            class="{{ $btnIcono }} h-9">
+                            class="{{ $btnIcono }} h-9 flex-1">
                         <x-icon.vista-planta class="h-4 w-4" /><span class="sr-only">Planta</span>
                     </button>
                     <button type="button" id="carga3dVistapuerta" aria-pressed="false" title="Puerta"
-                            class="{{ $btnIcono }} h-9">
+                            class="{{ $btnIcono }} h-9 flex-1">
                         <x-icon.vista-puerta class="h-4 w-4" /><span class="sr-only">Puerta</span>
                     </button>
-                </div>
-                <div class="flex items-center gap-1">
-                    {{-- Zoom: escritorio únicamente (ver el encabezado del archivo). El
-                         envoltorio `hidden lg:block` es el mismo de siempre — lo vigila
-                         test_el_zoom_se_ofrece_solo_en_escritorio. La ayuda del botón
-                         derecho no se repite acá: ya la dice el letrero del lienzo. --}}
-                    <div class="hidden lg:block">
-                        <div class="flex items-center gap-1">
-                            <button type="button" id="carga3dMenos" aria-label="Alejar" title="Alejar"
-                                    class="{{ $btnIcono }} h-8 w-8">−</button>
-                            <button type="button" id="carga3dMas" aria-label="Acercar" title="Acercar"
-                                    class="{{ $btnIcono }} h-8 w-8">+</button>
-                            <button type="button" id="carga3dReset" title="Reiniciar · vuelve al encuadre de siempre"
-                                    class="{{ $btnIcono }} h-8 w-8">
-                                <x-icon.arrow-path class="h-4 w-4" /><span class="sr-only">Reiniciar</span>
-                            </button>
-                        </div>
-                    </div>
-                    <span class="hidden h-4 w-px shrink-0 bg-neutral-200 lg:block" aria-hidden="true"></span>
-                    {{-- Rótulos del dibujo (letras y nombres sobre los bloques). Apagados,
-                         el JS les agrega bg-neutral-100 / text-neutral-400. --}}
-                    <button type="button" id="carga3dCodigos" aria-pressed="true" title="Letras sobre las cajas"
-                            class="{{ $btnIcono }} h-8 px-2.5 font-semibold">#<span class="sr-only">Códigos</span></button>
-                    <button type="button" id="carga3dNombres" aria-pressed="true" title="Nombres sobre los bloques"
-                            class="{{ $btnIcono }} h-8 px-2.5 font-semibold">ABC<span class="sr-only">Nombres</span></button>
                     <button type="button" @click="menu = false"
-                            class="ml-auto rounded-lg p-1.5 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+                            class="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
                             title="Cerrar el menú">
                         <x-icon.x-mark class="h-4 w-4" /><span class="sr-only">Cerrar el menú</span>
                     </button>
+                </div>
+                {{-- Zoom: escritorio únicamente (ver el encabezado del archivo). El
+                     envoltorio `hidden lg:block` es el mismo de siempre — lo vigila
+                     test_el_zoom_se_ofrece_solo_en_escritorio. La ayuda del botón
+                     derecho no se repite acá: ya la dice el letrero del lienzo. --}}
+                <div class="hidden lg:block">
+                    <div class="flex items-stretch gap-1">
+                        <button type="button" id="carga3dMenos" aria-label="Alejar" title="Alejar"
+                                class="{{ $btnIcono }} h-8 flex-1">−</button>
+                        <button type="button" id="carga3dMas" aria-label="Acercar" title="Acercar"
+                                class="{{ $btnIcono }} h-8 flex-1">+</button>
+                        <button type="button" id="carga3dReset" title="Reiniciar · vuelve al encuadre de siempre"
+                                class="{{ $btnIcono }} h-8 flex-1">
+                            <x-icon.arrow-path class="h-4 w-4" /><span class="sr-only">Reiniciar</span>
+                        </button>
+                    </div>
+                </div>
+                {{-- Rótulos del dibujo, CON SU PALABRA (QA del dueño 21-08: probó «#» y
+                     «ABC» y preguntó qué hacían — «les doy clic y no pasa nada», porque
+                     con el camión vacío no hay bloques que rotular y el glifo no se
+                     explica solo). Vuelven los nombres de siempre; apagados, el JS les
+                     agrega bg-neutral-100 / text-neutral-400. --}}
+                <div class="grid grid-cols-2 gap-1">
+                    <button type="button" id="carga3dCodigos" aria-pressed="true"
+                            title="Mostrar u ocultar la letra de cada producto sobre sus cajas"
+                            class="{{ $btn }}">Códigos</button>
+                    <button type="button" id="carga3dNombres" aria-pressed="true"
+                            title="Mostrar u ocultar el nombre de cada producto sobre su bloque"
+                            class="{{ $btn }}">Nombres</button>
                 </div>
             </div>
 
