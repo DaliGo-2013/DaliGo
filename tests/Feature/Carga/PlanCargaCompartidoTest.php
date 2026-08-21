@@ -107,7 +107,11 @@ class PlanCargaCompartidoTest extends TestCase
     {
         $html = $this->get($this->link())->assertOk()->getContent();
 
-        foreach (['Plan de carga (Excel)', 'Copiar link para compartir', 'Importar de Excel', 'Camiones'] as $control) {
+        // «Comparar los» es el title del chip de la comparativa (Cabina, 21-08). Antes
+        // acá decía «Camiones» —el header de la sección vieja—, una cadena que la
+        // pantalla ya no produce NI en la variante interna: un assert negativo de algo
+        // que no puede existir pasa siempre y no vigila nada (bitácora [2026-08-20]).
+        foreach (['Plan de carga (Excel)', 'Copiar link para compartir', 'Importar de Excel', 'Comparar los'] as $control) {
             $this->assertStringNotContainsString($control, $html,
                 "La página pública ofrece [{$control}], que es un control interno.");
         }

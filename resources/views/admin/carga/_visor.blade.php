@@ -50,6 +50,13 @@
     // Clases compartidas por los botones del menú: se repiten en cinco grupos y
     // escribirlas a mano dejaba unos con `py-1` y otros con `py-1.5`.
     $btn = 'rounded-lg border border-neutral-300 bg-white px-2 py-1.5 font-medium text-neutral-700 transition hover:bg-neutral-50';
+    // La variante SIN padding, para los botones de ícono de la cabecera. No es
+    // `$btn` más un padding-cero concatenado: con dos paddings en el class gana el
+    // que va después en el CSS compilado (y el de cero va antes → override inerte),
+    // el mismo footgun de los tamaños de íconos de la bitácora [2026-07-24]. Ojo:
+    // acá tampoco se ESCRIBE esa clase ni en comentarios — Tailwind escanea los
+    // Blade como texto y la metería al bundle (bitácora [2026-07-30]).
+    $btnIcono = 'flex items-center justify-center rounded-lg border border-neutral-300 bg-white font-medium text-neutral-700 transition hover:bg-neutral-50';
     $titulo = 'px-1 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400';
     // El acomodo a mano: si viene uno aplicado, el tablero arranca ABIERTO. Llegar a un
     // camión acomodado y tener que buscar dónde se toca eso es la peor versión.
@@ -220,19 +227,19 @@
                      bg-white / text-neutral-700 del resto de los botones. --}}
                 <div class="grid grid-cols-4 gap-1">
                     <button type="button" id="carga3dVista3d" aria-pressed="false" title="3D"
-                            class="{{ $btn }} flex h-9 items-center justify-center px-0">
+                            class="{{ $btnIcono }} h-9">
                         <x-icon.cube class="h-4 w-4" /><span class="sr-only">3D</span>
                     </button>
                     <button type="button" id="carga3dVistacostado" aria-pressed="false" title="Costado"
-                            class="{{ $btn }} flex h-9 items-center justify-center px-0">
+                            class="{{ $btnIcono }} h-9">
                         <x-icon.vista-costado class="h-4 w-4" /><span class="sr-only">Costado</span>
                     </button>
                     <button type="button" id="carga3dVistaplanta" aria-pressed="false" title="Planta"
-                            class="{{ $btn }} flex h-9 items-center justify-center px-0">
+                            class="{{ $btnIcono }} h-9">
                         <x-icon.vista-planta class="h-4 w-4" /><span class="sr-only">Planta</span>
                     </button>
                     <button type="button" id="carga3dVistapuerta" aria-pressed="false" title="Puerta"
-                            class="{{ $btn }} flex h-9 items-center justify-center px-0">
+                            class="{{ $btnIcono }} h-9">
                         <x-icon.vista-puerta class="h-4 w-4" /><span class="sr-only">Puerta</span>
                     </button>
                 </div>
@@ -244,11 +251,11 @@
                     <div class="hidden lg:block">
                         <div class="flex items-center gap-1">
                             <button type="button" id="carga3dMenos" aria-label="Alejar" title="Alejar"
-                                    class="{{ $btn }} flex h-8 w-8 items-center justify-center px-0">−</button>
+                                    class="{{ $btnIcono }} h-8 w-8">−</button>
                             <button type="button" id="carga3dMas" aria-label="Acercar" title="Acercar"
-                                    class="{{ $btn }} flex h-8 w-8 items-center justify-center px-0">+</button>
+                                    class="{{ $btnIcono }} h-8 w-8">+</button>
                             <button type="button" id="carga3dReset" title="Reiniciar · vuelve al encuadre de siempre"
-                                    class="{{ $btn }} flex h-8 w-8 items-center justify-center px-0">
+                                    class="{{ $btnIcono }} h-8 w-8">
                                 <x-icon.arrow-path class="h-4 w-4" /><span class="sr-only">Reiniciar</span>
                             </button>
                         </div>
@@ -257,9 +264,9 @@
                     {{-- Rótulos del dibujo (letras y nombres sobre los bloques). Apagados,
                          el JS les agrega bg-neutral-100 / text-neutral-400. --}}
                     <button type="button" id="carga3dCodigos" aria-pressed="true" title="Letras sobre las cajas"
-                            class="{{ $btn }} flex h-8 items-center justify-center px-2.5 font-semibold">#<span class="sr-only">Códigos</span></button>
+                            class="{{ $btnIcono }} h-8 px-2.5 font-semibold">#<span class="sr-only">Códigos</span></button>
                     <button type="button" id="carga3dNombres" aria-pressed="true" title="Nombres sobre los bloques"
-                            class="{{ $btn }} flex h-8 items-center justify-center px-2.5 font-semibold">ABC<span class="sr-only">Nombres</span></button>
+                            class="{{ $btnIcono }} h-8 px-2.5 font-semibold">ABC<span class="sr-only">Nombres</span></button>
                     <button type="button" @click="menu = false"
                             class="ml-auto rounded-lg p-1.5 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
                             title="Cerrar el menú">
