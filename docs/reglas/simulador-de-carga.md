@@ -1458,6 +1458,67 @@ Detalles de implementación que importan:
 - Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
   «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
 
+### 4.1nonies-ter El menú «CABINA»: cabecera de iconos + cuerpo Cargar + hojas (21-08-2026)
+
+El dueño pidió *«una reinterpretación de esta interfaz… simplificar los menús en cuanto al
+despliegue de información y las opciones para trabajar; como está a la izquierda me agrada
+pero quiero más prolijidad»*, se le presentó un canvas con el estado actual y 4 propuestas
+comparables (A Depurado · B Tres bloques · C Riel · D Cabina, cada una con su tradeoff
+declarado), y eligió la D: *«queda en forma de botones las opciones, es lo mejor»*.
+
+**Lo que cambia.** El acordeón de 11 secciones `<details>` desaparece. El menú queda en
+TRES zonas:
+
+1. **Cabecera fija (fondo blanco):** las 4 vistas como ICONOS (cubo / costado / planta /
+   puerta, activo en brand sólido), el zoom − + ⟲ (escritorio), los rótulos como toggles
+   de texto `#` / `ABC`, y la ✕ de cerrar. Lo visual queda SIEMPRE a un toque — es la
+   lección de descartar la propuesta C (riel): guardar las vistas detrás de una pestaña
+   obligaba a un ping-pong de clics mientras se carga.
+2. **Cuerpo = CARGAR:** el contador como número protagonista, el chip de la comparativa
+   («Hasta N en X», tocarlo despliega la lista completa — la sección «Camiones» asciende a
+   dato pegado al número), y el kit completo de carga. En mixta, el Cubicaje al pie del
+   cuerpo: es la retroalimentación de cargar, no una herramienta aparte.
+3. **Pie fijo con dos lanzadores** («Compartir» y «Herramientas») que abren **HOJAS**: el
+   cuerpo se INTERCAMBIA por el contenido de la hoja vía `x-show` — sin `absolute`, para
+   que el candado de «nada flota sobre el lienzo» siga contando tal cual. En las hojas
+   viven Excel + link firmado (Compartir) y Acomodar + Cubicar + Pallet + Importar
+   (Herramientas), **cada una con su ayuda completa a la vista** — la hoja es transitoria
+   y ahí el texto largo no ensucia. Activar una herramienta cierra la hoja sola: el
+   resultado aparece bajo el lienzo y la mirada se va para allá.
+
+**Lo que NO cambia** (todo lo demás de §4.1nonies y §4.1nonies-bis sigue vigente):
+el menú es UNA barra que come ancho, cerrada al arrancar en celular; los 17 ids `carga3d*`
+viven dentro del `<aside>`; el zoom sigue en su envoltorio `hidden lg:block`; los tres
+controles de cantidad mueven el mismo número; el pallet se ofrece con sus dos tipos; el
+modo público solo conserva mirar y cargar (sin pie ni hojas).
+
+**Detalles que muerden:**
+
+- **El ancla de los candados ahora es el `aria-label="Herramientas"` del `<aside>`** (el
+  rótulo visible de cabecera ya no existe). Va ANTES de `class` en el tag porque los tests
+  rebanan `strpos($html, 'Herramientas') … '</aside>'` y todo control tiene que caer
+  dentro de la rebanada. Quitarlo pone rojo `test_los_controles_viven_en_un_solo_menu…`.
+- **El assert de las hojas busca la forma `x-show="hoja === '…'"` COMPLETA**, no la
+  expresión suelta: el `@click` del lanzador también contiene `hoja === 'compartir'` y la
+  expresión suelta pasaba en verde con la hoja borrada (cazado por mutación, mismo patrón
+  que el aria-controls duplicado de la bitácora [2026-07-29]).
+- `carga3dSubir` sigue siendo **texto plano** (el JS le reescribe el `textContent` con
+  ↑/↓); `carga3dPlay` sí lleva ícono SVG porque el JS no le toca el texto.
+- El binding del chevron del chip va en un `<span>` envoltorio, **no en el componente**
+  del ícono: una directiva Blade en el atributo de un `<x-componente>` no se compila
+  (bitácora [2026-08-14]).
+- La ayuda del botón derecho no se repite en el panel: ya la dice el letrero del lienzo.
+  Lo único que se perdió de prosa («Reiniciar vuelve al encuadre de siempre») viaja en el
+  `title` del botón ⟲.
+
+Candado principal: `test_los_controles_viven_en_un_solo_menu_y_no_en_las_cuatro_esquinas`
+reescrito a la forma Cabina — cero `<details>` en el menú, las dos hojas presentes, ids,
+`shrink-0`, sin `absolute`, pallet. Mutado en 4 sentidos (details reaparece / ancla rota /
+hoja sin marcador / zoom sin envoltorio), rojo exacto en cada uno.
+
+Supersede: «cada sección es un DESPLEGABLE» (ampliación del 06-08 en §4.1nonies). El resto
+de esa sección sigue vigente.
+
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 
 Cuarta cabina propia. Las fotos son de un **Chevrolet NQR (Isuzu N-Series)** con furgón, y lo

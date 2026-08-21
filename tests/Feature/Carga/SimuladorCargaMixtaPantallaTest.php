@@ -1617,8 +1617,10 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // esquina.
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
 
-        // Se ancla en el rótulo «Herramientas» y NO en el primer `<aside>`: el layout de la
-        // app tiene su propio aside (el menú de navegación) y la rebanada caía ahí.
+        // Se ancla en el texto «Herramientas» y NO en el primer `<aside>`: el layout de la
+        // app tiene su propio aside (el menú de navegación) y la rebanada caía ahí. Desde
+        // la Cabina (21-08) el texto lo aporta el `aria-label` del propio <aside>, ANTES
+        // del primer control — si alguien lo quita, toda esta familia de rebanadas muere.
         $desde = strpos($html, 'Herramientas');
         $this->assertNotFalse($desde, 'Ya no hay menú lateral en el visor.');
         $hasta = strpos($html, '</aside>', $desde);
@@ -1641,11 +1643,23 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('shrink-0', $menu);
         $this->assertStringNotContainsString('absolute', $menu);
 
-        // Las secciones son DESPLEGABLES (pedido del dueño 06-08: «que se puedan
-        // desplegar como dropdown») — <details> nativos, sin JS.
-        $this->assertGreaterThanOrEqual(5, substr_count($menu, '<details'));
+        // El menú es la CABINA (dueño 21-08, opción D del canvas de propuestas —
+        // §4.1nonies-ter): CERO desplegables. Lo visual vive como iconos en la
+        // cabecera, el cuerpo es Cargar, y lo demás espera en dos HOJAS que abre el
+        // pie («Compartir» y «Herramientas»). Esto supersede el «cada sección es un
+        // desplegable» del 06-08: si un <details> reaparece en el menú, alguien está
+        // deshaciendo la decisión sin enterarse.
+        $this->assertSame(0, substr_count($menu, '<details'));
+        // Se busca la forma `x-show="…"` COMPLETA y no la expresión suelta: el @click
+        // del lanzador del pie también dice «hoja === 'compartir'», así que la
+        // expresión suelta pasaba en verde con la hoja borrada (cazado por mutación).
+        foreach (['compartir', 'herramientas'] as $hoja) {
+            $this->assertStringContainsString('x-show="hoja === \''.$hoja.'\'"', $menu,
+                "Falta la hoja [{$hoja}] del pie del menú.");
+        }
 
-        // Y el PALLET también se ofrece desde el menú, con los dos tipos estándar.
+        // Y el PALLET también se ofrece desde el menú (hoja «Herramientas»), con los
+        // dos tipos estándar.
         $this->assertStringContainsString('Industrial 120 × 100', $menu);
         $this->assertStringContainsString('EUR/EPAL 120 × 80', $menu);
         $this->assertStringContainsString('sobre_pallet=1', $menu);

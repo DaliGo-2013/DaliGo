@@ -21,6 +21,18 @@
 
 ## Sesiones
 
+### [2026-08-21] El menú del simulador se rediseñó ELIGIENDO sobre un canvas: 4 propuestas con tradeoff declarado, y el dueño se quedó con la «Cabina»
+- **Quién:** Marcos + Claude (Opus 4.8 / Fable 5)
+- **Objetivo declarado:** pedido del dueño, fuera de plan: *«quiero una reinterpretación de esta interfaz de simulador de carga, con énfasis en simplificar los menús… como está a la izquierda me agrada pero quiero más prolijidad, dame varias propuestas de vista»*.
+- **El método fue la mitad del valor.** En vez de rediseñar directo, se le presentó un canvas de diseño con **5 tableros comparables**: el estado actual («Hoy», 11 secciones, 5 abiertas) y 4 direcciones genuinamente distintas — A Depurado (acordeón con jefe), B Tres bloques (tarjetas fijas), C Riel (iconos estilo editor), D Cabina (cabecera de iconos + cuerpo Cargar + hojas) — todas con el MISMO entorno (ficha, veredicto, lienzo, datos verosímiles: 956 de 1.028) para que la única variable fuera el panel, y cada una con su **tradeoff honesto en una nota**. El dueño eligió D en un mensaje: *«queda en forma de botones las opciones, es lo mejor»*. Una pasada de revisión sobre el canvas cazó 3 hallazgos antes de eso (a D le faltaba «Reiniciar» — llegó a la implementación desde el arranque).
+- **Qué se hizo:** el panel «Cabina» en `_visor.blade.php` (rama `feature/simulador-panel-cabina`, worktree propio): cabecera fija con las 4 vistas como iconos + zoom + rótulos `#`/`ABC`, cuerpo = CARGAR con el contador protagonista y la comparativa ascendida a **chip desplegable** («Hasta N en X»), pie con «Compartir» y «Herramientas» que intercambian el cuerpo por **hojas** (sin `absolute`: el candado de «nada flota» sigue contando). 5 iconos nuevos formato-casa (`arrow-path`, `play`, `vista-costado/planta/puerta`). Doctrina en §4.1nonies-ter; supersede «cada sección es un desplegable» (06-08) y conserva todo lo demás.
+- **Los candados:** `test_los_controles_viven_en_un_solo_menu…` reescrito a la forma Cabina (cero `<details>`, hojas presentes por su `x-show` completo, ancla = `aria-label="Herramientas"` del `<aside>`), **mutado en 4 sentidos** con rojo exacto en cada uno. La mutación cazó un verde-engañoso propio (el `@click` del lanzador satisfacía la expresión suelta de la hoja — entrada [2026-08-21] de CLAUDE.md). Suite completa **2.313 verdes / 16.147 aserciones**.
+- **Verificado en navegador** (banco estático servido desde el worktree, patrón [2026-07-26], medido por JS porque el pane no compone): 375 (menú cerrado → ☰ → abre a 224px, sin scroll-h, stepper 44px), 768 (abierto, zoom oculto), 1024/1280 (zoom visible, hojas abren/cierran, chip despliega la lista y rota el chevron por clase, vistas y rótulos alternan sus clases de activo, público sin pie/chip/Excel, pallet con «Subir al camión»).
+- **Pasos marcados:** ninguno (fuera de plan).
+- **Decisiones:** §4.1nonies «cada sección es un desplegable» queda **SUPERADA** por §4.1nonies-ter (el razonamiento viejo se conserva).
+- **Delegaciones:** ninguna.
+- **Próximo paso:** que el dueño cargue un camión real con el panel nuevo — en especial si el chip de camiones y las hojas se descubren solos, que es la apuesta de la Cabina.
+
 ### [2026-08-11] Le dije que no dos veces y me bajé: se acomoda a mano, con el cartel puesto
 - **Quién:** Marcos + Claude (Opus 5)
 - **Objetivo declarado:** pedido del dueño, tercera vez: *«Te lo pido encarecidamente ayúdame a poder tener esta opción de cargar de a un bulto, las cajas bien marcadas con líneas negras que se entiende la separación… lo mismo la opción de cargar de una caja un pallet… y que te de la opción de dar vuelta la caja y acomodar como uno quiero. ¿Se entiende o es muy difícil?»*
