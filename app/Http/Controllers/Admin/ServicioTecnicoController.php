@@ -897,7 +897,9 @@ class ServicioTecnicoController extends Controller
         // puede llevar un repuesto en $0, porque ahi se cobra de menos y nadie lo
         // nota. Es el mismo criterio con el que `faltaManoObra` bloquea el envio y no
         // el guardado.
-        $vaAEnviar = $request->boolean('enviar');
+        // `previsualizar` cuenta como enviar: la carta de la vista previa es la que va a salir,
+        // asi que no puede armarse con un repuesto en $0 (si no, se corrige DESPUES de verla).
+        $vaAEnviar = $request->boolean('enviar') || $request->boolean('previsualizar');
 
         $errores = [];
         foreach ($request->input('repuestos', []) as $i => $r) {
@@ -1014,6 +1016,16 @@ class ServicioTecnicoController extends Controller
             return $this->enviarCotizacion($request, $orden->fresh());
         }
 
+        // VISTA PREVIA (dueño 20-08-2026): el mismo guardado, pero en vez de mandar la carta
+        // se vuelve con la bandera que abre la ventana con la carta ya armada. El envio de
+        // verdad sale de ahi, contra la ruta de siempre — asi lo que se ve y lo que sale son
+        // el mismo snapshot, y no hay una segunda forma de enviar que se pueda desincronizar.
+        if ($request->boolean('previsualizar')) {
+            return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
+                ->with('cotizacion_previa', true)
+                ->with('status', "Guardado. Revisa la carta antes de enviarla.");
+        }
+
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
         // el técnico puede enviar la cotización enseguida —"guarda antes de
         // enviar"— sin perder la página y con los datos ya guardados a la vista.
@@ -1034,6 +1046,22 @@ class ServicioTecnicoController extends Controller
      * muestra la constancia (ver pantallaDeConstancia): desde el 20-08 el parte del
      * técnico, que es de donde se envía y donde queda el historial.
      */
+    /**
+     * LA CARTA, TAL COMO LA VA A RECIBIR EL CLIENTE, antes de mandarla (dueño 20-08-2026:
+     * «hay alguna posibilidad que haya una ventana previa donde se vea la cotizacion y despues
+     * se pueda enviar»). Sale del MISMO snapshot y de la MISMA plantilla del correo, sobre un
+     * borrador que no toca la base: una vista previa dibujada aparte mostraria un total y el
+     * cliente recibiria otro.
+     *
+     * El link de respuesta va inerte: en la vista previa no hay token que aceptar todavia.
+     */
+    public function previsualizarCotizacion(OrdenServicio $orden): View
+    {
+        return view('emails.taller.cotizacion', [
+            'cotizacion' => OrdenServicioCotizacion::borradorDesde($orden->load('repuestos')),
+            'urlRespuesta' => '#',
+        ]);
+    }
     public function enviarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
         $volver = fn (string $mensaje) => redirect()

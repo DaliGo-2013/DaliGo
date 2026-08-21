@@ -254,31 +254,79 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
                 ->where('estado', 'enviada')
                 ->update(['estado' => 'reemplazada']);
 
-            $vigenciaDias = (int) Configuracion::get('cotizacion_vigencia_dias', 5);
-
-            return static::create([
-                'orden_servicio_id' => $orden->id,
+            return static::create(static::datosDesde($orden, $user) + [
                 'token' => Str::random(64),
                 'estado' => 'enviada',
-                'cliente_email' => $orden->cliente_email,
-                'trabajo_realizado' => $orden->trabajo_realizado,
-                'causa_falla' => $orden->causa_falla,
-                'repuestos' => $orden->repuestos->map(fn (OrdenServicioRepuesto $r) => [
-                    'nombre' => $r->nombre,
-                    'cantidad' => $r->cantidad,
-                    'precio_unitario' => $r->precio_unitario,
-                    'subtotal' => $r->subtotal,
-                ])->values()->all(),
-                'mano_obra' => (int) $orden->mano_obra,
-                'descuento_pct' => (int) $orden->descuento_pct,
-                'descuento_motivo' => $orden->descuento_motivo,
-                'costo_repuestos' => (int) $orden->costo_repuestos,
-                'costo_bruto' => (int) $orden->costo_bruto,
-                'descuento_monto' => (int) $orden->descuento_monto,
-                'costo_total' => (int) $orden->costo_total,
-                'vence_at' => $vigenciaDias > 0 ? now()->addDays($vigenciaDias)->endOfDay() : null,
-                'enviada_por' => $user->id,
             ]);
         });
+    }
+
+    /**
+     * EL DIAGNOSTICO COMO LO LEE EL CLIENTE. El snapshot guarda la clave del enum
+     * (`uso_normal`) y la carta imprimia esa clave tal cual: el cliente recibia «Diagnostico
+     * del tecnico: uso_normal». Se descubrio mirando la VISTA PREVIA el 20-08-2026 — que es
+     * exactamente para lo que existe.
+     *
+     * Un valor fuera del enum se imprime TAL CUAL, no como «Sin determinar»: las cotizaciones
+     * viejas guardaron texto libre («Filtracion interna») y eso si es informacion para el
+     * cliente. Por eso no reusa el accessor de la orden, que normaliza a «Sin determinar».
+     */
+    public function getCausaFallaLabelAttribute(): string
+    {
+        return OrdenServicio::CAUSA_FALLA_ETIQUETAS[$this->causa_falla] ?? (string) $this->causa_falla;
+    }
+    /**
+     * EL SNAPSHOT, SIN GUARDARLO. Lo comparten el envio real y la VISTA PREVIA de la carta
+     * (dueño 20-08-2026: «una ventana previa donde se vea la cotizacion y despues se pueda
+     * enviar»), y por eso vive en un solo metodo: una vista previa que calcula los numeros por
+     * su cuenta es peor que no tenerla — mostraria un total y el cliente recibiria otro.
+     *
+     * Todo sale de la ORDEN (sus accessors de plata y su relacion de repuestos), asi que
+     * tambien sirve sobre una orden hidratada en memoria.
+     *
+     * @return array<string, mixed>
+     */
+    public static function datosDesde(OrdenServicio $orden, ?User $user = null): array
+    {
+        $vigenciaDias = (int) Configuracion::get('cotizacion_vigencia_dias', 5);
+
+        return [
+            'orden_servicio_id' => $orden->id,
+            'cliente_email' => $orden->cliente_email,
+            'trabajo_realizado' => $orden->trabajo_realizado,
+            'causa_falla' => $orden->causa_falla,
+            'repuestos' => $orden->repuestos->map(fn (OrdenServicioRepuesto $r) => [
+                'nombre' => $r->nombre,
+                'cantidad' => $r->cantidad,
+                'precio_unitario' => $r->precio_unitario,
+                'subtotal' => $r->subtotal,
+            ])->values()->all(),
+            'mano_obra' => (int) $orden->mano_obra,
+            'descuento_pct' => (int) $orden->descuento_pct,
+            'descuento_motivo' => $orden->descuento_motivo,
+            'costo_repuestos' => (int) $orden->costo_repuestos,
+            'costo_bruto' => (int) $orden->costo_bruto,
+            'descuento_monto' => (int) $orden->descuento_monto,
+            'costo_total' => (int) $orden->costo_total,
+            'vence_at' => $vigenciaDias > 0 ? now()->addDays($vigenciaDias)->endOfDay() : null,
+            'enviada_por' => $user?->id,
+        ];
+    }
+
+    /**
+     * Un BORRADOR en memoria para previsualizar la carta: los mismos numeros que va a recibir
+     * el cliente, sin fila en la base y sin reemplazar la cotizacion vigente.
+     *
+     * Se le pone `created_at` porque la carta imprime la fecha, y se le enchufa la orden como
+     * relacion cargada para que la vista no intente ir a buscarla (no tiene id).
+     */
+    public static function borradorDesde(OrdenServicio $orden, ?User $user = null): self
+    {
+        $borrador = new static(static::datosDesde($orden, $user));
+        $borrador->estado = 'enviada';
+        $borrador->created_at = now();
+        $borrador->setRelation('orden', $orden);
+
+        return $borrador;
     }
 }
