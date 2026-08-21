@@ -278,15 +278,19 @@ class CotizacionEnviarTest extends TestCase
 
     public function test_los_dos_botones_van_juntos_y_la_tarjeta_de_envio_no_ocupa_espacio_de_mas(): void
     {
-        // Candado de layout (dueño 07-08 y 20-08): «Enviar» y «Guardar» en la MISMA
-        // fila del formulario —ahora el del PARTE DEL TÉCNICO, que es donde el dueño
+        // Candado de layout (dueño 07-08 y 20-08): el botón que lleva al envío y «Guardar»
+        // en la MISMA fila del formulario —el del PARTE DEL TÉCNICO, que es donde el dueño
         // pidió el botón— y sin nada enviado la constancia no se dibuja.
+        //
+        // Desde el 20-08 ese botón se llama «Revisar y enviar» y manda `previsualizar`: abre
+        // la carta y el envío sale de ahí (CotizacionVistaPreviaTest). Lo que este candado
+        // vigila no cambió: que no vuelva a ser un <form> aparte en su propia tarjeta.
         $orden = $this->ordenCotizable();
 
         $html = $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            ->assertSee('Enviar cotización')
+            ->assertSee('Revisar y enviar cotización')
             ->assertDontSee('Enviada al cliente')   // nada enviado todavía → sin tarjeta
             // La causa histórica de la orden no está en la lista: se muestra, no revienta.
             ->assertSee('Sin determinar')
@@ -295,12 +299,12 @@ class CotizacionEnviarTest extends TestCase
         // El botón de enviar es un submit del formulario que GUARDA (el del
         // @method PUT), no un <form> aparte: si alguien lo vuelve a separar en su
         // propia tarjeta, esto se cae.
-        $enviar = strpos($html, 'name="enviar"');
-        $this->assertNotFalse($enviar, 'Falta el botón «Enviar» dentro del formulario de guardar.');
+        $enviar = strpos($html, 'name="previsualizar"');
+        $this->assertNotFalse($enviar, 'Falta el botón «Revisar y enviar» dentro del formulario de guardar.');
 
         $abre = strrpos(substr($html, 0, $enviar), '<form');
         $tramo = substr($html, $abre, $enviar - $abre);
-        $this->assertStringContainsString('PUT', $tramo, 'El botón «Enviar» debe vivir en el formulario que guarda (PUT).');
+        $this->assertStringContainsString('PUT', $tramo, 'El botón «Revisar y enviar» debe vivir en el formulario que guarda (PUT).');
         $this->assertStringNotContainsString('</form>', $tramo, 'Volvieron a separar el botón en su propio formulario.');
 
         // Y «Guardar» va DESPUÉS de «Enviar» pero ANTES de que cierre el formulario:
@@ -311,8 +315,8 @@ class CotizacionEnviarTest extends TestCase
         $resto = substr($html, $enviar);
         $guardar = strpos($resto, 'Guardar');
         $cierra = strpos($resto, '</form>');
-        $this->assertNotFalse($guardar, 'Falta el botón «Guardar» después de «Enviar».');
-        $this->assertLessThan($cierra, $guardar, '«Enviar» y «Guardar» tienen que quedar en la misma fila del formulario.');
+        $this->assertNotFalse($guardar, 'Falta el botón «Guardar» después del de revisar.');
+        $this->assertLessThan($cierra, $guardar, 'Los dos botones tienen que quedar en la misma fila del formulario.');
     }
 
     public function test_enviar_desde_una_etapa_previa_pasa_la_orden_a_cotizacion(): void

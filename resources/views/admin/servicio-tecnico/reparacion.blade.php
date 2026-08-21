@@ -387,12 +387,16 @@
                         class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">Cancelar</button>
                     <div class="flex items-center gap-2">
                         @if ($esReparacion && $faltas->isEmpty())
-                            <x-secondary-button type="submit" name="enviar" value="1"
+                            {{-- REVISAR ANTES DE ENVIAR (dueño 20-08-2026): este botón ya no manda
+                                 la carta ni pregunta con un `confirm()` del navegador —que solo
+                                 sabía decir un número—. Guarda y abre la ventana con la carta
+                                 armada; el envío sale de ahí. Sigue siendo un submit de ESTE
+                                 formulario para que lo que se revise sea lo que está en pantalla. --}}
+                            <x-secondary-button type="submit" name="previsualizar" value="1"
                                                 x-show="puedeEnviar" x-cloak
                                                 x-bind:disabled="total <= 0"
-                                                x-bind:title="total <= 0 ? 'Pon precios antes de enviar' : ''"
-                                                x-on:click="if (! confirm('Se guardará y se enviará la cotización por ' + clp(total) + ' a ' + {{ Js::from($orden->cliente_email) }} + '. ¿Continuar?')) $event.preventDefault()">
-                                {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Enviar cotización nueva' : 'Enviar cotización' }}
+                                                x-bind:title="total <= 0 ? 'Pon precios antes de enviar' : 'Se guarda y se abre la carta para revisarla'">
+                                {{ $ultima && $ultima->estado !== 'reemplazada' ? 'Revisar y enviar cotización nueva' : 'Revisar y enviar cotización' }}
                             </x-secondary-button>
                         @endif
                         <x-primary-button>
@@ -410,5 +414,50 @@
                 @include('admin.servicio-tecnico.partials._envio-historial')
             @endif
         </div>
+
+        {{-- ═══ LA CARTA, ANTES DE MANDARLA ═══
+             Se abre sola al volver del guardado con la bandera `cotizacion_previa`. Adentro va
+             un <iframe> con la MISMA plantilla del correo (ruta `cotizacion.previa`) y no una
+             maqueta parecida: si se dibujara aparte, mostraría un total y el cliente recibiría
+             otro. El iframe va con `sandbox` vacío —sin scripts, sin navegación— así que los
+             botones de aceptar/rechazar de la carta quedan inertes acá.
+
+             El envío de verdad es el POST de siempre a `cotizacion.enviar`: la ventana previa no
+             es una segunda forma de enviar, es la única puerta que quedó. --}}
+        @if ($esReparacion && $faltas->isEmpty() && filled($orden->cliente_email))
+            <x-modal name="cotizacion-previa" :show="(bool) session('cotizacion_previa')" maxWidth="2xl">
+                <div class="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
+                    <div>
+                        <h2 class="text-base font-semibold text-neutral-900">Así la va a ver el cliente</h2>
+                        <p class="mt-0.5 text-xs text-neutral-500">
+                            Se manda a {{ $orden->cliente_email }} · total {{ '$'.number_format((int) $orden->costo_total, 0, ',', '.') }}
+                        </p>
+                    </div>
+                    <x-icon-button type="button" x-on:click="$dispatch('close-modal', 'cotizacion-previa')"
+                                   label="Cerrar" title="Cerrar">
+                        <span aria-hidden="true" class="text-lg leading-none">&times;</span>
+                    </x-icon-button>
+                </div>
+
+                <div class="bg-neutral-100 px-2 py-2 sm:px-4">
+                    <iframe title="Vista previa de la cotización" sandbox loading="lazy"
+                            src="{{ route('admin.servicio-tecnico.cotizacion.previa', $orden) }}"
+                            class="h-[60vh] w-full rounded-lg border border-neutral-200 bg-white"></iframe>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-3 border-t border-neutral-100 px-6 py-4">
+                    <button type="button" x-on:click="$dispatch('close-modal', 'cotizacion-previa')"
+                            class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">
+                        Volver a editar
+                    </button>
+                    <form method="POST" action="{{ route('admin.servicio-tecnico.cotizacion.enviar', $orden) }}" data-una-vez>
+                        @csrf
+                        <x-primary-button>
+                            <x-icon.check class="h-4 w-4" /> Enviar al cliente
+                        </x-primary-button>
+                    </form>
+                </div>
+            </x-modal>
+        @endif
     </div>
 </x-app-layout>

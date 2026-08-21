@@ -494,6 +494,10 @@ Route::middleware('auth')
             // defecto del modelo es el token (para el link público).
             Route::post('servicio-tecnico/{orden}/cotizacion', [ServicioTecnicoController::class, 'enviarCotizacion'])
                 ->name('servicio-tecnico.cotizacion.enviar');
+            // La carta como la va a ver el cliente, para la ventana previa al envio. Solo
+            // LEE: arma el borrador del snapshot y renderiza la MISMA plantilla del correo.
+            Route::get('servicio-tecnico/{orden}/cotizacion/previa', [ServicioTecnicoController::class, 'previsualizarCotizacion'])
+                ->whereNumber('orden')->name('servicio-tecnico.cotizacion.previa');
             Route::post('servicio-tecnico/{orden}/cotizacion/{cotizacionId}/reintentar', [ServicioTecnicoController::class, 'reintentarCorreoCotizacion'])
                 ->whereNumber('cotizacionId')->name('servicio-tecnico.cotizacion.reintentar');
             // Garantía: enviar al cliente el DETALLE del trabajo (sin cobro).

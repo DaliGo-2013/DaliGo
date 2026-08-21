@@ -34,7 +34,7 @@
             @if (filled($cotizacion->causa_falla))
                 <div class="border-b border-neutral-100 py-1.5">
                     <div class="text-xs uppercase tracking-wide text-neutral-400">Diagnóstico del técnico</div>
-                    <div class="mt-0.5 text-neutral-900">{{ $cotizacion->causa_falla }}</div>
+                    <div class="mt-0.5 text-neutral-900">{{ $cotizacion->causa_falla_label }}</div>
                 </div>
             @endif
             @if (filled($cotizacion->trabajo_realizado))

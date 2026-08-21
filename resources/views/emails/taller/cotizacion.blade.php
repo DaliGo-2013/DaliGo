@@ -49,7 +49,7 @@
                                     @if (filled($cotizacion->causa_falla))
                                         <tr>
                                             <td style="padding:8px 0; color:#737373; width:40%; border-bottom:1px solid #f5f5f5; vertical-align:top;">Diagnóstico del técnico</td>
-                                            <td style="padding:8px 0; color:#171717; border-bottom:1px solid #f5f5f5;">{{ $cotizacion->causa_falla }}</td>
+                                            <td style="padding:8px 0; color:#171717; border-bottom:1px solid #f5f5f5;">{{ $cotizacion->causa_falla_label }}</td>
                                         </tr>
                                     @endif
                                     @if (filled($cotizacion->trabajo_realizado))
