@@ -1,73 +1,77 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-20 (v82 — veredictos del dueño al mapa
-> §5.4: los 4 nivel 1 + higiene ENTERA aprobados, 3 funciones nuevas a la cola.
-> GO LOG-1: los textos-que-mienten — el fix urgente primero). Manda sobre lo
+> Emitido por el Director el 2026-08-21 (v83 — LOG-1 EN PRODUCCIÓN: la app dejó
+> de mentir. GO LOG-2: la franja «Por vencer» de la flota). Manda sobre lo
 > anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ Veredictos del dueño al mapa §5.4 (20-ago) — cuarto mapa que sale entero
+## ✅ LOG-1 está EN PRODUCCIÓN (merge `cd6780f`, doble llave 21-ago)
 
-Aprobados los 4 nivel 1 (#1 franja flota, #2 métodos de cobro, #3 relación del
-receptor, #4 tarjetas del monitor), la higiene COMPLETA («sí a todo») y los
-nivel 3 confirmados con tus porqués. Al pie del anexo. **Funciones nuevas que
-el dueño ELIGIÓ para la cola post-fase-B** (lotes de función, se dictan
-después): buscador de folios · caducidad del QR · topes de monto en R11. La
-pantalla CRUD de camiones NO fue seleccionada esta ronda. Tu método de censo
-por fleet con verificación sed quedó aceptado (el mapa salió entero — el
-resultado avala).
+Suite del Director **2316 / 16.146 CERO rojos** sobre el árbol pre-push; el
+árbol final (con la «Cabina» del simulador y la vista previa de cotización de
+Marcos encima — +1149 líneas suyas) quedó validado por CI verde y re-suite del
+Director. Tu +3/+25 clavado. Rama borrada. Sin colisión semántica: tu
+`BASE_CM` derivado sobrevive dentro del index reorganizado de Marcos.
 
-Fase B de Logística = 4 lotes: **LOG-1** (este dictado) → **LOG-2** (franja
-flota) → **LOG-3** (listas del conductor + TV) → **LOG-4** (higiene restante).
+Lo que quedó fino: el molde fuentes-constantes con la ASIMETRÍA demostrada
+(literal repuesto → pantalla verde, estructural rojo — esa demostración ES el
+argumento del molde); los 2 rojos honestos auto-cazados (el comentario delator
+de la bitácora 30-07 y el @if del catálogo vacío); y `topeLegible()` derivando
+mensaje Y reglas de la misma constante. Directo al acta del módulo.
 
-## 🔨 GO — Lote LOG-1: los textos-que-mienten (S) — el fix urgente PRIMERO
+OJO DE CONTEXTO: Marcos está MUY activo en el simulador (la Cabina fue
+elección del dueño sobre 4 propuestas suyas) — el simulador es zona
+compartida-de-hecho ahora. Para LOG-4 (que toca cubicar/90 %): baseline
+FRESCO obligatorio y re-lectura de los file:line del mapa antes de forjar
+(los números pueden haberse movido de línea con la Cabina).
 
-La fila #9 completa, doctrina DASH-2 (la aritmética exacta, no números a mano):
+## 🔨 GO — Lote LOG-2: la franja «Por vencer» de la flota (M)
 
-1. **EL FIX ACTIVO** — `bodegas/traslados/show.blade.php:57` promete «el espejo
-   se refresca cada 15 minutos» y el sync corre `hourlyAt(45)`
-   (`routes/console.php:38`): el texto pasa a decir la VERDAD derivándola de
-   donde el idioma lo permita (si el schedule no es derivable limpio, texto
-   correcto + comentario apuntando al schedule con el porqué — decláralo).
-   OJO: NO cambies el schedule (la grilla */15 de HostGator es doctrina I-01;
-   el texto miente, el cron está bien).
-2. **La familia entera deriva**: «folio 1000» (`hojas-ruta/index.blade.php:67`)
-   ← `FOLIO_PISO`; «15 MB» ×2 (`VehiculoController.php:390`) ← el `max:15360`
-   real; «llave N de 3» ×3 (`HojaRutaController.php:124…`) ← el count del
-   flujo; medidas del pallet en prosa (`carga/index.blade.php:1331`) ← las
-   constantes del motor. Los «30 días» de la flota NO van aquí — derivan en
-   LOG-2 con su perilla (doctrina: el rótulo deriva en el lote de su clave).
-3. **Candados**: cada rótulo derivado con su assert de cifra (mover la fuente
-   mueve el texto — con `config()`/constante en runtime donde aplique) + el
-   texto del traslado ya no promete 15 minutos (assert negativo del literal
-   viejo, forma contigua si hay gemelos) + mutación tuya declarada.
-4. **Regla de oro**: cero cambio de conducta funcional — solo textos pasando a
-   decir la verdad y a derivar. Delta chico declarado.
+Hallazgo #1 aprobado, molde DASH-1/OPE-1 (5º uso):
+
+1. **Clave `vehiculos_dias_aviso`** (grupo `logistica` — primer habitante del
+   grupo, o el nombre de grupo que el idioma del seeder mande, declarado) —
+   default **30** (`Vehiculo::DIAS_AVISO`, `Vehiculo.php:29`). Controla cuándo
+   un documento del vehículo pasa de «Al día» a «Por vencer» (badge naranjo) —
+   listado, ficha, Excel y los hitos del aviso diario.
+2. **`RANGOS`**: 7-90 o lo que el código pida con sentido, declarado.
+3. **Los 3 rótulos gemelos DERIVAN en este lote** (doctrina DASH-2 — el rótulo
+   deriva en el lote de su perilla): «Por vencer (30 días)» en
+   `vehiculos/index.blade.php:51`, el de `FlotaExcel.php:129` y la descripción
+   del comando.
+4. **La hermana `DIAS_VENTANA_VENCIDO = 30`** del comando
+   (`VehiculosAvisarVencimientos.php:43` — cuánto hacia atrás se re-avisa un
+   vencido): es OTRO concepto aunque hoy diga 30. TU propuesta con el código a
+   la vista (clave hermana `vehiculos_dias_reaviso_vencido` o nivel 3 con
+   porqué) — contra-evidencia declarada, doctrina OPE-1.
+5. **Candados molde**: default idéntico byte a byte con BD virgen · mover la
+   clave mueve el badge, el rótulo, el Excel y el hito del aviso CON CIFRA
+   (documento a 45 días: fuera con 30, adentro con 60) · y NO mueve la ventana
+   de re-aviso si quedó separada · rangos por ambos bordes · mutación 30→45
+   con rojo exacto → restaurar → verde.
+6. **Regla de oro**: cero tests existentes con cifra cambiada.
 
 ### Verificación (invariante)
-Rama `feature/param-log-1-textos` desde main FRESCO (baseline: 2303/16.048 en
-`ab0a8d1` + PR #20 + docs de Marcos encima — recuenta tú; Marcos activo con PR
-y pushes docs). Suite COMPLETA antes. Batería: Despachos*/HojaRuta*/Vehiculo*/
-Traslado*/Carga* + lo que toque. Parte al buzón; espera doble llave. NO
-arranques LOG-2.
+Rama `feature/param-log-2-flota` desde main FRESCO (baseline: el árbol lleva
+la Cabina de Marcos — recuenta tú; mi última cifra local válida es
+2316/16.146 PRE-Cabina, el CI del árbol final está verde). Suite COMPLETA
+antes. Batería: Vehiculo*/Flota* + ParametrosLogistica + Configuracion*.
+Parte al buzón; espera doble llave. NO arranques LOG-3.
 
-## 📡 Radar LOG-2/3/4 (NO arranques)
-- **LOG-2**: `vehiculos_dias_aviso` default 30 [RANGOS 7-90 o lo que el código
-  pida], rótulos ×3 derivando; la `DIAS_VENTANA_VENCIDO=30` del comando es OTRO
-  concepto — clave hermana o nivel 3: TU propuesta con el código a la vista,
-  contra-evidencia declarada (doctrina OPE-1).
+## 📡 Radar LOG-3/4 y cola (NO arranques)
 - **LOG-3**: `despachos_metodos_cobro` + `despachos_relaciones_receptor`
-  (LISTAS_SIMPLES, molde OPE-2 — sin par-subconjunto aquí) +
-  `despachos_tarjetas_monitor` default 12 [RANGOS chico].
-- **LOG-4**: 188 ×6 → constante con porqué (191−«…») · POR_PAGINA ×2 ·
-  `Despacho::yaSalioDeBodega()` (o el nombre que el idioma mande) ×4 · correo
-  del rechazo por PERMISOS (lección 14-08) · topes cubicar UI←servidor · 90 %
-  ×2 unificado.
-- **Cola post-fase-B (funciones, dictados aparte)**: buscador de folios ·
+  (LISTAS_SIMPLES) + `despachos_tarjetas_monitor` default 12 [RANGOS chico].
+- **LOG-4**: 188 ×6 → constante · POR_PAGINA ×2 · `yaSalioDeBodega()` ×4 ·
+  correo por PERMISOS · topes cubicar UI←servidor (¡re-leer líneas post-Cabina!)
+  · 90 % ×2.
+- **Cola de funciones** (dictados aparte tras fase B): buscador de folios ·
   caducidad QR · topes de monto R11.
 
 ## Estado
-Max-2: F0-MENSAJES-2 forjando (catálogo fase 2 del chat — territorio
-disjunto). Marcos: PR #20 + docs ST. Trello espejando (Logística En Curso).
+Max-2: F0-MENSAJES-2 forjando. Marcos: MUY activo (Cabina + cotización vista
+previa, ambas con QA directo del dueño). Nota de infra del Director: mi
+worktree migró fuera de Temp (deleciones fantasma de la semana explicadas —
+entorno, no código; tu «isolated red → environment first» I-11 confirmada de
+nuevo).
 
-CIERRE: GO LOG-1. Primero que la app deje de mentir; después, las perillas.
+CIERRE: GO LOG-2. La flota avisa cuando el dueño quiera que avise.
