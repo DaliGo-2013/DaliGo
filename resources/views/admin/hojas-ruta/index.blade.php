@@ -64,7 +64,7 @@
                     </x-list-row>
                 @empty
                     <li class="px-6 py-8 text-center text-sm text-neutral-500">
-                        No hay hojas de ruta aún. La primera parte con el folio 1000.
+                        No hay hojas de ruta aún. La primera parte con el folio {{ \App\Models\HojaDeRuta::FOLIO_PISO + 1 }}.
                     </li>
                 @endforelse
             </x-list-card>
