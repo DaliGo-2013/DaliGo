@@ -108,7 +108,18 @@ class SimuladorCargaController extends Controller
                     $fallar('El producto elegido ya no está en el catálogo.');
                 }
             }],
-            'lineas.*.cantidad' => ['required_with:lineas', 'integer', 'min:1', 'max:100000'],
+            // CANTIDAD OPCIONAL = «lo que quepa» (dueño 11-08: «los dos apartados se
+            // repiten, sería bueno juntar ambas opciones en una sola y que ahí se pueda
+            // calcular sobre un producto o varios»; cableado a la pantalla el 21-08).
+            //
+            // Vacía, la línea viaja al motor como ABIERTA y se llena con lo que entre —
+            // que es exactamente lo que contestaba la pestaña «¿Cuánto entra?». El motor
+            // ya lo soporta y lo tiene con candados (`LineaAbiertaTest`); lo único que
+            // faltaba era que el formulario dejara mandarla vacía.
+            //
+            // `min:1` se conserva: un CERO no es lo mismo que vacío —coloca nada, nunca
+            // «llename el camión»— y esa asimetría es un candado del motor.
+            'lineas.*.cantidad' => ['nullable', 'integer', 'min:1', 'max:100000'],
             // --- Bulto a medida. DESCARTABLE a propósito (decisión del dueño
             // 07-08): vive solo en esta simulación y NO se guarda en el catálogo.
             // El catálogo es de donde salen los cupos que se le prometen a un
@@ -362,7 +373,11 @@ class SimuladorCargaController extends Controller
                     // castearla con ?? 0 la devolvería convertida en bulto a medida
                     // — el borrado/mutación silencioso de la bitácora [2026-08-20].
                     'tipo' => ($l['tipo'] ?? '') === '' ? '' : (int) $l['tipo'],
-                    'cantidad' => (int) $l['cantidad'],
+                    // La cantidad VACÍA se conserva vacía: es «lo que quepa». Con
+                    // `(int)` volvía como 0, y un 0 le dice al motor «no coloques
+                    // nada» — lo contrario exacto de lo que el usuario pidió. Es la
+                    // misma familia que el `?? 0` de la bitácora [2026-08-20].
+                    'cantidad' => ($l['cantidad'] ?? '') === '' ? '' : (int) $l['cantidad'],
                     // 0/1 y no true/false: es el valor del <select> del formulario, y
                     // Alpine lo compara con las opciones tal cual viene.
                     'estiba' => isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto',
@@ -417,7 +432,13 @@ class SimuladorCargaController extends Controller
         // La parada de cada línea (lote 6). 0 = sin declarar, o sea una sola entrega.
         $paradas = [];
         $lineas = [];
+        // Qué líneas son ABIERTAS («lo que quepa»): las que vienen sin cantidad. Se
+        // resuelve UNA vez acá y se consulta en los cuatro lugares que preguntan
+        // «¿cuánto se pidió?», porque la respuesta —«no se pidió un número»— tiene que
+        // ser la misma en todos o la pantalla se contradice.
+        $abiertas = [];
         foreach (array_values($lineasInput) as $i => $l) {
+            $abiertas[$i] = ($l['cantidad'] ?? null) === null || $l['cantidad'] === '';
             $paradas[$i] = max(0, (int) ($l['parada'] ?? 0));
             // La estiba se elige POR LÍNEA: en la misma carga puede ir un pack de
             // botellones acostado, otro de pie y una caja en automático. Un valor
@@ -441,11 +462,14 @@ class SimuladorCargaController extends Controller
                 $palletsDeLinea[$i] = $pal;
                 // Con CERO cajas encima no se sube ni un pallet: se le pasan 0 al motor
                 // para que no aparezcan tarimas vacías en el camión, y la fila lo explica.
-                $lineas[$i] = [
-                    'bulto' => $pal['bulto'],
-                    'cantidad' => $pal['porPallet']['bultos'] > 0 ? max(0, (int) $l['cantidad']) : 0,
-                    'parada' => $paradas[$i],
-                ];
+                // Ese 0 GANA sobre «abierta»: un pallet vacío no se rellena hasta llenar
+                // el camión de tarimas sin nada arriba.
+                $palletVacio = $pal['porPallet']['bultos'] === 0;
+                $abiertas[$i] = $abiertas[$i] && ! $palletVacio;
+                $lineas[$i] = ['bulto' => $pal['bulto'], 'parada' => $paradas[$i]]
+                    + ($abiertas[$i]
+                        ? ['abierta' => true]
+                        : ['cantidad' => $palletVacio ? 0 : max(0, (int) $l['cantidad'])]);
 
                 continue;
             }
@@ -460,11 +484,15 @@ class SimuladorCargaController extends Controller
             // El vendedor habla en UNIDADES (200 botellones); el motor en BULTOS
             // (bolsas de 5). Se redondea HACIA ARRIBA: 198 botellones son 40
             // bolsas — la bolsa viaja completa o no viaja.
+            // Una línea ABIERTA no lleva cantidad: el motor la llena con lo que entre
+            // (`LineaAbiertaTest`). Va sin la clave `cantidad`, no con cantidad 0 — el
+            // cero significa «no coloques nada», que es lo contrario.
             $lineas[$i] = [
                 'bulto' => $modelo->paraCalculo($estibas[$i], $apilados[$i]),
-                'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
                 'parada' => $paradas[$i],
-            ];
+            ] + ($abiertas[$i] ? ['abierta' => true] : [
+                'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
+            ]);
         }
 
         $resultado = $this->calculo->carga(
@@ -475,7 +503,11 @@ class SimuladorCargaController extends Controller
         $filas = [];
         foreach ($modelos as $i => $modelo) {
             $r = $resultado['lineas'][$i];
-            $pedidasUnidades = (int) $lineasInput[array_keys($lineasInput)[$i]]['cantidad'];
+            // Una línea abierta NO tiene cantidad pedida: es `null`, no 0. Decir «0
+            // pedidas» de algo que se llenó hasta el tope se lee como que falló.
+            $pedidasUnidades = $abiertas[$i]
+                ? null
+                : (int) $lineasInput[array_keys($lineasInput)[$i]]['cantidad'];
 
             // POR QUÉ QUEDÓ AIRE ARRIBA DE ESTE PRODUCTO (pedido del dueño 10-08:
             // «necesito que los bidones también lleguen hasta el techo»).
@@ -543,7 +575,17 @@ class SimuladorCargaController extends Controller
                 'pedidas_unidades' => $pedidasUnidades,
                 // Cargadas se reporta capado a lo pedido: si pidió 198 y la
                 // última bolsa completa las 200, decir «cargadas 200» confunde.
-                'cargadas_unidades' => $palletVacio ? 0 : min($r['unidades_colocadas'], $pedidasUnidades),
+                // En una abierta no se capa contra lo pedido: lo colocado ES la respuesta.
+                'cargadas_unidades' => $palletVacio
+                    ? 0
+                    : ($pedidasUnidades === null
+                        ? $r['unidades_colocadas']
+                        : min($r['unidades_colocadas'], $pedidasUnidades)),
+                // Que la fila sepa que se pidió «lo que quepa», y con qué se llenó
+                // (espacio o kilos): sin eso la pantalla no puede distinguir «entran 84»
+                // de «pediste 84 y entraron 84».
+                'abierta' => $abiertas[$i],
+                'lleno_por' => $r['lleno_por'] ?? null,
                 'bultos_colocados' => $palletVacio ? 0 : $r['colocados'],
                 'bultos_pedidos' => $r['pedidos'],
                 'motivo' => $palletVacio ? 'pallet_vacio' : $r['motivo'],
@@ -584,8 +626,13 @@ class SimuladorCargaController extends Controller
             ? null
             : max(0, $camion->peso_max_kg - (int) round($ocupadoKg));
         $pedidoKg = 0.0;
-        foreach ($lineas as $l) {
-            $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0)) * $l['cantidad'];
+        foreach ($lineas as $i => $l) {
+            // Una línea ABIERTA no puede pasarse de peso: el motor la corta justo ahí
+            // (`lleno_por` = peso). Así que lo «pedido» de una abierta es lo COLOCADO —
+            // usar su cantidad no existe, y contarla como 0 haría que el aviso de
+            // sobrepeso ignorara kilos que sí van arriba del camión.
+            $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0))
+                * ($l['cantidad'] ?? $resultado['lineas'][$i]['colocados']);
         }
 
         return [
