@@ -290,6 +290,49 @@ class CargaUnificadaTest extends TestCase
     }
 
     /**
+     * LA PANTALLA ENSEÑA LA CONVENCIÓN, NO LA ESCONDE.
+     *
+     * Criterio del dueño (24-08), y es de aceptación, no de gusto: el jefe de logística
+     * va a probar el simulador DOS DÍAS sin que nadie le explique nada, y de ahí sale la
+     * retroalimentación de si es amigable. O sea que la pantalla tiene que enseñarse
+     * sola.
+     *
+     * «Cantidad vacía = lo que quepa» es lo que sostiene la fusión de las dos pestañas y
+     * es exactamente lo que NADIE adivina: un campo vacío no anuncia que devuelve el
+     * máximo. Por eso el aviso va A LA VISTA y no dentro de una ⓘ — la misma excepción
+     * que ya tienen las pantallas del QR, donde «una ⓘ que hay que descubrir cambia una
+     * elección informada por una adivinada».
+     *
+     * El candado mira las dos mitades: que el aviso EXISTA, y que la validación no
+     * vuelva a exigir la cantidad (un `required` en el input dejaría el aviso mintiendo,
+     * y eso es peor que no tenerlo).
+     */
+    public function test_la_pantalla_dice_que_la_cantidad_vacia_da_el_maximo(): void
+    {
+        $html = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id]))
+            ->assertOk()->getContent();
+
+        // El campo lo dice de dos formas: el marcador dentro y la línea de abajo.
+        $this->assertStringContainsString('placeholder="Lo que quepa"', $html,
+            'El campo de cantidad no anuncia qué pasa si se deja vacío.');
+        $this->assertStringContainsString('Vacío = te dice cuántos entran', $html,
+            'Falta la línea que enseña la convención de la cantidad vacía.');
+
+        // Y el input NO puede exigirla: con `required` el navegador bloquea el envío y
+        // el aviso de arriba sería una promesa que la pantalla no cumple.
+        $cantidad = strpos($html, 'placeholder="Lo que quepa"');
+        $campo = substr($html, max(0, $cantidad - 400), 500);
+        $this->assertStringNotContainsString('required', $campo,
+            'El campo de cantidad volvió a ser obligatorio: el aviso de «vacío» miente.');
+
+        // La línea nueva nace sin cantidad, que es el atajo de «un producto, sin
+        // cantidad» que reemplaza a la pestaña «¿Cuánto entra?» (opción B del dueño).
+        $this->assertStringContainsString("cantidad: ''", $html,
+            'La línea nueva vuelve a nacer con una cantidad que nadie pidió.');
+    }
+
+    /**
      * NINGÚN MOTIVO DEL MOTOR SE QUEDA SIN PALABRAS.
      *
      * El texto de «por qué quedó afuera» vivía hardcodeado en la vista, con un modo de

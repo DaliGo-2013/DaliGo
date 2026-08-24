@@ -188,7 +188,16 @@
                     {{-- La línea nueva nace SIN producto elegido (dueño 21-08: «sin
                          previas») — el selector arranca en «Elegí un producto…». Una
                          línea que queda así el servidor la descarta sin reclamar. --}}
-                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: '', cantidad: 10, estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    /* La línea nueva nace SIN producto y SIN cantidad. Lo segundo es la
+                       opción B que eligió el dueño el 24-08: al fusionar las dos
+                       preguntas, quien solo quiere saber un cupo no tiene que «armar una
+                       carga» — elige el producto, no escribe cantidad, y la pantalla le
+                       contesta cuántos entran. Mismo número de pasos que la pestaña que
+                       desapareció.
+
+                       Antes nacía con `cantidad: 10`, un número que nadie pidió y que
+                       obligaba a borrarlo para preguntar por el máximo. */
+                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: '', cantidad: '', estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
                     agregarMedida() { if (this.lineas.length < 8) { this.lineas.push({ tipo: 0, cantidad: 1, estiba: 'auto', pallet: '', medida_nombre: '', medida_largo: '', medida_ancho: '', medida_alto: '', medida_peso: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
                     /* Un botón propio y no «elegí pallet en el desplegable de la tarjeta»:
                        la lección de la pestaña que nadie encontró (10-08) es que una
@@ -1084,12 +1093,32 @@
                                                 <div class="mt-1 flex items-stretch rounded-lg border border-neutral-300 bg-white">
                                                     <button type="button" @click="linea.cantidad = Math.max(1, (linea.cantidad || 1) - 1); ensuciar()"
                                                             class="px-2.5 text-neutral-500 transition hover:text-neutral-900" aria-label="Uno menos">−</button>
+                                                    {{-- SIN `required` desde el 21-08: vacío es una respuesta
+                                                         válida y significa «lo que quepa» (el motor la trata
+                                                         como línea abierta). El `min="1"` se queda porque un
+                                                         CERO no es lo mismo que vacío: coloca nada. --}}
                                                     <input type="number" :name="`lineas[${i}][cantidad]`" x-model.number="linea.cantidad" @input="ensuciar()"
-                                                           min="1" max="100000" inputmode="numeric" required
-                                                           class="w-full min-w-0 border-0 bg-transparent px-1 py-2 text-center text-base sm:text-sm tabular-nums focus:ring-0">
+                                                           min="1" max="100000" inputmode="numeric"
+                                                           placeholder="Lo que quepa"
+                                                           class="w-full min-w-0 border-0 bg-transparent px-1 py-2 text-center text-base sm:text-sm tabular-nums placeholder:text-[11px] placeholder:tracking-tight placeholder:text-neutral-400 focus:ring-0">
                                                     <button type="button" @click="linea.cantidad = (linea.cantidad || 0) + 1; ensuciar()"
                                                             class="px-2.5 text-neutral-500 transition hover:text-neutral-900" aria-label="Uno más">+</button>
                                                 </div>
+                                                {{-- LA PANTALLA SE ENSEÑA SOLA (criterio del dueño 24-08: el
+                                                     jefe de logística la va a probar dos días SIN que nadie le
+                                                     explique nada, y de eso sale la retroalimentación).
+
+                                                     «Vacío = el máximo» es la convención que sostiene la fusión
+                                                     de las dos pestañas, y es exactamente el tipo de cosa que
+                                                     NADIE adivina. Por eso va a la VISTA y no a una ⓘ: es la
+                                                     misma excepción que ya tienen las pantallas del QR — «una ⓘ
+                                                     que hay que descubrir cambia una elección informada por una
+                                                     adivinada». Una línea corta y operativa bajo el campo es lo
+                                                     que la doctrina del 17-08 sí permite. --}}
+                                                <p class="mt-1 text-[11px] leading-snug text-neutral-500"
+                                                   x-show="! linea.cantidad" x-cloak>
+                                                    Vacío = te dice cuántos entran.
+                                                </p>
                                             </div>
                                             <div>
                                                 {{-- CÓMO VIAJA: automático o una estiba forzada. Está en TODOS los
