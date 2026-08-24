@@ -423,17 +423,13 @@
                                         @php
                                             $rgb = \App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D[$i % count(\App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D)];
                                             $pendientes = $fila['pedidas_unidades'] - $fila['cargadas_unidades'];
-                                            $motivoTexto = [
-                                                'espacio' => 'no queda espacio con el resto de la carga',
-                                                'peso' => 'se pasa de la carga máxima en kilos',
-                                                'largo' => 'no entra por el largo de la caja',
-                                                'ancho' => 'no entra por el ancho de la caja',
-                                                'alto' => 'no entra por la altura de la caja',
-                                                // Un pallet en el que no entra ni una caja no se sube vacío
-                                                // (§3.3.5): pasa de verdad con la bolsa de botellones, que
-                                                // mide 130 cm contra los 120 del pallet.
-                                                'pallet_vacio' => 'no entra ni una encima del pallet',
-                                            ][$fila['motivo']] ?? null;
+                                            // El texto sale de `SimuladorCargaController::MOTIVOS`, que es la
+                                            // única fuente: estaba copiado acá y un motivo nuevo del motor
+                                            // dejaba la pantalla muda sin que nada fallara. (Incluye
+                                            // `pallet_vacio`: un pallet donde no entra ni una caja no se
+                                            // sube vacío, §3.3.5 — pasa de verdad con la bolsa de botellones,
+                                            // que mide 130 cm contra los 120 del pallet.)
+                                            $motivoTexto = \App\Http\Controllers\Admin\SimuladorCargaController::MOTIVOS[$fila['motivo']] ?? null;
                                             $pal = $fila['pallet'];
                                             // En una línea EN PALLET la cuenta va en pallets, no en unidades
                                             // sueltas: «3 de 3 pallets», y las cajas se dicen aparte.

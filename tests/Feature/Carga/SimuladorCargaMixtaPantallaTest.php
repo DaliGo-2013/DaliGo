@@ -1506,36 +1506,74 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         ]))->assertSessionHasErrors('orden');
     }
 
+    /**
+     * Rebana el menú lateral, que es donde vive la lista de la carga. Mismo idioma que
+     * el resto de los candados de este archivo: se ancla en el `aria-label` del
+     * `<aside>` y corta en su cierre.
+     */
+    private function menuDelVisor(string $html): string
+    {
+        $desde = strpos($html, 'Herramientas');
+        $this->assertNotFalse($desde, 'Ya no hay menú lateral en el visor.');
+
+        return substr($html, $desde, strpos($html, '</aside>', $desde) - $desde);
+    }
+
     public function test_el_panel_de_cubicaje_acompana_al_camion(): void
     {
         // El formato del panel izquierdo de EasyCargo, que el dueño pidió (06-08): por
-        // producto, su letra, cuántas van de cuántas y un punto verde o rojo, AL LADO del
-        // camión. Repite el detalle de abajo a propósito — el valor es no levantar la
-        // vista del dibujo para saber qué es cada bloque.
+        // producto, su letra, cuántas van y cuánto espacio ocupan, AL LADO del camión.
+        // Repite el detalle de abajo a propósito — el valor es no levantar la vista del
+        // dibujo para saber qué es cada bloque.
+        //
+        // El formato «200/200» de la primera versión ya no existe: desde el 21-08 la
+        // fila dice «200 unidades» y agrega «de N» SOLO cuando difieren, porque repetir
+        // el mismo número dos veces era ruido en una columna de 330px. La intención del
+        // candado no cambió, y el número sigue teniendo que estar.
         $html = $this->verMixta([
             ['tipo' => $this->bolsa->id, 'cantidad' => 200],
             ['tipo' => $this->caja->id, 'cantidad' => 20],
         ])->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'Cubicaje'), 3000);
+        $panel = $this->menuDelVisor($html);
 
-        $this->assertStringContainsString('200/200', $panel);
-        $this->assertStringContainsString('20/20', $panel);
-        // El punto: verde cuando entra completo.
-        $this->assertStringContainsString('bg-brand-600', $panel);
+        // Cada producto, con su nombre y su cantidad cargada.
+        $this->assertStringContainsString($this->bolsa->nombre, $panel);
+        $this->assertStringContainsString($this->caja->nombre, $panel);
+        $this->assertStringContainsString('>200</span>', $panel, 'La cantidad cargada no está en el panel.');
+        $this->assertStringContainsString('>20</span>', $panel);
+
+        // Y el espacio que ocupa cada uno, que es lo que el dueño pidió el 21-08.
+        $this->assertMatchesRegularExpression('/\d+,\d m³/', $panel,
+            'La fila no dice cuánto espacio ocupa.');
+
+        // Entra todo, así que el panel NO puede decir que algo quedó afuera. Se assertea
+        // el TEXTO y no la clase `text-red-600`: esa cadena también vive dentro del
+        // `hover:text-red-600` del botón de quitar, así que el assert negativo pasaría
+        // por la razón equivocada (la trampa del substring de la bitácora [2026-07-30]).
+        $this->assertStringNotContainsString('afuera', $panel,
+            'Entra toda la carga y el panel dice que quedó algo afuera.');
     }
 
     public function test_el_panel_de_cubicaje_marca_en_rojo_lo_que_no_entra(): void
     {
-        // 600 botellones son 120 bolsas y el HD35 admite 84: el punto tiene que avisar
-        // sin que haya que leer el detalle de abajo.
+        // 600 botellones son 120 bolsas y el HD35 admite 84: tiene que avisar sin que
+        // haya que leer el detalle de abajo. Y desde el 21-08 dice además POR QUÉ —
+        // antes era un punto rojo y el motivo había que ir a buscarlo.
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
             ->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'Cubicaje'), 3000);
+        $panel = $this->menuDelVisor($html);
 
-        $this->assertStringContainsString('420/600', $panel);
-        $this->assertStringContainsString('bg-red-500', $panel);
+        $this->assertStringContainsString('>420</span>', $panel, 'No dice cuántas entraron.');
+        $this->assertStringContainsString('de 600', $panel, 'No dice de cuántas eran.');
+        $this->assertStringContainsString('Quedan 180 afuera', $panel, 'No dice cuántas quedaron afuera.');
+        $this->assertStringContainsString('text-red-600', $panel, 'Se perdió la señal roja.');
+        // El motivo, en palabras y desde la única fuente.
+        $this->assertStringContainsString(
+            SimuladorCargaController::MOTIVOS_CORTOS['espacio'], $panel,
+            'El panel no dice por qué quedó carga afuera.',
+        );
     }
 
     public function test_toda_silueta_declarada_tiene_su_rama_en_el_visor_y_sus_ejes(): void

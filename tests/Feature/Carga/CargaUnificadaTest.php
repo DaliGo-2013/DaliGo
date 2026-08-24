@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Carga;
 
+use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Models\CamionSimulacion;
 use App\Models\TipoBulto;
 use App\Models\User;
@@ -216,6 +217,46 @@ class CargaUnificadaTest extends TestCase
 
         $this->assertSame('espacio', $conOtra['lineas'][1]['limita'],
             'Con una carga mixta se está mostrando el límite del camión VACÍO.');
+    }
+
+    /**
+     * NINGÚN MOTIVO DEL MOTOR SE QUEDA SIN PALABRAS.
+     *
+     * El texto de «por qué quedó afuera» vivía hardcodeado en la vista, con un modo de
+     * falla silencioso: si el motor aprende un motivo nuevo, la pantalla cae al `?? null`
+     * y no dice nada — y ese texto es justo el dato con el que se negocia. Ahora es una
+     * constante, y esto exige que cubra lo que el motor puede emitir y que los dos
+     * registros (lista ancha y panel angosto) no se queden uno atrás del otro.
+     *
+     * Los motivos se leen de las CONSTANTES del motor por reflexión, no de una lista
+     * escrita a mano acá: una copia se desactualiza en silencio, que es el defecto que
+     * este candado viene a cerrar. Con reflexión, una `LIMITE_*` nueva entra sola.
+     *
+     * `LIMITE_NINGUNO` queda afuera a propósito: significa que NO faltó nada, así que
+     * nunca llega como motivo de faltante. Y `espacio` es un literal del motor —el caso
+     * «el bulto cabe pero ya no queda hueco»—, así que va a mano con su razón escrita.
+     */
+    public function test_todos_los_motivos_del_motor_tienen_texto(): void
+    {
+        $delMotor = collect((new \ReflectionClass(\App\Services\Carga\CalculoDeCarga::class))->getConstants())
+            ->filter(fn ($v, $k) => str_starts_with($k, 'LIMITE_') && $k !== 'LIMITE_NINGUNO')
+            ->values()
+            ->push('espacio')
+            ->all();
+
+        $this->assertNotEmpty($delMotor, 'No se pudo leer ningún motivo del motor: cambiaron las constantes.');
+
+        foreach ($delMotor as $motivo) {
+            $this->assertArrayHasKey($motivo, SimuladorCargaController::MOTIVOS,
+                "El motor puede decir «{$motivo}» y la pantalla no tiene texto para eso.");
+        }
+
+        // Y los dos registros cubren exactamente lo mismo.
+        $this->assertSame(
+            array_keys(SimuladorCargaController::MOTIVOS),
+            array_keys(SimuladorCargaController::MOTIVOS_CORTOS),
+            'La versión corta del panel se quedó atrás de la larga (o al revés).',
+        );
     }
 
     /**

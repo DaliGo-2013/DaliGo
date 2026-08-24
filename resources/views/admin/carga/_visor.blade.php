@@ -281,13 +281,14 @@
 
             {{-- CUERPO = CARGAR. El panel entero es la palanca de carga; lo visual ya
                  quedó arriba y lo que se usa de a poco espera en las hojas del pie. --}}
-            <div x-show="hoja === null" class="min-h-0 flex-1 overflow-y-auto p-2">
-                {{-- Cuánto va cargado, como número protagonista: es la respuesta que
-                     este cuerpo produce. --}}
-                <div class="flex items-baseline gap-1.5 px-1 pb-1">
-                    <span class="text-xl font-semibold leading-tight tabular-nums text-neutral-900"><span id="carga3dN">0</span></span>
-                    <span class="text-neutral-500">de {{ $escena['tope'] }}</span>
-                </div>
+            {{-- El cuerpo se parte en DOS: arriba el bloque de cargar, que es fijo, y
+                 abajo LA CARGA, que se lleva el alto que sobra y es lo único que
+                 scrollea. Es la mecánica del «todo en una pantalla» que pidió el dueño
+                 el 21-08 («sin tener que deslizar hacia abajo con una barra sino
+                 trabajar todo en una misma pantalla»): con `flex-1` + `min-h-0` la
+                 lista se estira o se encoge con la ventana y nada más se mueve. --}}
+            <div x-show="hoja === null" class="flex min-h-0 flex-1 flex-col">
+            <div class="shrink-0 overflow-y-auto p-2">
 
                 {{-- ¿EN CUÁL CONVIENE? La comparativa asciende a un CHIP pegado al
                      número (antes era la sección «Camiones»): el mejor camión a la
@@ -344,12 +345,6 @@
                     <button type="button" id="carga3dSubir"
                             class="mb-1 w-full rounded-lg bg-neutral-800 px-2 py-1.5 font-semibold text-white transition hover:bg-neutral-900">↑ Subir al camión</button>
                 @endif
-                {{-- «▶» reproduce la estiba de a poco, para mirar en qué ORDEN va la
-                     carga. El JS no le toca el texto, así que puede llevar ícono. --}}
-                <button type="button" id="carga3dPlay"
-                        class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-2 py-1.5 font-semibold text-white transition hover:bg-brand-700">
-                    <x-icon.play class="h-3 w-3" /> Cargar de a poco
-                </button>
                 {{-- − [caja] + : los pasos van GRANDES (h-11, objetivo táctil) y en
                      el medio se puede ESCRIBIR la cantidad exacta (pedido del dueño
                      07-08: «dame la opción de agregar números para hacer más exacta
@@ -366,6 +361,21 @@
                     <button type="button" id="carga3dSuma1" aria-label="Agregar (mantené apretado para agregar de a muchos)"
                             title="Agregar · mantené apretado"
                             class="{{ $btn }} h-11 w-11 shrink-0 text-lg font-semibold">+</button>
+                    {{-- El contador va PEGADO al stepper y no en una línea propia: son el
+                         mismo número (los tres controles mueven `cant`), y separarlos
+                         costaba 24px de alto que ahora se lleva la lista de la carga —
+                         el «todo en una pantalla» del 21-08 se paga con estos recortes.
+
+                         Con eso desapareció el `<span id="carga3dN">`, que mostraba el
+                         mismo número en grande. `carga3d.js` lo sigue buscando con un
+                         `if (n)` alrededor, así que ese update quedó como no-op A
+                         PROPÓSITO: el número vive en el campo del stepper, que el JS
+                         sincroniza igual (candado `test_los_tres_controles_de_cantidad…`).
+                         No es código muerto olvidado; es la guarda haciendo su trabajo. --}}
+                    <span class="flex shrink-0 flex-col justify-center pl-0.5 leading-none text-neutral-500">
+                        <span class="text-[11px]">de {{ $escena['tope'] }}</span>
+                        <span class="text-[10px] text-neutral-400">bultos</span>
+                    </span>
                 </div>
                 {{-- Barra deslizante para la cantidad (pedido del dueño 07-08 mirando
                      el pallet cargado de EasyCargo). Es un TERCER control del MISMO
@@ -374,13 +384,22 @@
                      ajustan de a uno. Se deshabilita con tope 0 — pasa de verdad
                      cuando el producto no entra en el pallet (la bolsa mide 130 y el
                      pallet 120), y una barra que no puede moverse confunde. --}}
-                <input type="range" id="carga3dBarra" min="0" max="{{ max(1, $escena['tope']) }}" step="1" value="0"
-                       @disabled(($escena['tope'] ?? 0) < 1)
-                       aria-label="Cantidad cargada"
-                       class="mt-2 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-neutral-200 accent-brand-600 disabled:cursor-not-allowed disabled:opacity-40">
-                <div class="mt-2 grid grid-cols-2 gap-1">
-                    <button type="button" id="carga3dTodo" class="{{ $btn }}">Todo</button>
-                    <button type="button" id="carga3dVaciar" class="{{ $btn }}">Vaciar</button>
+                {{-- ▶, barra, Todo y Vaciar en UNA fila. El ▶ pasa a ícono: a diferencia
+                     de los rótulos (donde el dueño preguntó «¿qué hacen?» porque con el
+                     camión vacío no se ve nada), su efecto es inmediato y evidente — el
+                     camión se llena solo. Los cuatro siguen siendo controles del MISMO
+                     número, que es la doctrina §4.1nonies-bis. --}}
+                <div class="mt-2 flex items-center gap-1.5">
+                    <button type="button" id="carga3dPlay" title="Cargar de a poco, para ver en qué orden va la carga"
+                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white transition hover:bg-brand-700">
+                        <x-icon.play class="h-3 w-3" /><span class="sr-only">Cargar de a poco</span>
+                    </button>
+                    <input type="range" id="carga3dBarra" min="0" max="{{ max(1, $escena['tope']) }}" step="1" value="0"
+                           @disabled(($escena['tope'] ?? 0) < 1)
+                           aria-label="Cantidad cargada"
+                           class="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-neutral-200 accent-brand-600 disabled:cursor-not-allowed disabled:opacity-40">
+                    <button type="button" id="carga3dTodo" class="{{ $btn }} shrink-0 py-1 text-[11px]">Todo</button>
+                    <button type="button" id="carga3dVaciar" class="{{ $btn }} shrink-0 py-1 text-[11px]">Vaciar</button>
                 </div>
 
                 {{-- APROVECHAR EL ESPACIO QUE SOBRA. Recalcula en el servidor (no es
@@ -405,28 +424,25 @@
                     </p>
                 @endif
 
-                {{-- EL CUBICAJE: el formato del panel izquierdo de EasyCargo. Por producto,
-                     su letra sobre su color, cuántas van de cuántas y un punto brand o rojo.
-                     Repite el detalle de más abajo A PROPÓSITO: el valor es no levantar la
-                     vista del dibujo para saber qué es cada bloque. Vive en el cuerpo y no
-                     en una hoja porque es la retroalimentación de cargar. --}}
-                @if (! $publico && ($mixta ?? null) !== null)
-                    <div class="my-2 border-t border-neutral-200" aria-hidden="true"></div>
-                    <p class="{{ $titulo }}">Cubicaje</p>
-                    <div class="rounded-lg border border-neutral-200 bg-white p-1">
-                        @foreach ($mixta['lineas'] as $i => $fila)
-                            @php $rgbPanel = $ctrl::COLORES_3D[$i % count($ctrl::COLORES_3D)]; @endphp
-                            <div class="flex items-center gap-1.5 px-0.5 py-0.5">
-                                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
-                                      style="background: rgb({{ implode(',', $rgbPanel) }})">{{ $ctrl::letra($i) }}</span>
-                                <span class="flex-1 truncate text-neutral-600" title="{{ $fila['modelo']->nombre }}">{{ $fila['modelo']->nombre }}</span>
-                                <span class="shrink-0 font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}/{{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}</span>
-                                <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $fila['motivo'] === null ? 'bg-brand-600' : 'bg-red-500' }}"
-                                      title="{{ $fila['motivo'] === null ? 'Entra completo' : 'Queda carga afuera' }}"></span>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
+            </div>
+
+            {{-- ═══ LA CARGA, AGRUPADA POR PARADA ═══
+                 Reemplaza al bloque «Cubicaje» compacto, que decía cargadas/pedidas y
+                 nada más. Pedido del dueño 21-08 sobre la foto de EasyCargo: «separado
+                 por colores y separado en grupo, con el detalle de cada carga, cantidad
+                 y espacio que ocupa». El porqué de cada decisión —el orden de carga, por
+                 qué el grupo NO lleva color propio— vive en el partial. --}}
+            @if (! $publico && ($mixta ?? null) !== null)
+                <div class="flex min-h-0 flex-1 flex-col border-t border-neutral-200">
+                    <p class="{{ $titulo }} shrink-0 px-2">
+                        La carga
+                        <span class="font-normal normal-case tracking-normal text-neutral-400">
+                            · {{ count($mixta['lineas']) }} {{ \Illuminate\Support\Str::plural('producto', count($mixta['lineas'])) }}
+                        </span>
+                    </p>
+                    @include('admin.carga._lista-panel')
+                </div>
+            @endif
             </div>
 
             {{-- Las hojas y el pie navegan hacia adentro de la app, así que no van en

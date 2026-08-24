@@ -54,6 +54,38 @@ class SimuladorCargaController extends Controller
     ];
 
     /**
+     * POR QUÉ QUEDÓ CARGA AFUERA, en palabras. Un motivo del motor sin texto es una
+     * pantalla que dice «quedan 24 afuera» y no dice por qué — que es justo el dato con
+     * el que se negocia.
+     *
+     * Vivía HARDCODEADO en la vista, y eso tiene un modo de falla silencioso: si el
+     * motor aprende un motivo nuevo, la pantalla cae al `?? null` y se queda muda sin
+     * que nada falle. Acá es una sola fuente, y un candado exige que cubra todos los
+     * motivos que el motor puede emitir.
+     *
+     * Dos registros del MISMO juego de claves: el largo para la lista ancha de abajo, el
+     * corto para el panel de 330px, donde el largo envuelve en tres líneas. El candado
+     * verifica que ninguno se quede atrás del otro.
+     */
+    public const MOTIVOS = [
+        'espacio' => 'no queda espacio con el resto de la carga',
+        'peso' => 'se pasa de la carga máxima en kilos',
+        'largo' => 'no entra por el largo de la caja',
+        'ancho' => 'no entra por el ancho de la caja',
+        'alto' => 'no entra por la altura de la caja',
+        'pallet_vacio' => 'no entra ni una encima del pallet',
+    ];
+
+    public const MOTIVOS_CORTOS = [
+        'espacio' => 'no queda espacio',
+        'peso' => 'se pasa de kilos',
+        'largo' => 'no entra de largo',
+        'ancho' => 'no entra de ancho',
+        'alto' => 'no entra de alto',
+        'pallet_vacio' => 'no entra en el pallet',
+    ];
+
+    /**
      * Ejes que dibuja cada silueta. Es una CONSECUENCIA del dibujo, no un dato
      * del camión: no existe columna `ejes` y no vale inventarla para esto —
      * ninguna decisión del negocio depende de este número, solo el lienzo. Si
@@ -615,6 +647,21 @@ class SimuladorCargaController extends Controller
                 // transparencia del cálculo — el caso que solo atendía una de las dos
                 // (la lección de la bitácora [2026-08-20]).
                 'rejilla' => $bloque['rejilla'] ?? null,
+                // CUÁNTO ESPACIO OCUPA ESTA LÍNEA (pedido del dueño 21-08, mostrando el
+                // panel de EasyCargo: «el detalle de cada carga, cantidad y espacio que
+                // ocupa»). Es el volumen de la caja envolvente de lo COLOCADO —no de lo
+                // pedido—, porque es el espacio que de verdad se está usando en el
+                // dibujo que está al lado.
+                //
+                // Sale del bulto que se le pasó AL MOTOR (`$lineas[$i]['bulto']`) y no de
+                // las medidas del catálogo: en una línea en pallet el bulto es el pallet
+                // ARMADO, y medir la caja de tapas daría el volumen de la carga sin la
+                // tarima. Un solo lugar, el mismo que calculó.
+                'volumen_m3' => round(
+                    ($lineas[$i]['bulto']['largo'] * $lineas[$i]['bulto']['ancho'] * $lineas[$i]['bulto']['alto'] / 1_000_000)
+                    * ($palletVacio ? 0 : $r['colocados']),
+                    2,
+                ),
                 // Qué se agotó. Para una línea que no entró completa ya lo dice `motivo`
                 // con el detalle fino (largo/ancho/alto/peso/espacio). Para una ABIERTA
                 // Y SOLA —o sea la vieja pregunta «¿cuánto entra?»— se le pide el
