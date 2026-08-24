@@ -220,6 +220,76 @@ class CargaUnificadaTest extends TestCase
     }
 
     /**
+     * LA FICHA DEL CAMIÓN Y EL «DE DÓNDE SALE» VIVEN EN LA ⓘ.
+     *
+     * Pedido del dueño (21-08), señalando el listado de Inventario como modelo: «el
+     * detalle de la especificación del Contenedor 40 —medidas útiles, volumen, carga
+     * máxima y piso libre en la puerta— dejalo como el icono de notificación, y lo
+     * mismo con el cuadro informativo "DE DÓNDE SALE ESE NÚMERO"». Es su propia
+     * doctrina del 17-08 aplicada a tarjetas en vez de a campos.
+     *
+     * El candado mira las dos mitades, porque una sola se cumple por accidente:
+     * que el dato esté DENTRO de un `<x-info-tip>`, y que lo que debe seguir a la
+     * vista —el nombre del camión, el piso libre, la acción de apilar— no se haya ido
+     * con él. Esconder una ACCIÓN detrás de un ícono es hacerla desaparecer, que es la
+     * lección del pallet enterrado en un desplegable (10-08).
+     */
+    public function test_la_ficha_del_camion_vive_en_la_i_y_el_piso_libre_queda_a_la_vista(): void
+    {
+        $html = $this->ver([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
+
+        // El nombre del camión se queda a la vista: es lo que se está mirando.
+        $this->assertStringContainsString($this->hd35->nombre, $html);
+
+        // Las medidas útiles ya NO están sueltas en la franja: viven en el globo.
+        $globo = $this->contenidoDelPrimerInfoTip($html);
+        $this->assertStringContainsString('Medidas útiles', $globo,
+            'Las medidas del camión no quedaron dentro de la ⓘ.');
+        $this->assertStringContainsString('Volumen', $globo);
+        $this->assertStringContainsString('Carga máxima', $globo);
+
+        // Y NO SE REPITEN afuera. Esta mitad es la que hace al candado discriminar:
+        // sin ella pasa igual con el dato en la ⓘ *y* en la franja, que es exactamente
+        // lo que el dueño pidió sacar. Se CUENTA en vez de buscar, porque la cadena
+        // puede venir de dos lugares (idioma de la bitácora [2026-07-29]).
+        $this->assertSame(1, substr_count($html, 'Medidas útiles'),
+            'Las medidas del camión aparecen fuera de la ⓘ: el detalle volvió a la franja.');
+
+        // Y el PISO LIBRE se queda afuera del globo a propósito: no es una
+        // especificación del camión, es el resultado de esta carga (el «Free meters»).
+        $this->assertStringContainsString('Piso libre en la puerta', $html);
+        $this->assertStringNotContainsString('Piso libre', $globo,
+            'El piso libre se escondió en la ⓘ: es resultado de la carga, no ficha técnica.');
+    }
+
+    /**
+     * Devuelve el contenido del PRIMER globo de ayuda de la página, para poder
+     * distinguir «está en la ⓘ» de «está en la pantalla». Sin esta distinción, un
+     * assert de presencia pasa igual con el dato suelto en la franja — el verde por la
+     * razón equivocada de la bitácora [2026-07-20].
+     */
+    private function contenidoDelPrimerInfoTip(string $html): string
+    {
+        // `data-dg-panel` es el marcador que emiten los paneles anclados (el globo de
+        // `<x-info-tip>` y el menú de `<x-dropdown>`), y es lo que mide `x-dg-anclar`:
+        // ancla estable, no una clase de diseño que un retoque cambiaría.
+        //
+        // Se juntan TODOS y no el primero: el primero de la página es el menú de la
+        // campanita del topbar. Quedarse con ése hacía fallar el candado por el lugar
+        // equivocado — la otra cara del verde-engañoso de la bitácora [2026-07-20].
+        $trozos = [];
+        $pos = 0;
+        while (($pos = strpos($html, 'data-dg-panel', $pos)) !== false) {
+            $trozos[] = substr($html, $pos, 1400);
+            $pos += 13;
+        }
+
+        $this->assertNotEmpty($trozos, 'No hay ningún panel de ayuda en la pantalla.');
+
+        return implode("\n", $trozos);
+    }
+
+    /**
      * NINGÚN MOTIVO DEL MOTOR SE QUEDA SIN PALABRAS.
      *
      * El texto de «por qué quedó afuera» vivía hardcodeado en la vista, con un modo de

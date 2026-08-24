@@ -119,30 +119,48 @@
          `bg-neutral-50/70` —el mismo fondo del menú lateral— se lee como parte del visor
          y no como una tarjeta de contenido metida adentro. --}}
     @if ($camion ?? null)
+        {{-- LA FICHA VIVE EN LA ⓘ (pedido del dueño 21-08, señalando el listado de
+             Inventario: «el detalle de la especificación del Contenedor 40 —medidas
+             útiles, volumen, carga máxima y piso libre en la puerta— dejalo como el
+             icono de notificación»). Es su propia doctrina del 17-08 aplicada acá: la
+             explicación larga se esconde, el estado se muestra.
+
+             Lo que QUEDA a la vista es el nombre del camión —lo que se está mirando— y
+             el piso libre, que no es una especificación del camión sino el resultado de
+             ESTA carga: es el «Free meters» de EasyCargo, la respuesta a «¿le sumo algo
+             más a este viaje?», y cambia con cada cálculo. Esconderlo junto a las
+             medidas fijas confundiría un dato vivo con la ficha técnica. --}}
         <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-neutral-200 bg-neutral-50/70 px-4 py-2.5 text-sm">
-            <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
-            <span class="text-neutral-500">Medidas útiles
-                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
-                <span class="cursor-help text-neutral-300"
-                      title="Medidas por DENTRO de la caja, no la ficha del fabricante: entre exterior e interior hay 10 a 20% de volumen, que es la diferencia entre que la carga entre o quede en el andén.">ⓘ</span>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="font-semibold text-neutral-900">{{ $camion->nombre }}</span>
+                <x-info-tip>
+                    <span class="block font-semibold text-neutral-900">{{ $camion->nombre }}</span>
+                    <span class="mt-1 block">
+                        Medidas útiles
+                        <span class="font-medium tabular-nums text-neutral-700">{{ number_format($camion->largo_cm / 100, 2, ',', '.') }} × {{ number_format($camion->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($camion->alto_cm / 100, 2, ',', '.') }} m</span>
+                        · Volumen
+                        <span class="font-medium tabular-nums text-neutral-700">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
+                        · Carga máxima
+                        @if ($camion->peso_max_kg)
+                            <span class="font-medium tabular-nums text-neutral-700">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
+                        @else
+                            <span class="text-neutral-400">sin dato</span>
+                        @endif
+                        @if ($camion->pasillo_cm > 0)
+                            · Pasillo reservado
+                            <span class="font-medium tabular-nums text-neutral-700">{{ $camion->pasillo_cm }} cm</span>
+                        @endif
+                    </span>
+                    <span class="mt-1.5 block">
+                        Son medidas por DENTRO de la caja, no la ficha del fabricante: entre
+                        exterior e interior hay 10 a 20% de volumen, que es la diferencia
+                        entre que la carga entre o quede en el andén.
+                    </span>
+                </x-info-tip>
             </span>
-            <span class="text-neutral-500">Volumen
-                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->volumenM3(), 1, ',', '.') }} m³</span>
-            </span>
-            <span class="text-neutral-500">Carga máxima
-                @if ($camion->peso_max_kg)
-                    <span class="font-medium tabular-nums text-neutral-900">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
-                @else
-                    <span class="text-neutral-400">sin dato</span>
-                @endif
-            </span>
-            @if ($camion->pasillo_cm > 0)
-                <span class="text-neutral-500">Pasillo reservado
-                    <span class="font-medium tabular-nums text-neutral-900">{{ $camion->pasillo_cm }} cm</span>
-                </span>
-            @endif
             {{-- El «Free meters» de EasyCargo: más accionable que el % de ocupación
-                 para «¿le sumo algo más a este viaje?». --}}
+                 para «¿le sumo algo más a este viaje?». Se queda a la vista porque es
+                 RESULTADO de esta carga, no especificación del camión. --}}
             <span class="text-neutral-500">Piso libre en la puerta
                 <span class="font-medium tabular-nums text-neutral-900">{{ number_format($escena['libre_m'], 2, ',', '.') }} m</span>
             </span>

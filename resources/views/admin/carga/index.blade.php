@@ -594,7 +594,10 @@
                                     </div>
                                 @endif
 
-                                <div x-show="modo === 'maximo'" class="grid gap-4 lg:grid-cols-2">
+                                {{-- UNA sola tarjeta desde el 21-08: la hermana «de dónde sale ese
+                                     número» se mudó a la ⓘ del título, así que un grid de dos
+                                     columnas dejaría media pantalla vacía al lado del número. --}}
+                                <div x-show="modo === 'maximo'" class="max-w-xl">
 
                                     {{-- ① EL NÚMERO --}}
                                     <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
@@ -603,7 +606,45 @@
                                              lienzo, CON los números («de tus 50 entran 42, quedan 8»).
                                              Repetirlo acá sería decir dos veces lo mismo en la misma
                                              pantalla. Ver `_visor.blade.php`. --}}
-                                        <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</p>
+                                        {{-- «DE DÓNDE SALE ESE NÚMERO» VIVE EN LA ⓘ (pedido del dueño
+                                             21-08, señalando el listado de Inventario). Era una tarjeta
+                                             hermana con cuatro pares etiqueta-valor: la explicación del
+                                             número, que se lee UNA vez y después estorba. Es la doctrina
+                                             del 17-08 —la explicación se esconde, el estado se muestra—
+                                             aplicada a una tarjeta en vez de a un campo.
+
+                                             La ⓘ es HERMANA del título, nunca hija: un botón dentro de
+                                             otro elemento interactivo es el gotcha de esa misma doctrina. --}}
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</span>
+                                            <x-info-tip>
+                                                <span class="block font-semibold text-neutral-900">De dónde sale ese número</span>
+                                                <span class="mt-1.5 block space-y-1">
+                                                    @if ($bulto->puedeAcostarse())
+                                                        {{-- Con qué estiba salió: sin decirlo, «entran 270» se
+                                                             compara contra los 420 de pie y parece un error. --}}
+                                                        <span class="flex justify-between gap-3">
+                                                            <span>Cómo viaja</span>
+                                                            <span class="text-right font-medium text-neutral-700">{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$estiba] ?? 'Automático' }}</span>
+                                                        </span>
+                                                    @endif
+                                                    <span class="flex justify-between gap-3">
+                                                        <span>Se agota primero</span>
+                                                        <span class="text-right font-medium text-neutral-700">{{ $lim }}</span>
+                                                    </span>
+                                                    <span class="flex justify-between gap-3">
+                                                        <span>Rejilla</span>
+                                                        <span class="text-right font-medium tabular-nums text-neutral-700">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
+                                                    </span>
+                                                    @if ($resultado['peso_kg'] > 0)
+                                                        <span class="flex justify-between gap-3">
+                                                            <span>Peso</span>
+                                                            <span class="text-right font-medium tabular-nums text-neutral-700">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
+                                                        </span>
+                                                    @endif
+                                                </span>
+                                            </x-info-tip>
+                                        </span>
                                         <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
                                         <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
 
@@ -623,6 +664,28 @@
                                                 <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, $ocupacionCupo) }}%"></div>
                                             </div>
                                         </div>
+
+                                        {{-- EL AIRE QUE QUEDA ARRIBA se queda A LA VISTA y no entra en la
+                                             ⓘ, aunque venía en la misma tarjeta que el resto: no es una
+                                             explicación, es un HALLAZGO ACCIONABLE con su botón. La
+                                             doctrina del 17-08 es explícita en que la ⓘ guarda el porqué,
+                                             y esconder una acción detrás de un ícono es hacerla
+                                             desaparecer (la lección del pallet enterrado, 10-08). --}}
+                                        @if ($apiladasCupo > 0 && $techoCupo > $apiladasCupo)
+                                            <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3 text-sm">
+                                                <span class="text-neutral-500">
+                                                    Queda aire arriba:
+                                                    van <span class="font-medium tabular-nums text-neutral-700">{{ $apiladasCupo }}</span>
+                                                    y la caja da para <span class="font-medium tabular-nums text-neutral-700">{{ $techoCupo }}</span>
+                                                </span>
+                                                <button type="button"
+                                                        @click="$refs.apilado.value = {{ $techoCupo }}; $refs.apilado.form.requestSubmit()"
+                                                        class="min-h-8 shrink-0 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
+                                                        title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
+                                                    Apilar {{ $techoCupo }}
+                                                </button>
+                                            </div>
+                                        @endif
 
                                         @if ($bulto->peligrosa)
                                             <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
@@ -672,53 +735,7 @@
                                         </p>
                                     </div>
 
-                                    {{-- ② DE DÓNDE SALE ESE NÚMERO. Las filas van separadas por
-                                         línea (`divide-y`) y no por aire: son pares
-                                         etiqueta-valor, y con el ojo entrenado en la tabla de
-                                         un Excel se leen más rápido así. --}}
-                                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                        <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">De dónde sale ese número</p>
-
-                                        <div class="mt-2 divide-y divide-neutral-100 text-sm">
-                                            @if ($bulto->puedeAcostarse())
-                                                {{-- Con qué estiba salió este número: sin decirlo, «entran 270»
-                                                     se compara contra los 420 de pie y parece un error. --}}
-                                                <div class="flex justify-between gap-3 py-2">
-                                                    <span class="text-neutral-500">Cómo viaja</span>
-                                                    <span class="text-right font-medium text-neutral-900">{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$estiba] ?? 'Automático' }}</span>
-                                                </div>
-                                            @endif
-                                            <div class="flex justify-between gap-3 py-2">
-                                                <span class="text-neutral-500">Se agota primero</span>
-                                                <span class="text-right font-medium text-neutral-900">{{ $lim }}</span>
-                                            </div>
-                                            <div class="flex justify-between gap-3 py-2">
-                                                <span class="text-neutral-500">Rejilla</span>
-                                                <span class="text-right font-medium tabular-nums text-neutral-900">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
-                                            </div>
-                                            @if ($resultado['peso_kg'] > 0)
-                                                <div class="flex justify-between gap-3 py-2">
-                                                    <span class="text-neutral-500">Peso</span>
-                                                    <span class="text-right font-medium tabular-nums text-neutral-900">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
-                                                </div>
-                                            @endif
-                                            @if ($apiladasCupo > 0 && $techoCupo > $apiladasCupo)
-                                                <div class="flex flex-wrap items-center justify-between gap-2 py-2">
-                                                    <span class="text-neutral-500">Queda aire arriba</span>
-                                                    <span class="flex items-center gap-2">
-                                                        <span class="text-xs text-neutral-500">la caja da para <span class="tabular-nums">{{ $techoCupo }}</span></span>
-                                                        <button type="button"
-                                                                @click="$refs.apilado.value = {{ $techoCupo }}; $refs.apilado.form.requestSubmit()"
-                                                                class="min-h-8 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
-                                                                title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
-                                                            Apilar {{ $techoCupo }}
-                                                        </button>
-                                                    </span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
+                                                                    </div>
                             @endif
 
                             {{-- RESULTADO · SOBRE PALLET. Se lee de arriba abajo como se arma:
