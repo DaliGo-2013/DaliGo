@@ -182,6 +182,43 @@ class CargaUnificadaTest extends TestCase
     }
 
     /**
+     * NO SE PIERDE «DE DÓNDE SALE ESE NÚMERO».
+     *
+     * Era lo ÚNICO que la pantalla de un producto tenía y la de varios no: la rejilla
+     * con que se acomodó y qué se agotó primero. Al fusionar, ese es exactamente el
+     * caso que se cuela — la lección de la bitácora [2026-08-20]: «al unificar dos
+     * pantallas, listar los casos que atendía CADA una y probar el que solo tenía una».
+     *
+     * Y el límite fino («el largo de la caja», no «espacio») solo se pide a `cupo()`
+     * cuando la línea abierta está SOLA, porque `cupo()` describe el camión vacío:
+     * mostrarlo junto a una carga mixta sería explicar un camión que no se dibujó.
+     */
+    public function test_la_fila_dice_con_que_rejilla_y_que_se_agoto_primero(): void
+    {
+        $sola = $this->ver([['tipo' => $this->bolsa->id]])->assertOk()->viewData('mixta');
+        $fila = $sola['lineas'][0];
+
+        // La rejilla del acomodo que el motor dibujó: 3 de largo × 7 de ancho × 4 de alto.
+        $this->assertNotNull($fila['rejilla'], 'La fila no dice con qué rejilla se acomodó.');
+        $this->assertSame(84, $fila['rejilla']['largo'] * $fila['rejilla']['ancho'] * $fila['rejilla']['alto'],
+            'La rejilla no cuadra con las 84 bolsas colocadas.');
+
+        // Sola y abierta = la vieja pregunta, así que el límite viene con el detalle
+        // fino de cupo() y no con el «espacio» grueso.
+        $this->assertContains($fila['limita'], ['largo', 'ancho', 'alto', 'peso'],
+            'Se perdió el límite fino de la pantalla de un producto.');
+
+        // Con OTRA línea arriba ya no se usa cupo(): el camión no está vacío.
+        $conOtra = $this->ver([
+            ['tipo' => $this->caja->id, 'cantidad' => 20],
+            ['tipo' => $this->bolsa->id],
+        ])->assertOk()->viewData('mixta');
+
+        $this->assertSame('espacio', $conOtra['lineas'][1]['limita'],
+            'Con una carga mixta se está mostrando el límite del camión VACÍO.');
+    }
+
+    /**
      * EL AVISO DE SOBREPESO CUENTA LOS KILOS DE LA ABIERTA.
      *
      * El peso «pedido» se suma con la cantidad de cada línea, y una abierta no tiene.

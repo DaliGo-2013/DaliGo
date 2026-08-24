@@ -230,6 +230,28 @@ class SimuladorCargaController extends Controller
             ksort($datos['lineas']);
         }
 
+        // ── LOS LINKS VIEJOS SIGUEN ANDANDO ──
+        // Hasta el 21-08 la pantalla tenía dos preguntas y la de UN producto viajaba en
+        // `tipo_bulto_id` (+ `cantidad`, `estiba`, `apilado`). Al fusionarlas quedó UN
+        // solo camino —líneas—, así que ese pedido se TRADUCE a una línea en vez de
+        // mantener dos motores de pantalla: mismos números, un solo lugar donde
+        // arreglarlos.
+        //
+        // Y la traducción es exacta gracias a una convención que ya existía en ese
+        // formulario: la cantidad vacía significaba «el máximo», que es justo lo que
+        // ahora es una línea ABIERTA (ver `LineaAbiertaTest`).
+        //
+        // No aplica en «Sobre pallet»: ese modo usa `tipo_bulto_id` para otra cosa —lo
+        // que va ENCIMA del pallet— y tiene su propio flujo.
+        // PENDIENTE (etapa 2b de la fusión): la traducción está escrita y probada, pero
+        // enciende 10 candados que leen el camino viejo (`resultado`, `prueba`,
+        // `medido`) y cada uno fija una regla real — las tres estibas dan números
+        // distintos, el cupo dice cuántos entrarían si el peso no cortara, la cantidad a
+        // probar capa el dibujo, acomodar a mano no cambia cuántos entran. Se migran uno
+        // por uno con su intención intacta, no se borran: un candado que se apaga al
+        // fusionar es una regla que la pantalla nueva deja de tener sin que nadie se
+        // entere. Ver docs/reglas/simulador-de-carga.md §4.1undecies.
+
         // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
         // carga TIPO sembradas por el deploy, NO los vehículos de la flota. La
         // versión enganchada a la flota dependía de cargar medidas a mano y
@@ -586,6 +608,27 @@ class SimuladorCargaController extends Controller
                 // de «pediste 84 y entraron 84».
                 'abierta' => $abiertas[$i],
                 'lleno_por' => $r['lleno_por'] ?? null,
+                // ── «DE DÓNDE SALE ESE NÚMERO», por línea ──
+                // Al fusionar las dos pantallas (21-08) esto era lo ÚNICO que la de un
+                // producto tenía y la de varios no: la rejilla con que se acomodó y qué
+                // se agotó primero. Sin traerlo, la fusión habría perdido la
+                // transparencia del cálculo — el caso que solo atendía una de las dos
+                // (la lección de la bitácora [2026-08-20]).
+                'rejilla' => $bloque['rejilla'] ?? null,
+                // Qué se agotó. Para una línea que no entró completa ya lo dice `motivo`
+                // con el detalle fino (largo/ancho/alto/peso/espacio). Para una ABIERTA
+                // Y SOLA —o sea la vieja pregunta «¿cuánto entra?»— se le pide el
+                // límite a `cupo()`, que es de donde salía ese texto antes y reproduce
+                // los cupos de referencia. Con más líneas arriba no se usa: `cupo()`
+                // describe el camión VACÍO, y mostrar su límite junto a una carga mixta
+                // sería explicar un camión que no es el que se dibujó.
+                'limita' => $r['motivo']
+                    ?? ($abiertas[$i] && count($modelos) === 1 && $pal === null
+                        ? ($this->calculo->cupo(
+                            $camion->paraCalculo($ocupado['cm'] ?? 0, $ocupado['kg'] ?? 0.0),
+                            $modelo->paraCalculo($estibas[$i], $apilados[$i]),
+                        )['limite'] ?? null)
+                        : ($r['lleno_por'] ?? null)),
                 'bultos_colocados' => $palletVacio ? 0 : $r['colocados'],
                 'bultos_pedidos' => $r['pedidos'],
                 'motivo' => $palletVacio ? 'pallet_vacio' : $r['motivo'],

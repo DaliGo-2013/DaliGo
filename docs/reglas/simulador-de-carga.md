@@ -1562,6 +1562,55 @@ va a la raíz, en cuatro piezas:
   `test_una_linea_sin_elegir_no_vuelve_convertida_en_bulto_a_medida`. Los tres mutados
   con rojo exacto.
 
+### 4.1undecies UNA SOLA PREGUNTA: la cantidad vacía es «lo que quepa» (21-08-2026)
+
+Pedido del dueño, **dos veces**: el 11-08 (*«los dos apartados se repiten, sería bueno
+juntar ambas opciones en una sola y que ahí se pueda calcular sobre un producto o
+varios»*) y el 21-08 (*«hay que unificar los dos puntos ¿Cuánto entra? y ¿cabe esta
+carga?, la única diferencia que veo es un producto o varios y es lo mismo»*).
+
+**El motor ya sabía hacerlo.** Las **líneas abiertas** se construyeron el 11-08 con sus
+seis candados (`LineaAbiertaTest`) exactamente para esta fusión, y **la pantalla nunca se
+cableó**: `grep abierta` en `app/Http/Controllers` y `resources/views` daba **cero**. Es
+el mismo patrón de la bitácora [2026-08-14] con el rol sin avisos — la capacidad existía,
+nadie la conectó. Antes de construir algo así, greppear si ya está.
+
+**Etapa 1 (hecha).** El formulario deja mandar la cantidad vacía y el controlador la
+traduce a línea abierta:
+
+- `lineas.*.cantidad` pasa de `required_with` a `nullable`. El **`min:1` se queda**: un
+  CERO significa «no coloques nada» y esa asimetría es un candado del motor. Vacío y cero
+  son cosas distintas y el error cae siempre del lado de cargar MENOS.
+- Los cuatro lugares que preguntan «¿cuánto se pidió?» contestan lo mismo:
+  `pedidas_unidades` es **null** (no 0), `cargadas` no se capa contra lo pedido, la fila
+  lleva `abierta` y `lleno_por`, y el **peso pedido de una abierta es lo COLOCADO** —
+  contarla 0 dejaría kilos reales fuera del aviso de sobrepeso del 11-08.
+- Un **pallet vacío gana sobre abierta**: no se rellena el camión de tarimas sin nada.
+- **La trampa que cazó la mutación:** al re-sembrar el formulario, `(int)` sobre la
+  cantidad vacía la devolvía como **0** — «lléname» volvía convertido en «no cargues
+  nada». Y sin la guarda la clave ni existe: la pantalla revienta entera. Misma familia
+  que el `?? 0` de la bitácora [2026-08-20].
+- **«De dónde sale ese número» no se pierde.** Era lo ÚNICO que la pantalla de un
+  producto tenía y la de varios no, o sea el caso que se cuela al unificar (lección de
+  [2026-08-20]). La fila gana `rejilla` y `limita`. El límite **fino** («el largo de la
+  caja») se le pide a `cupo()` **solo si la línea abierta está sola**: `cupo()` describe
+  el camión VACÍO, y mostrarlo junto a una carga mixta sería explicar un camión que no se
+  dibujó. Candado mutado con ese caso exacto.
+
+Candados: `CargaUnificadaTest` (7), mutados en 4 sentidos con rojo exacto. **El cupo de
+referencia del HD35 (420 botellones de pie) se reproduce igual desde la pantalla nueva**,
+que es lo que sostiene toda la fusión.
+
+**Etapa 2b (pendiente) — y por qué no se hizo de una.** Traducir un `tipo_bulto_id`
+legado a una línea abierta (para que los links guardados sigan andando por un solo
+camino) está escrito y probado, pero enciende **10 candados** que leen el camino viejo
+(`resultado`, `prueba`, `medido`). No son ruido: fijan que **las tres estibas dan números
+distintos**, que el cupo **dice cuántos entrarían si el peso no cortara**, que **la
+cantidad a probar capa el dibujo** y que **acomodar a mano no cambia cuántos entran**. Se
+migran uno por uno conservando su intención — **un candado que se apaga al fusionar es
+una regla que la pantalla nueva deja de tener sin que nadie se entere**, y esta pantalla
+ya perdió una así (el `assertDontSee` inerte de [2026-08-20]).
+
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 
 Cuarta cabina propia. Las fotos son de un **Chevrolet NQR (Isuzu N-Series)** con furgón, y lo
