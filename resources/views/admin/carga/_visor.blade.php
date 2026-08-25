@@ -135,10 +135,16 @@
         // «Con eso se negocia» es lo que se le dice al VENDEDOR. El mismo cartel viaja
         // al link compartido, donde del otro lado hay un cliente o un conductor: ahí la
         // frase sobra y suena a que se está calculando cuánto apretarlo.
+        // OJO CON EL «ABAJO». Decía «Abajo está qué queda afuera y por qué» cuando la lista
+        // de la carga vivía debajo del camión; al mudarla al panel (21-08) esa frase quedó
+        // señalando un lugar vacío. Ahora no nombra un lugar: la lista está en el panel en
+        // escritorio y detrás del cajón en el celular, así que cualquier «abajo» o
+        // «izquierda» es verdad solo en una de las dos. En el link PÚBLICO sí está abajo —
+        // esa pantalla trae su propia tabla— y por eso su texto se conserva tal cual.
         $detalle = match (true) {
             $cabe => 'La carga completa entra en '.$escena['vehiculo']['nombre'].'.',
             $publico => 'Queda carga afuera. Abajo, producto por producto.',
-            default => 'Abajo está qué queda afuera y por qué — con eso se negocia.',
+            default => 'Cada producto dice cuánto queda afuera y por qué — con eso se negocia.',
         };
         // Con una línea «hasta llenar» entre varias, el premio de haber fusionado: se
         // dice cuánto MÁS entra en lo que sobra, que es lo que ninguna de las dos
@@ -148,25 +154,21 @@
             $detalle = 'Lo pedido entra, y en lo que sobra caben '
                 .$n($relleno['cargadas_unidades']).' '.$relleno['modelo']->nombre.' más.';
         }
-    } elseif (($prueba ?? null) !== null) {
-        // En «¿cuánto entra?» el veredicto va CON LOS NÚMEROS y no con la frase
-        // genérica: la pregunta fue «¿me entran 50?», así que «entran 42, quedan 8»
-        // es la respuesta — «no cabe todo» a secas obligaría a bajar a buscar cuánto.
-        $cabe = $prueba['caben'];
-        $detalle = $cabe
-            ? 'Tus '.$n($prueba['pedidas']).' entran, y el dibujo muestra esa cantidad — no el máximo.'
-            : 'De tus '.$n($prueba['pedidas']).' entran '.$n($prueba['cargadas']).'. '
-                .'Quedan '.$n($prueba['pedidas'] - $prueba['cargadas']).' afuera.';
     }
+    // Había una cuarta rama, para la «cantidad a probar» del cupo de un producto
+    // (`$prueba`). Se fue con la fusión y no se perdió nada: esa cantidad ahora ES la de
+    // la línea, así que sus dos textos —«Tus 50 entran» y «De tus 500 entran 420»— son
+    // las dos ramas de arriba, calculados sobre lo que el motor colocó de verdad en vez
+    // de sobre una comparación hecha aparte.
 @endphp
 
 <div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
-     {{-- `cubicar` arranca ABIERTO si la página volvió de agregar un bulto cubicado
-          (`cubicar=1` en la query, que el panel mete en el formulario). Sin esto, cada
-          «Agregar a la carga» dejaba la pantalla en otra parte y había que volver a buscar
-          el panel — el reclamo textual del dueño el 12-08: «le doy clic y se sale todo y me
-          deja la interfaz sin nada». --}}
-     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, cubicar: {{ ! $publico && request()->boolean('cubicar') ? 'true' : 'false' }}, hoja: null, camiones: false }">
+     {{-- Ya no hay estado `cubicar` acá: el cubicaje es una PESTAÑA de la página y su
+          estado es el `modo` del contenedor de arriba. Lo que sí se conserva es que la
+          página vuelva ABIERTA en él tras agregar un bulto (`cubicar=1` en la query) — el
+          reclamo textual del dueño el 12-08: «le doy clic y se sale todo y me deja la
+          interfaz sin nada». Eso lo decide `index.blade.php` al sembrar `modo`. --}}
+     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, hoja: null, camiones: false }">
 
     {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
          Pedido del dueño (10-08): «la descripción del camión la quiero adentro del
@@ -634,20 +636,12 @@
                     </div>
                 @endif
 
-                {{-- CUBICAR: medir un bulto que no está en el catálogo y verlo mientras
-                     se define (pedido del dueño 12-08, mostrando el panel de EasyCargo).
-                     Ver `_cubicar.blade.php`. --}}
-                <div>
-                    <p class="{{ $titulo }}">Cubicar</p>
-                    <button type="button" @click="cubicar = ! cubicar; hoja = null"
-                            :aria-pressed="cubicar ? 'true' : 'false'"
-                            class="{{ $btn }} w-full"
-                            x-text="cubicar ? 'Cerrar el cubicaje' : 'Medir un bulto'"></button>
-                    <p class="px-1 pt-1 text-[11px] leading-snug text-neutral-500">
-                        Medidas, unidades y kilos, con la caja a escala. Para lo que no está en
-                        el catálogo.
-                    </p>
-                </div>
+                {{-- CUBICAR SE FUE DE ACÁ: es una PESTAÑA (dueño 21-08, «quiero dejar como
+                     una de las opciones principales cubicar»). Estaba a dos clics dentro de
+                     esta hoja, o sea que había que saber que existía para encontrarlo. No se
+                     deja además el botón: dos entradas al mismo panel serían dos estados
+                     independientes —el `cubicar` de este menú y la pestaña— y el que se abre
+                     de un lado no se cierra del otro. Ver `_cubicar.blade.php`. --}}
 
                 {{-- PALLET (pedido del dueño 06-08: «la opción de agregar un pallet esté
                      ahí también, con el estándar y el otro»). Los dos tipos son enlaces
@@ -787,11 +781,11 @@
 
     @if (! $publico)
         @include('admin.carga._acomodo', ['escena' => $escena])
-        {{-- El panel de cubicaje va DENTRO del recuadro del visor, como el del acomodo:
-             los dos son la misma clase de cosa —una herramienta del menú que se abre
-             abajo— y sacarlo afuera habría vuelto a llenar la pantalla de tarjetas, que
-             es lo que el dueño pidió recortar el 10-08. --}}
-        @include('admin.carga._cubicar')
+        {{-- El cubicaje SALIÓ de acá: subió a pestaña (21-08) y vive al pie de la página,
+             donde van los formularios de las pestañas. Estaba adentro del recuadro porque
+             era una herramienta del menú, y dejar el panel acá con la pestaña arriba
+             pondría un formulario dentro del dibujo y otro debajo. El del acomodo sí se
+             queda: se opera MIRANDO el camión, así que tiene que estar pegado a él. --}}
     @endif
 
     {{-- La franja del camión y el veredicto viven ARRIBA, antes del lienzo (12-08).

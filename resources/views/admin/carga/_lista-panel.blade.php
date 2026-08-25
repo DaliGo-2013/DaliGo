@@ -125,8 +125,51 @@
                          es lo que el dueño pidió recortar. --}}
                     @if ($fila['motivo'] !== null)
                         <p class="mt-0.5 text-[11px] font-medium leading-tight text-red-600">
-                            Quedan {{ number_format($fila['pedidas_unidades'] - $fila['cargadas_unidades'], 0, ',', '.') }} afuera:
+                            {{-- El «Quedan N» solo si se pidió un N. En una línea ABIERTA
+                                 `pedidas_unidades` es null y la resta daba «Quedan 0 afuera»,
+                                 que se contradice con el motivo de al lado. Pasa de verdad
+                                 con un pallet vacío: es un «no cabe» sin nada pedido. --}}
+                            @if ($fila['pedidas_unidades'] !== null)
+                                Quedan {{ number_format($fila['pedidas_unidades'] - $fila['cargadas_unidades'], 0, ',', '.') }} afuera:
+                            @endif
                             {{ $ctrl::MOTIVOS_CORTOS[$fila['motivo']] ?? 'no entra' }}
+                        </p>
+                    @endif
+
+                    {{-- ═══ EL AIRE QUE QUEDA ARRIBA DE ESTE PRODUCTO ═══
+                         Pedido del dueño (10-08): «necesito que los bidones también lleguen
+                         hasta el techo». El hueco no era del dibujo ni del acomodo — era el
+                         tope de apilado del catálogo. Y no se explica solo: dos productos
+                         apilados los MISMOS 6 llegan a alturas distintas según cuánto mida
+                         cada uno, así que en pantalla parecía un error del dibujo.
+
+                         Vivía en la lista de abajo del camión, que se fue al cerrar el «todo
+                         en una pantalla» (21-08). Es la sexta función que la fusión se
+                         llevaba en silencio: los dos números seguían viajando en la fila
+                         (`apiladas`, `apilables_por_alto`) y ninguna vista los mostraba —
+                         un dato calculado que nadie lee es peor que uno que no existe,
+                         porque parece cubierto.
+
+                         Va acá y no en el armador de abajo porque los dos números los tiene
+                         el SERVIDOR: la tarjeta del armador se dibuja desde el array de
+                         Alpine, que no los conoce. El botón sí escribe en ese array —el
+                         mismo `apilarHasta` de siempre— y recalcula. --}}
+                    @if ($fila['apiladas'] && $fila['apilables_por_alto'] > $fila['apiladas'])
+                        <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] leading-tight text-neutral-500">
+                            <span>
+                                Van <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apiladas'] }}</span>
+                                de alto de <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apilables_por_alto'] }}</span>
+                            </span>
+                            {{-- `min-h-8` y no menos: el panel también se abre como cajón en
+                                 el celular, así que este botón se toca con el dedo. 32px es
+                                 lo que tenía en la lista de abajo; en 224px de ancho no cabe
+                                 un objetivo de 48 sin partir la fila en dos. --}}
+                            <button type="button"
+                                    @click="apilarHasta({{ $i }}, {{ $fila['apilables_por_alto'] }})"
+                                    class="min-h-8 rounded bg-brand-50 px-1.5 font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
+                                    title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
+                                Apilar {{ $fila['apilables_por_alto'] }}
+                            </button>
                         </p>
                     @endif
                 </div>

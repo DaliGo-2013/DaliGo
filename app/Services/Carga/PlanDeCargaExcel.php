@@ -166,12 +166,21 @@ class PlanDeCargaExcel
         // Carga mixta: una fila por línea, con lo que quedó afuera y por qué.
         if ($d['mixta'] !== null) {
             foreach ($d['mixta']['lineas'] as $i => $l) {
-                $faltan = max(0, $l['pedidas_unidades'] - $l['cargadas_unidades']);
+                // UNA LÍNEA ABIERTA NO PIDIÓ UN NÚMERO: pidió «lo que quepa». Su celda de
+                // «Pedidas» va VACÍA y no en 0 — un 0 en una columna numérica se suma, se
+                // filtra y se lee como «no pidió nada», que es lo contrario de lo que pasó
+                // (se llenó hasta el tope). Vacío no es cero en Excel, y por eso es la única
+                // forma honesta de decirlo sin romper la columna. Lo que se pidió lo dice la
+                // nota al pie de la hoja.
+                //
+                // Y por definición no queda nada afuera: el motor la cortó donde se llenó.
+                $abierta = $l['pedidas_unidades'] === null;
+                $faltan = $abierta ? 0 : max(0, $l['pedidas_unidades'] - $l['cargadas_unidades']);
                 $this->filas->celdas([
                     [1, SimuladorCargaController::letra($i), 'negrita'],
                     [2, $l['modelo']->nombre, 'texto'],
                     [3, TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba']] ?? $l['estiba'], 'texto'],
-                    [4, $l['pedidas_unidades'], 'numero'],
+                    [4, $abierta ? null : $l['pedidas_unidades'], 'numero'],
                     [5, $l['cargadas_unidades'], 'numero'],
                     [6, $faltan ?: null, $faltan ? 'falta' : 'numero'],
                     [7, $l['bultos_colocados'], 'numero'],
@@ -184,25 +193,42 @@ class PlanDeCargaExcel
             $this->filas->vacia();
             $this->filas->celdas([[1, $d['mixta']['cabeTodo'] ? 'CABE TODO' : 'NO CABE TODO', $d['mixta']['cabeTodo'] ? 'ok' : 'falta']]);
 
+            // LA HOJA DECLARA LO QUE SU COLUMNA NO PUEDE DECIR. Con «Pedidas» vacía, quien
+            // recibe la planilla por correo no tiene forma de distinguir «se pidió lo que
+            // quepa» de «falta el dato». Es el mismo criterio del export de Servicio Técnico
+            // (bitácora [2026-08-13]): declarar en la propia hoja lo que el dato no tiene,
+            // porque sin la nota la comparación entre dos planillas lleva a una conclusión
+            // falsa. Solo aparece si hay alguna línea así.
+            $abiertas = array_values(array_filter(
+                $d['mixta']['lineas'],
+                fn (array $l) => $l['pedidas_unidades'] === null,
+            ));
+            if ($abiertas !== []) {
+                $this->filas->vacia();
+                $this->filas->celdas([[1, 'Las líneas sin «Pedidas» se pidieron como «lo que quepa»: '
+                    .'se cargaron hasta llenar el camión, así que no queda nada afuera.', 'ajustado']]);
+            }
+
             return;
         }
 
-        // Cupo máximo / sobre pallet: un solo producto.
+        // SOBRE PALLET: un solo producto, contado en pallets.
+        //
+        // Acá llegaba también el cupo máximo de un producto, leyendo `$d['resultado']`. Esa
+        // rama se fue con la fusión del 21-08: un producto es una carga de una línea, así
+        // que sale por el `if` de arriba con su letra, su estiba y su motivo como cualquier
+        // otra. El `?? 0` que la cubría era además el peor default posible para una planilla
+        // —un cupo de cero que se lee como «no entra nada»—, y ya no puede ocurrir.
         $bulto = $d['bulto'] ?? null;
-        $unidades = ($d['enPallet'] ?? null) !== null
-            ? $d['enPallet']['unidadesTotales']
-            : ($d['resultado']['unidades'] ?? 0);
-        $bultos = ($d['enPallet'] ?? null) !== null
-            ? $d['enPallet']['cabenPallets']
-            : ($d['resultado']['bultos'] ?? 0);
+        $enPallet = $d['enPallet'] ?? null;
 
         $this->filas->celdas([
             [1, 'A', 'negrita'],
             [2, $bulto?->nombre ?? '—', 'texto'],
             [3, TipoBulto::ESTIBAS_ELEGIBLES[$d['estiba'] ?? 'auto'] ?? 'Automático', 'texto'],
-            [5, $unidades, 'numero'],
-            [7, $bultos, 'numero'],
-            [8, ($d['enPallet'] ?? null) !== null ? 'Total apilando pallets' : 'Máximo del camión vacío', 'ajustado'],
+            [5, $enPallet['unidadesTotales'] ?? 0, 'numero'],
+            [7, $enPallet['cabenPallets'] ?? 0, 'numero'],
+            [8, 'Total apilando pallets', 'ajustado'],
         ]);
     }
 

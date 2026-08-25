@@ -70,7 +70,13 @@
             @endphp
 
             <div x-data="{
-                    modo: '{{ $mixta !== null ? 'mixta' : ($enPallet !== null ? 'pallet' : 'maximo') }}',
+                    {{-- «Cubicar» gana sobre «La carga» cuando la página vuelve de agregar
+                         un bulto cubicado (`cubicar=1`): así se puede medir el siguiente sin
+                         volver a buscar la pestaña, que es el reclamo textual del dueño el
+                         12-08 («le doy clic y se sale todo y me deja la interfaz sin nada»).
+                         No hay modo 'maximo': la pregunta «¿cuánto entra?» es una carga de
+                         una línea sin cantidad, así que vive en 'mixta'. --}}
+                    modo: '{{ $enPallet !== null ? 'pallet' : (request()->boolean('cubicar') ? 'cubicar' : 'mixta') }}',
                     lineas: {{ $lineasIniciales->toJson() }},
                     bultos: {{ $bultosJson->toJson() }},
                     colores: {{ $coloresPanel->toJson() }},
@@ -265,35 +271,48 @@
                     },
                  }" x-on:abrir-importar="impAbierto = true" class="space-y-6">
 
-                {{-- Las dos preguntas, como conmutador.
+                {{-- ═══ LAS PESTAÑAS ═══
 
-                     CADA PESTAÑA DICE CUÁNTOS PRODUCTOS ACEPTA (10-08). El dueño
-                     preguntó «¿y dónde agrego otro bulto?» estando en «¿Cuánto entra?»,
-                     que es de UN producto. El nombre decía la PREGUNTA pero no la
-                     CAPACIDAD, así que desde acá no había forma de saber que lo de
-                     varios productos existía en la pestaña de al lado. Dos palabras
-                     debajo del título lo resuelven sin agregar un control. --}}
+                     UNA SOLA PESTAÑA DE CARGA (dueño 21-08: «hay que unificar los dos
+                     puntos ¿Cuánto entra? y ¿cabe esta carga?, la única diferencia que veo
+                     es un producto o varios y es lo mismo»). Antes eran dos y contestaban
+                     la misma pregunta con dos motores distintos: la de un producto no
+                     dejaba agregar otro —el dueño buscó ahí el botón el 10-08— y la de
+                     varios exigía una cantidad para preguntar un cupo. Ahora es una: la
+                     cantidad vacía significa «lo que quepa», así que preguntar «¿cuánto
+                     entra?» es elegir el producto y nada más. Ver §4.1undecies.
+
+                     CUBICAR SUBE A PESTAÑA (dueño 21-08: «quiero dejar como una de las
+                     opciones principales cubicar»). Estaba a dos clics, dentro de la hoja
+                     «Herramientas» del menú del visor — o sea que había que saber que
+                     existía para encontrarlo. Medir un bulto que no está en el catálogo es
+                     de lo primero que hace alguien que trae una carga nueva, no una
+                     herramienta de vez en cuando.
+
+                     El subtítulo de cada pestaña dice su CAPACIDAD y no repite la pregunta:
+                     el nombre solo no alcanzaba (10-08) y esas dos palabras se leen sin
+                     agregar un control. --}}
                 <div class="inline-flex rounded-xl border border-neutral-200 bg-white p-1 shadow-sm" role="tablist">
-                    <button type="button" @click="modo = 'maximo'" role="tab" :aria-selected="modo === 'maximo'"
-                            :class="modo === 'maximo' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
-                            class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
-                        ¿Cuánto entra?
-                        <span class="block text-[10px] font-normal opacity-75">un producto</span>
-                    </button>
                     <button type="button" @click="modo = 'mixta'" role="tab" :aria-selected="modo === 'mixta'"
                             :class="modo === 'mixta' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
                             class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
-                        ¿Cabe esta carga?
-                        <span class="block text-[10px] font-normal opacity-75">varios productos</span>
+                        La carga
+                        <span class="block text-[10px] font-normal opacity-75">uno o varios productos</span>
                     </button>
-                    {{-- Tercer modo: armar un pallet y subirlo. Es una pregunta DISTINTA de
-                         las otras dos («¿cuántas unidades me llevo paletizadas?») y tiene su
-                         propio flujo, así que va como modo y no como una casilla. --}}
+                    {{-- Armar un pallet y subirlo es una pregunta DISTINTA («¿cuántas
+                         unidades me llevo paletizadas?») y tiene su propio flujo, así que va
+                         como pestaña y no como una casilla. --}}
                     <button type="button" @click="modo = 'pallet'" role="tab" :aria-selected="modo === 'pallet'"
                             :class="modo === 'pallet' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
                             class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
                         Sobre pallet
                         <span class="block text-[10px] font-normal opacity-75">solo cajas</span>
+                    </button>
+                    <button type="button" @click="modo = 'cubicar'" role="tab" :aria-selected="modo === 'cubicar'"
+                            :class="modo === 'cubicar' ? 'bg-brand-600 text-white shadow-sm' : 'text-neutral-600 hover:text-neutral-900'"
+                            class="rounded-lg px-4 py-2 text-sm font-semibold leading-tight transition duration-150">
+                        Cubicar
+                        <span class="block text-[10px] font-normal opacity-75">medir un bulto</span>
                     </button>
                 </div>
 
@@ -401,9 +420,15 @@
                                                             @foreach ($grupo['lineas'] as $fila)
                                                                 <li class="text-sm text-neutral-600">
                                                                     {{ $fila['modelo']->nombre }}
+                                                                    {{-- El «de N» solo si se pidió un N: en una línea abierta
+                                                                         `pedidas_unidades` es null y `number_format` lo pinta
+                                                                         como «420 de 0», que el chofer lee como un error de la
+                                                                         hoja. Lo que se pidió fue «lo que quepa». --}}
                                                                     <span class="tabular-nums text-neutral-400">·
-                                                                        {{ number_format($fila['cargadas_unidades'], 0, ',', '.') }} de
-                                                                        {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}</span>
+                                                                        {{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}
+                                                                        {{ $fila['pedidas_unidades'] === null
+                                                                            ? '(lo que quepa)'
+                                                                            : 'de '.number_format($fila['pedidas_unidades'], 0, ',', '.') }}</span>
                                                                     @if ($fila['motivo'] !== null)
                                                                         <span class="font-medium text-red-600">· queda carga afuera</span>
                                                                     @endif
@@ -424,328 +449,8 @@
                                     </x-seccion>
                                 @endif
 
-                                {{-- El detalle por producto: qué entra, qué queda afuera y POR QUÉ.
-                                     El color de cada fila es la leyenda del visor. --}}
-                                <x-list-card title="La carga, producto por producto" :count="count($mixta['lineas'])"
-                                             :countLabel="\Illuminate\Support\Str::plural('producto', count($mixta['lineas']))">
-                                    @foreach ($mixta['lineas'] as $i => $fila)
-                                        @php
-                                            $rgb = \App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D[$i % count(\App\Http\Controllers\Admin\SimuladorCargaController::COLORES_3D)];
-                                            $pendientes = $fila['pedidas_unidades'] - $fila['cargadas_unidades'];
-                                            // El texto sale de `SimuladorCargaController::MOTIVOS`, que es la
-                                            // única fuente: estaba copiado acá y un motivo nuevo del motor
-                                            // dejaba la pantalla muda sin que nada fallara. (Incluye
-                                            // `pallet_vacio`: un pallet donde no entra ni una caja no se
-                                            // sube vacío, §3.3.5 — pasa de verdad con la bolsa de botellones,
-                                            // que mide 130 cm contra los 120 del pallet.)
-                                            $motivoTexto = \App\Http\Controllers\Admin\SimuladorCargaController::MOTIVOS[$fila['motivo']] ?? null;
-                                            $pal = $fila['pallet'];
-                                            // En una línea EN PALLET la cuenta va en pallets, no en unidades
-                                            // sueltas: «3 de 3 pallets», y las cajas se dicen aparte.
-                                            $sustantivo = $pal ? \Illuminate\Support\Str::plural('pallet', $fila['pedidas_unidades']) : null;
-                                        @endphp
-                                        <x-list-row>
-                                            {{-- La LETRA del producto sobre su color: la misma que va escrita
-                                                 sobre las cajas en el lienzo. Antes era solo un cuadradito de
-                                                 color, y un color no se puede nombrar en voz alta («cargá el
-                                                 verde» con dos verdes al lado no sirve) ni se distingue bien
-                                                 con ocho productos. --}}
-                                            <x-slot name="leading">
-                                                <span class="mt-0.5 flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold text-white"
-                                                      style="background: rgb({{ implode(',', $rgb) }})"
-                                                      title="Esta letra va escrita sobre sus cajas en el visor">{{ \App\Http\Controllers\Admin\SimuladorCargaController::letra($i) }}</span>
-                                            </x-slot>
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <p class="font-medium text-neutral-900">{{ $fila['modelo']->nombre }}</p>
-                                                @if ($fila['motivo'] === null)
-                                                    <x-badge variant="brand">Completo</x-badge>
-                                                @else
-                                                    <x-badge variant="danger">Queda afuera</x-badge>
-                                                @endif
-                                                {{-- La estiba cambia el número, así que el resultado tiene que
-                                                     decir con cuál se calculó: leer «entran 270» sin saber que
-                                                     fue acostado invita a compararlo con los 420 de pie. --}}
-                                                {{-- `pie` queda afuera a propósito: es lo que hace el motor
-                                                     por su cuenta con un pack de orientación fija, así que
-                                                     mostrarlo sería ruido. `horizontal` sí entra — cambia
-                                                     el número igual que las acostadas. --}}
-                                                @if (in_array($fila['estiba'], ['horizontal', 'costado', 'pico'], true))
-                                                    <x-badge>{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$fila['estiba']] }}</x-badge>
-                                                @endif
-                                            </div>
-                                            <p class="text-sm text-neutral-500">
-                                                {{ $pal ? 'Cargados' : 'Cargadas' }}
-                                                <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'], 0, ',', '.') }}</span>
-                                                de {{ number_format($fila['pedidas_unidades'], 0, ',', '.') }}{{ $pal ? ' '.$sustantivo : '' }}
-                                                @if ($pal)
-                                                    {{-- Cuántas cajas lleva cada uno y cuántas son en total: es la
-                                                         cuenta que el vendedor necesita para cotizar, y la que se
-                                                         perdía cuando el pallet era un modo aparte. --}}
-                                                    {{-- Sin pluralizar el nombre del producto: «18 caja de tapas»
-                                                         se lee mal y pluralizarlo a mano acierta en unos nombres
-                                                         y falla en otros. El producto ya está en el título de la
-                                                         fila, así que acá alcanza con el número. --}}
-                                                    · <span class="tabular-nums">{{ number_format($pal['por_pallet'], 0, ',', '.') }}</span> por pallet
-                                                    @if ($fila['cargadas_unidades'] > 0)
-                                                        = <span class="font-medium tabular-nums text-neutral-900">{{ number_format($fila['cargadas_unidades'] * $pal['por_pallet'], 0, ',', '.') }}</span> en total
-                                                    @endif
-                                                @elseif ($fila['modelo']->unidades > 1)
-                                                    ({{ $fila['bultos_colocados'] }} {{ \Illuminate\Support\Str::plural('bolsa', $fila['bultos_colocados']) }})
-                                                @endif
-                                                @if ($motivoTexto)
-                                                    · <span class="text-red-600">quedan {{ number_format($pendientes, 0, ',', '.') }} afuera: {{ $motivoTexto }}</span>
-                                                @endif
-                                            </p>
-
-                                            {{-- EL AIRE QUE QUEDA ARRIBA DE ESTE PRODUCTO.
-                                                 Pedido del dueño (10-08): «necesito que los bidones también
-                                                 lleguen hasta el techo». El hueco no era del dibujo ni del
-                                                 acomodo — era el tope de apilado del catálogo. Y no se
-                                                 explicaba solo: dos productos apilados los MISMOS 6 llegan a
-                                                 alturas distintas según cuánto mida cada uno, así que en
-                                                 pantalla parecía un error. Se dice, y se arregla de un toque. --}}
-                                            @if ($fila['apiladas'] && $fila['apilables_por_alto'] > $fila['apiladas'])
-                                                <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
-                                                    <span>
-                                                        Van <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apiladas'] }}</span> de alto
-                                                        y {{ $pal ? 'el pallet' : 'la caja' }} da para
-                                                        <span class="font-medium tabular-nums text-neutral-700">{{ $fila['apilables_por_alto'] }}</span>.
-                                                    </span>
-                                                    <button type="button"
-                                                            @click="apilarHasta({{ $i }}, {{ $fila['apilables_por_alto'] }})"
-                                                            class="min-h-8 rounded-lg bg-brand-50 px-2 py-1 font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
-                                                            title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
-                                                        Apilar {{ $fila['apilables_por_alto'] }}
-                                                    </button>
-                                                </p>
-                                            @endif
-
-                                            {{-- QUITAR DESDE EL RESULTADO (dueño 21-08: «quiero la
-                                                 opción de eliminar o borrar» — y esta lista fue la que
-                                                 marcó). Saca la línea del formulario y recalcula, así
-                                                 el dibujo sigue diciendo lo que el motor verificó. Si
-                                                 era la última, no se manda un formulario vacío: queda
-                                                 el estado vacío del armador, listo para partir de cero. --}}
-                                            <x-slot name="actions">
-                                                <button type="button"
-                                                        @click="quitar({{ $i }}); lineas.length && $nextTick(() => $refs.formMixta?.requestSubmit())"
-                                                        class="rounded-lg p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
-                                                        title="Quitar {{ $fila['modelo']->nombre }} de la carga y recalcular">
-                                                    <x-icon.trash class="h-4 w-4" />
-                                                    <span class="sr-only">Quitar {{ $fila['modelo']->nombre }} de la carga</span>
-                                                </button>
-                                            </x-slot>
-                                        </x-list-row>
-                                    @endforeach
-                                </x-list-card>
                             @endif
 
-                            {{-- RESULTADO · cupo máximo. DOS TARJETAS, no una columna larga
-                                 (pedido del dueño 10-08, dibujado sobre la pantalla): a la
-                                 izquierda EL NÚMERO que se vino a buscar, a la derecha DE DÓNDE
-                                 SALE. En una sola tarjeta el «550 bultos» encabezaba seis filas
-                                 etiqueta-valor: el dato y su letra chica compartían una columna
-                                 angosta, y al lado de un dibujo que ocupa todo el ancho la
-                                 tarjeta se veía como una tira de texto.
-
-                                 La OCUPACIÓN se fue con el número y no con el detalle: la barra
-                                 es el camión llenándose, se lee junto al «entran». Estaba
-                                 escrita dos veces —una fila con el % y abajo una barra sin
-                                 rótulo—; ahora es un solo bloque. --}}
-                            @if ($resultado)
-                                @php
-                                    $lim = [
-                                        'largo' => 'el largo de la caja',
-                                        'ancho' => 'el ancho de la caja',
-                                        'alto' => 'la altura (o el tope de apilado)',
-                                        'peso' => 'la carga máxima en kilos',
-                                        'ninguno' => '—',
-                                    ][$resultado['limite']] ?? '—';
-                                    $ocupacionCupo = round($resultado['ocupacion'] * 100);
-                                    // EL AIRE QUE QUEDA ARRIBA. El mismo aviso que la carga mixta,
-                                    // por el mismo motivo: el tope de apilado corta antes que la
-                                    // altura y el hueco no se explica solo. Acá el campo ya está a
-                                    // la vista con el número del catálogo, pero cuántas CABRÍAN no
-                                    // se decía en ninguna parte.
-                                    $apiladasCupo = $resultado['rejilla']['alto'];
-                                    $techoCupo = $resultado['orientacion']['alto'] > 0
-                                        ? intdiv($camion->alto_cm, $resultado['orientacion']['alto'])
-                                        : 0;
-                                    // EL PESO CORTÓ ANTES QUE EL ESPACIO. `cupo()` calcula primero
-                                    // la rejilla y después recorta por kilos, así que la rejilla
-                                    // que devuelve sigue siendo la del ESPACIO: multiplicarla da
-                                    // cuántos habrían entrado si el camión aguantara. Es el número
-                                    // que convierte «entran 154» en «entran 154 de los 324 que
-                                    // caben, porque te quedaste sin kilos».
-                                    $porEspacioCupo = $resultado['rejilla']['largo'] * $resultado['rejilla']['ancho'] * $resultado['rejilla']['alto'];
-                                    $cortoPorPeso = $resultado['limite'] === 'peso' && $porEspacioCupo > $resultado['bultos'];
-                                @endphp
-
-                                {{-- ═══ SE LLENA DE KILOS ANTES QUE DE METROS ═══
-                                     El mismo aviso que la carga mixta (pedido del dueño 11-08), acá
-                                     con la comparación que este modo permite: cuántos habrían
-                                     entrado por espacio contra cuántos deja el peso. Va ARRIBA de
-                                     las dos tarjetas y a todo el ancho, porque el número grande de
-                                     al lado —«entran 154»— es justo el que se lee sin contexto. --}}
-                                @if ($cortoPorPeso)
-                                    <div x-show="modo === 'maximo'" class="rounded-2xl border-2 border-red-300 bg-red-50 p-4 sm:p-5">
-                                        <p class="text-lg font-semibold text-red-700">⚠ Se llena de kilos antes que de espacio</p>
-                                        <p class="mt-1 text-sm text-red-700">
-                                            Por espacio entrarían
-                                            <span class="font-semibold tabular-nums">{{ number_format($porEspacioCupo, 0, ',', '.') }}</span>,
-                                            pero la carga máxima de
-                                            <span class="font-semibold tabular-nums">{{ number_format($camion->peso_max_kg, 0, ',', '.') }} kg</span>
-                                            deja solo
-                                            <span class="font-semibold tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</span>.
-                                            El camión va a quedar <strong>por la mitad y aun así al tope</strong>: lo que
-                                            sobra es lugar, no capacidad.
-                                        </p>
-                                    </div>
-                                @endif
-
-                                {{-- UNA sola tarjeta desde el 21-08: la hermana «de dónde sale ese
-                                     número» se mudó a la ⓘ del título, así que un grid de dos
-                                     columnas dejaría media pantalla vacía al lado del número. --}}
-                                <div x-show="modo === 'maximo'" class="max-w-xl">
-
-                                    {{-- ① EL NÚMERO --}}
-                                    <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-                                        {{-- LA PRUEBA («¿me entran 50?») ya no se responde acá: desde
-                                             el 12-08 el veredicto va pegado al borde de arriba del
-                                             lienzo, CON los números («de tus 50 entran 42, quedan 8»).
-                                             Repetirlo acá sería decir dos veces lo mismo en la misma
-                                             pantalla. Ver `_visor.blade.php`. --}}
-                                        {{-- «DE DÓNDE SALE ESE NÚMERO» VIVE EN LA ⓘ (pedido del dueño
-                                             21-08, señalando el listado de Inventario). Era una tarjeta
-                                             hermana con cuatro pares etiqueta-valor: la explicación del
-                                             número, que se lee UNA vez y después estorba. Es la doctrina
-                                             del 17-08 —la explicación se esconde, el estado se muestra—
-                                             aplicada a una tarjeta en vez de a un campo.
-
-                                             La ⓘ es HERMANA del título, nunca hija: un botón dentro de
-                                             otro elemento interactivo es el gotcha de esa misma doctrina. --}}
-                                        <span class="inline-flex items-center gap-1.5">
-                                            <span class="text-xs font-medium uppercase tracking-wide text-neutral-500">Entran</span>
-                                            <x-info-tip>
-                                                <span class="block font-semibold text-neutral-900">De dónde sale ese número</span>
-                                                <span class="mt-1.5 block space-y-1">
-                                                    @if ($bulto->puedeAcostarse())
-                                                        {{-- Con qué estiba salió: sin decirlo, «entran 270» se
-                                                             compara contra los 420 de pie y parece un error. --}}
-                                                        <span class="flex justify-between gap-3">
-                                                            <span>Cómo viaja</span>
-                                                            <span class="text-right font-medium text-neutral-700">{{ \App\Models\TipoBulto::ESTIBAS_ELEGIBLES[$estiba] ?? 'Automático' }}</span>
-                                                        </span>
-                                                    @endif
-                                                    <span class="flex justify-between gap-3">
-                                                        <span>Se agota primero</span>
-                                                        <span class="text-right font-medium text-neutral-700">{{ $lim }}</span>
-                                                    </span>
-                                                    <span class="flex justify-between gap-3">
-                                                        <span>Rejilla</span>
-                                                        <span class="text-right font-medium tabular-nums text-neutral-700">{{ $resultado['rejilla']['largo'] }} × {{ $resultado['rejilla']['ancho'] }} × {{ $resultado['rejilla']['alto'] }}</span>
-                                                    </span>
-                                                    @if ($resultado['peso_kg'] > 0)
-                                                        <span class="flex justify-between gap-3">
-                                                            <span>Peso</span>
-                                                            <span class="text-right font-medium tabular-nums text-neutral-700">{{ number_format($resultado['peso_kg'], 0, ',', '.') }} kg</span>
-                                                        </span>
-                                                    @endif
-                                                </span>
-                                            </x-info-tip>
-                                        </span>
-                                        <p class="mt-1 text-4xl font-semibold text-neutral-900 tabular-nums">{{ number_format($resultado['bultos'], 0, ',', '.') }}</p>
-                                        <p class="text-sm text-neutral-500">{{ \Illuminate\Support\Str::plural('bulto', $resultado['bultos']) }}</p>
-
-                                        @if ($bulto->unidades > 1)
-                                            <p class="mt-3 text-2xl font-semibold text-brand-600 tabular-nums">
-                                                {{ number_format($resultado['unidades'], 0, ',', '.') }}
-                                            </p>
-                                            <p class="text-sm text-neutral-500">unidades ({{ $bulto->unidades }} por bulto)</p>
-                                        @endif
-
-                                        <div class="mt-4 border-t border-neutral-100 pt-3">
-                                            <div class="flex items-baseline justify-between text-sm">
-                                                <span class="text-neutral-500">Ocupación</span>
-                                                <span class="font-medium tabular-nums text-neutral-900">{{ $ocupacionCupo }}%</span>
-                                            </div>
-                                            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                                                <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ min(100, $ocupacionCupo) }}%"></div>
-                                            </div>
-                                        </div>
-
-                                        {{-- EL AIRE QUE QUEDA ARRIBA se queda A LA VISTA y no entra en la
-                                             ⓘ, aunque venía en la misma tarjeta que el resto: no es una
-                                             explicación, es un HALLAZGO ACCIONABLE con su botón. La
-                                             doctrina del 17-08 es explícita en que la ⓘ guarda el porqué,
-                                             y esconder una acción detrás de un ícono es hacerla
-                                             desaparecer (la lección del pallet enterrado, 10-08). --}}
-                                        @if ($apiladasCupo > 0 && $techoCupo > $apiladasCupo)
-                                            <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3 text-sm">
-                                                <span class="text-neutral-500">
-                                                    Queda aire arriba:
-                                                    van <span class="font-medium tabular-nums text-neutral-700">{{ $apiladasCupo }}</span>
-                                                    y la caja da para <span class="font-medium tabular-nums text-neutral-700">{{ $techoCupo }}</span>
-                                                </span>
-                                                <button type="button"
-                                                        @click="$refs.apilado.value = {{ $techoCupo }}; $refs.apilado.form.requestSubmit()"
-                                                        class="min-h-8 shrink-0 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-100"
-                                                        title="Apilar hasta donde llega la altura del camión y recalcular. Cuántas aguanta la de abajo lo sabés vos.">
-                                                    Apilar {{ $techoCupo }}
-                                                </button>
-                                            </div>
-                                        @endif
-
-                                        @if ($bulto->peligrosa)
-                                            <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                                                <strong>Mercancía peligrosa{{ $bulto->peligrosa_codigo ? ' ('.$bulto->peligrosa_codigo.')' : '' }}.</strong>
-                                                El cupo es solo de espacio: el transporte tiene reglas propias de rotulado y segregación.
-                                                Que quepa no significa que se pueda cargar así.
-                                            </p>
-                                        @endif
-
-                                        {{-- ═══ LO QUE ENTRÓ DE VERDAD ═══
-                                             El lazo de vuelta del historial (lote 4). Esta tarjeta
-                                             viene diciendo desde el día uno que su número es un
-                                             TECHO y que «se calibra contando una carga real»; acá
-                                             aparece esa carga, cuando existe.
-
-                                             NO corrige el cupo, lo acompaña. Reemplazarlo por el
-                                             medido sería cambiar un número verificable por un
-                                             promedio de dos anécdotas; mostrar los dos deja ver el
-                                             hueco, que es la información. --}}
-                                        @if (! empty($medido))
-                                            <div class="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm">
-                                                <p class="font-medium text-neutral-900">
-                                                    En terreno entraron
-                                                    <span class="tabular-nums">{{ number_format($medido['promedio'], 0, ',', '.') }}</span>
-                                                    <span class="font-normal text-neutral-500">
-                                                        ({{ round($medido['factor'] * 100) }}% de lo calculado)
-                                                    </span>
-                                                </p>
-                                                <p class="mt-0.5 text-xs text-neutral-500">
-                                                    {{ $medido['veces'] === 1 ? 'Una sola carga anotada,' : 'Promedio de '.$medido['veces'].' cargas anotadas,' }}
-                                                    la última el {{ $medido['ultima'] }} ·
-                                                    <a href="{{ route('admin.cargas-reales.index') }}"
-                                                       class="font-medium text-brand-700 hover:text-brand-600">ver el historial</a>
-                                                </p>
-                                            </div>
-                                        @endif
-
-                                        {{-- El enlace va dentro del párrafo y sin `@if` en línea: una
-                                             directiva partida entre dos líneas de texto rompe el parser
-                                             («unexpected token endif»), y el punto final pegado al
-                                             `@endif` era lo que dejaba « real .» con el espacio de más. --}}
-                                        <p class="mt-4 text-xs leading-relaxed text-neutral-400">
-                                            Capacidad práctica, no promesa: la estiba real no es una rejilla perfecta (amarres, hilera del
-                                            piso girada). Se calibra contando una carga real{!! empty($medido)
-                                                ? ' — <a href="'.route('admin.cargas-reales.index').'" class="font-medium text-neutral-500 hover:text-neutral-700">anotá una en Cargas reales</a>'
-                                                : '' !!}.
-                                        </p>
-                                    </div>
-
-                                                                    </div>
-                            @endif
 
                             {{-- RESULTADO · SOBRE PALLET. Se lee de arriba abajo como se arma:
                                  primero lo que entra en UN pallet, después cuántos pallets entran
@@ -822,85 +527,15 @@
                         </div>
                 @endif
 
-                {{-- ③ El formulario, al final: el dueño quiso el 3D lo más grande
-                     posible y arriba de todo (05-08). --}}
+                {{-- ③ El formulario de la pestaña, al final: el dueño quiso el 3D lo más
+                     grande posible y arriba de todo (05-08).
 
-                {{-- MODO 1 · cupo máximo de un producto. El x-cloak va en el form
-                     del modo INACTIVO según lo que respondió el servidor: sin él,
-                     el form del otro modo destella hasta que Alpine arranca. --}}
-                <form x-show="modo === 'maximo'" @if ($mixta !== null) x-cloak @endif
-                      method="GET" action="{{ route('admin.carga.index') }}"
-                      class="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:flex-row sm:items-end sm:p-4">
-                    <div class="flex-1">
-                        <x-input-label for="camion_id" value="Camión" />
-                        <x-select id="camion_id" name="camion_id" class="mt-1.5" onchange="this.form.submit()">
-                            @foreach ($camiones as $c)
-                                <option value="{{ $c->id }}" @selected($camion?->id === $c->id)>
-                                    {{ $c->nombre }}
-                                    — {{ number_format($c->largo_cm / 100, 2, ',', '.') }} × {{ number_format($c->ancho_cm / 100, 2, ',', '.') }} × {{ number_format($c->alto_cm / 100, 2, ',', '.') }} m
-                                </option>
-                            @endforeach
-                        </x-select>
-                    </div>
-                    <div class="flex-1">
-                        <x-input-label for="tipo_bulto_id" value="Qué se carga" />
-                        <x-select id="tipo_bulto_id" name="tipo_bulto_id" class="mt-1.5" onchange="this.form.submit()">
-                            @foreach ($bultos as $b)
-                                <option value="{{ $b->id }}" @selected($bulto?->id === $b->id)>{{ $b->nombre }}</option>
-                            @endforeach
-                        </x-select>
-                    </div>
-                    @if ($bulto?->puedeAcostarse())
-                        {{-- La misma elección de estiba que en la carga mixta: sin esto, la
-                             pregunta «¿cuánto entra?» solo se podría responder de pie. --}}
-                        <div class="sm:w-36">
-                            <x-input-label for="estiba" value="Cómo viaja" />
-                            <x-select id="estiba" name="estiba" class="mt-1.5" onchange="this.form.submit()">
-                                @foreach (\App\Models\TipoBulto::ESTIBAS_ELEGIBLES as $clave => $nombre)
-                                    <option value="{{ $clave }}" @selected($estiba === $clave)>{{ $nombre }}</option>
-                                @endforeach
-                            </x-select>
-                        </div>
-                    @endif
-                    {{-- TOPE DE APILADO. Es lo que dejaba el hueco arriba de la carga que el
-                         dueño marcó (06-08): el catálogo dice 6 y el motor no sube más aunque
-                         quede altura. Cuántas aguanta la de abajo es dato de terreno, no de
-                         geometría, así que la decisión es suya. --}}
-                    @if ($bulto)
-                        <div class="sm:w-32">
-                            <x-input-label for="apilado" value="Apilar hasta" />
-                            <x-text-input id="apilado" name="apilado" type="number" min="1" max="30"
-                                          class="mt-1.5 w-full" inputmode="numeric" x-ref="apilado"
-                                          value="{{ $apilado ?: $bulto->apilable_max }}"
-                                          title="Cuántos se apilan uno sobre otro. El catálogo dice {{ $bulto->apilable_max }}." />
-                        </div>
-                    @endif
-                    {{-- CANTIDAD A PROBAR (pedido del dueño 06-08: «me falta la opción de
-                         cuánto cargo, 1, 20, 50, para realizar la prueba»). Vacío = el
-                         máximo, que era el único comportamiento hasta ahora. --}}
-                    <div class="sm:w-36">
-                        <x-input-label for="cantidad" value="Cantidad a probar" />
-                        <x-text-input id="cantidad" name="cantidad" type="number" min="1" max="100000"
-                                      class="mt-1.5 w-full" inputmode="numeric"
-                                      value="{{ $cantidad }}" placeholder="Máximo"
-                                      title="¿Te entran 50? Escribí 50 y calculá. Vacío calcula el máximo." />
-                    </div>
-                    <div><x-primary-button>Calcular</x-primary-button></div>
-                    {{-- El atajo desde donde falta. Este modo es de UN producto, y el
-                         dueño buscó acá el botón para agregar otro (10-08). En vez de
-                         duplicar el panel en los dos modos —que sería tener dos listas
-                         que se contradicen— se ofrece el camino: cambiar de pregunta
-                         llevándose el camión y el producto ya elegidos, para no volver
-                         a armar la pantalla del otro lado. --}}
-                    <div class="basis-full">
-                        <button type="button" @click="modo = 'mixta'"
-                                class="text-xs text-neutral-500 underline-offset-2 transition hover:text-brand-700 hover:underline">
-                            ¿Necesitás cargar más de un producto? Pasá a «¿Cabe esta carga?»
-                        </button>
-                    </div>
-                </form>
+                     El `x-cloak` va en el formulario del modo INACTIVO según lo que respondió
+                     el servidor: sin él, el del otro modo destella hasta que Alpine arranca. --}}
 
-                {{-- MODO 2 · carga mixta: armá la carga producto por producto --}}
+                {{-- «LA CARGA» · uno o varios productos. Es la ÚNICA pestaña de carga desde
+                     la fusión del 21-08: la cantidad vacía significa «lo que quepa», así que
+                     preguntar un cupo y armar una carga son el mismo formulario. --}}
                 <form x-show="modo === 'mixta'" @if ($mixta === null) x-cloak @endif
                       x-ref="formMixta"
                       method="GET" action="{{ route('admin.carga.index') }}"
@@ -1426,6 +1061,13 @@
                         práctica el pallet armado va entre 1,60 y 2,20 m de alto total.
                     </p>
                 </form>
+
+                {{-- «CUBICAR» · medir un bulto que no está en el catálogo. Es la tercera
+                     pestaña desde el 21-08 (antes: dos clics dentro de la hoja
+                     «Herramientas» del menú del visor). Va en el mismo lugar que los otros
+                     dos formularios, así que el camión de arriba queda a la vista mientras
+                     se tipean las medidas — y al agregar el bulto se ve entrar. --}}
+                @include('admin.carga._cubicar')
             </div>
 
             {{-- Los datos de la escena viajan como JSON inerte; el visor los lee.

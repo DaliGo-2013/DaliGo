@@ -163,7 +163,25 @@
                                         </p>
                                     @endif
 
+                                    {{-- El enlace a Cargas reales vivía en la tarjeta del cupo de un producto,
+                                         que se fue al unificar las pestañas (21-08). Es el ÚNICO camino desde
+                                         esta pantalla hacia el historial cuando todavía no hay nada anotado —y
+                                         justo entonces es cuando hace falta, porque sin cargas anotadas la
+                                         calibración no existe y nada la pide. Con cargas anotadas el enlace ya
+                                         está arriba, en la franja del veredicto, así que acá no se repite.
+
+                                         FUERA DEL LINK PÚBLICO, y lo cazó su candado: `/admin/cargas-reales`
+                                         contiene `/admin/carga`, así que el assert que vigila que la página
+                                         compartida no tenga rutas internas se puso rojo al toque. Del otro lado
+                                         hay un cliente o un conductor: un enlace que le va a pedir login no es
+                                         una invitación, es una puerta cerrada con cartel.
+
+                                         El enlace va dentro del párrafo por `{!! !!}` y no con un `@if` en
+                                         línea: una directiva partida entre dos líneas de texto rompe el parser
+                                         («unexpected token endif», bitácora [2026-06-15]). --}}
                                     <p class="mt-4 text-xs leading-relaxed text-neutral-400">
                                         Acomodo por zonas, como se estiba de verdad: lo grande al fondo, sin apilar un
-                                        producto arriba de otro. Capacidad práctica, no promesa.
+                                        producto arriba de otro. Capacidad práctica, no promesa{!! ! ($publico ?? false) && empty($medido ?? null)
+                                            ? ': se calibra contando una carga real — <a href="'.route('admin.cargas-reales.index').'" class="font-medium text-neutral-500 hover:text-neutral-700">anotá una en Cargas reales</a>'
+                                            : '' !!}.
                                     </p>

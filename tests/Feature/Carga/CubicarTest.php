@@ -53,17 +53,30 @@ class CubicarTest extends TestCase
         ]))->assertOk()->getContent();
     }
 
-    public function test_el_boton_de_cubicar_vive_en_el_menu_del_visor(): void
+    public function test_cubicar_es_una_pestana_principal_y_no_una_herramienta_escondida(): void
     {
-        // La doctrina del 06-08: los controles van TODOS en el menú lateral, no sueltos
-        // por la pantalla. Cada botón nuevo que se cuela en una esquina es el que empieza
-        // a devolver la confusión que ese menú vino a resolver.
+        // CAMBIÓ DE LUGAR, NO DE REGLA. Vivía en el menú lateral del visor, dentro de la
+        // hoja «Herramientas», por la doctrina del 06-08 (los controles van todos en el
+        // menú y no sueltos por la pantalla). El dueño lo subió a pestaña el 21-08:
+        // *«quiero dejar como una de las opciones principales cubicar»* — a dos clics
+        // dentro de una hoja había que SABER que existía para encontrarlo, y medir un
+        // bulto que no está en el catálogo es de lo primero que hace alguien con una
+        // carga nueva. La doctrina del menú sigue en pie para todo lo demás; lo vigila
+        // `SimuladorCargaMixtaPantallaTest`.
         $html = $this->pantalla();
+
+        // Es una pestaña de verdad: el mismo `role="tab"` y el mismo `modo` que las otras
+        // dos, no un botón que se parece a una pestaña.
+        $this->assertStringContainsString('@click="modo = \'cubicar\'"', $html,
+            'Cubicar dejó de ser una pestaña.');
+        $this->assertStringContainsString('medir un bulto', $html);
+
+        // Y NO quedó además el botón viejo en el menú: dos entradas al mismo panel serían
+        // dos estados independientes, y el que se abre de un lado no se cierra del otro.
         $desde = strpos($html, 'Herramientas');
         $menu = substr($html, $desde, strpos($html, '</aside>', $desde) - $desde);
-
-        $this->assertStringContainsString('Cubicar', $menu, 'El botón de cubicar quedó fuera del menú.');
-        $this->assertStringContainsString('Medir un bulto', $menu);
+        $this->assertStringNotContainsString('Medir un bulto', $menu,
+            'Quedó el botón viejo en el menú además de la pestaña.');
     }
 
     public function test_el_panel_pide_medidas_unidades_y_kilos(): void
@@ -118,16 +131,19 @@ class CubicarTest extends TestCase
             'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 50]],
         ]))->assertOk()->getContent();
 
-        // El x-data del visor arranca el panel abierto…
-        $this->assertStringContainsString('cubicar: true', $html,
-            'La página volvió con el cubicaje cerrado: hay que buscar el panel de nuevo.');
-        // …y sin el parámetro sigue cerrado, que es lo de siempre.
+        // La página arranca EN la pestaña Cubicar. Desde el 21-08 el estado no es un
+        // `cubicar` del visor sino el `modo` de la página —el mismo que eligen las
+        // pestañas—, así que la regla se lee en la semilla del `x-data`.
+        $this->assertStringContainsString("modo: 'cubicar'", $html,
+            'La página volvió en otra pestaña: hay que buscar el cubicaje de nuevo.');
+        // …y sin el parámetro arranca en la carga, que es la pestaña de trabajo.
         $sinParam = $this->actingAs($vendedor)->get(route('admin.carga.index', [
             'camion_id' => $this->camion->id,
             'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 50]],
         ]))->assertOk()->getContent();
 
-        $this->assertStringContainsString('cubicar: false', $sinParam);
+        $this->assertStringContainsString("modo: 'mixta'", $sinParam);
+        $this->assertStringNotContainsString("modo: 'cubicar'", $sinParam);
     }
 
     public function test_el_panel_lista_lo_que_ya_va_en_el_camion(): void

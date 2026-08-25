@@ -21,8 +21,8 @@
     SVG). No es decoración: escribir «120 × 100 × 80» y ver que sale casi un cubo es lo
     que delata un tipeo —un 20 que era 200— antes de que entre a la carga.
 --}}
-<div x-show="cubicar" x-cloak
-     class="border-t border-neutral-200 bg-neutral-50/70 p-3 sm:p-4"
+<div x-show="modo === 'cubicar'" @if (! request()->boolean('cubicar')) x-cloak @endif
+     class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4"
      x-data="{
          nombre: '', l: 120, w: 100, h: 80, kg: 220, porUnidad: false, pcs: 10,
 
@@ -104,10 +104,18 @@
              if (this.lineas.length) this.recalcular();
          },
 
-         /* Recalcular SIN cerrar el panel. El `cubicar=1` viaja en el formulario, así que
-            la página vuelve con el panel abierto, la lista a la vista y el próximo bulto
+         /* Recalcular SIN salir del cubicaje. El `cubicar=1` viaja en el formulario, así
+            que la página vuelve EN esta pestaña, con la lista a la vista y el próximo bulto
             listo para tipear — el pedido del 12-08 de que «no salga todo». */
          recalcular() {
+             /* EL CAMBIO DE MODO NO ES COSMÉTICO Y TIENE QUE QUEDARSE. El formulario que se
+                envía es el de «La carga», que está oculto (`x-show`) mientras se cubica: un
+                campo `required` dentro de un contenedor con `display:none` no se puede
+                enfocar, así que el navegador ABORTA la validación con un TypeError en
+                consola y no manda nada — la falla más silenciosa posible, y está en la
+                bitácora [2026-07-28]. Se lo muestra un instante y la página recarga
+                enseguida, así que no se ve el salto; volver a esta pestaña lo decide el
+                servidor al sembrar `modo`. */
              this.modo = 'mixta';
 
              const form = this.$refs.formMixta;
@@ -125,8 +133,12 @@
 
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">Cubicar un bulto</p>
-        <button type="button" @click="cubicar = false"
-                class="min-h-8 rounded-lg px-2 text-xs font-medium text-neutral-500 transition hover:text-neutral-800">Cerrar</button>
+        {{-- La salida vuelve a «La carga», que es la pestaña de trabajo. Antes decía
+             «Cerrar» porque esto era un panel que se abría dentro del visor; una pestaña no
+             se cierra, se cambia — y dejar «Cerrar» pondría la página en una pestaña marcada
+             sin contenido debajo. --}}
+        <button type="button" @click="modo = 'mixta'"
+                class="min-h-8 rounded-lg px-2 text-xs font-medium text-neutral-500 transition hover:text-neutral-800">Volver a la carga</button>
     </div>
 
     <div class="grid gap-4 lg:grid-cols-[1fr_15rem]">

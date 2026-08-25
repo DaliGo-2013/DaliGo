@@ -1641,6 +1641,71 @@ producto**. Ahora los argumentos salen de la **línea** (`medidoDeLaPantalla`), 
 una línea no se muestra: una carga real es de un producto, y ponerle ese promedio a una
 mezcla es el número creíble y equivocado.
 
+### 4.1undecies-bis TRES PESTAÑAS: «La carga · Sobre pallet · Cubicar» (21-08-2026)
+
+El cierre visible de la fusión. Eran cuatro superficies de primer nivel para tres preguntas,
+y una de ellas no era ni pestaña.
+
+**Se fue «¿Cuánto entra?»** (dueño: *«hay que unificar los dos puntos… la única diferencia
+que veo es un producto o varios y es lo mismo»*). Las dos pestañas contestaban lo mismo con
+dos motores distintos: la de un producto **no dejaba agregar otro** —el dueño buscó ahí el
+botón el 10-08— y la de varios **exigía una cantidad** para preguntar un cupo. Con la
+cantidad vacía significando «lo que quepa» (§4.1undecies) las dos son un solo formulario.
+
+**Subió «Cubicar» a pestaña** (dueño: *«quiero dejar como una de las opciones principales
+cubicar»*). Estaba a dos clics dentro de la hoja «Herramientas» del menú del visor, o sea que
+había que **saber que existía** para encontrarlo; y medir un bulto que no está en el catálogo
+es de lo primero que hace alguien con una carga nueva. **No se dejó además el botón viejo**:
+dos entradas al mismo panel son dos estados independientes, y el que se abre de un lado no se
+cierra del otro. Su estado dejó de ser un `cubicar` del visor y pasa a ser el `modo` de la
+página, como las otras dos.
+
+**La primera visita no siembra nada, y es una decisión.** Entrar a `/admin/carga` a secas
+deja el armador **vacío** y la pantalla **sin camión**. Sembrarla con el primer producto del
+catálogo haría aparecer un camión de entrada —queda mejor— y es exactamente lo que el dueño
+rechazó en el QA del 21-08: *«salen siempre predeterminado los bidones y no quiero, quiero
+cargar lo que yo quiera sin previas»*. Una carga que uno no pidió es peor que una pantalla
+vacía, porque hay que darse cuenta de borrarla. Medido: esa pantalla entra **completa en
+900px**, con la línea que dice cómo empezar.
+
+**Se borró la lista duplicada.** «La carga, producto por producto» seguía debajo del camión
+diciendo lo mismo que la lista del panel. El commit que mudó la lista (24-08) decía que la
+«absorbía» y **no la había borrado** — el texto prometía una limpieza que no ocurrió, así que
+durante dos días la pantalla mostró la carga dos veces. La lista del **chofer** (parada 1
+primero) sí se queda: es otro orden para otro lector.
+
+**Y borrar esa lista se llevaba una sexta función en silencio:** el aviso «Van 6 de alto de 8
+· Apilar 8» —el pedido del dueño del 10-08 de que *«los bidones también lleguen hasta el
+techo»*—. Los dos números seguían viajando en la fila (`apiladas`, `apilables_por_alto`) y
+**ninguna vista los mostraba**: un dato calculado que nadie lee es peor que uno que no
+existe, porque parece cubierto. Ahora vive en la fila del panel, con su botón.
+
+**Lo que la limpieza dejó al descubierto**, cada uno con su candado:
+- El texto del veredicto decía *«**Abajo** está qué queda afuera y por qué»* — señalando el
+  lugar donde ya no está la lista. Cambió a una frase que no nombra un lugar, porque la lista
+  está en el panel en escritorio y detrás del cajón en el celular.
+- El enlace a **Cargas reales** —el único camino al historial cuando no hay nada anotado—
+  vivía en la tarjeta borrada. Se mudó al pie de los números, y su candado lo cazó al toque:
+  `/admin/cargas-reales` **contiene** `/admin/carga`, así que el assert que vigila que el
+  link público no tenga rutas internas se puso rojo. Del otro lado hay un cliente.
+- Una **línea abierta** no pidió un número, y tres consumidores hacían `number_format(null)`
+  = «0»: la tabla del link público («Pedidas 0 · Van 420»), la lista del chofer («420 de 0»)
+  y el **Excel**, que además lo ponía en una columna numérica —donde un 0 se suma y se
+  filtra—. Ahora dicen «Lo que quepa» / «(lo que quepa)» y la celda del Excel va **vacía**,
+  con una nota al pie de la hoja que lo declara (mismo criterio que el export de ST,
+  bitácora [2026-08-13]).
+- `escena()` tenía **tres** entradas y pasó a dos: el cupo de un producto armaba UN bloque a
+  mano desde `cupo()`. Ahora el dibujo de un producto sale de los bloques que el motor
+  **colocó**, que es la diferencia entre dibujar lo verificado y dibujar una segunda versión
+  del cálculo.
+
+**Lo que NO cambió:** el menú «Cabina» del visor (§4.1nonies-ter) con todo lo demás adentro,
+el veredicto arriba del dibujo (§4.3bis), la lista de la carga en el panel, y el modo Sobre
+pallet como pregunta aparte. Candados: `CubicarTest` (2 reescritos),
+`SimuladorCargaMixtaPantallaTest::test_hay_una_sola_pestana_de_carga_y_dice_que_acepta_uno_o_varios`
+(cuenta los `role="tab"`: buscar los nombres dejaría pasar una cuarta con otro rótulo) y 4
+más re-expresados sobre las superficies que quedaron.
+
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 
 Cuarta cabina propia. Las fotos son de un **Chevrolet NQR (Isuzu N-Series)** con furgón, y lo

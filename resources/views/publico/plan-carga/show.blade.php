@@ -73,7 +73,13 @@
                     @foreach ($mixta['lineas'] as $l)
                         <tr>
                             <td class="px-3 py-2 text-neutral-800">{{ $l['modelo']->nombre }}</td>
-                            <td class="px-3 py-2 text-right tabular-nums text-neutral-500">{{ number_format($l['pedidas_unidades'], 0, ',', '.') }}</td>
+                            {{-- Una línea ABIERTA no pidió un número, pidió «lo que quepa».
+                                 `number_format(null)` da «0», y del otro lado de este link
+                                 hay un cliente o un conductor leyendo «Pedidas 0 · Van 420»
+                                 — que se entiende como que el plan está mal armado. --}}
+                            <td class="px-3 py-2 text-right tabular-nums text-neutral-500">
+                                {{ $l['pedidas_unidades'] === null ? 'Lo que quepa' : number_format($l['pedidas_unidades'], 0, ',', '.') }}
+                            </td>
                             <td class="px-3 py-2 text-right font-semibold tabular-nums">{{ number_format($l['cargadas_unidades'], 0, ',', '.') }}</td>
                         </tr>
                     @endforeach
@@ -82,12 +88,12 @@
         </div>
         {{-- El veredicto NO se repite acá: desde el 12-08 va pegado al borde de arriba
              del lienzo, en la misma franja que ve la pantalla interna. Dicho dos veces
-             en la misma página era el exceso de texto que el dueño pidió recortar. --}}
-    @elseif ($resultado && $bulto)
-        <p class="mt-5 text-sm text-neutral-700">
-            Entran <span class="text-lg font-semibold text-neutral-900">{{ number_format($resultado['unidades'], 0, ',', '.') }}</span>
-            unidades de {{ $bulto->nombre }}.
-        </p>
+             en la misma página era el exceso de texto que el dueño pidió recortar.
+
+             Y ya no hay una rama «un solo producto» con su propio «Entran N»: con la fusión
+             del 21-08 un producto es una carga de una línea, así que entra por la tabla de
+             arriba y su número lo dice el mismo veredicto del lienzo. Dos textos distintos
+             para la misma respuesta era la forma de que uno de los dos quedara viejo. --}}
     @endif
 
     {{-- El mismo aviso que lleva la planilla: afuera de la app, un número sin
