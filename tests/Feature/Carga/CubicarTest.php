@@ -153,7 +153,101 @@ class CubicarTest extends TestCase
         $html = $this->pantalla();
 
         $this->assertStringContainsString('En el camión', $html);
-        $this->assertStringContainsString('Cubicá el siguiente y volvé a agregar', $html);
+        $this->assertStringContainsString('cubicá el siguiente', $html);
+    }
+
+    /**
+     * DESDE CUBICAR SE PUEDE SEGUIR: MEZCLAR CON EL CATÁLOGO Y ACOMODAR EN EL CAMIÓN.
+     *
+     * Pedido del dueño (25-08): *«que te dé la opción de cargar y acomodar en el camión a
+     * medida… que se pueda cargar mixto cosas cubicadas vs por ejemplo bidones»*.
+     *
+     * Las dos cosas YA funcionaban —un bulto cubicado es una línea igual que cualquier
+     * otra, y el tablero acomoda cualquier bloque— y el único rastro era un párrafo que
+     * decía «"Mover y girar bloques" en el menú». O sea: **la función existía y había que ir
+     * a buscarla a otra parte sabiendo su nombre**, que es el defecto del 10-08 («¿y dónde
+     * agrego otro bulto?») repetido en otra pantalla. Por eso el candado es de
+     * DESCUBRIBILIDAD y no de comportamiento: lo que se rompe no lo ve ningún test de
+     * conducta.
+     */
+    public function test_desde_cubicar_se_puede_mezclar_con_el_catalogo_y_acomodar(): void
+    {
+        $html = $this->pantalla();
+
+        // El camino al catálogo LLEVA a «La carga» con una línea nueva: el selector de
+        // productos vive ahí y duplicarlo acá serían dos listas que se contradicen.
+        $this->assertStringContainsString("modo = 'mixta'; agregarDelCatalogo()", $html,
+            'Desde Cubicar no hay forma de sumar un producto del catálogo.');
+        $this->assertStringContainsString('producto del catálogo', $html);
+
+        // EL CUERPO TIENE QUE VIVIR EN EL NOMBRE NO TAPADO, y el alias apuntar hacia él.
+        //
+        // El panel de Cubicar tiene su propio `agregar()` y su x-data TAPA al del armador.
+        // Alpine resuelve `this.x` por la cadena de scopes mergeada, así que un
+        // `agregarDelCatalogo() { this.agregar(); }` cae en el HIJO al llamarse desde
+        // Cubicar: el botón «sumar un producto del catálogo» agregaba OTRO BULTO CUBICADO
+        // con las medidas del formulario. Pasó de verdad y lo cazó el navegador, no este
+        // test — un assert de markup no puede ver la resolución de scopes de Alpine.
+        //
+        // Por eso el candado es ESTRUCTURAL y va al revés: se prohíbe la delegación hacia
+        // el nombre compartido. La regla en una línea: **un alias apunta hacia el nombre
+        // único, nunca hacia el compartido.**
+        $this->assertStringContainsString('agregarDelCatalogo() { if (this.lineas.length < 8)', $html,
+            'El cuerpo se movió al nombre tapado: desde Cubicar volvería a agregar un bulto cubicado.');
+        $this->assertStringNotContainsString('agregarDelCatalogo() { this.agregar(); }', $html,
+            'El alias delega hacia `agregar`, que el panel de Cubicar tapa: agregaría un bulto cubicado.');
+        $this->assertStringContainsString('agregar() { this.agregarDelCatalogo(); }', $html,
+            'El armador dejó de compartir cuerpo con el catálogo: son dos listas que van a driftear.');
+
+        // El tablero se abre por un evento de WINDOW y no por `$dispatch`: desde que el
+        // cubicaje es una pestaña, su panel es HERMANO del visor y un dispatch sube por el
+        // árbol sin llegarle nunca.
+        $this->assertStringContainsString("new CustomEvent('abrir-tablero')", $html,
+            'Desde Cubicar no se puede abrir el tablero de acomodo.');
+        $this->assertStringContainsString('@abrir-tablero.window', $html,
+            'El visor no escucha el evento: el botón no haría nada.');
+        $this->assertStringContainsString('Acomodar a mano en el camión', $html);
+
+        // Y se dice que la carga PUEDE mezclar, que es lo que nadie adivina mirando una
+        // pantalla que se llama «Cubicar».
+        $this->assertStringContainsString('Se puede', $html);
+        $this->assertStringContainsString('los productos del catálogo viajan en la', $html);
+    }
+
+    /**
+     * LOS TOPES DEL FORMULARIO SON LOS DEL VALIDADOR.
+     *
+     * El simulador se usa para despachos especiales (dueño 25-08: *«manejamos productos de
+     * diferentes tamaños… por ejemplo 2 mts de alto por cuatro metros»*), así que el tope
+     * del largo tiene que dar para eso. Y los tres campos aceptaban 1200 cm mientras el
+     * servidor corta el ancho y el alto en 300: el formulario prometía un ancho de 900 que
+     * su propio guardado rechaza después de apretar «Agregar».
+     */
+    public function test_los_topes_de_las_medidas_son_los_que_el_servidor_acepta(): void
+    {
+        $html = $this->pantalla();
+
+        $this->assertStringContainsString("[['l', 'Largo', 1500], ['w', 'Ancho', 300], ['h', 'Alto', 300]]", $html,
+            'Los topes del formulario de cubicaje se separaron de los del validador.');
+        $this->assertStringNotContainsString('max="1200"', $html, 'Volvió el tope único de 1200.');
+
+        // Y el caso del dueño ENTRA de verdad: 4 m de largo por 2 m de alto se calcula y se
+        // dibuja. Es la mitad que ningún assert de markup puede dar.
+        $r = $this->actingAs(tap(User::factory()->create())->assignRole('vendedor'))
+            ->get(route('admin.carga.index', [
+                'camion_id' => $this->camion->id,
+                'lineas' => [[
+                    'tipo' => 0, 'cantidad' => 1,
+                    'medida_nombre' => 'Estructura especial',
+                    'medida_largo' => 400, 'medida_ancho' => 120, 'medida_alto' => 200,
+                    'medida_peso' => 300,
+                ]],
+            ]))->assertOk();
+
+        $fila = $r->viewData('mixta')['lineas'][0];
+        $this->assertSame(1, $fila['cargadas_unidades'], 'Un bulto de 4 × 1,2 × 2 m no entró en el camión.');
+        $this->assertCount(1, $r->viewData('escena')['bloques'], 'El bulto grande no se dibujó.');
+        $r->assertSee('Estructura especial');
     }
 
     /**

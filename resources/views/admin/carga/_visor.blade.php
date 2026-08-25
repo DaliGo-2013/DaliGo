@@ -168,7 +168,13 @@
           página vuelva ABIERTA en él tras agregar un bulto (`cubicar=1` en la query) — el
           reclamo textual del dueño el 12-08: «le doy clic y se sale todo y me deja la
           interfaz sin nada». Eso lo decide `index.blade.php` al sembrar `modo`. --}}
-     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, hoja: null, camiones: false }">
+     x-data="{ menu: window.innerWidth >= 640, tablero: {{ ($acomodo['activo'] ?? false) ? 'true' : 'false' }}, hoja: null, camiones: false }"
+     {{-- El tablero de acomodo se abre también desde la pestaña «Cubicar», que es un
+          HERMANO de este recuadro (el cubicaje dejó de vivir adentro el 21-08). Un
+          `$dispatch` sube por el árbol y nunca llega a un hermano, así que el evento va
+          por `window`. Es la misma forma que usa el menú para abrir «Importar», al
+          revés. --}}
+     @abrir-tablero.window="tablero = true; menu = true">
 
     {{-- ═══ EL CAMIÓN EN NÚMEROS ═══
          Pedido del dueño (10-08): «la descripción del camión la quiero adentro del

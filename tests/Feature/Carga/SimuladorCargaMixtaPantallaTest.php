@@ -1143,8 +1143,14 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // punto: los dos números seguían calculándose en la fila y ninguna vista los
         // mostraba, o sea un dato que parece cubierto y no se lee.
         $html = $conAire->getContent();
-        $this->assertStringContainsString('de alto de', $html);
-        $this->assertStringContainsString('Apilar 8', $html);
+        // El «de 8 que caben» NO se puede asertar contiguo: el número va en su propio
+        // `<span>` para llevar `tabular-nums`, así que en el HTML dice
+        // `de <span …>8</span> que caben`. Se asertan las dos mitades que sí son contiguas.
+        $this->assertStringContainsString('que caben', $html);
+        // EL BOTÓN DICE LA ACCIÓN Y NO SOLO EL NÚMERO (dueño 25-08: «dale la opción entonces
+        // de que indique lo que pasa»). Decía «Apilar 8», que no distingue entre apilar 8
+        // MÁS, dejar 8 en total, o cambiar el tope sin recalcular.
+        $this->assertStringContainsString('Subir el tope a 8 y recalcular', $html);
         $this->assertStringContainsString('apilarHasta(0, 8)', $html,
             'El botón dejó de escribir el tope en la línea: diría el número sin poder arreglarlo.');
 
@@ -1742,6 +1748,76 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
                 'visera(', $this->cuerpoDeFuncion($js, $sinVisera),
                 "La cabina [{$sinVisera}] no debería llevar visera: sus fotos no la muestran.",
             );
+        }
+    }
+
+    /**
+     * EL `x-data` DE LA PANTALLA TIENE QUE SEGUIR SIENDO EVALUABLE.
+     *
+     * Este componente es el estado de toda la pantalla —`modo`, `lineas`, `sucio`— y su
+     * `x-data` es un objeto de 150 líneas escrito dentro de un ATRIBUTO HTML, comentarios
+     * incluidos. Cuando algo lo corta, no falla una parte: **no evalúa nada**, la pantalla
+     * queda con todos los controles muertos y la consola se llena de
+     * `ReferenceError: <prop> is not defined` — un binding por cada descendiente.
+     *
+     * Y LA SUITE NO LO VE. Ningún test de PHP evalúa Alpine, así que este defecto convive
+     * con 280 candados en verde. La bitácora lo tiene documentado dos veces —las comillas
+     * dobles [2026-08-10] y ahora el cierre de comentario de bloque, que se colocó al
+     * intentar EXPLICAR el gotcha dentro del propio comentario— y en las dos no había
+     * candado: solo una advertencia que hay que acordarse de leer.
+     *
+     * Esto no reemplaza evaluar Alpine, que sería lo correcto y no está en el presupuesto
+     * de esta pantalla. Cubre las dos formas concretas que ya ocurrieron, que es mucho más
+     * que cero.
+     */
+    public function test_el_x_data_de_la_pantalla_no_se_corta_a_si_mismo(): void
+    {
+        $html = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->assertOk()->getContent();
+
+        // Se recogen TODOS los `x-data` del documento por su delimitador real —`"` a `"`,
+        // que es exactamente como los parte el navegador— y se elige el de esta pantalla
+        // por su contenido. Elegirlo por posición no sirve: la página trae varios (el shell,
+        // la campanita, el visor) y el primero es `{ menuAbierto: false }`.
+        //
+        // El recorte por comillas ES el mecanismo del candado: si dentro del atributo hay
+        // una comilla doble, el navegador corta ahí y el pedazo que queda es corto — el
+        // mismo corte que deja Alpine sin componente.
+        preg_match_all('/x-data="([^"]*)"/', $html, $todos);
+        $xdata = '';
+        foreach ($todos[1] as $candidato) {
+            if (str_contains($candidato, 'modo:')) {
+                $xdata = $candidato;
+                break;
+            }
+        }
+        $this->assertNotSame('', $xdata,
+            'No se encontró el x-data de la pantalla, o se cortó ANTES de `modo:` — que ya es el defecto.');
+
+        // Los dos assert que siguen se reparten los dos defectos, pero NO uno cada uno:
+        // dónde cae una comilla doble decide cuál de los dos salta (temprano corta el
+        // atributo y se nota en el largo; tarde deja un comentario sin cerrar). Por eso los
+        // dos mensajes nombran las dos causas — un mensaje que apunte a la equivocada manda
+        // a buscar el defecto al otro lado del archivo.
+        $sospechas = 'Causas conocidas, en orden: (1) una COMILLA DOBLE dentro del x-data '
+            .'—ni en los comentarios— bitácora [2026-08-10]; (2) un cierre de comentario de '
+            .'bloque suelto, que aparece al intentar EXPLICAR ese gotcha dentro del comentario. '
+            .'En los dos casos Alpine no evalúa el componente y TODA la pantalla queda muerta.';
+
+        $this->assertGreaterThan(3000, strlen($xdata), 'El x-data se cortó. '.$sospechas);
+
+        $this->assertSame(
+            substr_count($xdata, '/*'),
+            substr_count($xdata, '*/'),
+            'Los comentarios del x-data no cierran parejo. '.$sospechas,
+        );
+
+        // Y la prueba de que el recorte de arriba está leyendo lo que dice leer: las tres
+        // propiedades que sostienen la pantalla tienen que estar en el pedazo.
+        foreach (['modo:', 'lineas:', 'sucio:'] as $prop) {
+            $this->assertStringContainsString($prop, $xdata,
+                "El recorte del x-data no contiene [{$prop}]: el candado está mirando otra cosa.");
         }
     }
 

@@ -203,7 +203,44 @@
 
                        Antes nacía con `cantidad: 10`, un número que nadie pidió y que
                        obligaba a borrarlo para preguntar por el máximo. */
-                    agregar() { if (this.lineas.length < 8) { this.lineas.push({ tipo: '', cantidad: '', estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    /* EL CUERPO VIVE ACÁ, en el nombre que NO está tapado, y `agregar()` es
+                       el alias — no al revés. El orden importa y no es estilo:
+
+                       El panel de Cubicar tiene su PROPIO metodo de agregar (el que sube el
+                       bulto medido) y su x-data TAPA al de acá dentro de su scope. Alpine
+                       resuelve `this.x` por la cadena de scopes MERGEADA, así que la primera
+                       versión delegaba al revés —el nombre largo llamaba al corto— y al
+                       tocar «sumar un producto del catálogo» desde Cubicar pasaba esto:
+                       encontraba el nombre largo en el padre (bien), y adentro el corto
+                       volvía a resolverse por la cadena y caía en el HIJO → agregaba OTRO
+                       BULTO CUBICADO con las medidas del formulario en vez de una línea
+                       vacía de catálogo. Verificado en el navegador: la línea nueva salía
+                       `{tipo: 0, medida_largo: 120, …}`.
+
+                       Es el mismo footgun que el comentario de `quitarDelCamion` ya
+                       describía, y aun así lo pisé por delegar hacia el nombre tapado. La
+                       regla: **un alias apunta hacia el nombre único, nunca hacia el
+                       compartido**. Candado estructural en `CubicarTest`.
+
+                       DOS COSAS QUE NO SE PUEDEN ESCRIBIR ACÁ DENTRO, las dos aprendidas a
+                       golpes en este mismo comentario:
+
+                       1. La forma prohibida, ni citada. Un comentario de JS dentro de un
+                          `x-data` viaja tal cual al HTML —no es un comentario de Blade— así
+                          que el assert negativo del candado lo encuentra y falla con el
+                          código correcto puesto. Familia de la bitácora [2026-07-30]:
+                          documentar el defecto lo causaba.
+                       2. El cierre de comentario de bloque. Escribirlo para explicarlo
+                          CIERRA este comentario ahí mismo, el resto de la prosa pasa a ser
+                          código y el x-data entero deja de evaluar: la pantalla queda con
+                          todos los controles muertos y la consola llena de
+                          «ReferenceError: … is not defined». Pasó, y la suite completa
+                          siguió VERDE — ningún test de PHP evalúa Alpine. Es la misma firma
+                          de la bitácora [2026-08-10] con las comillas dobles, por otra vía.
+                          Candado nuevo: `SimuladorCargaMixtaPantallaTest` cuenta que los
+                          comentarios del x-data estén balanceados. */
+                    agregarDelCatalogo() { if (this.lineas.length < 8) { this.lineas.push({ tipo: '', cantidad: '', estiba: 'auto', pallet: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
+                    agregar() { this.agregarDelCatalogo(); },
                     agregarMedida() { if (this.lineas.length < 8) { this.lineas.push({ tipo: 0, cantidad: 1, estiba: 'auto', pallet: '', medida_nombre: '', medida_largo: '', medida_ancho: '', medida_alto: '', medida_peso: '' }); this.expandido = this.lineas.length - 1; this.ensuciar(); } },
                     /* Un botón propio y no «elegí pallet en el desplegable de la tarjeta»:
                        la lección de la pestaña que nadie encontró (10-08) es que una
