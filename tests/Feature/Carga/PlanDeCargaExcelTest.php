@@ -207,15 +207,40 @@ class PlanDeCargaExcelTest extends TestCase
         $this->assertStringContainsString('lo que quepa', $hoja,
             'La hoja no declara por qué «Pedidas» viene vacía: se lee como un dato faltante.');
 
-        // La fila del producto NO trae un cero. Se mira la fila 4 —cabecera en la 3— y no
-        // todo el XML: un `<v>0</v>` puede aparecer legítimamente en otra parte (un índice
-        // de estilo, un ancho), y buscarlo suelto haría pasar o fallar por la razón
-        // equivocada.
+        // Y LA CELDA DE «PEDIDAS» ESTÁ VACÍA DE VERDAD, que es lo único que importa acá.
+        //
+        // Se busca la celda por su REFERENCIA (columna D de la fila del producto) y no un
+        // `<v>0</v>` suelto en el XML: una hoja de cálculo tiene ceros legítimos por todas
+        // partes (índices de estilo, anchos, otras columnas) y buscarlo suelto pasa por la
+        // razón equivocada. La fila NO se hardcodea: cuántos avisos emite la cabecera
+        // depende de si el camión ya llevaba carga o si alguien acomodó a mano, así que se
+        // localiza por el nombre del producto.
+        //
+        // La primera versión de este candado miraba `<row r="4">` —la fila del aviso— y por
+        // eso pasaba en VERDE con la mutación puesta. La mutación es lo que lo destapó.
         $fila = [];
-        preg_match('/<row r="4".*?<\/row>/s', $hoja, $fila);
-        $this->assertNotEmpty($fila, 'No se encontró la fila del producto.');
-        $this->assertStringNotContainsString('<v>0</v>', $fila[0],
-            'La celda de «Pedidas» dice 0: en una columna numérica eso se suma y miente.');
+        $this->assertSame(1, preg_match('/<row r="(\d+)"[^>]*>(?:(?!<\/row>).)*Bolsa 5(?:(?!<\/row>).)*<\/row>/s', $hoja, $fila),
+            'No se encontró la fila del producto en la hoja.');
+
+        // Las celdas se parten con un regex GLOBAL y se elige la D por su referencia. Un
+        // `/<c r="Dn"[^>]*(\/>|>.*?<\/c>)/` no sirve: `[^>]*` se come la barra de la celda
+        // autocerrada y la alternativa se va a buscar el `</c>` de la celda SIGUIENTE — o
+        // sea que trae el valor del vecino. Pasó, y el rojo fue exactamente ese `<v>420</v>`
+        // de «Cargadas».
+        preg_match_all('/<c r="([A-H])'.$fila[1].'"[^>]*?(?:\/>|>(.*?)<\/c>)/s', $fila[0], $celdas, PREG_SET_ORDER);
+        $porColumna = [];
+        foreach ($celdas as $c) {
+            $porColumna[$c[1]] = $c[2] ?? '';
+        }
+
+        $this->assertArrayHasKey('D', $porColumna, 'No se encontró la celda de «Pedidas» del producto.');
+        $this->assertSame('', $porColumna['D'],
+            'La celda de «Pedidas» trae un valor: en una columna numérica un 0 se suma y miente.');
+        // El control POSITIVO del mismo regex: la celda de al lado SÍ trae su número. Sin
+        // esto, un regex roto deja «vacía» a cualquier celda y el assert de arriba pasa por
+        // no haber leído nada.
+        $this->assertSame('<v>420</v>', $porColumna['E'] ?? null,
+            'El regex no está leyendo las celdas: el assert de «Pedidas» pasaría por vacío.');
     }
 
     /**
