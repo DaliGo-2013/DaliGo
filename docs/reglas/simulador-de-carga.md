@@ -1706,6 +1706,64 @@ pallet como pregunta aparte. Candados: `CubicarTest` (2 reescritos),
 (cuenta los `role="tab"`: buscar los nombres dejaría pasar una cuarta con otro rótulo) y 4
 más re-expresados sobre las superficies que quedaron.
 
+### 4.1undecies-ter CUBICAR es para DESPACHOS ESPECIALES, no para cajas chicas (25-08-2026)
+
+Pedido del dueño contestando las dudas de «¿esto se entiende sin que nadie lo explique?»:
+*«que cubicar tenga las opciones para cubicar, esto es sacar medidas y cargar el camión, que
+te dé la opción de cargar y acomodar en el camión a medida… manejamos productos de diferentes
+tamaños en despachos especiales… por ejemplo 2 mts de alto por cuatro metros»*, y
+*«que se pueda cargar mixto cosas cubicadas vs por ejemplo bidones»*.
+
+**CARGAR MIXTO YA FUNCIONABA**, y eso es lo que hay que entender antes de tocar nada: un
+bulto cubicado **es una línea** como cualquier otra — mismo motor, mismo dibujo, mismo Excel
+(§ del bulto a medida). Lo que faltaba era poder **descubrirlo**: el único rastro era un
+párrafo gris que decía «"Mover y girar bloques" en el menú». O sea, la función existía y había
+que ir a buscarla a otra parte **sabiendo su nombre**. Es el defecto del 10-08 (*«¿y dónde
+agrego otro bulto?»*) repetido en otra pantalla, y la lección va de nuevo: **una función que
+existe pero no se ve, no existe.**
+
+Lo que la pestaña ofrece ahora, debajo de la lista de lo que ya va en el camión:
+
+- **«+ Sumar un producto del catálogo»** → lleva a «La carga» con la línea nueva abierta. El
+  selector de productos vive ahí y duplicarlo acá serían **dos listas que se contradicen**.
+- **«Acomodar a mano en el camión»** → abre la vista de planta. Va por un evento de
+  **`window`** y no por `$dispatch`: desde que el cubicaje es pestaña, su panel es **hermano**
+  del visor y un dispatch sube por el árbol sin llegarle nunca.
+- Y **lo dice en palabras**: «Se puede mezclar: lo que cubicás acá y los productos del catálogo
+  viajan en la misma carga».
+
+**Los topes son los del validador, uno por medida** (largo **1500**, ancho y alto **300**).
+Los tres campos aceptaban 1200: se podía tipear un ancho de 900 y el rechazo llegaba **después**
+de apretar «Agregar» — una pantalla que promete lo que su propio guardado no acepta. Y la
+pantalla declara el caso con un número concreto («400 × 120 × 200 cm es un bulto válido»)
+porque sin eso cualquiera asume que esto es para cajas de repuestos.
+
+**Y el botón del apilado dice la ACCIÓN.** Decía «Apilar 8», que es el número: no distinguía
+entre apilar 8 más, dejar 8 en total, o cambiar el tope sin recalcular. Ahora la línea se lee
+como una frase —«Van 6 de 8 que caben · **Subir el tope a 8 y recalcular**»— y la ⓘ explica lo
+único que la frase no puede: cuántas aguanta la de abajo es **dato de terreno** y la decisión
+es de quien carga.
+
+**Dos defectos propios que encontró el NAVEGADOR y no los candados**, y los dos valen como
+regla:
+
+1. El botón nuevo del catálogo agregaba **otro bulto cubicado** con las medidas del
+   formulario. El panel de Cubicar tiene su propio método de agregar que **tapa** al del
+   armador, y el alias delegaba hacia el nombre tapado: Alpine resuelve `this.x` por la cadena
+   de scopes **mergeada** y caía en el hijo. **Un alias apunta hacia el nombre único, nunca
+   hacia el compartido.** Un assert de markup verifica que el botón *llama*, jamás qué
+   ejecuta — así que el candado es estructural y prohíbe la forma que ya falló.
+2. Explicar ESE gotcha dentro del comentario del `x-data` escribió un cierre de comentario de
+   bloque en la prosa, que cerró el comentario ahí mismo y **mató el Alpine de toda la
+   pantalla** — con la suite en verde, porque ningún test de PHP evalúa Alpine. Candado nuevo:
+   el `x-data` de la pantalla no se corta a sí mismo (comilla doble o comentario sin cerrar).
+
+Candados: `CubicarTest` (3 nuevos, uno estructural) y
+`SimuladorCargaMixtaPantallaTest::test_el_x_data_de_la_pantalla_no_se_corta_a_si_mismo`, todos
+mutados en los dos sentidos. Verificado en el navegador sobre el bundle real: los dos botones
+hacen lo que dicen, los topes son 1500/300/300, y una carga mixta de una estructura de 4 m con
+bidones se dibuja.
+
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 
 Cuarta cabina propia. Las fotos son de un **Chevrolet NQR (Isuzu N-Series)** con furgón, y lo

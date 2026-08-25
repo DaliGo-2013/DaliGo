@@ -21,6 +21,22 @@
 
 ## Sesiones
 
+### [2026-08-25] La fusión del simulador, cerrada: una sola pregunta, tres pestañas, y siete funciones rescatadas de la mudanza
+- **Quién:** Marcos + Claude (Fable 5) — cierre del arco que empezó el 21-08 con el canvas de propuestas.
+- **Objetivo declarado:** terminar lo pendiente de la unificación («que no quede nada por la mitad») para entregarle el simulador al **jefe de logística**, que va a usarlo **dos días sin que nadie le explique nada**. Ese criterio de aceptación —*«que él solo se dé maña para usarlo… en base a eso me diga si es amigable o no»*— fue el que decidió cada duda de diseño: la pantalla tiene que enseñarse sola.
+- **Qué se hizo (9 commits, `82b3233e..33949b41`, deploy verificado en el servidor):**
+  1. **Un solo camino.** Un `tipo_bulto_id` legado se traduce a una línea abierta, así que la pantalla responde por un camino y no por dos. Eso encendió los **10 candados** que leían el viejo (`viewData('resultado')`, `('prueba')`, `('medido')`), migrados **uno por uno conservando su intención** y mutados con rojo exacto.
+  2. **Tres pestañas: «La carga · Sobre pallet · Cubicar».** Se fue «¿Cuánto entra?» y **Cubicar subió** de estar a dos clics dentro de una hoja del menú.
+  3. **Cubicar sirve para despachos especiales:** medir → sumar del catálogo → acomodar a mano, los tres como botones y no como un párrafo gris. Topes reales por medida (largo 1500, ancho/alto 300; los tres decían 1200 y el servidor rechazaba después de apretar Agregar).
+  4. **El botón del apilado dice la acción:** «Subir el tope a 8 y recalcular» en vez de «Apilar 8».
+- **Las SIETE funciones que la fusión se llevaba en silencio** —ninguna estaba en el plan, todas están ahora en la pantalla: «de dónde sale ese número»; **la respuesta «Entran 420» en grande** (al borrar su tarjeta, la pantalla unificada se quedaba sin contestar en voz alta la pregunta que la trajo); el aviso de kilos con su cifra; «de tus 500 entran 420»; «en terreno entraron N»; el aviso «Van 6 de 8 que caben» (sus dos números seguían calculándose y **ninguna vista los mostraba**); y **cargar mixto cubicado + catálogo**, que ya funcionaba y no se podía descubrir.
+- **Un número que subió, y es real:** el camino unificado pregunta por `carga()`, que además **rellena el sobrante**. Una caja de 90 × 60 × 120 en el HD35 pasa de 18 a **20** (la rejilla deja 70 cm al fondo y ahí entran 2 de canto). No promete más de lo que puede: promete lo que **dibuja**. Los cupos de referencia del HD35 no se movieron.
+- **Lo que hay que admitir:** un commit del 24-08 afirmaba que la lista del panel «absorbía» las dos secciones de abajo del camión y **no las había borrado** — la pantalla mostró la carga **dos veces durante dos días**, con la suite en verde porque cada copia satisfacía su propio assert.
+- **Tres defectos propios que encontró el navegador y no los tests:** (1) el botón nuevo del catálogo agregaba **otro bulto cubicado** —un alias delegando hacia el nombre que un x-data hijo tapa—; (2) explicar ESE gotcha dentro del comentario del `x-data` escribió un cierre de comentario en la prosa que **mató el Alpine de toda la pantalla**, con la suite en verde; (3) el candado del Excel pasó en verde **dos veces** con el defecto puesto (miraba una fila de aviso, y después leía la celda vecina).
+- **Decisiones:** el «todo en una pantalla» queda **a medias a propósito** — medido, el camión con su panel ocupa 916px y el armador 312: cerrarlo exige achicar el camión a la mitad, y «el 3D lo más grande posible» es pedido del dueño (05-08). La queja concreta sí está resuelta: la lista de la carga ya no exige scroll. **El dueño decide después de la prueba del jefe.**
+- **Candados:** 10 migrados + 8 nuevos, todos mutados. Batería de Carga **282**; suite completa **2344 verdes**. 4 entradas nuevas en la bitácora de errores.
+- **Próximo paso:** **el simulador queda CONGELADO** hasta que el jefe de logística devuelva su retroalimentación (1–2 días de uso sin explicación). No se toca: la prueba solo sirve si él usa una versión que no se mueve.
+
 ### [2026-08-21 · tarde] QA del dueño a la Cabina en producción: los rótulos recuperan su palabra y el armador arranca sin previas
 - **Quién:** Marcos + Claude (Fable 5) — continuación de la sesión de la mañana.
 - **Objetivo declarado:** dos reclamos del dueño probando la Cabina recién desplegada: *«¿los botones # y ABC qué hacen? les doy clic y no pasa nada»* y *«quiero la opción de eliminar o borrar… salen siempre predeterminado los bidones y no quiero, quiero cargar lo que yo quiera sin previas»*.
