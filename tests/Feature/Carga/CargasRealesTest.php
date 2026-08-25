@@ -167,7 +167,15 @@ class CargasRealesTest extends TestCase
 
         // Y NO reemplaza el cupo: los 420 del techo siguen ahí. Cambiar un número
         // verificable por el promedio de dos anécdotas sería perder información.
-        $this->assertSame(420, $con->viewData('resultado')['unidades']);
+        //
+        // El techo se lee de la FILA de la carga: desde la fusión de las dos preguntas
+        // (21-08) un `tipo_bulto_id` sin líneas se traduce a una línea abierta, así que el
+        // número vive ahí y no en `viewData('resultado')`. Y se exige que los DOS estén en
+        // pantalla a la vez, que es de lo que habla el nombre de este candado: el medido
+        // «al lado de» su techo, no en su lugar.
+        $mixta = $con->viewData('mixta');
+        $this->assertSame(420, $mixta['lineas'][array_key_first($mixta['lineas'])]['cargadas_unidades']);
+        $this->assertStringContainsString('Entran 420', $con->getContent());
     }
 
     public function test_lo_medido_no_se_mezcla_entre_estibas_ni_entre_camiones(): void

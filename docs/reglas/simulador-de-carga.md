@@ -1601,15 +1601,45 @@ Candados: `CargaUnificadaTest` (7), mutados en 4 sentidos con rojo exacto. **El 
 referencia del HD35 (420 botellones de pie) se reproduce igual desde la pantalla nueva**,
 que es lo que sostiene toda la fusión.
 
-**Etapa 2b (pendiente) — y por qué no se hizo de una.** Traducir un `tipo_bulto_id`
-legado a una línea abierta (para que los links guardados sigan andando por un solo
-camino) está escrito y probado, pero enciende **10 candados** que leen el camino viejo
-(`resultado`, `prueba`, `medido`). No son ruido: fijan que **las tres estibas dan números
-distintos**, que el cupo **dice cuántos entrarían si el peso no cortara**, que **la
-cantidad a probar capa el dibujo** y que **acomodar a mano no cambia cuántos entran**. Se
-migran uno por uno conservando su intención — **un candado que se apaga al fusionar es
-una regla que la pantalla nueva deja de tener sin que nadie se entere**, y esta pantalla
-ya perdió una así (el `assertDontSee` inerte de [2026-08-20]).
+**Etapa 2b (hecha) — un solo camino, y los 10 candados migrados.** Un `tipo_bulto_id`
+legado (links guardados, el multi-camión, el Excel) se traduce a **una línea abierta**, así
+que la pantalla responde por UN camino y no por dos. Eso encendió **10 candados** que leían
+el viejo (`viewData('resultado')`, `('prueba')`, `('medido')`). No eran ruido: fijaban que
+**las tres estibas dan números distintos**, que el cupo **dice cuántos entrarían si el peso
+no cortara**, que **la cantidad a probar capa el dibujo** y que **acomodar a mano no cambia
+cuántos entran**. Se migraron **uno por uno conservando su intención** — *un candado que se
+apaga al fusionar es una regla que la pantalla nueva deja de tener sin que nadie se
+entere*, y esta pantalla ya perdió una así (el `assertDontSee` inerte de [2026-08-20]).
+
+Y migrarlos destapó **cinco funciones que la fusión se llevaba en silencio**. Ninguna
+estaba en el plan; las cinco están ahora en la pantalla nueva:
+
+| Lo que solo tenía «¿Cuánto entra?» | Dónde vive ahora |
+|---|---|
+| «De dónde sale ese número» (rejilla + qué se agotó) | `rejilla` / `limita` en la fila (ⓘ del título) |
+| **La respuesta «Entran 420» en grande** | el veredicto arriba del dibujo (§4.3bis) |
+| «Se llena de kilos antes que de espacio» + cuántos por espacio | `por_espacio`, pegado al veredicto |
+| «De tus 500 entran 420, quedan 80 afuera» | rama propia del veredicto |
+| «En terreno entraron N (X% de lo calculado)» | tercera línea de la franja del veredicto |
+
+La segunda es la que más importaba y no estaba prevista: al borrar la tarjeta «ENTRAN N»,
+**la pantalla unificada se quedaba sin contestar en voz alta la pregunta que la trajo**.
+
+**Un cambio de NÚMERO que hay que saber, y es hacia arriba.** El camino viejo preguntaba
+por `cupo()` (rejilla pura); el unificado pregunta por `carga()`, que además **rellena el
+sobrante**. Para una caja de 90 × 60 × 120 en el HD35 la rejilla acostada da 18 y deja 70 cm
+de largo libres al fondo, donde entran **2 más de canto**: la pantalla ahora dice **20**.
+No promete más de lo que puede — promete lo que **dibuja**, y los dos bloques están en la
+escena. **Los cupos de referencia del HD35 no se mueven** (420 de pie, 480 acostado): eso es
+lo que sostiene la fusión y lo fija `CargaUnificadaTest`.
+
+**Y una trampa de la mudanza, para el próximo que mueva un dato de pantalla:** la
+calibración de terreno se pedía con el `tipo_bulto_id`/`estiba` del **formulario**. Con el
+armador mandando `lineas[]` y sin `tipo_bulto_id`, `$bulto` cae al **primero del catálogo**
+— la pantalla habría mostrado «en terreno entraron 390» al lado del número de **otro
+producto**. Ahora los argumentos salen de la **línea** (`medidoDeLaPantalla`), y con más de
+una línea no se muestra: una carga real es de un producto, y ponerle ese promedio a una
+mezcla es el número creíble y equivocado.
 
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 

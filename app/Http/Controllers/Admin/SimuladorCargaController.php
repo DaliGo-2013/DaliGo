@@ -275,14 +275,19 @@ class SimuladorCargaController extends Controller
         //
         // No aplica en «Sobre pallet»: ese modo usa `tipo_bulto_id` para otra cosa —lo
         // que va ENCIMA del pallet— y tiene su propio flujo.
-        // PENDIENTE (etapa 2b de la fusión): la traducción está escrita y probada, pero
-        // enciende 10 candados que leen el camino viejo (`resultado`, `prueba`,
-        // `medido`) y cada uno fija una regla real — las tres estibas dan números
-        // distintos, el cupo dice cuántos entrarían si el peso no cortara, la cantidad a
-        // probar capa el dibujo, acomodar a mano no cambia cuántos entran. Se migran uno
-        // por uno con su intención intacta, no se borran: un candado que se apaga al
-        // fusionar es una regla que la pantalla nueva deja de tener sin que nadie se
-        // entere. Ver docs/reglas/simulador-de-carga.md §4.1undecies.
+        $legado = empty($datos['lineas'])
+            && isset($datos['tipo_bulto_id'])
+            && ! $request->boolean('sobre_pallet');
+        if ($legado) {
+            $datos['lineas'] = [[
+                'tipo' => (int) $datos['tipo_bulto_id'],
+                // La cantidad vacía ya significaba «el máximo» en ese formulario, que es
+                // exactamente una línea ABIERTA. La traducción es exacta, no aproximada.
+                'cantidad' => $datos['cantidad'] ?? '',
+                'estiba' => $datos['estiba'] ?? 'auto',
+                'apilado' => $datos['apilado'] ?? null,
+            ]];
+        }
 
         // Catálogo PROPIO del simulador (decisión del dueño 05-08): cajas de
         // carga TIPO sembradas por el deploy, NO los vehículos de la flota. La
@@ -399,7 +404,13 @@ class SimuladorCargaController extends Controller
             // No CORRIGE el número: lo acompaña. Aplicar el factor al cupo es una decisión
             // del dueño y necesita antes suficientes cargas para que el promedio signifique
             // algo — mientras tanto, mostrar los dos es más honesto que reemplazar uno.
-            'medido' => $this->medidoEnTerreno($camion, $bulto, $estiba),
+            // Sus dos argumentos salen de la LÍNEA cuando la carga es de una sola, no de
+            // `tipo_bulto_id`/`estiba` del formulario: desde la fusión (21-08) el armador
+            // manda `lineas[]` y puede no mandar `tipo_bulto_id`, y entonces `$bulto` cae
+            // al primero del catálogo — la pantalla diría «en terreno entraron 390» al
+            // lado del número de OTRO producto. Con varias líneas no se muestra: no hay
+            // una carga real anotada que corresponda a esa mezcla.
+            'medido' => $this->medidoDeLaPantalla($camion, $mixta, $bulto, $estiba),
             // Lo que se puede paletizar: solo cajas. Va aparte de `bultos` para que
             // los otros dos modos sigan ofreciendo el catálogo completo.
             'paletizables' => $paletizables,
@@ -618,6 +629,26 @@ class SimuladorCargaController extends Controller
             // (§3.3.5 — pasa de verdad: la bolsa de botellones mide 130 y el pallet 120).
             $palletVacio = $pal !== null && $pal['porPallet']['bultos'] === 0;
 
+            // ── EL CUPO DE ESTA LÍNEA SOLA, cuando la pregunta es «¿cuánto entra?» ──
+            // Se le pide a `cupo()` UNA vez y sirve dos cosas que la pantalla de un
+            // producto tenía y la de varios no (los dos casos que se colaban al fusionar,
+            // 21-08): el LÍMITE fino («el largo de la caja», no «espacio») y CUÁNTOS
+            // ENTRARÍAN SI EL PESO NO CORTARA — el número del cartel «se llena de kilos
+            // antes que de espacio», que el dueño pidió el 11-08 y que sin esto
+            // desaparecía en silencio al unificar.
+            //
+            // Solo cuando la línea es ABIERTA y ES LA ÚNICA: `cupo()` describe el camión
+            // VACÍO con UN producto, así que junto a una carga mixta estaría explicando
+            // un camión que no es el que se dibujó. Con más líneas, `lleno_por` contesta
+            // lo mismo más gruesamente y eso es lo honesto.
+            $soloEstaLinea = $abiertas[$i] && count($modelos) === 1 && $pal === null;
+            $cupoSolo = $soloEstaLinea
+                ? $this->calculo->cupo(
+                    $camion->paraCalculo($ocupado['cm'] ?? 0, $ocupado['kg'] ?? 0.0),
+                    $modelo->paraCalculo($estibas[$i], $apilados[$i]),
+                )
+                : null;
+
             $filas[$i] = [
                 'modelo' => $modelo,
                 'estiba' => $estibas[$i],
@@ -669,13 +700,14 @@ class SimuladorCargaController extends Controller
                 // los cupos de referencia. Con más líneas arriba no se usa: `cupo()`
                 // describe el camión VACÍO, y mostrar su límite junto a una carga mixta
                 // sería explicar un camión que no es el que se dibujó.
-                'limita' => $r['motivo']
-                    ?? ($abiertas[$i] && count($modelos) === 1 && $pal === null
-                        ? ($this->calculo->cupo(
-                            $camion->paraCalculo($ocupado['cm'] ?? 0, $ocupado['kg'] ?? 0.0),
-                            $modelo->paraCalculo($estibas[$i], $apilados[$i]),
-                        )['limite'] ?? null)
-                        : ($r['lleno_por'] ?? null)),
+                'limita' => $r['motivo'] ?? ($cupoSolo['limite'] ?? $r['lleno_por'] ?? null),
+                // CUÁNTOS BULTOS ENTRARÍAN SI EL PESO NO CORTARA. Es el número del cartel
+                // «se llena de kilos antes que de espacio»: sale de la rejilla que da el
+                // ESPACIO, ignorando los kilos. `null` cuando la pregunta no aplica (una
+                // carga de varias líneas, o una línea con cantidad pedida).
+                'por_espacio' => $cupoSolo === null
+                    ? null
+                    : $cupoSolo['rejilla']['largo'] * $cupoSolo['rejilla']['ancho'] * $cupoSolo['rejilla']['alto'],
                 'bultos_colocados' => $palletVacio ? 0 : $r['colocados'],
                 'bultos_pedidos' => $r['pedidos'],
                 'motivo' => $palletVacio ? 'pallet_vacio' : $r['motivo'],
@@ -965,6 +997,36 @@ class SimuladorCargaController extends Controller
      *
      * @return ?array{veces:int, factor:float, promedio:int, ultima:?string}
      */
+    /**
+     * A QUÉ COMBINACIÓN le corresponde la calibración de esta pantalla.
+     *
+     * `medidoEnTerreno()` responde por un (camión, producto, estiba) exacto — así se
+     * anotó la carga real. El trabajo de acá es elegir bien esos tres, que dejó de ser
+     * obvio al fusionar las dos preguntas (21-08): la carga viaja en `lineas[]` y el
+     * `tipo_bulto_id` del formulario puede estar apuntando a otra cosa.
+     *
+     * Con más de una línea devuelve `null` a propósito: una carga real es de un producto,
+     * y ponerle el promedio de las bolsas al lado de una mezcla de bolsas y cajas sería
+     * exactamente el número creíble y equivocado. Tampoco aplica a una línea en pallet:
+     * lo que se anotó en terreno son bultos sueltos.
+     */
+    private function medidoDeLaPantalla(?CamionSimulacion $camion, ?array $mixta, ?TipoBulto $bulto, string $estiba): ?array
+    {
+        if ($mixta === null) {
+            return $this->medidoEnTerreno($camion, $bulto, $estiba);
+        }
+
+        if (count($mixta['lineas']) !== 1) {
+            return null;
+        }
+
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+
+        return $fila['pallet'] !== null
+            ? null
+            : $this->medidoEnTerreno($camion, $fila['modelo'], $fila['estiba']);
+    }
+
     private function medidoEnTerreno(?CamionSimulacion $camion, ?TipoBulto $bulto, string $estiba): ?array
     {
         if ($camion === null || $bulto === null || ! $bulto->exists) {

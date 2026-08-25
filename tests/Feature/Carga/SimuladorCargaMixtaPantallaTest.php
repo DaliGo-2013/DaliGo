@@ -275,7 +275,11 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // pero lo CARGADO se reporta capado a lo pedido: 198, no 200.
         $res = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 198]]);
 
-        $res->assertOk()->assertSee('Cabe todo');
+        // El «sí» de un solo producto con cantidad se dice CON EL NÚMERO desde la fusión
+        // (21-08): «Cabe todo ✓» es correcto y no contesta la pregunta que se hizo. Y el
+        // número del cartel es lo PEDIDO —198— no las 200 de las 40 bolsas: decir 200
+        // sería prometerle al cliente dos botellones que no encargó.
+        $res->assertOk()->assertSee('Tus 198 entran');
         $this->assertSame(198, $res->viewData('mixta')['lineas'][0]['cargadas_unidades']);
         $this->assertSame(40, $res->viewData('mixta')['lineas'][0]['bultos_colocados']);
     }
@@ -1015,7 +1019,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
             ->assertOk();
 
-        $this->assertSame(420, $sinPedir->viewData('resultado')['unidades']);
+        $this->assertSame(420, $this->unidadesQueEntran($sinPedir));
         $this->assertSame('auto', $sinPedir->viewData('estiba'));
         $this->assertSame(420, $calculo->cupo($camion, $this->bolsa->paraCalculo('auto'))['unidades']);
     }
@@ -1029,7 +1033,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
                 'estiba' => $estiba,
             ]))->assertOk();
 
-            $this->assertSame($unidades, $res->viewData('resultado')['unidades']);
+            $this->assertSame($unidades, $this->unidadesQueEntran($res));
             $this->assertSame($estiba, $res->viewData('estiba'));
             // Y lo DICE: «entran 240» sin decir con qué estiba invita a compararlo con los
             // 420 de pie y a pensar que el simulador se equivocó.
@@ -1251,16 +1255,29 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $plomo->id,
         ]))->assertOk();
 
-        $resultado = $r->viewData('resultado');
-        $porEspacio = $resultado['rejilla']['largo'] * $resultado['rejilla']['ancho'] * $resultado['rejilla']['alto'];
+        // Desde la fusión (21-08) el número vive en la FILA de la carga (`por_espacio`) y
+        // el aviso viaja PEGADO al veredicto, arriba del dibujo, en vez de en una tarjeta
+        // propia debajo. La regla no cambió —el cupo cortado por kilos tiene que decir
+        // cuántos entrarían si el peso no cortara— pero el lugar sí, y por eso el candado
+        // se reescribe en vez de darse por perdido.
+        $mixta = $r->viewData('mixta');
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
 
-        $this->assertSame('peso', $resultado['limite']);
-        $this->assertSame(4, $resultado['bultos'], '1.400 kg del fixture / 300 kg por caja.');
-        $this->assertGreaterThan($resultado['bultos'], $porEspacio, 'Por espacio entrarían muchas más.');
+        $this->assertSame('peso', $fila['limita']);
+        $this->assertSame(4, $fila['bultos_colocados'], '1.400 kg del fixture / 300 kg por caja.');
+        $this->assertGreaterThan(
+            $fila['bultos_colocados'],
+            $fila['por_espacio'],
+            'Por espacio entrarían muchas más.',
+        );
 
         $html = $r->getContent();
-        $this->assertStringContainsString('Se llena de kilos antes que de espacio', $html);
-        $this->assertStringContainsString(number_format($porEspacio, 0, ',', '.'), $html);
+        $this->assertStringContainsString('se llena de kilos antes', $html);
+        $this->assertStringContainsString(
+            'por espacio entrarían '.number_format($fila['por_espacio'], 0, ',', '.'),
+            $html,
+            'El número tiene que estar A LA VISTA: el aviso sin cifra no cambia ninguna decisión.',
+        );
     }
 
     public function test_no_se_tumba_conserva_el_giro_de_90_que_de_pie_pierde(): void
@@ -1278,7 +1295,15 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // distintas y se verifican a mano:
         //   de pie          4 × 3 de piso × 1 de alto (120 de 220)      = 12
         //   no se tumba     7 × 2 girada  × 1                           = 14
-        //   automático      la acuesta: 3 × 2 × 3 capas de 60           = 18
+        //   automático      la acuesta: 3 × 2 × 3 capas de 60  = 18, + 2 en el sobrante = 20
+        //
+        // ESE «+ 2» ES NUEVO Y ES REAL. Desde la fusión (21-08) la pregunta se contesta
+        // por `carga()` y no por `cupo()`: la rejilla de 18 deja 70 cm de largo libres al
+        // fondo (3 × 120 = 360 de 430) y ahí el motor para dos cajas de canto (60 × 90 ×
+        // 120, x=360 → 420 ≤ 430). `cupo()` nunca rellenaba el sobrante, así que este
+        // camino no promete más de lo que puede: promete lo que DIBUJA, y los dos bloques
+        // están en la escena. Los cupos de referencia del HD35 (420 de pie, 480 acostado)
+        // no se mueven — los fija `CargaUnificadaTest`.
         $caja = TipoBulto::create([
             'nombre' => 'Caja alta de prueba', 'categoria' => 'cajas',
             'largo_cm' => 90, 'ancho_cm' => 60, 'alto_cm' => 120, 'peso_kg' => 1,
@@ -1286,9 +1311,29 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'orientacion_fija' => false, 'activo' => true,
         ]);
 
-        $cupo = fn (string $estiba) => $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
-            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $caja->id, 'estiba' => $estiba,
-        ]))->assertOk()->viewData('resultado');
+        // La ORIENTACIÓN con que quedó puesta se lee del BLOQUE que dibuja el visor, no
+        // de `cupo()`: desde la fusión (21-08) la pantalla contesta por el camino de
+        // líneas, y el bloque es además el lugar más honesto para preguntarlo — es la
+        // caja tal como se está dibujando. Los bultos salen de la fila de la carga.
+        //
+        // OJO CON LA UNIDAD: el visor trabaja en METROS (`escena()` divide por 100), así
+        // que se convierte acá a centímetros enteros. Las tres alturas de abajo son las
+        // del catálogo y se verificaron a mano en centímetros; compararlas contra 1.2
+        // dejaría el candado ilegible al lado del comentario que lo justifica.
+        $cupo = function (string $estiba) use ($caja) {
+            $r = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $caja->id, 'estiba' => $estiba,
+            ]))->assertOk();
+            $mixta = $r->viewData('mixta');
+            $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+            $o = $r->viewData('escena')['bloques'][0]['orientacion'];
+
+            return [
+                'orientacion' => array_map(fn (float $m) => (int) round($m * 100), $o),
+                'bultos' => $fila['bultos_colocados'],
+                'bloques' => $r->viewData('escena')['bloques'],
+            ];
+        };
 
         $dePie = $cupo('pie');
         $noSeTumba = $cupo('horizontal');
@@ -1305,7 +1350,10 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // automático daría 18.
         $this->assertSame(12, $dePie['bultos'], '4 × 3 de piso × 1 de alto.');
         $this->assertSame(14, $noSeTumba['bultos'], 'Girada 90°: 7 × 2 de piso × 1 de alto.');
-        $this->assertSame(18, $libre['bultos'], 'Acostada: 3 × 2 × 3 capas de 60.');
+        $this->assertSame(20, $libre['bultos'], 'Acostada 3 × 2 × 3 capas, más 2 de canto en el sobrante.');
+        // Y el bloque del sobrante EXISTE: sin este assert, un 20 salido de contar mal
+        // sería indistinguible de un 20 salido de acomodar bien.
+        $this->assertCount(2, $libre['bloques'], 'La rejilla acostada más el relleno de canto.');
 
         // Sigue siendo CONSERVADORA: nunca promete más que la libre. Es lo que la hace
         // segura de ofrecer.
@@ -1511,6 +1559,28 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
      * el resto de los candados de este archivo: se ancla en el `aria-label` del
      * `<aside>` y corta en su cierre.
      */
+    /**
+     * CUÁNTAS UNIDADES ENTRARON, por el camino unificado.
+     *
+     * Desde el 21-08 la pantalla tiene UNA sola pregunta: un `tipo_bulto_id` sin líneas
+     * —los links viejos y lo que mandaba la pestaña «¿Cuánto entra?»— se traduce a una
+     * línea, así que el número ya no vive en `viewData('resultado')` (el `cupo()`) sino
+     * en la fila de la carga.
+     *
+     * Los candados que preguntaban por el camino viejo se migraron a este helper en vez
+     * de borrarse: cada uno fija una regla que la pantalla nueva tiene que seguir
+     * cumpliendo, y apagarlos habría dejado la regla sin quien la vigile. `cupo()` sigue
+     * existiendo y sigue teniendo sus propios candados —lo usa la comparativa entre
+     * camiones—; lo que cambió es de dónde saca la pantalla su respuesta.
+     */
+    private function unidadesQueEntran($respuesta): int
+    {
+        $mixta = $respuesta->viewData('mixta');
+        $this->assertNotNull($mixta, 'La pantalla no calculó ninguna carga.');
+
+        return $mixta['lineas'][array_key_first($mixta['lineas'])]['cargadas_unidades'];
+    }
+
     private function menuDelVisor(string $html): string
     {
         $desde = strpos($html, 'Herramientas');
@@ -1714,22 +1784,34 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'cantidad' => $c,
         ])))->assertOk();
 
+        // Desde la fusión (21-08) esto no es una capa encima del cupo: la cantidad ES la
+        // de la línea, así que el motor coloca exactamente lo pedido y el dibujo son los
+        // bloques que colocó. Se cuentan los BULTOS DIBUJADOS y no un `tope` que capaba el
+        // dibujo después — el dibujo dejó de necesitar capa, que era el punto.
+        $dibujados = fn ($r) => collect($r->viewData('escena')['bloques'])->sum('cantidad');
+        $fila = fn ($r) => $r->viewData('mixta')['lineas'][array_key_first($r->viewData('mixta')['lineas'])];
+
         // 50 botellones = 10 bolsas: entran (el máximo es 420) y el dibujo muestra 10.
         $conPrueba = $ver(50);
-        $this->assertTrue($conPrueba->viewData('prueba')['caben']);
-        $this->assertSame(10, $conPrueba->viewData('escena')['tope']);
+        $this->assertTrue($conPrueba->viewData('mixta')['cabeTodo']);
+        $this->assertSame(50, $fila($conPrueba)['cargadas_unidades']);
+        $this->assertSame(10, $dibujados($conPrueba));
         $conPrueba->assertSee('Tus 50 entran');
 
         // 600 no entran: el veredicto dice cuántas sí, y el dibujo muestra el máximo.
         $sinCupo = $ver(600);
-        $this->assertFalse($sinCupo->viewData('prueba')['caben']);
-        $this->assertSame(420, $sinCupo->viewData('prueba')['cargadas']);
-        $this->assertSame(84, $sinCupo->viewData('escena')['tope']);
+        $this->assertFalse($sinCupo->viewData('mixta')['cabeTodo']);
+        $this->assertSame(420, $fila($sinCupo)['cargadas_unidades']);
+        $this->assertSame(84, $dibujados($sinCupo));
+        $sinCupo->assertSee('De tus 600 entran 420');
 
-        // Sin cantidad, todo sigue como siempre: máximo y sin veredicto de prueba.
+        // Sin cantidad la pregunta es la OTRA —«¿cuánto entra?»— y por eso no hay número
+        // pedido contra el que comparar: la línea es abierta y el dibujo va al máximo.
         $sinPrueba = $ver(null);
-        $this->assertNull($sinPrueba->viewData('prueba'));
-        $this->assertSame(84, $sinPrueba->viewData('escena')['tope']);
+        $this->assertNull($fila($sinPrueba)['pedidas_unidades']);
+        $this->assertTrue($fila($sinPrueba)['abierta']);
+        $this->assertSame(84, $dibujados($sinPrueba));
+        $sinPrueba->assertSee('Entran 420');
     }
 
     public function test_importar_de_excel_esta_ofrecido_y_dice_que_no_lee_facturas(): void
@@ -1767,13 +1849,13 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'estiba' => 'costado', 'apilado' => 8,
         ]))->assertOk();
 
-        $this->assertSame(270, $conTope->viewData('resultado')['unidades'], '6 capas de 26 cm.');
-        $this->assertSame(360, $sinTope->viewData('resultado')['unidades'], '8 capas llenan los 220 cm.');
+        $this->assertSame(270, $this->unidadesQueEntran($conTope), '6 capas de 26 cm.');
+        $this->assertSame(360, $this->unidadesQueEntran($sinTope), '8 capas llenan los 220 cm.');
 
         // Sin pedir nada manda el catálogo: es el dato que él dictó y con el que se
         // verificaron las referencias.
         $this->assertNull($ver(null)->viewData('apilado'));
-        $this->assertSame(420, $ver(null)->viewData('resultado')['unidades']);
+        $this->assertSame(420, $this->unidadesQueEntran($ver(null)));
     }
 
     public function test_el_pallet_se_resuelve_con_el_mismo_cupo_dos_veces(): void

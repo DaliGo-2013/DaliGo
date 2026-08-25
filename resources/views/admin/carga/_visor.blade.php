@@ -72,9 +72,65 @@
     // armado del pallet todavía no es una carga.
     $cabe = null;
     $detalle = null;
+    // Texto propio del cartel. `null` = el de siempre («Cabe todo ✓» / «No cabe todo»);
+    // con una sola línea sin cantidad lo reemplaza el NÚMERO, que es la respuesta.
+    $veredicto = null;
     $n = fn ($x) => number_format($x, 0, ',', '.');
 
-    if (($mixta ?? null) !== null) {
+    // LA RESPUESTA A «¿CUÁNTO ENTRA?» ES EL VEREDICTO (21-08, al fusionar las dos
+    // preguntas). Con una sola línea SIN cantidad, «Cabe todo ✓» sería una respuesta
+    // vacía: por definición cabe: no se pidió un número. Lo que se vino a preguntar es
+    // CUÁNTOS, así que el cartel dice el número — que es exactamente lo que decía la
+    // tarjeta «ENTRAN 550» de la pestaña que desapareció, pero arriba del dibujo, donde
+    // la doctrina §4.3bis manda poner la respuesta.
+    $abiertas = collect($mixta['lineas'] ?? [])->filter(fn ($l) => $l['abierta']);
+    $soloUnaAbierta = ($mixta ?? null) !== null
+        && count($mixta['lineas']) === 1
+        && $abiertas->count() === 1;
+
+    if ($soloUnaAbierta) {
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+        $cabe = true;
+        $veredicto = 'Entran '.$n($fila['cargadas_unidades']);
+        $partesDetalle = [$fila['modelo']->nombre.' en '.$escena['vehiculo']['nombre']];
+        // Los BULTOS además de las unidades: el vendedor cotiza en botellones y el
+        // cargador cuenta bolsas. Decir solo uno de los dos obliga a dividir a mano.
+        if ($fila['modelo']->unidades > 1) {
+            $partesDetalle[] = $n($fila['bultos_colocados']).' '
+                .\Illuminate\Support\Str::plural('bulto', $fila['bultos_colocados'])
+                .' de '.$fila['modelo']->unidades;
+        }
+        // Y SI EL PESO CORTÓ ANTES QUE EL ESPACIO se dice acá mismo (pedido del dueño
+        // 11-08). Es la diferencia entre «entran 154» y «entran 154 de los 324 que
+        // caben, porque te quedaste sin kilos» — con la segunda, mandar un camión más
+        // grande no sirve y eso cambia la decisión.
+        if ($fila['limita'] === 'peso' && ($fila['por_espacio'] ?? 0) > $fila['bultos_colocados']) {
+            $partesDetalle[] = 'por espacio entrarían '.$n($fila['por_espacio'])
+                .', pero se llena de kilos antes';
+        }
+        $detalle = implode(' · ', $partesDetalle).'.';
+    } elseif (! $publico && ($mixta ?? null) !== null && count($mixta['lineas']) === 1 && $mixta['cabeTodo']
+        && ($mixta['lineas'][array_key_first($mixta['lineas'])]['pedidas_unidades'] ?? null) !== null) {
+        // UN SOLO PRODUCTO CON CANTIDAD Y ENTRA TODO: se le DEVUELVE EL NÚMERO que pidió.
+        // «Cabe todo ✓» es correcto y no contesta: la pregunta fue «¿me entran 50?» y la
+        // respuesta útil repite el 50. Es el gemelo del caso de abajo —el que dice «de tus
+        // 500 entran 420»— y sin él la pantalla solo pone números cuando la noticia es
+        // mala, que es la mitad más fácil de leer mal.
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+        $cabe = true;
+        $veredicto = 'Tus '.$n($fila['pedidas_unidades']).' entran';
+        $detalle = $fila['modelo']->nombre.' en '.$escena['vehiculo']['nombre'].'.';
+    } elseif (! $publico && ($mixta ?? null) !== null && count($mixta['lineas']) === 1 && ! $mixta['cabeTodo']) {
+        // UN SOLO PRODUCTO CON CANTIDAD Y NO ENTRA TODO: el cartel lleva los NÚMEROS y
+        // no la frase pelada. La pregunta fue «¿me entran 500?», así que «no cabe todo»
+        // obligaría a bajar la vista a buscar cuántos sí — y esta era la respuesta de la
+        // pestaña «¿Cuánto entra?» con su cantidad a probar, que al fusionar había que
+        // conservar (el caso que solo tenía UNA de las dos pantallas, 21-08).
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+        $cabe = false;
+        $detalle = 'De tus '.$n($fila['pedidas_unidades']).' entran '.$n($fila['cargadas_unidades'])
+            .'. Quedan '.$n($fila['pedidas_unidades'] - $fila['cargadas_unidades']).' afuera.';
+    } elseif (($mixta ?? null) !== null) {
         $cabe = $mixta['cabeTodo'];
         // «Con eso se negocia» es lo que se le dice al VENDEDOR. El mismo cartel viaja
         // al link compartido, donde del otro lado hay un cliente o un conductor: ahí la
@@ -84,6 +140,14 @@
             $publico => 'Queda carga afuera. Abajo, producto por producto.',
             default => 'Abajo está qué queda afuera y por qué — con eso se negocia.',
         };
+        // Con una línea «hasta llenar» entre varias, el premio de haber fusionado: se
+        // dice cuánto MÁS entra en lo que sobra, que es lo que ninguna de las dos
+        // pestañas viejas podía contestar.
+        if ($cabe && $abiertas->isNotEmpty()) {
+            $relleno = $abiertas->first();
+            $detalle = 'Lo pedido entra, y en lo que sobra caben '
+                .$n($relleno['cargadas_unidades']).' '.$relleno['modelo']->nombre.' más.';
+        }
     } elseif (($prueba ?? null) !== null) {
         // En «¿cuánto entra?» el veredicto va CON LOS NÚMEROS y no con la frase
         // genérica: la pregunta fue «¿me entran 50?», así que «entran 42, quedan 8»
@@ -208,8 +272,36 @@
                 'text-lg font-semibold leading-tight',
                 'text-red-700' => ! $cabe,
                 'text-brand-600' => $cabe,
-            ])>{{ $cabe ? 'Cabe todo ✓' : 'No cabe todo' }}</p>
+            ])>{{ $veredicto ?? ($cabe ? 'Cabe todo ✓' : 'No cabe todo') }}</p>
             <p @class(['text-sm', 'text-red-700' => ! $cabe, 'text-neutral-500' => $cabe])>{{ $detalle }}</p>
+
+            {{-- ═══ LO QUE ENTRÓ DE VERDAD, AL LADO DE SU TECHO ═══
+                 El lazo de vuelta del historial (lote 4). Vivía en la tarjeta «ENTRAN N»
+                 de la pestaña «¿Cuánto entra?»; al fusionar las dos preguntas (21-08) esa
+                 tarjeta desaparece, y el número calculado se mudó a esta franja — así que
+                 la calibración se muda con él. Es el quinto caso que solo tenía UNA de las
+                 dos pantallas: dejarlo caer habría apagado un candado sin que nadie se
+                 enterara, que es la lección de la bitácora [2026-08-20].
+
+                 NO corrige el cupo, lo acompaña: reemplazarlo sería cambiar un número
+                 verificable por el promedio de dos anécdotas. Mostrar los dos deja ver el
+                 hueco, que es la información.
+
+                 Va en la MISMA franja y no en una tarjeta nueva: la pantalla tiene que
+                 caber sin barra de scroll (pedido del dueño 21-08), y el `flex-wrap` de
+                 acá arriba lo baja solo cuando no entra al lado. Fuera del link público:
+                 es calibración interna, y del otro lado hay un cliente o un conductor.
+                 A qué combinación corresponde lo decide el controlador
+                 (`medidoDeLaPantalla`), no esta vista. --}}
+            @if (! $publico && ! empty($medido ?? null))
+                <p class="text-sm text-neutral-500">
+                    En terreno entraron
+                    <span class="font-medium tabular-nums text-neutral-700">{{ $n($medido['promedio']) }}</span>
+                    ({{ round($medido['factor'] * 100) }}% de lo calculado) ·
+                    <a href="{{ route('admin.cargas-reales.index') }}"
+                       class="font-medium text-brand-700 hover:text-brand-600">{{ $medido['veces'] === 1 ? 'una carga anotada' : $medido['veces'].' cargas anotadas' }}</a>
+                </p>
+            @endif
         </div>
     @endif
     <div class="flex items-stretch">
