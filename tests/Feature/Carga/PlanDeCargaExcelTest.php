@@ -181,6 +181,44 @@ class PlanDeCargaExcelTest extends TestCase
     }
 
     /**
+     * UNA LÍNEA «LO QUE QUEPA» NO PIDIÓ CERO.
+     *
+     * La planilla circula por correo y su columna «Pedidas» es NUMÉRICA: se suma, se filtra
+     * y se ordena. Un 0 ahí no es un rótulo feo, es un dato falso que se propaga a cualquier
+     * tabla dinámica que alguien arme después — y encima se lee como «no pidió nada» justo
+     * en la línea que se cargó hasta el tope.
+     *
+     * Así que la celda va VACÍA (en Excel vacío no es cero) y la hoja DECLARA lo que esa
+     * columna no puede decir. La nota no es adorno: sin ella, quien recibe el archivo no
+     * puede distinguir «se pidió lo que quepa» de «falta el dato» (mismo criterio que el
+     * export de Servicio Técnico, bitácora [2026-08-13]).
+     */
+    public function test_una_linea_hasta_llenar_no_dice_que_se_pidieron_cero(): void
+    {
+        $hoja = $this->partes($this->bajar([
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => '']],
+        ]))['xl/worksheets/sheet1.xml'];
+
+        // Lo que SÍ entró está en la planilla: es la mitad que prueba que la fila existe.
+        $this->assertStringContainsString('<v>420</v>', $hoja, 'La línea abierta no llegó a la planilla.');
+        $this->assertStringContainsString('Bolsa 5', $hoja);
+
+        // Y la hoja dice qué se pidió, porque la celda no puede.
+        $this->assertStringContainsString('lo que quepa', $hoja,
+            'La hoja no declara por qué «Pedidas» viene vacía: se lee como un dato faltante.');
+
+        // La fila del producto NO trae un cero. Se mira la fila 4 —cabecera en la 3— y no
+        // todo el XML: un `<v>0</v>` puede aparecer legítimamente en otra parte (un índice
+        // de estilo, un ancho), y buscarlo suelto haría pasar o fallar por la razón
+        // equivocada.
+        $fila = [];
+        preg_match('/<row r="4".*?<\/row>/s', $hoja, $fila);
+        $this->assertNotEmpty($fila, 'No se encontró la fila del producto.');
+        $this->assertStringNotContainsString('<v>0</v>', $fila[0],
+            'La celda de «Pedidas» dice 0: en una columna numérica eso se suma y miente.');
+    }
+
+    /**
      * EL DATO QUE JUSTIFICA LA PLANILLA: el orden de carga.
      *
      * Los números ya están en la pantalla. Lo que el andén no puede deducir sin
