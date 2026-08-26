@@ -79,9 +79,93 @@ ponen rojos tres tests.
 
 ### Superficies donde todavía NO están (candidatos naturales)
 
-La cotización industrial y la pantalla pública del QR de terreno. El bloque ya es un
-partial reusable (`emails/partials/_garantias-industrial.blade.php`), así que
-agregarlo es un `@include` — pero no se hizo sin pedirlo.
+La cotización industrial. El bloque ya es un partial reusable
+(`emails/partials/_garantias-industrial.blade.php`), así que agregarlo es un `@include` —
+pero no se hizo sin pedirlo.
+
+> La **pantalla pública del QR de terreno** figuraba acá como el otro candidato y **dejó de
+> existir el 25-08-2026** (ver §1bis): el cliente ya no pide visitas industriales. Al correo
+> de la visita no le pasó nada — sigue llevando las cinco filas industriales.
+
+### 1bis · LA VISITA INDUSTRIAL SALIÓ DE LA VISTA DEL CLIENTE (25-08-2026)
+
+**Decide:** el gerente general · **Aplicado:** 25-08-2026
+
+Pedido textual: *«que la coordinación de visita/revisión industrial la saques de la vista de
+ingreso; estos los harán ahora los vendedores y serán autorizados por el jefe de ventas.
+Déjalo solo para vistas de los vendedores y el jefe de ventas, pero siempre manteniendo el
+aviso a los clientes»*.
+
+**Qué se retiró.** El flujo público COMPLETO: la cuarta tarjeta del menú del QR, el
+formulario, su pantalla «¡Listo!» y el endpoint del cartel de disponibilidad en vivo. No
+alcanzaba con esconder la tarjeta: un link firmado guardado —el QR pegado en una máquina, un
+correo viejo— habría seguido creando visitas **sin pasar por el vendedor ni por la
+autorización del jefe**, o sea salteándose la regla nueva. Un link viejo ahora cae en la
+página de error con marca DaliGo.
+
+**Quién las crea ahora.** Nadie nuevo: el camino ya existía. `admin/agenda-terreno/crear`, con
+permiso `agendar servicio terreno`, que tienen **vendedor, jefe de ventas y admin** — o sea
+exactamente lo que el gerente pidió, sin tocar roles.
+
+**El aviso al cliente no se tocó, y no por suerte.** Vive en el modelo
+(`AgendaTrabajo::avisarAlCliente`) y sale por los DOS caminos internos —el vendedor que
+agenda y el jefe de ventas que autoriza días después—, así que nunca dependió del formulario
+público. Sigue igual el correo de la cita (agendada / movida / anulada) y el link firmado para
+que el cliente confirme cuando el día no es el que había pedido.
+
+#### Tres consecuencias que el pedido no nombra y hubo que resolver
+
+**1. La visita técnica pasa a necesitar autorización.** Estaba excluida **a propósito** de
+`TIPOS_QUE_AUTORIZA_JEFATURA`, y el comentario decía por qué: *«es la que pide el cliente por
+el QR y el vendedor solo la coordina — no es un compromiso que el vendedor decida por su
+cuenta»*. Sin formulario público esa razón desaparece: la fija un vendedor, igual que las
+otras tres. El candado que afirmaba lo contrario quedó **invertido, no borrado**.
+
+Y el jefe de ventas sigue exento —el motor exime a quien porta el rol aprobador—, con candado
+propio: sin eso, el cambio le habría puesto a él una vuelta que termina en su propio
+escritorio.
+
+**2. La regla «el técnico va a terreno de lunes a viernes» se quedaba sin dónde aplicar.** Se
+validaba SOLO en el formulario público; el camino interno nunca la tuvo, así que un vendedor
+ya podía agendar un sábado. Se mudó a `AgendaTrabajoController::bloquearSiNoSeAtiende`, con el
+mismo criterio y la misma excepción de admin que los días ya ocupados, y el mensaje ofrece el
+**próximo día con disponibilidad** —lo que hacía el cartel en vivo— en vez de dejar al
+vendedor tanteando. De paso empezó a cubrir los otros tres tipos, que nunca la tuvieron.
+
+Se valida en las **puntas** del rango y no en cada día: un viaje que arranca viernes y termina
+lunes atraviesa el fin de semana a propósito (el técnico se queda allá).
+
+**3. Guardar una visita SIN fecha devolvía un 500.** El registro se creaba bien y el redirect
+reventaba leyendo el año de una fecha que no existe: el vendedor veía una pantalla de error
+habiendo guardado. No se notaba porque ese camino casi no se usaba —las visitas sin fecha
+llegaban por el QR y este formulario se abría para ponerles la fecha—. Al retirar el QR, «lo
+anoto y lo coordino cuando hable con el cliente» pasó a ser **la única** forma de dejar una
+visita pendiente, así que se arregló acá. El aviso «hay algo por coordinar» que disparaba el
+formulario público lo dispara ahora el interno en ese mismo caso: el destinatario no cambió.
+
+#### La hora queda SIN validar, y es una decisión
+
+La verificación **«la hora elegida está dentro del horario del día»** también vivía solo en el
+formulario público. Hoy nada impide que un vendedor agende a las 19:00 un miércoles que cierra
+16:30. Se planteó cerrarlo —es hermano del hueco de los días, que sí se cerró— y **el dueño
+resolvió dejarlo abierto**: *«luego cuando hagamos pruebas con los vendedores que ellos digan
+si se va a modificar a un rango de horas más extensas o no»* (26-08-2026).
+
+El razonamiento importa para el que venga después: el `HORARIO` del modelo (L-M 08:00–17:30,
+Mi-V 08:00–16:30) puede estar **más angosto que la realidad**, y validar contra él bloquearía
+visitas que sí se hacen. Primero se observa cómo agendan los vendedores; después se decide si
+el rango se ensancha, si se valida, o las dos cosas. **Falta un dato, no un candado.** Queda
+anotado también en el encabezado de `HorarioVisitaTest`.
+
+#### Los candados
+
+De los ~70 que tocaban este flujo, los que probaban el **cálculo** (`disponibilidad`,
+`horasDisponibles`, media jornada, próximo libre) bajaron un nivel y ahora consultan el
+**modelo**: es el mismo criterio y sobrevive a que la pantalla que lo muestra cambie otra vez.
+Los del **envío del cliente** se retiraron con su formulario, cada uno nombrado en el
+encabezado de su archivo para que nadie los busque. Y hay nuevos para lo que nació: la puerta
+cerrada (tarjeta ausente **y** rutas inexistentes), el rechazo del día no laborable con su
+mensaje, la excepción del admin, y el guardado sin fecha.
 
 ---
 

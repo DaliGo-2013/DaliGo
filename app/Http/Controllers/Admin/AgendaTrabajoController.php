@@ -14,7 +14,9 @@ use App\Models\ServicioTerreno;
 use App\Models\User;
 use App\Rules\RutChileno;
 use App\Services\Aprobaciones\Aprobaciones;
+use App\Support\FechaNegocio;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,15 +49,15 @@ class AgendaTrabajoController extends Controller
             'dia' => ['nullable', 'date'],
         ]);
 
-        $anio = isset($v['anio']) ? (int) $v['anio'] : \App\Support\FechaNegocio::ahora()->year;
-        $mes = isset($v['mes']) ? (int) $v['mes'] : \App\Support\FechaNegocio::ahora()->month;
+        $anio = isset($v['anio']) ? (int) $v['anio'] : FechaNegocio::ahora()->year;
+        $mes = isset($v['mes']) ? (int) $v['mes'] : FechaNegocio::ahora()->month;
         $cursor = Carbon::create($anio, $mes, 1);
         $prev = $cursor->copy()->subMonth();
         $next = $cursor->copy()->addMonth();
 
         // Día seleccionado: ?dia= válido y dentro del mes; si no, HOY (si cae en el
         // mes mostrado) o el día 1. Es el día cuyos trabajos se editan a la derecha.
-        $hoy = \App\Support\FechaNegocio::ahora()->startOfDay();
+        $hoy = FechaNegocio::ahora()->startOfDay();
         $diaSel = isset($v['dia']) ? Carbon::parse($v['dia']) : null;
         if (! $diaSel || $diaSel->year !== $anio || $diaSel->month !== $mes) {
             $diaSel = ($hoy->year === $anio && $hoy->month === $mes) ? $hoy->copy() : $cursor->copy();
@@ -146,6 +148,7 @@ class AgendaTrabajoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateData($request);
+        $this->bloquearSiNoSeAtiende($request, $data);
         $this->bloquearSiOcupado($request, $data);
         $this->sincronizarCatalogo($request, $data);
         $data['creado_por'] = $request->user()->name;
@@ -167,6 +170,23 @@ class AgendaTrabajoController extends Controller
         // trabajo que no existía, así que el estado previo es null y el modelo lo
         // lee como «esto es nuevo».
         $trabajo->avisarAlTecnicoSiCorresponde(['estado' => null, 'fecha' => null, 'hora' => null, 'tecnico_id' => null]);
+
+        // GUARDAR SIN FECHA («queda por coordinar») ES UN CASO LEGÍTIMO Y HASTA HOY REVENTABA.
+        //
+        // El redirect leía `$trabajo->fecha->year` sin preguntar: el registro se creaba bien y
+        // el usuario recibía una pantalla de error 500 igual — o sea que había guardado y no
+        // podía saberlo. Nadie lo reportó porque ese camino casi no se usaba: las solicitudes
+        // sin fecha llegaban por el QR y este formulario se abría para ponerles la fecha.
+        //
+        // Al retirar el formulario público (25-08) «lo dejo anotado y lo coordino después» pasó
+        // a ser una acción SOLO interna, o sea el caso normal de una visita que todavía no
+        // tiene día. Por eso se arregla acá y no en otra tarjeta.
+        if (! $trabajo->fecha) {
+            $trabajo->notificarPorCoordinar();
+
+            return redirect()->route('admin.agenda-terreno.index')
+                ->with('status', "Queda por coordinar: {$trabajo->tipo_label} de {$trabajo->cliente_nombre}. Ponle fecha cuando hables con el cliente.");
+        }
 
         return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month, 'dia' => $trabajo->fecha->toDateString()])
             ->with('status', "Trabajo agendado para el {$trabajo->fecha->format('d-m-Y')} ({$trabajo->tipo_label}, {$trabajo->cliente_nombre}).");
@@ -248,7 +268,7 @@ class AgendaTrabajoController extends Controller
             'hora_preferida' => $data['hora'] ?? null,
         ]));
 
-        $fecha = \Illuminate\Support\Carbon::parse($data['fecha']);
+        $fecha = Carbon::parse($data['fecha']);
 
         app(Aprobaciones::class)->solicitar(
             tipoAccion: Aprobacion::ACCION_AGENDA_CITA,
@@ -283,7 +303,7 @@ class AgendaTrabajoController extends Controller
      */
     private function pedirAutorizacionAlEditar(Request $request, AgendaTrabajo $trabajo, array $data): RedirectResponse
     {
-        $fecha = \Illuminate\Support\Carbon::parse($data['fecha']);
+        $fecha = Carbon::parse($data['fecha']);
 
         if ($trabajo->esperandoAutorizacion()) {
             return back()->with('status', "Esta cita YA está esperando la autorización del jefe de ventas ({$trabajo->fecha_preferida?->format('d-m-Y')}). Cuando la resuelva vas a poder cambiarla.");
@@ -345,6 +365,7 @@ class AgendaTrabajoController extends Controller
     public function update(Request $request, AgendaTrabajo $trabajo): RedirectResponse
     {
         $data = $this->validateData($request, editando: true);
+        $this->bloquearSiNoSeAtiende($request, $data);
         $this->bloquearSiOcupado($request, $data, $trabajo->id);
         $this->sincronizarCatalogo($request, $data);
 
@@ -401,7 +422,7 @@ class AgendaTrabajoController extends Controller
         $trabajo->avisarAlTecnicoSiCorresponde($antes);
 
         // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
-        $destino = $trabajo->fecha ?? \App\Support\FechaNegocio::ahora();
+        $destino = $trabajo->fecha ?? FechaNegocio::ahora();
         $params = ['anio' => $destino->year, 'mes' => $destino->month];
         if ($trabajo->fecha) {
             $params['dia'] = $trabajo->fecha->toDateString();
@@ -685,7 +706,7 @@ class AgendaTrabajoController extends Controller
                     $this->datosContactoCliente($data),
                 ));
                 $data['cliente_id'] = $cliente->id;
-            } catch (\Illuminate\Database\QueryException $e) {
+            } catch (QueryException $e) {
                 // Carrera: si otro proceso ya creó ese RUT, enlaza al existente.
                 $data['cliente_id'] = Cliente::where('rut', $rut)->value('id') ?? ($data['cliente_id'] ?? null);
             }
@@ -811,6 +832,67 @@ class AgendaTrabajoController extends Controller
             'disponibilidad' => ['nullable', 'string', 'max:1000'],
             'notas_tecnico' => ['nullable', 'string'],
         ]);
+    }
+
+    /**
+     * Bloquea agendar/editar en un día que el técnico NO ATIENDE: sábado, domingo, feriado o
+     * cierre. Mismo criterio y misma salida que la ocupación —el admin puede pasar por
+     * encima— porque son la misma clase de regla: «ese día no hay nadie».
+     *
+     * POR QUÉ VIVE ACÁ DESDE EL 25-08. La regla es del dueño (13-08: *«el técnico va a terreno
+     * de lunes a viernes»*) y hasta hoy se validaba SOLO en el formulario público del QR: el
+     * camino interno nunca la tuvo, así que un vendedor ya podía agendar un sábado. Al sacar
+     * la visita industrial de la vista del cliente (decisión del gerente, 25-08) esa regla se
+     * quedaba **sin ningún lugar donde aplicar**: seguía escrita y no guardaba nada. Se muda
+     * acá, donde ahora ocurren TODAS las visitas, y de paso empieza a cubrir los otros tres
+     * tipos, que nunca la tuvieron.
+     *
+     * El mensaje ofrece el PRÓXIMO DÍA CON DISPONIBILIDAD en vez de dejar al vendedor
+     * tanteando — que es lo que hacía el cartel en vivo del formulario público. Sale de
+     * `AgendaTrabajo::disponibilidad()`, el mismo método que alimentaba ese cartel: un
+     * criterio, no dos.
+     */
+    private function bloquearSiNoSeAtiende(Request $request, array $data): void
+    {
+        $fecha = $data['fecha'] ?? null;
+        if (! $fecha || ($data['estado'] ?? null) === 'solicitado') {
+            return;
+        }
+        if ($request->user()->hasRole('admin')) {
+            return; // el admin puede agendar un día que no se atiende
+        }
+
+        // Se validan las PUNTAS del rango y no cada día: un viaje que arranca un viernes y
+        // termina el lunes atraviesa el fin de semana a propósito (el técnico se queda allá),
+        // así que bloquear los días del medio prohibiría el viaje de varios días que el lote 5
+        // vino a permitir.
+        foreach (array_unique([(string) $fecha, (string) ($data['fecha_fin'] ?? $fecha)]) as $dia) {
+            $d = AgendaTrabajo::disponibilidad($dia);
+
+            // SOLO el caso «cerrado». Un día simplemente ocupado por otro trabajo lo rechaza
+            // `bloquearSiOcupado`, que además puede nombrar al cliente y la ciudad — acá del
+            // otro lado hay alguien con permiso, pero cada guarda dice lo suyo una sola vez.
+            if ($d['estado'] !== 'cerrado') {
+                continue;
+            }
+
+            $cuando = fn (string $f) => Carbon::parse($f)->locale('es')->translatedFormat('j \d\e F');
+
+            // El «por qué» distingue fin de semana de cierre, igual que el cartel del
+            // formulario público. Acá sí se puede ser específico: del otro lado hay staff.
+            $porque = ($d['motivo_cierre'] ?? null) === 'cierre'
+                ? 'ese día la agenda está cerrada (feriado, vacaciones o cierre)'
+                : 'el técnico va a terreno de lunes a viernes';
+
+            $proximo = $d['proximo_libre']
+                ? ' El más cercano con disponibilidad es el '.$cuando($d['proximo_libre']).'.'
+                : '';
+
+            throw ValidationException::withMessages([
+                'fecha' => 'No se atiende el '.$cuando($dia).": {$porque}.{$proximo}"
+                    .' Pídele a un administrador que lo agende si es imprescindible.',
+            ]);
+        }
     }
 
     /**

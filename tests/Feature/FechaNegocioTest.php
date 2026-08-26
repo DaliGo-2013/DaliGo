@@ -226,11 +226,27 @@ class FechaNegocioTest extends TestCase
 
     // --- Flujos públicos nocturnos (§4.1-2) ------------------------------------
 
-    public function test_la_visita_industrial_acepta_el_hoy_chileno(): void
+    /**
+     * AGENDAR UNA VISITA PARA HOY, DE NOCHE. El defecto original: `today` resolvía en UTC —que
+     * de noche en Chile ya es mañana— así que una visita para HOY se rechazaba por «fecha
+     * pasada».
+     *
+     * Iba contra el formulario público del QR, que se retiró el 26-08 cuando el gerente sacó
+     * la visita industrial de la vista del cliente. **El defecto que vigila no era del
+     * formulario sino del reloj**, y el camino interno tiene el mismo borde nocturno: quien
+     * agenda a las 22:00 desde Chile también le pone la fecha de hoy. Así que el candado se
+     * mudó al POST interno en vez de retirarse. `DIA_NEGOCIO` es un LUNES, que además lo hace
+     * pasar la guarda de días laborables.
+     */
+    public function test_agendar_para_hoy_de_noche_acepta_el_hoy_chileno(): void
     {
-        $this->post(route('visita-industrial.store'), [
-            'sucursal_id' => $this->sucursal()->id,
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+
+        $this->actingAs($vendedor)->post(route('admin.agenda-terreno.store'), [
             'tipo' => 'visita_tecnica',
+            'estado' => 'agendado',
+            'fecha' => self::DIA_NEGOCIO,
+            'hora' => '10:00',
             'cliente_nombre' => 'Aguas Claras SpA',
             'cliente_rut' => '12.345.678-5',
             'cliente_telefono' => '+56 9 1234 5678',
@@ -238,9 +254,7 @@ class FechaNegocioTest extends TestCase
             'direccion' => 'Camino Industrial 500',
             'ciudad' => 'Talca',
             'descripcion' => 'Necesito visita HOY: la osmosis pierde presión.',
-            // Antes: rechazada de noche ('today' resolvía en UTC = mañana).
-            'fecha_preferida' => self::DIA_NEGOCIO,
-        ])->assertSessionDoesntHaveErrors('fecha_preferida');
+        ])->assertSessionDoesntHaveErrors('fecha');
     }
 
     public function test_el_ingreso_qr_nocturno_queda_fechado_el_dia_chileno(): void
