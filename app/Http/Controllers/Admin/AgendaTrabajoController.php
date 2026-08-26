@@ -348,6 +348,28 @@ class AgendaTrabajoController extends Controller
         $this->bloquearSiOcupado($request, $data, $trabajo->id);
         $this->sincronizarCatalogo($request, $data);
 
+        // ═══ «CONFIRMAR Y AVISAR AL CLIENTE» ═══
+        //
+        // Dueño 21-08-2026: «al cliquear coordinar, al final del apartado aparezca enviar o
+        // confirmar, y que ahí se mande al cliente el detalle de que la visita está
+        // confirmada; hasta ahora no entiendo que aparezca algo que cierre esa
+        // confirmación». Y tenía razón: el aviso salía igual, pero solo si el jefe sabía que
+        // confirmar era «cambiar el estado a Agendado y guardar». La cara NO del mismo flujo
+        // («Rechazar y avisar», con su motivo) sí tenía su botón desde el principio.
+        //
+        // El botón fija el estado ACÁ y no en el select: así el camino de la autorización de
+        // jefatura —que corre justo abajo y mira `estado`+`fecha`— ve la misma intención, y
+        // un vendedor confirmando una mantención sigue pasando por el jefe.
+        $confirmando = $request->boolean('confirmar');
+        if ($confirmando) {
+            if (blank($data['fecha'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'fecha' => 'Pon la fecha de la visita antes de confirmársela al cliente.',
+                ]);
+            }
+            $data['estado'] = 'agendado';
+        }
+
         // ═══ EL AGUJERO QUE ESTE CHEQUEO TAPA ═══
         //
         // Sin esto, la autorización era decorativa: el vendedor creaba la cita (que quedaba
@@ -372,7 +394,7 @@ class AgendaTrabajoController extends Controller
 
         $trabajo->update($data);
 
-        $this->avisarClienteSiCorresponde($trabajo->refresh(), $antes);
+        $aviso = $this->avisarClienteSiCorresponde($trabajo->refresh(), $antes);
         // El MISMO snapshot sirve para el técnico: los tres cambios que le avisamos
         // al cliente (agendada / movida / anulada) son los tres que le cambian el
         // día al técnico.
@@ -385,8 +407,17 @@ class AgendaTrabajoController extends Controller
             $params['dia'] = $trabajo->fecha->toDateString();
         }
 
+        // El mensaje DICE QUE PASO CON EL CLIENTE. «Trabajo actualizado» no cierra nada: el
+        // jefe de ventas necesita saber si el correo salió, a qué dirección, o por qué no.
+        $status = match (true) {
+            $aviso === 'enviado' => "Visita confirmada. Se le avisó a {$trabajo->cliente_email} por correo.",
+            $aviso === 'fallo' => 'Visita confirmada, pero el correo NO salió: hay que llamar al cliente.',
+            $confirmando => 'Visita confirmada, pero la solicitud no tiene correo del cliente: hay que llamarlo.',
+            default => 'Trabajo actualizado.',
+        };
+
         return redirect()->route('admin.agenda-terreno.index', $params)
-            ->with('status', 'Trabajo actualizado.');
+            ->with('status', $status);
     }
 
     public function destroy(AgendaTrabajo $trabajo): RedirectResponse
@@ -684,27 +715,37 @@ class AgendaTrabajoController extends Controller
      * cambiados (reprogramada) o cancelada (anulada). Sin correo del cliente no
      * se hace nada.
      */
-    private function avisarClienteSiCorresponde(AgendaTrabajo $trabajo, array $antes): void
+    /**
+     * @return 'enviado'|'fallo'|null  qué pasó con el correo al cliente (null = no correspondía)
+     */
+    private function avisarClienteSiCorresponde(AgendaTrabajo $trabajo, array $antes): ?string
     {
         if (blank($trabajo->cliente_email)) {
-            return;
+            return null;
         }
 
         if ($trabajo->estado === 'agendado' && $trabajo->fecha) {
             if ($antes['estado'] !== 'agendado') {
-                $this->avisarClienteDeCita($trabajo, 'agendada');
-            } elseif ($antes['fecha'] !== $trabajo->fecha?->toDateString()
-                || $antes['hora'] !== $trabajo->hora_corta
-                || $antes['tecnico_id'] !== $trabajo->tecnico_id) {
-                $this->avisarClienteDeCita($trabajo, 'reprogramada');
+                return $this->avisarClienteDeCita($trabajo, 'agendada');
             }
 
-            return;
+            if ($antes['fecha'] !== $trabajo->fecha?->toDateString()
+                || $antes['hora'] !== $trabajo->hora_corta
+                || $antes['tecnico_id'] !== $trabajo->tecnico_id) {
+                return $this->avisarClienteDeCita($trabajo, 'reprogramada');
+            }
+
+            return null;
         }
 
-        if ($trabajo->estado === 'cancelado' && $antes['estado'] === 'agendado') {
-            $this->avisarClienteDeCita($trabajo, 'anulada');
+        // CANCELAR UNA SOLICITUD TAMBIÉN AVISA. Antes se exigía que viniera de 'agendado', así
+        // que una solicitud del QR cancelada acá se apagaba en silencio: el cliente que la
+        // pidió no se enteraba nunca. Y el cartel de la pantalla ya prometía el aviso.
+        if ($trabajo->estado === 'cancelado' && $antes['estado'] !== 'cancelado') {
+            return $this->avisarClienteDeCita($trabajo, 'anulada');
         }
+
+        return null;
     }
 
     /**
@@ -717,9 +758,9 @@ class AgendaTrabajoController extends Controller
      * llegan a avisar —este, y el jefe de ventas autorizando una cita días después— y con la
      * lógica acá adentro el camino diferido salía sin avisarle a nadie.
      */
-    private function avisarClienteDeCita(AgendaTrabajo $trabajo, string $motivo): void
+    private function avisarClienteDeCita(AgendaTrabajo $trabajo, string $motivo): string
     {
-        $trabajo->avisarAlCliente($motivo);
+        return $trabajo->avisarAlCliente($motivo) ? 'enviado' : 'fallo';
     }
 
     private function validateData(Request $request, bool $editando = false): array
