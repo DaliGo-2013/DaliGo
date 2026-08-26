@@ -552,7 +552,14 @@ class AgendaTrabajo extends Model implements AuditableContract
      * El try/catch es a propósito: un correo que falla no puede tumbar ni el agendamiento ni
      * la transacción de la aprobación.
      */
-    public function avisarAlCliente(string $motivo): void
+    /**
+     * Devuelve si el correo SALIO. No es un detalle: la pantalla de coordinar le dice al jefe
+     * de ventas «se le aviso a tal correo» o «no salio, hay que llamarlo» — y con un `void`
+     * solo se podia decir «trabajo actualizado», que es justo lo que no cierra la
+     * confirmacion (dueño 21-08-2026). El fallo se sigue tragando a proposito: un SMTP
+     * caido no puede tumbar el guardado de la cita.
+     */
+    public function avisarAlCliente(string $motivo): bool
     {
         try {
             if ($motivo !== 'anulada') {
@@ -566,8 +573,12 @@ class AgendaTrabajo extends Model implements AuditableContract
             }
 
             Mail::to($this->cliente_email)->send(new AgendaTrabajoAviso($this, $motivo));
+
+            return true;
         } catch (\Throwable $e) {
             report($e);
+
+            return false;
         }
     }
 

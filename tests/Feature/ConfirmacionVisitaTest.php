@@ -120,15 +120,18 @@ class ConfirmacionVisitaTest extends TestCase
 
     public function test_coordinar_guia_como_confirmarle_al_cliente(): void
     {
-        // Al abrir "Coordinar" una solicitud (sin agendar), la pantalla explica
-        // cómo avisarle al cliente (poner fecha + estado Agendado + guardar).
+        // Al abrir "Coordinar" una solicitud (sin agendar), la pantalla explica cómo avisarle al
+        // cliente. Desde el 21-08-2026 eso ya no es un baile de tres pasos («fecha + estado
+        // Agendado + guardar») sino un BOTÓN, porque el dueño abrió la pantalla y no encontró
+        // «algo que cierre esa confirmación» (ConfirmarVisitaAlClienteTest). Lo que este candado
+        // vigila es lo mismo: que la pantalla diga cómo confirmarle.
         $s = $this->solicitud();
 
         $this->actingAs($this->vendedor())
             ->get(route('admin.agenda-terreno.edit', $s))
             ->assertOk()
             ->assertSee('¿Confirmarle al cliente?')
-            ->assertSee('estado a «Agendado»', false);
+            ->assertSee('Confirmar y avisar al cliente');
     }
 
     public function test_coordinar_muestra_que_la_confirmacion_ya_se_envio(): void
