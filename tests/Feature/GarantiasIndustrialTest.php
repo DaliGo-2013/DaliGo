@@ -51,6 +51,43 @@ class GarantiasIndustrialTest extends TestCase
         ])->render();
     }
 
+    // --- El recordatorio (dueño, 26-08-2026) ---------------------------------
+
+    /**
+     * «QUE DIGA RECUERDA EL TIEMPO DE GARANTÍA, o algo así, para que la persona esté al tanto
+     * cuando haga algo específico». El recuadro era una tabla de números sueltos: los plazos
+     * estaban, pero el cliente no sabía desde cuándo corren ni qué hacer con ellos. Las dos
+     * mitades que faltaban son eso: DESDE CUÁNDO, y QUÉ HACER cuando algo falla.
+     */
+    public function test_el_recuadro_recuerda_los_plazos_y_desde_cuando_corren(): void
+    {
+        $html = $this->correo();
+
+        $this->assertStringContainsString('Recuerda estos tiempos de garantía', $html);
+        $this->assertStringContainsString('desde el día en que se hace el trabajo o la instalación', $html);
+    }
+
+    /** Y dice qué hacer con ellos: el momento «específico» que pedía el dueño. */
+    public function test_el_recuadro_dice_que_hacer_si_algo_falla_dentro_del_plazo(): void
+    {
+        $html = $this->correo();
+
+        $this->assertStringContainsString('dínoslo al pedir la visita', $html);
+        $this->assertStringContainsString('es tu respaldo', $html);
+    }
+
+    /**
+     * Y el recordatorio sigue la misma regla que los plazos: NO va cuando la visita se anuló.
+     * Recordarle la garantía a alguien al que se le acaba de cancelar el servicio no informa,
+     * confunde (misma razón por la que el recuadro entero se omite ahí).
+     */
+    public function test_una_visita_anulada_no_recuerda_garantias(): void
+    {
+        $html = $this->correo('anulada');
+
+        $this->assertStringNotContainsString('Recuerda estos tiempos de garantía', $html);
+        $this->assertStringNotContainsString('dínoslo al pedir la visita', $html);
+    }
     // --- Los plazos que dio el dueño -----------------------------------------
 
     public function test_los_plazos_son_los_que_dio_el_dueno(): void
