@@ -683,5 +683,15 @@ del dueño) es el techo de ESTE hosting — y ya lo tocamos.
 **Entrega F0-MENSAJES-2 (2026-08-27, Max-2):** catálogo de 12 candidatas para
 veredictos del dueño. Sugerencia de empaque si aprueba las recomendadas:
 MSG-6 = candidatas 1+2 (el gesto completo, S/M) · MSG-7 = candidata 3 (la foto,
-M) · MSG-8 = candidatas 8+4 según apetito. **PENDIENTE: veredictos del dueño →
-el Director dicta los lotes.**
+M) · MSG-8 = candidatas 8+4 según apetito.
+
+**VEREDICTOS DEL DUEÑO AL CATÁLOGO §7 (2026-08-27, al Director):** APROBADAS
+las candidatas **#1** (el hilo se siente chat), **#2** (botón «Abrir en DaliGo»
+en el correo), **#3** (foto en el hilo) y **#6-Visto** (el doble check SÍ; el
+«escribiendo» NO). **En COLA** (agendadas sin apuro): #4 buscar en mensajes ·
+#8 retención configurable · #5a título de pestaña con no-leídos. **Los 4 NO
+aceptados con los porqués de Max-2**: #7 grupos/difusión (M15 es el canal de
+avisos) · #9 offline (dormida) · #10 editar/borrar (traza honesta) · #11 push
+PWA (hosting). #12 queda de constancia (VPS = negocio). **Lotes de fase 2:
+MSG-6 = #1+#2 (empaque de Max-2, dictado v36) → MSG-7 = #3 foto → MSG-8 =
+#6 Visto → cola (#4/#8/#5a).**

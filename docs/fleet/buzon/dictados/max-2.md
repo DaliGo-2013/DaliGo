@@ -1,56 +1,72 @@
 # Dictado vigente — Max-2 (Forjador B, stream 2)
-> Emitido por el Director el 2026-08-20 (v35 — decisión del dueño: tu frente
-> SIGUE SIENDO MENSAJES, fase 2 del chat. NO entras a Paramétricos — es entero
-> de Max-1. GO F0-MENSAJES-2: el menú de propuestas, solo docs). Manda sobre lo
-> anterior.
+> Emitido por el Director el 2026-08-27 (v36 — veredictos del dueño al catálogo
+> §7: 4 aprobadas, 3 en cola, los 4 NO aceptados. GO MSG-6: el gesto completo,
+> tu propio empaque #1+#2). Manda sobre lo anterior.
 
 CUENTA: Max-2 (Forjador B, stream 2) · MODELO: Fable 5 (fijado por el dueño).
 
-## 📋 Tu frente (decisión del dueño, 20-ago tarde — reemplaza el v34)
+## ✅ Veredictos del dueño al catálogo (27-ago) — quinto mapa que sale entero
 
-«Con Max-2 seguiremos trabajando en los mensajes.» El chat v1 está CERRADO con
-QA «de diez» — lo que viene es la **fase 2**, y el ALCANCE lo decide el dueño
-sobre un menú de propuestas TUYO. Paramétricos queda entero con Max-1 (olvida
-la lectura de moldes del v34 como preparación de reparto — sirvió igual: esos
-moldes son de la casa).
+APROBADAS: **#1** (el hilo se siente chat) · **#2** (el correo navega al hilo)
+· **#3** (foto en el hilo) · **#6-Visto** (el doble check SÍ — el dueño lo
+valora; el «escribiendo» NO, como recomendaste). EN COLA sin apuro: #4 buscar
+· #8 retención · #5a título de pestaña. **Los 4 NO aceptados enteros con TUS
+porqués** — el catálogo honesto funcionó: el dueño decidió con los costos a la
+vista. Tu empaque sugerido quedó adoptado tal cual.
 
-## 🔨 GO — F0-MENSAJES-2: el catálogo de mejoras del chat (S, SOLO DOCS)
+Lotes de la fase 2: **MSG-6 = #1+#2** (este dictado) → **MSG-7 = #3 foto** →
+**MSG-8 = #6 Visto** → cola. Un lote = un merge = una doble llave, como
+siempre.
 
-Anexo nuevo **§7 de `docs/planes/PLAN-MENSAJES.md`** («Fase 2 — candidatas»):
-un CATÁLOGO honesto de lo que el chat podría ganar, para veredictos del dueño.
-Por cada candidata: qué es EN PALABRAS DE NEGOCIO · qué toca (tablas/pantallas/
-motor) · esfuerzo (S/M/L) · riesgos/deudas que despierta · tu recomendación
-con porqué. CERO código.
+## 🔨 GO — Lote MSG-6: el gesto completo (S/M) — candidatas #1 + #2
 
-Semillas del Director (evalúa, agrega las tuyas — tú conoces el motor):
-1. **Deudas ya anotadas en el acta**: retención configurable (candidato
-   nivel-1 cuando Paramétricos llegue a Mensajes) · instantáneo real (VPS —
-   solo constancia, es decisión de negocio).
-2. **Grupos / difusión**: hilo grupal o mensaje-a-varios (el modelo par
-   canónico es 1-a-1 — di QUÉ costaría de verdad, sin vender fácil).
-3. **Adjuntos**: foto/archivo en el hilo (storage compartido del hosting,
-   límites, ¿revive algo del molde QR/uploads existente?).
-4. **Buscar** en mensajes (índice, alcance por participante).
-5. **Editar/borrar** con ventana de tiempo (la v1 decidió traza honesta —
-   ¿cambia el dueño de opinión? preséntalo con el trade-off).
-6. **Aviso push PWA** (el SW es passthrough hoy — ¿qué costaría el push real
-   en ESTE hosting? honesto con los límites, primo del veredicto websockets).
-7. **Indicadores**: visto/escribiendo (qué se puede sin websockets con el poll
-   de 4 s, qué no — costo/beneficio real).
-8. Lo que TÚ veas viviendo en el código que el dueño no ha pedido pero
-   valdría oro (tu ojo de forjador — el aviso-por-ráfaga nació así).
+Tu propio diseño del catálogo §7.1 y §7.2, ejecutado tal como lo escribiste:
 
-Orden del catálogo: por VALOR para el equipo según tu criterio, declarado.
+1. **Enviar sin recarga**: `responder()` aprende a contestar JSON cuando el
+   fetch lo pide, reusando LA MISMA respuesta `{ultimo, html}` del molde
+   `nuevos()` con `_burbuja` — el envío propio appendea su burbuja. Composer
+   se limpia tras 2xx; ante 422 el error se muestra y **el texto SE CONSERVA**
+   (la pérdida real que contradecía la promesa del QA).
+2. **El hilo abre ABAJO**: scroll inicial al fondo al cargar página 1 (hoy el
+   único scrollIntoView es el de burbuja nueva).
+3. **`old('texto')`** en el composer del hilo (el respaldo sin-JS que
+   `create.blade.php:27` ya tiene y el hilo no).
+4. **Los 2 pulidos del territorio**: `aria-live="polite"` en `#hilo-mensajes`
+   + autoresize simple del textarea. Enter-para-enviar FUERA a propósito
+   (celular = salto de línea) — tu propia decisión, ratificada.
+5. **El form clásico sigue de respaldo** (la guarda offline «necesitas señal»
+   se conserva tal cual — candado).
+6. **#2 — el correo navega**: botón «Abrir en DaliGo» al hilo en la plantilla
+   del correo de mensaje nuevo (el `urlDestinoPara` que MSG-1 dejó listo — si
+   la plantilla necesita otra cosa, decláralo).
+7. **Candados**: enviar-appendea-sin-reload (respuesta JSON pinta lo que la
+   pantalla agrega) · 422 conserva el texto (assert del old + el error
+   visible) · el hilo abre abajo (la señal del scroll inicial presente en
+   página 1 y AUSENTE en históricas) · form clásico sigue funcionando (el
+   test existente de responder() intacto — regla de oro) · el correo lleva el
+   botón con la URL firmada del hilo y un tercero NO la puede usar (403 del
+   gate de participante ya existente) · aria-live presente · mutación tuya
+   declarada con rojo exacto.
 
-### Entrega
-Parte al buzón; anexo §7 en el plan. SOLO DOCS — sin doble llave de código.
-El dueño da veredictos sobre el catálogo → el Director dicta los lotes de la
-fase 2.
+### Verificación (invariante)
+Rama `feature/msg-6-gesto-completo` desde main FRESCO (baseline: main lleva el
+fix del deploy y el trabajo de Marcos de esta semana — recuenta tú; última
+cifra local del Director: 2329/16.225 pre-Marcos-reciente). Suite COMPLETA
+antes. Batería: Mensajes completo + Notificacion* (tocas plantilla de correo).
+Bundle: si el autoresize trae clases → I-06 declarado. Parte al buzón; espera
+doble llave. NO arranques MSG-7.
+
+## 📡 Radar (NO arranques)
+- **MSG-7**: #3 foto en el hilo (validación imagen, storage compartido del
+  hosting, límite de peso — tu diseño del catálogo).
+- **MSG-8**: #6 Visto (doble check por el poll de 4 s; sin websockets).
+- **Cola**: #4 buscar · #8 retención (perilla — coordinar con PARAMETRICOS
+  cuando llegue a Mensajes) · #5a título de pestaña.
 
 ## Estado
-Max-1: F0-LOGÍSTICA en curso (Paramétricos entero es suyo — territorio
-disjunto). Marcos: canal PR de vuelta. Baseline para referencia: 2303/16.048
-en `ab0a8d1`.
+Max-1: LOG-2 forjando (franja de la flota — territorio disjunto). Marcos:
+activo (visita industrial + garantías). Trello espejando. El deploy quedó
+blindado (composer propio en el home — HostGator ya no nos mueve el piso).
 
-CIERRE: GO F0-MENSAJES-2. El chat es tu criatura — dinos qué le falta y qué
-cuesta, que el dueño elige con el menú en la mano.
+CIERRE: GO MSG-6. El catálogo honesto ganó: el dueño eligió con los costos a
+la vista y tu empaque quedó tal cual. A cerrar el gesto.
