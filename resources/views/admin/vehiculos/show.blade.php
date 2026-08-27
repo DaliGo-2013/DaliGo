@@ -134,7 +134,7 @@
 
             @if ($vehiculo->es_activo)
                 <p class="text-xs text-neutral-400">
-                    El aviso sale solo: {{ \App\Models\Vehiculo::DIAS_AVISO }} días antes del vencimiento y el día que vence.
+                    El aviso sale solo: {{ \App\Models\Vehiculo::diasAviso() }} días antes del vencimiento y el día que vence.
                 </p>
             @endif
         </x-seccion>

@@ -31,6 +31,10 @@ class ConfiguracionController extends Controller
         'produccion_dias_panel' => [2, 31],
         'produccion_dias_informe_maquina' => [7, 90],
         'produccion_dias_informe_tipo' => [7, 90],
+        // LOG-2: la franja «Por vencer» de la flota. 7 = una semana de aviso
+        // mínima con sentido; 90 = un trimestre (más que eso, el badge naranjo
+        // permanente pierde su urgencia).
+        'vehiculos_dias_aviso' => [7, 90],
     ];
 
     /**

@@ -609,6 +609,17 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Formatos en que puede llegar la preforma del turno (uno por línea): el selector opcional del formulario de asignar producción. Las asignaciones viejas conservan el suyo.',
             ],
+            // --- Flota de vehículos (LOG-2, PLAN-PARAMETRICOS §5.4 #1) ---
+            // Grupo `vehiculos` y no `logistica`: el idioma del seeder agrupa por
+            // apartado/pantalla (el hermano `despachos` ya sentó el precedente
+            // aunque ambos cuelguen del menú Logística).
+            [
+                'clave' => 'vehiculos_dias_aviso',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'vehiculos',
+                'descripcion' => 'Días antes del vencimiento en que un documento de la flota pasa a «Por vencer» (badge naranjo en listado, ficha y Excel) y entra al aviso diario. La deuda ya vencida avisa aparte.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',
