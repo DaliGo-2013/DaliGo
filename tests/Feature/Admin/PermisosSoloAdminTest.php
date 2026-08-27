@@ -244,10 +244,33 @@ class PermisosSoloAdminTest extends TestCase
 
     public function test_la_migracion_es_idempotente(): void
     {
+        // El fixture importa: con el seeder ya corregido, jefe_ventas NO tiene
+        // 'view users', así que sin sembrarlo la primera corrida no haría nada y las
+        // dos pasadas serían igual de vacías — el test pasaría sin probar nada.
+        Role::findByName('jefe_ventas')->givePermissionTo('view users');
+
         (require database_path(self::MIGRACION))->up();
         (require database_path(self::MIGRACION))->up();
 
         $this->assertFalse(Role::findByName('jefe_ventas')->hasPermissionTo('view users'));
         $this->assertTrue(Role::findByName('admin')->hasPermissionTo('manage roles'));
+    }
+
+    /**
+     * Y se puede volver atrás: el `down()` le devuelve el listado al jefe de ventas.
+     *
+     * El barrido de los cuatro permisos NO se revierte, y está declarado en el
+     * `down()` de la migración: no guardamos qué rol tenía cuál, así que revertirlo
+     * sería repartir accesos a ciegas — justo lo que esto existe para impedir.
+     */
+    public function test_la_migracion_se_puede_revertir_en_su_mitad_reversible(): void
+    {
+        $migracion = require database_path(self::MIGRACION);
+
+        $migracion->up();
+        $this->assertFalse(Role::findByName('jefe_ventas')->hasPermissionTo('view users'));
+
+        $migracion->down();
+        $this->assertTrue(Role::findByName('jefe_ventas')->hasPermissionTo('view users'));
     }
 }
