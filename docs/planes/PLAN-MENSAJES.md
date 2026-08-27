@@ -322,3 +322,366 @@ Max-2 ANTES del reporte del dueño (que llegó con capturas del caso exacto —
 diagnóstico confirmado: era el reload de MSG-3). Suite 2291/16.002 + re-suite
 árbol final 2299/16.029. **PENDIENTE: QA final del dueño (su mismo caso:
 escribir sin enviar, recibir mensaje → el texto queda) → ACTA DE CIERRE.**
+
+---
+
+## §7 · Anexo — Fase 2: candidatas (F0-MENSAJES-2, dictado v35)
+
+> **Catálogo para veredictos del dueño** (2026-08-27, Max-2). CERO código: cada
+> candidata dice qué es en palabras de negocio, qué toca, cuánto cuesta (S/M/L),
+> qué riesgos despierta y mi recomendación con porqué. **Orden: por VALOR para el
+> equipo según mi criterio** — lo que más mejora el uso diario por unidad de
+> esfuerzo y riesgo. El criterio, declarado: primero terminar de pulir el gesto
+> que la gente ya hace todos los días (conversar), después darle alcance (fotos,
+> buscar), y recién al final las piezas que pelean contra la infraestructura
+> (push, instantáneo). Los veredictos son PROPUESTOS: decide el dueño,
+> candidata por candidata.
+
+### El menú de un vistazo
+
+| # | Candidata | Esfuerzo | Mi recomendación |
+|---|---|---|---|
+| 1 | El hilo termina de sentirse chat (enviar sin recarga + abrir abajo + el texto nunca se pierde) | S/M | **SÍ — la primera** |
+| 2 | El correo del chat lleva botón «Abrir en DaliGo» al hilo | S | **SÍ — barata y ya debió estar** |
+| 3 | Una foto en el hilo (adjuntos) | M | **SÍ, acotada a foto** |
+| 4 | Buscar en mensajes | M | SÍ, cuando el corpus crezca (puede esperar) |
+| 5 | Aviso vivo fuera del chat (badge/campanita del shell + título de pestaña) | M | A MEDIAS: título de pestaña sí; shell vivo es proyecto aparte |
+| 6 | «Visto» sí, «escribiendo» no | M / — | Visto: SÍ si el dueño lo valora. Escribiendo: NO |
+| 7 | Difusión / grupos | M / L | NO por ahora — M15 ya es el canal de avisos |
+| 8 | Retención configurable | S | SÍ como higiene, sin apuro |
+| 9 | Mensajes sin señal (encolar offline) | M | Dormida — solo si el uso real la pide |
+| 10 | Editar/borrar con ventana de tiempo | M | NO — la traza honesta vale más de lo que parece |
+| 11 | Push PWA al teléfono | L | NO en este hosting — el porqué completo abajo |
+| 12 | Instantáneo real (VPS) | — | Constancia: decisión de negocio, no un lote |
+
+---
+
+### 1 · El hilo termina de sentirse chat — S/M · **recomiendo SÍ, la primera**
+
+**Qué es.** MSG-5 hizo vivo el RECIBIR (la burbuja del otro aparece sola), pero
+el ENVIAR sigue siendo de formulario clásico: cada mensaje propio recarga la
+página entera y devuelve el scroll arriba. Y hay dos fricciones hermanas medidas
+en el código: (a) el hilo ABRE ARRIBA — al entrar se ve el mensaje más viejo de
+la página y hay que scrollear a mano hasta el último y el composer (no existe
+ningún scroll inicial: el único `scrollIntoView` corre cuando llega burbuja
+nueva, `show.blade.php:86-88`); (b) si el servidor rechaza el envío (tope de
+1000, por ejemplo), **el texto escrito SE PIERDE** — el composer del hilo no
+siembra `old('texto')` (a diferencia de `create.blade.php:27`, que sí lo
+conserva). Esta candidata es la continuación natural del hallazgo de viveza del
+QA: mismo espíritu, la otra mitad del gesto.
+
+**Qué toca.** Solo el hilo y su controller: `responder()` aprende a contestar
+JSON cuando el fetch lo pide (el molde exacto ya existe: `nuevos()` devuelve
+`{ultimo, html}` con el partial `_burbuja` — el envío propio reusa ESA misma
+respuesta y appendea la burbuja recién creada), el composer se limpia tras el
+2xx y conserva el texto ante 422 mostrando el error; scroll inicial al fondo al
+cargar página 1; `old('texto')` como respaldo del camino sin JS. De pasada, dos
+pulidos del mismo territorio: `aria-live="polite"` en `#hilo-mensajes` (hoy las
+burbujas appendeadas no se anuncian a lectores de pantalla) y autoresize simple
+del textarea (hoy queda fijo en 2 líneas con scroll interno). Cero migraciones,
+cero motor: `Mensajeria::enviar` no se toca.
+
+**Riesgos/deudas.** El form clásico debe seguir funcionando como respaldo (la
+guarda offline «necesitas señal» ya intercepta el submit — se conserva tal
+cual). Enter-para-enviar queda FUERA a propósito: en el celular Enter es salto
+de línea y el equipo es mayormente móvil; cambiarlo sorprendería.
+
+**Recomendación: SÍ y primera.** Es el lote con mejor razón valor/esfuerzo del
+catálogo: convierte el chat de «formulario rápido» a chat de verdad usando
+piezas que MSG-5 ya dejó puestas, y arregla una pérdida de texto real (la 422)
+que contradice la promesa que el QA del dueño acaba de verificar («el texto
+permanece»).
+
+### 2 · El correo del chat navega al hilo — S · **recomiendo SÍ**
+
+**Qué es.** Hoy el correo de «Mensaje de {emisor}» llega con el extracto, pero
+SIN el botón naranjo «Abrir en DaliGo»: quien lo lee tiene que abrir la app y
+buscar el hilo a mano. La campanita SÍ navega al hilo; el correo no.
+
+**Qué toca.** Una línea de payload: `Mensajeria` no pasa `url` al despachar
+(`app/Services/Mensajes/Mensajeria.php:76-89`) y la vista del correo
+(`emails/notificacion.blade.php:21-33`) pinta el botón SOLO si el payload trae
+`url`. Se agrega `url => route('mensajes.show', $conversacion)` + su candado.
+
+**Riesgos/deudas.** Ninguno estructural. Detalle a decidir en el lote: el link
+lleva sesión (quien no la tenga aterriza en login y sigue al hilo — conducta
+estándar de la casa).
+
+**Recomendación: SÍ.** El correo es EL aviso para quien no vive dentro de la
+app (con la ráfaga, es exactamente UNA vez por conversación pendiente); dejarlo
+sin destino es un cabo suelto de la v1 más que una feature nueva.
+
+### 3 · Una foto en el hilo — M · **recomiendo SÍ, acotada a foto**
+
+**Qué es.** Adjuntar una foto al mensaje: «mira cómo llegó esta máquina», «este
+es el comprobante». En un negocio donde el taller ya vive de fotos (el QR pide
+2 obligatorias), la conversación sin imagen queda coja.
+
+**Qué toca.** La infraestructura pesada YA existe y está madura: compresión y
+saneo central (`App\Support\ImagenComprimida`: 1280px JPEG q72, corrige EXIF,
+re-encode que sanea payloads), componente único `<x-archivo-input>` (candado
+que prohíbe el input crudo), disco privado `local` (ninguna URL pública jamás)
+y hasta un lightbox listo para copiar (`admin/servicio-tecnico/_fotos.blade.php`).
+Lo nuevo: migración aditiva (columna `foto_path` nullable en `mensajes` — o
+tabla aparte si se quiere más de una por mensaje; recomiendo columna: UNA foto
+por mensaje, como WhatsApp de a uno), validación de la casa
+(`mimetypes:` jpeg/png/webp/heic/heif + `max:8192` — jamás la regla `image`,
+gotcha HEIC), ruta de descarga autenticada con gate de PARTICIPANTE (mismo
+patrón que las fotos de ST), el partial `_burbuja` pinta la miniatura (y como
+el endpoint `nuevos` usa el MISMO partial, la foto llega viva al otro lado sin
+trabajo extra — el diseño de MSG-5 paga dividendos), y el archivo se guarda
+DESPUÉS del commit con try/catch (patrón de la casa: el filesystem no es
+transaccional).
+
+**Riesgos/deudas.** (a) Storage del hosting compartido es finito: fotos de chat
+se acumulan sin el ciclo de vida de una orden — conviene atarla a la candidata
+8 (la retención purga mensaje Y foto); (b) el envío deja de ser un INSERT puro:
+sube el peso del POST en señal mala (la guarda online-only ya cubre); (c) UNA
+foto por mensaje mantiene el modelo simple — resistir el «y también PDF, y
+varias»: eso es Drive, no chat.
+
+**Recomendación: SÍ, acotada.** Es la candidata con más valor de NEGOCIO nuevo
+(las demás pulen; esta habilita conversaciones que hoy pasan por WhatsApp
+personal con fotos de máquinas de la empresa). El costo real es M, no L,
+justamente porque la v1 de uploads de esta casa ya pagó todos los peajes.
+
+### 4 · Buscar en mensajes — M · recomiendo SÍ, sin apuro
+
+**Qué es.** Una caja de búsqueda: «¿dónde me mandaron el número de la guía?».
+Hoy no existe ni endpoint ni input; encontrar algo viejo es scrollear páginas
+de a 50.
+
+**Qué toca.** El molde de la casa alcanza y sobra: `LIKE %term%` portable
+(≈40 buscadores existentes lo usan; FULLTEXT sería la PRIMERA divergencia de
+motor del repo — la suite corre en SQLite y no lo soporta sin bifurcar por
+driver, cosa que este repo nunca ha hecho y no debería empezar a hacer por
+esto), scope OBLIGATORIO a mis conversaciones (`whereIn(conversacion_id, mías)`
+— jamás cruzar hilos ajenos: mismo gate de participante de siempre), mínimo 2
+caracteres + límite de resultados (molde `buscarCliente`), y el gotcha Ñ
+documentado (doble caja en SQLite). El salto al resultado es calculable exacto
+con el índice que ya existe (`page = floor(count(id > M)/50)+1` sobre
+`[conversacion_id, id]`) + ancla `data-mensaje-id` que cada burbuja ya lleva.
+Con decenas de usuarios el corpus son miles de filas, no millones: el LIKE sin
+índice de texto está en el mismo orden que los buscadores existentes.
+
+**Riesgos/deudas.** (a) Un resultado viejo aterriza en página histórica = modo
+lectura sin poll (guard `onFirstPage()` — coherente, pero hay que decirlo en la
+pantalla); (b) el valor crece con el corpus: hoy el chat tiene días de vida —
+buscar en 200 mensajes se resuelve con el ojo.
+
+**Recomendación: SÍ, pero sin apuro.** Bien hecha con lo que hay, cero deuda.
+La pondría después de 1-3 simplemente porque su valor madura con los meses de
+uso, y las otras pagan desde el día uno.
+
+### 5 · Aviso vivo fuera del chat — S+M · recomiendo A MEDIAS
+
+**Qué es.** Hoy, si estás parado en el Inicio (o en cualquier pantalla que no
+sea del chat), el badge «Mensajes (2)» del menú NO se mueve hasta que navegas:
+se hornea server-side en cada render y el único poll vive en las pantallas del
+chat. Dos piezas distintas bajo el mismo título: (a) **título de pestaña** — que
+la pestaña diga «(2) DaliGo» cuando hay no-leídos; (b) **shell vivo** — que el
+badge del menú y la campanita se refresquen solos en TODA la app.
+
+**Qué toca.** (a) es S dentro de las pantallas del chat (el poll ya trae la
+firma; `document.title` es una línea)… pero la verdad incómoda: con la pestaña
+OCULTA el guard de visibilidad corta el poll a propósito (para no gastar red de
+fondo), o sea el «(2)» aparecería justo cuando ya estás mirando. Para que sirva
+de verdad hay que pollear oculto a intervalo lento (30-60 s) — una excepción
+deliberada al guard, solo para un JSON liviano. (b) es un poll global del
+SHELL: cada usuario en cualquier pantalla pide el conteo cada X s — el acta ya
+lo deslindó («si el dueño después quiere campanita viva, es un proyecto del
+shell, no de este módulo», §5.4) y con razón: multiplica requests por TODOS los
+usuarios × TODAS las pantallas, y de paso le tocaría también a la campanita M15
+(coordinación con territorio compartido).
+
+**Riesgos/deudas.** Carga transversal del hosting compartido (el mismo LiteSpeed
+que sirve producción); el shell es de todos los módulos — un lote ahí pide
+coordinación de flota.
+
+**Recomendación: A MEDIAS.** El título de pestaña con poll lento oculto: SÍ
+(S, vive solo en las pantallas del chat, mejora real para el que trabaja con
+la pestaña abierta de fondo). El shell vivo: NO como lote de Mensajes — si el
+dueño lo quiere, es un proyecto propio del shell con su propio F0, como el
+acta ya anotó.
+
+### 6 · «Visto» sí, «escribiendo» no — M / — · recomiendo según el dueño
+
+**Qué es.** (a) «Visto»: el emisor sabe si el otro ya leyó (el doble check).
+(b) «Escribiendo…»: ver que el otro está tecleando.
+
+**Qué toca.** (a) La lectura YA se registra server-side (marcarLeida baja el
+contador; el request de `nuevos` marca al traer) — lo que falta es MOSTRARLA al
+emisor. Costo honesto: hoy no hay `leido_at` por mensaje; la forma barata y
+suficiente es un `leido_hasta_id` POR LADO en `conversaciones` (migración
+aditiva, dos columnas), que `marcarLeida` ya sabría poblar, y el JSON de
+`nuevos` — que YA viaja cada 4 s — carga un flag extra para pintar el check en
+las burbujas propias. Sin tabla nueva, sin write extra (se escribe donde ya se
+escribía). (b) «Escribiendo» NO tiene canal digno sin websockets: sería
+escribir estado efímero en BD a cada tecla y leerlo por poll — escrituras
+basura contra MySQL compartido para un dato que caduca en 2 segundos.
+
+**Riesgos/deudas.** El «visto» cambia la RELACIÓN, no solo la pantalla: mete la
+presión social del doble check en un equipo chico («me dejó en visto»). Eso es
+una decisión de cultura del equipo, no técnica — por eso no lo recomiendo yo:
+lo decide el dueño con esa carta sobre la mesa.
+
+**Recomendación.** Escribiendo: **NO** (pelea contra la infraestructura y el
+poll de 4 s ya hace que la respuesta aparezca casi al tiro — el valor marginal
+es bajísimo). Visto: técnicamente limpio y barato (M chico); si al dueño le
+gusta el doble check, se puede; si duda, el chat vive perfecto sin él.
+
+### 7 · Difusión / grupos — M / L · recomiendo NO por ahora
+
+**Qué es.** (a) Difusión: un mensaje a varios de una vez («a todos los
+conductores: mañana se sale 7:30»). (b) Grupo real: un hilo compartido donde
+todos ven todo.
+
+**Qué toca — el costo de verdad, sin vender fácil.** El 1-a-1 está HORNEADO en
+tres lugares del motor: el unique `(user_menor_id, user_mayor_id)` del schema
+(una fila por PAR — no existe tabla de participantes), los contadores que son
+DOS columnas fijas por lado (`no_leidos_menor/mayor` — toda la mecánica de
+`columnaContadorDe`/`otroLado`/`noLeidosDeUsuario` asume exactamente dos
+lados), y `entre()` que canonicaliza min/max. Un **grupo real es L**: tabla
+pivote de participantes con contador por miembro, reescribir la firma del
+poll, el badge, la ráfaga por miembro, el gate de participante en 4 endpoints,
+y las pantallas — es medio plan nuevo, no un lote. La **difusión es M** y NO
+toca el modelo: un solo formulario que crea N hilos 1-a-1 (`entre()` reusa los
+existentes) y manda el mismo texto por `Mensajeria::enviar` en loop — cada
+receptor responde en SU hilo privado.
+
+**Riesgos/deudas.** La difusión duplica un canal que YA existe: para avisos
+formales está M15 (campanita + correo + plantillas + preferencias). Un botón
+de difusión en el chat invita a usarlo de megáfono y llena N bandejas con el
+mismo texto sin las reglas de M15. El grupo real, además del costo L, cambia
+el carácter de la herramienta (moderación, quién agrega a quién, historial de
+entradas/salidas — deudas que ni WhatsApp resuelve bien).
+
+**Recomendación: NO por ahora.** Si aparece el caso real («necesito avisar a
+los 5 conductores a la vez y que respondan»), la difusión-como-N-hilos es la
+respuesta barata y honesta. El grupo real solo con un caso de negocio que M15
+y la difusión no cubran — hoy no lo veo.
+
+### 8 · Retención configurable — S · recomiendo SÍ como higiene
+
+**Qué es.** Cuánto tiempo se guardan los mensajes (deuda anotada en el acta:
+«retención para siempre en v1», ratificada por el dueño). Una perilla
+`mensajes_retencion_dias` en Configuración: 0 = para siempre.
+
+**Qué toca.** El molde nivel-1 de la casa completo: clave en `configuracion` +
+UI con label/ayuda en español + validación por RANGOS (el mapa clave→[min,max]
+de `ConfiguracionController` — un mínimo sano tipo 90 días para que un dedazo
+no borre la historia), y la purga como comando en el scheduler (grilla `*/15`,
+`hourlyAt` — I-01). Borra por `created_at` con el cascade ya puesto; si la
+candidata 3 (fotos) entra, la purga borra TAMBIÉN el archivo del disco (patrón
+`VehiculoDocumentoController::destroy`). **Deslinde declarado:** aunque el acta
+la llamó «candidato nivel-1 de PARAMETRICOS», Mensajes quedó explícitamente
+FUERA de ese plan (PLAN-PARAMETRICOS §4: es entero de Max-1; Mensajes es el
+frente de Max-2) — si se hace, es un lote de ESTA fase 2 usando los moldes de
+la casa, sin pisar territorio.
+
+**Riesgos/deudas.** Borrar mensajes rompe la «traza honesta» hacia atrás — es
+la MISMA decisión que la retención de auditoría que ya existe: el dueño ya
+tiene el criterio. El chat vivo no se inmuta (ids monótonos: purgar viejos no
+toca `desde`).
+
+**Recomendación: SÍ, sin apuro.** Volumen trivial hoy (36k mensajes/año
+estimados), pero es S, cierra una deuda escrita, y si entran las fotos deja el
+ciclo de vida resuelto ANTES de que el storage lo cobre.
+
+### 9 · Mensajes sin señal (encolar offline) — M · dormida
+
+**Qué es.** Hoy sin señal el chat NO envía (guarda deliberada: «Necesitas señal
+para enviar el mensaje. Lo escrito se conserva») — el dueño eligió online-only
+en v1. La candidata: encolar el mensaje y que salga solo al volver la señal,
+como las tandas del soplador.
+
+**Qué toca.** El molde completo existe (cola offline de tandas: IndexedDB +
+UUID de cliente + unique compuesto + clasificación permanente/transitorio); la
+tabla solo necesita `cliente_uuid` con su unique (migración aditiva anotada en
+§5.1). M por los bordes: orden de llegada vs orden de envío, y el hilo abierto
+del receptor que appendea por id.
+
+**Riesgos/deudas.** Un chat donde lo enviado «sale después» confunde más que
+un aviso claro de «sin señal» — en conversación (a diferencia de un registro
+de producción) el contexto caduca: puede llegar una respuesta a una pregunta
+que ya se resolvió por teléfono.
+
+**Recomendación: dormida.** Solo si el uso real la pide (operarios de planta
+chateando en zonas sin señal). La decisión online-only del dueño sigue siendo
+la correcta para conversación.
+
+### 10 · Editar/borrar con ventana — M · recomiendo NO
+
+**Qué es.** Poder corregir o retirar un mensaje durante N minutos tras enviarlo
+(semilla del Director: «la v1 decidió traza honesta — ¿cambia el dueño de
+opinión?»).
+
+**Qué toca — el trade-off completo.** No es solo el CRUD: (a) el chat vivo
+asume ids monótonos append-only (`desde = max id`) — un mensaje editado JAMÁS
+se re-trae: las pantallas abiertas del receptor seguirían mostrando el texto
+viejo hasta recargar, o sea **la edición miente en vivo** salvo que el JSON de
+`nuevos` aprenda también a re-pintar editados (más estado, más candados); (b)
+borrar deja huecos en conversaciones que hoy son su propia traza (el modelo lo
+declara: «no se edita ni se borra — traza honesta», sin Auditable a propósito);
+(c) aparecen rutas PUT/DELETE nuevas con gates de autor+ventana, y la pregunta
+incómoda de siempre: ¿editado se marca? ¿el receptor que YA lo leyó se entera?
+
+**Riesgos/deudas.** En un equipo de trabajo el mensaje enviado es un hecho
+operativo («me dijiste 500 preformas») — la editabilidad convierte el chat en
+terreno de disputa. La traza honesta es una FEATURE de negocio, no una
+limitación técnica.
+
+**Recomendación: NO.** El costo técnico es M pero la deuda conceptual es
+grande y el beneficio real (corregir un typo) no la paga. Si el dueño quiere
+suavizar el caso del typo, la alternativa barata es cultural: mandar la
+corrección como mensaje siguiente, como en cualquier equipo.
+
+### 11 · Push PWA al teléfono — L · recomiendo NO en este hosting
+
+**Qué es.** La notificación de verdad en el celular: la app cerrada y suena
+«Mensaje de Marcos». La semilla pide honestidad con los límites — acá va.
+
+**Qué toca — el costo completo en ESTE hosting.** Hoy hay CERO piezas: el SW
+es passthrough sin handler `push`/`notificationclick`, no hay librería, no hay
+tabla de suscripciones, ningún JS llama a `pushManager` (grep: 0 usos). Push
+real (VAPID) exige: paquete composer nuevo (`minishlink/web-push`) ⇒ **`composer
+install` MANUAL por SSH** (el deploy no instala — gotcha documentado, y
+acabamos de ver a HostGator borrar su composer sin aviso, `69d4aee`); llaves
+VAPID en env; tabla de endpoints por usuario/dispositivo + endpoint de
+suscripción + JS de opt-in; handlers nuevos en `sw.js` (bump de versión); y la
+librería recomienda gmp/bcmath para ECDSA — **no verificable desde el repo si
+ea-php83 las trae**. Latencia: colgado del job de notificaciones existente =
+hasta 15 min por la grilla del cron (**mata el propósito de un push**);
+síncrono en el request del emisor = N round-trips HTTPS a los push services
+dentro del request de quien envía. Y la mitad del equipo: en iOS el Web Push
+solo existe en PWA instalada al home screen (16.4+) — el que abre por Safari
+no recibe nada. La alternativa barata (Notification API local, sin servidor)
+NO cubre iOS en absoluto y solo funciona con la pestaña ya abierta — es la
+candidata 5a, no un push.
+
+**Riesgos/deudas.** Es la pieza con más superficie de fallo silencioso del
+catálogo (suscripciones que caducan, endpoints muertos, permisos revocados) en
+el hosting que ya nos reescribe crons y borra binarios.
+
+**Recomendación: NO acá.** El día que el instantáneo real justifique un VPS
+(candidata 12), el push entra en el mismo paquete con websockets — hacerlo dos
+veces es pagar el peaje L dos veces. Mientras tanto: la ráfaga + correo
+navegable (candidata 2) + el poll de 4 s cubren el 90% del valor con el 5% del
+riesgo.
+
+### 12 · Instantáneo real (VPS) — constancia, no un lote
+
+Queda constancia (el dictado lo pide): mensajes en 0 s = websockets = migrar a
+VPS. Es una decisión de NEGOCIO (costo mensual + migración + quién administra)
+que arrastra mucho más que el chat: colas por-minuto, push, campanita viva y
+el fin de la grilla `*/15`. No es un lote de esta fase; es una puerta que el
+dueño abre cuando el negocio lo pida. El poll de 4 s («casi instantáneo», QA
+del dueño) es el techo de ESTE hosting — y ya lo tocamos.
+
+---
+
+**Entrega F0-MENSAJES-2 (2026-08-27, Max-2):** catálogo de 12 candidatas para
+veredictos del dueño. Sugerencia de empaque si aprueba las recomendadas:
+MSG-6 = candidatas 1+2 (el gesto completo, S/M) · MSG-7 = candidata 3 (la foto,
+M) · MSG-8 = candidatas 8+4 según apetito. **PENDIENTE: veredictos del dueño →
+el Director dicta los lotes.**
