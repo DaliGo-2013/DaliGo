@@ -25,6 +25,12 @@ jobs:
       #   traen llaves en el ssh-agent que, ofrecidas antes, agotan el MaxAuthTries del server).
       # -o KexAlgorithms: HostGator solo ofrece el KEX legacy diffie-hellman-group-exchange-sha256.
       #
+      # COMPOSER PROPIO EN EL HOME (27-08-2026): HostGator quitó/movió
+      # /opt/cpanel/composer/bin/composer sin aviso y el deploy 1de0137 murió ahí.
+      # El deploy ahora instala su propio composer.phar en $HOME la primera vez
+      # (instalador oficial de getcomposer.org) y lo reusa — cero dependencia de
+      # rutas del proveedor que pueden moverse. Con OK del dueño (llave 27-08).
+      #
       # db:seed --force AL FINAL (a nivel workflow, no en deploy.sh): el deploy.sh
       # del servidor quedo "congelado" en una version vieja (git reset --hard no lo
       # pisa -> probablemente tiene skip-worktree), por lo que su paso de seed solo
@@ -48,4 +54,4 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
             "$SSH_USER@$SSH_HOST" \
-            "cd /home4/impdali/daligo && git fetch origin main && (git ls-files -v | grep -E '^[a-z]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-assume-unchanged || true) && (git ls-files -v | grep -E '^[Ss]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-skip-worktree || true) && git reset --hard FETCH_HEAD && /opt/cpanel/ea-php83/root/usr/bin/php /opt/cpanel/composer/bin/composer dump-autoload -o --no-interaction --no-scripts && /opt/cpanel/ea-php83/root/usr/bin/php artisan migrate --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan db:seed --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan storage:link --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan optimize:clear && /opt/cpanel/ea-php83/root/usr/bin/php artisan config:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan route:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan permission:cache-reset"
+            "cd /home4/impdali/daligo && git fetch origin main && (git ls-files -v | grep -E '^[a-z]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-assume-unchanged || true) && (git ls-files -v | grep -E '^[Ss]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-skip-worktree || true) && git reset --hard FETCH_HEAD && ([ -f \"\$HOME/composer.phar\" ] || (curl -sS https://getcomposer.org/installer -o \"\$HOME/composer-setup.php\" && /opt/cpanel/ea-php83/root/usr/bin/php \"\$HOME/composer-setup.php\" --install-dir=\"\$HOME\" --filename=composer.phar --quiet && rm -f \"\$HOME/composer-setup.php\")) && /opt/cpanel/ea-php83/root/usr/bin/php \"\$HOME/composer.phar\" dump-autoload -o --no-interaction --no-scripts && /opt/cpanel/ea-php83/root/usr/bin/php artisan migrate --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan db:seed --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan storage:link --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan optimize:clear && /opt/cpanel/ea-php83/root/usr/bin/php artisan config:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan route:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan permission:cache-reset"
