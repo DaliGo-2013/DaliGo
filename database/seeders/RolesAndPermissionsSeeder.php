@@ -156,10 +156,17 @@ class RolesAndPermissionsSeeder extends Seeder
         // taller (Fernando) — gestiona/edita/confirma y aplica descuentos — e
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
+        // SIN 'view users' desde el 27-08-2026 (dueño): ADMINISTRACIÓN es donde se
+        // cambian y habilitan los permisos, y ahí no entra ningún perfil salvo admin.
+        // Ese permiso era lo único que le hacía aparecer el módulo en el menú (el ítem
+        // Usuarios); nunca pudo tocar los roles —eso siempre fue 'manage roles', solo de
+        // admin—, pero el menú se lo ofrecía igual. Sacarlo de esta lista NO revoca nada
+        // en una base ya sembrada (givePermissionTo SUMA): eso lo hace la migración
+        // 2026_08_27_120000. Ver también App\Support\PermisosSoloAdmin.
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
             // hoja de ruta le da la llave 1 (autorizar pagos ruta).
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).

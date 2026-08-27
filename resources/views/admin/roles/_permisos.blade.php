@@ -35,6 +35,16 @@
         $inicial[] = 'manage roles';
     }
 
+    // Los permisos que REPARTEN permisos van bloqueados y en OFF para todo rol que
+    // no sea admin — y tambien al CREAR, donde $lockRole es null porque el rol todavia
+    // no tiene nombre (un rol nuevo nunca puede llamarse admin). Es el espejo del
+    // bloqueo de arriba, que fija 'manage roles' en ON para admin.
+    //
+    // El controlador los descarta igual: esto existe para que la pantalla no PROMETA
+    // lo que el guardado no va a hacer. Ver App\Support\PermisosSoloAdmin.
+    $vetados = \App\Support\PermisosSoloAdmin::vetadosPara($lockRole);
+    $inicial = array_values(array_diff($inicial, $vetados));
+
     // Mapa grupo => nombres de permiso, para los contadores y "seleccionar todo".
     $mapa = [];
     foreach ($gruposPermisos as $cat => $perms) {
@@ -50,15 +60,19 @@
         sel: @js($inicial),
         grupos: @js($mapa),
         bloqueados: @js($bloqueados),
+        vetados: @js($vetados),
         countOf(k) { return (this.grupos[k] || []).filter(n => this.sel.includes(n)).length },
         totalOf(k) { return (this.grupos[k] || []).length },
         pctOf(k) { const t = this.totalOf(k); return t === 0 ? 0 : Math.round(this.countOf(k) / t * 100) },
-        todoOn(k) { const g = this.grupos[k] || []; return g.length > 0 && g.every(n => this.sel.includes(n)) },
+        {{-- Un vetado no se puede marcar, asi que no cuenta para el estado del
+             'Seleccionar todo': si contara, el area nunca podria verse completa. --}}
+        marcables(k) { return (this.grupos[k] || []).filter(n => ! this.vetados.includes(n)) },
+        todoOn(k) { const g = this.marcables(k); return g.length > 0 && g.every(n => this.sel.includes(n)) },
         alternar(k) { this.abierta = this.abierta === k ? null : k },
         toggleTodo(k, on) {
             const g = this.grupos[k] || [];
             if (on) {
-                g.forEach(n => { if (! this.sel.includes(n)) this.sel.push(n); });
+                this.marcables(k).forEach(n => { if (! this.sel.includes(n)) this.sel.push(n); });
             } else {
                 this.sel = this.sel.filter(n => ! g.includes(n) || this.bloqueados.includes(n));
             }
@@ -142,15 +156,25 @@
             </label>
 
             @foreach ($perms as $permission)
-                @php $locked = $lockRole === 'admin' && $permission->name === 'manage roles'; @endphp
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition hover:bg-neutral-50">
+                @php
+                    $locked = $lockRole === 'admin' && $permission->name === 'manage roles';
+                    $vetado = in_array($permission->name, $vetados, true);
+                @endphp
+                <label @class([
+                        'flex items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition',
+                        'cursor-pointer hover:bg-neutral-50' => ! $vetado,
+                        'cursor-not-allowed bg-neutral-50' => $vetado,
+                    ])>
                     <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
-                           x-model="sel" @disabled($locked)
+                           x-model="sel" @disabled($locked || $vetado)
                            class="h-4 w-4 shrink-0 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
-                    <span class="text-sm text-neutral-900">{{ $labels[$permission->name] ?? $permission->name }}</span>
+                    <span @class(['text-sm', 'text-neutral-900' => ! $vetado, 'text-neutral-500' => $vetado])>{{ $labels[$permission->name] ?? $permission->name }}</span>
                     @if ($locked)
                         <span class="ms-auto shrink-0 text-xs text-neutral-400">obligatorio para admin</span>
                         <input type="hidden" name="permissions[]" value="manage roles">
+                    @elseif ($vetado)
+                        {{-- Sin <input type="hidden">: la gracia es justamente que NO viaje. --}}
+                        <span class="ms-auto shrink-0 text-xs text-neutral-400">solo el rol admin</span>
                     @endif
                 </label>
             @endforeach

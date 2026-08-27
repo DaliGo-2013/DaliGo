@@ -523,14 +523,27 @@ Route::middleware('auth')
 
         // Conductores (choferes) — administrables desde la app. Vive en LOGÍSTICA
         // desde el 04-08 (pedido del dueño): quien administra la flota administra
-        // quién la maneja. El permiso es canAny y NO se cambió por 'manage
-        // vehiculos' a secas porque el catálogo alimenta el selector del ingreso
-        // por lote y el del traslado al taller: si el técnico lo perdiera, el
-        // conductor que retira máquinas en ruta dejaría de existir para él.
+        // quién la maneja. Por eso el permiso es 'manage vehiculos' Y NADA MÁS.
+        //
+        // ANTES ERA `manage servicio tecnico|manage vehiculos`, y el comentario que estaba
+        // acá justificaba el canAny así: «el catálogo alimenta el selector del ingreso por
+        // lote y el del traslado al taller: si el técnico lo perdiera, el conductor que
+        // retira máquinas en ruta dejaría de existir para él». **Eso era falso.** Los dos
+        // selectores leen `Conductor::activos()` desde SUS PROPIOS controladores
+        // (`LoteServicioController`, `TrasladoServicioController`), cada uno con su permiso
+        // —'crear lote servicio' y 'despachar|recibir traslado servicio'—, así que nunca
+        // pasaron por este gate. El único efecto real del canAny era que el técnico veía
+        // «Conductores» bajo LOGÍSTICA y podía crear y editar choferes.
+        //
+        // Lo reportó el dueño el 26-08 mirando el menú de un técnico en su teléfono: *«no
+        // entiendo por qué ve conductores, no recuerdo habilitar ese permiso»*. Y no lo
+        // habilitó: se lo daba `manage servicio tecnico`, que es el permiso central del
+        // taller. Un canAny con un permiso de OTRO módulo reparte accesos que nadie pidió.
+        //
         // El gate de la RUTA y el del ítem del menú son el MISMO (D-014): si acá
         // se agrega o se quita un permiso, hay que espejarlo en MenuPrincipal, o
         // el menú ofrece una pantalla que devuelve 403.
-        Route::middleware('permission:manage servicio tecnico|manage vehiculos')->group(function () {
+        Route::middleware('permission:manage vehiculos')->group(function () {
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);

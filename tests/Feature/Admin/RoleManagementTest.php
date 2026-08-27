@@ -57,15 +57,19 @@ class RoleManagementTest extends TestCase
 
     public function test_admin_can_create_role_with_permissions(): void
     {
+        // Los permisos de ACCESO (crear/editar/eliminar usuarios, gestionar roles)
+        // no sirven de ejemplo aca: solo los lleva el rol admin y el controlador los
+        // descarta. Ese caso es de PermisosSoloAdminTest; este mira que un rol nazca
+        // con lo que se le marco y solo con eso.
         $this->actingAs($this->admin())->post('/admin/roles', [
             'name' => 'supervisor',
-            'permissions' => ['view users', 'edit users'],
+            'permissions' => ['view users', 'manage clientes'],
         ])->assertRedirect(route('admin.roles.index'));
 
         $role = Role::findByName('supervisor');
         $this->assertTrue($role->hasPermissionTo('view users'));
-        $this->assertTrue($role->hasPermissionTo('edit users'));
-        $this->assertFalse($role->hasPermissionTo('delete users'));
+        $this->assertTrue($role->hasPermissionTo('manage clientes'));
+        $this->assertFalse($role->hasPermissionTo('manage productos'));
     }
 
     public function test_role_name_is_normalized_to_lowercase(): void
@@ -99,11 +103,11 @@ class RoleManagementTest extends TestCase
         $role->givePermissionTo('view users');
 
         $this->actingAs($this->admin())
-            ->put("/admin/roles/{$role->id}", ['name' => 'supervisor', 'permissions' => ['edit users']])
+            ->put("/admin/roles/{$role->id}", ['name' => 'supervisor', 'permissions' => ['manage clientes']])
             ->assertRedirect(route('admin.roles.index'));
 
         $role = $role->fresh();
-        $this->assertTrue($role->hasPermissionTo('edit users'));
+        $this->assertTrue($role->hasPermissionTo('manage clientes'));
         $this->assertFalse($role->hasPermissionTo('view users'));
     }
 
