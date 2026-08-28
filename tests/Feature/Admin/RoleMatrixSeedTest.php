@@ -41,16 +41,18 @@ class RoleMatrixSeedTest extends TestCase
                 'usar mensajes',
             ],
             'member' => ['usar mensajes'],
-            // + 'gestionar instalaciones' (28-08-2026, dueño): el vendedor registra
-            // los CUATRO trabajos de terreno. Las otras tres son tipos de la agenda
-            // ('agendar servicio terreno'); la que faltaba era la planilla de
-            // instalaciones. Sigue sin decidir: su cita espera al jefe de ventas.
-            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes'],
+            // + 'crear lote servicio' y 'gestionar instalaciones' (28-08-2026, dueño):
+            // el vendedor trabaja en los DOS dominios y necesita las dos puertas de
+            // ingreso — taller/dispensadores (unidad + lote) e industrial (los cuatro
+            // trabajos de terreno + su planilla). Ver el candado de abajo, que fija la
+            // doctrina; y ojo que darle la pantalla no le da la decisión: su cita de
+            // terreno sigue esperando al jefe de ventas.
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'crear lote servicio', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes'],
             // UNIÓN del merge 04-08: devoluciones + simulador (M13/Marcos) y
             // la llave 1 de la hoja de ruta (P-DSP-08).
             // SIN 'view users' (dueño, 27-08-2026): era lo único que le hacía
             // aparecer ADMINISTRACIÓN en el menú. Ver PermisosSoloAdminTest.
-            'jefe_ventas' => ['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes'],
+            'jefe_ventas' => ['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su
@@ -92,6 +94,57 @@ class RoleMatrixSeedTest extends TestCase
                 $role->permissions->pluck('name')->all(),
                 "El rol '{$name}' no tiene los permisos esperados.",
             );
+        }
+    }
+
+    /**
+     * SERVICIO TÉCNICO SON DOS DOMINIOS Y NO SE MEZCLAN (dueño, 28-08-2026):
+     *
+     *   · TALLER / DISPENSADORES → ingreso por unidad y por lote.
+     *   · INDUSTRIAL (sopladora, lavadora, osmosis) → visita técnica, mantención,
+     *     reparación e instalación.
+     *
+     * Ventas trabaja en los dos, así que el vendedor y el jefe de ventas necesitan
+     * las CUATRO puertas. Esto se rompe de la forma más fácil de no notar: alguien
+     * le habilita un permiso a mano desde Administración → Roles, funciona, y el
+     * seeder queda atrás — así llegó este pedido (en staging el vendedor ya tenía
+     * el ingreso por lote habilitado a dedo y el seeder no lo sabía). Con el
+     * permiso solo en la base, un entorno nuevo nace sin él y nadie se enteraría
+     * hasta que un vendedor no encuentre la pantalla.
+     *
+     * Va aparte de la matriz de arriba a propósito: la matriz dice QUÉ tiene cada
+     * rol; este dice POR QUÉ, y nombra la puerta que falta en el mensaje de fallo.
+     */
+    public function test_ventas_tiene_las_dos_puertas_de_ingreso_de_servicio_tecnico(): void
+    {
+        $puertas = [
+            // dominio => [permiso => qué abre]
+            'TALLER (dispensadores)' => [
+                'manage servicio tecnico' => 'el ingreso por unidad (botón del Listado)',
+                'crear lote servicio' => 'el ingreso por lote',
+            ],
+            'INDUSTRIAL (sopladora, lavadora, osmosis)' => [
+                'agendar servicio terreno' => 'visita técnica, mantención, reparación e instalación',
+                'gestionar instalaciones' => 'la planilla de instalaciones',
+            ],
+        ];
+
+        foreach (['jefe_ventas', 'vendedor'] as $rol) {
+            $role = Role::findByName($rol);
+
+            foreach ($puertas as $dominio => $permisos) {
+                foreach ($permisos as $permiso => $queAbre) {
+                    // El vendedor NO lleva 'manage servicio tecnico' (no edita órdenes
+                    // ni la etapa de reparación): su ingreso por unidad no pasa por ahí.
+                    // La excepción se declara acá, en vez de dejar el candado más flojo.
+                    if ($rol === 'vendedor' && $permiso === 'manage servicio tecnico') {
+                        continue;
+                    }
+
+                    $this->assertTrue($role->hasPermissionTo($permiso),
+                        "Al rol '{$rol}' le falta '{$permiso}' — {$dominio}: no puede usar {$queAbre}.");
+                }
+            }
         }
     }
 

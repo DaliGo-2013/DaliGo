@@ -158,7 +158,20 @@ class RolesAndPermissionsSeeder extends Seeder
             // Toda cita que el vendedor fije sigue esperando el visto bueno del jefe
             // de ventas (ver AgendaTrabajo::TIPOS_QUE_AUTORIZA_JEFATURA): darle la
             // pantalla no le da la decisión.
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes']);
+            //
+            // SON DOS DOMINIOS Y NO SE MEZCLAN (dueño, 28-08-2026). El vendedor
+            // trabaja en los dos, así que necesita las dos puertas de ingreso:
+            //
+            //   · TALLER / DISPENSADORES → 'crear lote servicio' (ingreso por lote,
+            //     además del ingreso por unidad que abre el botón del Listado).
+            //   · INDUSTRIAL (sopladora, lavadora, osmosis) → 'agendar servicio
+            //     terreno' para visita técnica / mantención / reparación /
+            //     instalación, y 'gestionar instalaciones' para su planilla.
+            //
+            // 'crear lote servicio' NO lo vuelve dueño del taller: es el permiso
+            // ACOTADO del conductor (no edita órdenes ni la etapa de reparación) —
+            // por eso se le puede dar sin abrirle 'manage servicio tecnico'.
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'crear lote servicio', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes']);
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
@@ -176,7 +189,12 @@ class RolesAndPermissionsSeeder extends Seeder
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
             // hoja de ruta le da la llave 1 (autorizar pagos ruta).
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
+            // + 'crear lote servicio' (28-08-2026, dueño): las DOS puertas del taller
+            // —unidad y lote— también para él. Ya tenía 'manage servicio tecnico'
+            // (que abre el ingreso por unidad), pero el lote es un permiso APARTE y
+            // sin él el ítem del menú no le aparecía: supervisa el taller completo y
+            // le faltaba justo el ingreso que usan los conductores.
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
