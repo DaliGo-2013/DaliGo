@@ -104,8 +104,14 @@ class LoteServicio extends Model implements AuditableContract
      * UN solo aviso resumido, no uno por máquina. Mismos roles que el ingreso por
      * unidad (OrdenServicio::ROLES_AVISO_INGRESO). Secundario: el emisor lo
      * envuelve en try/catch.
+     *
+     * Avisan los DOS caminos del lote (dueño 28-08-2026): el público del QR y el
+     * del conductor registrándolo desde la app. El segundo no avisaba a nadie.
+     *
+     * @param  User|null  $actor  quien registró el lote (no se autonotifica);
+     *                            null en el flujo público, donde no hay sesión.
      */
-    public function notificarIngresoInterno(): void
+    public function notificarIngresoInterno(?User $actor = null): void
     {
         $datos = [
             // Un lote son N ordenes, asi que el "folio" del aviso es el codigo del
@@ -116,12 +122,18 @@ class LoteServicio extends Model implements AuditableContract
             'maquinas' => $this->total_ordenes.' equipos',
             'sucursal' => $this->sucursal?->nombre ?: '—',
             'condicion' => $this->facturacion_default === 'garantia' ? 'Garantía' : 'Reparación',
+            // Un lote SIEMPRE espera confirmación: sus órdenes nacen con fuente
+            // 'qr' o 'ruta', las dos de OrdenServicio::FUENTES_POR_CONFIRMAR —
+            // las máquinas llegan físicamente después. Por eso acá la frase no
+            // se calcula como en la unidad: no hay caso mostrador.
+            'recepcion' => 'Falta confirmar la recepción.',
             'url' => route('admin.servicio-tecnico.index'),
         ];
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
         User::role(OrdenServicio::ROLES_AVISO_INGRESO)->get()->unique('id')
+            ->reject(fn (User $u) => $actor && $u->id === $actor->id)
             ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
     }
 }

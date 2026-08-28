@@ -97,6 +97,11 @@ class OneShotPlantillasCandadoTest extends TestCase
             // 07-08 (tarde): el retiro tras un NO ACEPTO cita el día hábil siguiente
             // y se dispara solo al momento del rechazo.
             'migrations/2026_08_07_170000_retiro_avisado_cita_el_dia_habil.php',
+            // 28-08: el ingreso al taller deja de afirmar «Falta confirmar la
+            // recepción» — el aviso ahora sale también del mostrador, donde no hay
+            // nada que confirmar. Segundo eslabón de taller_ingresado (el primero
+            // fue la one-shot del 30-07).
+            'migrations/2026_08_28_120000_ingreso_al_taller_no_afirma_que_falta_confirmar.php',
         ];
 
         /** @var array<string, list<array{archivo: string, old: string, new: string}>> */

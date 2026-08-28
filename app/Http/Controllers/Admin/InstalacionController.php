@@ -56,6 +56,16 @@ class InstalacionController extends Controller
 
         $instalacion = Instalacion::create($data);
 
+        // Aviso interno (M15) a jefatura: el módulo no emitía NINGUNA
+        // notificación, así que una instalación entraba a la planilla sin que el
+        // jefe de ventas —que maneja la agenda del técnico industrial— se
+        // enterara. Secundario: no debe tumbar el registro ya guardado.
+        try {
+            $instalacion->notificarRegistro($request->user());
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return redirect()->route('admin.instalaciones.index')
             ->with('status', "Instalación registrada: {$instalacion->cliente_nombre} ({$instalacion->fecha->format('d-m-Y')}).");
     }

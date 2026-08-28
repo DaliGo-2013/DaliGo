@@ -170,14 +170,16 @@ class AgendaTrabajoController extends Controller
      *
      * Pedido del dueño (13-08-2026): «cuando un vendedor fije una cita con un cliente por
      * mantención, reparación o instalación le tiene que llegar una notificación al jefe de
-     * ventas para autorizar eso».
+     * ventas para autorizar eso». Ampliado el 28-08-2026 a la VISITA TÉCNICA: el jefe de
+     * ventas maneja la agenda de terreno del técnico industrial, así que los cuatro tipos
+     * pasan por él.
      *
      * TRES CONDICIONES, y las tres importan:
      *
      *  1. Que sea una CITA: estado 'agendado' con fecha. Guardar una solicitud sin fecha no
      *     compromete al técnico y no hay nada que autorizar.
-     *  2. Que sea uno de los TRES TIPOS que él nombró. La visita técnica queda afuera: es la
-     *     que pide el cliente por el QR y el vendedor solo la coordina.
+     *  2. Que sea uno de los tipos de `TIPOS_QUE_AUTORIZA_JEFATURA` (hoy los cuatro). La
+     *     condición se queda igual aunque la lista esté completa: la lista es el knob.
      *  3. Que el que agenda NO sea quien autoriza. Acá solo se pregunta si existe una regla
      *     activa que lo obligue; la exención del jefe de ventas (y de admin) la resuelve el
      *     motor, que es donde vive esa lógica para los tres consumidores.

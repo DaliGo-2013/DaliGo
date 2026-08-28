@@ -204,6 +204,17 @@ class LoteServicioController extends Controller
             }
         }
 
+        // Aviso interno (M15): ventas + el técnico saben que vienen N máquinas en
+        // camino al taller. Va SOLO en el camino de creación fresca — el retorno
+        // idempotente de más arriba (lote_uuid repetido) no vuelve a avisar, o un
+        // reintento del conductor duplicaría la campanita. Secundario: un aviso que
+        // falle NO debe tumbar el lote ya creado.
+        try {
+            $lote->notificarIngresoInterno($request->user());
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return $this->respuesta($request, $lote, yaExistia: false);
     }
 

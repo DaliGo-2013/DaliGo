@@ -82,6 +82,12 @@ class Notificacion extends Model
         'terreno.confirmada' => 'El cliente respondió a la visita agendada',
         // Agenda de terreno · una solicitud fue rechazada (con motivo)
         'terreno.rechazada' => 'Solicitud de terreno rechazada',
+        // Instalaciones · el técnico industrial registró una instalación en su
+        // planilla (dueño 28-08-2026: al jefe de ventas le tienen que llegar
+        // TODAS las notificaciones de servicio técnico, instalaciones incluidas).
+        // El registro es de lo YA hecho —la planilla no tiene estados—, así que
+        // este es el único momento con los datos completos (facturación y días).
+        'instalacion.registrada' => 'Instalación registrada por el técnico industrial',
         // Logística · vencimiento de documentos de la flota (decisión del dueño
         // 04-08): aviso 30 días antes y aviso cuando ya venció. Lo dispara el
         // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
@@ -192,6 +198,8 @@ class Notificacion extends Model
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            // La fila de la planilla: mismo gate que su ruta en routes/web.php.
+            'instalacion.registrada' => $user->can('gestionar instalaciones'),
             // La ficha del traslado la abre quien despacha o quien recibe.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $user->canAny(['despachar traslado servicio', 'recibir traslado servicio']),
             // La ficha del vehículo: mismo gate que su ruta en routes/web.php.
@@ -275,6 +283,11 @@ class Notificacion extends Model
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
             // ven en la agenda de terreno.
             'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
+            // La instalación aterriza en SU fila editable (el recurso no tiene
+            // `show`): es donde el jefe de ventas revisa o corrige lo registrado.
+            'instalacion.registrada' => $this->notificable_id
+                ? route('admin.instalaciones.edit', $this->notificable_id)
+                : route('admin.instalaciones.index'),
             // El traslado aterriza en SU ficha: es donde se confirma la recepcion
             // y donde se ve que maquina falta.
             'traslado.despachado', 'traslado.recibido', 'traslado.diferencias' => $this->notificable_id

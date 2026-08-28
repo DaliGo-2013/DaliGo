@@ -45,10 +45,19 @@ class AgendaTrabajo extends Model implements AuditableContract
      * (dueño, 13-08-2026: «cuando un vendedor fije una cita con un cliente por mantención,
      * reparación o instalación… que él siempre esté al tanto de lo que hacen sus vendedores»).
      *
-     * La VISITA TÉCNICA queda afuera a propósito: es la que pide el cliente por el QR y el
-     * vendedor solo la coordina — no es un compromiso que el vendedor decida por su cuenta.
+     * Desde el 28-08-2026 son los CUATRO, la visita técnica incluida: «el jefe de ventas
+     * manejará la agenda de terreno de Carlos, el técnico industrial encargado de eso». Antes
+     * quedaba afuera porque se la suponía siempre nacida de un pedido del cliente por QR —que
+     * ya avisa por `terreno.solicitada`—, pero un vendedor puede crearla de cero, y en ese
+     * caso nadie se enteraba. Consecuencia deliberada: COORDINAR una solicitud del QR (fijarle
+     * fecha) también pasa a esperar autorización, porque es el momento en que se compromete
+     * el día del técnico.
+     *
+     * Se mantiene como constante aparte de TIPOS —hoy tienen el mismo contenido— porque
+     * significan cosas distintas: una es «qué tipos existen» y la otra «cuáles requieren visto
+     * bueno». Si mañana uno sale de la lista, es una línea acá y nada más.
      */
-    public const TIPOS_QUE_AUTORIZA_JEFATURA = ['mantencion', 'reparacion', 'instalacion'];
+    public const TIPOS_QUE_AUTORIZA_JEFATURA = ['visita_tecnica', 'mantencion', 'reparacion', 'instalacion'];
 
     /**
      * La solicitud de autorización que esta cita tiene ESPERANDO, si tiene alguna.

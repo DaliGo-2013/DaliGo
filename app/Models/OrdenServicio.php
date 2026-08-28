@@ -577,19 +577,27 @@ class OrdenServicio extends Model implements AuditableContract
     }
 
     /**
-     * Roles que reciben aviso cuando ENTRA un equipo al taller por QR (ingreso
-     * del cliente): el técnico que repara + ventas (para el paso a paso). El
-     * jefe de bodega NO va aquí: ya ve la cola "por confirmar" en la barra.
+     * Roles que reciben aviso cuando ENTRA un equipo al taller, venga por donde
+     * venga: el técnico que repara + ventas (para el paso a paso). El jefe de
+     * bodega NO va aquí: ya ve la cola "por confirmar" en la barra.
      */
     public const ROLES_AVISO_INGRESO = ['tecnico', 'jefe_ventas', 'vendedor', 'admin'];
 
     /**
      * Avisa por M15 (campanita + correo según preferencias) a ventas y al técnico
-     * que entró un equipo al taller (ingreso por QR, unidad). Secundario: el
-     * emisor (controlador público) lo envuelve en try/catch para no tumbar el
-     * ingreso si el aviso falla.
+     * que entró un equipo al taller. Secundario: el emisor lo envuelve en
+     * try/catch para no tumbar el ingreso si el aviso falla.
+     *
+     * Las TRES puertas de entrada avisan igual (dueño 28-08-2026: «a Héctor deben
+     * llegar todas las notificaciones de servicio técnico»): el QR del cliente, el
+     * mostrador y el lote en ruta. Antes solo avisaba el QR, así que una máquina
+     * recibida en el mostrador entraba sin que el jefe de ventas se enterara —
+     * defecto silencioso, porque la campanita simplemente no mostraba nada.
+     *
+     * @param  User|null  $actor  quien registró el ingreso (no se autonotifica);
+     *                            null en el flujo público, donde no hay sesión.
      */
-    public function notificarIngresoInterno(): void
+    public function notificarIngresoInterno(?User $actor = null): void
     {
         $equipo = collect([
             $this->tipo_equipo_label,
@@ -606,6 +614,7 @@ class OrdenServicio extends Model implements AuditableContract
             'maquinas' => '1 equipo',
             'sucursal' => $this->sucursal?->nombre ?: ($this->ruta ? 'Ruta · '.$this->ruta : '—'),
             'condicion' => $this->condicion_efectiva === 'garantia' ? 'Garantía' : 'Reparación',
+            'recepcion' => $this->fraseDeRecepcion(),
             // La ficha de la orden, no el listado: este aviso es de UNA orden y su
             // boton de confirmar esta en la ficha.
             'url' => route('admin.servicio-tecnico.show', $this),
@@ -614,7 +623,29 @@ class OrdenServicio extends Model implements AuditableContract
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_INGRESO)->get()->unique('id')
+            ->reject(fn (User $u) => $actor && $u->id === $actor->id)
             ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
+    }
+
+    /**
+     * Cómo cierra el aviso de ingreso, según si la máquina ya está en la casa.
+     *
+     * El texto viejo terminaba SIEMPRE en «Falta confirmar la recepción», y eso es
+     * falso para el mostrador: ahí el staff recibió el equipo en persona y
+     * `por_confirmar` es false por construcción (`FUENTES_POR_CONFIRMAR` solo
+     * incluye 'qr' y 'ruta'). Mandar a confirmar algo que no tiene botón de
+     * confirmar era el defecto más caro de esta plantilla: hace desconfiar del
+     * resto del aviso.
+     */
+    public function fraseDeRecepcion(): string
+    {
+        if ($this->por_confirmar) {
+            return 'Falta confirmar la recepción.';
+        }
+
+        return filled($this->recibida_por)
+            ? 'La recibió '.$this->recibida_por.' en el mostrador.'
+            : 'Recibida en el mostrador.';
     }
 
     /**

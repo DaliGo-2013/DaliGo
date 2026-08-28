@@ -398,6 +398,17 @@ class ServicioTecnicoController extends Controller
 
         $orden = OrdenServicio::create($data);
 
+        // Aviso interno (M15): ventas + el técnico saben que entró un equipo, igual
+        // que en el ingreso por QR. Faltaba: el mostrador creaba la orden, le mandaba
+        // el folio al cliente y no avisaba a NADIE — el jefe de ventas no se enteraba
+        // de las máquinas que reciben sus propios vendedores. Secundario: un aviso
+        // que falle NO debe tumbar el registro ya hecho.
+        try {
+            $orden->notificarIngresoInterno($request->user());
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         // Se le envia el folio al cliente (mismo correo que el flujo QR). Es
         // SECUNDARIO: si el mailer del servidor falla, NO tumba el registro; se
         // loguea y se avisa en el mensaje. Máquina propia sin correo: no se envía.

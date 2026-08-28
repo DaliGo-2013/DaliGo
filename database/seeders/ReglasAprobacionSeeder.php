@@ -58,7 +58,13 @@ class ReglasAprobacionSeeder extends Seeder
         ReglaAprobacion::firstOrCreate(
             ['tipo_accion' => Aprobacion::ACCION_AGENDA_CITA],
             [
-                'descripcion' => 'Cita de terreno (mantención, reparación o instalación) fijada por un vendedor',
+                // 28-08-2026: la visita técnica entró a la lista (el jefe de ventas maneja la
+                // agenda de terreno del técnico industrial), así que son los cuatro tipos. La
+                // fila ya existe en producción y `firstOrCreate` no la pisa: este texto es
+                // interno (no hay pantalla que lo muestre — la tarjeta de la bandeja usa
+                // `Aprobacion::descripcion`, que se arma por solicitud), así que no lleva
+                // migración one-shot.
+                'descripcion' => 'Cita de terreno (visita técnica, mantención, reparación o instalación) fijada por un vendedor',
                 'activa' => true,
                 'umbral_config' => null,
                 'rol_aprobador' => 'jefe_ventas',

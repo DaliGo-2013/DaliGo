@@ -136,11 +136,16 @@ class ConfiguracionSeeder extends Seeder
                     // Sin la {url} cruda (el correo ya trae el boton «Abrir en DaliGo»
                     // con el mismo enlace) y sin el imperativo «confirmalo», que le
                     // llega tambien a vendedores que NO tienen ese permiso.
-                    'cuerpo' => "Orden {folio} · {cliente} ingresó {maquinas} en {sucursal} ({condicion}).\nDetalle: {equipo}\nFalta confirmar la recepción.",
+                    //
+                    // {recepcion} en vez de un «Falta confirmar la recepcion» fijo: el
+                    // aviso ahora sale tambien del MOSTRADOR, donde el equipo ya esta
+                    // en la casa y no hay nada que confirmar (28-08-2026). La frase la
+                    // resuelve OrdenServicio::fraseDeRecepcion().
+                    'cuerpo' => "Orden {folio} · {cliente} ingresó {maquinas} en {sucursal} ({condicion}).\nDetalle: {equipo}\n{recepcion}",
                 ], JSON_UNESCAPED_UNICODE),
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
-                'descripcion' => 'Aviso interno (ventas + técnico) cuando un cliente ingresa un equipo por QR (unidad o lote).',
+                'descripcion' => 'Aviso interno (ventas + técnico) cuando entra un equipo al taller: por QR, por el mostrador o por lote en ruta.',
             ],
             // El técnico marcó la orden como REPARADA → ventas llama al cliente para
             // que la retire. Clave nueva → el firstOrCreate del seeder la crea en el
@@ -326,6 +331,22 @@ class ConfiguracionSeeder extends Seeder
                 'tipo' => Configuracion::TIPO_JSON,
                 'grupo' => 'notificaciones',
                 'descripcion' => 'Aviso a ventas cuando se rechaza una solicitud de terreno (con el motivo).',
+            ],
+            [
+                // Clave NUEVA (28-08-2026), asi que NO lleva migracion one-shot: el
+                // `firstOrCreate` del seeder si crea lo que no existe — lo que no
+                // puede es pisar un texto ya sembrado.
+                'clave' => 'notif_plantilla_instalacion_registrada',
+                'valor' => json_encode([
+                    'asunto' => 'Instalación registrada: {cliente} ({equipo})',
+                    // Sin la {url} cruda: el correo ya trae el boton «Abrir en DaliGo».
+                    // Lleva los dias y el vendedor porque son los dos datos por los que
+                    // jefatura pregunta despues (horas extras del tecnico y comision).
+                    'cuerpo' => "{registrada_por} registró una instalación de {cliente} el {fecha}.\nEquipo: {equipo} · Lugar: {lugar}\n{hitos} · Días trabajados: {dias}\nVendedor: {vendedor}",
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'notificaciones',
+                'descripcion' => 'Aviso a jefatura cuando el técnico industrial registra una instalación en su planilla.',
             ],
             // Logística · vencimiento de documentos de la flota (decisión del
             // dueño 04-08). Claves nuevas → el firstOrCreate del seeder las crea
