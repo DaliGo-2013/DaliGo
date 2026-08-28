@@ -114,12 +114,9 @@ class AgendaTrabajo extends Model implements AuditableContract
     /** Los dos cierres que hace el técnico en terreno, y que avisan a ventas. */
     public const ESTADOS_CIERRE = ['realizado', 'no_realizado'];
 
-    /**
-     * Quién recibe el aviso de cierre además del vendedor del cliente. El jefe de
-     * ventas y admin van SIEMPRE: si dependiera solo del vendedor, hoy el aviso
-     * no le llegaría a nadie (las carteras están sin asignar).
-     */
-    public const ROLES_AVISO_CIERRE = ['jefe_ventas', 'admin'];
+    // Quién recibe cada aviso vive en AudienciasNotificacion (editable por el
+    // dueño en Configuración → Avisos); el vendedor del cliente se SUMA en
+    // avisarCierre() porque no es un rol sino una persona derivada de la cartera.
 
     // Variante de x-badge por estado. OJO: x-badge solo define brand|neutral|
     // danger (paleta del design system); espeja al taller: cerrado-bien =
@@ -499,13 +496,6 @@ class AgendaTrabajo extends Model implements AuditableContract
     }
 
     /**
-     * Roles que reciben aviso cuando entra una solicitud "por coordinar": son
-     * quienes conversan con el cliente y coordinan la visita antes de fijarla en
-     * la agenda de Carlos (jefe de ventas + vendedores; admin para monitoreo).
-     */
-    public const ROLES_AVISO_COORDINAR = ['jefe_ventas', 'vendedor', 'admin'];
-
-    /**
      * Avisa por M15 (campanita + correo según preferencias) a ventas que hay una
      * solicitud por coordinar: una visita anotada que todavía no tiene día.
      *
@@ -535,7 +525,7 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         $dispatcher = app(NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios('terreno.solicitada')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.solicitada', $this, $u, $datos));
     }
 
@@ -674,7 +664,7 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         $dispatcher = app(NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios('terreno.confirmada')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.confirmada', $this, $u, $datos));
     }
 
@@ -707,7 +697,7 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         $dispatcher = app(NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios('terreno.rechazada')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.rechazada', $this, $u, $datos));
     }
 
@@ -779,7 +769,7 @@ class AgendaTrabajo extends Model implements AuditableContract
 
         $dispatcher = app(NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO_CIERRE)->get()
+        \App\Support\AudienciasNotificacion::destinatarios($evento)
             ->when($this->vendedorDelCliente(), fn ($u, $v) => $u->push($v))
             ->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
@@ -793,7 +783,7 @@ class AgendaTrabajo extends Model implements AuditableContract
      *
      * El hueco era estructural, no un olvido puntual: hasta hoy el rol
      * `tecnico_industrial` NO figuraba en NINGUNA lista de destinatarios de la app
-     * (ROLES_AVISO_COORDINAR y ROLES_AVISO_CIERRE son de ventas), así que el
+     * (las audiencias de terreno —hoy en AudienciasNotificacion— son de ventas), así que el
      * técnico no recibía ni un aviso de nada — le agendaban el día y se enteraba
      * abriendo la agenda a ver si había algo nuevo.
      *

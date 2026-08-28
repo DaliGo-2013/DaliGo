@@ -144,7 +144,7 @@ class StockSync
         }
 
         try {
-            $destinatarios = \App\Models\User::permission('manage sucursales')->get()->unique('id')->values();
+            $destinatarios = \App\Support\AudienciasNotificacion::destinatarios('bodega.nueva');
             $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
         } catch (Throwable $e) {
             Log::warning('Aviso de bodega nueva no despachado (setup)', ['error' => $e->getMessage()]);

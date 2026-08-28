@@ -789,6 +789,21 @@ class ConfiguracionSeeder extends Seeder
             ],
         ];
 
+        // ── Destinatarios por evento (Configuración → Avisos y destinatarios) ──
+        // El default vive en AudienciasNotificacion::DEFAULTS (fuente única: el
+        // seeder DERIVA de ahí para no escribir las listas dos veces). Clave
+        // nueva → firstOrCreate la crea en el deploy sin one-shot; una edición
+        // del dueño jamás se pisa.
+        foreach (\App\Support\AudienciasNotificacion::DEFAULTS as $evento => $rolesDefault) {
+            $ajustes[] = [
+                'clave' => \App\Support\AudienciasNotificacion::clave($evento),
+                'valor' => json_encode(array_values($rolesDefault), JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => \App\Support\AudienciasNotificacion::GRUPO,
+                'descripcion' => 'Roles que reciben «'.\App\Models\Notificacion::EVENTOS[$evento].'». Se edita en Configuración → Avisos y destinatarios.',
+            ];
+        }
+
         foreach ($ajustes as $a) {
             Configuracion::firstOrCreate(
                 ['clave' => $a['clave']],
