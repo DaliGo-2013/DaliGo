@@ -9,12 +9,18 @@ name: Reintento del deploy (madrugada)
 # tanto: reintentar cuando NO hay trafico. Corre de madrugada en Chile (UTC-4 en invierno).
 #
 # ES SEGURO DEJARLO PROGRAMADO, y eso es a proposito:
-#   · Primero PREGUNTA al servidor que commit tiene. Si ya es el de main, sale sin tocar nada
-#     («no habia nada que hacer»), asi que una vez desplegado se vuelve inofensivo.
+#   · Primero PREGUNTA al servidor que commit tiene. Si ya es el de main, sale sin tocar nada,
+#     asi que una vez desplegado se vuelve inofensivo.
 #   · Comparte el `concurrency` del deploy real, asi que nunca corren dos a la vez.
-#   · La cadena remota es la MISMA del deploy, copiada literal — si un dia cambia alla, hay que
-#     cambiarla aca (esta duplicacion es deliberada: no vale la pena un action compartido para
-#     un parche que deberia morir cuando el hosting suba el tope).
+#   · La cadena remota es la MISMA del deploy, verificada por diff. Si un dia cambia alla, hay
+#     que cambiarla aca (duplicacion deliberada: no vale un action compartido para un parche que
+#     deberia morir cuando el hosting suba el tope).
+#
+# OJO CON EL FORMATO (gotcha de la bitacora [2026-06-30] y de este mismo archivo): la primera
+# version metia la cadena con un heredoc, cuyas lineas de cierre quedaban en COLUMNA 0 — y eso
+# CORTA el bloque `run: |` del YAML. GitHub no lo rechaza con un error visible: registra el
+# workflow con su RUTA en vez de su `name`, que es la señal de que no parseo. Por eso la cadena
+# viaja por `env`, donde el YAML la puede indentar.
 #
 # CUANDO SE PUEDE BORRAR: cuando el hosting suba el limite de procesos y el deploy vuelva a
 # pasar en horario normal.
@@ -42,6 +48,11 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           ESPERADO: ${{ github.sha }}
+          # La cadena del deploy, literal. En un bloque `|` de YAML no hay que escapar nada: ni
+          # las comillas ni el `$HOME`, que tiene que llegar SIN expandir para resolverse en el
+          # servidor (al expandir "$CADENA" en bash, su contenido no se re-evalua).
+          CADENA: |-
+            cd /home4/impdali/daligo && git fetch origin main && (git ls-files -v | grep -E '^[a-z]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-assume-unchanged || true) && (git ls-files -v | grep -E '^[Ss]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-skip-worktree || true) && git reset --hard FETCH_HEAD && ([ -f "$HOME/composer.phar" ] || (curl -sS https://getcomposer.org/installer -o "$HOME/composer-setup.php" && /opt/cpanel/ea-php83/root/usr/bin/php "$HOME/composer-setup.php" --install-dir="$HOME" --filename=composer.phar --quiet && rm -f "$HOME/composer-setup.php")) && /opt/cpanel/ea-php83/root/usr/bin/php "$HOME/composer.phar" dump-autoload -o --no-interaction --no-scripts && /opt/cpanel/ea-php83/root/usr/bin/php artisan migrate --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan db:seed --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan storage:link --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan optimize:clear && /opt/cpanel/ea-php83/root/usr/bin/php artisan config:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan route:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan permission:cache-reset
         run: |
           set +e   # los fallos se manejan a mano: un intento fallido NO corta el job
 
@@ -50,17 +61,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
           SSH_OPTS="-i $HOME/.ssh/deploy_key -p $SSH_PORT -o IdentitiesOnly=yes -o IdentityAgent=none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new -o KexAlgorithms=+diffie-hellman-group-exchange-sha256"
+          LEER_HEAD='cd /home4/impdali/daligo && git rev-parse HEAD'
 
-          # La cadena del deploy, LITERAL (heredoc sin expandir: ni $HOME ni las comillas se tocan
-          # aca, se resuelven en el servidor).
-          CMD=$(cat <<'REMOTO'
-cd /home4/impdali/daligo && git fetch origin main && (git ls-files -v | grep -E '^[a-z]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-assume-unchanged || true) && (git ls-files -v | grep -E '^[Ss]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-skip-worktree || true) && git reset --hard FETCH_HEAD && ([ -f "$HOME/composer.phar" ] || (curl -sS https://getcomposer.org/installer -o "$HOME/composer-setup.php" && /opt/cpanel/ea-php83/root/usr/bin/php "$HOME/composer-setup.php" --install-dir="$HOME" --filename=composer.phar --quiet && rm -f "$HOME/composer-setup.php")) && /opt/cpanel/ea-php83/root/usr/bin/php "$HOME/composer.phar" dump-autoload -o --no-interaction --no-scripts && /opt/cpanel/ea-php83/root/usr/bin/php artisan migrate --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan db:seed --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan storage:link --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan optimize:clear && /opt/cpanel/ea-php83/root/usr/bin/php artisan config:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan route:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan permission:cache-reset
-REMOTO
-)
-
-          # ¿Ya esta desplegado? Si el servidor no contesta (puede estar sin procesos), NO se
-          # aborta: se intenta el deploy igual, que es justamente lo que se vino a hacer.
-          EN_SERVIDOR=$(ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" 'cd /home4/impdali/daligo && git rev-parse HEAD' 2>/dev/null | tr -d '[:space:]')
+          # ¿Ya esta desplegado? Si el servidor no contesta (puede estar justamente sin procesos),
+          # NO se aborta: se intenta el deploy igual, que es lo que se vino a hacer.
+          EN_SERVIDOR=$(ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "$LEER_HEAD" 2>/dev/null | tr -d '[:space:]')
 
           if [ -n "$EN_SERVIDOR" ]; then
             echo "El servidor tiene: $EN_SERVIDOR"
@@ -73,22 +78,25 @@ REMOTO
             echo "No se pudo leer el commit del servidor (probablemente sin procesos libres). Se intenta igual."
           fi
 
-          # Tres intentos espaciados: si el tope de procesos esta tocado, esperar es lo unico
-          # que sirve — el problema no es el comando, es que no hay lugar para ejecutarlo.
+          # Tres intentos espaciados: si el tope de procesos esta tocado, esperar es lo unico que
+          # sirve — el problema no es el comando, es que no hay lugar donde ejecutarlo.
           for INTENTO in 1 2 3; do
-            echo "── Intento $INTENTO ──"
-            ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "$CMD"
+            echo "-- Intento $INTENTO --"
+            ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "$CADENA"
             CODIGO=$?
 
             if [ "$CODIGO" -eq 0 ]; then
               echo "Deploy OK en el intento $INTENTO."
-              FINAL=$(ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" 'cd /home4/impdali/daligo && git rev-parse HEAD' 2>/dev/null | tr -d '[:space:]')
+              FINAL=$(ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "$LEER_HEAD" 2>/dev/null | tr -d '[:space:]')
               echo "El servidor quedo en: ${FINAL:-(no se pudo confirmar)}"
               exit 0
             fi
 
             echo "Intento $INTENTO fallo (codigo $CODIGO)."
-            [ "$INTENTO" -lt 3 ] && echo "Esperando 5 minutos..." && sleep 300
+            if [ "$INTENTO" -lt 3 ]; then
+              echo "Esperando 5 minutos..."
+              sleep 300
+            fi
           done
 
           echo "Los tres intentos fallaron. El servidor sigue sin procesos libres."
