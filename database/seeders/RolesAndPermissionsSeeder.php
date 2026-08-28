@@ -148,7 +148,17 @@ class RolesAndPermissionsSeeder extends Seeder
             // 'simular carga': el vendedor es el usuario PRINCIPAL del simulador —
             // arma la ruta y responde "¿cuanto le cabe?" sin adivinar. Es solo
             // lectura y no escribe nada operativo, asi que no hay riesgo en darlo.
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes']);
+            //
+            // 'gestionar instalaciones' (28-08-2026, dueño): «el perfil de vendedor
+            // tiene que poder ingresar el registro de visita técnica, mantención,
+            // reparación e instalación — el vendedor va a hacer estos ingresos».
+            // Las TRES primeras ya las cubría 'agendar servicio terreno' (son tipos
+            // de la agenda de terreno); la que faltaba era la PLANILLA de
+            // instalaciones, que solo abrían el técnico industrial y jefatura.
+            // Toda cita que el vendedor fije sigue esperando el visto bueno del jefe
+            // de ventas (ver AgendaTrabajo::TIPOS_QUE_AUTORIZA_JEFATURA): darle la
+            // pantalla no le da la decisión.
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes']);
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.

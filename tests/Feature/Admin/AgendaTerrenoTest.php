@@ -506,4 +506,59 @@ class AgendaTerrenoTest extends TestCase
             ->assertSee('Activo Uno')
             ->assertDontSee('Viejo Dos');
     }
+
+    // --- El perfil del VENDEDOR (dueño 28-08-2026) ---
+
+    /**
+     * «El perfil de vendedor tiene que poder ingresar el registro de visita
+     * técnica, mantención, reparación e instalación — el vendedor va a hacer estos
+     * ingresos.»
+     *
+     * Los CUATRO tipos en un solo candado y no cuatro tests: lo que se fija es que
+     * el formulario le ofrezca el juego completo, no cada tipo por separado. El
+     * riesgo real es que uno quede afuera del selector y nadie lo note (así estaba
+     * la visita técnica cuando la pedía el cliente por el QR).
+     */
+    public function test_el_vendedor_puede_registrar_los_cuatro_tipos_de_trabajo(): void
+    {
+        $pantalla = $this->actingAs($this->vendedor())
+            ->get(route('admin.agenda-terreno.create'))
+            ->assertOk();
+
+        foreach (AgendaTrabajo::TIPOS as $tipo) {
+            $pantalla->assertSee(AgendaTrabajo::TIPO_ETIQUETAS[$tipo]);
+        }
+    }
+
+    /**
+     * La cuarta superficie: la PLANILLA de instalaciones. Es la que le faltaba —
+     * las otras tres son tipos de la agenda y ya las cubría 'agendar servicio
+     * terreno'; 'gestionar instalaciones' era del técnico industrial y jefatura.
+     */
+    public function test_el_vendedor_entra_al_registro_de_instalaciones(): void
+    {
+        $vendedor = $this->vendedor();
+
+        $this->actingAs($vendedor)->get(route('admin.instalaciones.index'))->assertOk();
+        $this->actingAs($vendedor)->get(route('admin.instalaciones.create'))->assertOk();
+    }
+
+    /**
+     * Y la contracara, que es lo que hace que el permiso no sea un cheque en
+     * blanco: darle la pantalla NO le da la decisión. Su cita nace ESPERANDO el
+     * visto bueno del jefe de ventas, sin ocupar la agenda del técnico.
+     */
+    public function test_la_cita_del_vendedor_sigue_esperando_al_jefe_de_ventas(): void
+    {
+        $this->seed(\Database\Seeders\ReglasAprobacionSeeder::class);
+
+        $this->actingAs($this->vendedor())
+            ->post(route('admin.agenda-terreno.store'), $this->payload(['tipo' => 'visita_tecnica']))
+            ->assertRedirect();
+
+        $trabajo = AgendaTrabajo::firstOrFail();
+        $this->assertSame('solicitado', $trabajo->estado);
+        $this->assertNull($trabajo->fecha, 'Una cita en espera no puede ocupar la agenda.');
+        $this->assertTrue($trabajo->esperandoAutorizacion());
+    }
 }

@@ -48,9 +48,12 @@ class Notificacion extends Model
         'aprobacion.solicitada' => 'Solicitud de aprobación pendiente',
         'aprobacion.escalada' => 'Solicitud de aprobación escalada',
         'aprobacion.resuelta' => 'Solicitud de aprobación resuelta',
-        // Taller · un cliente ingresó un equipo por QR (unidad o cantidad):
-        // aviso a ventas + al técnico para que sepan que entró una máquina.
-        'taller.ingresado' => 'Ingreso de equipo al taller (QR)',
+        // Taller · entró un equipo, por CUALQUIERA de las tres puertas: el QR del
+        // cliente, el mostrador y el lote en ruta del conductor (dueño 28-08-2026).
+        // Aviso a ventas + al técnico para que sepan que entró una máquina. Hasta
+        // el 28-08 solo lo emitía el QR, así que el jefe de ventas no se enteraba
+        // de las máquinas que recibían sus propios vendedores.
+        'taller.ingresado' => 'Ingreso de equipo al taller',
         // Taller · el técnico marcó la orden como REPARADA: ventas tiene que
         // llamar al cliente para que lo retire (decision del dueño 30-07).
         'taller.reparado' => 'Equipo reparado (avisar al cliente)',
