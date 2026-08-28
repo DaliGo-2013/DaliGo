@@ -286,9 +286,78 @@ Dos reglas que van con esto y son fáciles de romper sin darse cuenta:
 
 ---
 
-## 4. Historial de cambios de este apartado
+## 4. Todo lo de Servicio Técnico le llega al jefe de ventas
+
+**La regla (dueño, 28-08-2026):** *«a Héctor deben llegar todas las notificaciones de
+servicio técnico, sean dispensadores o visitas técnicas, mantenciones o instalaciones»*.
+
+### Las TRES puertas de entrada al taller avisan igual
+
+Al taller se entra por tres lados, y hasta el 28-08 **solo uno avisaba**:
+
+| Puerta | Quién la usa | ¿Avisaba antes? |
+|---|---|---|
+| QR del cliente (unidad y lote) | el cliente desde su celular | sí |
+| **Mostrador** (`servicio-tecnico.store`) | quien atiende: técnico, vendedor | **no** |
+| **Lote en ruta** (`servicio-tecnico.lote.store`) | el conductor que retira | **no** |
+
+El aviso vive en el **modelo** (`OrdenServicio::notificarIngresoInterno()` y su gemelo de
+`LoteServicio`), no en el controlador, justamente para que las tres lo llamen. Al agregar
+una cuarta puerta, se llama desde ahí — la lista de destinatarios
+(`ROLES_AVISO_INGRESO`) no se toca.
+
+**Quien registra no se autonotifica** (`->reject($actor)`): avisarle de su propia acción es
+ruido. Es el mismo criterio de `avisarACartera()`.
+
+**El texto depende del ORIGEN, no es fijo.** La plantilla cierra con `{recepcion}`, que
+resuelve `OrdenServicio::fraseDeRecepcion()`: por QR o ruta dice «Falta confirmar la
+recepción» (la máquina llega después), y en el mostrador dice quién la recibió — ahí
+`por_confirmar` es false por construcción y **no existe el botón de confirmar**. Si mañana
+se suma una puerta, la frase se agrega ahí y no en la plantilla.
+
+### Instalaciones también avisa
+
+La planilla del técnico industrial no emitía **ninguna** notificación. Ahora
+`instalacion.registrada` va a jefatura (`Instalacion::ROLES_AVISO`) al **registrar** — es
+el único momento con los datos completos, porque la planilla no tiene estados: es un
+registro de lo ya hecho. El aviso lleva los días trabajados y el vendedor, que son los dos
+datos por los que jefatura pregunta después.
+
+Los vendedores **no** reciben este aviso: el `vendedor` de la planilla es texto libre
+copiado del Excel, no un usuario, así que no hay a quién dirigirlo.
+
+### El vendedor registra los cuatro trabajos de terreno
+
+*«El perfil de vendedor tiene que poder ingresar el registro de visita técnica, mantención,
+reparación e instalación — el vendedor va a hacer estos ingresos.»* Es el otro lado de
+§1bis: si la visita industrial salió de la vista del cliente, alguien de adentro la anota.
+
+Tres de las cuatro ya las cubría `agendar servicio terreno` (son tipos de la agenda de
+terreno). La que faltaba era la **planilla de instalaciones**: `gestionar instalaciones`
+era del técnico industrial y de jefatura.
+
+**Darle la pantalla no le da la decisión.** Toda cita que un vendedor fije sigue naciendo
+ESPERANDO el visto bueno del jefe de ventas y sin ocupar la agenda del técnico (los cuatro
+tipos están en `AgendaTrabajo::TIPOS_QUE_AUTORIZA_JEFATURA` desde el 25-08). Permiso y
+autorización son cosas distintas y conviene no confundirlas al leer este apartado.
+
+### Y se usa desde el celular
+
+Los vendedores están en terreno. La planilla de instalaciones se verificó a **375 / 768 /
+1280** y de ahí salieron dos correcciones que en pantalla grande no se ven: las dos
+acciones de la fila ahora son el mismo control táctil (antes Eliminar medía 44×44 y Editar
+39×20 — la destructiva era la fácil de acertar) y las líneas de datos truncan **solo desde
+`sm:`** (en el celular el recorte se comía la comuna y el RUT). Detalle en la bitácora
+[2026-08-28].
+
+---
+
+## 5. Historial de cambios de este apartado
 
 - **20-08-2026** — nace el apartado. §2 (descuento de inventario al facturar y el hueco
   de la garantía) y §1 (la tabla de las cuatro garantías, con los plazos industriales
   nuevos y la advertencia de no mezclarlos con los del taller). Más tarde ese día, §3:
   el presupuesto se arma en una sola pantalla y la cotización queda de solo lectura.
+- **28-08-2026** — §4: todas las notificaciones de Servicio Técnico le llegan al jefe de
+  ventas (las tres puertas del taller, instalaciones) y el vendedor puede registrar los
+  cuatro trabajos de terreno. El §4 anterior (historial) pasa a §5.
