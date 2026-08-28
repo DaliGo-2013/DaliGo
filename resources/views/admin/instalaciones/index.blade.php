@@ -140,14 +140,19 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm text-neutral-400">{{ $ins->fecha?->format('d-m-Y') }}</span>
                                 <x-badge variant="neutral">{{ $ins->categoria_label }}</x-badge>
-                                <p class="truncate font-medium text-neutral-900">{{ $ins->cliente_nombre }}</p>
+                                <p class="font-medium text-neutral-900 sm:truncate">{{ $ins->cliente_nombre }}</p>
                                 @if ($ins->instalacion)<x-badge variant="brand">Instalado</x-badge>@endif
                                 @if ($ins->puesta_en_marcha)<x-badge variant="brand">Puesta en marcha</x-badge>@endif
                             </div>
-                            <p class="mt-0.5 truncate text-sm text-neutral-600">
+                            {{-- `truncate` SOLO desde sm:. En el celular la fila tiene 310px útiles y
+                                 estas dos líneas miden 473 y 344: recortadas, el vendedor en terreno
+                                 perdía justo la comuna y el RUT del cliente que fue a ver. En móvil
+                                 la fila crece a dos renglones (la regla de la casa es reflowar, no
+                                 desbordar); en escritorio, donde sobra ancho, sigue en una línea. --}}
+                            <p class="mt-0.5 text-sm text-neutral-600 sm:truncate">
                                 {{ collect([$ins->producto, $ins->comuna_region, $ins->cliente_rut])->filter()->implode(' · ') }}
                             </p>
-                            <p class="mt-0.5 truncate text-xs text-neutral-400">
+                            <p class="mt-0.5 text-xs text-neutral-400 sm:truncate">
                                 {{ collect([
                                     $ins->vendedor ? 'Vendedor: '.$ins->vendedor : null,
                                     $ins->dias ? $ins->dias.' '.($ins->dias === 1 ? 'día' : 'días') : null,
@@ -157,7 +162,14 @@
                             </p>
                         </div>
                         <div class="flex shrink-0 items-center gap-2">
-                            <x-secondary-link :href="route('admin.instalaciones.edit', $ins)">Editar</x-secondary-link>
+                            {{-- Editar como ICON-BUTTON y no como enlace de texto: el enlace medía
+                                 39x20px en el celular mientras el Eliminar de al lado medía 44x44,
+                                 o sea que la acción DESTRUCTIVA era la fácil de acertar con el
+                                 pulgar. `icon-button` ya trae el mínimo táctil (44px en móvil, 36
+                                 desde sm:) y deja las dos acciones simétricas. --}}
+                            <x-icon-button :href="route('admin.instalaciones.edit', $ins)" label="Editar" title="Editar">
+                                <x-icon.pencil class="h-5 w-5" />
+                            </x-icon-button>
                             <form method="POST" action="{{ route('admin.instalaciones.destroy', $ins) }}"
                                   onsubmit="return confirm('¿Eliminar esta instalación del registro?');">
                                 @csrf
