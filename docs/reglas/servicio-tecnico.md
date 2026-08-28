@@ -286,7 +286,59 @@ Dos reglas que van con esto y son fáciles de romper sin darse cuenta:
 
 ---
 
-## 4. Todo lo de Servicio Técnico le llega al jefe de ventas
+## 4. DOS DOMINIOS que no se mezclan
+
+**La regla (dueño, 28-08-2026):** *«el ingreso por unidad y por lote se refiere a los
+dispensadores, y lo de instalaciones, reparaciones, mantenciones y visita técnica es
+referido a lo industrial — sopladora, lavadora, osmosis. Que estén las dos opciones
+separadas para los vendedores y el jefe de ventas. Es importante que no esté mezclado
+aunque los dos temas son de servicio técnico en general.»*
+
+| | **Dispensadores** (taller) | **Industrial** (terreno) |
+|---|---|---|
+| Qué equipos | dispensadores, lavadoras de botellón | sopladora, lavadora, osmosis, llenadora |
+| Quién atiende | Fernando (técnico de taller) | Carlos (técnico industrial) |
+| Cómo se ingresa | por unidad (botón del Listado) y **por lote** | agenda de terreno + planilla de instalaciones |
+| Qué se registra | una orden de servicio | visita técnica · mantención · reparación · instalación |
+| Permisos de ventas | `manage servicio tecnico`, `crear lote servicio` | `agendar servicio terreno`, `gestionar instalaciones` |
+
+**Ventas trabaja en los dos**, así que el vendedor y el jefe de ventas tienen las
+**cuatro** puertas (candado: `RoleMatrixSeedTest::test_ventas_tiene_las_dos_puertas_…`,
+que nombra en el fallo qué pantalla queda sin abrir). La única asimetría: el vendedor no
+lleva `manage servicio tecnico` — no edita órdenes ni la etapa de reparación.
+
+### El menú los separa en dos bloques
+
+```
+SERVICIO TÉCNICO
+  Informe                 ← sirve a los dos, va arriba y SIN encabezado
+  ── DISPENSADORES ──
+  Listado
+  Ingreso por lote
+  ── INDUSTRIAL ──
+  Agenda de terreno
+  Instalaciones
+```
+
+El vocabulario **no es nuevo**: es el que ya usaba el Informe, que ofrece «Dispensadores»
+e «Industrial» como dos pantallas desde que existe. Tres decisiones que conviene no
+deshacer:
+
+- **El reparto vive en `MenuPrincipal::agrupar()`**, no en el Blade: el menú es DATOS y esa
+  es su fuente única. Un ítem nuevo declara su `grupo` y el resto sale solo.
+- **Los ítems sin grupo van arriba y sin encabezado.** Debajo de uno se leerían como parte
+  de ese dominio — justo la mezcla que esto evita.
+- **El orden de los bloques sale de la primera aparición de cada grupo**, no de una lista
+  fija: así respeta `priorizarPorRol()` sin saber de roles (al técnico industrial su bloque
+  INDUSTRIAL le sube solo).
+
+Un encabezado no puede quedar huérfano —el bloque nace de los ítems que sobrevivieron a la
+poda por permiso— y un `grupo` que no esté en `MenuPrincipal::GRUPOS` **revienta** en vez de
+dibujar un encabezado vacío.
+
+---
+
+## 4bis. Todo lo de Servicio Técnico le llega al jefe de ventas
 
 **La regla (dueño, 28-08-2026):** *«a Héctor deben llegar todas las notificaciones de
 servicio técnico, sean dispensadores o visitas técnicas, mantenciones o instalaciones»*.
@@ -328,6 +380,8 @@ copiado del Excel, no un usuario, así que no hay a quién dirigirlo.
 
 ### El vendedor registra los cuatro trabajos de terreno
 
+> Los permisos de los dos dominios están en la tabla de §4; acá va solo el porqué.
+
 *«El perfil de vendedor tiene que poder ingresar el registro de visita técnica, mantención,
 reparación e instalación — el vendedor va a hacer estos ingresos.»* Es el otro lado de
 §1bis: si la visita industrial salió de la vista del cliente, alguien de adentro la anota.
@@ -358,6 +412,8 @@ acciones de la fila ahora son el mismo control táctil (antes Eliminar medía 44
   de la garantía) y §1 (la tabla de las cuatro garantías, con los plazos industriales
   nuevos y la advertencia de no mezclarlos con los del taller). Más tarde ese día, §3:
   el presupuesto se arma en una sola pantalla y la cotización queda de solo lectura.
-- **28-08-2026** — §4: todas las notificaciones de Servicio Técnico le llegan al jefe de
+- **28-08-2026** — §4bis: todas las notificaciones de Servicio Técnico le llegan al jefe de
   ventas (las tres puertas del taller, instalaciones) y el vendedor puede registrar los
   cuatro trabajos de terreno. El §4 anterior (historial) pasa a §5.
+- **28-08-2026 (más tarde)** — §4: los DOS dominios (dispensadores / industrial) y la
+  separación del menú en dos bloques, con las cuatro puertas de ventas en una tabla.
