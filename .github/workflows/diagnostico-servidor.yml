@@ -1,0 +1,57 @@
+name: Diagnostico del servidor (solo lectura)
+
+# Por que existe: el 28-08-2026 el deploy murio 4 veces seguidas y NUNCA por el codigo — el
+# servidor no podia crear procesos («cannot fork() for index-pack: Resource temporarily
+# unavailable» y despues «exec request failed on channel 0»). La app seguia respondiendo 200,
+# asi que el problema era solo el limite de procesos de la cuenta en el hosting compartido.
+# Diagnosticarlo requiere mirar el servidor, y la unica credencial vive en el secret de este
+# repo — de ahi que el diagnostico se corra desde aca y no desde una maquina.
+#
+# SOLO LECTURA, Y ESO ES DELIBERADO:
+#   · No hay `inputs`. Un workflow_dispatch con un comando libre, en un repo PUBLICO (D-012),
+#     seria una puerta para ejecutar cualquier cosa en produccion.
+#   · Los comandos son FIJOS y ninguno escribe, borra, mata procesos ni toca git.
+#   · La salida se ACOTA (conteos y edades, con `head`) porque los logs de Actions de un repo
+#     publico son publicos.
+#
+# Se corre a mano: gh workflow run diagnostico-servidor.yml
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirar procesos y limites (sin tocar nada)
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # `-o BatchMode=yes` para que no se quede esperando nada, y el mismo KEX legado que
+          # usa el deploy (HostGator solo ofrece ese, ver la bitacora [2026-06-03]).
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+            -o IdentitiesOnly=yes \
+            -o IdentityAgent=none \
+            -o BatchMode=yes \
+            -o ConnectTimeout=25 \
+            -o StrictHostKeyChecking=accept-new \
+            -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
+            "$SSH_USER@$SSH_HOST" \
+            'echo "== limite de procesos de la cuenta (ulimit -u) =="; ulimit -u; \
+             echo; echo "== cuantos procesos tiene la cuenta ahora =="; ps -u "$(id -un)" -o pid= 2>/dev/null | wc -l; \
+             echo; echo "== cuantos por tipo (los sospechosos primero) =="; \
+             ps -u "$(id -un)" -o args= 2>/dev/null | sed "s#.*/##" | awk "{print \$1, \$2, \$3}" | sort | uniq -c | sort -rn | head -15; \
+             echo; echo "== procesos de artisan/php vivos, con su EDAD (etime) =="; \
+             ps -u "$(id -un)" -o etime=,args= 2>/dev/null | grep -E "artisan|queue:work|schedule:run" | head -20; \
+             echo; echo "== conteo de queue:work vivos =="; \
+             ps -u "$(id -un)" -o args= 2>/dev/null | grep -c "queue:work" || true; \
+             echo; echo "== el crontab, textual (I-01: HostGator lo reescribe) =="; crontab -l 2>/dev/null | head -10; \
+             echo; echo "== version de HEAD en el servidor (que codigo esta sirviendo) =="; \
+             cd "$HOME/daligo" 2>/dev/null && git log --oneline -1 2>/dev/null || echo "(no se pudo leer)"'
