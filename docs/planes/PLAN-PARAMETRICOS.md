@@ -420,3 +420,16 @@ seleccionada en esta ronda (queda constatada). Fase B de Logística en 4 lotes:
 flota + la hermana DIAS_VENTANA_VENCIDO a criterio declarado del forjador) →
 **LOG-3** (las 2 listas del conductor + tarjetas del TV) → **LOG-4** (higiene de
 duplicados restante).
+
+**Registro fase B (Logística):** LOG-1 en producción (`cd6780f`, doble llave
+21-ago). **LOG-2 en producción** (`458916b`, doble llave 28-ago): #1 saldado —
+`vehiculos_dias_aviso` default 30, RANGOS 7-90, cinco rótulos derivando de
+`Vehiculo::diasAviso()`, `DIAS_VENTANA_VENCIDO` nivel 3 con candado de
+independencia; suite del Director 2359/16.434 cero rojos sobre el trial merge
+con el lote de permisos de Marcos encima. **Nota de contexto para LOG-3/4:**
+el 28-ago aterrizó además la matriz de avisos (`f991cd4`, tarea directa del
+dueño — ver PLAN-AVISOS): `AudienciasNotificacion` es ahora la fuente única de
+destinatarios, `ConfiguracionController::index()/edit()` cambiaron (grupo
+oculto + redirect) y `ConfiguracionSeeder` gana un loop al final — y el
+hallazgo #13 de la higiene («correo por permisos») debe re-mirarse contra ese
+precedente antes de forjarse.
