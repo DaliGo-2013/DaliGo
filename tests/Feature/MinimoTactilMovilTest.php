@@ -54,10 +54,26 @@ class MinimoTactilMovilTest extends TestCase
         'sidebar-item' => 'max-lg',
     ];
 
+    /**
+     * El Blade SIN sus comentarios.
+     *
+     * No es un detalle: cada uno de estos componentes lleva un comentario que
+     * NOMBRA la clase para explicar por qué está, y con el archivo entero como
+     * pajar el assert matcheaba el COMENTARIO. Se cazó mutando —le quité el
+     * `min-h-11` real a `secondary-button` y el test siguió verde—, que es el
+     * verde-engañoso de la bitácora [2026-07-20] causado por documentar el fix.
+     */
+    private function sinComentarios(string $componente): string
+    {
+        $blade = File::get(resource_path("views/components/{$componente}.blade.php"));
+
+        return preg_replace('/\{\{--.*?--\}\}/s', '', $blade);
+    }
+
     public function test_los_controles_compartidos_declaran_el_minimo_tactil(): void
     {
         foreach (self::CONTROLES as $componente => $prefijo) {
-            $blade = File::get(resource_path("views/components/{$componente}.blade.php"));
+            $blade = $this->sinComentarios($componente);
 
             // El mínimo, con el prefijo que corresponda a cómo se libera.
             $esperado = $prefijo === 'max-lg' ? 'max-lg:min-h-11' : 'min-h-11';
@@ -83,7 +99,8 @@ class MinimoTactilMovilTest extends TestCase
      */
     public function test_la_campana_de_la_barra_movil_tiene_el_minimo(): void
     {
-        $blade = File::get(resource_path('views/components/layout/topbar.blade.php'));
+        $blade = preg_replace('/\{\{--.*?--\}\}/s',
+            '', File::get(resource_path('views/components/layout/topbar.blade.php')));
 
         $this->assertStringContainsString('min-h-11 min-w-11', $blade,
             'La campana de la barra móvil medía 40x40. Es el único control de esa barra y '
