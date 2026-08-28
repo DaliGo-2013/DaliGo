@@ -51,17 +51,32 @@ class NavigationTest extends TestCase
             ->assertSee(route('admin.servicio-tecnico.qr'), false);
     }
 
-    public function test_solo_lectura_ve_listado_e_informe_pero_no_la_gestion(): void
+    /**
+     * El vendedor TIENE el ingreso por lote y NO tiene la gestión del taller.
+     *
+     * Este test decía lo contrario hasta el 28-08-2026 —su comentario afirmaba
+     * «vendedor = view servicio tecnico (sin manage, sin crear lote)»— y el dueño
+     * invirtió esa mitad: *«el vendedor tiene que tener la opción para ver el
+     * ingreso por lote si en algún momento pasa»*. Se invierte la aserción, no se
+     * afloja: la otra mitad —que el lote NO le abre la gestión— es la que importa
+     * y queda igual de firme.
+     *
+     * `crear lote servicio` es el permiso ACOTADO del conductor: registra máquinas
+     * que llegan en ruta y nada más. Que sea aparte de `manage servicio tecnico` es
+     * lo que permite darle una puerta sin darle el taller entero.
+     */
+    public function test_el_vendedor_tiene_el_lote_pero_no_la_gestion_del_taller(): void
     {
-        // vendedor = 'view servicio tecnico' (sin manage, sin crear lote).
         $this->actingAs($this->usuarioCon('vendedor'))
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Listado')
             ->assertSee('Informe')
+            // La puerta que el dueño le dio (28-08): el ingreso por lote.
+            ->assertSee('Ingreso por lote')
+            // Y las dos que siguen siendo de `manage servicio tecnico`.
             ->assertDontSee('Registrar ingreso')
-            ->assertDontSee('Códigos QR')
-            ->assertDontSee('Ingreso por lote');
+            ->assertDontSee('Códigos QR');
 
         // Tampoco en la cabecera del Listado: el botón QR es de `manage`, y al
         // vendedor (solo `view`) la pantalla QR le daría 403 (Lote 4).
@@ -69,6 +84,11 @@ class NavigationTest extends TestCase
             ->get(route('admin.servicio-tecnico.index'))
             ->assertOk()
             ->assertDontSee('Códigos QR');
+
+        // El lote se le abre de verdad, no es solo un ítem en el menú.
+        $this->actingAs($this->usuarioCon('vendedor'))
+            ->get(route('admin.servicio-tecnico.lote.create'))
+            ->assertOk();
     }
 
     public function test_conductor_ve_el_menu_solo_con_ingreso_por_lote(): void
