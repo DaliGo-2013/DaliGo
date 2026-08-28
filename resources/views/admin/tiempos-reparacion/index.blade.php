@@ -67,8 +67,11 @@
                          :count="$escritosAMano->count()"
                          :countLabel="$escritosAMano->count() === 1 ? 'trabajo' : 'trabajos'">
                 <li class="border-b border-neutral-100 bg-neutral-50 px-4 py-2 text-xs text-neutral-500 sm:px-6">
-                    Estos trabajos no suman horas todavía. Agregá al catálogo los que se repitan: desde ahí
+                    Estos trabajos no suman horas todavía. Agrega al catálogo los que se repitan: desde ahí
                     el técnico los va a poder marcar y su mano de obra se va a cobrar.
+                    {{-- El recorte se DECLARA: un listado truncado en silencio se lee como «esto
+                         fue todo lo que pasó». --}}
+                    <span class="mt-1 block text-neutral-400">Se revisan las {{ $ordenesRevisadas }} órdenes más recientes.</span>
                 </li>
                 @foreach ($escritosAMano as $x)
                     <li class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">

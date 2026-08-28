@@ -699,12 +699,17 @@ class ServicioTecnicoController extends Controller
             ->groupBy('grupo');
     }
 
-    /** Las filas marcables, sin agrupar (el scope: activos ∪ ya marcados en esta orden). */
+    /** Las filas marcables (el scope: activos ∪ los que esta orden ya tiene marcados). */
     private function trabajosMarcables(OrdenServicio $orden): \Illuminate\Support\Collection
     {
+        $yaMarcados = $orden->trabajos->pluck('id');
+
+        // El `orWhere` va AGRUPADO aunque hoy sean las dos únicas condiciones: un `where(...)
+        // ->orWhere(...)` sin paréntesis se rompe en silencio en cuanto alguien agregue un
+        // tercer filtro (el `or` se lo come), y es un defecto que no se nota mirando la pantalla
+        // — devuelve MÁS filas, no menos. Agrupado, el scope queda cerrado por construcción.
         return TiempoReparacion::query()
-            ->where('activo', true)
-            ->orWhereIn('id', $orden->trabajos->pluck('id'))
+            ->where(fn ($q) => $q->where('activo', true)->orWhereIn('id', $yaMarcados))
             ->get();
     }
 

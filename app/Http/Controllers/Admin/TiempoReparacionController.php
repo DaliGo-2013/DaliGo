@@ -19,6 +19,12 @@ use Illuminate\View\View;
  */
 class TiempoReparacionController extends Controller
 {
+    /**
+     * Cuántas órdenes recientes se revisan para armar la lista de «escritos a mano». Ver
+     * trabajosEscritosAMano(): es un techo declarado, no un número al azar.
+     */
+    private const ORDENES_REVISADAS = 500;
+
     public function index(): View
     {
         return view('admin.tiempos-reparacion.index', [
@@ -30,6 +36,7 @@ class TiempoReparacionController extends Controller
             // trabajo de jefatura: cada línea que se repite es un candidato a entrar acá, así el
             // catálogo se calibra con el uso real en vez de adivinar combinaciones.
             'escritosAMano' => $this->trabajosEscritosAMano(),
+            'ordenesRevisadas' => self::ORDENES_REVISADAS,
         ]);
     }
 
@@ -55,6 +62,12 @@ class TiempoReparacionController extends Controller
             ->whereNotNull('trabajos_extra')
             ->where('trabajos_extra', '!=', '')
             ->orderByDesc('id')
+            // Techo explícito: esta lista responde «qué se está escribiendo seguido AHORA», no el
+            // histórico completo, y sin límite crecería para siempre (la agrupación se hace en
+            // PHP porque hay que partir el texto por líneas y normalizarlo, así que todo lo que
+            // se traiga se carga en memoria). La pantalla DECLARA el recorte en vez de truncar en
+            // silencio: un listado cortado sin avisar se lee como «esto fue todo lo que pasó».
+            ->limit(self::ORDENES_REVISADAS)
             ->get(['id', 'trabajos_extra', 'updated_at'])
             ->flatMap(fn (OrdenServicio $o) => collect($o->trabajosExtraLista())
                 ->map(fn ($linea) => ['texto' => $linea, 'fecha' => $o->updated_at]))

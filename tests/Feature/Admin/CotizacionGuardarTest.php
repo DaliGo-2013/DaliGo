@@ -14,7 +14,6 @@ use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Tests\Support\MarcaTrabajos;
 use Tests\TestCase;
 
 /**
@@ -34,7 +33,7 @@ use Tests\TestCase;
  */
 class CotizacionGuardarTest extends TestCase
 {
-    use MarcaTrabajos, RefreshDatabase;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -128,9 +127,17 @@ class CotizacionGuardarTest extends TestCase
      */
     private function guardarPresupuesto(OrdenServicio $orden, array $payload)
     {
+        $texto = (string) $orden->trabajo_realizado;
+
+        $trabajo = ['trabajos' => $orden->trabajos->pluck('id')->all()]
+            + (blank($texto) ? [] : [
+                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+                'trabajo_realizado_otro' => $texto,
+            ]);
+
         return $this->put(
             route('admin.servicio-tecnico.reparacion.guardar', $orden),
-            array_merge(['estado' => 'cotizacion'], $this->payloadTrabajo($orden), $payload),
+            array_merge(['estado' => 'cotizacion'], $trabajo, $payload),
         );
     }
 
