@@ -281,9 +281,22 @@ class MenuPrincipal
                 // (_tabs-listado) — cada entrada/pestaña gateada por SU
                 // permiso. Sus rutas van AQUÍ, en el `activo` del anfitrión
                 // (candado en MenuConsolidacionesTest).
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*', 'admin.traslados.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
+                //
+                // GRUPO: los dos dominios de Servicio Técnico NO se mezclan (dueño,
+                // 28-08-2026): «el ingreso por unidad y por lote se refiere a los
+                // dispensadores, y lo de instalaciones, reparaciones, mantenciones y
+                // visita técnica es lo industrial — sopladora, lavadora, osmosis».
+                // Un vendedor no puede confundir dónde registra cada cosa.
+                //
+                // El vocabulario NO es nuevo: es el mismo que ya usa el Informe, que
+                // separa «Dispensadores» e «Industrial» desde que existe. Ver GRUPOS.
+                'listado' => ['label' => 'Listado', 'grupo' => 'dispensadores', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*', 'admin.traslados.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
-                'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
+                'lote' => ['label' => 'Ingreso por lote', 'grupo' => 'dispensadores', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
+                // SIN grupo a propósito: el Informe sirve a los DOS dominios y ya los
+                // separa por dentro (informes.blade.php ofrece las dos tarjetas). Los
+                // ítems sin grupo se renderizan ARRIBA, fuera de todo encabezado —
+                // meterlo bajo uno de los dos sería justamente la mezcla que se evita.
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 // Consolidación Lote 5 (PLAN-MENU-DENSIDAD): «Servicios de
                 // terreno» dejó de ser ítem y vive como pestaña de la Agenda
@@ -292,8 +305,8 @@ class MenuPrincipal
                 // pestaña se gatea con `agendar servicio terreno` en el _tabs:
                 // el técnico industrial ve la Agenda con solo `ver agenda
                 // terreno` y el tarifario le daría 403.
-                'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*', 'admin.servicios-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
-                'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
+                'agenda-terreno' => ['label' => 'Agenda de terreno', 'grupo' => 'industrial', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*', 'admin.servicios-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
+                'instalaciones' => ['label' => 'Instalaciones', 'grupo' => 'industrial', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 // Conductores se fue a LOGÍSTICA el 04-08 (pedido del dueño).
                 // Sigue siendo visible para el técnico: el permiso del ítem es
                 // canAny y conserva 'manage servicio tecnico'.
@@ -375,6 +388,77 @@ class MenuPrincipal
         }
 
         return $arbol;
+    }
+
+    /**
+     * Rótulo de cada grupo de ítems dentro de un módulo.
+     *
+     * Hoy solo los usa Servicio Técnico, que son DOS dominios que no se mezclan
+     * (dueño, 28-08-2026). El vocabulario es el que ya usaba el Informe, no uno
+     * nuevo: «Dispensadores» = el taller, «Industrial» = terreno (sopladora,
+     * lavadora, osmosis).
+     *
+     * Un `grupo` que no esté acá REVIENTA en agrupar(): un rótulo faltante se
+     * vería como un encabezado vacío y nadie lo notaría en una revisión (mismo
+     * criterio que el token de `ancho` del layout).
+     */
+    public const GRUPOS = [
+        'dispensadores' => 'Dispensadores',
+        'industrial' => 'Industrial',
+    ];
+
+    /**
+     * Ítems de un módulo repartidos en bloques para renderizar, cada uno con su
+     * rótulo (o sin rótulo, para los que no declaran grupo).
+     *
+     * DOS reglas, y las dos importan:
+     *
+     *  1. Los ítems SIN grupo van primero y sin encabezado. Sirven a los dos
+     *     dominios (el Informe), así que ponerlos bajo uno de los dos rótulos
+     *     sería exactamente la mezcla que los grupos existen para evitar — y si
+     *     quedaran DEBAJO de un encabezado, se leerían como parte de ese grupo.
+     *  2. El orden de los bloques sale de la PRIMERA APARICIÓN de cada grupo en
+     *     los ítems recibidos, no de una lista fija. Así respeta lo que ya
+     *     decidió `priorizarPorRol()`: al técnico industrial se le muestran
+     *     primero agenda e instalaciones, y su bloque INDUSTRIAL sube solo.
+     *
+     * Un grupo cuyos ítems se podaron por permiso no aparece: no queda un
+     * encabezado huérfano, porque el bloque nace de los ítems que sobrevivieron.
+     *
+     * @param  array<string, array<string, mixed>>  $items  ya podados por permiso
+     * @return list<array{titulo: string|null, items: array<string, array<string, mixed>>}>
+     */
+    public static function agrupar(array $items): array
+    {
+        $bloques = [];
+
+        foreach ($items as $key => $item) {
+            $grupo = $item['grupo'] ?? null;
+
+            if ($grupo !== null && ! isset(self::GRUPOS[$grupo])) {
+                throw new \InvalidArgumentException(
+                    "Grupo de menú desconocido: [{$grupo}] en el ítem [{$key}]. Agrégalo a MenuPrincipal::GRUPOS."
+                );
+            }
+
+            // Clave del bloque: '' para los sin grupo (así van todos juntos al
+            // primer bloque, que se emite sin encabezado).
+            $bloques[$grupo ?? ''][$key] = $item;
+        }
+
+        // Los sin grupo primero; el resto en el orden en que aparecieron.
+        $sinGrupo = $bloques[''] ?? [];
+        unset($bloques['']);
+
+        $salida = [];
+        if ($sinGrupo !== []) {
+            $salida[] = ['titulo' => null, 'items' => $sinGrupo];
+        }
+        foreach ($bloques as $grupo => $itemsDelGrupo) {
+            $salida[] = ['titulo' => self::GRUPOS[$grupo], 'items' => $itemsDelGrupo];
+        }
+
+        return $salida;
     }
 
     /**

@@ -68,9 +68,20 @@
                     :activo="($activo['key'] ?? null) === $key"
                     :badge="isset($modulo['badge']) ? ($badges[$modulo['badge']] ?? 0) : 0"
                     :badge-hijos="$badgeHijos">
-                    @foreach ($modulo['items'] as $item)
-                        <x-sidebar-item :item="$item" :activo="request()->routeIs(...$item['activo'])"
-                            :badge="isset($item['badge']) ? ($badges[$item['badge']] ?? 0) : 0" />
+                    {{-- Los ítems van en BLOQUES por dominio cuando el módulo los
+                         declara (hoy Servicio Técnico: Dispensadores e Industrial, que
+                         no se mezclan — dueño 28-08). El reparto lo hace
+                         MenuPrincipal::agrupar(), no este Blade: es el mismo criterio
+                         que el resto del menú, que son DATOS. Un módulo sin grupos
+                         devuelve UN bloque sin título y se renderiza igual que antes. --}}
+                    @foreach (\App\Support\MenuPrincipal::agrupar($modulo['items']) as $bloque)
+                        @if ($bloque['titulo'])
+                            <p class="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ $bloque['titulo'] }}</p>
+                        @endif
+                        @foreach ($bloque['items'] as $item)
+                            <x-sidebar-item :item="$item" :activo="request()->routeIs(...$item['activo'])"
+                                :badge="isset($item['badge']) ? ($badges[$item['badge']] ?? 0) : 0" />
+                        @endforeach
                     @endforeach
                 </x-sidebar-group>
             @else
