@@ -41,7 +41,11 @@ class RoleMatrixSeedTest extends TestCase
                 'usar mensajes',
             ],
             'member' => ['usar mensajes'],
-            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes'],
+            // + 'gestionar instalaciones' (28-08-2026, dueño): el vendedor registra
+            // los CUATRO trabajos de terreno. Las otras tres son tipos de la agenda
+            // ('agendar servicio terreno'); la que faltaba era la planilla de
+            // instalaciones. Sigue sin decidir: su cita espera al jefe de ventas.
+            'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar instalaciones', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes'],
             // UNIÓN del merge 04-08: devoluciones + simulador (M13/Marcos) y
             // la llave 1 de la hoja de ruta (P-DSP-08).
             // SIN 'view users' (dueño, 27-08-2026): era lo único que le hacía
