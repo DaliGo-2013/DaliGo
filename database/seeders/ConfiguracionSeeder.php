@@ -29,6 +29,20 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'cotizaciones',
                 'descripcion' => 'Días de vigencia por defecto de una cotización.',
             ],
+            // --- Servicio técnico: tope de mano de obra (28-08-2026) ---
+            // Regla del dueño: «no quiero que se sumen 5 horas […] cuando un dispensador se
+            // desarma completo más estos cambios máximo puede ser dos horas, más de ahí no
+            // pasa». El desarme se paga una vez, así que las horas de los trabajos marcados se
+            // suman pero con este techo. Se edita en «Costos generales de reparación»; el mismo
+            // 2.0 vive como fallback en TiempoReparacion::TOPE_HORAS_DEFAULT, así que
+            // parametrizarlo NO cambia el comportamiento con BD virgen (regla de oro del plan).
+            [
+                'clave' => 'st_tope_horas_mano_obra',
+                'valor' => '2',
+                'tipo' => Configuracion::TIPO_DECIMAL,
+                'grupo' => 'servicio_tecnico',
+                'descripcion' => 'Tope de horas de mano de obra por orden de servicio técnico (el desarme se paga una vez, no una hora por cada trabajo).',
+            ],
             // --- Dashboard (PLAN-PARAMETRICOS, DASH-1) ---
             // Ventanas del pulso del Inicio. El default (7) es el valor histórico
             // y vive también como fallback en DashboardController: parametrizar

@@ -64,6 +64,20 @@ class CotizacionEnviarTest extends TestCase
         ], $overrides));
         $orden->repuestos()->create(['nombre' => 'Caldera', 'cantidad' => 1, 'precio_unitario' => 4000]);
 
+        // El trabajo MARCADO, con sus horas congeladas: desde el 28-08 la mano de obra sale de
+        // acá y no de que el texto coincida con el catálogo, así que sin esto el envío se
+        // bloquea por «sin trabajos marcados».
+        //
+        // OJO, y es un control que vale: este trabajo son 2,5 h y el tope del taller son 2 h,
+        // pero es UN solo trabajo, así que el piso de `horasACobrar` lo protege y se cobran las
+        // 2,5 h completas ($10.000). Si alguien quitara ese piso, los $10.000 de este archivo
+        // caerían a $8.000 y 9 tests se pondrían rojos.
+        $t = TiempoReparacion::where('trabajo', $orden->trabajo_realizado)->first();
+        if ($t) {
+            $orden->trabajos()->syncWithoutDetaching([$t->id => ['horas' => $t->horas]]);
+            $orden->load('trabajos');
+        }
+
         return $orden;
     }
 
@@ -100,11 +114,14 @@ class CotizacionEnviarTest extends TestCase
     {
         // Sin trabajo no se manda el centinela: `trabajo_realizado_otro` sería
         // obligatorio y el test fallaría por un error de validación en vez de por lo
-        // que prueba.
-        $trabajo = blank($orden->trabajo_realizado) ? [] : [
+        // que prueba. Los ids marcados van siempre, como los reenvía el formulario en cada
+        // guardado: omitirlos desmarcaría los trabajos y apagaría la mano de obra.
+        $trabajo = [
+            'trabajos' => $orden->trabajos->pluck('id')->all(),
+        ] + (blank($orden->trabajo_realizado) ? [] : [
             'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
             'trabajo_realizado_otro' => $orden->trabajo_realizado,
-        ];
+        ]);
 
         return $this->put(
             route('admin.servicio-tecnico.reparacion.guardar', $orden),

@@ -77,7 +77,12 @@ class CotizacionVistaPreviaTest extends TestCase
         ]);
         $orden->repuestos()->create(['nombre' => 'Caldera nueva', 'cantidad' => 1, 'precio_unitario' => 4000]);
 
-        return $orden->fresh();
+        // El trabajo MARCADO: desde el 28-08 de ahí sale la mano de obra, y sin ella la ventana
+        // previa no se dibuja (el botón vive detrás de `$faltas->isEmpty()`).
+        $t = TiempoReparacion::where('trabajo', $trabajo)->first();
+        $orden->trabajos()->syncWithoutDetaching([$t->id => ['horas' => $t->horas]]);
+
+        return $orden->fresh()->load('trabajos');
     }
 
     /** El submit del botón «Revisar y enviar»: guarda igual que antes, pero no manda nada. */
@@ -88,6 +93,8 @@ class CotizacionVistaPreviaTest extends TestCase
             array_merge([
                 'estado' => 'cotizacion',
                 'trabajo_realizado' => $orden->trabajo_realizado,
+                // Los chips marcados, como los reenvía el formulario en cada guardado.
+                'trabajos' => $orden->trabajos->pluck('id')->all(),
                 'causa_falla' => 'uso_normal',
                 'repuestos' => [['nombre' => 'Caldera nueva', 'cantidad' => 1, 'precio_unitario' => 4000]],
                 'previsualizar' => '1',

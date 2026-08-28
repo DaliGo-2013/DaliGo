@@ -37,6 +37,30 @@
             // menos sin que nadie lo note. Guardar sigue libre.
             $faltaManoObra,
         ])->filter();
+
+        // --- Lo que el x-data del formulario necesita para los trabajos marcados ---
+        // El catálogo aplanado para Alpine: id, el trabajo SIN su remate y sus horas. Se manda
+        // `corto` ya calculado y no el texto completo porque es lo que se muestra en el chip y
+        // lo que se encadena en la frase del cliente; partirlo en JS duplicaría la regla.
+        $catalogoJs = $trabajosCatalogo->flatten(1)->map(fn ($t) => [
+            'id' => $t->id,
+            'corto' => $t->trabajo_corto,
+            'horas' => (float) $t->horas,
+        ])->values();
+
+        // `old()` gana para que un error de validación no borre lo que el técnico había marcado.
+        // Ojo con el default de `old('trabajos')`: si la clave no viene (primera carga) valen
+        // los marcados de la orden, pero si viene VACÍA el técnico desmarcó todo y hay que
+        // respetarlo — `old('trabajos', $default)` ya distingue ausente de vacío.
+        $marcadosInit = collect(old('trabajos', $trabajosMarcados))->map(fn ($id) => (int) $id)->values();
+        $extraInicial = (string) old('trabajos_extra', (string) $orden->trabajos_extra);
+
+        // El texto que lee el cliente. El contrato con el controlador sigue siendo el de siempre
+        // (`trabajo_realizado` = centinela, `trabajo_realizado_otro` = el texto), así que al
+        // repoblar tras un error de validación hay que mirar la clave del texto, no la del
+        // centinela: `old('trabajo_realizado')` trae «__otro__» y escribirlo en el textarea le
+        // mostraría eso al técnico.
+        $textoInicial = old('trabajo_realizado_otro', old('trabajo_realizado') !== null ? '' : (string) $orden->trabajo_realizado);
     @endphp
 
     <x-slot name="header">
@@ -140,12 +164,17 @@
             {{-- ===================== EDICIÓN (formulario) ===================== --}}
             <form x-show="editando" x-cloak id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
                 class="space-y-6" data-una-vez
-                {{-- `manoObra` se siembra con la VIGENTE del catálogo (lo que va a quedar
-                     al guardar), NO con `$orden->mano_obra`: si el trabajo perdió su
-                     tiempo estándar, el total no puede prometer un monto que el guardado
-                     baja a $0. Antes acá daba igual porque esta pantalla no mostraba el
-                     total; ahora sí lo muestra (bitácora 2026-08-07). --}}
-                x-data="reparacionForm({ repuestos: @js($repuestosInit), manoObra: {{ (int) $manoObraVigente }}, endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }} })">
+                {{-- La mano de obra YA NO SE SIEMBRA: es un getter derivado de los trabajos
+                     marcados (`manoObra` en reparacionForm). Antes viajaba como dato con el
+                     monto vigente del catálogo, y aun así podía prometer un total que el
+                     guardado cambiaba en cuanto algo del cálculo se movía (bitácora
+                     2026-08-07). Derivándola, la pantalla y el guardado no pueden discrepar:
+                     los dos salen de los mismos chips marcados.
+
+                     `x-init` en vez de un `init()` propio del componente: el componente ya
+                     tiene su ciclo y acá solo hay que sembrar el remate y el flag del texto. --}}
+                x-data="reparacionForm({ repuestos: @js($repuestosInit), endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }}, catalogoTrabajos: @js($catalogoJs), marcados: @js($marcadosInit), trabajosExtra: @js($extraInicial), remates: @js($rematesTrabajo), topeHoras: {{ $topeHoras }}, textoTrabajo: @js($textoInicial) })"
+                x-init="initTrabajos()">
                 @csrf
                 @method('PUT')
 
@@ -160,106 +189,7 @@
                     <x-input-error :messages="$errors->get('estado')" class="mt-2" />
                 </div>
 
-                {{-- Trabajo realizado: respuestas FIJAS del historial, agrupadas por resultado,
-                     MÁS la opción de escribirlo a mano (dueño, 14-08-2026: «que quede la
-                     respuesta manual»). El texto libre va en un textarea con corrección
-                     ortográfica del navegador —el subrayado rojo que pidió— porque este texto
-                     LO LEE EL CLIENTE: sale en el correo del retiro y en la cotización.
-
-                     Un texto histórico fuera de la lista abre el campo manual con ese texto (y
-                     no como una opción muerta del select): así se le puede corregir la falta de
-                     ortografía que ya tiene, que es justo el punto. --}}
-                @php
-                    // LAS DOS FORMAS A LA VEZ (dueño, 20-08-2026): la lista completa el texto
-                    // con un clic Y el texto queda editable. Antes eran excluyentes —había que
-                    // elegir «Otro» en el select para recién poder escribir—, así que ajustarle
-                    // una palabra a una respuesta de la lista obligaba a re-escribirla entera.
-                    //
-                    // El texto del textarea es AHORA LA ÚNICA respuesta. El select es un
-                    // rellenador sin `name`: no viaja al servidor. El contrato con el
-                    // controlador queda IGUAL que antes (`trabajo_realizado` = centinela y
-                    // `trabajo_realizado_otro` = el texto), así que su validación, su colapso de
-                    // espacios —esto se pega desde WhatsApp— y su tope de 191 siguen aplicando
-                    // sin tocar una línea de PHP.
-                    $textoInicial = old('trabajo_realizado_otro', old('trabajo_realizado') !== null ? '' : (string) $orden->trabajo_realizado);
-                @endphp
-                <div x-data="{
-                        mapa: @js($tiemposMap),
-                        valorHora: {{ (int) ($precioHoraServicio ?? 0) }},
-                        texto: @js((string) $textoInicial),
-                        get trabajo() { return this.texto.trim() },
-                     }">
-                    <x-input-label for="trabajo_realizado_lista" value="Trabajo realizado">
-                        <x-slot:ayuda>
-                            Elige una respuesta de la lista y queda escrita en el campo de abajo; después la
-                            puedes ajustar o escribir la tuya.
-                            <strong>Este texto lo lee el cliente</strong> en el correo del retiro y en la
-                            cotización: cuenta qué se hizo y cómo quedó, como las respuestas de la lista.
-                            El navegador te subraya en rojo lo que esté mal escrito — clic derecho sobre la
-                            palabra para ver las sugerencias.
-                        </x-slot:ayuda>
-                    </x-input-label>
-
-                    {{-- El rellenador: elegir una respuesta la ESCRIBE en el campo de abajo. Sin
-                         `name` a propósito — lo que se guarda es el texto, no la opción. Vuelve a
-                         «— Elige para completar —» después de rellenar: no es un estado que se
-                         conserve, es una acción, y dejarlo marcado hacía creer que el texto
-                         editado seguía siendo esa respuesta. --}}
-                    <x-select id="trabajo_realizado_lista" class="mt-1.5"
-                              x-on:change="if ($event.target.value) { texto = $event.target.value; $event.target.value = '' }">
-                        <option value="">— Elige para completar —</option>
-                        @foreach ($respuestasTrabajo as $grupo => $opciones)
-                            <optgroup label="{{ $grupo }}">
-                                @foreach ($opciones as $op)
-                                    <option value="{{ $op }}">{{ $op }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                    </x-select>
-                    {{-- Queda UNA línea visible, la que explica el mecanismo raro del control (elegir
-                         acá ESCRIBE abajo); el resto está en la ⓘ de la etiqueta. --}}
-                    <x-input-hint>Se escribe abajo y la puedes ajustar.</x-input-hint>
-
-                    {{-- El texto, SIEMPRE visible y editable. `spellcheck` + `lang="es"` = el
-                         subrayado rojo del navegador con sugerencias al hacer clic derecho. El
-                         `lang` va explícito y no heredado del <html>: así el diccionario es el
-                         español aunque la app corra con otro locale.
-
-                         El centinela viaja en un hidden y SOLO cuando hay texto: vacío significa
-                         «todavía no hay respuesta», que es un caso válido (se guarda el parte sin
-                         cerrar el trabajo) y el controlador lo trata como nullable. --}}
-                    <input type="hidden" name="trabajo_realizado"
-                           x-bind:value="trabajo ? @js(\App\Models\OrdenServicio::TRABAJO_OTRO) : ''">
-                    <div class="mt-2">
-                        <x-textarea name="trabajo_realizado_otro" rows="2" x-model="texto"
-                            spellcheck="true" lang="es" autocapitalize="sentences"
-                            maxlength="{{ \App\Models\OrdenServicio::TRABAJO_MAX }}"
-                            placeholder="Ej. Cambio de bomba y limpieza de circuito — funciona normal">{{ $textoInicial }}</x-textarea>
-                        <x-input-error :messages="$errors->get('trabajo_realizado_otro')" class="mt-2" />
-                    </div>
-                    {{-- Mano de obra FIJA por el trabajo: informativa (la fija jefatura). --}}
-                    <div class="mt-2 text-sm" x-cloak>
-                        <template x-if="trabajo && mapa[trabajo] !== undefined">
-                            <p class="rounded-lg bg-neutral-50 px-3 py-2 text-neutral-600">
-                                Tiempo estándar: <span class="font-medium text-neutral-900" x-text="String(mapa[trabajo]).replace('.', ',')"></span> h
-                                → mano de obra <span class="font-medium text-neutral-900" x-text="'$' + Math.round(mapa[trabajo] * valorHora).toLocaleString('es-CL')"></span>
-                                <span class="text-neutral-400">· la fija jefatura, no se edita</span>
-                            </p>
-                        </template>
-                        <template x-if="trabajo && mapa[trabajo] === undefined">
-                            <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
-                                Este trabajo no tiene tiempo estándar → mano de obra $0. Jefatura puede agregarlo en «Costos generales de reparación».
-                                Guardar sí se puede; la cotización no se envía hasta que ese tiempo exista.
-                                {{-- Desde el 20-08 el texto se puede editar, así que hay una forma
-                                     nueva de caer acá: ajustarle una palabra a una respuesta de la
-                                     lista. Se dice, porque si no el técnico ve desaparecer la mano
-                                     de obra sin entender qué la hizo desaparecer. --}}
-                                <span class="mt-1 block text-amber-600">Si ajustaste una respuesta de la lista, su tiempo estándar aplica solo con el texto exacto: dejalo tal cual para recuperarlo.</span>
-                            </p>
-                        </template>
-                    </div>
-                    <x-input-error :messages="$errors->get('trabajo_realizado')" class="mt-2" />
-                </div>
+                @include('admin.servicio-tecnico.partials._trabajo-realizado')
 
                 {{-- Causa de la falla (diagnóstico del técnico): alimenta el
                      indicador del informe para reforzar capacitación al cliente.

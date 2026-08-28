@@ -401,6 +401,10 @@ Route::middleware('auth')
         });
 
         Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
+            // ANTES del resource: `tiempos-reparacion/tope` chocaría con
+            // `tiempos-reparacion/{tiempo}` si el resource se registrara primero.
+            Route::put('tiempos-reparacion/tope', [\App\Http\Controllers\Admin\TiempoReparacionController::class, 'actualizarTope'])
+                ->name('tiempos-reparacion.tope');
             Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
                 ->parameters(['tiempos-reparacion' => 'tiempo'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);

@@ -127,28 +127,41 @@
                 @if ($conPrecios)
                 <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="space-y-3">
-                        {{-- Mano de obra FIJA por el trabajo (no editable aquí):
-                             horas estándar del catálogo × valor hora. --}}
+                        {{-- Mano de obra FIJA por los trabajos marcados (no editable aquí):
+                             horas a cobrar × valor hora.
+
+                             LA NOTA ES REACTIVA y no estática de PHP: desde el 28-08 el monto
+                             cambia al marcar y desmarcar chips más arriba en esta misma
+                             pantalla, así que una nota escrita desde el estado GUARDADO diría
+                             una cosa mientras el monto de al lado dice otra. La aritmética
+                             completa (suma, tope, escritos a mano) vive junto a los chips, en
+                             `_trabajo-realizado`; acá va la versión corta. --}}
                         <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                             <p class="text-xs text-neutral-500">Mano de obra (fijada por el trabajo)</p>
                             <p class="mt-0.5 text-lg font-semibold text-neutral-900" x-text="clp(manoObra)"></p>
-                            {{-- El monto de arriba es el que el catálogo calcula HOY, así
-                                 que la nota explica por qué es ese — y cuando es $0 por un
-                                 hueco de datos, lo dice en vez de dejarlo a la imaginación
-                                 (el envío al cliente queda bloqueado hasta que se cierre). --}}
-                            @if (blank($orden->trabajo_realizado))
-                                <p class="mt-0.5 text-xs text-neutral-400">Elige el «Trabajo realizado» en Parte del técnico para fijar la mano de obra.</p>
-                            @elseif ($horasTrabajo === null)
-                                <p class="mt-0.5 text-xs text-amber-700">El trabajo «{{ $orden->trabajo_realizado }}» no tiene tiempo estándar, así que la mano de obra queda en $0. Jefatura lo agrega en «Costos generales de reparación».</p>
-                            @elseif (! $precioHoraServicio)
-                                <p class="mt-0.5 text-xs text-amber-700">El código de hora de servicio técnico ({{ config('servicio_tecnico.sku_hora_servicio') }}) no tiene precio en la lista oficial de ventas, así que la mano de obra queda en $0.</p>
+                            @if (! $precioHoraServicio)
+                                {{-- Este SÍ es estático porque no depende de lo marcado: el SKU de
+                                     la hora no tiene precio en la lista oficial, y con eso la mano
+                                     de obra es $0 aunque se marque todo. Bloquea el envío. --}}
+                                <p class="mt-0.5 text-xs text-brand-700">El código de hora de servicio técnico ({{ config('servicio_tecnico.sku_hora_servicio') }}) no tiene precio en la lista oficial de ventas, así que la mano de obra queda en $0.</p>
                             @else
-                                <p class="mt-0.5 text-xs text-neutral-500">
-                                    {{ rtrim(rtrim(number_format((float) $horasTrabajo, 1, ',', ''), '0'), ',') }} h
-                                    × ${{ number_format($precioHoraServicio, 0, ',', '.') }}
-                                    · «{{ $orden->trabajo_realizado }}»
-                                </p>
-                                <p class="mt-1 text-xs text-neutral-400">La define jefatura en «Costos generales de reparación»; el técnico no la modifica.</p>
+                                <template x-if="marcados.length === 0">
+                                    <p class="mt-0.5 text-xs text-brand-700">Marca arriba los trabajos que hiciste para fijar la mano de obra. Sin eso la cotización no se envía.</p>
+                                </template>
+                                <template x-if="marcados.length > 0">
+                                    <div>
+                                        <p class="mt-0.5 text-xs text-neutral-500">
+                                            <span class="tabular-nums" x-text="fmtHoras(horasACobrar)"></span> h
+                                            × ${{ number_format($precioHoraServicio, 0, ',', '.') }}
+                                            · <span x-text="marcados.length"></span>
+                                            <span x-text="marcados.length === 1 ? 'trabajo' : 'trabajos'"></span>
+                                            <template x-if="topeRecorta">
+                                                <span>(tope <span class="tabular-nums" x-text="fmtHoras(topeHoras)"></span> h)</span>
+                                            </template>
+                                        </p>
+                                        <p class="mt-1 text-xs text-neutral-400">La define jefatura en «Costos generales de reparación»; el técnico no la modifica.</p>
+                                    </div>
+                                </template>
                             @endif
                         </div>
                         {{-- El descuento es decisión COMERCIAL: solo jefatura de ventas

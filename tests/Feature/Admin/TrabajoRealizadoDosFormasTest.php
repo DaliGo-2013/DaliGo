@@ -80,14 +80,19 @@ class TrabajoRealizadoDosFormasTest extends TestCase
 
         // El texto SIEMPRE está (ya no vive detrás de elegir «Otro»)...
         $this->assertStringContainsString('name="trabajo_realizado_otro"', $html);
-        // ...y la lista sigue estando para completarlo con un clic.
-        $this->assertStringContainsString('id="trabajo_realizado_lista"', $html);
-        $this->assertStringContainsString('Elige para completar', $html);
 
-        // La lista NO viaja al servidor: lo que se guarda es el texto. Si volviera a
-        // tener `name`, el servidor recibiría dos respuestas y ganaría la que no se
-        // ve en el campo.
-        $this->assertStringNotContainsString('name="trabajo_realizado_lista"', $html);
+        // ...y la lista sigue estando para completarlo con un clic, pero desde el 28-08 es de
+        // SELECCIÓN MÚLTIPLE: chips `trabajos[]` en vez del `<select id="trabajo_realizado_lista">`
+        // que solo dejaba elegir una respuesta. El motivo es el mismo pedido del dueño llevado un
+        // paso más: una reparación real puede ser tres o cuatro trabajos, y la lista no puede
+        // traer todas las combinaciones.
+        $this->assertStringContainsString('name="trabajos[]"', $html);
+        $this->assertStringNotContainsString('id="trabajo_realizado_lista"', $html);
+
+        // Y AHORA LOS CHIPS SÍ VIAJAN AL SERVIDOR, al contrario del select que reemplazaron: son
+        // la fuente de la mano de obra, no un rellenador de texto. Lo que ya no viaja es el
+        // remate, que solo cierra la frase.
+        $this->assertStringNotContainsString('name="remate"', $html);
 
         // Y ya no se le pide al técnico elegir «Otro» para poder escribir.
         $this->assertStringNotContainsString('Otro — lo escribo yo', $html);

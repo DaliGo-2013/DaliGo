@@ -14,6 +14,7 @@ use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Tests\Support\MarcaTrabajos;
 use Tests\TestCase;
 
 /**
@@ -33,7 +34,7 @@ use Tests\TestCase;
  */
 class CotizacionGuardarTest extends TestCase
 {
-    use RefreshDatabase;
+    use MarcaTrabajos, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -53,13 +54,28 @@ class CotizacionGuardarTest extends TestCase
         return tap(User::factory()->create())->assignRole('jefe_ventas');
     }
 
+    /**
+     * Una orden de reparación. Si su `trabajo_realizado` coincide con una fila del catálogo, ese
+     * trabajo queda MARCADO — que es exactamente el estado en que la migración one-shot
+     * (2026_08_28_100200) deja a las órdenes que ya existían, y el que produce el formulario
+     * cuando el técnico lo marca. Sin esto, una orden con el texto correcto tendría mano de obra
+     * $0 y los tests estarían midiendo un estado que la app no produce.
+     */
     private function reparacion(array $overrides = []): OrdenServicio
     {
-        return OrdenServicio::factory()->create(array_merge([
+        $orden = OrdenServicio::factory()->create(array_merge([
             'facturacion' => 'reparacion',
             'estado' => 'cotizacion',
             'cliente_email' => 'cliente@example.com',
         ], $overrides));
+
+        $delCatalogo = TiempoReparacion::where('trabajo', $orden->trabajo_realizado)->first();
+        if ($delCatalogo) {
+            $orden->trabajos()->syncWithoutDetaching([$delCatalogo->id => ['horas' => $delCatalogo->horas]]);
+            $orden->load('trabajos');
+        }
+
+        return $orden;
     }
 
     private function garantiaVigente(array $overrides = []): OrdenServicio
@@ -82,9 +98,22 @@ class CotizacionGuardarTest extends TestCase
         Precio::factory()->create(['producto_id' => $p->id, 'precio_con_iva' => $valor]);
     }
 
-    private function tiempo(string $trabajo, float $horas): void
+    /**
+     * Pone el trabajo en el catálogo Y LO MARCA en la orden. Desde el 28-08 la mano de obra sale
+     * de los trabajos MARCADOS, no de que el texto coincida con el catálogo, así que sembrar el
+     * catálogo ya no alcanza para que una orden tenga mano de obra: hay que marcarlo, que es lo
+     * que hace el técnico.
+     */
+    private function tiempo(string $trabajo, float $horas, ?OrdenServicio $orden = null): TiempoReparacion
     {
-        TiempoReparacion::create(['trabajo' => $trabajo, 'horas' => $horas, 'activo' => true]);
+        $fila = TiempoReparacion::create(['trabajo' => $trabajo, 'horas' => $horas, 'activo' => true]);
+
+        if ($orden) {
+            $orden->trabajos()->syncWithoutDetaching([$fila->id => ['horas' => $horas]]);
+            $orden->load('trabajos');
+        }
+
+        return $fila;
     }
 
     /**
@@ -92,20 +121,16 @@ class CotizacionGuardarTest extends TestCase
      * técnico. `estado` es obligatorio ahí (es el select de la etapa), así que se
      * pasa siempre; el resto del payload es el que traía la cotización.
      *
-     * OJO con `trabajo_realizado`: el parte lo guarda, así que un payload que no lo
-     * traiga lo BORRA y con él la mano de obra. Se manda el de la orden salvo que la
-     * prueba diga otra cosa — es lo que hace el formulario real.
+     * OJO con `trabajo_realizado` y `trabajos`: el parte los guarda, así que un payload que no
+     * los traiga BORRA el texto y desmarca los trabajos, y con ellos la mano de obra. Se manda
+     * lo que la orden ya tiene salvo que la prueba diga otra cosa — es lo que hace el formulario
+     * real, que reenvía los chips marcados en cada guardado.
      */
     private function guardarPresupuesto(OrdenServicio $orden, array $payload)
     {
-        $trabajo = blank($orden->trabajo_realizado) ? [] : [
-            'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-            'trabajo_realizado_otro' => $orden->trabajo_realizado,
-        ];
-
         return $this->put(
             route('admin.servicio-tecnico.reparacion.guardar', $orden),
-            array_merge(['estado' => 'cotizacion'], $trabajo, $payload),
+            array_merge(['estado' => 'cotizacion'], $this->payloadTrabajo($orden), $payload),
         );
     }
 
@@ -355,30 +380,53 @@ class CotizacionGuardarTest extends TestCase
     public function test_la_pantalla_muestra_la_mano_de_obra_vigente_no_la_guardada(): void
     {
         $this->conValorHora(4000);
-        // Orden con $8.000 GUARDADOS pero cuyo trabajo no tiene tiempo estándar
-        // (jefatura lo desactivó, o es un texto histórico fuera del catálogo).
+        // Orden con $8.000 GUARDADOS y SIN trabajos marcados: es el caso de una orden histórica
+        // cuyo texto no coincidía con ninguna fila del catálogo, así que la migración one-shot
+        // no pudo marcarle nada. Antes del 28-08 el escenario equivalente era «el trabajo no
+        // tiene tiempo estándar»; la regla que se vigila no cambió — la pantalla no puede
+        // prometer un monto que su propio Guardar va a bajar.
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de manilla a medida', 'mano_obra' => 8000]);
 
-        // En el parte (donde se arma): el panel «Costo total a pagar» se siembra con
-        // lo que se va a guardar ($0), no con los $8.000 viejos (si se refactoriza la
-        // siembra de Alpine, lo que hay que conservar es que el total sea el vigente).
+        // En el parte (donde se arma): NADA de los $8.000 fósiles, ni sembrados en el x-data ni
+        // impresos en el panel del total. El assert es por AUSENCIA del monto viejo y de la
+        // siembra: con `manoObra: 8000` de vuelta en el x-data, se pone rojo.
         $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            ->assertSee('no tiene tiempo estándar')
-            ->assertSee('manoObra: 0', false)
-            ->assertDontSee('manoObra: 8000', false);
+            // `marcados: []` es lo que hace que el getter dé $0, y a diferencia de un texto de
+            // la pantalla SÍ discrimina el estado: el markup de los avisos es estático (vive en
+            // `<template x-if>`) y está en el HTML se marque o no algo, así que asertarlo sería
+            // un verde que pasa siempre — doctrina de la bitácora [2026-07-20].
+            ->assertSee('marcados: []', false)
+            ->assertDontSee('manoObra:', false)
+            ->assertDontSee('8000', false)
+            ->assertDontSee('$8.000');
 
         // Y en la vista previa (donde se lee lo que paga el cliente) lo mismo, pero
         // renderizado en el servidor: $0 y el porqué, nunca los $8.000 fósiles.
         $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
-            ->assertSee('no tiene tiempo estándar')
+            ->assertSee('Sin trabajos marcados')
             ->assertDontSee('$8.000');
     }
 
-    public function test_desactivar_el_tiempo_estandar_baja_la_mano_de_obra_al_guardar(): void
+    /**
+     * CAMBIO DE CONDUCTA DELIBERADO (28-08-2026). Este test decía lo contrario: que desactivar
+     * el trabajo en el catálogo BAJABA la mano de obra a $0 al re-guardar.
+     *
+     * Se dio vuelta junto con el paso a trabajos marcados, porque la conducta vieja era un
+     * efecto colateral peligroso: tocar el catálogo le cambiaba el precio a órdenes en curso, y
+     * un `activo = false` bastaba para que una orden ya cotizada perdiera su mano de obra sin
+     * que nadie se enterara — literalmente el disparador del defecto de la bitácora
+     * [2026-08-07]. Ahora las horas se congelan en el pivote al marcar, igual que
+     * `orden_servicio_repuestos.precio_unitario` no relee el catálogo: la carta que se le mandó
+     * al cliente prometió un monto y ese monto se sostiene.
+     *
+     * Desactivar un trabajo significa «ya no se ofrece», no «lo cobrado estaba mal». Para
+     * corregir un monto mal cargado se editan las horas y se re-marca en el parte.
+     */
+    public function test_desactivar_el_trabajo_en_el_catalogo_no_le_cambia_el_precio_a_una_orden_en_curso(): void
     {
         $this->conValorHora(4000);
         $this->tiempo('Cambio de caldera — funciona normal', 1.5);
@@ -392,10 +440,36 @@ class CotizacionGuardarTest extends TestCase
         // Jefatura saca ese trabajo del catálogo (no se borra: se desactiva)…
         TiempoReparacion::where('trabajo', 'Cambio de caldera — funciona normal')->update(['activo' => false]);
 
-        // …y al re-guardar la mano de obra baja a $0: NO se conserva el monto viejo.
-        $this->guardarPresupuesto($orden, ['repuestos' => $repuestos]);
-        $this->assertSame(0, $orden->fresh()->mano_obra);
-        $this->assertSame(30000, (int) $orden->fresh()->costo_total);
+        // …y al re-guardar el monto SE CONSERVA: sigue marcado, con sus horas congeladas.
+        $this->guardarPresupuesto($orden->fresh()->load('trabajos'), ['repuestos' => $repuestos]);
+        $this->assertSame(6000, $orden->fresh()->mano_obra);
+        $this->assertSame(36000, (int) $orden->fresh()->costo_total);
+
+        // Y el trabajo desactivado sigue OFRECIÉNDOSE en esta orden: si la pantalla no lo
+        // dibujara, el técnico lo perdería al guardar y ahí sí bajaría el precio en silencio.
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertSee('Cambio de caldera');
+    }
+
+    /** El envío tampoco se traba por eso: la orden tiene su mano de obra y sale. */
+    public function test_un_trabajo_desactivado_no_traba_el_envio_de_la_cotizacion(): void
+    {
+        $this->seed(ConfiguracionSeeder::class);
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);
+        $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal', 'mano_obra' => 6000]);
+        $orden->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]);
+
+        TiempoReparacion::where('trabajo', 'Cambio de caldera — funciona normal')->update(['activo' => false]);
+
+        $this->actingAs($this->tecnico())
+            ->post(route('admin.servicio-tecnico.cotizacion.enviar', $orden))
+            ->assertRedirect();
+
+        $this->assertSame(1, OrdenServicioCotizacion::count());
+        $this->assertSame(6000, (int) OrdenServicioCotizacion::first()->mano_obra);
     }
 
     public function test_no_se_envia_la_cotizacion_si_el_trabajo_no_tiene_tiempo_estandar(): void
@@ -442,10 +516,15 @@ class CotizacionGuardarTest extends TestCase
 
         // Las dos pantallas nombran el código de la hora en vez de mostrar «1,5 h × —»
         // junto a un monto que el guardado ya no puede sostener.
+        // El assert del monto pasó de «la siembra dice 0» a «NO se siembra ningún monto»: desde
+        // el 28-08 la mano de obra es un getter derivado de los trabajos marcados, así que ya no
+        // hay un número que sembrar mal. Se vigila la ausencia de la siembra, que es el fix
+        // estructural — con `manoObra:` de vuelta en el x-data, este assert se pone rojo.
         $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertSee('no tiene precio en la lista oficial de ventas')
-            ->assertSee('manoObra: 0', false);
+            ->assertDontSee('manoObra:', false)
+            ->assertDontSee('$6.000');
 
         $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))

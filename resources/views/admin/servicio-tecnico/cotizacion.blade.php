@@ -127,17 +127,23 @@
                         <dt class="text-neutral-500">
                             Mano de obra
                             {{-- Por qué es ese monto — y cuando es $0 por un hueco de
-                                 datos, se dice (el envío queda bloqueado hasta cerrarlo). --}}
-                            @if (blank($orden->trabajo_realizado))
-                                <span class="block text-xs text-neutral-400">Falta el «Trabajo realizado» en el parte del técnico.</span>
-                            @elseif ($horasTrabajo === null)
-                                <span class="block text-xs text-amber-700">El trabajo «{{ $orden->trabajo_realizado }}» no tiene tiempo estándar: queda en $0 hasta que jefatura lo cargue.</span>
+                                 datos, se dice (el envío queda bloqueado hasta cerrarlo).
+                                 Esta pantalla es SOLO LECTURA, así que las notas describen
+                                 el estado guardado y eso es correcto acá: no hay chips que
+                                 marcar en esta vista. --}}
+                            @if ($orden->trabajos->isEmpty())
+                                <span class="block text-xs text-brand-700">Sin trabajos marcados en el parte del técnico: queda en $0 y la cotización no se envía.</span>
                             @elseif (! $precioHoraServicio)
-                                <span class="block text-xs text-amber-700">El código de hora de servicio técnico ({{ config('servicio_tecnico.sku_hora_servicio') }}) no tiene precio en la lista oficial de ventas.</span>
+                                <span class="block text-xs text-brand-700">El código de hora de servicio técnico ({{ config('servicio_tecnico.sku_hora_servicio') }}) no tiene precio en la lista oficial de ventas.</span>
                             @else
                                 <span class="block text-xs text-neutral-400">
-                                    {{ rtrim(rtrim(number_format((float) $horasTrabajo, 1, ',', ''), '0'), ',') }} h
-                                    × ${{ number_format($precioHoraServicio, 0, ',', '.') }} · la fija jefatura
+                                    {{ \App\Models\TiempoReparacion::fmt((float) $horasTrabajo) }} h
+                                    × ${{ number_format($precioHoraServicio, 0, ',', '.') }}
+                                    · {{ $orden->trabajos->count() }} {{ \Illuminate\Support\Str::plural('trabajo', $orden->trabajos->count()) }}
+                                    @if (\App\Models\TiempoReparacion::horasSumadas($orden->trabajos->pluck('pivot.horas')) > (float) $horasTrabajo)
+                                        (tope {{ \App\Models\TiempoReparacion::fmt(\App\Models\TiempoReparacion::topeHoras()) }} h)
+                                    @endif
+                                    · la fija jefatura
                                 </span>
                             @endif
                         </dt>

@@ -9,10 +9,21 @@
 <div class="space-y-5">
     <div>
         <x-input-label for="trabajo">Trabajo <span class="text-red-500">*</span>
-            <x-slot:ayuda>Debe coincidir con la respuesta de «Trabajo realizado» del parte del técnico. Empieza a escribir y aparecen las de la lista.</x-slot:ayuda>
+            {{-- La ayuda decía «debe coincidir con la respuesta del parte del técnico», y desde
+                 el 28-08 eso dejó de ser cierto: el técnico MARCA este trabajo de una lista, no
+                 lo escribe, así que ya no hay ningún texto con el que tenga que coincidir. Esa
+                 coincidencia por texto era justamente lo que hacía que una reparación mixta
+                 quedara sin mano de obra. --}}
+            <x-slot:ayuda>
+                Así lo va a ver el técnico en la lista para marcarlo, y así entra en el texto que lee el
+                cliente. Escribí solo el trabajo; si agregás «— funciona normal» al final, el cierre de
+                la frase se elige aparte en el parte y no se repite por cada trabajo marcado.
+            </x-slot:ayuda>
         </x-input-label>
+        {{-- `?trabajo=` viene del listado, del apartado «escritos a mano por los técnicos»: así
+             jefatura no vuelve a tipear el texto (ni le cambia una letra sin querer). --}}
         <x-text-input id="trabajo" name="trabajo" type="text" class="mt-1.5 w-full" list="trabajos-sugeridos" required
-            maxlength="191" :value="old('trabajo', $t?->trabajo)" placeholder="Ej. Cambio de caldera — funciona normal" />
+            maxlength="191" :value="old('trabajo', $t?->trabajo ?? request('trabajo'))" placeholder="Ej. Cambio de caldera" />
         <datalist id="trabajos-sugeridos">
             @foreach ($trabajosSugeridos as $tr)
                 <option value="{{ $tr }}"></option>

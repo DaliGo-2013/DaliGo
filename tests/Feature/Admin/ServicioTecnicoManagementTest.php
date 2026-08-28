@@ -701,18 +701,62 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSee('Parte del técnico');
     }
 
-    public function test_reparacion_ofrece_respuestas_fijas_de_trabajo(): void
+    /**
+     * La pantalla ofrece los trabajos del CATÁLOGO (base de datos), agrupados.
+     *
+     * Antes salían de `config('servicio_tecnico.respuestas_trabajo')`, y eso era el defecto que
+     * este test no podía ver: eran DOS listas —la del selector en config y la de las horas en la
+     * base— así que un trabajo que jefatura agregaba en «Costos generales de reparación» no
+     * aparecía nunca acá. Ahora la lista y las horas son la MISMA fila, y el test lo comprueba
+     * sembrando el catálogo y pidiendo ver lo sembrado.
+     *
+     * Los chips muestran el trabajo SIN su remate: con varios marcados, repetir «funciona
+     * normal» en cada uno sería absurdo — se elige una vez y cierra la frase.
+     */
+    public function test_reparacion_ofrece_los_trabajos_del_catalogo(): void
     {
         $orden = OrdenServicio::factory()->create();
+        $this->seed(\Database\Seeders\TiemposReparacionSeeder::class);
 
         $this->actingAs($this->admin())
             ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            // rótulos de grupo (optgroup) y algunas respuestas del config
+            // rótulos de grupo
             ->assertSee('Reparada')
             ->assertSee('Sin solución (irreparable)')
-            ->assertSee('Cambio de celda de peltier — funciona normal')
-            ->assertSee('Motor/compresor trabado o pegado — irreparable');
+            // los trabajos, sin el remate pegado
+            ->assertSee('Cambio de celda de peltier')
+            ->assertSee('Motor/compresor trabado o pegado')
+            // y el remate como opción aparte, una sola vez
+            ->assertSee('¿Cómo quedó el equipo?')
+            ->assertSee('funciona normal');
+    }
+
+    /**
+     * Y lo complementario, que es lo que el test de arriba no puede probar por sí solo: un
+     * trabajo que NO está en la lista fija de config pero SÍ en el catálogo aparece igual. Es la
+     * divergencia entre las dos listas, convertida en candado.
+     */
+    public function test_un_trabajo_que_jefatura_agrega_al_catalogo_aparece_en_la_pantalla(): void
+    {
+        $orden = OrdenServicio::factory()->create();
+        \App\Models\TiempoReparacion::create([
+            'trabajo' => 'Cambio de estanque — funciona normal',
+            'horas' => 1.0,
+            'grupo' => 'Reparada',
+            'activo' => true,
+        ]);
+
+        // No está en la lista fija: si la pantalla siguiera leyendo config, no se vería.
+        $this->assertFalse(
+            collect(config('servicio_tecnico.respuestas_trabajo'))->flatten()->contains('Cambio de estanque — funciona normal'),
+            'El fixture dejó de ser un trabajo FUERA de la lista fija, así que el test ya no prueba la divergencia.',
+        );
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertSee('Cambio de estanque');
     }
 
     public function test_guardar_reparacion_persiste_la_respuesta_de_trabajo(): void

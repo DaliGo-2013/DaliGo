@@ -647,28 +647,83 @@ class ServicioTecnicoController extends Controller
         // Desde el 20-08 esta pantalla es LA pantalla de la orden (dueño: «toda la
         // información en un solo apartado»), así que necesita todo lo que antes solo
         // pedía la pestaña Cotización: el presupuesto, sus candados y el historial.
-        $orden->load(['producto.precios.lista', 'repuestos']);
+        $orden->load(['producto.precios.lista', 'repuestos', 'trabajos']);
 
         return view('admin.servicio-tecnico.reparacion', [
             'orden' => $orden,
             'estados' => OrdenServicio::ESTADOS,
             'causasFalla' => OrdenServicio::CAUSAS_FALLA,
-            // Respuestas fijas de "Trabajo realizado" agrupadas (config).
-            'respuestasTrabajo' => config('servicio_tecnico.respuestas_trabajo', []),
+            // El catálogo de trabajos, agrupado, PARA MARCAR. Sale de la base y no de
+            // `config('servicio_tecnico.respuestas_trabajo')`, que es de donde salía hasta el
+            // 28-08: eran DOS listas y ya divergían — un trabajo que jefatura agregaba en
+            // «Costos generales de reparación» no aparecía nunca en la pantalla del técnico.
+            // Hoy la lista y las horas son la MISMA fila.
+            'trabajosCatalogo' => $this->catalogoParaMarcar($orden),
+            // Los que ya están marcados, para dibujarlos marcados al volver.
+            'trabajosMarcados' => $orden->trabajos->pluck('id')->all(),
+            // Los tres remates del catálogo («funciona normal», «queda en óptimas
+            // condiciones», «irreparable») para elegir UNO al final de la frase.
+            'rematesTrabajo' => $this->rematesTrabajo(),
             // Valor hora de mano de obra (precio con IVA del SKU de servicio
             // tecnico). Null si no existe/no tiene precio -> mano de obra $0.
             'precioHoraServicio' => $this->precioHoraServicio(),
-            // Mapa trabajo -> horas estándar (catálogo) para mostrar en vivo la
-            // mano de obra FIJA que implica el trabajo elegido (no editable).
-            'tiemposMap' => TiempoReparacion::where('activo', true)->pluck('horas', 'trabajo')->map(fn ($h) => (float) $h),
+            // El tope de horas, para mostrar la resta en vivo («suman 2,5 h · tope 2 h»).
+            'topeHoras' => TiempoReparacion::topeHoras(),
             // --- Lo que el presupuesto y el historial necesitan (antes solo en la
             //     pestaña Cotización; ver cotizacion() para el porqué de cada uno).
             'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
             'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
-            'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
-            'manoObraVigente' => $this->manoObraDe($orden->trabajo_realizado),
+            'horasTrabajo' => $orden->horasACobrar(),
+            'manoObraVigente' => $this->manoObraDe($orden),
             'faltaManoObra' => $this->faltaManoObra($orden),
         ]);
+    }
+
+    /**
+     * El catálogo que la pantalla ofrece para marcar: los ACTIVOS, más los que esta orden ya
+     * tiene marcados aunque estén desactivados.
+     *
+     * Los inactivos-ya-marcados no son un detalle: una orden histórica pudo cerrarse con un
+     * trabajo que jefatura desactivó después. Si la pantalla no lo ofreciera, al abrir el parte
+     * y guardarlo ese trabajo se caería del pivote y la mano de obra bajaría sola — un borrado
+     * silencioso de dinero ya cotizado. Este método define además el SCOPE que valida el
+     * guardado (doctrina de la bitácora [2026-06-30]: un id se valida contra el mismo scope que
+     * lo ofrece, no con un `exists` pelado).
+     *
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, TiempoReparacion>>
+     */
+    private function catalogoParaMarcar(OrdenServicio $orden): \Illuminate\Support\Collection
+    {
+        return $this->trabajosMarcables($orden)
+            ->sortBy([['grupo', 'asc'], ['trabajo', 'asc']])
+            ->groupBy('grupo');
+    }
+
+    /** Las filas marcables, sin agrupar (el scope: activos ∪ ya marcados en esta orden). */
+    private function trabajosMarcables(OrdenServicio $orden): \Illuminate\Support\Collection
+    {
+        return TiempoReparacion::query()
+            ->where('activo', true)
+            ->orWhereIn('id', $orden->trabajos->pluck('id'))
+            ->get();
+    }
+
+    /**
+     * Los remates que existen en el catálogo, derivados de él y no escritos a mano acá: si
+     * jefatura agrega un trabajo con un remate nuevo, aparece solo. Ordenados por cuántas veces
+     * se usan, así el más común («funciona normal», 15 de 21) queda primero.
+     *
+     * @return array<int, string>
+     */
+    private function rematesTrabajo(): array
+    {
+        return TiempoReparacion::query()->where('activo', true)->pluck('trabajo')
+            ->map(fn ($t) => (new TiempoReparacion(['trabajo' => $t]))->remate)
+            ->filter()
+            ->countBy()
+            ->sortDesc()
+            ->keys()
+            ->all();
     }
 
     /**
@@ -683,7 +738,7 @@ class ServicioTecnicoController extends Controller
      */
     public function cotizacion(OrdenServicio $orden): View
     {
-        $orden->load(['producto.precios.lista', 'repuestos']);
+        $orden->load(['producto.precios.lista', 'repuestos', 'trabajos']);
 
         return view('admin.servicio-tecnico.cotizacion', [
             'orden' => $orden,
@@ -694,15 +749,15 @@ class ServicioTecnicoController extends Controller
             'precioHoraServicio' => $this->precioHoraServicio(),
             // Precio de venta del equipo: si la reparación supera el 40% se advierte.
             'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
-            // Horas estándar del trabajo de esta orden (null si el trabajo no está
-            // en el catálogo): la mano de obra se muestra de solo lectura.
-            'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
+            // Horas a cobrar de esta orden (suma de los trabajos marcados, con el tope
+            // aplicado): la mano de obra se muestra de solo lectura.
+            'horasTrabajo' => $orden->horasACobrar(),
             // Mano de obra que el catálogo calcula HOY = exactamente lo que va a
             // quedar al guardar. La pantalla muestra ESTO y no `$orden->mano_obra`:
-            // si difieren (jefatura cambió o desactivó el tiempo estándar, o el SKU
-            // de la hora perdió precio) el guardado manda, así que mostrar el monto
-            // viejo sería prometer un total que el guardado va a bajar.
-            'manoObraVigente' => $this->manoObraDe($orden->trabajo_realizado),
+            // si difieren (el SKU de la hora perdió precio en la lista oficial) el
+            // guardado manda, así que mostrar el monto viejo sería prometer un total
+            // que el guardado va a bajar.
+            'manoObraVigente' => $this->manoObraDe($orden),
             // Por qué el catálogo NO puede calcularla (null si puede): candado del
             // envío al cliente. Ver faltaManoObra().
             'faltaManoObra' => $this->faltaManoObra($orden),
@@ -789,37 +844,53 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Mano de obra FIJA de un trabajo = horas estándar (catálogo «Costos
-     * generales de reparación») × valor hora. La fija jefatura; el técnico no la
-     * edita. 0 si el trabajo no tiene tiempo estándar o no hay valor hora.
+     * Mano de obra FIJA de una orden = horas a cobrar × valor hora. La fija jefatura (las horas
+     * salen del catálogo «Costos generales de reparación», y el tope también); el técnico no la
+     * edita, solo marca QUÉ hizo.
+     *
+     * Las horas salen del PIVOTE y no del catálogo vigente: se congelaron al guardar el parte,
+     * porque jefatura calibra el catálogo con el tiempo y una orden ya cotizada no puede cambiar
+     * de precio sola después — su carta le prometió un monto al cliente.
      */
-    private function manoObraDe(?string $trabajo): int
+    private function manoObraDe(OrdenServicio $orden): int
     {
-        $horas = TiempoReparacion::horasDe($trabajo);
-        $valor = $this->precioHoraServicio();
-
-        return ($horas !== null && $valor) ? (int) round($horas * $valor) : 0;
+        return $this->manoObraDeHoras($orden->trabajos->pluck('pivot.horas'));
     }
 
     /**
-     * Por qué el catálogo NO puede calcular la mano de obra de esta orden, o null
-     * si sí puede. Es el candado del ENVÍO al cliente (regla del dueño, 07-08-2026):
-     * una cotización que sale con la mano de obra en $0 por un HUECO DE DATOS cobra
-     * de menos y nadie se entera. GUARDAR sigue permitido a propósito — el técnico
-     * tiene que poder seguir poniéndole precio a los repuestos mientras jefatura
-     * carga el tiempo estándar que falta.
+     * La misma cuenta sobre horas sueltas: la usa el guardado, que tiene que calcular el monto
+     * ANTES de que el pivote exista.
+     */
+    private function manoObraDeHoras(iterable $horas): int
+    {
+        $valor = $this->precioHoraServicio();
+
+        return $valor ? (int) round(TiempoReparacion::horasACobrar($horas) * $valor) : 0;
+    }
+
+    /**
+     * Por qué NO se puede calcular la mano de obra de esta orden, o null si sí se puede. Es el
+     * candado del ENVÍO al cliente (regla del dueño, 07-08-2026): una cotización que sale con la
+     * mano de obra en $0 por un HUECO DE DATOS cobra de menos y nadie se entera. GUARDAR sigue
+     * permitido a propósito — el técnico tiene que poder seguir poniéndole precio a los
+     * repuestos mientras resuelve el resto.
      *
-     * OJO: 0 horas fijadas a propósito por jefatura (el catálogo acepta `min:0`)
-     * NO son un hueco: ahí la mano de obra es $0 legítima y el envío pasa.
+     * QUÉ CAMBIÓ EL 28-08 Y POR QUÉ: antes esto exigía que el TEXTO del trabajo coincidiera
+     * palabra por palabra con una fila del catálogo, y eso trababa el caso más normal del
+     * taller —una reparación mixta— porque ninguna frase combinada existe en el catálogo ni
+     * puede existir (dueño: «la lista tendría que ser una combinación infinita de reparaciones
+     * que sería muy extensa»). Ahora exige que haya al menos UN trabajo marcado. Lo que el
+     * técnico escribió a mano ya no bloquea: se declara en pantalla y queda listado para que
+     * jefatura lo agregue al catálogo.
+     *
+     * OJO: 0 horas fijadas a propósito por jefatura (el catálogo acepta `min:0`) NO son un
+     * hueco: ahí la mano de obra es $0 legítima y el envío pasa. Por eso el candado mira si hay
+     * trabajos MARCADOS y nunca si el monto es cero.
      */
     private function faltaManoObra(OrdenServicio $orden): ?string
     {
-        if (blank($orden->trabajo_realizado)) {
-            return 'elige el «Trabajo realizado» en «Parte del técnico» y guarda (de ahí sale la mano de obra)';
-        }
-
-        if (TiempoReparacion::horasDe($orden->trabajo_realizado) === null) {
-            return "el trabajo «{$orden->trabajo_realizado}» no tiene tiempo estándar: jefatura debe cargarlo en «Costos generales de reparación»";
+        if ($orden->trabajos->isEmpty()) {
+            return 'marca en «Trabajo realizado» al menos un trabajo de la lista (de ahí sale la mano de obra)';
         }
 
         if (! $this->precioHoraServicio()) {
@@ -848,10 +919,16 @@ class ServicioTecnicoController extends Controller
         $exigeDiagnostico = in_array($request->input('estado'), ['reparado', 'sin_solucion'], true);
 
         // «Otro — lo escribo yo» (dueño, 14-08-2026): el select manda un centinela y el texto
-        // viaja aparte. El largo se corta ACÁ, en 191, porque la cotización guarda su snapshot
-        // del trabajo en un VARCHAR(191): un texto más largo pasa en SQLite y revienta en MySQL
-        // al ENVIAR la cotización, o sea lejos de donde se escribió.
+        // viaja aparte. El largo se corta ACÁ porque la cotización guarda su snapshot del
+        // trabajo en un VARCHAR: un texto más largo pasa en SQLite y revienta en MySQL al
+        // ENVIAR la cotización, o sea lejos de donde se escribió.
         $escribeElTrabajo = $request->input('trabajo_realizado') === OrdenServicio::TRABAJO_OTRO;
+
+        // Los trabajos MARCADOS se validan contra el mismo scope que los ofrece (activos ∪ los
+        // que esta orden ya tiene marcados), no con un `exists` pelado — doctrina de la bitácora
+        // [2026-06-30]. Sin el segundo conjunto, re-guardar una orden histórica cuyo trabajo
+        // jefatura desactivó después sería un error de validación sin salida para el técnico.
+        $marcables = $this->trabajosMarcables($orden)->pluck('id')->all();
 
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
@@ -860,6 +937,11 @@ class ServicioTecnicoController extends Controller
                 Rule::requiredIf($escribeElTrabajo),
                 'nullable', 'string', 'min:3', 'max:'.OrdenServicio::TRABAJO_MAX,
             ],
+            'trabajos' => ['array'],
+            'trabajos.*' => [Rule::in($marcables)],
+            // Lo que el técnico hizo y no está en la lista. No exige mínimo ni formato: es una
+            // nota, y lo que hace con ella es alimentar el catálogo de jefatura.
+            'trabajos_extra' => ['nullable', 'string', 'max:'.OrdenServicio::TRABAJO_MAX],
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             // Categoría de cierre: solo aplica a máquinas propias (IMP. DALI).
             'categoria' => ['nullable', Rule::in(OrdenServicio::CATEGORIAS)],
@@ -880,6 +962,8 @@ class ServicioTecnicoController extends Controller
             'trabajo_realizado_otro.required' => 'Escribe el trabajo realizado, o elige una respuesta de la lista.',
             'trabajo_realizado_otro.min' => 'Escribe el trabajo realizado con algo más de detalle: lo lee el cliente.',
             'trabajo_realizado_otro.max' => 'El trabajo realizado no puede pasar de :max caracteres (es lo que entra en la cotización).',
+            'trabajos.*.in' => 'Uno de los trabajos marcados ya no está en el catálogo. Recarga la pantalla y márcalo de nuevo.',
+            'trabajos_extra.max' => 'Lo escrito a mano no puede pasar de :max caracteres.',
         ]);
 
         // El centinela NUNCA se guarda como trabajo: se reemplaza por el texto, con los espacios
@@ -929,18 +1013,44 @@ class ServicioTecnicoController extends Controller
         // cada vez.
         $estadoAnterior = $orden->estado;
 
+        // Los trabajos marcados, con sus horas del catálogo CONGELADAS acá (ver el comentario de
+        // OrdenServicio::trabajos()). Se leen en una consulta y se reusan para el monto y para
+        // el pivote, así el número que se guarda y el que se sincroniza no pueden discrepar.
+        //
+        // OJO — `has()` y no `??`: si la pantalla NO manda `trabajos`, no es «ningún trabajo»,
+        // es «esta pantalla no lo preguntó», y defaultear a vacío BORRARÍA la mano de obra en
+        // silencio (la familia de defecto de la bitácora [2026-08-20]). Hoy el parte siempre lo
+        // manda —el `<input type="hidden">` del formulario garantiza la clave incluso sin nada
+        // marcado— pero la guarda es lo que hace que mañana siga siendo verdad.
+        $sincronizaTrabajos = $request->has('trabajos');
+        $horasPorTrabajo = $sincronizaTrabajos
+            ? TiempoReparacion::whereIn('id', $data['trabajos'] ?? [])->pluck('horas', 'id')
+            : $orden->trabajos->pluck('pivot.horas', 'id');
+
         $orden->update([
             'estado' => $data['estado'],
             'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
+            'trabajos_extra' => $data['trabajos_extra'] ?? null,
             'causa_falla' => $data['causa_falla'] ?? null,
             // La categoría solo se guarda para máquinas propias (IMP. DALI).
             'categoria' => $orden->es_propia ? ($data['categoria'] ?? null) : null,
-            // Mano de obra FIJA por el trabajo (horas estándar × valor hora): el
-            // técnico no la ingresa ni la edita.
-            'mano_obra' => $this->manoObraDe($data['trabajo_realizado'] ?? null),
+            // Mano de obra FIJA por los trabajos marcados (horas a cobrar × valor hora): el
+            // técnico no la ingresa ni la edita, solo marca qué hizo.
+            'mano_obra' => $this->manoObraDeHoras($horasPorTrabajo),
             'fecha_aviso' => $data['fecha_aviso'] ?? null,
             'fecha_retiro' => $data['fecha_retiro'] ?? null,
         ] + $this->descuentoAplicable($request, $orden, $data));
+
+        if ($sincronizaTrabajos) {
+            // sync con las horas en el pivote: reemplaza el conjunto y deja las horas de HOY en
+            // los que se marcan ahora. Los que ya estaban y siguen marcados también se
+            // re-escriben, que es lo correcto: es el mismo guardado del parte, y el monto que
+            // acaba de calcularse arriba usó estas mismas horas.
+            $orden->trabajos()->sync(
+                $horasPorTrabajo->mapWithKeys(fn ($h, $id) => [$id => ['horas' => $h]])->all()
+            );
+            $orden->load('trabajos');
+        }
 
         // Reemplazo total de los repuestos: se borran y se recrean los que
         // tengan nombre (las filas vacias del formulario se ignoran).

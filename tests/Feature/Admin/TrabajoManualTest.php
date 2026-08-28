@@ -125,15 +125,50 @@ class TrabajoManualTest extends TestCase
         ])->assertSessionHasNoErrors();
     }
 
-    /** El tope es EL DE LA COLUMNA de la cotización: si alguien la achica, este candado avisa. */
+    /**
+     * El tope es EL DE LA COLUMNA de la cotización: si alguien la achica, este candado avisa.
+     *
+     * MIRA LA SERIE, NO UN ARCHIVO FIJO. Antes apuntaba a la migración que CREA la tabla, y eso
+     * solo puede ser cierto mientras nadie cambie el largo después — el 28-08 subió de 191 a 500
+     * (el texto ya no es una respuesta de la lista, se arma con todos los trabajos marcados) y el
+     * candado quedó señalando una migración histórica que es correcto que siga diciendo 191: ya
+     * corrió en producción con ese valor. El invariante que sí se sostiene es que el tope coincida
+     * con el largo que deja la ÚLTIMA migración que toca la columna — mismo criterio que
+     * OneShotPlantillasCandadoTest (bitácora [2026-07-30]: modelar la cadena, no el par).
+     *
+     * Solo se lee el `up()` de cada migración: el `down()` de la que cambia el largo vuelve al
+     * valor viejo, y tomarlo daría el número anterior.
+     */
     public function test_el_tope_es_el_de_la_columna_del_snapshot_de_la_cotizacion(): void
     {
-        $migracion = file_get_contents(database_path('migrations/2026_07_21_120000_create_orden_servicio_cotizaciones_table.php'));
+        $largos = [];
 
-        $this->assertStringContainsString(
-            "string('trabajo_realizado', ".OrdenServicio::TRABAJO_MAX.')',
-            $migracion,
-            'El largo máximo del trabajo escrito a mano dejó de coincidir con la columna donde lo guarda la cotización.',
+        foreach (glob(database_path('migrations/*.php')) as $ruta) {
+            $php = file_get_contents($ruta);
+
+            // El up(): desde su declaración hasta la de down() (o el fin del archivo).
+            $desde = strpos($php, 'function up(');
+            if ($desde === false) {
+                continue;
+            }
+            $hasta = strpos($php, 'function down(', $desde);
+            $up = substr($php, $desde, $hasta === false ? null : $hasta - $desde);
+
+            if (preg_match_all("/string\('trabajo_realizado',\s*(\d+)\)/", $up, $m)) {
+                $largos[basename($ruta)] = (int) end($m[1]);
+            }
+        }
+
+        $this->assertNotEmpty($largos, 'Ninguna migración declara el largo de orden_servicio_cotizaciones.trabajo_realizado: el candado dejó de mirar algo.');
+
+        // Cronológico por nombre de archivo (que es como Laravel ordena las migraciones).
+        ksort($largos);
+        $ultima = array_key_last($largos);
+
+        $this->assertSame(
+            OrdenServicio::TRABAJO_MAX,
+            $largos[$ultima],
+            "El largo máximo del trabajo (TRABAJO_MAX) dejó de coincidir con la columna donde lo guarda la cotización: la última migración que la toca es {$ultima} y la deja en {$largos[$ultima]}.",
         );
     }
 
@@ -156,14 +191,21 @@ class TrabajoManualTest extends TestCase
     {
         $orden = $this->orden();
         $deLaLista = collect(config('servicio_tecnico.respuestas_trabajo'))->flatten()->first();
-        TiempoReparacion::create(['trabajo' => $deLaLista, 'horas' => 1.5, 'activo' => true]);
+        $t = TiempoReparacion::create(['trabajo' => $deLaLista, 'horas' => 1.5, 'activo' => true]);
         // Valor hora: producto del SKU de config con precio con IVA (mismo montaje que
         // CotizacionGuardarTest). Sin él la mano de obra es $0 por falta de precio, no por el
         // trabajo, y el candado no probaría nada.
         $producto = Producto::factory()->create(['sku' => config('servicio_tecnico.sku_hora_servicio')]);
         Precio::factory()->create(['producto_id' => $producto->id, 'precio_con_iva' => 4000]);
 
-        $this->guardar($orden, ['trabajo_realizado' => $deLaLista])->assertSessionHasNoErrors();
+        // El trabajo se MARCA (desde el 28-08) y el texto viaja aparte. Antes el texto era la
+        // única entrada y de él salía la mano de obra; ahora el texto es solo lo que lee el
+        // cliente, y el dinero sale del chip marcado.
+        $this->guardar($orden, [
+            'trabajos' => [$t->id],
+            'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+            'trabajo_realizado_otro' => $deLaLista,
+        ])->assertSessionHasNoErrors();
 
         $this->assertSame($deLaLista, $orden->fresh()->trabajo_realizado);
         // Y la mano de obra la sigue fijando el tiempo estándar del catálogo: 1,5 h × $4.000.
@@ -171,20 +213,64 @@ class TrabajoManualTest extends TestCase
     }
 
     /**
-     * Un trabajo escrito a mano no tiene tiempo estándar → mano de obra $0. No es un olvido: es
-     * la regla del dueño (07-08-2026) de que la mano de obra la fija jefatura. La pantalla lo
-     * dice en el aviso ámbar, y jefatura puede cargarle su tiempo con ese mismo texto.
+     * Un trabajo escrito a mano no aporta horas → si es lo ÚNICO que hay, la mano de obra es $0.
+     * No es un olvido: es la regla del dueño (07-08-2026) de que la mano de obra la fija
+     * jefatura, y jefatura puede cargarle su tiempo con ese mismo texto.
+     *
+     * LO QUE CAMBIÓ EL 28-08: escribir a mano ya no BLOQUEA la cotización cuando además hay
+     * trabajos marcados (ver el test de abajo). Bloquea solo cuando no hay ninguno, que es el
+     * caso que este test fija.
      */
     public function test_un_trabajo_escrito_a_mano_deja_la_mano_de_obra_en_cero(): void
     {
         $orden = $this->orden();
 
         $this->guardar($orden, [
+            'trabajos' => [],
+            'trabajos_extra' => 'Trabajo especial no catalogado',
             'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
             'trabajo_realizado_otro' => 'Trabajo especial no catalogado — funciona normal',
         ]);
 
         $this->assertSame(0, (int) $orden->fresh()->mano_obra);
+    }
+
+    /**
+     * EL CASO DE FERNANDO (28-08-2026), y el motivo de todo este cambio: una reparación MIXTA
+     * —varios trabajos del catálogo más algo escrito a mano— cobra la mano de obra de los
+     * marcados y NO se traba.
+     *
+     * Antes esto era imposible: la mano de obra exigía que el texto completo coincidiera con una
+     * fila del catálogo, y «cambio de tapa lateral derecha, cambio de placa electrica, limpieza y
+     * mantenimiento general» no coincide con nada ni puede coincidir (dueño: «la lista tendría
+     * que ser una combinación infinita»). Resultado: mano de obra $0, envío bloqueado, y el
+     * técnico cargando la hora de servicio como si fuera un repuesto para poder cobrarla.
+     */
+    public function test_una_reparacion_mixta_cobra_los_trabajos_marcados_y_no_se_traba(): void
+    {
+        $orden = $this->orden();
+        $producto = Producto::factory()->create(['sku' => config('servicio_tecnico.sku_hora_servicio')]);
+        Precio::factory()->create(['producto_id' => $producto->id, 'precio_con_iva' => 4000]);
+
+        $llave = TiempoReparacion::create(['trabajo' => 'Cambio de llave de agua — funciona normal', 'horas' => 1.0, 'activo' => true]);
+        $caldera = TiempoReparacion::create(['trabajo' => 'Cambio de caldera — funciona normal', 'horas' => 1.5, 'activo' => true]);
+
+        $this->guardar($orden, [
+            'trabajos' => [$llave->id, $caldera->id],
+            'trabajos_extra' => "cambio de estanque\nse agrega espigón",
+            'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+            'trabajo_realizado_otro' => 'Cambio de llave de agua, cambio de caldera, cambio de estanque y se agrega espigón — funciona normal',
+        ])->assertSessionHasNoErrors();
+
+        $fresh = $orden->fresh()->load('trabajos');
+
+        // 1 h + 1,5 h = 2,5 h, pero el tope del taller son 2 h (el desarme se paga una vez):
+        // 2 × $4.000 = $8.000. NO son $10.000.
+        $this->assertSame(8000, (int) $fresh->mano_obra);
+        $this->assertCount(2, $fresh->trabajos);
+        // Lo escrito a mano se guarda APARTE del texto final, para que jefatura pueda listarlo.
+        $this->assertSame("cambio de estanque\nse agrega espigón", $fresh->trabajos_extra);
+        $this->assertSame(['cambio de estanque', 'se agrega espigón'], $fresh->trabajosExtraLista());
     }
 
     // ─────────────────────────────────────────── la pantalla
@@ -206,7 +292,12 @@ class TrabajoManualTest extends TestCase
         // tener que elegir nada— y la lista, que sigue ahí para rellenar.
         // Las dos formas conviviendo las cubre TrabajoRealizadoDosFormasTest.
         $this->assertStringNotContainsString('Otro — lo escribo yo', $html);
-        $this->assertStringContainsString('id="trabajo_realizado_lista"', $html);
+        // Desde el 28-08 la lista son CHIPS de selección múltiple (`trabajos[]`) y no un
+        // `<select id="trabajo_realizado_lista">`: un parte puede llevar varios trabajos y un
+        // select solo deja elegir uno. El campo de texto sigue estando y sigue siendo lo que
+        // lee el cliente, que es lo que este test vigila.
+        $this->assertStringContainsString('name="trabajos[]"', $html);
+        $this->assertStringNotContainsString('id="trabajo_realizado_lista"', $html);
 
         // El subrayado rojo que pidió el dueño lo dibuja el navegador: spellcheck + idioma.
         $this->assertMatchesRegularExpression(

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -187,12 +188,16 @@ class OrdenServicio extends Model implements AuditableContract
 
     /**
      * Largo maximo del trabajo realizado. NO es un numero elegido: la cotizacion guarda su
-     * propio snapshot del texto en `orden_servicio_cotizaciones.trabajo_realizado`, que es
-     * VARCHAR(191). En SQLite (local y tests) un texto mas largo entra igual; en MySQL revienta
-     * con «Data too long» al ENVIAR la cotizacion, o sea lejos de donde se escribio. Se corta
-     * donde se escribe. Candado: TrabajoManualTest.
+     * propio snapshot del texto en `orden_servicio_cotizaciones.trabajo_realizado`, que desde la
+     * migracion 2026_08_28_100100 es VARCHAR(500) — este tope es ESE largo. En SQLite (local y
+     * tests) un texto mas largo entra igual; en MySQL revienta con «Data too long» al ENVIAR la
+     * cotizacion, o sea lejos de donde se escribio. Se corta donde se escribe.
+     *
+     * Subio de 191 a 500 el 28-08 porque el texto ya no es UNA respuesta de la lista: se arma
+     * con todos los trabajos marcados, y con cuatro o cinco se pasaba de 191. Candado:
+     * TrabajoManualTest y TrabajosMarcadosTest.
      */
-    public const TRABAJO_MAX = 191;
+    public const TRABAJO_MAX = 500;
 
     // Los precios del catálogo (repuestos, valor hora) se guardan CON IVA, así
     // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
@@ -246,6 +251,7 @@ class OrdenServicio extends Model implements AuditableContract
         'fecha_entrega',
         // Etapa de taller (tecnico).
         'trabajo_realizado',
+        'trabajos_extra',
         'mano_obra',
         'descuento_pct',
         'descuento_motivo',
@@ -461,6 +467,46 @@ class OrdenServicio extends Model implements AuditableContract
      *
      * @return HasMany<OrdenServicioRepuesto>
      */
+    /**
+     * Los trabajos del catálogo que el técnico MARCÓ en el parte. Es la fuente de la mano de
+     * obra desde el 28-08-2026 (antes colgaba de que el TEXTO coincidiera palabra por palabra
+     * con una fila del catálogo, así que una reparación mixta no podía coincidir con nada y
+     * ajustarle una coma a una respuesta borraba el dinero).
+     *
+     * El pivote lleva `horas` CONGELADAS al guardar el parte y la mano de obra se calcula con
+     * esas, no releyendo el catálogo: jefatura calibra las horas con el tiempo, y una orden ya
+     * cotizada no puede cambiar de precio sola después — el snapshot de la cotización le
+     * prometió un monto al cliente. Mismo criterio que `orden_servicio_repuestos.precio_unitario`.
+     */
+    public function trabajos(): BelongsToMany
+    {
+        return $this->belongsToMany(TiempoReparacion::class, 'orden_servicio_trabajos',
+            'orden_servicio_id', 'tiempo_reparacion_id')
+            ->withPivot('horas')
+            ->withTimestamps()
+            ->orderBy('tiempos_reparacion.grupo')
+            ->orderBy('tiempos_reparacion.trabajo');
+    }
+
+    /**
+     * Las horas de este parte, ya con el tope aplicado. Sale del PIVOTE (horas congeladas) y no
+     * del catálogo vigente, por lo dicho arriba.
+     */
+    public function horasACobrar(): float
+    {
+        return TiempoReparacion::horasACobrar($this->trabajos->pluck('pivot.horas'));
+    }
+
+    /** Lo escrito a mano, una línea por trabajo (el técnico las separa con salto de línea o coma). */
+    public function trabajosExtraLista(): array
+    {
+        return collect(preg_split('/[\r\n]+/u', (string) $this->trabajos_extra))
+            ->map(fn ($l) => trim($l))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     public function repuestos(): HasMany
     {
         return $this->hasMany(OrdenServicioRepuesto::class, 'orden_servicio_id');

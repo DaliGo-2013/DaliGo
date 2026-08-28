@@ -435,23 +435,120 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura, s
  * (agregar/quitar filas) y calcula en vivo el costo total: suma de cada
  * repuesto (cantidad x precio) + mano de obra. Montos en pesos chilenos.
  */
-Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioHora, descuentoPct }) => ({
+Alpine.data('reparacionForm', ({
+    repuestos, endpointRepuestos, precioHora, descuentoPct,
+    catalogoTrabajos, marcados, trabajosExtra, remates, topeHoras, textoTrabajo,
+}) => ({
     repuestos: Array.isArray(repuestos) ? repuestos : [],
-    manoObra: manoObra || 0,
     // Descuento (%) sobre el total; 0 = sin descuento.
     descuentoPct: Number(descuentoPct) || 0,
 
-    // Mano de obra por horas: valor hora del catalogo (SKU config, con IVA) x
-    // las horas trabajadas. Si hay valor hora, `horas` calcula `manoObra`; el
-    // campo de mano de obra sigue editable (override manual). `horas` arranca
-    // en 0 aunque la orden ya tenga mano de obra guardada (esta se conserva
-    // hasta que el tecnico toque las horas).
+    // Valor hora de mano de obra: precio con IVA del SKU de servicio tecnico. 0 si ese codigo
+    // no tiene precio en la lista oficial, y ahi la mano de obra queda en 0 (el envio se
+    // bloquea por eso, ver faltaManoObra en el controlador).
     precioHora: Number(precioHora) || 0,
-    horas: 0,
 
-    calcularManoObra() {
-        if (this.precioHora > 0) {
-            this.manoObra = Math.round((Number(this.horas) || 0) * this.precioHora);
+    // ─── LOS TRABAJOS MARCADOS (28-08-2026) ───
+    // Antes aca vivian `manoObra` (un dato sembrado y editable) y `calcularManoObra()`, restos
+    // del override manual que murio el 07-08 cuando la mano de obra paso a ser fija por
+    // catalogo. Ahora la mano de obra es un GETTER derivado de los trabajos marcados: no se
+    // puede sembrar un monto que despues el guardado recalcula, porque la pantalla prometeria
+    // un total que su propio Guardar va a cambiar (bitacora 2026-08-07).
+    catalogo: Array.isArray(catalogoTrabajos) ? catalogoTrabajos : [],
+    marcados: Array.isArray(marcados) ? marcados.map(Number) : [],
+    trabajosExtra: trabajosExtra || '',
+    remates: Array.isArray(remates) ? remates : [],
+    topeHoras: Number(topeHoras) || 0,
+
+    // El texto que lee el cliente. Se arma solo con lo marcado MIENTRAS el tecnico no lo haya
+    // editado a mano; en cuanto lo toca, se respeta y aparece el enlace para rehacerlo. Pisar
+    // lo que alguien escribio es peor que dejar el texto desalineado de los chips.
+    texto: textoTrabajo || '',
+    textoTocado: false,
+
+    // El remate elegido. Arranca del que ya trae el texto guardado si lo reconoce, y si no del
+    // mas comun del catalogo (el primero, que viene ordenado por uso).
+    remate: '',
+
+    initTrabajos() {
+        const hallado = this.remates.find((r) => this.texto.endsWith(r));
+        this.remate = hallado || this.remates[0] || '';
+        // Un texto que ya existe cuenta como escrito a mano: no se re-arma solo al abrir la
+        // pantalla, o corregir una orden vieja le borraria la redaccion al tecnico.
+        this.textoTocado = this.texto.trim() !== '';
+    },
+
+    filaTrabajo(id) {
+        return this.catalogo.find((t) => Number(t.id) === Number(id));
+    },
+
+    get horasMarcadas() {
+        return this.marcados.map((id) => Number(this.filaTrabajo(id)?.horas) || 0);
+    },
+
+    get horasSumadas() {
+        return this.horasMarcadas.reduce((s, h) => s + h, 0);
+    },
+
+    // Las horas a cobrar: la suma, con el tope. Espejo EXACTO de
+    // TiempoReparacion::horasACobrar() — min(suma, max(tope, el mayor)) — porque el servidor
+    // recalcula al guardar y dos formulas distintas dejarian la pantalla prometiendo un monto
+    // que el guardado cambia. El `max` interno es el piso que evita que el tope cobre menos que
+    // un trabajo individual mas largo que el tope.
+    get horasACobrar() {
+        const h = this.horasMarcadas;
+        if (h.length === 0) return 0;
+
+        return Math.min(this.horasSumadas, Math.max(this.topeHoras, Math.max(...h)));
+    },
+
+    get topeRecorta() {
+        return this.horasSumadas > this.horasACobrar;
+    },
+
+    get manoObra() {
+        return Math.round(this.horasACobrar * this.precioHora);
+    },
+
+    get extraLista() {
+        return this.trabajosExtra.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+    },
+
+    fmtHoras(h) {
+        return String(Number(h) || 0).replace('.', ',');
+    },
+
+    // La frase que lee el cliente: los trabajos marcados en minuscula (menos el primero),
+    // separados por coma y con «y» antes del ultimo, mas lo escrito a mano, mas el remate.
+    // Es la forma en que el propio tecnico las escribe a mano hoy.
+    armarTexto() {
+        const partes = this.marcados
+            .map((id) => this.filaTrabajo(id)?.corto)
+            .filter(Boolean)
+            .concat(this.extraLista);
+
+        if (partes.length === 0) {
+            this.texto = '';
+            this.textoTocado = false;
+            return;
+        }
+
+        const frase = partes.length === 1
+            ? partes[0]
+            : partes.slice(0, -1).join(', ') + ' y ' + partes[partes.length - 1];
+
+        // Solo la primera letra en mayuscula: los trabajos del catalogo vienen capitalizados
+        // («Cambio de caldera») y encadenados quedarian «Cambio de llave, Cambio de caldera».
+        const normal = frase.charAt(0).toUpperCase() + frase.slice(1).replace(/, ([A-ZÁÉÍÓÚÑ])/g, (m, c) => ', ' + c.toLowerCase()).replace(/ y ([A-ZÁÉÍÓÚÑ])/g, (m, c) => ' y ' + c.toLowerCase());
+
+        this.texto = this.remate ? normal + ' — ' + this.remate : normal;
+        this.textoTocado = false;
+    },
+
+    // Al marcar o desmarcar, el texto se re-arma salvo que el tecnico lo haya editado.
+    trabajosCambiaron() {
+        if (! this.textoTocado) {
+            this.armarTexto();
         }
     },
 
