@@ -101,9 +101,9 @@ class LoteServicio extends Model implements AuditableContract
 
     /**
      * Aviso interno de ingreso (M15) para un LOTE (varias máquinas de una vez):
-     * UN solo aviso resumido, no uno por máquina. Mismos roles que el ingreso por
-     * unidad (OrdenServicio::ROLES_AVISO_INGRESO). Secundario: el emisor lo
-     * envuelve en try/catch.
+     * UN solo aviso resumido, no uno por máquina. Mismos destinatarios que el
+     * ingreso por unidad (el evento es el mismo: 'taller.ingresado').
+     * Secundario: el emisor lo envuelve en try/catch.
      */
     public function notificarIngresoInterno(): void
     {
@@ -121,7 +121,7 @@ class LoteServicio extends Model implements AuditableContract
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
-        User::role(OrdenServicio::ROLES_AVISO_INGRESO)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios('taller.ingresado')
             ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
     }
 }

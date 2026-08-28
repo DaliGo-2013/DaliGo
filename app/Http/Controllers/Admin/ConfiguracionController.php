@@ -90,13 +90,23 @@ class ConfiguracionController extends Controller
      */
     public function index(): View
     {
-        $grupos = Configuracion::orderBy('grupo')->orderBy('clave')->get()->groupBy('grupo');
+        // Las claves de audiencias (notif_roles_*) NO se listan acá: su único
+        // editor es la matriz «Avisos y destinatarios» (menos JSON a la vista).
+        $grupos = Configuracion::orderBy('grupo')->orderBy('clave')
+            ->where('grupo', '!=', \App\Support\AudienciasNotificacion::GRUPO)
+            ->get()->groupBy('grupo');
 
         return view('admin.configuracion.index', ['grupos' => $grupos]);
     }
 
-    public function edit(Configuracion $configuracion): View
+    public function edit(Configuracion $configuracion): View|RedirectResponse
     {
+        // Sin puerta trasera por URL: una clave de audiencias se edita en su
+        // matriz, nunca como JSON crudo.
+        if ($configuracion->grupo === \App\Support\AudienciasNotificacion::GRUPO) {
+            return redirect()->route('admin.configuracion.avisos.edit');
+        }
+
         return view('admin.configuracion.edit', [
             'configuracion' => $configuracion,
             'esLista' => in_array($configuracion->clave, self::LISTAS_SIMPLES, true),

@@ -169,6 +169,13 @@ Route::middleware('auth')
             ->middleware('permission:manage sucursales')
             ->except(['show']);
 
+        // Avisos y destinatarios: la matriz evento × rol. Literal ANTES del
+        // resource o `configuracion/avisos` lo captura `{configuracion}`.
+        Route::get('configuracion/avisos', [\App\Http\Controllers\Admin\AvisosNotificacionController::class, 'edit'])
+            ->middleware('permission:manage settings')->name('configuracion.avisos.edit');
+        Route::put('configuracion/avisos', [\App\Http\Controllers\Admin\AvisosNotificacionController::class, 'update'])
+            ->middleware('permission:manage settings')->name('configuracion.avisos.update');
+
         // Configuracion global: parametros tipados (solo ver y editar).
         Route::resource('configuracion', ConfiguracionController::class)
             ->only(['index', 'edit', 'update'])

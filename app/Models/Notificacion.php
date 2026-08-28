@@ -182,7 +182,8 @@ class Notificacion extends Model
      * El destino de la fila, SOLO si este usuario puede llegar (null si no).
      *
      * La bandeja enlazaba a ciegas con urlDestino(): las notificaciones de
-     * cotizacion se despachan a ROLES_AVISO (tecnico/jefe_ventas/vendedor/admin),
+     * cotizacion se despachan a su audiencia (AudienciasNotificacion; por
+     * default tecnico/jefe_ventas/vendedor/admin),
      * asi que un vendedor SIN 'ver todo servicio tecnico' que tocaba la de un
      * cliente de OTRA cartera caia en 403 (ServicioTecnicoController::show ->
      * OrdenServicio::esVisiblePara). Los permisos que se chequean aca son los
