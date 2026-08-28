@@ -25,11 +25,8 @@ use Illuminate\View\View;
  */
 class TrasladoServicioController extends Controller
 {
-    /** Roles que reciben el aviso de que vienen maquinas en camino. */
-    private const ROLES_AVISO_TALLER = ['tecnico', 'jefe_bodega', 'jefe_ventas', 'admin'];
-
-    /** Quien se entera de una DIFERENCIA: jefatura, ademas de las dos puntas. */
-    private const ROLES_AVISO_DIFERENCIA = ['admin', 'jefe_ventas', 'jefe_bodega', 'jefe_sucursal', 'tecnico'];
+    // Quién recibe cada aviso de traslado vive en AudienciasNotificacion
+    // (editable por el dueño en Configuración → Avisos).
 
     public function index(Request $request): View
     {
@@ -243,24 +240,24 @@ class TrasladoServicioController extends Controller
         ];
     }
 
-    private function despachar(string $evento, TrasladoServicio $traslado, array $roles, array $extra = []): void
+    private function despachar(string $evento, TrasladoServicio $traslado, array $extra = []): void
     {
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
         $datos = array_merge($this->datos($traslado), $extra);
 
-        User::role($roles)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios($evento)
             ->each(fn (User $u) => $dispatcher->despachar($evento, $traslado, $u, $datos));
     }
 
     private function avisarDespacho(TrasladoServicio $traslado): void
     {
-        $this->despachar('traslado.despachado', $traslado, self::ROLES_AVISO_TALLER);
+        $this->despachar('traslado.despachado', $traslado);
     }
 
     private function avisarRecepcion(TrasladoServicio $traslado): void
     {
         // De vuelta a quien despacho: cierra el circulo (salio, llego).
-        $this->despachar('traslado.recibido', $traslado, ['jefe_sucursal', 'admin', 'jefe_ventas']);
+        $this->despachar('traslado.recibido', $traslado);
     }
 
     private function avisarDiferencias(TrasladoServicio $traslado): void
@@ -269,7 +266,7 @@ class TrasladoServicioController extends Controller
             ->map(fn (OrdenServicio $o) => $o->folio.' ('.($o->cliente_nombre ?: 'sin cliente').')')
             ->implode(', ');
 
-        $this->despachar('traslado.diferencias', $traslado, self::ROLES_AVISO_DIFERENCIA, [
+        $this->despachar('traslado.diferencias', $traslado, [
             'faltantes_detalle' => $detalle !== '' ? $detalle : '—',
         ]);
     }

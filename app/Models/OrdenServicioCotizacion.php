@@ -50,20 +50,9 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
         'reemplazada' => 'Reemplazada por una más reciente',
     ];
 
-    /**
-     * Roles internos que se enteran de cada envío/respuesta de cotización
-     * (decisión del dueño: técnico, jefatura de ventas y vendedores ven la ruta
-     * completa de la máquina; admin siempre).
-     */
-    public const ROLES_AVISO = ['tecnico', 'jefe_ventas', 'vendedor', 'admin'];
-
-    /**
-     * Avisos de PLATA (el pago de una cotización): sin el técnico. Desde el
-     * 07-08 el taller no coordina cobros —repara con la sola aceptación del
-     * cliente y avisa cuando el equipo está listo—, así que el aviso de
-     * «reparación autorizada / pago registrado» era ruido en su campanita.
-     */
-    public const ROLES_AVISO_PAGO = ['jefe_ventas', 'vendedor', 'admin'];
+    // Quién recibe cada aviso vive en AudienciasNotificacion (editable por el
+    // dueño en Configuración → Avisos): ahí quedaron los porqués de cada lista,
+    // incluido por qué el aviso de plata ('cotizacion.autorizada') va sin técnico.
 
     protected $fillable = [
         'orden_servicio_id',
@@ -206,13 +195,13 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
     }
 
     /**
-     * Aviso interno por M15 (campanita + correo según preferencias) a todos los
-     * roles de ROLES_AVISO. El origen morph es la ORDEN (urlDestino aterriza en
-     * su detalle). Los {placeholders} calzan con las plantillas del seeder.
+     * Aviso interno por M15 (campanita + correo según preferencias) a la
+     * audiencia del evento (AudienciasNotificacion — el registry ya distingue
+     * el aviso de plata del resto, así que acá no se eligen roles). El origen
+     * morph es la ORDEN (urlDestino aterriza en su detalle). Los
+     * {placeholders} calzan con las plantillas del seeder.
      *
      * @param  array<string, mixed>  $extra  placeholders adicionales (ej. respuesta, enviada_por)
-     * @param  list<string>|null  $roles  a quién avisar (por defecto ROLES_AVISO;
-     *   los avisos de plata usan ROLES_AVISO_PAGO, que excluye al técnico)
      * @param  bool  $porCartera  si true, cada destinatario pasa por `esVisiblePara`
      *   —el MISMO filtro de la ficha, así el aviso no llega a quien no puede
      *   abrirlo—: el vendedor del cliente si lo tiene, sala de ventas si no. El
@@ -220,7 +209,7 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
      *   para el taller un ACEPTO es su luz verde para reparar, y
      *   `AvisoCarteraSalaDeVentasTest` lo fija por si ese permiso cambia.
      */
-    public function avisarInternos(string $evento, array $extra = [], ?array $roles = null, bool $porCartera = false): void
+    public function avisarInternos(string $evento, array $extra = [], bool $porCartera = false): void
     {
         $orden = $this->orden;
         // Qué máquina es (tipo + modelo si lo hay): identifica el equipo cotizado.
@@ -236,7 +225,7 @@ class OrdenServicioCotizacion extends Model implements AuditableContract
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
-        User::role($roles ?? self::ROLES_AVISO)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios($evento)
             ->filter(fn (User $u) => ! $porCartera || $orden->esVisiblePara($u))
             ->each(fn (User $u) => $dispatcher->despachar($evento, $orden, $u, $datos));
     }

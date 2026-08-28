@@ -44,7 +44,9 @@ class RoleMatrixSeedTest extends TestCase
             'vendedor' => ['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes'],
             // UNIÓN del merge 04-08: devoluciones + simulador (M13/Marcos) y
             // la llave 1 de la hoja de ruta (P-DSP-08).
-            'jefe_ventas' => ['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes'],
+            // SIN 'view users' (dueño, 27-08-2026): era lo único que le hacía
+            // aparecer ADMINISTRACIÓN en el menú. Ver PermisosSoloAdminTest.
+            'jefe_ventas' => ['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su
@@ -131,7 +133,7 @@ class RoleMatrixSeedTest extends TestCase
         // El permiso agregado por la UI sobrevive...
         $this->assertTrue($role->hasPermissionTo('manage sucursales'));
         // ...y el piso de la matriz sigue intacto.
-        $this->assertTrue($role->hasPermissionTo('view users'));
+        $this->assertTrue($role->hasPermissionTo('aplicar descuento servicio tecnico'));
 
         // No se duplicaron roles.
         $this->assertSame(12, Role::count());

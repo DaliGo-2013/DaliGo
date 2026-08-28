@@ -674,12 +674,8 @@ class OrdenServicio extends Model implements AuditableContract
         return $this->belongsTo(Sucursal::class);
     }
 
-    /**
-     * Roles que reciben aviso cuando ENTRA un equipo al taller por QR (ingreso
-     * del cliente): el técnico que repara + ventas (para el paso a paso). El
-     * jefe de bodega NO va aquí: ya ve la cola "por confirmar" en la barra.
-     */
-    public const ROLES_AVISO_INGRESO = ['tecnico', 'jefe_ventas', 'vendedor', 'admin'];
+    // Quién recibe cada aviso vive en AudienciasNotificacion (editable por el
+    // dueño en Configuración → Avisos): ahí quedaron los porqués de cada lista.
 
     /**
      * Avisa por M15 (campanita + correo según preferencias) a ventas y al técnico
@@ -711,20 +707,9 @@ class OrdenServicio extends Model implements AuditableContract
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO_INGRESO)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios('taller.ingresado')
             ->each(fn (User $u) => $dispatcher->despachar('taller.ingresado', $this, $u, $datos));
     }
-
-    /**
-     * Roles candidatos a los avisos de CIERRE de una orden (reparado / sin
-     * solucion): es VENTAS quien llama al cliente (y quien despues anota la fecha
-     * de aviso).
-     *
-     * El tecnico NO va aca: es quien marca el estado, y avisarle de su propia
-     * accion es ruido (mismo criterio que el resto del modulo). Quien de estos
-     * roles recibe cada orden lo decide `avisarACartera()`, no esta lista.
-     */
-    public const ROLES_AVISO_REPARADO = ['jefe_ventas', 'vendedor', 'admin'];
 
     /**
      * Avisa a VENTAS por M15 (campanita + correo segun preferencias) que la orden
@@ -773,7 +758,7 @@ class OrdenServicio extends Model implements AuditableContract
 
         $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
 
-        User::role(self::ROLES_AVISO_REPARADO)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios($evento)
             ->reject(fn (User $u) => $actor && $u->id === $actor->id)
             ->filter(fn (User $u) => $this->esVisiblePara($u))
             ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));

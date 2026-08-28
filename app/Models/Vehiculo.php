@@ -28,6 +28,19 @@ class Vehiculo extends Model implements AuditableContract
     /** Días de anticipación del aviso de vencimiento (decisión del dueño 04-08). */
     public const DIAS_AVISO = 30;
 
+    /**
+     * La franja «Por vencer» vigente: editable en Configuración
+     * (`vehiculos_dias_aviso`, LOG-2); la constante es el histórico y el
+     * fallback con BD virgen (regla de oro). La consumen el semáforo
+     * documental (badge/listado/ficha/Excel), los hitos del aviso diario y
+     * los rótulos que nombran la cifra. El clamp (≥1) protege al consumidor
+     * si el valor entró por fuera de la UI, que valida rango.
+     */
+    public static function diasAviso(): int
+    {
+        return max(1, (int) Configuracion::get('vehiculos_dias_aviso', self::DIAS_AVISO));
+    }
+
     public const ESTADO_ACTIVO = 'activo';
     public const ESTADO_VENDIDO = 'vendido';
     public const ESTADO_BAJA = 'baja';
@@ -358,7 +371,7 @@ class Vehiculo extends Model implements AuditableContract
                 $dias = (int) $hoy->diffInDays(Carbon::parse($vence->toDateString()), false);
                 $estado = match (true) {
                     $dias < 0 => self::DOC_VENCIDO,
-                    $dias <= self::DIAS_AVISO => self::DOC_POR_VENCER,
+                    $dias <= self::diasAviso() => self::DOC_POR_VENCER,
                     default => self::DOC_AL_DIA,
                 };
             }

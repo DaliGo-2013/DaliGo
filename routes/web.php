@@ -2,13 +2,17 @@
 
 use App\Http\Controllers\Admin\AgendaCierreController;
 use App\Http\Controllers\Admin\AgendaTrabajoController;
-use App\Http\Controllers\Admin\ConductorController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BodegaController;
+use App\Http\Controllers\Admin\BodegaTrasladoController;
+use App\Http\Controllers\Admin\CargaRealController;
 use App\Http\Controllers\Admin\ClienteController;
+use App\Http\Controllers\Admin\ConductorController;
 use App\Http\Controllers\Admin\ConfiguracionController;
 use App\Http\Controllers\Admin\DespachoController;
 use App\Http\Controllers\Admin\DevolucionController;
+use App\Http\Controllers\Admin\DocumentoTributarioController;
+use App\Http\Controllers\Admin\DteController;
 use App\Http\Controllers\Admin\HojaRutaController;
 use App\Http\Controllers\Admin\InstalacionController;
 use App\Http\Controllers\Admin\ListaPrecioController;
@@ -24,18 +28,19 @@ use App\Http\Controllers\Admin\RecetaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServicioTecnicoController;
 use App\Http\Controllers\Admin\ServicioTerrenoController;
+use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\SucursalController;
+use App\Http\Controllers\Admin\TiempoReparacionController;
 use App\Http\Controllers\Admin\TipoBotellonController;
 use App\Http\Controllers\Admin\TrasladoServicioController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\CargaRealController;
-use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\Admin\VehiculoDocumentoController;
 use App\Http\Controllers\Admin\VehiculoDocumentoTipoController;
 use App\Http\Controllers\AprobacionController;
 use App\Http\Controllers\DashboardColoresController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Entregas\EntregaConductorController;
 use App\Http\Controllers\MensajeController;
 use App\Http\Controllers\NotificacionPreferenciaController;
 use App\Http\Controllers\NotificacionUsuarioController;
@@ -47,7 +52,6 @@ use App\Http\Controllers\Publico\DevolucionPublicoController;
 use App\Http\Controllers\Publico\IngresoTallerPublicoController;
 use App\Http\Controllers\Publico\PlanCargaPublicoController;
 use App\Http\Controllers\Publico\VisitaConfirmacionController;
-use App\Http\Controllers\Publico\VisitaIndustrialPublicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -165,6 +169,13 @@ Route::middleware('auth')
             ->middleware('permission:manage sucursales')
             ->except(['show']);
 
+        // Avisos y destinatarios: la matriz evento × rol. Literal ANTES del
+        // resource o `configuracion/avisos` lo captura `{configuracion}`.
+        Route::get('configuracion/avisos', [\App\Http\Controllers\Admin\AvisosNotificacionController::class, 'edit'])
+            ->middleware('permission:manage settings')->name('configuracion.avisos.edit');
+        Route::put('configuracion/avisos', [\App\Http\Controllers\Admin\AvisosNotificacionController::class, 'update'])
+            ->middleware('permission:manage settings')->name('configuracion.avisos.update');
+
         // Configuracion global: parametros tipados (solo ver y editar).
         Route::resource('configuracion', ConfiguracionController::class)
             ->only(['index', 'edit', 'update'])
@@ -219,11 +230,11 @@ Route::middleware('auth')
         // parametricas llevan whereNumber — doble candado idiomatico
         // (vehiculos/excel).
         Route::middleware('permission:manage sucursales')->group(function () {
-            Route::get('bodegas/traslados/{traslado}', [\App\Http\Controllers\Admin\BodegaTrasladoController::class, 'show'])
+            Route::get('bodegas/traslados/{traslado}', [BodegaTrasladoController::class, 'show'])
                 ->whereNumber('traslado')->name('bodegas.traslados.show');
-            Route::get('bodegas/traslados/{traslado}/excel', [\App\Http\Controllers\Admin\BodegaTrasladoController::class, 'excel'])
+            Route::get('bodegas/traslados/{traslado}/excel', [BodegaTrasladoController::class, 'excel'])
                 ->whereNumber('traslado')->name('bodegas.traslados.excel');
-            Route::post('bodegas/traslados/{traslado}/anular', [\App\Http\Controllers\Admin\BodegaTrasladoController::class, 'anular'])
+            Route::post('bodegas/traslados/{traslado}/anular', [BodegaTrasladoController::class, 'anular'])
                 ->whereNumber('traslado')->name('bodegas.traslados.anular');
             Route::get('bodegas/{bodega}/baja', [BodegaController::class, 'baja'])
                 ->whereNumber('bodega')->name('bodegas.baja');
@@ -394,18 +405,18 @@ Route::middleware('auth')
         // lo emitido y de donde se puede emitir; `estado` es el checklist de lo que
         // falta, que es la informacion util mientras no se emite.
         Route::middleware('permission:emitir documentos tributarios')->group(function () {
-            Route::get('documentos-tributarios', [\App\Http\Controllers\Admin\DteController::class, 'index'])
+            Route::get('documentos-tributarios', [DteController::class, 'index'])
                 ->name('dte.index');
-            Route::get('documentos-tributarios/estado', [\App\Http\Controllers\Admin\DteController::class, 'estado'])
+            Route::get('documentos-tributarios/estado', [DteController::class, 'estado'])
                 ->name('dte.estado');
         });
 
         Route::middleware('permission:gestionar tiempos reparacion')->group(function () {
             // ANTES del resource: `tiempos-reparacion/tope` chocaría con
             // `tiempos-reparacion/{tiempo}` si el resource se registrara primero.
-            Route::put('tiempos-reparacion/tope', [\App\Http\Controllers\Admin\TiempoReparacionController::class, 'actualizarTope'])
+            Route::put('tiempos-reparacion/tope', [TiempoReparacionController::class, 'actualizarTope'])
                 ->name('tiempos-reparacion.tope');
-            Route::resource('tiempos-reparacion', \App\Http\Controllers\Admin\TiempoReparacionController::class)
+            Route::resource('tiempos-reparacion', TiempoReparacionController::class)
                 ->parameters(['tiempos-reparacion' => 'tiempo'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
         });
@@ -476,7 +487,7 @@ Route::middleware('auth')
             // arma el documento y lo muestra, pero el candado impide emitir. Gateada
             // por el permiso de emision aunque todavia no emita, para no tener que
             // acordarse de gatearla despues.
-            Route::get('servicio-tecnico/{orden}/documento', [\App\Http\Controllers\Admin\DocumentoTributarioController::class, 'show'])
+            Route::get('servicio-tecnico/{orden}/documento', [DocumentoTributarioController::class, 'show'])
                 ->middleware('permission:emitir documentos tributarios')
                 ->whereNumber('orden')->name('servicio-tecnico.documento');
 
@@ -523,14 +534,27 @@ Route::middleware('auth')
 
         // Conductores (choferes) — administrables desde la app. Vive en LOGÍSTICA
         // desde el 04-08 (pedido del dueño): quien administra la flota administra
-        // quién la maneja. El permiso es canAny y NO se cambió por 'manage
-        // vehiculos' a secas porque el catálogo alimenta el selector del ingreso
-        // por lote y el del traslado al taller: si el técnico lo perdiera, el
-        // conductor que retira máquinas en ruta dejaría de existir para él.
+        // quién la maneja. Por eso el permiso es 'manage vehiculos' Y NADA MÁS.
+        //
+        // ANTES ERA `manage servicio tecnico|manage vehiculos`, y el comentario que estaba
+        // acá justificaba el canAny así: «el catálogo alimenta el selector del ingreso por
+        // lote y el del traslado al taller: si el técnico lo perdiera, el conductor que
+        // retira máquinas en ruta dejaría de existir para él». **Eso era falso.** Los dos
+        // selectores leen `Conductor::activos()` desde SUS PROPIOS controladores
+        // (`LoteServicioController`, `TrasladoServicioController`), cada uno con su permiso
+        // —'crear lote servicio' y 'despachar|recibir traslado servicio'—, así que nunca
+        // pasaron por este gate. El único efecto real del canAny era que el técnico veía
+        // «Conductores» bajo LOGÍSTICA y podía crear y editar choferes.
+        //
+        // Lo reportó el dueño el 26-08 mirando el menú de un técnico en su teléfono: *«no
+        // entiendo por qué ve conductores, no recuerdo habilitar ese permiso»*. Y no lo
+        // habilitó: se lo daba `manage servicio tecnico`, que es el permiso central del
+        // taller. Un canAny con un permiso de OTRO módulo reparte accesos que nadie pidió.
+        //
         // El gate de la RUTA y el del ítem del menú son el MISMO (D-014): si acá
         // se agrega o se quita un permiso, hay que espejarlo en MenuPrincipal, o
         // el menú ofrece una pantalla que devuelve 403.
-        Route::middleware('permission:manage servicio tecnico|manage vehiculos')->group(function () {
+        Route::middleware('permission:manage vehiculos')->group(function () {
             Route::resource('conductores', ConductorController::class)
                 ->parameters(['conductores' => 'conductor'])
                 ->only(['index', 'create', 'store', 'edit', 'update']);
@@ -827,12 +851,12 @@ Route::middleware(['auth', 'permission:confirmar entrega'])
     ->prefix('entregas')
     ->name('entregas.')
     ->group(function () {
-        Route::get('', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'index'])->name('index');
-        Route::post('{despacho}/confirmar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'confirmar'])
+        Route::get('', [EntregaConductorController::class, 'index'])->name('index');
+        Route::post('{despacho}/confirmar', [EntregaConductorController::class, 'confirmar'])
             ->whereNumber('despacho')->name('confirmar');
         // Rechazo en puerta (P-DSP-09, R15): segundo destino de la cola
         // offline, mismo permiso y mismo scoping por hoja que confirmar.
-        Route::post('{despacho}/rechazar', [\App\Http\Controllers\Entregas\EntregaConductorController::class, 'rechazar'])
+        Route::post('{despacho}/rechazar', [EntregaConductorController::class, 'rechazar'])
             ->whereNumber('despacho')->name('rechazar');
     });
 
@@ -871,22 +895,24 @@ Route::middleware('throttle:6,1')->group(function () {
     Route::get('ingreso-taller/lote/listo/{lote}', [IngresoTallerPublicoController::class, 'graciasLote'])
         ->middleware('signed')->name('ingreso-taller.lote.gracias');
 
-    // Solicitud de visita/revision INDUSTRIAL (el tecnico va donde el cliente):
-    // entra a la Agenda de terreno como 'solicitado' y el staff la coordina.
-    Route::get('visita-industrial', [VisitaIndustrialPublicoController::class, 'create'])
-        ->middleware('signed')->name('visita-industrial.create');
-    Route::post('visita-industrial', [VisitaIndustrialPublicoController::class, 'store'])
-        ->name('visita-industrial.store');
-    Route::get('visita-industrial/listo/{trabajo}', [VisitaIndustrialPublicoController::class, 'gracias'])
-        ->middleware('signed')->name('visita-industrial.gracias');
-
-    // ¿Esta fecha esta libre? Alimenta el cartel en vivo del campo "cuando te acomoda"
-    // (pedido del dueno 13-08). Va con throttle PROPIO y mas alto que el 6/min del grupo:
-    // el cliente tantea varias fechas seguidas y con 6 se queda sin respuesta a la tercera.
-    // Solo lectura y sin datos de nadie: contesta booleanos y fechas (ver el controlador).
-    Route::get('visita-industrial/disponibilidad', [VisitaIndustrialPublicoController::class, 'disponibilidad'])
-        ->withoutMiddleware('throttle:6,1')->middleware('throttle:40,1')
-        ->name('visita-industrial.disponibilidad');
+    // LA SOLICITUD PUBLICA DE VISITA/REVISION INDUSTRIAL SE RETIRO EL 25-08-2026.
+    //
+    // Decision del gerente: «que la coordinacion de visita/revision industrial la saques de la
+    // vista de ingreso; estos los haran ahora los vendedores y seran autorizados por el jefe
+    // de ventas». Eran cuatro rutas: el formulario, su POST, el «gracias» y el endpoint del
+    // cartel de disponibilidad en vivo.
+    //
+    // SE RETIRARON Y NO SOLO SE DESENLAZARON: un link firmado guardado (el QR pegado en una
+    // maquina, un mail viejo) habria seguido creando visitas sin pasar por el vendedor ni por
+    // la autorizacion del jefe — o sea saltandose la regla nueva. Ahora ese link cae en la
+    // pagina de error con marca DaliGo.
+    //
+    // Lo que NO se toco, porque el gerente lo pidio expreso: el aviso al cliente. El correo de
+    // la cita (agendada/movida/anulada) y la confirmacion de mas abajo siguen intactos —
+    // viven en `AgendaTrabajo::avisarAlCliente` y salen por los dos caminos internos.
+    //
+    // El camino interno: `admin/agenda-terreno/crear`, con permiso `agendar servicio terreno`
+    // (vendedor + jefe_ventas + admin).
 
     // Respuesta del cliente a una COTIZACION del taller (P-M12-02): link firmado
     // del correo. El POST tambien va firmado (autorizacion comercial: no espera

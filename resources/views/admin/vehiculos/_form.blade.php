@@ -164,7 +164,7 @@
         </div>
     </div>
     <p class="text-xs text-neutral-500">
-        Una fecha vacía no genera alerta. El aviso llega {{ \App\Models\Vehiculo::DIAS_AVISO }} días antes y el día que vence.
+        Una fecha vacía no genera alerta. El aviso llega {{ \App\Models\Vehiculo::diasAviso() }} días antes y el día que vence.
         Las fotos se guardan con el botón del final, junto con el resto de los cambios.
     </p>
 </x-seccion>

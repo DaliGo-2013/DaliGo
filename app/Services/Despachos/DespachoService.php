@@ -393,7 +393,7 @@ class DespachoService
                 'url' => route('admin.hojas-ruta.show', $hoja),
             ];
 
-            User::role(['jefe_despacho', 'jefe_logistica', 'admin'])->get()->unique('id')
+            \App\Support\AudienciasNotificacion::destinatarios('despacho.parada_rechazada')
                 ->each(fn (User $u) => $dispatcher->despachar('despacho.parada_rechazada', $hoja, $u, $datos));
         } catch (Throwable $e) {
             report($e);

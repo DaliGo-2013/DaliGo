@@ -206,17 +206,24 @@ class VehiculoAvisoVencimientoTest extends TestCase
         $this->assertSame(0, $this->avisos()->count());
     }
 
-    public function test_avisa_a_todos_los_que_pueden_ver_la_flota(): void
+    public function test_avisa_a_los_roles_de_la_audiencia_y_no_al_permiso_suelto(): void
     {
-        // El aviso no está cableado a un rol: sigue al PERMISO. Cuando exista el
-        // perfil de cobranzas, basta darle 'ver vehiculos' desde la UI de Roles.
-        $cobranzas = tap(User::factory()->create())->givePermissionTo('ver vehiculos');
+        // SE MUDÓ (28-08-2026, decisión del dueño con la matriz de avisos): el
+        // aviso ya no sigue al PERMISO sino a la AUDIENCIA por rol de
+        // AudienciasNotificacion ('vehiculo.documento_por_vencer', default
+        // jefe_logistica/conductor/admin — los roles que tenían el permiso).
+        // Un usuario con 'ver vehiculos' directo pero sin rol marcado DEJA de
+        // recibir: es el cambio semántico aceptado. Cobranzas, cuando exista,
+        // se marca en Configuración → Avisos (sin deploy, igual que antes).
+        $permisoSuelto = tap(User::factory()->create())->givePermissionTo('ver vehiculos');
+        $conductor = tap(User::factory()->create())->assignRole('conductor');
         Vehiculo::factory()->alDia()->create(['soap_vence' => now()->addDays(5)->toDateString()]);
 
         $this->artisan('vehiculos:avisar-vencimientos');
 
         $destinatarios = $this->avisos()->pluck('user_id')->all();
         $this->assertContains($this->jefe->id, $destinatarios);
-        $this->assertContains($cobranzas->id, $destinatarios);
+        $this->assertContains($conductor->id, $destinatarios);
+        $this->assertNotContains($permisoSuelto->id, $destinatarios);
     }
 }

@@ -104,8 +104,9 @@ class Moldes
 
     /**
      * Despacha los avisos acumulados por registrarCiclos() — llamar DESPUÉS
-     * del commit. Destinatarios: quienes gestionan producción; try/catch por
-     * destinatario (un correo malo no deshace una aprobación — patrón F1/SIC).
+     * del commit. Destinatarios: la audiencia de cada evento (editable en
+     * Configuración → Avisos); try/catch por destinatario (un correo malo no
+     * deshace una aprobación — patrón F1/SIC).
      */
     public function despachar(array $avisos): void
     {
@@ -114,7 +115,9 @@ class Moldes
         }
 
         try {
-            $destinatarios = User::permission('manage production')->get()->unique('id')->values();
+            // Por evento: 'molde.umbral_mantencion' y 'molde.correctiva_pendiente'
+            // pueden tener audiencias distintas desde la matriz.
+            $destinatariosPorEvento = [];
             $dispatcher = app(NotificacionDispatcher::class);
         } catch (\Throwable $e) {
             Log::warning('Avisos de molde no despachados (setup)', ['error' => $e->getMessage()]);
@@ -124,6 +127,8 @@ class Moldes
 
         foreach ($avisos as $aviso) {
             $molde = $aviso['molde'];
+            $destinatarios = $destinatariosPorEvento[$aviso['evento']]
+                ??= \App\Support\AudienciasNotificacion::destinatarios($aviso['evento']);
             $datos = [
                 'molde' => $molde->nombre,
                 'tipo_botellon' => $molde->tipoBotellon?->nombre ?? '—',

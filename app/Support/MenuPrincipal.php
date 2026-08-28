@@ -155,7 +155,13 @@ class MenuPrincipal
                 // calibra esta misma calculadora); su ruta va AQUÍ, en el
                 // `activo` del anfitrión (candado en MenuConsolidacionesTest).
                 'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*', 'admin.cargas-reales.*'], 'permiso' => 'simular carga'],
-                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
+                // Solo 'manage vehiculos' desde el 26-08-2026: llevaba además 'manage
+                // servicio tecnico' —el permiso central del taller— así que el TÉCNICO veía
+                // «Conductores» bajo LOGÍSTICA sin que nadie le hubiera dado nada de
+                // logística. Lo reportó el dueño mirando el menú de un técnico en su
+                // teléfono. El porqué completo, y por qué la razón que justificaba el canAny
+                // era falsa, en el comentario del gate en `routes/web.php`.
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage vehiculos'],
             ],
         ],
         // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
@@ -185,9 +191,17 @@ class MenuPrincipal
             'items' => [
                 // Consolidación C1 (PLAN-MENU-DENSIDAD): «Roles» dejó de ser
                 // ítem y vive como pestaña de Usuarios (admin/users/_tabs),
-                // GATEADA por `manage roles` — Usuarios lo ven los tres jefes
-                // y definir roles es solo del admin. Su ruta va AQUÍ, en el
-                // `activo` del anfitrión (candado en MenuConsolidacionesTest).
+                // GATEADA por `manage roles`, que es SOLO del admin. Su ruta va
+                // AQUÍ, en el `activo` del anfitrión (candado en
+                // MenuConsolidacionesTest).
+                //
+                // Y este módulo entero es la razón por la que el jefe de ventas dejó
+                // de llevar `view users` el 27-08-2026: era su único ítem elegible, o
+                // sea lo único que le hacía aparecer ADMINISTRACIÓN en el menú, y para
+                // el dueño esta es «la opción para cambiar y habilitar permisos». Hoy
+                // lo llevan jefe_bodega y jefe_sucursal (listado de solo lectura);
+                // repartir accesos no lo puede ningún rol salvo admin, y eso es
+                // estructural — ver App\Support\PermisosSoloAdmin.
                 'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*', 'admin.roles.*'], 'permiso' => 'view users'],
                 'sucursales' => ['label' => 'Sucursales', 'route' => 'admin.sucursales.index', 'activo' => ['admin.sucursales.*'], 'permiso' => 'manage sucursales'],
                 // Configuración NO va aquí: es de cuenta, no de negocio-por-módulo

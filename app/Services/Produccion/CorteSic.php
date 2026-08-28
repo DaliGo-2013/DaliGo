@@ -189,7 +189,7 @@ class CorteSic
         // es determinista. UTC a proposito (DST chileno).
         $slot = Carbon::now('UTC')->startOfHour();
 
-        $destinatarios = User::permission('manage production')->get()->unique('id')->values();
+        $destinatarios = \App\Support\AudienciasNotificacion::destinatarios('produccion.meta_en_riesgo');
 
         $filas = [];
 

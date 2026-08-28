@@ -1389,7 +1389,7 @@ class ServicioTecnicoController extends Controller
             'url' => route('admin.servicio-tecnico.show', $orden),
         ];
         $dispatcher = app(NotificacionDispatcher::class);
-        User::role(OrdenServicioCotizacion::ROLES_AVISO)->get()->unique('id')
+        \App\Support\AudienciasNotificacion::destinatarios('taller.listo_para_retiro')
             ->each(fn (User $u) => $dispatcher->despachar('taller.listo_para_retiro', $orden, $u, $datos));
 
         return $volver("Se le avisó a {$orden->cliente_email} que su equipo está listo para retirar (orden {$orden->folio}).");
@@ -1422,9 +1422,9 @@ class ServicioTecnicoController extends Controller
             $ok = false;
         }
 
-        // Salió el correo → campanita a los mismos roles que en 'cotizacion.enviada'
-        // (dueño 06-08: la ruta de la máquina debe verse también cuando es garantía
-        // y no hay cobro). Misma audiencia de "ruta completa": ROLES_AVISO.
+        // Salió el correo → campanita a la audiencia del evento (dueño 06-08:
+        // la ruta de la máquina debe verse también cuando es garantía y no hay
+        // cobro; misma gente de «ruta completa» que 'cotizacion.enviada').
         if ($ok) {
             $equipo = trim($orden->tipo_equipo_label.' '.($orden->modelo ?? ''));
             $datos = [
@@ -1435,7 +1435,7 @@ class ServicioTecnicoController extends Controller
                 'url' => route('admin.servicio-tecnico.show', $orden),
             ];
             $dispatcher = app(NotificacionDispatcher::class);
-            User::role(OrdenServicioCotizacion::ROLES_AVISO)->get()->unique('id')
+            \App\Support\AudienciasNotificacion::destinatarios('garantia.detalle_enviado')
                 ->each(fn (User $u) => $dispatcher->despachar('garantia.detalle_enviado', $orden, $u, $datos));
         }
 
@@ -1503,11 +1503,11 @@ class ServicioTecnicoController extends Controller
         ]);
 
         // Aviso de PLATA: va a ventas/admin, NO al técnico (dueño 07-08: el taller
-        // no coordina cobros y repara con la sola aceptación del cliente).
+        // no coordina cobros). La audiencia sin técnico la trae el registry.
         $cotizacion->refresh()->avisarInternos('cotizacion.autorizada', [
             'pago' => $cotizacion->pago_forma_label,
             'autorizada_por' => $request->user()->name,
-        ], OrdenServicioCotizacion::ROLES_AVISO_PAGO);
+        ]);
 
         return back()->with('status', "Pago registrado y reparación autorizada (orden {$orden->folio}).");
     }

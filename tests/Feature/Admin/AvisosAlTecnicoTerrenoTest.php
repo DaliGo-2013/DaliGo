@@ -4,12 +4,16 @@ namespace Tests\Feature\Admin;
 
 use App\Models\AgendaTrabajo;
 use App\Models\Aprobacion;
+use App\Models\Configuracion;
 use App\Models\Notificacion;
-use App\Models\ServicioTerreno;
 use App\Models\User;
+use App\Services\Aprobaciones\Aprobaciones;
+use App\Support\FechaNegocio;
 use Database\Seeders\ConfiguracionSeeder;
+use Database\Seeders\ReglasAprobacionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -192,16 +196,22 @@ class AvisosAlTecnicoTerrenoTest extends TestCase
             'tecnico_id' => $carlos->id,
         ]));
 
+        // La fecha va FIJA y no calculada porque el assert de abajo busca el literal
+        // «14-09-2026» en el cuerpo del aviso. Y es un LUNES a propósito: desde el 25-08 el
+        // formulario interno rechaza los días que el técnico no atiende, así que el
+        // 2026-09-12 que estaba acá —un sábado— empezó a caer en la validación. Es el mismo
+        // tropiezo de la bitácora [2026-08-17]: una regla nueva convierte los fixtures de
+        // fecha viejos en bombas de tiempo, y hay que barrerlos en el mismo lote.
         $this->actingAs($this->jefe())
             ->put(route('admin.agenda-terreno.update', $t), $this->datosCita([
                 'tecnico_id' => $carlos->id,
-                'fecha' => '2026-09-12',
+                'fecha' => '2026-09-14',
                 'hora' => '15:00',
             ]))
             ->assertSessionHasNoErrors();
 
         $cuerpo = (string) $this->assertAvisado($carlos, 'terreno.reagendado')->cuerpo;
-        $this->assertStringContainsString('12-09-2026', $cuerpo);
+        $this->assertStringContainsString('14-09-2026', $cuerpo);
         $this->assertStringContainsString('15:00', $cuerpo);
         // Sin el «antes» no sabe CUÁL de sus trabajos se movió.
         $this->assertStringContainsString('2026-09-10', $cuerpo);
@@ -238,7 +248,7 @@ class AvisosAlTecnicoTerrenoTest extends TestCase
     {
         // Este es el único test que necesita las reglas: sin ellas la cita del
         // vendedor nace agendada y no hay nada que autorizar.
-        $this->seed(\Database\Seeders\ReglasAprobacionSeeder::class);
+        $this->seed(ReglasAprobacionSeeder::class);
 
         $carlos = $this->carlos();
         $vendedor = tap(User::factory()->create())->assignRole('vendedor');
@@ -261,11 +271,11 @@ class AvisosAlTecnicoTerrenoTest extends TestCase
 
         // El jefe la autoriza — horas o días después, por la bandeja, sin pasar
         // por la pantalla de la agenda. ACÁ es donde el aviso se olvidaba.
-        app(\App\Services\Aprobaciones\Aprobaciones::class)->aprobar(Aprobacion::sole(), $this->jefe());
+        app(Aprobaciones::class)->aprobar(Aprobacion::sole(), $this->jefe());
 
         $aviso = $this->assertAvisado($carlos, 'terreno.agendado');
         $this->assertStringContainsString(
-            \Illuminate\Support\Carbon::parse($dia)->format('d-m-Y'),
+            Carbon::parse($dia)->format('d-m-Y'),
             (string) $aviso->cuerpo
         );
     }
@@ -273,7 +283,7 @@ class AvisosAlTecnicoTerrenoTest extends TestCase
     /** Un día laborable: la agenda rechaza los que no lo son. */
     private function diaLaborable(int $dias = 5): string
     {
-        $d = \Illuminate\Support\Carbon::parse(\App\Support\FechaNegocio::hoy())->addDays($dias);
+        $d = Carbon::parse(FechaNegocio::hoy())->addDays($dias);
 
         while (! AgendaTrabajo::esLaborable($d->toDateString())) {
             $d->addDay();
@@ -353,7 +363,7 @@ class AvisosAlTecnicoTerrenoTest extends TestCase
             $this->assertArrayHasKey($evento, Notificacion::EVENTOS, "Falta el evento {$evento} en el catálogo.");
 
             $clave = 'notif_plantilla_'.str_replace('.', '_', $evento);
-            $plantilla = \App\Models\Configuracion::get($clave);
+            $plantilla = Configuracion::get($clave);
 
             $this->assertNotNull($plantilla, "Falta la plantilla {$clave}.");
             $this->assertNotEmpty($plantilla['asunto'] ?? null, "La plantilla {$clave} no tiene asunto.");

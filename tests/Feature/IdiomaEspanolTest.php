@@ -150,7 +150,7 @@ class IdiomaEspanolTest extends TestCase
             "/admin/moldes/{$molde->id}",
             "/admin/moldes/{$molde->id}/editar",
             '/admin/sucursales', '/admin/users', '/admin/users/create', '/admin/roles',
-            '/admin/configuracion', '/admin/maquinas', '/admin/tipos-botellon', '/admin/audits',
+            '/admin/configuracion', '/admin/configuracion/avisos', '/admin/maquinas', '/admin/tipos-botellon', '/admin/audits',
             '/admin/despachos', '/admin/notificaciones', '/admin/agenda-terreno',
             '/admin/servicio-tecnico/lote', '/admin/servicio-tecnico/qr', '/admin/plan',
             '/admin/aprobaciones', '/profile',
@@ -174,7 +174,10 @@ class IdiomaEspanolTest extends TestCase
             'olvide mi contraseña' => '/forgot-password',
             'QR por unidad' => URL::signedRoute('ingreso-taller.create', ['sucursal' => $id]),
             'QR por cantidad' => URL::signedRoute('ingreso-taller.lote.create', ['sucursal' => $id]),
-            'QR visita industrial' => URL::signedRoute('visita-industrial.create', ['sucursal' => $id]),
+            // La cuarta era «QR visita industrial», retirada el 26-08-2026 con el flujo público
+            // de visita industrial (el gerente lo sacó de la vista del cliente). Se saca de la
+            // lista: dejarla apuntando a una ruta inexistente revienta y el barrido deja de
+            // revisar las que SÍ quedan.
         ];
 
         foreach ($urls as $donde => $url) {

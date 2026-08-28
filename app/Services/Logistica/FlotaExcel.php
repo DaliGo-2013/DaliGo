@@ -126,7 +126,7 @@ class FlotaExcel
         }
 
         $resumen = sprintf(
-            'Generado el %s · %d %s · %d con documento vencido · %d por vencer (30 días) · %d al día · %d con fechas sin cargar',
+            'Generado el %s · %d %s · %d con documento vencido · %d por vencer ('.Vehiculo::diasAviso().' días) · %d al día · %d con fechas sin cargar',
             $this->hoy->format('d-m-Y'),
             $vehiculos->count(),
             $vehiculos->count() === 1 ? 'vehículo' : 'vehículos',

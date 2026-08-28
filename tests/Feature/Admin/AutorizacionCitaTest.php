@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Mail\AgendaTrabajoAviso;
 use App\Models\AgendaTrabajo;
 use App\Models\Aprobacion;
 use App\Models\User;
@@ -157,7 +158,7 @@ class AutorizacionCitaTest extends TestCase
         $this->assertSame('09:00', $trabajo->hora_corta);
         // Y ahora sí ocupa el día.
         $this->assertTrue(AgendaTrabajo::disponibilidad($this->dia())['ocupado']);
-        Mail::assertSent(\App\Mail\AgendaTrabajoAviso::class);
+        Mail::assertSent(AgendaTrabajoAviso::class);
     }
 
     /**
@@ -286,15 +287,52 @@ class AutorizacionCitaTest extends TestCase
     }
 
     /**
-     * La VISITA TÉCNICA queda afuera: es la que pide el cliente por el QR y el vendedor solo la
-     * coordina. Autorizarla sería trabar la respuesta a un cliente que ya pidió la visita.
+     * LA VISITA TÉCNICA TAMBIÉN SE AUTORIZA — este candado está INVERTIDO desde el 25-08-2026,
+     * y su versión anterior es la mejor explicación de por qué.
+     *
+     * Decía: *«La VISITA TÉCNICA queda afuera: es la que pide el cliente por el QR y el
+     * vendedor solo la coordina. Autorizarla sería trabar la respuesta a un cliente que ya
+     * pidió la visita»*. Toda esa razón se apoyaba en que el cliente la pedía por el QR.
+     *
+     * El gerente sacó la visita/revisión industrial de la vista de ingreso: *«estos los harán
+     * ahora los vendedores y serán autorizados por el jefe de ventas»*. Sin formulario público
+     * ya no hay cliente que la pida — la fija un vendedor, igual que las otras tres, y es
+     * exactamente el compromiso que esta regla vigila.
+     *
+     * Lo que NO cambió y sigue teniendo su propio candado abajo: una solicitud SIN fecha no
+     * pide autorización. Ahí no hay nada comprometido, y es la forma en que siguen viviendo
+     * las visitas que los clientes ya habían pedido antes de este cambio.
      */
-    public function test_una_visita_tecnica_no_necesita_autorizacion(): void
+    public function test_una_visita_tecnica_ahora_tambien_la_autoriza_el_jefe(): void
     {
         $this->agendar($this->vendedor(), ['tipo' => 'visita_tecnica'])->assertRedirect();
 
+        $trabajo = AgendaTrabajo::sole();
+
+        // Queda EN ESPERA, no agendada: no ocupa la agenda del técnico hasta el visto bueno.
+        $this->assertSame('solicitado', $trabajo->estado);
+        $this->assertNull($trabajo->fecha, 'Una cita en espera no puede ocupar un día.');
+        $this->assertSame(1, Aprobacion::count());
+        $this->assertSame(Aprobacion::ACCION_AGENDA_CITA, Aprobacion::sole()->tipo_accion);
+
+        // Y la fecha que el vendedor pidió no se pierde: viaja como PREFERIDA para que el jefe
+        // vea qué se le prometió al cliente y la agenda pueda decir «esperando autorización».
+        $this->assertSame($this->dia(), $trabajo->fecha_preferida->toDateString());
+    }
+
+    /**
+     * EL JEFE DE VENTAS AGENDANDO UNA VISITA TÉCNICA NO SE AUTOSOLICITA NADA.
+     *
+     * Es la otra mitad de la inversión de arriba: al meter la visita técnica a la lista, había
+     * que comprobar que el jefe sigue exento —el motor exime a quien porta el rol aprobador— o
+     * el cambio le habría puesto a él una vuelta que termina en su propio escritorio.
+     */
+    public function test_el_jefe_agenda_una_visita_tecnica_derecho(): void
+    {
+        $this->agendar($this->jefe(), ['tipo' => 'visita_tecnica'])->assertRedirect();
+
         $this->assertSame('agendado', AgendaTrabajo::sole()->estado);
-        $this->assertSame(0, Aprobacion::count());
+        $this->assertSame(0, Aprobacion::count(), 'Se creó una solicitud que nadie tiene que mirar.');
     }
 
     /** Guardar una solicitud SIN fecha no compromete al técnico: no hay nada que autorizar. */

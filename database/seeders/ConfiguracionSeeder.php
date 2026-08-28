@@ -623,6 +623,17 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Formatos en que puede llegar la preforma del turno (uno por línea): el selector opcional del formulario de asignar producción. Las asignaciones viejas conservan el suyo.',
             ],
+            // --- Flota de vehículos (LOG-2, PLAN-PARAMETRICOS §5.4 #1) ---
+            // Grupo `vehiculos` y no `logistica`: el idioma del seeder agrupa por
+            // apartado/pantalla (el hermano `despachos` ya sentó el precedente
+            // aunque ambos cuelguen del menú Logística).
+            [
+                'clave' => 'vehiculos_dias_aviso',
+                'valor' => '30',
+                'tipo' => Configuracion::TIPO_INTEGER,
+                'grupo' => 'vehiculos',
+                'descripcion' => 'Días antes del vencimiento en que un documento de la flota pasa a «Por vencer» (badge naranjo en listado, ficha y Excel) y entra al aviso diario. La deuda ya vencida avisa aparte.',
+            ],
             // --- DESPACHOS-v1 · Espejo de documentos de venta (P-DSP-01) ---
             [
                 'clave' => 'documentos_sync_desde',
@@ -791,6 +802,21 @@ class ConfiguracionSeeder extends Seeder
                 'descripcion' => 'Aviso de mensaje del chat interno (MSG-1; ráfaga: solo el primero mientras el receptor no lea el hilo).',
             ],
         ];
+
+        // ── Destinatarios por evento (Configuración → Avisos y destinatarios) ──
+        // El default vive en AudienciasNotificacion::DEFAULTS (fuente única: el
+        // seeder DERIVA de ahí para no escribir las listas dos veces). Clave
+        // nueva → firstOrCreate la crea en el deploy sin one-shot; una edición
+        // del dueño jamás se pisa.
+        foreach (\App\Support\AudienciasNotificacion::DEFAULTS as $evento => $rolesDefault) {
+            $ajustes[] = [
+                'clave' => \App\Support\AudienciasNotificacion::clave($evento),
+                'valor' => json_encode(array_values($rolesDefault), JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => \App\Support\AudienciasNotificacion::GRUPO,
+                'descripcion' => 'Roles que reciben «'.\App\Models\Notificacion::EVENTOS[$evento].'». Se edita en Configuración → Avisos y destinatarios.',
+            ];
+        }
 
         foreach ($ajustes as $a) {
             Configuracion::firstOrCreate(

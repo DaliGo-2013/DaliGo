@@ -18,11 +18,17 @@ use Tests\TestCase;
  */
 class MarcoHorizontalTest extends TestCase
 {
-    /** Las pantallas públicas del QR, que es donde el cliente externo sufre el margen. */
+    /**
+     * Las pantallas públicas del QR, que es donde el cliente externo sufre el margen.
+     *
+     * Eran tres: `create-visita.blade.php` se retiró el 26-08-2026 con el flujo de visita
+     * industrial (el gerente lo sacó de la vista del cliente). Se saca de la lista y no se
+     * deja apuntando a un archivo que no existe: `File::get` reventaría y el candado dejaría
+     * de vigilar las dos que SÍ quedan.
+     */
     private const VISTAS_QR = [
         'publico/taller/create.blade.php',
         'publico/taller/create-lote.blade.php',
-        'publico/taller/create-visita.blade.php',
     ];
 
     public function test_el_marco_de_pagina_se_declara_solo_en_el_layout(): void

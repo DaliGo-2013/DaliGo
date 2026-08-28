@@ -6,6 +6,20 @@
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
+        {{-- Entrada destacada a la matriz de avisos (su grupo de claves está
+             oculto de este listado: se edita allá, no como JSON). --}}
+        <x-list-card title="Avisos del sistema" :count="1" countLabel="pantalla">
+            <x-list-row>
+                <a href="{{ route('admin.configuracion.avisos.edit') }}" class="block">
+                    <p class="truncate font-medium text-neutral-900 hover:text-brand-600">Avisos y destinatarios</p>
+                    <p class="truncate text-sm text-neutral-500">Quién recibe cada aviso del sistema, por rol y con checkboxes.</p>
+                </a>
+                <x-slot name="actions">
+                    <x-icon.chevron-right class="h-4 w-4 text-neutral-300" aria-hidden="true" />
+                </x-slot>
+            </x-list-row>
+        </x-list-card>
+
         @forelse ($grupos as $grupo => $configs)
             <x-list-card
                 :title="\Illuminate\Support\Str::headline($grupo)"

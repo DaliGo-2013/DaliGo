@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\PermisosSoloAdmin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -60,7 +61,11 @@ class RoleController extends Controller
         ]);
 
         $role = Role::create(['name' => $validated['name'], 'guard_name' => 'web']);
-        $role->syncPermissions($validated['permissions'] ?? []);
+
+        // Los permisos que reparten permisos son SOLO del rol admin, y un rol nuevo
+        // nunca es admin (el nombre es unico y admin ya existe), asi que aca el filtro
+        // los descarta siempre. Ver PermisosSoloAdmin.
+        $role->syncPermissions(PermisosSoloAdmin::filtrar($validated['permissions'] ?? [], $role->name));
 
         return redirect()->route('admin.roles.index')
             ->with('status', "Rol '{$role->name}' creado.");
@@ -104,7 +109,12 @@ class RoleController extends Controller
         }
 
         $validated = $request->validate($rules);
-        $permissions = $validated['permissions'] ?? [];
+
+        // Los permisos que reparten permisos (gestionar roles, y crear/editar/eliminar
+        // usuarios, que eligen el ROL de una cuenta) se descartan salvo que el rol sea
+        // admin: darle uno solo de ellos a otro rol equivale a darle el sistema entero
+        // con un paso extra. Ver PermisosSoloAdmin.
+        $permissions = PermisosSoloAdmin::filtrar($validated['permissions'] ?? [], $role->name);
 
         // El rol admin nunca debe perder la capacidad de gestionar roles (anti auto-bloqueo).
         if ($role->name === 'admin' && ! in_array('manage roles', $permissions, true)) {

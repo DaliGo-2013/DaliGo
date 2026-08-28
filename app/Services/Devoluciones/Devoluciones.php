@@ -29,8 +29,8 @@ use InvalidArgumentException;
  */
 class Devoluciones
 {
-    /** Roles internos que se enteran de cada devolución declarada. */
-    public const ROLES_AVISO = ['jefe_bodega', 'jefe_ventas', 'admin'];
+    // Quién se entera de una devolución declarada vive en AudienciasNotificacion
+    // (editable por el dueño en Configuración → Avisos).
 
     /**
      * Registra la devolución que un cliente declara desde el link público.
@@ -85,7 +85,7 @@ class Devoluciones
                 'url' => route('admin.devoluciones.show', $devolucion->id),
             ];
 
-            User::role(self::ROLES_AVISO)->get()->unique('id')
+            \App\Support\AudienciasNotificacion::destinatarios('devolucion.solicitada')
                 ->each(fn (User $u) => $dispatcher->despachar('devolucion.solicitada', $devolucion, $u, $datos));
         } catch (\Throwable $e) {
             report($e);
