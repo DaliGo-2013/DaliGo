@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AgendaTrabajo;
 use App\Models\Aprobacion;
+use App\Models\Conversacion;
 use App\Models\Devolucion;
 use App\Models\Notificacion;
 use App\Models\OrdenServicio;
@@ -74,25 +75,34 @@ class MenuPrincipal
             'items' => [
                 'inventario' => ['label' => 'Inventario', 'route' => 'admin.bodegas.index', 'activo' => ['admin.bodegas.*'], 'permiso' => 'manage productos'],
                 // Los patrones de Producción se ENUMERAN (no `admin.produccion.*`)
-                // porque el Kardex es ítem propio desde P-NAV-06: con el comodín,
-                // su página resaltaba DOS ítems a la vez (gate 28-07). Misma
-                // convención que el ítem `listado` de ST, que usa la ruta exacta
-                // para no comerse lote/qr/informe. Lo vigila
+                // — convención del gate 28-07, cuando el comodín se comía la ruta
+                // del Kardex (entonces ítem propio) y resaltaba DOS ítems a la
+                // vez. Misma convención que el ítem `listado` de ST. Lo vigila
                 // SidebarTest::test_cada_ruta_del_menu_resalta_exactamente_un_item,
                 // que falla tanto si dos ítems colisionan como si una ruta queda sin dueño.
-                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*', 'admin.produccion.vivo', 'admin.produccion.notas.*'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
-                // Ex-huérfanas de producción (P-NAV-06): al entrar al menú
-                // perdieron su «Volver» (doctrina P-NAV-08).
-                'kardex' => ['label' => 'Kardex', 'route' => 'admin.produccion.movimientos', 'activo' => ['admin.produccion.movimientos'], 'permiso' => 'manage production'],
-                // Recetas (P-M11-10): rutas con prefijo propio admin.recetas.*
-                // — fuera de la enumeración del ítem `produccion`, cero riesgo
-                // de doble aria-current.
-                'recetas' => ['label' => 'Recetas', 'route' => 'admin.recetas.index', 'activo' => ['admin.recetas.*'], 'permiso' => 'manage production'],
-                'maquinas' => ['label' => 'Máquinas', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*'], 'permiso' => 'manage production'],
-                // Moldes (P-M11-12): prefijo propio admin.moldes.* — fuera de
-                // la enumeración de `produccion`, cero doble aria-current.
-                'moldes' => ['label' => 'Moldes', 'route' => 'admin.moldes.index', 'activo' => ['admin.moldes.*'], 'permiso' => 'manage production'],
-                'tipos-botellon' => ['label' => 'Tipos de botellón', 'route' => 'admin.tipos-botellon.index', 'activo' => ['admin.tipos-botellon.*'], 'permiso' => 'manage production'],
+                //
+                // `admin.produccion.movimientos` (Kardex) entró a la lista por la
+                // consolidación D1 (PLAN-MENU-DENSIDAD): tiene dos vidas — nació
+                // huérfana con Volver, subió a ítem del menú en P-NAV-06 (27-jul,
+                // perdió el Volver por P-NAV-08) y volvió a HIJA del panel el
+                // 17-ago (el botón «Kardex» de la cabecera de produccion/index es
+                // la entrada; el Volver está de vuelta). Vigilada por la 11ª
+                // entrada de MenuConsolidacionesTest. La lista sigue explícita:
+                // ítem retirado no es motivo para volver al comodín.
+                'produccion' => ['label' => 'Producción', 'route' => 'admin.produccion.index', 'activo' => ['admin.produccion.index', 'admin.produccion.dia', 'admin.produccion.maquina', 'admin.produccion.tipo', 'admin.produccion.sopladores', 'admin.produccion.soplador', 'admin.produccion.asignar*', 'admin.produccion.reporte.*', 'admin.produccion.vivo', 'admin.produccion.notas.*', 'admin.produccion.movimientos'], 'permiso' => 'manage production', 'badge' => 'produccion_por_aprobar', 'badge_title' => ':n reporte(s) por aprobar'],
+                // Consolidación E1 (PLAN-MENU-DENSIDAD, el cierre del mapa):
+                // Máquinas + Tipos de botellón + Recetas + Moldes son UN ítem —
+                // pestañas de admin/maquinas/_tabs, SIN gateo (los cuatro
+                // comparten `manage production` por construcción). Anfitriona
+                // Máquinas por ser la primera de la fila física (máquina →
+                // molde → tipo → receta); la key `maquinas` se conserva (menos
+                // churn, precedente C2). Los cuatro wildcards son limpios
+                // porque cada familia tiene prefijo propio — la razón por la
+                // que Recetas (P-M11-10) y Moldes (P-M11-12) nacieron fuera de
+                // la enumeración de `produccion`, y sigue vigente. Tipos de
+                // botellón recuperó su Volver al salir del menú (P-NAV-06 —
+                // ver VolverTest). Rutas vigiladas en MenuConsolidacionesTest.
+                'maquinas' => ['label' => 'Configuración de producción', 'route' => 'admin.maquinas.index', 'activo' => ['admin.maquinas.*', 'admin.tipos-botellon.*', 'admin.recetas.*', 'admin.moldes.*'], 'permiso' => 'manage production'],
                 // Despachos se fue a LOGÍSTICA el 05-08 (pedido del dueño).
                 // Devoluciones (M13, flujo A-12): el cliente declara por el
                 // link público; bodega recibe/categoriza/resuelve acá.
@@ -135,14 +145,23 @@ class MenuPrincipal
                 // SidebarTest (una ruta resalta exactamente un ítem).
                 // Simulador de carga: responde "¿cuanto entra en tal camion?" antes
                 // de que el vendedor prometa. NO escribe nada operativo.
-                'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*'], 'permiso' => 'simular carga'],
-                // Cargas reales: lo que entro de verdad contra lo que el simulador
-                // prometio. Es lo unico que da un factor de correccion propio, y va
-                // como item aparte —no como pestaña del simulador— porque se abre en
-                // otro momento: el simulador se usa ANTES de cargar y esto se anota
-                // DESPUES. Mismo permiso, porque calibra esa misma calculadora.
-                'cargas-reales' => ['label' => 'Cargas reales', 'route' => 'admin.cargas-reales.index', 'activo' => ['admin.cargas-reales.*'], 'permiso' => 'simular carga'],
-                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage servicio tecnico|manage vehiculos'],
+                // Consolidación B1 (PLAN-MENU-DENSIDAD): «Cargas reales» vive
+                // como pestaña del Simulador (admin/carga/_tabs). ANTES era
+                // ítem aparte a propósito —el simulador se usa ANTES de cargar
+                // y las cargas reales se anotan DESPUÉS—, pero el dueño
+                // resolvió (14-ago) que ese matiz de momento-de-uso no pesa
+                // frente a la densidad: la pestaña no impide anotar después,
+                // solo agrupa bajo un ítem. Mismo permiso (`simular carga`,
+                // calibra esta misma calculadora); su ruta va AQUÍ, en el
+                // `activo` del anfitrión (candado en MenuConsolidacionesTest).
+                'carga' => ['label' => 'Simulador de carga', 'route' => 'admin.carga.index', 'activo' => ['admin.carga.*', 'admin.cargas-reales.*'], 'permiso' => 'simular carga'],
+                // Solo 'manage vehiculos' desde el 26-08-2026: llevaba además 'manage
+                // servicio tecnico' —el permiso central del taller— así que el TÉCNICO veía
+                // «Conductores» bajo LOGÍSTICA sin que nadie le hubiera dado nada de
+                // logística. Lo reportó el dueño mirando el menú de un técnico en su
+                // teléfono. El porqué completo, y por qué la razón que justificaba el canAny
+                // era falsa, en el comentario del gate en `routes/web.php`.
+                'conductores' => ['label' => 'Conductores', 'route' => 'admin.conductores.index', 'activo' => ['admin.conductores.*'], 'permiso' => 'manage vehiculos'],
             ],
         ],
         // Facturación electrónica (M05). El módulo existe ANTES de poder emitir a
@@ -170,16 +189,33 @@ class MenuPrincipal
             'label' => 'Administración',
             'icon' => 'shield-check',
             'items' => [
-                'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*'], 'permiso' => 'view users'],
-                'roles' => ['label' => 'Roles', 'route' => 'admin.roles.index', 'activo' => ['admin.roles.*'], 'permiso' => 'manage roles'],
+                // Consolidación C1 (PLAN-MENU-DENSIDAD): «Roles» dejó de ser
+                // ítem y vive como pestaña de Usuarios (admin/users/_tabs),
+                // GATEADA por `manage roles`, que es SOLO del admin. Su ruta va
+                // AQUÍ, en el `activo` del anfitrión (candado en
+                // MenuConsolidacionesTest).
+                //
+                // Y este módulo entero es la razón por la que el jefe de ventas dejó
+                // de llevar `view users` el 27-08-2026: era su único ítem elegible, o
+                // sea lo único que le hacía aparecer ADMINISTRACIÓN en el menú, y para
+                // el dueño esta es «la opción para cambiar y habilitar permisos». Hoy
+                // lo llevan jefe_bodega y jefe_sucursal (listado de solo lectura);
+                // repartir accesos no lo puede ningún rol salvo admin, y eso es
+                // estructural — ver App\Support\PermisosSoloAdmin.
+                'usuarios' => ['label' => 'Usuarios', 'route' => 'admin.users.index', 'activo' => ['admin.users.*', 'admin.roles.*'], 'permiso' => 'view users'],
                 'sucursales' => ['label' => 'Sucursales', 'route' => 'admin.sucursales.index', 'activo' => ['admin.sucursales.*'], 'permiso' => 'manage sucursales'],
                 // Configuración NO va aquí: es de cuenta, no de negocio-por-módulo
                 // (ver self::CUENTA más abajo) — pedido del dueño 2026-07-24.
-                'auditoria' => ['label' => 'Auditoría', 'route' => 'admin.audits.index', 'activo' => ['admin.audits.*'], 'permiso' => 'view audit'],
-                'notificaciones' => ['label' => 'Notificaciones', 'route' => 'admin.notificaciones.index', 'activo' => ['admin.notificaciones.*'], 'permiso' => 'view notificaciones'],
-                // "Historial de…" a propósito: el QA 15-07 mostró que llamarlo
-                // igual que la bandeja confunde (hallazgo #1 del acta).
-                'historial-aprobaciones' => ['label' => 'Historial de aprobaciones', 'route' => 'admin.aprobaciones.index', 'activo' => ['admin.aprobaciones.*'], 'permiso' => 'view aprobaciones'],
+                // Consolidación C2 (PLAN-MENU-DENSIDAD, la primera de MÚLTIPLES
+                // ítems): Auditoría + Notificaciones + Historial de aprobaciones
+                // son UN ítem — pestañas de admin/audits/_tabs, cada una gateada
+                // por SU permiso (los tres hoy son solo-admin por construcción).
+                // El «Historial de…» que defendía el QA 15-07 (hallazgo #1: no
+                // confundir con la bandeja) sobrevive por contexto: la pestaña
+                // «Aprobaciones» vive DENTRO del Registro, la bandeja sigue sola
+                // en la sidebar y la campanita conserva su link con el nombre
+                // largo. Rutas consolidadas vigiladas en MenuConsolidacionesTest.
+                'auditoria' => ['label' => 'Registro del sistema', 'route' => 'admin.audits.index', 'activo' => ['admin.audits.*', 'admin.notificaciones.*', 'admin.aprobaciones.*'], 'permiso' => 'view audit'],
             ],
         ],
         'mi-produccion' => [
@@ -213,6 +249,20 @@ class MenuPrincipal
             'badge_title' => ':n solicitud(es) por aprobar',
             'imprenta' => true,
         ],
+        // Chat interno (MSG-4, PLAN-MENSAJES §5.5 — veredicto del dueño 32→33):
+        // link de primer nivel por la MISMA doctrina que sus vecinos — es una
+        // superficie personal transversal a todos los roles (todos con todos),
+        // sin modulo de dominio que pueda ser su anfitrion. El badge cuenta
+        // MIS mensajes sin leer (accion anclada al item donde se resuelve).
+        'mensajes' => [
+            'label' => 'Mensajes',
+            'icon' => 'chat-bubble-left-right',
+            'route' => 'mensajes.index',
+            'activo' => ['mensajes.*'],
+            'permiso' => 'usar mensajes',
+            'badge' => 'mensajes_no_leidos',
+            'badge_title' => ':n mensaje(s) sin leer',
+        ],
         'servicio-tecnico' => [
             'label' => 'Servicio Técnico',
             'icon' => 'wrench-screwdriver',
@@ -224,19 +274,16 @@ class MenuPrincipal
             // tienen ítem propio pero deben abrir el acordeón del módulo.
             'activo_extra' => ['admin.servicio-tecnico.*'],
             'items' => [
-                // Consolidaciones Lote 4 + A1 (PLAN-MENU-DENSIDAD): «Códigos
-                // QR» y «Costos generales de reparación» dejaron de ser ítems —
-                // se entra por el desplegable «Configuración» de la cabecera
-                // del Listado, cada entrada gateada por SU permiso (el Listado
-                // lo ve también quien no porta ninguno de los dos). Sus rutas
-                // van AQUÍ, en el `activo` del anfitrión (candado en
-                // MenuConsolidacionesTest).
-                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
+                // Consolidaciones Lote 4 + A1 + A2 (PLAN-MENU-DENSIDAD): la
+                // CONFIG del taller («Códigos QR», «Costos generales») entra
+                // por el desplegable «Configuración» de la cabecera del
+                // Listado, y el FLUJO «Traslados al taller» por su pestaña
+                // (_tabs-listado) — cada entrada/pestaña gateada por SU
+                // permiso. Sus rutas van AQUÍ, en el `activo` del anfitrión
+                // (candado en MenuConsolidacionesTest).
+                'listado' => ['label' => 'Listado', 'route' => 'admin.servicio-tecnico.index', 'activo' => ['admin.servicio-tecnico.index', 'admin.servicio-tecnico.qr', 'admin.tiempos-reparacion.*', 'admin.traslados.*'], 'permiso' => 'view servicio tecnico|manage servicio tecnico', 'badge' => 'st_por_confirmar', 'badge_title' => ':n ingreso(s) por confirmar'],
                 // "Registrar ingreso" vive como botón dentro de Listado (no se duplica aquí).
                 'lote' => ['label' => 'Ingreso por lote', 'route' => 'admin.servicio-tecnico.lote.create', 'activo' => ['admin.servicio-tecnico.lote.*'], 'permiso' => 'crear lote servicio'],
-                // Traslado sucursal → casa matriz (decisión del dueño 03-08). Lo ven
-                // las dos puntas: quien despacha y quien recibe.
-                'traslados' => ['label' => 'Traslados al taller', 'route' => 'admin.traslados.index', 'activo' => ['admin.traslados.*'], 'permiso' => 'despachar traslado servicio|recibir traslado servicio'],
                 'informe' => ['label' => 'Informe', 'route' => 'admin.servicio-tecnico.informe', 'activo' => ['admin.servicio-tecnico.informe', 'admin.servicio-tecnico.informe.*'], 'permiso' => 'ver informe dispensadores|ver informe industrial'],
                 // Consolidación Lote 5 (PLAN-MENU-DENSIDAD): «Servicios de
                 // terreno» dejó de ser ítem y vive como pestaña de la Agenda
@@ -429,6 +476,12 @@ class MenuPrincipal
             // nunca ha solicitado nada no necesita verlo (y el candado de
             // AprobacionAccionableTest exige que ninguna superficie ajena
             // a la fila aporte ese href para un usuario sin historia).
+            // Chat interno (MSG-4): MIS mensajes sin leer — la MISMA fuente
+            // que la firma del poll (Conversacion::noLeidosDeUsuario), asi el
+            // badge y el refresco no pueden contar distinto.
+            'mensajes_no_leidos' => ($user && $user->can('usar mensajes'))
+                ? Conversacion::noLeidosDeUsuario($user->id)
+                : 0,
             'mis_solicitudes' => $user
                 ? Aprobacion::where('solicitante_id', $user->id)->count()
                 : 0,

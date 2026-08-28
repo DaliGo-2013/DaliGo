@@ -1,9 +1,38 @@
 # PLAN-MENU-DENSIDAD · Consolidar la interfaz — menos menús, pantallas más densas
 
-> **Estado: VIGENTE (definido por el dueño, 2026-08-11)** — proyecto de ritmo LENTO por
-> decisión explícita: «poco a poco, lento pero seguro, y tomar las decisiones con
-> calma». Sin fecha objetivo. Un lote = una consolidación. Autor: Director, sobre la
-> directriz textual del dueño.
+> **Estado: ✅ CERRADO (QA final del dueño, 2026-08-18 — «quedó de diez»)** — nació el
+> 2026-08-11 con la directriz «poco a poco, lento pero seguro, decisiones con calma» y
+> cerró en una semana sin romperla: un lote = un merge = una doble llave, siempre.
+
+## ACTA DE CIERRE (Director, 2026-08-18)
+
+**El número: menú 47 → 32** (11 primer nivel + 20 subítems + 1 cuenta). Subítems 35→20.
+
+- **Doce lotes en producción**, cada uno con doble llave del dueño, suite completa local
+  del forjador Y del Director, CI verde y QA en celular por bloque:
+  L1 Precios→Catálogo (`ca91422`) · L2 retiro boceto Seguimiento (`ee1a72c`) · L3
+  Estado→Documentos (`47785ad`) · L4 QR→botón Listado ST (`6d6a2ce`) · L5
+  Servicios→Agenda (`c5f5b47`) · A1 Costos→Listado ST (`0e9feaa`) · A2 Traslados→Listado
+  ST · B1 Cargas reales→Simulador (`c67d882`) · C1 Roles→Usuarios (`fc47fd1`) · C2
+  Registro del sistema 3→1 (`6fa64cd`) · D1 Kardex→Producción (`61dd90d`) · E1
+  Configuración de producción 4→1 (`8fb0c5c`).
+- **Dos vive-solos con evidencia** (mejor que consolidar mal): Informe ST y Conductores —
+  ambos por el mismo patrón: audiencia partida entre dominios sin anfitrión común.
+- **Cero pantallas perdidas, cero permisos perdidos, cero rojos propios** en todo el
+  proyecto. Todos los amoldes de tests, declarados y justificados; el resto derivó de la
+  fuente única.
+- **Infraestructura que queda en la casa**: `<x-tab-nav>` (mapa count→clase, hasta 4
+  columnas, anti-purga) · `MenuConsolidacionesTest` con 14 entradas (candado mutado en
+  cada lote) · molde P-NAV-06 para entrar/salir del menú con rastro (ensayado en Kardex
+  y Tipos de botellón) · doctrinas citables: «el menú jamás ofrece un 403», «ítem
+  retirado no es motivo para volver al comodín», «pestañas se calculan por permiso y con
+  una sola el nav no se dibuja».
+- **De pasada**: hotfix `5892eea` (bomba de calendario en VisitaIndustrialTest,
+  territorio ajeno, diagnosticado por el forjador y saldado por el Director).
+- Observación de UX (Volver + pestaña «Máquinas» conviven en Tipos de botellón):
+  presentada al QA final — **el dueño la aceptó como está**.
+
+> Historia original del plan desde aquí hacia abajo, intacta como registro.
 
 ## 0. El problema en una frase
 
@@ -109,10 +138,46 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
       clics) → **decisión del dueño: se mantiene el desplegable**. Permisos verificados
       (jefe_ventas + admin, ambos ven el Listado). Re-merge tras drift de 4 commits ajenos
       (auto-merge sin conflicto). Suite 2032/14.396. **Menú 42 → 41.**
+- [x] **Bloque A · A2 EN PRODUCCIÓN (14-ago, `6a35329`)**: «Traslados al taller» pasa a
+      pestaña del Listado (primera pestaña de FLUJO; la config va en el desplegable). Permisos
+      verificados (los 4 roles con despachar|recibir traslado ven el Listado). Prefijo
+      `admin.traslados.*` no pisa `admin.bodegas.traslados.*`. Suite 2110/14.723. **Menú 41 → 40.**
+      Nota: 1 rojo de ENTORNO durante la verificación (AutorizacionCitaTest del PR #9, ajeno;
+      vendor `symfony/error-handler` incompleto → `composer reinstall` lo curó; CI de main verde
+      lo confirmó). 4ª incidencia de entorno de la semana.
+- [x] **Bloque B · B1 EN PRODUCCIÓN (14-ago, `c67d882`)**: «Cargas reales» pasa a pestaña
+      del Simulador. Permiso IDÉNTICO por construcción (grupo `permission:simular carga`) —
+      sin nudo. Comentario del ítem-aparte reescrito dejando rastro (estándar del QR).
+      Re-merge tras drift (Sucursales+plazos, territorio disjunto). Suite 2182/15.096.
+      **Menú 40 → 39.** Con B2 Conductores vive solo, el **Bloque B queda CERRADO en un lote**.
 - [ ] Cada F2+: ídem F1 para su consolidación.
 - [ ] Métrica simple del proyecto: nº de ítems del menú ANTES (47) vs DESPUÉS de cada
-      lote — la densidad ganada se ve en un número. **Hoy: 41** (L1-L5 + A1 hechos; falta
-      A2 Traslados y A3 Informe para cerrar el Bloque A en 39; los bloques B-E, a 30 — §4.1).
+      lote — la densidad ganada se ve en un número. **Hoy: 36.** **C2 EN PRODUCCIÓN
+      (17-ago, `6fa64cd`): «Registro del sistema» 3→1 — Auditoría rebautizada (key
+      `auditoria` conservada) absorbe Notificaciones + Historial de aprobaciones; tab-nav
+      TRIPLE gateada por permiso; ítem con `view audit` a secas (doctrina: el menú jamás
+      ofrece un 403); cards del Inicio 3→1; rastro del QA 15-07 preservado; mutación DOBLE
+      del candado. Bloque C COMPLETO (C1 `fc47fd1` + C2) — 3 lotes en un día con cero
+      rojos propios (incluye hotfix Director `5892eea`, bomba de calendario en
+      VisitaIndustrialTest). QA Bloque C ✅ → **D1 EN PRODUCCIÓN (18-ago, `61dd90d`):
+      Kardex vuelve a ser hija del panel de Producción — Bloque D COMPLETO, menú 35.**
+      P-NAV-06 despedido con rastro (tres vidas) y el Volver restaurado con candado en el
+      mismo commit; ruta exacta al `activo` sin volver al comodín («ítem retirado no es
+      motivo para volver al comodín», gate 28-07); baseline absorbió PR #19 de Marcos.
+      QA del dueño del Bloque D ✅ → **E1 EN PRODUCCIÓN (18-ago, `8fb0c5c`): EL MAPA F0
+      COMPLETO — menú 32, el número final.** Anfitriona Máquinas rebautizada
+      «Configuración de producción» (key conservada); 4 pestañas sin gateo; deuda del
+      tab-nav PAGADA (ternario → mapa count→clase, literales anti-purga; primer cambio
+      al componente desde el Lote 3, batería sobre todos sus consumidores). HALLAZGO del
+      forjador que corrigió al recon del Director: `grid-cols-4` base NO estaba en el
+      bundle (el grep contó el substring de `xl:grid-cols-4`, lección 30-07) → I-06
+      completa, +1 regla exacta / 0 caídas, verificada por comm en ambas direcciones por
+      forjador Y Director. Solo Tipos de botellón salió de P-NAV-06 (molde D1, Volver a
+      la anfitriona, mismo commit); Máquinas sigue en el candado como ítem. Mutación
+      TRIPLE; CERO amoldes. Observación UX declarada al QA: Volver + pestaña «Máquinas»
+      conviven en Tipos de botellón (quitar = 1 línea, decisión del dueño).
+      **PLAN-MENU-DENSIDAD: 47 → 32 en DOCE lotes + 2 vive-solos con evidencia, cero
+      rojos propios. Falta SOLO el QA final del dueño → acta de cierre.**
 - [ ] **Deuda anotada del `<x-tab-nav>`**: resuelve el ancho con
       `count($tabs) === 3 ? 'grid-cols-3' : 'grid-cols-2'`. Con 4 pestañas cae a 2 columnas
       sin avisar — justo el caso de «Configuración de producción» (Máquinas/Tipos/Recetas/
@@ -132,13 +197,18 @@ junto a Aprobaciones o Auditoría · lo que la auditoría encuentre.
 | Bloque | Lotes (en orden) | Δ | Nota |
 |---|---|---|---|
 | (en vuelo) ✅ | Lote 4 QR→Listado ST · Lote 5 Servicios→Agenda | −2 | HECHO; 44→42; QA del dueño OK (13-ago) |
-| **A · Servicio Técnico** (ABIERTA 13-ago) | ✅A1 Costos→Listado (`0e9feaa`) · A2 Traslados→Listado · A3 Informe (PARTIDO por dominio) | −3 | A1 HECHO (desplegable «Configuración», QR adentro por decisión del dueño). Costos y Traslados verificados limpios. Informe último y REPLANTEADO: ver hallazgo abajo |
-| **B · Logística** | B1 Cargas reales→Simulador · B2 Conductores→Vehículos | −2 | B2 con cuidado: permisos OR cruzados (el técnico no pierde acceso) + ex-huérfana |
+| **A · Servicio Técnico** ✅ CERRADA (14-ago) | ✅A1 Costos (`0e9feaa`) · ✅A2 Traslados (`6a35329`) · ❌A3 Informe → **VIVE SOLO** (decisión del dueño 14-ago) | **−2** | A1 y A2 en producción. El Informe NO se consolida: su audiencia cruza dos dominios sin anfitrión común (ver «SEGUNDO NUDO» abajo). Bloque cierra en menú 40 |
+| **B · Logística** ✅ CERRADA (14-ago) | ✅B1 Cargas reales→Simulador (`c67d882`) · B2 Conductores → **VIVE SOLO** | **−1** | B1 en producción (pestaña; permiso idéntico; nota vieja del código reescrita con rastro). B2 Conductores no se consolida: mismo nudo del Informe → vive solo. Bloque cierra en menú 39 |
 | **C · Administración** | C1 Roles→Usuarios · C2 «Registro del sistema» (3→1) | −3 | C2 junta Auditoría+Notif+Aprobaciones; 2 cards del Inicio se reapuntan |
 | **D · Producción (barata)** | D1 Kardex→Producción | −1 | ex-huérfana (candado duro); el panel ya la enlaza |
 | **E · Cierre (SOLA)** | E1 Configuración de producción (Máquinas·Tipos·Recetas·Moldes 4→1) | −3 | la mayor densidad y más riesgo; **aquí se salda la deuda del `<x-tab-nav>`** (4ª pestaña) |
 
-**Aritmética:** 44 → (L4) 43 → (L5) 42 → **A** 39 → **B** 37 → **C** 34 → **D** 33 → **E** 30.
+**Aritmética (actualizada 14-ago tras «Informe vive solo» + «Conductores vive solo»):**
+44 → (L4) 43 → (L5) 42 → **A** 40 (A1+A2; Informe vive solo) → **B** 39 (solo B1 Cargas
+reales; Conductores vive solo) → **C** 36 → **D** 35 → **E** 32. El mapa completo llega a
+**32**, no 30: dos ítems (Informe, Conductores) son casos de audiencia partida entre dos
+dominios sin anfitrión común — el propio criterio del proyecto («¿puede integrarse o vive
+solo?») los deja fuera. Cero accesos rotos. Honestidad del proyecto por encima del número.
 
 **Regla de apertura:** no se emite dictado de un bloque nuevo hasta que el anterior esté
 cerrado (todos sus lotes en producción + QA del dueño). El Bloque A abre cuando Lote 4 y 5
@@ -170,6 +240,43 @@ dejarlo solo):
   reapuntado). Verificar que nadie pierda acceso tras el cambio.
 - Aritmética intacta: el ítem «Informe» se retira igual (−1); sus dos caras son navegación
   interna, no rótulos del menú. Bloque A sigue −3 → 39.
+
+### SEGUNDO NUDO (Director, 14-ago, al preparar A3) — «partir por dominio» rompe a 2 jefaturas
+La decisión del 13-ago se tomó sin este dato. Cruce de permisos por ejecución (seeder):
+quién porta `ver informe industrial` vs quién entra a la Agenda de terreno
+(`ver agenda terreno`/`agendar servicio terreno`):
+
+| Rol | ve informe industrial | entra a la Agenda | ve el Listado |
+|---|---|---|---|
+| vendedor, jefe_ventas, admin | ✓ | ✓ | ✓ |
+| tecnico_industrial | ✓ | ✓ | **✗** |
+| **jefe_bodega** (seeder L150) | ✓ | **✗** | ✓ |
+| **jefe_sucursal** (seeder L196) | ✓ | **✗** | ✓ |
+
+El informe industrial tiene una audiencia que cruza DOS dominios disjuntos: el técnico
+industrial solo ve la Agenda (no el Listado); jefe_bodega y jefe_sucursal solo ven el
+Listado (no la Agenda). **No existe un anfitrión único que cubra a todos**:
+- Industrial → Agenda: **jefe_bodega y jefe_sucursal pierden acceso** (nudo 2).
+- Industrial → Listado: **el técnico industrial pierde acceso** (nudo 1, el original).
+- (Dispensadores → Listado sí es limpio: todos los que lo ven, ven el Listado.)
+
+**A3 FRENADO — vuelve a decisión del dueño (14-ago).** Opciones sobre la mesa:
+1. **Informe vive solo** (no consolidar) — el caso especial del Bloque A: su audiencia no
+   cabe en un anfitrión sin romper a alguien o duplicar. Nadie pierde. Densidad −2 en vez
+   de −3 (Bloque A cierra en 40→39 solo con dispensadores... en realidad el ítem se
+   quedaría; ver nota). La respuesta honesta a la lente del dueño: «necesita vivir solo».
+2. **Solo dispensadores → Listado; industrial se queda como su propia entrada** — resta
+   parcial y compleja (el landing bifurca hoy).
+3. **Ampliar permisos** (dar acceso a la Agenda a bodega/sucursal, o al Listado al técnico)
+   — cambio de accesos de negocio, decisión de gerencia.
+4. **Duplicar** (industrial en Agenda Y Listado) — PROHIBIDO por el proyecto.
+Recomendación del Director: **opción 1** (vive solo) — es el ítem que el propio criterio
+del proyecto deja fuera. Menú final 31 en vez de 30; una resta menos, cero accesos rotos.
+
+**→ DECISIÓN DEL DUEÑO (14-ago): opción 1, el Informe VIVE SOLO.** A3 no se construye; el
+ítem «Informe» se queda como está. El Bloque A cierra con A1 (Costos) + A2 (Traslados) en
+producción, menú en **40**. En el mapa (§5.1) el veredicto del Informe pasa de «integrable»
+a **vive-solo** — audiencia partida entre taller y terreno, sin anfitrión común.
 
 ## 5. Anexo — auditoría y mapa (F0, Max-1, 2026-08-12)
 

@@ -68,7 +68,14 @@
                     @endif
                 </div>
                 @if (! $anioActivo)
-                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                    {{-- FLEX y no grid, con el botón de Excel al final de la MISMA
+                         línea (dueño 14-08): en la grilla la tarjeta del año ocupaba
+                         un cuarto del ancho, el resto quedaba vacío y el botón se
+                         gastaba una fila entera abajo. Con flex la tarjeta mide lo que
+                         necesita, el botón se va al extremo con `ms-auto`, y si hay
+                         varios años o la pantalla es angosta el `flex-wrap` lo baja
+                         solo — sin ancho fijo que adivinar. --}}
+                    <div class="flex flex-wrap items-center gap-4">
                         @foreach ($historial['anios'] as $a => $r)
                             <a href="{{ route('admin.instalaciones.index', array_merge($qsBase, ['anio' => $a])) }}"
                                class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 transition duration-150 hover:border-brand-300 hover:shadow">
@@ -82,6 +89,9 @@
                                 </p>
                             </a>
                         @endforeach
+                        <div class="ms-auto">
+                            @include('admin.instalaciones.partials._boton-excel')
+                        </div>
                     </div>
                 @else
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-6">
@@ -105,18 +115,16 @@
             </div>
         @endif
 
-        {{-- Excel para compartir (pedido del técnico industrial, 13-08): el detalle
-             mes por mes de sus trabajos, que es con lo que le pagan las horas
-             extras. Baja EXACTAMENTE lo que se está viendo —los mismos filtros de
-             búsqueda, categoría y período— y completo, sin la paginación de 25.
-             Por eso el enlace lleva los filtros vigentes y no la ruta pelada. --}}
-        <div class="flex justify-end">
-            <a href="{{ route('admin.instalaciones.excel', array_filter($filtros)) }}"
-               class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99]">
-                <x-icon.document-text class="h-4 w-4" />
-                Descargar Excel
-            </a>
-        </div>
+        {{-- El botón de Excel SUELTO, solo cuando no pudo ir en la línea de las
+             tarjetas de año: con un año abierto (arriba hay doce tarjetas de mes que
+             ya llenan el ancho, no hay fila que ahorrar) o sin historial todavía. La
+             condición es la negada de la de arriba, así que el botón aparece
+             exactamente una vez — nunca dos, nunca ninguna. --}}
+        @if ($anioActivo || $historial['anios']->isEmpty())
+            <div class="flex justify-end">
+                @include('admin.instalaciones.partials._boton-excel')
+            </div>
+        @endif
 
         <x-list-card title="Instalaciones" :count="$instalaciones->total()" :countLabel="$instalaciones->total() === 1 ? 'instalación' : 'instalaciones'">
             @php $mesSep = null; @endphp

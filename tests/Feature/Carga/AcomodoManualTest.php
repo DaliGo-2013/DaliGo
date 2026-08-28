@@ -160,11 +160,16 @@ class AcomodoManualTest extends TestCase
         // El corazón del reparo que se le puso al pedido: arrastrar cambia DÓNDE va la
         // carga, no cuánta entra. Si mover subiera el cupo, el tablero sería una forma
         // de sacarle al motor un número que no calculó.
-        $auto = $this->verConAcomodo()->viewData('resultado');
-        $mano = $this->verConAcomodo(['acomodo' => ['0' => '150,40'], 'acomodo_de' => 1])->viewData('resultado');
+        // Se lee de la FILA de la carga y no de `viewData('resultado')`: desde la fusión
+        // de las dos preguntas (21-08) un `tipo_bulto_id` sin líneas se traduce a una
+        // línea, así que el número vive ahí. La regla que vigila el candado no cambió.
+        $fila = fn ($r) => $r->viewData('mixta')['lineas'][array_key_first($r->viewData('mixta')['lineas'])];
 
-        $this->assertSame($auto['bultos'], $mano['bultos']);
-        $this->assertSame($auto['unidades'], $mano['unidades']);
+        $auto = $fila($this->verConAcomodo());
+        $mano = $fila($this->verConAcomodo(['acomodo' => ['0' => '150,40'], 'acomodo_de' => 1]));
+
+        $this->assertSame($auto['bultos_colocados'], $mano['bultos_colocados']);
+        $this->assertSame($auto['cargadas_unidades'], $mano['cargadas_unidades']);
     }
 
     public function test_la_pantalla_avisa_que_el_calculo_no_verifico_el_acomodo(): void

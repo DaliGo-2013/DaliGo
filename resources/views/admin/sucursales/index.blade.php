@@ -36,8 +36,42 @@
                     </a>
 
                     <x-slot name="meta">
-                        <div class="text-sm text-neutral-500 sm:w-28 sm:shrink-0 sm:text-right">
-                            {{ $sucursal->users_count }} {{ \Illuminate\Support\Str::plural('usuario', $sucursal->users_count) }}
+                        {{-- En móvil las dos cifras se apilan (dos textos en una línea de 375px
+                             desbordan); desde sm: van una al lado de la otra. --}}
+                        <div class="flex w-full flex-col gap-0.5 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+                            {{-- EL PLAZO QUE SE LE PROMETE AL CLIENTE, a la vista (dueño, 14-08-2026:
+                                 «cerremos ese agujero»). Sale del CÓDIGO de la sucursal, y hasta hoy
+                                 esta pantalla mostraba el código sin su consecuencia: con «Mirador»
+                                 en minúsculas el plazo caía al default y el correo prometía 15 días
+                                 donde la regla dice 10, siete semanas, a la vista de todos. Solo se
+                                 muestra en las que RECIBEN taller: en las demás sería un número que
+                                 no se usa. --}}
+                            @if ($sucursal->recibe_servicio_tecnico)
+                                <div class="flex items-center gap-1 text-sm text-neutral-500 sm:shrink-0 sm:justify-end">
+                                    {{-- El @if va en su propia línea: pegado a una palabra
+                                         (…hábiles@if) Blade NO lo compila y el @endif revienta. --}}
+                                    <span>
+                                        Taller: hasta {{ $sucursal->dias_reparacion }} días hábiles
+                                        @if ($sucursal->plazo_es_por_defecto)
+                                            <span class="text-neutral-400">(por defecto)</span>
+                                        @endif
+                                    </span>
+                                    <x-info-tip>
+                                        Es el plazo que se le promete al cliente —en el correo de ingreso y en la pantalla
+                                        del QR— cuando deja un equipo en esta sucursal. Lo decide su <strong>código</strong>
+                                        (<code>{{ $sucursal->codigo }}</code>): Mirador repara ahí mismo, y las que mandan el
+                                        equipo a Mirador tardan más.
+                                        @if ($sucursal->plazo_es_por_defecto)
+                                            Esta sucursal <strong>no tiene un plazo propio</strong>, así que usa el valor por
+                                            defecto. Si su plazo es otro, hay que configurarlo para su código.
+                                        @endif
+                                    </x-info-tip>
+                                </div>
+                            @endif
+
+                            <div class="text-sm text-neutral-500 sm:w-28 sm:shrink-0 sm:text-right">
+                                {{ $sucursal->users_count }} {{ \Illuminate\Support\Str::plural('usuario', $sucursal->users_count) }}
+                            </div>
                         </div>
                     </x-slot>
 

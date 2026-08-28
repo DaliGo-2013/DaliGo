@@ -18,7 +18,7 @@ class ClienteController extends Controller
     {
         $clientes = $this->filteredQuery($request)
             ->orderBy('razon_social')
-            ->paginate(25)
+            ->paginate(self::POR_PAGINA)
             ->withQueryString();
 
         return view('admin.clientes.index', array_merge([
@@ -75,7 +75,7 @@ class ClienteController extends Controller
     {
         $f = $request->validate([
             'q' => ['nullable', 'string', 'max:191'],
-            'segmento' => ['nullable', Rule::in(Cliente::SEGMENTOS)],
+            'segmento' => ['nullable', Rule::in(Cliente::segmentos())],
             'activo' => ['nullable', 'in:0,1'],
             'vendedor_id' => ['nullable', 'integer'],
         ]);
@@ -117,7 +117,7 @@ class ClienteController extends Controller
             'direccion' => ['nullable', 'string', 'max:191'],
             'ciudad' => ['nullable', 'string', 'max:191'],
             'comuna' => ['nullable', 'string', 'max:191'],
-            'segmento' => ['nullable', Rule::in(Cliente::SEGMENTOS)],
+            'segmento' => ['nullable', Rule::in(Cliente::segmentos())],
             'notas' => ['nullable', 'string'],
             'vendedor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'vendedor_nombre' => ['nullable', 'string', 'max:191'],
@@ -148,7 +148,7 @@ class ClienteController extends Controller
 
         return [
             'vendedores' => $vendedores,
-            'segmentos' => Cliente::SEGMENTOS,
+            'segmentos' => Cliente::segmentos(),
         ];
     }
 }

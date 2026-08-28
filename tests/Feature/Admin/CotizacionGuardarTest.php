@@ -17,9 +17,19 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Cotización = donde se arma lo que paga el cliente. Los precios (repuestos,
- * mano de obra, descuento) se ingresan aquí, no en el parte del técnico. En
- * garantía no se cotiza: se envía el detalle del trabajo sin cobro.
+ * EL PRESUPUESTO SE GUARDA EN UN SOLO LUGAR: el parte del técnico.
+ *
+ * Hasta el 20-08-2026 había DOS formularios para el mismo dinero (este archivo se
+ * llamaba así por el segundo, `cotizacion.guardar`, que ya no existe). El dueño lo
+ * cerró: «que la cotización no tenga opción de modificarse… en la parte del técnico
+ * se pueda modificar la información». Así que todo lo que antes se probaba contra
+ * esa acción se prueba ahora contra `reparacion.guardar`, que es la única que
+ * escribe precios, mano de obra y descuento.
+ *
+ * La pestaña Cotización quedó como VISTA PREVIA de solo lectura, y eso también se
+ * vigila acá: sin filas de repuestos, sin selector de descuento y sin PUT.
+ *
+ * En garantía no se cotiza: se envía el detalle del trabajo sin cobro.
  */
 class CotizacionGuardarTest extends TestCase
 {
@@ -77,6 +87,28 @@ class CotizacionGuardarTest extends TestCase
         TiempoReparacion::create(['trabajo' => $trabajo, 'horas' => $horas, 'activo' => true]);
     }
 
+    /**
+     * Guarda el presupuesto por la ÚNICA acción que lo escribe: el parte del
+     * técnico. `estado` es obligatorio ahí (es el select de la etapa), así que se
+     * pasa siempre; el resto del payload es el que traía la cotización.
+     *
+     * OJO con `trabajo_realizado`: el parte lo guarda, así que un payload que no lo
+     * traiga lo BORRA y con él la mano de obra. Se manda el de la orden salvo que la
+     * prueba diga otra cosa — es lo que hace el formulario real.
+     */
+    private function guardarPresupuesto(OrdenServicio $orden, array $payload)
+    {
+        $trabajo = blank($orden->trabajo_realizado) ? [] : [
+            'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+            'trabajo_realizado_otro' => $orden->trabajo_realizado,
+        ];
+
+        return $this->put(
+            route('admin.servicio-tecnico.reparacion.guardar', $orden),
+            array_merge(['estado' => 'cotizacion'], $trabajo, $payload),
+        );
+    }
+
     // --- Guardar precios (reparación) ---
 
     public function test_guardar_cotizacion_registra_precios_y_mano_de_obra_del_trabajo(): void
@@ -87,16 +119,18 @@ class CotizacionGuardarTest extends TestCase
         $this->tiempo('Cambio de caldera — funciona normal', 1.5);   // → 6000
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'mano_obra' => 999999,   // se ignora
-                'descuento_pct' => 0,
-                'repuestos' => [
-                    ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000],
-                    ['nombre' => 'Correa', 'cantidad' => 2, 'precio_unitario' => 5000],
-                ],
-            ])
-            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
+        $this->actingAs($this->tecnico());
+        $this->guardarPresupuesto($orden, [
+            'mano_obra' => 999999,   // se ignora
+            'descuento_pct' => 0,
+            'repuestos' => [
+                ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000],
+                ['nombre' => 'Correa', 'cantidad' => 2, 'precio_unitario' => 5000],
+            ],
+        ])
+            ->assertSessionHasNoErrors()
+            // Se queda en la misma pantalla donde se está trabajando.
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         $fresh = $orden->fresh()->load('repuestos');
         $this->assertSame(6000, $fresh->mano_obra);          // 1,5h × 4000 (no lo enviado)
@@ -111,13 +145,12 @@ class CotizacionGuardarTest extends TestCase
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
         // El descuento lo aplica jefatura de ventas (el técnico no está autorizado).
-        $this->actingAs($this->jefeVentas())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'descuento_pct' => 20,
-                'descuento_motivo' => 'cliente_grande',
-                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
-            ])
-            ->assertRedirect();
+        $this->actingAs($this->jefeVentas());
+        $this->guardarPresupuesto($orden, [
+            'descuento_pct' => 20,
+            'descuento_motivo' => 'cliente_grande',
+            'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+        ])->assertSessionHasNoErrors();
 
         $fresh = $orden->fresh();
         // bruto = 14000 + 6000 = 20000; 20% = 4000; total = 16000
@@ -129,19 +162,19 @@ class CotizacionGuardarTest extends TestCase
 
     public function test_reguardar_el_parte_del_tecnico_no_borra_el_descuento(): void
     {
-        // El descuento se fija en Cotización; re-guardar el parte del técnico
-        // (que no toca el descuento) no debe borrarlo.
+        // El descuento lo fija jefatura; que el técnico re-guarde el parte (donde el
+        // selector ni se dibuja para él) no puede borrarlo.
         $this->conValorHora(4000);
         $this->tiempo('Cambio de caldera — funciona normal', 1.5);
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
         // Jefatura aplica el descuento…
-        $this->actingAs($this->jefeVentas())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'descuento_pct' => 20,
-                'descuento_motivo' => 'cliente_grande',
-                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
-            ]);
+        $this->actingAs($this->jefeVentas());
+        $this->guardarPresupuesto($orden, [
+            'descuento_pct' => 20,
+            'descuento_motivo' => 'cliente_grande',
+            'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+        ]);
 
         // …y el técnico re-guarda su parte (no toca el descuento).
         $this->actingAs($this->tecnico())
@@ -157,30 +190,43 @@ class CotizacionGuardarTest extends TestCase
         $this->assertSame('cliente_grande', $fresh->descuento_motivo);
     }
 
-    public function test_guardar_cotizacion_exige_precio_de_cada_repuesto(): void
+    /**
+     * EL PRECIO SE EXIGE AL ENVIAR, NO AL GUARDAR (regla del dueño al unificar las
+     * pantallas, 20-08-2026). Antes el precio era obligatorio para guardar porque
+     * guardar y cotizar eran dos acciones distintas; ahora es la misma, y el técnico
+     * anota el repuesto cuando lo pone —con la máquina delante— y le busca el precio
+     * después. Lo que no puede salir al cliente es un repuesto en $0: ahí se cobra de
+     * menos y nadie lo nota. Mismo criterio que el candado de la mano de obra.
+     */
+    public function test_el_precio_del_repuesto_se_exige_al_enviar_no_al_guardar(): void
     {
         $orden = $this->reparacion();
+        $sinPrecio = ['repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 0]]];
 
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'repuestos' => [
-                    ['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 0], // sin precio
-                ],
-            ])
+        // Guardar sin precio: se puede, y el repuesto queda registrado.
+        $this->actingAs($this->tecnico());
+        $this->guardarPresupuesto($orden, $sinPrecio)->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('orden_servicio_repuestos', [
+            'orden_servicio_id' => $orden->id, 'nombre' => 'Motor', 'precio_unitario' => 0,
+        ]);
+
+        // Enviárselo al cliente: no, y el error señala ese precio.
+        $this->guardarPresupuesto($orden, $sinPrecio + ['enviar' => '1'])
             ->assertSessionHasErrors(['repuestos.0.precio_unitario']);
+        $this->assertSame(0, OrdenServicioCotizacion::count());
+        Mail::assertNothingSent();
     }
 
     public function test_descuento_exige_motivo(): void
     {
         $orden = $this->reparacion();
 
-        $this->actingAs($this->jefeVentas())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'mano_obra' => 10000,
-                'descuento_pct' => 20,   // con descuento pero sin motivo
-                'repuestos' => [],
-            ])
-            ->assertSessionHasErrors('descuento_motivo');
+        $this->actingAs($this->jefeVentas());
+        $this->guardarPresupuesto($orden, [
+            'mano_obra' => 10000,
+            'descuento_pct' => 20,   // con descuento pero sin motivo
+            'repuestos' => [],
+        ])->assertSessionHasErrors('descuento_motivo');
     }
 
     public function test_el_tecnico_no_puede_aplicar_ni_quitar_descuento(): void
@@ -190,47 +236,112 @@ class CotizacionGuardarTest extends TestCase
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
 
         // Jefatura aplica 20%.
-        $this->actingAs($this->jefeVentas())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'descuento_pct' => 20, 'descuento_motivo' => 'cliente_grande',
-                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
-            ]);
+        $this->actingAs($this->jefeVentas());
+        $this->guardarPresupuesto($orden, [
+            'descuento_pct' => 20, 'descuento_motivo' => 'cliente_grande',
+            'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+        ]);
         $this->assertSame(20, $orden->fresh()->descuento_pct);
 
-        // El técnico re-guarda la cotización intentando QUITARLO → se ignora.
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'descuento_pct' => 0,
-                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
-            ]);
+        // El técnico re-guarda el parte intentando QUITARLO → se ignora.
+        $this->actingAs($this->tecnico());
+        $this->guardarPresupuesto($orden, [
+            'descuento_pct' => 0,
+            'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+        ]);
         $this->assertSame(20, $orden->fresh()->descuento_pct, 'El técnico no puede quitar el descuento.');
 
         // Y tampoco puede APLICAR uno nuevo en otra orden sin descuento.
         $orden2 = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden2), [
-                'descuento_pct' => 15, 'descuento_motivo' => 'cliente_grande',
-                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
-            ]);
+        $this->guardarPresupuesto($orden2, [
+            'descuento_pct' => 15, 'descuento_motivo' => 'cliente_grande',
+            'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 14000]],
+        ]);
         $this->assertSame(0, $orden2->fresh()->descuento_pct, 'El técnico no puede aplicar descuento.');
     }
 
-    public function test_la_vista_de_cotizacion_oculta_el_descuento_al_tecnico(): void
+    /**
+     * UN CAMPO AUSENTE NO BORRA EL DESCUENTO. El parte de una garantía no dibuja el
+     * selector (no hay cobro), así que no lo manda: sin esta guarda, que jefatura
+     * guardara ese parte lo borraría en silencio. Quitarlo sigue siendo posible con
+     * un 0 explícito, que es lo que manda el selector cuando está en pantalla.
+     */
+    public function test_guardar_sin_el_campo_de_descuento_lo_conserva(): void
+    {
+        $this->conValorHora(4000);
+        $this->tiempo('Cambio de caldera — funciona normal', 1.5);
+        $orden = $this->reparacion([
+            'trabajo_realizado' => 'Cambio de caldera — funciona normal',
+            'descuento_pct' => 20, 'descuento_motivo' => 'cliente_grande',
+        ]);
+
+        // Jefatura guarda SIN mandar descuento_pct → se conserva.
+        $this->actingAs($this->jefeVentas());
+        $this->guardarPresupuesto($orden, ['repuestos' => []])->assertSessionHasNoErrors();
+        $this->assertSame(20, $orden->fresh()->descuento_pct);
+        $this->assertSame('cliente_grande', $orden->fresh()->descuento_motivo);
+
+        // Y con un 0 explícito sí lo quita (el motivo no queda colgado).
+        $this->guardarPresupuesto($orden, ['repuestos' => [], 'descuento_pct' => 0]);
+        $this->assertSame(0, $orden->fresh()->descuento_pct);
+        $this->assertNull($orden->fresh()->descuento_motivo);
+    }
+
+    /**
+     * EL SELECTOR DE DESCUENTO VIVE EN EL PARTE DEL TÉCNICO (dueño 20-08-2026: «que
+     * el botón que indica descuento con un dropdown pase a la parte del técnico»), y
+     * sigue siendo decisión de jefatura: el técnico ve el aviso, no el selector.
+     */
+    public function test_el_selector_de_descuento_esta_en_el_parte_y_solo_para_jefatura(): void
     {
         $orden = $this->reparacion(['trabajo_realizado' => 'Algo']);
 
         // El técnico ve el aviso, no el selector de descuento.
         $this->actingAs($this->tecnico())
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
-            ->assertSee('Solo jefatura de ventas aplica descuentos');
+            ->assertSee('Solo jefatura de ventas aplica descuentos')
+            ->assertDontSee('name="descuento_pct"', false);
 
         // Jefatura de ventas SÍ ve el selector (no el aviso de bloqueo).
         $this->actingAs($this->jefeVentas())
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
             ->assertDontSee('Solo jefatura de ventas aplica descuentos')
             ->assertSee('name="descuento_pct"', false);
+    }
+
+    /**
+     * LA PESTAÑA COTIZACIÓN NO EDITA NADA (dueño 20-08-2026). Tres formas de lo
+     * mismo, porque una sola se puede satisfacer por accidente: no hay selector de
+     * descuento (ni para jefatura), no hay filas de repuestos —«se repite el detalle
+     * de los repuestos… sácalo, sino es doble información»— y no existe una acción
+     * que guarde por ahí.
+     */
+    public function test_la_pestana_de_cotizacion_es_solo_lectura(): void
+    {
+        $orden = $this->reparacion(['trabajo_realizado' => 'Algo']);
+        $orden->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]);
+
+        $html = $this->actingAs($this->jefeVentas())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            // El dinero SÍ se ve (es la vista previa de lo que paga el cliente).
+            ->assertSee('Costo total a pagar')
+            ->assertDontSee('name="descuento_pct"', false)
+            ->assertDontSee('Guardar cotización')
+            ->getContent();
+
+        // Ni una fila de repuestos editable: los `name="repuestos[…]"` los arma
+        // Alpine en el template, así que se busca la forma que emite el partial.
+        $this->assertStringNotContainsString('repuestos[${i}]', $html);
+        $this->assertStringNotContainsString('reparacionForm(', $html);
+
+        // Y no hay ruta que escriba el presupuesto desde acá.
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Route::has('admin.servicio-tecnico.cotizacion.guardar'),
+            'Volvió a existir una segunda acción para guardar el presupuesto.',
+        );
     }
 
     // --- Mano de obra que el catálogo no puede calcular (regla del dueño 07-08-2026) ---
@@ -248,16 +359,23 @@ class CotizacionGuardarTest extends TestCase
         // (jefatura lo desactivó, o es un texto histórico fuera del catálogo).
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de manilla a medida', 'mano_obra' => 8000]);
 
-        $res = $this->actingAs($this->tecnico())
+        // En el parte (donde se arma): el panel «Costo total a pagar» se siembra con
+        // lo que se va a guardar ($0), no con los $8.000 viejos (si se refactoriza la
+        // siembra de Alpine, lo que hay que conservar es que el total sea el vigente).
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertSee('no tiene tiempo estándar')
+            ->assertSee('manoObra: 0', false)
+            ->assertDontSee('manoObra: 8000', false);
+
+        // Y en la vista previa (donde se lee lo que paga el cliente) lo mismo, pero
+        // renderizado en el servidor: $0 y el porqué, nunca los $8.000 fósiles.
+        $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
-            ->assertSee('no tiene tiempo estándar');
-
-        // El panel «Costo total a pagar» se siembra con lo que se va a guardar ($0),
-        // no con los $8.000 viejos (si se refactoriza la siembra de Alpine, lo que
-        // hay que conservar es que el total mostrado sea el vigente).
-        $res->assertSee('manoObra: 0', false);
-        $res->assertDontSee('manoObra: 8000', false);
+            ->assertSee('no tiene tiempo estándar')
+            ->assertDontSee('$8.000');
     }
 
     public function test_desactivar_el_tiempo_estandar_baja_la_mano_de_obra_al_guardar(): void
@@ -267,16 +385,15 @@ class CotizacionGuardarTest extends TestCase
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de caldera — funciona normal']);
         $repuestos = [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]];
 
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), ['repuestos' => $repuestos]);
+        $this->actingAs($this->tecnico());
+        $this->guardarPresupuesto($orden, ['repuestos' => $repuestos]);
         $this->assertSame(6000, $orden->fresh()->mano_obra);   // 1,5 h × 4000
 
         // Jefatura saca ese trabajo del catálogo (no se borra: se desactiva)…
         TiempoReparacion::where('trabajo', 'Cambio de caldera — funciona normal')->update(['activo' => false]);
 
         // …y al re-guardar la mano de obra baja a $0: NO se conserva el monto viejo.
-        $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), ['repuestos' => $repuestos]);
+        $this->guardarPresupuesto($orden, ['repuestos' => $repuestos]);
         $this->assertSame(0, $orden->fresh()->mano_obra);
         $this->assertSame(30000, (int) $orden->fresh()->costo_total);
     }
@@ -296,10 +413,13 @@ class CotizacionGuardarTest extends TestCase
         $this->assertSame(0, OrdenServicioCotizacion::count());
         Mail::assertNothingSent();
 
-        // Y la pantalla dice lo mismo que el servidor: la falta se lista donde
-        // vive el botón «Enviar» (misma fila que «Guardar»), que no se dibuja.
+        // Y la pantalla dice lo mismo que el servidor: la falta se lista donde vive el
+        // botón «Enviar» (el pie del PARTE, misma fila que «Guardar»), que no se
+        // dibuja. Se mira ahí y no en la cotización: esa pestaña ya no tiene botón de
+        // enviar en ningún caso, así que un `assertDontSee('name="enviar"')` contra
+        // ella pasaría siempre — un candado inerte.
         $this->actingAs($this->tecnico())
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertSee('Para enviarla al cliente')
             ->assertSee('no tiene tiempo estándar')
             ->assertDontSee('name="enviar"', false);
@@ -320,12 +440,17 @@ class CotizacionGuardarTest extends TestCase
         $this->assertSame(0, OrdenServicioCotizacion::count());
         Mail::assertNothingSent();
 
-        // La pantalla nombra el código de la hora en vez de mostrar «1,5 h × —»
+        // Las dos pantallas nombran el código de la hora en vez de mostrar «1,5 h × —»
         // junto a un monto que el guardado ya no puede sostener.
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertSee('no tiene precio en la lista oficial de ventas')
+            ->assertSee('manoObra: 0', false);
+
         $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertSee('no tiene precio en la lista oficial de ventas')
-            ->assertSee('manoObra: 0', false);
+            ->assertDontSee('$6.000');
     }
 
     public function test_cero_horas_fijadas_por_jefatura_si_se_puede_enviar(): void
@@ -350,20 +475,47 @@ class CotizacionGuardarTest extends TestCase
         $this->assertSame(12000, (int) OrdenServicioCotizacion::first()->costo_total);
     }
 
-    public function test_garantia_no_se_puede_cotizar(): void
+    /**
+     * GARANTÍA NO SE COBRA, así que su parte no pide ni muestra dinero: solo QUÉ
+     * repuestos se usaron. Es el defecto que trajo unificar las pantallas — el
+     * presupuesto entró al parte sin condición y una garantía mostraba «Costo total a
+     * pagar», que contradice al resto de la app y al correo que recibe el cliente
+     * (repuestos sin precios).
+     */
+    public function test_el_parte_de_una_garantia_no_muestra_precios_ni_total(): void
     {
         $orden = $this->garantiaVigente();
 
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            // Los repuestos sí se registran (van en el detalle del trabajo).
+            ->assertSee('Repuestos usados')
+            ->assertSee('Garantía: no se cobra')
+            ->assertDontSee('Costo total a pagar')
+            ->assertDontSee('Mano de obra (fijada por el trabajo)')
+            ->assertDontSee('name="descuento_pct"', false)
+            ->getContent();
+
+        // Y ninguna casilla de precio: el precio existente viaja en un hidden para no
+        // perderlo, así que se busca el INPUT visible, no el nombre del campo.
+        $this->assertStringNotContainsString('placeholder="Precio"', $html);
+        $this->assertStringContainsString('repuestos[${i}][nombre]', $html);
+    }
+
+    public function test_garantia_no_se_puede_cotizar(): void
+    {
+        $orden = $this->garantiaVigente();
+        $orden->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]);
+
+        // Aunque la orden tenga repuestos con precio (quedaron de cuando se creía
+        // reparación), no sale ninguna cotización al cliente.
         $this->actingAs($this->tecnico())
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $orden), [
-                'mano_obra' => 15000,
-                'repuestos' => [['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]],
-            ])
+            ->post(route('admin.servicio-tecnico.cotizacion.enviar', $orden))
             ->assertRedirect();
 
-        // No cambió nada: sigue sin mano de obra ni repuestos.
-        $this->assertNull($orden->fresh()->mano_obra);
-        $this->assertDatabaseMissing('orden_servicio_repuestos', ['orden_servicio_id' => $orden->id, 'nombre' => 'Motor']);
+        $this->assertSame(0, OrdenServicioCotizacion::count());
+        Mail::assertNothingSent();
     }
 
     public function test_sin_permiso_no_puede_guardar(): void
@@ -371,7 +523,9 @@ class CotizacionGuardarTest extends TestCase
         $member = tap(User::factory()->create())->assignRole('member');
 
         $this->actingAs($member)
-            ->put(route('admin.servicio-tecnico.cotizacion.guardar', $this->reparacion()), ['repuestos' => []])
+            ->put(route('admin.servicio-tecnico.reparacion.guardar', $this->reparacion()), [
+                'estado' => 'cotizacion', 'repuestos' => [],
+            ])
             ->assertForbidden();
     }
 

@@ -68,6 +68,44 @@ class Configuracion extends Model implements AuditableContract
     }
 
     /**
+     * Lee una clave JSON que es una LISTA SIMPLE de strings (COM-1,
+     * PLAN-PARAMETRICOS), con el clamp de la casa: lo que no sea un array de
+     * strings se descarta, cada elemento va con trim, fuera los vacios y los
+     * duplicados (case-insensitive, conservando la primera forma escrita), y
+     * una lista que quede VACIA cae al default — una clave rota por fuera de
+     * la UI no puede tumbar un selector. La UI de Configuracion ya normaliza
+     * al guardar (ConfiguracionController::LISTAS_SIMPLES); esto es el
+     * cinturon del lado del consumidor.
+     *
+     * @param  array<int, string>  $default
+     * @return array<int, string>
+     */
+    public static function getLista(string $clave, array $default): array
+    {
+        $valor = static::get($clave);
+        if (! is_array($valor)) {
+            return $default;
+        }
+
+        $limpia = [];
+        foreach ($valor as $item) {
+            if (! is_string($item)) {
+                continue;
+            }
+            $item = trim($item);
+            if ($item === '') {
+                continue;
+            }
+            $k = mb_strtolower($item);
+            if (! array_key_exists($k, $limpia)) {
+                $limpia[$k] = $item;
+            }
+        }
+
+        return $limpia === [] ? $default : array_values($limpia);
+    }
+
+    /**
      * Persiste un valor serializandolo segun el tipo de la fila existente y
      * luego invalida su cache. La clave debe existir (los ajustes los define
      * el codigo via seeder, no se crean por UI).

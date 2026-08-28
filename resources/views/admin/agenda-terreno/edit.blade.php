@@ -28,8 +28,23 @@
                 @csrf
                 @method('PUT')
                 @include('admin.agenda-terreno._form', ['trabajo' => $trabajo])
-                <div class="mt-6">
-                    <x-primary-button class="w-full justify-center py-3 sm:w-auto">Guardar cambios</x-primary-button>
+                {{-- EL BOTÓN QUE CIERRA LA CONFIRMACIÓN (dueño 21-08-2026). Mientras la cita no
+                     está agendada, la acción principal no es «guardar»: es confirmarle al
+                     cliente. Antes eso era «cambiá el estado a Agendado y guardá» explicado en
+                     un cartel —el aviso salía igual, pero nadie sabía que eso lo mandaba— y la
+                     cara NO del mismo flujo («Rechazar y avisar») sí tenía su botón.
+
+                     `confirmar` fija el estado en el servidor: el select sigue estando para los
+                     demás estados, pero confirmar no depende de que alguien lo acierte. --}}
+                <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($trabajo->estado !== 'agendado')
+                        <x-primary-button name="confirmar" value="1" class="w-full justify-center py-3 sm:w-auto">
+                            <x-icon.check class="h-4 w-4" /> Confirmar y avisar al cliente
+                        </x-primary-button>
+                        <x-secondary-button class="w-full justify-center py-3 sm:w-auto">Guardar sin avisar</x-secondary-button>
+                    @else
+                        <x-primary-button class="w-full justify-center py-3 sm:w-auto">Guardar cambios</x-primary-button>
+                    @endif
                 </div>
             </form>
         </div>

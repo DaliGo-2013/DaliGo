@@ -466,7 +466,7 @@
 
                             <div x-ref="grupoParadaMotivo">
                                 <x-reason-chips name="parada_motivo" label="¿Qué detuvo la producción?"
-                                                :options="\App\Models\ProduccionParada::MOTIVOS"
+                                                :options="\App\Models\ProduccionParada::motivos()"
                                                 :selected="old('parada_motivo')" />
                             </div>
 

@@ -48,7 +48,7 @@ class BodegaController extends Controller
             ->orderBy('productos.nombre')
             ->select('stocks.*')
             ->with('producto')
-            ->paginate(25)
+            ->paginate(self::POR_PAGINA)
             ->withQueryString();
 
         return view('admin.bodegas.show', [

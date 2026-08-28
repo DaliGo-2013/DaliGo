@@ -25,6 +25,83 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Condiciones del comprobante («INFORMACION IMPORTANTE»)
+    |--------------------------------------------------------------------------
+    |
+    | Son las condiciones del comprobante IMPRESO del taller, que desde el
+    | 14-08-2026 viajan tambien en el correo de ingreso (pedido del dueño): el
+    | cliente que ingresa por QR nunca ve el papel, y estas son justo las que
+    | despues se discuten en el mostrador.
+    |
+    | Viven en config y no escritas en la plantilla porque son numeros de negocio
+    | que cambian con el tiempo — sobre todo el cobro de bodegaje. Cambiarlos aca
+    | los cambia en el correo sin tocar el texto.
+    |
+    | La garantia de la reparacion NO esta aca: es OrdenServicio::GARANTIA_REPARACION_MESES,
+    | que ya la usa el correo de retiro. Un solo numero para las dos cartas.
+    |
+    */
+    'bodegaje' => [
+        'desde_meses' => 6,      // a partir de cuando se cobra bodegaje
+        'mensual_clp' => 3000,   // + IVA, por mes
+        'limite_meses' => 12,    // al cumplirlos se puede vender/regalar/dar de baja (Ley 19.496)
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Garantias del servicio INDUSTRIAL (terreno)
+    |--------------------------------------------------------------------------
+    |
+    | Plazos que se le informan al cliente en el correo de su visita (dueño,
+    | 20-08-2026: «esto es importante para que todos los clientes sepan al momento
+    | de llevar a cabo un arreglo»).
+    |
+    | OJO: SON DEL LADO INDUSTRIAL, y NO tocan las del taller de dispensadores,
+    | que son otras dos y ya viajan en sus tres cartas (confirmado por el dueño el
+    | 20-08 al preguntarle):
+    |   · OrdenServicio::GARANTIA_MESES (6)            → el PRODUCTO del taller, desde la
+    |                                                    compra. Decide si un ingreso se cobra.
+    |   · OrdenServicio::GARANTIA_REPARACION_MESES (3) → la REPARACION del taller, desde el
+    |                                                    dia en que se repara.
+    | Un dispensador reparado en el taller sigue con 3 meses; una planta reparada en
+    | terreno tiene 1 mes. Son servicios distintos con plazos distintos, a proposito.
+    |
+    | `equipo_nuevo_meses` es la garantia del EQUIPO cuando se instala por primera
+    | vez —«todo por instalacion, o sea la primera vez cuando se arma todo» (dueño)—
+    | y sus claves son las categorias de `Instalacion::CATEGORIAS`, para que la
+    | tabla no pueda hablar de un equipo que el sistema no conoce (hay un candado).
+    |
+    | Van en config y no en la plantilla porque son numeros de politica comercial:
+    | cambiarlos aca los cambia en todas las superficies que los muestren.
+    |
+    */
+
+    'garantias_industrial' => [
+        'equipo_nuevo_meses' => [
+            'llenadora' => 12,
+            'lavadora' => 6,
+            'planta' => 12,
+        ],
+        'reparacion_meses' => 1,
+        'instalacion_meses' => 1,
+
+        /*
+        | Como se le NOMBRA el equipo al CLIENTE, cuando el rotulo del catalogo no
+        | alcanza. `Instalacion::CATEGORIA_ETIQUETAS` dice «Planta», que esta bien en
+        | una tabla interna donde el contexto se sobreentiende, pero en un correo el
+        | cliente lee «Planta — 1 año» sin saber de que planta le hablan. El dueño la
+        | nombro «osmosis» al dictar los plazos, asi que asi se la nombra a el.
+        |
+        | Solo se declaran las que hace falta aclarar; el resto usa el rotulo del
+        | catalogo, que es la fuente por defecto y sigue siendo una sola.
+        */
+        'etiquetas_cliente' => [
+            'planta' => 'Planta de osmosis',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Sucursales que RECIBEN servicio técnico
     |--------------------------------------------------------------------------
     |

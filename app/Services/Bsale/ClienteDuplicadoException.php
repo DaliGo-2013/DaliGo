@@ -9,5 +9,17 @@ use RuntimeException;
  * varios registros con el mismo RUT: duplicados históricos, consumidor final,
  * persona+empresa). NO es un fallo: es una condición esperada del origen. Se
  * cuenta aparte de los errores reales para que el sync no parezca roto.
+ *
+ * Lleva el RUT y el id de Bsale del registro descartado para poder LISTARLOS
+ * (insumo de limpieza del catálogo de clientes en Bsale).
  */
-class ClienteDuplicadoException extends RuntimeException {}
+class ClienteDuplicadoException extends RuntimeException
+{
+    public function __construct(
+        public readonly ?string $rut,
+        public readonly ?int $clientId,
+        string $message = '',
+    ) {
+        parent::__construct($message);
+    }
+}

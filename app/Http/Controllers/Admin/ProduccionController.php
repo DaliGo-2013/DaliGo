@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aprobacion;
+use App\Models\Configuracion;
 use App\Models\Maquina;
 use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
@@ -24,6 +25,46 @@ use Illuminate\View\View;
 class ProduccionController extends Controller
 {
     private const TURNOS = ['dia', 'noche'];
+
+    /**
+     * Guardia anti-dedazo de las cantidades del jefe (asignar y ajustar): un
+     * cero de mas ensucia metricas y kardex aunque a la BD (unsigned int) le
+     * quepa. No es capacidad de negocio — es el umbral de "revisa el numero".
+     */
+    private const TOPE_CANTIDAD = 100000;
+
+    /**
+     * Tope del rango de fechas de los informes: la tabla por dia se arma en
+     * PHP, asi que se acota a ~92 filas (un trimestre). Limite de RENDER, no
+     * perilla de negocio (nivel 3 del mapa §5.3) — las ventanas por DEFECTO
+     * si son claves de Configuracion (OPE-1) y su RANGOS respeta este techo.
+     */
+    private const MAX_DIAS_RANGO = 92;
+
+    /**
+     * Ventanas por defecto (en días VISIBLES, hoy incluido) del panel y de los
+     * dos informes de rendimiento. Son los DEFAULTS del rango: el usuario puede
+     * pedir otro por URL (?desde/?hasta) y eso siempre gana. Editables en
+     * Configuración (`produccion_dias_panel`, `produccion_dias_informe_maquina`,
+     * `produccion_dias_informe_tipo`, OPE-1); estos valores son el histórico y
+     * el fallback con BD virgen. Claves separadas a propósito: ventanas
+     * distintas, perillas distintas (doctrina DASH-1).
+     */
+    private const DIAS_PANEL_DEFAULT = 7;
+
+    private const DIAS_INFORME_MAQUINA_DEFAULT = 30;
+
+    private const DIAS_INFORME_TIPO_DEFAULT = 30;
+
+    /**
+     * Lee una ventana configurable en días y la devuelve clampeada (≥2: una
+     * "serie" de menos de dos días no es serie). El clamp protege al consumidor
+     * si el valor entró por fuera de la UI de Configuración (que valida rango).
+     */
+    private function diasConfigurados(string $clave, int $default): int
+    {
+        return max(2, (int) Configuracion::get($clave, $default));
+    }
 
     /**
      * Panel del jefe: alertas de accion + resumen de hoy + produccion por
@@ -78,8 +119,10 @@ class ProduccionController extends Controller
         );
         $hoyResumen['sopladores'] = $reportes->pluck('soplador_id')->unique()->count();
 
-        // --- Produccion por periodo (rango; default ultimos 7 dias) + desgloses ---
-        [$desde, $hasta, $esDefault] = $this->rango($request);
+        // --- Produccion por periodo (rango; default configurable, OPE-1) + desgloses ---
+        // rango() recibe dias HACIA ATRAS desde hoy: N dias visibles = N-1 (el ±1 de DASH-1).
+        $diasPanel = $this->diasConfigurados('produccion_dias_panel', self::DIAS_PANEL_DEFAULT);
+        [$desde, $hasta, $esDefault] = $this->rango($request, $diasPanel - 1);
         $periodo = $this->construirTendencia($desde, $hasta, $this->reportesPorDia($desde, $hasta), $this->asignadasPorDia($desde, $hasta))
             + ['desde' => $desde, 'hasta' => $hasta, 'esDefault' => $esDefault];
         $rankingSopladores = $this->desgloseSopladores($desde, $hasta);
@@ -100,6 +143,7 @@ class ProduccionController extends Controller
             ->get();
 
         return view('admin.produccion.index', [
+            'diasPanel' => $diasPanel,
             'mejorasAbiertas' => $mejorasAbiertas,
             'oeePorMaquina' => $oeePorMaquina,
             'reportes' => $reportes,
@@ -134,9 +178,9 @@ class ProduccionController extends Controller
         if ($desde > $hasta) {
             $desde = $hasta;
         }
-        // La tabla por dia se arma en PHP: acotar a ~92 filas.
-        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > 92) {
-            $desde = Carbon::parse($hasta)->subDays(92)->toDateString();
+        // La tabla por dia se arma en PHP: acotar (ver MAX_DIAS_RANGO).
+        if (Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) > self::MAX_DIAS_RANGO) {
+            $desde = Carbon::parse($hasta)->subDays(self::MAX_DIAS_RANGO)->toDateString();
         }
 
         return [$desde, $hasta, ! $request->filled('desde') && ! $request->filled('hasta')];
@@ -303,7 +347,8 @@ class ProduccionController extends Controller
      */
     public function maquinaRendimiento(Request $request, Maquina $maquina): View
     {
-        [$desde, $hasta, $esDefault] = $this->rango($request, 29);
+        $diasInforme = $this->diasConfigurados('produccion_dias_informe_maquina', self::DIAS_INFORME_MAQUINA_DEFAULT);
+        [$desde, $hasta, $esDefault] = $this->rango($request, $diasInforme - 1);
 
         $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'maquina_id', $maquina->id));
 
@@ -314,6 +359,7 @@ class ProduccionController extends Controller
             'desde' => $desde,
             'hasta' => $hasta,
             'esDefault' => $esDefault,
+            'diasInforme' => $diasInforme,
             'tendencia' => $tendencia,
             'porTipo' => $this->desgloseRegistros($desde, $hasta, 'tipo_botellon_id', 'tipos_botellon', 'maquina_id', $maquina->id),
             'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'maquina_id', $maquina->id),
@@ -348,7 +394,8 @@ class ProduccionController extends Controller
      */
     public function tipoRendimiento(Request $request, TipoBotellon $tipoBotellon): View
     {
-        [$desde, $hasta, $esDefault] = $this->rango($request, 29);
+        $diasInforme = $this->diasConfigurados('produccion_dias_informe_tipo', self::DIAS_INFORME_TIPO_DEFAULT);
+        [$desde, $hasta, $esDefault] = $this->rango($request, $diasInforme - 1);
 
         $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'tipo_botellon_id', $tipoBotellon->id));
 
@@ -357,6 +404,7 @@ class ProduccionController extends Controller
             'desde' => $desde,
             'hasta' => $hasta,
             'esDefault' => $esDefault,
+            'diasInforme' => $diasInforme,
             'tendencia' => $tendencia,
             'porMaquina' => $this->desgloseRegistros($desde, $hasta, 'maquina_id', 'maquinas', 'tipo_botellon_id', $tipoBotellon->id),
             'porSoplador' => $this->desgloseRegistrosPorSoplador($desde, $hasta, 'tipo_botellon_id', $tipoBotellon->id),
@@ -431,21 +479,22 @@ class ProduccionController extends Controller
             'sopladores' => User::permission('report production')->orderBy('name')->get(),
             'turnos' => self::TURNOS,
             'preformas' => $this->preformasParaSelector(),
-            'procedencias' => ProduccionAsignacion::PROCEDENCIAS,
+            'procedencias' => ProduccionAsignacion::procedencias(),
         ]);
     }
 
     /**
      * Productos elegibles como preforma del turno: activos cuya categoria
-     * menciona "preforma", excluyendo las preformas DANADAS (registran merma
-     * en el catalogo, no son material asignable a un turno). Fallback: todos
-     * los activos (para no bloquear si la categorizacion del catalogo aun no
-     * distingue preformas), con la misma exclusion.
+     * calza el patron de config/produccion.php (default: menciona "preforma"),
+     * excluyendo las preformas DANADAS (registran merma en el catalogo, no son
+     * material asignable a un turno). Fallback: todos los activos (para no
+     * bloquear si la categorizacion del catalogo aun no distingue preformas),
+     * con la misma exclusion.
      */
     private function preformasParaSelector()
     {
         $preformas = Producto::query()->where('activo', true)
-            ->where('categoria', 'like', '%preforma%')
+            ->where('categoria', 'like', config('produccion.patron_preforma'))
             ->where($this->sinPreformasDanadas())
             ->orderBy('nombre')
             ->get(['id', 'sku', 'nombre']);
@@ -468,9 +517,13 @@ class ProduccionController extends Controller
      */
     private function sinPreformasDanadas(): \Closure
     {
-        return function ($query) {
-            $query->where('nombre', 'not like', '%dañada%')
-                ->where('nombre', 'not like', '%DAÑADA%');
+        // El patrón vive en config/produccion.php (OPE-3, nivel 2 deploy). La
+        // segunda vuelta en MAYÚSCULAS conserva el gotcha de la Ñ tal cual.
+        $patron = (string) config('produccion.patron_danada');
+
+        return function ($query) use ($patron) {
+            $query->where('nombre', 'not like', $patron)
+                ->where('nombre', 'not like', mb_strtoupper($patron));
         };
     }
 
@@ -487,9 +540,8 @@ class ProduccionController extends Controller
             'soplador_id' => ['required', 'integer', 'exists:users,id'],
             'turno' => ['required', 'in:'.implode(',', self::TURNOS)],
             'fecha' => ['required', 'date'],
-            // max como guardia anti-dedazo: un cero de mas ensucia metricas y
-            // kardex aunque a la BD (unsigned int) le quepa.
-            'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
+            // max como guardia anti-dedazo (ver TOPE_CANTIDAD).
+            'asignadas' => ['required', 'integer', 'min:1', 'max:'.self::TOPE_CANTIDAD],
             // Preforma del turno (producto del catalogo). Opcional: si no se
             // elige, el consumo del kardex queda sin enlace a producto. Se
             // restringe a productos ACTIVOS y NO dañados (mismo universo que
@@ -497,7 +549,7 @@ class ProduccionController extends Controller
             'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinPreformasDanadas())],
             // Procedencia de la preforma (saco o caja). Opcional; el select
             // no elegido llega '' y ConvertEmptyStringsToNull lo vuelve null.
-            'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::PROCEDENCIAS)],
+            'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::procedencias())],
         ], [
             'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
@@ -695,7 +747,7 @@ class ProduccionController extends Controller
         $resumen = (clone $query)->selectRaw('tipo, COALESCE(SUM(cantidad), 0) AS total')
             ->groupBy('tipo')->pluck('total', 'tipo');
 
-        $movimientos = $query->latest('fecha')->latest('id')->paginate(25)->withQueryString();
+        $movimientos = $query->latest('fecha')->latest('id')->paginate(self::POR_PAGINA)->withQueryString();
 
         return view('admin.produccion.movimientos', [
             'movimientos' => $movimientos,
@@ -795,11 +847,11 @@ class ProduccionController extends Controller
         }
 
         $validated = $request->validate([
-            'asignadas' => ['required', 'integer', 'min:1', 'max:100000'],
-            'primera' => ['required', 'integer', 'min:0', 'max:100000'],
-            'segunda' => ['required', 'integer', 'min:0', 'max:100000'],
-            'malo' => ['required', 'integer', 'min:0', 'max:100000'],
-            'danada' => ['required', 'integer', 'min:0', 'max:100000'],
+            'asignadas' => ['required', 'integer', 'min:1', 'max:'.self::TOPE_CANTIDAD],
+            'primera' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
+            'segunda' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
+            'malo' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
+            'danada' => ['required', 'integer', 'min:0', 'max:'.self::TOPE_CANTIDAD],
             // notIn: el centinela nunca puede guardarse como motivo real.
             'motivo_ajuste' => ['required', 'string', 'max:255', Rule::notIn([ProduccionReporte::MOTIVO_OTRO])],
         ], [

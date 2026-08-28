@@ -356,17 +356,41 @@ class VehiculoTest extends TestCase
             ->assertOk();
     }
 
-    public function test_el_tecnico_no_pierde_conductores_al_moverse_el_item(): void
+    /**
+     * EL TÉCNICO NO VE CONDUCTORES — candado INVERTIDO el 26-08-2026, y su versión anterior es
+     * el ejemplo de por qué conviene invertirlos en vez de borrarlos.
+     *
+     * Decía, con este comentario: *«El catálogo alimenta el ingreso por lote y el traslado al
+     * taller: si el técnico lo perdiera, el conductor que retira máquinas en ruta dejaría de
+     * existir para él»*, y fijaba que el técnico SÍ tuviera el ítem y SÍ entrara a la pantalla.
+     *
+     * **La premisa era falsa.** Los dos selectores leen `Conductor::activos()` desde sus
+     * propios controladores (`LoteServicioController`, `TrasladoServicioController`), cada uno
+     * con su permiso, así que nunca pasaron por el gate de esta pantalla. Lo único que el
+     * canAny `manage servicio tecnico|manage vehiculos` conseguía era que el permiso central
+     * del TALLER abriera una pantalla de LOGÍSTICA — y con ella el ítem del menú, que es lo
+     * que el dueño vio en el teléfono de un técnico el 26-08: *«no entiendo por qué ve
+     * conductores, no recuerdo habilitar ese permiso»*.
+     *
+     * Lo que el candado viejo temía sigue cubierto, y por eso este cambio es seguro:
+     * `ConductorTest::test_el_tecnico_sigue_pudiendo_elegir_un_chofer_en_el_ingreso_por_lote`.
+     */
+    public function test_el_tecnico_no_ve_conductores_porque_no_es_de_logistica(): void
     {
-        // El catálogo alimenta el ingreso por lote y el traslado al taller: si el
-        // técnico lo perdiera, el conductor que retira máquinas en ruta dejaría
-        // de existir para él.
         $tecnico = tap(User::factory()->create())->assignRole('tecnico');
 
         $arbol = MenuPrincipal::para($tecnico);
 
-        $this->assertArrayHasKey('conductores', $arbol['logistica']['items']);
-        $this->actingAs($tecnico)->get(route('admin.conductores.index'))->assertOk();
+        // El módulo LOGÍSTICA no le aparece por este ítem. Se comprueba sin asumir que el
+        // módulo exista para él: su visibilidad se deriva de los ítems que puede ver.
+        $this->assertArrayNotHasKey('conductores', $arbol['logistica']['items'] ?? [],
+            'El técnico volvió a ver Conductores: alguien reabrió el gate a un permiso del taller.');
+
+        // Y el gate de la RUTA acompaña al del menú (D-014): si se separaran, el menú
+        // ofrecería una pantalla que devuelve 403, o peor, la pantalla quedaría abierta sin
+        // que el menú la muestre.
+        $this->actingAs($tecnico)->get(route('admin.conductores.index'))
+            ->assertRedirect(route('dashboard'));
     }
 
     public function test_la_ficha_es_el_destino_de_la_fila(): void

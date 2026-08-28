@@ -18,6 +18,8 @@
 
         <x-status-alert :status="session('status')" />
 
+        @include('admin.carga._tabs')
+
         {{-- ① EL FACTOR, que es la conclusión --}}
         @if ($resumen !== [])
             <x-list-card title="Factor por combinación" :count="count($resumen)"
@@ -118,14 +120,12 @@
                 </div>
 
                 <div>
-                    <x-input-label for="observaciones" value="Qué pasó (opcional)" />
+                    <x-input-label for="observaciones" value="Qué pasó (opcional)">
+                        <x-slot:ayuda>Lo más útil de todo cuando los números no cuadran: explica el POR QUÉ, que el número solo nunca dice.</x-slot:ayuda>
+                    </x-input-label>
                     <x-textarea id="observaciones" name="observaciones" rows="2" maxlength="300"
                                 class="mt-1.5 w-full"
                                 placeholder="Ej.: iba media carga de pie y media acostada; o quedó lugar para pasar al fondo.">{{ old('observaciones') }}</x-textarea>
-                    <x-input-hint>
-                        Lo más útil de todo cuando los números no cuadran: explica el POR QUÉ, que el
-                        número solo nunca dice.
-                    </x-input-hint>
                     <x-input-error :messages="$errors->get('observaciones')" class="mt-1" />
                 </div>
 

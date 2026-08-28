@@ -15,6 +15,8 @@
     <div class="space-y-6 py-12">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.servicio-tecnico._tabs-listado')
+
         {{-- Lo que está EN CAMINO y espera confirmación. Va arriba porque es lo
              accionable: mientras no se confirme, esas máquinas no se pueden
              reparar (regla del dueño). --}}

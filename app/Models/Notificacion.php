@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Notificacion del motor M15: una fila por (evento disparado × canal).
@@ -88,6 +89,19 @@ class Notificacion extends Model
         // El registro es de lo YA hecho —la planilla no tiene estados—, así que
         // este es el único momento con los datos completos (facturación y días).
         'instalacion.registrada' => 'Instalación registrada por el técnico industrial',
+        // Agenda de terreno · el técnico CERRÓ el trabajo en la planta del cliente
+        // (dueño 14-08-2026). Le importa a ventas por la zona: el trabajo quedó
+        // hecho —hay que facturar/seguir— o no se pudo y hay que decidir qué sigue.
+        'terreno.realizado' => 'Trabajo de terreno realizado',
+        'terreno.no_realizado' => 'Trabajo de terreno NO realizado',
+        // Agenda de terreno · avisos PARA EL TÉCNICO sobre su propia agenda (dueño
+        // 14-08-2026: «cuando realizamos pruebas de testeo con instalaciones o
+        // reparaciones nunca le llegó una notificación»). Hasta hoy el rol
+        // `tecnico_industrial` no estaba en NINGUNA lista de destinatarios de la
+        // app: le agendaban el día y se enteraba abriendo la agenda a ver.
+        'terreno.agendado' => 'Te agendaron un trabajo en terreno',
+        'terreno.reagendado' => 'Te cambiaron un trabajo de la agenda',
+        'terreno.cancelado' => 'Te cancelaron un trabajo agendado',
         // Logística · vencimiento de documentos de la flota (decisión del dueño
         // 04-08): aviso 30 días antes y aviso cuando ya venció. Lo dispara el
         // comando `vehiculos:avisar-vencimientos`, no una acción de usuario.
@@ -125,6 +139,10 @@ class Notificacion extends Model
         // molde); la correctiva nace de una parada «Molde dañado».
         'molde.umbral_mantencion' => 'Al molde le toca mantención (umbral de ciclos)',
         'molde.correctiva_pendiente' => 'Molde dañado: mantención correctiva pendiente',
+        // MSG-1 · Chat interno (PLAN-MENSAJES): lo dispara Mensajeria con
+        // anti-spam de RAFAGA — solo al pasar de 0 no-leidos en ese hilo;
+        // mientras el receptor no lea, los siguientes mensajes callan.
+        'mensaje.recibido' => 'Mensaje interno recibido',
     ];
 
     protected $fillable = [
@@ -197,7 +215,11 @@ class Notificacion extends Model
             'cotizacion.retiro_avisado', 'garantia.detalle_enviado' => $user->canAny(['view servicio tecnico', 'manage servicio tecnico'])
                 && $this->notificable instanceof OrdenServicio
                 && $this->notificable->esVisiblePara($user),
-            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada',
+            'terreno.realizado', 'terreno.no_realizado',
+            // Los del técnico sobre su propia agenda: mismo gate, porque el destino
+            // es la misma pantalla (el técnico entra con 'ver agenda terreno').
+            'terreno.agendado', 'terreno.reagendado', 'terreno.cancelado' => $user->canAny(['ver agenda terreno', 'agendar servicio terreno']),
             // La fila de la planilla: mismo gate que su ruta en routes/web.php.
             'instalacion.registrada' => $user->can('gestionar instalaciones'),
             // La ficha del traslado la abre quien despacha o quien recibe.
@@ -218,6 +240,11 @@ class Notificacion extends Model
             'produccion.meta_en_riesgo' => $user->can('manage production'),
             // La ficha del molde: mismo gate que sus rutas (P-M11-12).
             'molde.umbral_mantencion', 'molde.correctiva_pendiente' => $user->can('manage production'),
+            // El hilo del chat (MSG-1): mismo gate que tendran sus rutas en
+            // MSG-2 (permiso) + SOLO un participante navega — el morph es la
+            // Conversacion.
+            'mensaje.recibido' => $user->can('usar mensajes')
+                && ($this->notificable?->esParticipante($user) ?? false),
             default => false,
         };
 
@@ -282,7 +309,9 @@ class Notificacion extends Model
                 : null,
             // La solicitud por coordinar, la respuesta del cliente y el rechazo se
             // ven en la agenda de terreno.
-            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada' => route('admin.agenda-terreno.index'),
+            'terreno.solicitada', 'terreno.confirmada', 'terreno.rechazada',
+            'terreno.realizado', 'terreno.no_realizado',
+            'terreno.agendado', 'terreno.reagendado', 'terreno.cancelado' => route('admin.agenda-terreno.index'),
             // La instalación aterriza en SU fila editable (el recurso no tiene
             // `show`): es donde el jefe de ventas revisa o corrige lo registrado.
             'instalacion.registrada' => $this->notificable_id
@@ -328,6 +357,14 @@ class Notificacion extends Model
             'molde.umbral_mantencion', 'molde.correctiva_pendiente' => $this->notificable_id
                 ? route('admin.moldes.show', $this->notificable_id)
                 : route('admin.moldes.index'),
+            // El mensaje aterriza en su HILO (el morph es la Conversacion).
+            // Guard Route::has: MSG-1 entrega el evento SIN las rutas de
+            // pantalla (llegan en MSG-2) — sin el guard, una campanita de
+            // mensaje reventaria la bandeja con RouteNotFoundException. La
+            // rama nace apagada y se enciende sola cuando exista la ruta.
+            'mensaje.recibido' => $this->notificable_id && Route::has('mensajes.show')
+                ? route('mensajes.show', $this->notificable_id)
+                : null,
             default => null,
         };
     }

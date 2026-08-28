@@ -5,14 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\AgendaTrabajoAviso;
 use App\Models\AgendaTrabajo;
+use App\Models\AgendaTrabajoRepuesto;
 use App\Models\Aprobacion;
 use App\Models\Cliente;
+use App\Models\Producto;
 use App\Models\ReglaAprobacion;
 use App\Models\ServicioTerreno;
 use App\Models\User;
 use App\Rules\RutChileno;
 use App\Services\Aprobaciones\Aprobaciones;
+use App\Support\FechaNegocio;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,15 +49,15 @@ class AgendaTrabajoController extends Controller
             'dia' => ['nullable', 'date'],
         ]);
 
-        $anio = isset($v['anio']) ? (int) $v['anio'] : \App\Support\FechaNegocio::ahora()->year;
-        $mes = isset($v['mes']) ? (int) $v['mes'] : \App\Support\FechaNegocio::ahora()->month;
+        $anio = isset($v['anio']) ? (int) $v['anio'] : FechaNegocio::ahora()->year;
+        $mes = isset($v['mes']) ? (int) $v['mes'] : FechaNegocio::ahora()->month;
         $cursor = Carbon::create($anio, $mes, 1);
         $prev = $cursor->copy()->subMonth();
         $next = $cursor->copy()->addMonth();
 
         // Día seleccionado: ?dia= válido y dentro del mes; si no, HOY (si cae en el
         // mes mostrado) o el día 1. Es el día cuyos trabajos se editan a la derecha.
-        $hoy = \App\Support\FechaNegocio::ahora()->startOfDay();
+        $hoy = FechaNegocio::ahora()->startOfDay();
         $diaSel = isset($v['dia']) ? Carbon::parse($v['dia']) : null;
         if (! $diaSel || $diaSel->year !== $anio || $diaSel->month !== $mes) {
             $diaSel = ($hoy->year === $anio && $hoy->month === $mes) ? $hoy->copy() : $cursor->copy();
@@ -144,6 +148,7 @@ class AgendaTrabajoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateData($request);
+        $this->bloquearSiNoSeAtiende($request, $data);
         $this->bloquearSiOcupado($request, $data);
         $this->sincronizarCatalogo($request, $data);
         $data['creado_por'] = $request->user()->name;
@@ -159,6 +164,28 @@ class AgendaTrabajoController extends Controller
         // Nace agendado con fecha y correo → confírmaselo al cliente de una.
         if ($trabajo->estado === 'agendado' && filled($trabajo->cliente_email) && $trabajo->fecha) {
             $this->avisarClienteDeCita($trabajo, 'agendada');
+        }
+
+        // Y AVÍSALE AL TÉCNICO, que es quien tiene que ir. El `$antes` es un
+        // trabajo que no existía, así que el estado previo es null y el modelo lo
+        // lee como «esto es nuevo».
+        $trabajo->avisarAlTecnicoSiCorresponde(['estado' => null, 'fecha' => null, 'hora' => null, 'tecnico_id' => null]);
+
+        // GUARDAR SIN FECHA («queda por coordinar») ES UN CASO LEGÍTIMO Y HASTA HOY REVENTABA.
+        //
+        // El redirect leía `$trabajo->fecha->year` sin preguntar: el registro se creaba bien y
+        // el usuario recibía una pantalla de error 500 igual — o sea que había guardado y no
+        // podía saberlo. Nadie lo reportó porque ese camino casi no se usaba: las solicitudes
+        // sin fecha llegaban por el QR y este formulario se abría para ponerles la fecha.
+        //
+        // Al retirar el formulario público (25-08) «lo dejo anotado y lo coordino después» pasó
+        // a ser una acción SOLO interna, o sea el caso normal de una visita que todavía no
+        // tiene día. Por eso se arregla acá y no en otra tarjeta.
+        if (! $trabajo->fecha) {
+            $trabajo->notificarPorCoordinar();
+
+            return redirect()->route('admin.agenda-terreno.index')
+                ->with('status', "Queda por coordinar: {$trabajo->tipo_label} de {$trabajo->cliente_nombre}. Ponle fecha cuando hables con el cliente.");
         }
 
         return redirect()->route('admin.agenda-terreno.index', ['anio' => $trabajo->fecha->year, 'mes' => $trabajo->fecha->month, 'dia' => $trabajo->fecha->toDateString()])
@@ -243,7 +270,7 @@ class AgendaTrabajoController extends Controller
             'hora_preferida' => $data['hora'] ?? null,
         ]));
 
-        $fecha = \Illuminate\Support\Carbon::parse($data['fecha']);
+        $fecha = Carbon::parse($data['fecha']);
 
         app(Aprobaciones::class)->solicitar(
             tipoAccion: Aprobacion::ACCION_AGENDA_CITA,
@@ -278,7 +305,7 @@ class AgendaTrabajoController extends Controller
      */
     private function pedirAutorizacionAlEditar(Request $request, AgendaTrabajo $trabajo, array $data): RedirectResponse
     {
-        $fecha = \Illuminate\Support\Carbon::parse($data['fecha']);
+        $fecha = Carbon::parse($data['fecha']);
 
         if ($trabajo->esperandoAutorizacion()) {
             return back()->with('status', "Esta cita YA está esperando la autorización del jefe de ventas ({$trabajo->fecha_preferida?->format('d-m-Y')}). Cuando la resuelva vas a poder cambiarla.");
@@ -340,8 +367,31 @@ class AgendaTrabajoController extends Controller
     public function update(Request $request, AgendaTrabajo $trabajo): RedirectResponse
     {
         $data = $this->validateData($request, editando: true);
+        $this->bloquearSiNoSeAtiende($request, $data);
         $this->bloquearSiOcupado($request, $data, $trabajo->id);
         $this->sincronizarCatalogo($request, $data);
+
+        // ═══ «CONFIRMAR Y AVISAR AL CLIENTE» ═══
+        //
+        // Dueño 21-08-2026: «al cliquear coordinar, al final del apartado aparezca enviar o
+        // confirmar, y que ahí se mande al cliente el detalle de que la visita está
+        // confirmada; hasta ahora no entiendo que aparezca algo que cierre esa
+        // confirmación». Y tenía razón: el aviso salía igual, pero solo si el jefe sabía que
+        // confirmar era «cambiar el estado a Agendado y guardar». La cara NO del mismo flujo
+        // («Rechazar y avisar», con su motivo) sí tenía su botón desde el principio.
+        //
+        // El botón fija el estado ACÁ y no en el select: así el camino de la autorización de
+        // jefatura —que corre justo abajo y mira `estado`+`fecha`— ve la misma intención, y
+        // un vendedor confirmando una mantención sigue pasando por el jefe.
+        $confirmando = $request->boolean('confirmar');
+        if ($confirmando) {
+            if (blank($data['fecha'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'fecha' => 'Pon la fecha de la visita antes de confirmársela al cliente.',
+                ]);
+            }
+            $data['estado'] = 'agendado';
+        }
 
         // ═══ EL AGUJERO QUE ESTE CHEQUEO TAPA ═══
         //
@@ -367,17 +417,30 @@ class AgendaTrabajoController extends Controller
 
         $trabajo->update($data);
 
-        $this->avisarClienteSiCorresponde($trabajo->refresh(), $antes);
+        $aviso = $this->avisarClienteSiCorresponde($trabajo->refresh(), $antes);
+        // El MISMO snapshot sirve para el técnico: los tres cambios que le avisamos
+        // al cliente (agendada / movida / anulada) son los tres que le cambian el
+        // día al técnico.
+        $trabajo->avisarAlTecnicoSiCorresponde($antes);
 
         // Una solicitud puede seguir sin fecha: se vuelve al mes actual.
-        $destino = $trabajo->fecha ?? \App\Support\FechaNegocio::ahora();
+        $destino = $trabajo->fecha ?? FechaNegocio::ahora();
         $params = ['anio' => $destino->year, 'mes' => $destino->month];
         if ($trabajo->fecha) {
             $params['dia'] = $trabajo->fecha->toDateString();
         }
 
+        // El mensaje DICE QUE PASO CON EL CLIENTE. «Trabajo actualizado» no cierra nada: el
+        // jefe de ventas necesita saber si el correo salió, a qué dirección, o por qué no.
+        $status = match (true) {
+            $aviso === 'enviado' => "Visita confirmada. Se le avisó a {$trabajo->cliente_email} por correo.",
+            $aviso === 'fallo' => 'Visita confirmada, pero el correo NO salió: hay que llamar al cliente.',
+            $confirmando => 'Visita confirmada, pero la solicitud no tiene correo del cliente: hay que llamarlo.',
+            default => 'Trabajo actualizado.',
+        };
+
         return redirect()->route('admin.agenda-terreno.index', $params)
-            ->with('status', 'Trabajo actualizado.');
+            ->with('status', $status);
     }
 
     public function destroy(AgendaTrabajo $trabajo): RedirectResponse
@@ -398,16 +461,41 @@ class AgendaTrabajoController extends Controller
         $data = $request->validate([
             'estado' => ['required', Rule::in(AgendaTrabajo::ESTADOS)],
             'notas_tecnico' => ['nullable', 'string'],
-            // Repuestos usados: el técnico los registra al cerrar (Realizado).
+            // Repuestos usados: el técnico los registra al cerrar el trabajo.
+            // SIN precio a propósito (no maneja precios) y sin efecto en stock: el
+            // descuento sale de la factura del vendedor. Ver AgendaTrabajoRepuesto.
             'repuestos' => ['nullable', 'array'],
             'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
+            'repuestos.*.sku' => ['nullable', 'string', 'max:191'],
             'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
-        if (! $request->user()->can('agendar servicio terreno')
-            && ! ($trabajo->estado === 'agendado' && $data['estado'] === 'realizado')) {
-            abort(403, 'Solo puedes marcar como realizado un trabajo agendado.');
+        $esCierreDeTerreno = $trabajo->estado === 'agendado'
+            && in_array($data['estado'], AgendaTrabajo::ESTADOS_CIERRE, true);
+
+        // El técnico industrial solo VE su agenda: lo único que puede hacer es
+        // CERRAR un trabajo agendado, de las dos formas (hecho / no se pudo).
+        if (! $request->user()->can('agendar servicio terreno') && ! $esCierreDeTerreno) {
+            abort(403, 'Solo puedes cerrar un trabajo agendado (realizado o no realizado).');
         }
+
+        // Al cerrar hay que CONTAR qué pasó, y es obligatorio a propósito (dueño
+        // 14-08): el detalle paso a paso es lo que viaja en el aviso a ventas, y
+        // un cierre sin explicación deja al vendedor llamando al técnico para
+        // preguntarle. Se valida acá y no en las reglas de arriba porque depende
+        // de la transición, no del campo.
+        if ($esCierreDeTerreno && blank($data['notas_tecnico'] ?? null)) {
+            throw ValidationException::withMessages([
+                'notas_tecnico' => $data['estado'] === 'realizado'
+                    ? 'Cuenta qué hiciste, paso a paso: es lo que le llega a ventas.'
+                    : 'Cuenta por qué no se pudo hacer: es lo que le llega a ventas.',
+            ]);
+        }
+
+        // Estado previo: lo necesita el aviso al técnico de más abajo (una cita que
+        // se cancela DESPUÉS de estar agendada es la que no tiene que ir a hacer).
+        $estadoAntes = $trabajo->estado;
+        $tecnicoAntes = $trabajo->tecnico_id;
 
         $update = ['estado' => $data['estado']];
         if (array_key_exists('notas_tecnico', $data)) {
@@ -415,21 +503,45 @@ class AgendaTrabajoController extends Controller
         }
         $trabajo->update($update);
 
-        // Repuestos SOLO al marcar realizado y si vienen en la petición: se
-        // reemplazan los del trabajo (filas con nombre vacío se descartan).
-        if ($data['estado'] === 'realizado' && $request->has('repuestos')) {
+        // Repuestos: se guardan al CERRAR, de las dos formas. Un «no realizado»
+        // también consume repuestos (el técnico abrió el equipo, cambió el filtro y
+        // se quedó sin la membrana), y si solo se guardaran en el «realizado» ese
+        // consumo no quedaría en ninguna parte. Se reemplazan los del trabajo; las
+        // filas con nombre vacío se descartan.
+        if ($esCierreDeTerreno && $request->has('repuestos')) {
             $trabajo->repuestos()->delete();
             foreach ($data['repuestos'] ?? [] as $r) {
                 if (! empty($r['nombre'])) {
                     $trabajo->repuestos()->create([
                         'nombre' => $r['nombre'],
+                        // Solo si vino del catálogo; en blanco = escrito a mano.
+                        'sku' => blank($r['sku'] ?? null) ? null : $r['sku'],
                         'cantidad' => $r['cantidad'] ?? 1,
                     ]);
                 }
             }
         }
 
-        return back()->with('status', "Trabajo de {$trabajo->cliente_nombre} marcado como {$data['estado']}.");
+        // Aviso a ventas POR LA ZONA (dueño 14-08): jefe de ventas + el vendedor
+        // del cliente. Va después de guardar y no revierte el cierre si falla —
+        // el trabajo ya se hizo (o no), y eso es lo que tiene que quedar.
+        if ($esCierreDeTerreno) {
+            $trabajo->refresh()->avisarCierre(
+                $data['estado'] === 'realizado' ? 'terreno.realizado' : 'terreno.no_realizado'
+            );
+        }
+
+        // Si le CANCELARON un trabajo que ya estaba agendado, el técnico tiene que
+        // saberlo antes de manejar hasta allá. El propio técnico cerrando su
+        // trabajo no se auto-avisa: el modelo solo mira agendado → cancelado.
+        $trabajo->refresh()->avisarAlTecnicoSiCorresponde([
+            'estado' => $estadoAntes,
+            'fecha' => $trabajo->fecha?->toDateString(),
+            'hora' => $trabajo->hora_corta,
+            'tecnico_id' => $tecnicoAntes,
+        ]);
+
+        return back()->with('status', "Trabajo de {$trabajo->cliente_nombre} marcado como {$trabajo->estado_label}.");
     }
 
     /**
@@ -513,6 +625,52 @@ class AgendaTrabajoController extends Controller
         ]));
     }
 
+    /**
+     * Autocompletado de repuestos para el cierre del trabajo en terreno.
+     *
+     * ES UN ENDPOINT APARTE del de servicio técnico A PROPÓSITO, y no por el
+     * permiso (que también): el del taller devuelve `precio`, y el técnico
+     * industrial NO maneja precios (dueño 14-08-2026). Reusarlo dejaría el precio
+     * viajando al navegador aunque ninguna pantalla lo pinte —visible en la
+     * pestaña de red— y bastaría un `x-text` de más para que apareciera. Acá el
+     * precio no se consulta, así que no hay nada que filtrar en la vista.
+     *
+     * Dos fuentes, como en el taller: el catálogo (que es el que trae el CÓDIGO,
+     * lo único que el vendedor necesita para facturar sin preguntar) y el
+     * historial de lo ya usado en terreno (nombres, sin código: cubre el repuesto
+     * que se escribe a mano una y otra vez).
+     */
+    public function buscarRepuesto(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $catalogo = Producto::query()
+            ->where(fn (Builder $w) => $w
+                ->where('sku', 'like', "%{$q}%")
+                ->orWhere('nombre', 'like', "%{$q}%"))
+            ->orderBy('sku')
+            ->limit(10)
+            ->get(['id', 'sku', 'nombre'])
+            ->map(fn (Producto $p) => ['nombre' => $p->nombre, 'sku' => $p->sku]);
+
+        $historial = AgendaTrabajoRepuesto::query()
+            ->where('nombre', 'like', "%{$q}%")
+            ->whereNull('sku')
+            ->distinct()
+            ->orderBy('nombre')
+            ->limit(10)
+            ->pluck('nombre')
+            ->map(fn (string $nombre) => ['nombre' => $nombre, 'sku' => null]);
+
+        return response()->json(
+            $catalogo->concat($historial)->unique('nombre')->take(12)->values()
+        );
+    }
+
     // --- Helpers --------------------------------------------------------
 
     /**
@@ -550,7 +708,7 @@ class AgendaTrabajoController extends Controller
                     $this->datosContactoCliente($data),
                 ));
                 $data['cliente_id'] = $cliente->id;
-            } catch (\Illuminate\Database\QueryException $e) {
+            } catch (QueryException $e) {
                 // Carrera: si otro proceso ya creó ese RUT, enlaza al existente.
                 $data['cliente_id'] = Cliente::where('rut', $rut)->value('id') ?? ($data['cliente_id'] ?? null);
             }
@@ -580,27 +738,37 @@ class AgendaTrabajoController extends Controller
      * cambiados (reprogramada) o cancelada (anulada). Sin correo del cliente no
      * se hace nada.
      */
-    private function avisarClienteSiCorresponde(AgendaTrabajo $trabajo, array $antes): void
+    /**
+     * @return 'enviado'|'fallo'|null  qué pasó con el correo al cliente (null = no correspondía)
+     */
+    private function avisarClienteSiCorresponde(AgendaTrabajo $trabajo, array $antes): ?string
     {
         if (blank($trabajo->cliente_email)) {
-            return;
+            return null;
         }
 
         if ($trabajo->estado === 'agendado' && $trabajo->fecha) {
             if ($antes['estado'] !== 'agendado') {
-                $this->avisarClienteDeCita($trabajo, 'agendada');
-            } elseif ($antes['fecha'] !== $trabajo->fecha?->toDateString()
-                || $antes['hora'] !== $trabajo->hora_corta
-                || $antes['tecnico_id'] !== $trabajo->tecnico_id) {
-                $this->avisarClienteDeCita($trabajo, 'reprogramada');
+                return $this->avisarClienteDeCita($trabajo, 'agendada');
             }
 
-            return;
+            if ($antes['fecha'] !== $trabajo->fecha?->toDateString()
+                || $antes['hora'] !== $trabajo->hora_corta
+                || $antes['tecnico_id'] !== $trabajo->tecnico_id) {
+                return $this->avisarClienteDeCita($trabajo, 'reprogramada');
+            }
+
+            return null;
         }
 
-        if ($trabajo->estado === 'cancelado' && $antes['estado'] === 'agendado') {
-            $this->avisarClienteDeCita($trabajo, 'anulada');
+        // CANCELAR UNA SOLICITUD TAMBIÉN AVISA. Antes se exigía que viniera de 'agendado', así
+        // que una solicitud del QR cancelada acá se apagaba en silencio: el cliente que la
+        // pidió no se enteraba nunca. Y el cartel de la pantalla ya prometía el aviso.
+        if ($trabajo->estado === 'cancelado' && $antes['estado'] !== 'cancelado') {
+            return $this->avisarClienteDeCita($trabajo, 'anulada');
         }
+
+        return null;
     }
 
     /**
@@ -613,9 +781,9 @@ class AgendaTrabajoController extends Controller
      * llegan a avisar —este, y el jefe de ventas autorizando una cita días después— y con la
      * lógica acá adentro el camino diferido salía sin avisarle a nadie.
      */
-    private function avisarClienteDeCita(AgendaTrabajo $trabajo, string $motivo): void
+    private function avisarClienteDeCita(AgendaTrabajo $trabajo, string $motivo): string
     {
-        $trabajo->avisarAlCliente($motivo);
+        return $trabajo->avisarAlCliente($motivo) ? 'enviado' : 'fallo';
     }
 
     private function validateData(Request $request, bool $editando = false): array
@@ -666,6 +834,67 @@ class AgendaTrabajoController extends Controller
             'disponibilidad' => ['nullable', 'string', 'max:1000'],
             'notas_tecnico' => ['nullable', 'string'],
         ]);
+    }
+
+    /**
+     * Bloquea agendar/editar en un día que el técnico NO ATIENDE: sábado, domingo, feriado o
+     * cierre. Mismo criterio y misma salida que la ocupación —el admin puede pasar por
+     * encima— porque son la misma clase de regla: «ese día no hay nadie».
+     *
+     * POR QUÉ VIVE ACÁ DESDE EL 25-08. La regla es del dueño (13-08: *«el técnico va a terreno
+     * de lunes a viernes»*) y hasta hoy se validaba SOLO en el formulario público del QR: el
+     * camino interno nunca la tuvo, así que un vendedor ya podía agendar un sábado. Al sacar
+     * la visita industrial de la vista del cliente (decisión del gerente, 25-08) esa regla se
+     * quedaba **sin ningún lugar donde aplicar**: seguía escrita y no guardaba nada. Se muda
+     * acá, donde ahora ocurren TODAS las visitas, y de paso empieza a cubrir los otros tres
+     * tipos, que nunca la tuvieron.
+     *
+     * El mensaje ofrece el PRÓXIMO DÍA CON DISPONIBILIDAD en vez de dejar al vendedor
+     * tanteando — que es lo que hacía el cartel en vivo del formulario público. Sale de
+     * `AgendaTrabajo::disponibilidad()`, el mismo método que alimentaba ese cartel: un
+     * criterio, no dos.
+     */
+    private function bloquearSiNoSeAtiende(Request $request, array $data): void
+    {
+        $fecha = $data['fecha'] ?? null;
+        if (! $fecha || ($data['estado'] ?? null) === 'solicitado') {
+            return;
+        }
+        if ($request->user()->hasRole('admin')) {
+            return; // el admin puede agendar un día que no se atiende
+        }
+
+        // Se validan las PUNTAS del rango y no cada día: un viaje que arranca un viernes y
+        // termina el lunes atraviesa el fin de semana a propósito (el técnico se queda allá),
+        // así que bloquear los días del medio prohibiría el viaje de varios días que el lote 5
+        // vino a permitir.
+        foreach (array_unique([(string) $fecha, (string) ($data['fecha_fin'] ?? $fecha)]) as $dia) {
+            $d = AgendaTrabajo::disponibilidad($dia);
+
+            // SOLO el caso «cerrado». Un día simplemente ocupado por otro trabajo lo rechaza
+            // `bloquearSiOcupado`, que además puede nombrar al cliente y la ciudad — acá del
+            // otro lado hay alguien con permiso, pero cada guarda dice lo suyo una sola vez.
+            if ($d['estado'] !== 'cerrado') {
+                continue;
+            }
+
+            $cuando = fn (string $f) => Carbon::parse($f)->locale('es')->translatedFormat('j \d\e F');
+
+            // El «por qué» distingue fin de semana de cierre, igual que el cartel del
+            // formulario público. Acá sí se puede ser específico: del otro lado hay staff.
+            $porque = ($d['motivo_cierre'] ?? null) === 'cierre'
+                ? 'ese día la agenda está cerrada (feriado, vacaciones o cierre)'
+                : 'el técnico va a terreno de lunes a viernes';
+
+            $proximo = $d['proximo_libre']
+                ? ' El más cercano con disponibilidad es el '.$cuando($d['proximo_libre']).'.'
+                : '';
+
+            throw ValidationException::withMessages([
+                'fecha' => 'No se atiende el '.$cuando($dia).": {$porque}.{$proximo}"
+                    .' Pídele a un administrador que lo agende si es imprescindible.',
+            ]);
+        }
     }
 
     /**

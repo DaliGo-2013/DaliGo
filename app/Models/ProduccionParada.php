@@ -57,6 +57,33 @@ class ProduccionParada extends Model
         'Cambio de molde',
     ];
 
+    /**
+     * Motivos vigentes: editables en Configuración (`produccion_motivos_parada`,
+     * OPE-2 — UI una-por-línea); las constantes son el histórico y el fallback
+     * con BD virgen (regla de oro). La lista sigue CERRADA para el operario
+     * (Rule::in) — lo que cambia es quién la escribe. Quitar un motivo con
+     * paradas históricas NO las rompe: motivo y clase quedaron PERSISTIDOS en
+     * cada fila (el OEE de ayer no se reescribe).
+     *
+     * @return array<int, string>
+     */
+    public static function motivos(): array
+    {
+        return Configuracion::getLista('produccion_motivos_parada', self::MOTIVOS);
+    }
+
+    /**
+     * Subconjunto planificado vigente (`produccion_motivos_planificados`).
+     * La UI de Configuración valida el par planificados ⊆ motivos
+     * (ConfiguracionController::PARES_SUBCONJUNTO).
+     *
+     * @return array<int, string>
+     */
+    public static function motivosPlanificados(): array
+    {
+        return Configuracion::getLista('produccion_motivos_planificados', self::MOTIVOS_PLANIFICADOS);
+    }
+
     protected $fillable = [
         'reporte_id',
         'cliente_uuid',
@@ -79,10 +106,13 @@ class ProduccionParada extends Model
     /**
      * Clase derivada del motivo, SIEMPRE en el servidor: el soplador no
      * clasifica (menos toques, cero sesgo) y el request jamas la impone.
+     * Deriva de la lista VIGENTE (OPE-2) y se PERSISTE al crear la parada:
+     * mover un motivo entre clases hoy solo afecta paradas futuras — el OEE
+     * histórico lee la columna `clase`, no esta función.
      */
     public static function claseDe(string $motivo): string
     {
-        return in_array($motivo, self::MOTIVOS_PLANIFICADOS, true)
+        return in_array($motivo, self::motivosPlanificados(), true)
             ? self::CLASE_PLANIFICADA
             : self::CLASE_NO_PLANIFICADA;
     }

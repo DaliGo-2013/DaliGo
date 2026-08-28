@@ -21,8 +21,8 @@
     SVG). No es decoración: escribir «120 × 100 × 80» y ver que sale casi un cubo es lo
     que delata un tipeo —un 20 que era 200— antes de que entre a la carga.
 --}}
-<div x-show="cubicar" x-cloak
-     class="border-t border-neutral-200 bg-neutral-50/70 p-3 sm:p-4"
+<div x-show="modo === 'cubicar'" @if (! request()->boolean('cubicar')) x-cloak @endif
+     class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4"
      x-data="{
          nombre: '', l: 120, w: 100, h: 80, kg: 220, porUnidad: false, pcs: 10,
 
@@ -96,15 +96,26 @@
             `quitar` a propósito: llamarlo igual lo haría llamarse a sí mismo para siempre
             (el x-data de acá tapa el del formulario, como pasa con `agregar`). */
          quitarDelCamion(i) {
-             if (this.lineas.length < 2) return;
+             /* También con la última línea (dueño 21-08: «quiero cargar lo que yo
+                quiera sin previas»): se saca, y si no queda nada NO se recalcula —
+                un formulario sin líneas devolvería la pantalla al otro modo. El
+                armador queda en su estado vacío, que desde hoy es legítimo. */
              this.quitar(i);
-             this.recalcular();
+             if (this.lineas.length) this.recalcular();
          },
 
-         /* Recalcular SIN cerrar el panel. El `cubicar=1` viaja en el formulario, así que
-            la página vuelve con el panel abierto, la lista a la vista y el próximo bulto
+         /* Recalcular SIN salir del cubicaje. El `cubicar=1` viaja en el formulario, así
+            que la página vuelve EN esta pestaña, con la lista a la vista y el próximo bulto
             listo para tipear — el pedido del 12-08 de que «no salga todo». */
          recalcular() {
+             /* EL CAMBIO DE MODO NO ES COSMÉTICO Y TIENE QUE QUEDARSE. El formulario que se
+                envía es el de «La carga», que está oculto (`x-show`) mientras se cubica: un
+                campo `required` dentro de un contenedor con `display:none` no se puede
+                enfocar, así que el navegador ABORTA la validación con un TypeError en
+                consola y no manda nada — la falla más silenciosa posible, y está en la
+                bitácora [2026-07-28]. Se lo muestra un instante y la página recarga
+                enseguida, así que no se ve el salto; volver a esta pestaña lo decide el
+                servidor al sembrar `modo`. */
              this.modo = 'mixta';
 
              const form = this.$refs.formMixta;
@@ -122,8 +133,12 @@
 
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">Cubicar un bulto</p>
-        <button type="button" @click="cubicar = false"
-                class="min-h-8 rounded-lg px-2 text-xs font-medium text-neutral-500 transition hover:text-neutral-800">Cerrar</button>
+        {{-- La salida vuelve a «La carga», que es la pestaña de trabajo. Antes decía
+             «Cerrar» porque esto era un panel que se abría dentro del visor; una pestaña no
+             se cierra, se cambia — y dejar «Cerrar» pondría la página en una pestaña marcada
+             sin contenido debajo. --}}
+        <button type="button" @click="modo = 'mixta'"
+                class="min-h-8 rounded-lg px-2 text-xs font-medium text-neutral-500 transition hover:text-neutral-800">Volver a la carga</button>
     </div>
 
     <div class="grid gap-4 lg:grid-cols-[1fr_15rem]">
@@ -138,13 +153,23 @@
 
             {{-- Las tres medidas juntas y en cm, como en la cinta: escribirlas en metros
                  con coma es de donde salen los errores de coma flotante que el motor
-                 evita trabajando en centímetros enteros. --}}
+                 evita trabajando en centímetros enteros.
+
+                 CADA MEDIDA TRAE SU PROPIO TOPE, y son los del validador
+                 (`SimuladorCargaController`: largo 1500, ancho y alto 300). Antes las tres
+                 aceptaban 1200: el formulario dejaba tipear un ancho de 900 cm y el
+                 servidor lo rechazaba después de apretar «Agregar» — una pantalla que
+                 promete lo que su propio guardado no acepta. Los topes no son arbitrarios:
+                 15 m de largo es un contenedor de 40 pies con margen, y 3 m de ancho o alto
+                 ya pasa cualquier caja de carga del catálogo (la más ancha mide 2,35). --}}
             <div class="grid grid-cols-3 gap-2">
-                <template x-for="campo in [['l', 'Largo'], ['w', 'Ancho'], ['h', 'Alto']]" :key="campo[0]">
+                <template x-for="campo in [['l', 'Largo', 1500], ['w', 'Ancho', 300], ['h', 'Alto', 300]]" :key="campo[0]">
                     <div>
                         <label class="text-xs font-medium text-neutral-600" x-text="campo[1]"></label>
                         <div class="mt-1 flex items-center rounded-lg border border-neutral-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/30">
-                            <input type="number" min="1" max="1200" step="1" inputmode="numeric"
+                            <input type="number" min="1" step="1" inputmode="numeric"
+                                   :max="campo[2]"
+                                   :title="`Hasta ${campo[2]} cm. Un bulto más grande que el camión no se rechaza: se calcula y la pantalla dice que no entra y por qué.`"
                                    x-model="$data[campo[0]]"
                                    class="w-full border-0 bg-transparent px-2.5 py-2 text-sm tabular-nums focus:ring-0">
                             <span class="pr-2 text-xs text-neutral-400">cm</span>
@@ -152,6 +177,14 @@
                     </div>
                 </template>
             </div>
+            {{-- LOS DESPACHOS ESPECIALES SON EL CASO, no la excepción (dueño 25-08:
+                 «manejamos productos de diferentes tamaños en despachos especiales… por
+                 ejemplo 2 mts de alto por cuatro metros»). Decirlo acá con un número
+                 concreto es lo que evita que alguien asuma que esto es para cajas chicas. --}}
+            <p class="text-[11px] leading-snug text-neutral-500">
+                Sirve para bultos grandes: 400 × 120 × 200 cm es un bulto válido y el cálculo
+                lo acomoda como cualquier otro.
+            </p>
 
             <div class="grid gap-2 sm:grid-cols-2">
                 <div>
@@ -230,7 +263,9 @@
             </button>
             <p class="mt-1.5 text-[11px] leading-snug text-neutral-500">
                 Cuántas entran lo dice el cálculo al agregarlo, con el mismo motor que el resto
-                — acá solo se mide el bulto.
+                — acá solo se mide el bulto. <strong class="font-medium text-neutral-700">Se puede
+                mezclar</strong>: lo que cubicás acá y los productos del catálogo viajan en la
+                misma carga.
             </p>
 
             {{-- LO QUE YA VA EN EL CAMIÓN. Es la lista que pidió el dueño para poder seguir
@@ -255,7 +290,7 @@
                                      mirar. El `p-1.5` no es estético: el ícono mide 14 px y solo
                                      con el relleno el área de toque llega a 26, que es lo mínimo
                                      usable en el teléfono. --}}
-                                <button type="button" @click="quitarDelCamion(i)" x-show="lineas.length > 1"
+                                <button type="button" @click="quitarDelCamion(i)"
                                         class="shrink-0 rounded p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
                                         :title="`Quitar ${resumen(l)} de la carga`"
                                         :aria-label="`Quitar ${resumen(l)} de la carga`">
@@ -264,9 +299,41 @@
                             </li>
                         </template>
                     </ul>
+                    {{-- LOS DOS CAMINOS QUE SEGUÍAN, COMO BOTONES Y NO COMO TEXTO (dueño
+                         25-08: «que te dé la opción de cargar y acomodar en el camión a
+                         medida… que se pueda cargar mixto cosas cubicadas vs por ejemplo
+                         bidones»).
+
+                         Las dos cosas YA funcionaban —un bulto cubicado es una línea igual
+                         que cualquier otra, y el tablero acomoda cualquier bloque— y el
+                         único rastro era este párrafo que decía «"Mover y girar bloques" en
+                         el menú». O sea: la función existía y había que ir a buscarla a otra
+                         parte sabiendo su nombre. Es exactamente el defecto del 10-08 («¿y
+                         dónde agrego otro bulto?») en otra pantalla.
+
+                         El del catálogo LLEVA a «La carga» con una línea nueva abierta: el
+                         selector de productos vive ahí y duplicarlo acá serían dos listas
+                         que se contradicen. Un clic, y se ve a dónde fue. --}}
+                    <div class="mt-2 grid gap-1">
+                        <button type="button" @click="modo = 'mixta'; agregarDelCatalogo()"
+                                x-show="lineas.length < 8"
+                                class="min-h-9 rounded-lg border border-neutral-300 bg-white px-2 text-[11px] font-medium text-neutral-700 transition hover:bg-neutral-50">
+                            + Sumar un producto del catálogo
+                        </button>
+                        {{-- El tablero vive en el x-data del VISOR, que es hermano de este
+                             panel desde que el cubicaje subió a pestaña. Un `$dispatch` sube
+                             y no llega a un hermano, así que va por `window` — el visor lo
+                             escucha con `@abrir-tablero.window`. --}}
+                        <button type="button"
+                                @click="window.dispatchEvent(new CustomEvent('abrir-tablero')); $el.closest('[x-data]').scrollIntoView({block: 'start'})"
+                                class="min-h-9 rounded-lg border border-neutral-300 bg-white px-2 text-[11px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+                                title="Abre la vista de planta del camión para arrastrar y girar cada bulto. El cálculo no verifica lo que se acomoda a mano.">
+                            Acomodar a mano en el camión
+                        </button>
+                    </div>
                     <p class="mt-1.5 text-[11px] leading-snug text-neutral-500">
-                        Cubicá el siguiente y volvé a agregar. Para acomodarlos a mano, «Mover y
-                        girar bloques» en el menú.
+                        O cubicá el siguiente acá arriba y volvé a agregar: las medidas quedan
+                        puestas para cambiar solo lo que cambia.
                     </p>
                 </div>
             </template>

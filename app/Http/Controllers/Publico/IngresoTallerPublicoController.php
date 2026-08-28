@@ -8,6 +8,7 @@ use App\Models\LoteServicio;
 use App\Models\OrdenServicio;
 use App\Models\Sucursal;
 use App\Rules\RutChileno;
+use App\Support\FechaNegocio;
 use App\Support\ImagenComprimida;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,8 +47,10 @@ class IngresoTallerPublicoController extends Controller
             'tipos' => OrdenServicio::TIPOS,
             // Link firmado al ingreso por cantidad (varias máquinas de una vez).
             'urlLote' => URL::signedRoute('ingreso-taller.lote.create', ['sucursal' => $sucursal->id]),
-            // Link firmado a la solicitud de visita industrial (en terreno).
-            'urlVisita' => URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]),
+            // Ya no va `urlVisita`: la visita/revisión industrial salió de esta vista el
+            // 25-08 por decisión del gerente y ahora la agendan los vendedores desde la
+            // Agenda de terreno, con el visto bueno del jefe de ventas. Ver el comentario en
+            // `publico/taller/create.blade.php`.
         ]);
     }
 
@@ -152,7 +155,7 @@ class IngresoTallerPublicoController extends Controller
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
         // Día de NEGOCIO (P-TZ-01): un ingreso nocturno quedaba FECHADO mañana
         // (fecha_ingreso y entrega estimada se persisten desde este valor).
-        $hoy = \App\Support\FechaNegocio::hoy();
+        $hoy = FechaNegocio::hoy();
         $fechaEntrega = $sucursal->fechaEntregaEstimada($hoy)->toDateString();
 
         $ordenesPorFila = [];
@@ -304,7 +307,7 @@ class IngresoTallerPublicoController extends Controller
         $sucursal = Sucursal::findOrFail($data['sucursal_id']);
         // Día de NEGOCIO (P-TZ-01): un ingreso nocturno quedaba FECHADO mañana
         // (fecha_ingreso y entrega estimada se persisten desde este valor).
-        $hoy = \App\Support\FechaNegocio::hoy();
+        $hoy = FechaNegocio::hoy();
 
         $orden = OrdenServicio::create([
             'cliente_nombre' => $data['cliente_nombre'],

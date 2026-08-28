@@ -244,12 +244,17 @@ class ServicioTecnicoController extends Controller
 
         $total = $base()->count();
 
-        // Cumplimiento: realizados vs pendientes (la base solo trae agendado +
-        // realizado, así que pendientes = total - realizados).
+        // Cumplimiento: realizados vs pendientes vs NO realizados. Los tres se
+        // cuentan explícitamente y `pendientes` ya NO se deduce restando: desde
+        // que existe 'no_realizado' (14-08) la resta lo habría metido dentro de
+        // «pendientes», o sea habría contado como «falta hacerlo» un trabajo al
+        // que el técnico ya fue. Los tres suman el total del período.
         $realizados = $base()->where('estado', 'realizado')->count();
-        $pendientes = $total - $realizados;
+        $noRealizados = $base()->where('estado', 'no_realizado')->count();
+        $pendientes = $base()->where('estado', 'agendado')->count();
         $pctCumplimiento = $total > 0 ? (int) round($realizados / $total * 100) : 0;
         $pctPendientes = $total > 0 ? (int) round($pendientes / $total * 100) : 0;
+        $pctNoRealizados = $total > 0 ? (int) round($noRealizados / $total * 100) : 0;
 
         // Detalle cliqueable de las tarjetas Realizados/Pendientes: la lista de
         // trabajos que hay detrás de cada número, para pasar del agregado al
@@ -257,28 +262,84 @@ class ServicioTecnicoController extends Controller
         // período), así que se cargan completas. Realizados: lo más reciente
         // primero; pendientes: lo más próximo primero.
         $realizadosLista = $base()->where('estado', 'realizado')
-            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
             ->orderByDesc('fecha')->get();
         $pendientesLista = $base()->where('estado', 'agendado')
-            ->with(['servicio:id,nombre', 'tecnico:id,name'])
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
             ->orderBy('fecha')->get();
+        // Los NO realizados con su motivo: es la lista que ventas mira para
+        // decidir si se vuelve o no (el motivo lo escribió el técnico al cerrar).
+        $noRealizadosLista = $base()->where('estado', 'no_realizado')
+            ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
+            ->orderByDesc('fecha')->get();
 
-        // Visitas técnicas (diagnóstico + cotización): cuántas y qué % del total.
-        $visitas = $base()->where('tipo', 'visita_tecnica')->count();
-        $visitasRealizadas = $base()->where('tipo', 'visita_tecnica')->where('estado', 'realizado')->count();
-        $pctVisitas = $total > 0 ? (int) round($visitas / $total * 100) : 0;
+        // DESGLOSE POR TIPO DE TRABAJO, en UNA consulta que alimenta las DOS
+        // superficies: las tarjetas por tipo y el ranking «por tipo de trabajo».
+        // Antes eran TRES consultas para el mismo agrupamiento —dos dedicadas solo a
+        // la visita técnica y una para el ranking—, y la de las visitas era la única
+        // que además contaba realizados.
+        //
+        // SUM(CASE WHEN…) y no un `having`: es portable entre MySQL 5.7 y SQLite, y
+        // trae el total y los realizados en la misma pasada.
+        $conteoPorTipo = $base()
+            ->selectRaw("tipo, COUNT(*) AS total, SUM(CASE WHEN estado = 'realizado' THEN 1 ELSE 0 END) AS realizados")
+            ->groupBy('tipo')
+            ->get()
+            ->keyBy('tipo');
 
-        $porTipo = $base()
-            ->selectRaw('tipo AS nombre, COUNT(*) AS cantidad')
-            ->groupBy('tipo')->orderByDesc('cantidad')->get();
+        // Las tarjetas: SIEMPRE LAS CUATRO y en el orden del catálogo (pedido del
+        // dueño 14-08, que antes solo tenía la de visitas técnicas). Un tipo sin
+        // trabajos muestra 0 en vez de desaparecer: que un mes no haya reparaciones
+        // es información, y una tarjeta ausente se lee como «esto no se mide».
+        $tiposResumen = collect(AgendaTrabajo::TIPOS)->map(function (string $tipo) use ($conteoPorTipo, $total) {
+            $n = (int) ($conteoPorTipo[$tipo]->total ?? 0);
+
+            return [
+                'tipo' => $tipo,
+                'label' => AgendaTrabajo::TIPO_ETIQUETAS[$tipo] ?? $tipo,
+                'total' => $n,
+                'realizados' => (int) ($conteoPorTipo[$tipo]->realizados ?? 0),
+                'pct' => $total > 0 ? (int) round($n / $total * 100) : 0,
+            ];
+        })->values();
+
+        // El ranking sale del MISMO conteo (no de una consulta propia), ordenado por
+        // cantidad. Conserva las claves nombre/cantidad que espera `_ranking`.
+        $porTipo = $conteoPorTipo
+            ->map(fn ($r) => (object) ['nombre' => $r->tipo, 'cantidad' => (int) $r->total])
+            ->sortByDesc('cantidad')
+            ->values();
 
         // Clientes que más solicitan servicio industrial. Agrupa por RUT cuando
-        // existe; si no, por nombre (mismo criterio que el top de dispensadores).
-        $claveCliente = "COALESCE(NULLIF(cliente_rut, ''), cliente_nombre)";
+        // existe; si no, por nombre — el criterio vive en el MODELO porque el
+        // historial de abajo tiene que agrupar la misma colección en PHP.
+        $claveCliente = AgendaTrabajo::SQL_CLAVE_CLIENTE;
         $topClientes = $base()
-            ->selectRaw('MAX(cliente_nombre) AS nombre, MAX(cliente_rut) AS cliente_rut, COUNT(*) AS cantidad')
+            ->selectRaw("{$claveCliente} AS clave, MAX(cliente_nombre) AS nombre, MAX(cliente_rut) AS cliente_rut, COUNT(*) AS cantidad")
             ->groupBy(DB::raw($claveCliente))
             ->orderByDesc('cantidad')->limit(10)->get();
+
+        // QUÉ SE LE HIZO A CADA UNO DE ESOS CLIENTES (pedido del técnico Carlos,
+        // 14-08-2026): el ranking decía cuántas veces vino cada cliente pero no qué
+        // se hizo en esas visitas, que es lo que él necesita cuando lo llaman de
+        // vuelta — «a esta lavadora ya le cambiamos los rodamientos en junio».
+        //
+        // El detalle sale del texto que el propio técnico escribió al cerrar
+        // (`notas_tecnico`) más los repuestos que declaró; no hay un catálogo de
+        // trabajos que inventariar.
+        //
+        // UNA sola consulta para los 10 clientes (no una por cliente) y se agrupa
+        // en PHP con la MISMA clave que agrupó el SQL de arriba. Con la lista de
+        // claves vacía, `whereIn` no devuelve nada — que es lo correcto acá y no el
+        // `whereNotIn([])` que barre todo (bitácora 2026-06-12).
+        $historialClientes = $topClientes->isEmpty()
+            ? collect()
+            : $base()
+                ->with(['servicio:id,nombre', 'tecnico:id,name', 'repuestos'])
+                ->whereIn(DB::raw($claveCliente), $topClientes->pluck('clave')->all())
+                ->orderByDesc('fecha')->orderByDesc('id')
+                ->get()
+                ->groupBy(fn (AgendaTrabajo $t) => $t->claveCliente());
 
         // Servicios del catálogo más usados. MAX() por ONLY_FULL_GROUP_BY (5.7).
         // Los trabajos "fuera de tarifa" (servicio_terreno_id null) caen en su fila.
@@ -288,10 +349,21 @@ class ServicioTecnicoController extends Controller
             ->groupBy('agenda_trabajos.servicio_terreno_id')
             ->orderByDesc('cantidad')->limit(10)->get();
 
-        // Uso de repuestos (en números): suma de unidades por repuesto de los
+        // USO de repuestos (en números): suma de unidades por repuesto de los
         // trabajos del período. Mismo patrón que el informe de dispensadores.
+        //
+        // LAS VISITAS TÉCNICAS QUEDAN FUERA, y es la diferencia entre un número
+        // verdadero y uno que miente: en la visita de revisión el técnico anota lo
+        // que va a NECESITAR (con eso ventas cotiza la segunda visita), no lo que
+        // instaló — ahí no instala nada. Contarlas acá infla el consumo con
+        // repuestos que nunca salieron de bodega, y encima DOS VECES, porque en la
+        // segunda visita se declaran de nuevo al usarlos de verdad. Medido con el
+        // candado puesto: 8 unidades donde había 4.
+        // El pronóstico no se pierde: viaja en el aviso a ventas y en el Excel,
+        // rotulado en la columna «Registro».
         $repuestos = AgendaTrabajoRepuesto::query()
             ->join('agenda_trabajos', 'agenda_trabajos.id', '=', 'agenda_trabajo_repuestos.agenda_trabajo_id')
+            ->where('agenda_trabajos.tipo', '!=', AgendaTrabajo::TIPO_PUBLICO)
             ->whereNotNull('agenda_trabajos.fecha')
             ->whereDate('agenda_trabajos.fecha', '>=', $desde)
             ->whereDate('agenda_trabajos.fecha', '<=', $hasta)
@@ -308,16 +380,21 @@ class ServicioTecnicoController extends Controller
             'total' => $total,
             'realizados' => $realizados,
             'pendientes' => $pendientes,
+            'noRealizados' => $noRealizados,
+            'pctNoRealizados' => $pctNoRealizados,
+            'noRealizadosLista' => $noRealizadosLista,
             'pctCumplimiento' => $pctCumplimiento,
             'pctPendientes' => $pctPendientes,
             'realizadosLista' => $realizadosLista,
             'pendientesLista' => $pendientesLista,
-            'visitas' => $visitas,
-            'visitasRealizadas' => $visitasRealizadas,
-            'pctVisitas' => $pctVisitas,
+            // Reemplaza a 'visitas'/'visitasRealizadas'/'pctVisitas': el mismo dato
+            // para los cuatro tipos, en una sola estructura. Tres variables sueltas
+            // para UN tipo no se podían generalizar sin multiplicarlas por cuatro.
+            'tiposResumen' => $tiposResumen,
             'porTipo' => $porTipo,
             'topServicios' => $topServicios,
             'topClientes' => $topClientes,
+            'historialClientes' => $historialClientes,
             'repuestos' => $repuestos->take(15)->values(),
             'totalUnidadesRepuestos' => (int) $repuestos->sum('unidades'),
             'totalNombresRepuestos' => $repuestos->count(),
@@ -578,8 +655,13 @@ class ServicioTecnicoController extends Controller
      */
     public function reparacion(OrdenServicio $orden): View
     {
+        // Desde el 20-08 esta pantalla es LA pantalla de la orden (dueño: «toda la
+        // información en un solo apartado»), así que necesita todo lo que antes solo
+        // pedía la pestaña Cotización: el presupuesto, sus candados y el historial.
+        $orden->load(['producto.precios.lista', 'repuestos']);
+
         return view('admin.servicio-tecnico.reparacion', [
-            'orden' => $orden->load(['producto', 'repuestos']),
+            'orden' => $orden,
             'estados' => OrdenServicio::ESTADOS,
             'causasFalla' => OrdenServicio::CAUSAS_FALLA,
             // Respuestas fijas de "Trabajo realizado" agrupadas (config).
@@ -590,14 +672,25 @@ class ServicioTecnicoController extends Controller
             // Mapa trabajo -> horas estándar (catálogo) para mostrar en vivo la
             // mano de obra FIJA que implica el trabajo elegido (no editable).
             'tiemposMap' => TiempoReparacion::where('activo', true)->pluck('horas', 'trabajo')->map(fn ($h) => (float) $h),
+            // --- Lo que el presupuesto y el historial necesitan (antes solo en la
+            //     pestaña Cotización; ver cotizacion() para el porqué de cada uno).
+            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
+            'precioVentaEquipo' => $this->precioVentaProducto($orden->producto),
+            'horasTrabajo' => TiempoReparacion::horasDe($orden->trabajo_realizado),
+            'manoObraVigente' => $this->manoObraDe($orden->trabajo_realizado),
+            'faltaManoObra' => $this->faltaManoObra($orden),
         ]);
     }
 
     /**
-     * Pestaña Cotización (ver + enviar): muestra el desglose GUARDADO de la
-     * reparación (repuestos, mano de obra, descuento, total) y la tarjeta para
-     * enviar la cotización al cliente + historial. Los números se ingresan en la
-     * etapa de reparación; aquí solo se ven y se envían.
+     * Pestaña Cotización: VISTA PREVIA de solo lectura de lo que se le cotiza al
+     * cliente (total, mano de obra, descuento) + la constancia de lo ya enviado.
+     *
+     * NO se edita ni se envía nada desde acá (dueño 20-08-2026: «que la cotización
+     * no tenga opción de modificarse»): el presupuesto se arma y se manda en el
+     * parte del técnico, que es la pantalla de la orden. Antes esta pestaña tenía su
+     * propio formulario con las MISMAS filas de repuestos —dos lugares para el mismo
+     * número— y era lo que el dueño mandó a sacar.
      */
     public function cotizacion(OrdenServicio $orden): View
     {
@@ -605,7 +698,9 @@ class ServicioTecnicoController extends Controller
 
         return view('admin.servicio-tecnico.cotizacion', [
             'orden' => $orden,
-            'cotizaciones' => $orden->cotizaciones()->latest('id')->get(),
+            // `cotizaciones` ya no viaja: el historial de envíos se mudó al parte del
+            // técnico (dueño 20-08). Esta pantalla no lo muestra, así que tampoco lo
+            // consulta — una consulta que nadie usa es la que después nadie borra.
             // Valor hora vigente (para mostrar cómo se compone la mano de obra fija).
             'precioHoraServicio' => $this->precioHoraServicio(),
             // Precio de venta del equipo: si la reparación supera el 40% se advierte.
@@ -626,100 +721,45 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
-     * Guarda el desglose de PRECIOS que arma la cotización: precio de cada
-     * repuesto, mano de obra y descuento → total a pagar. El técnico solo deja
-     * QUÉ repuestos usó (nombre + cantidad) en su parte; aquí se les pone precio.
-     * Solo aplica a reparaciones (garantía no se cobra, no se cotiza).
+     * El descuento que corresponde guardar, como par de columnas listo para el
+     * `update()`.
+     *
+     * EL DESCUENTO ES DECISIÓN COMERCIAL: solo lo cambia quien tiene el permiso
+     * (jefatura de ventas / admin). Quien no lo tiene —el técnico que arma el
+     * presupuesto— conserva el ya guardado: no puede aplicarlo ni quitarlo por más
+     * que manipule el formulario, porque el permiso se chequea acá y no en la vista.
+     *
+     * VIVE EN UN SOLO LUGAR desde el 20-08, cuando el presupuesto pasó a poder
+     * guardarse desde DOS acciones (el parte del técnico y la cotización). Con la
+     * regla copiada, un día una de las dos dejaría aplicar un descuento a quien no
+     * puede — y sería la copia que nadie mira.
+     *
+     * UN CAMPO AUSENTE NO ES UN CERO: si el formulario no trae `descuento_pct` se
+     * conserva el guardado. Lo necesita el parte de una GARANTÍA, que no dibuja el
+     * selector (no hay cobro) y por lo tanto no lo manda: sin esta guarda, que
+     * jefatura guardara ese parte borraría un descuento en silencio. Quitarlo sigue
+     * siendo posible — mandando un 0 explícito, que es lo que hace el selector.
+     *
+     * @param  array<string, mixed>  $data  el ya validado
+     * @return array{descuento_pct: int, descuento_motivo: string|null}
      */
-    public function guardarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
+    private function descuentoAplicable(Request $request, OrdenServicio $orden, array $data): array
     {
-        if ($orden->condicion_efectiva !== 'reparacion') {
-            return back()->with('status', 'Equipo en garantía vigente: no se cotiza (no hay cobro).');
+        if (! $request->has('descuento_pct') || ! $request->user()->can('aplicar descuento servicio tecnico')) {
+            return [
+                'descuento_pct' => (int) $orden->descuento_pct,
+                'descuento_motivo' => $orden->descuento_motivo,
+            ];
         }
 
-        $data = $request->validate([
-            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
-            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
-            'repuestos' => ['array'],
-            'repuestos.*.nombre' => ['nullable', 'string', 'max:191'],
-            'repuestos.*.sku' => ['nullable', 'string', 'max:191'],
-            'repuestos.*.cantidad' => ['nullable', 'integer', 'min:1'],
-            'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
-        ], [
-            'descuento_motivo.required' => 'Indica el motivo del descuento.',
-        ]);
+        $pct = (int) ($data['descuento_pct'] ?? 0);
 
-        // Validacion por fila: las filas vacias se ignoran; una fila con nombre
-        // exige nombre (min 3) y precio (>0), porque aqui es donde se cobra. Se
-        // pueden agregar repuestos con el buscador del catalogo, igual que en el
-        // parte del tecnico.
-        $errores = [];
-        foreach ($request->input('repuestos', []) as $i => $r) {
-            $nombre = trim((string) ($r['nombre'] ?? ''));
-            if ($nombre === '') {
-                continue;
-            }
-            if (mb_strlen($nombre) < 3) {
-                $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
-            }
-            if ((int) ($r['precio_unitario'] ?? 0) < 1) {
-                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0).';
-            }
-        }
-        if ($errores) {
-            throw ValidationException::withMessages($errores);
-        }
-
-        // El descuento es decisión COMERCIAL: solo quien tiene el permiso lo
-        // cambia (jefatura de ventas / admin). Si no lo tiene (p. ej. el técnico
-        // que arma la cotización), se conserva el descuento ya guardado — no puede
-        // aplicarlo ni quitarlo por más que manipule el formulario.
-        if ($request->user()->can('aplicar descuento servicio tecnico')) {
-            $descuentoPct = (int) ($data['descuento_pct'] ?? 0);
-            $descuentoMotivo = $descuentoPct > 0 ? ($data['descuento_motivo'] ?? null) : null;
-        } else {
-            $descuentoPct = (int) $orden->descuento_pct;
-            $descuentoMotivo = $orden->descuento_motivo;
-        }
-
-        $orden->update([
-            // Mano de obra FIJA por el trabajo (no se edita aquí): se recalcula
-            // por si jefatura cambió el tiempo estándar en el ínterin.
-            'mano_obra' => $this->manoObraDe($orden->trabajo_realizado),
-            'descuento_pct' => $descuentoPct,
-            'descuento_motivo' => $descuentoMotivo,
-        ]);
-
-        // Reemplazo de repuestos ya con precio. Nombre, SKU y cantidad vienen del
-        // parte del técnico como campos ocultos (aquí son de solo lectura).
-        $orden->repuestos()->delete();
-        foreach ($data['repuestos'] ?? [] as $r) {
-            if (empty($r['nombre'])) {
-                continue;
-            }
-            $orden->repuestos()->create([
-                'nombre' => $r['nombre'],
-                'sku' => $r['sku'] ?? null,
-                'cantidad' => $r['cantidad'] ?? 1,
-                'precio_unitario' => $r['precio_unitario'] ?? 0,
-            ]);
-        }
-
-        // El botón «Enviar cotización» vive DENTRO de este formulario (dueño
-        // 07-08: los dos botones en la misma fila), así que envía con enviar=1 y
-        // aquí se guarda primero y se manda después: lo que sale al cliente es lo
-        // que estaba en pantalla. Pegado a «Guardar», mandar el snapshot anterior
-        // sin darse cuenta era demasiado fácil. Si el envío no procede (etapa
-        // posterior, sin correo, total $0), enviarCotizacion lo explica y lo
-        // guardado no se pierde.
-        if ($request->boolean('enviar')) {
-            return $this->enviarCotizacion($request, $orden->fresh());
-        }
-
-        $total = '$'.number_format((int) $orden->fresh()->costo_total, 0, ',', '.');
-
-        return redirect()->route('admin.servicio-tecnico.cotizacion', $orden)
-            ->with('status', "Cotización de la orden {$orden->folio} actualizada (total {$total}).");
+        return [
+            'descuento_pct' => $pct,
+            // Sin descuento no hay motivo que guardar: dejarlo colgado haría que la
+            // ficha explicara un descuento que no existe.
+            'descuento_motivo' => $pct > 0 ? ($data['descuento_motivo'] ?? null) : null,
+        ];
     }
 
     /**
@@ -728,6 +768,27 @@ class ServicioTecnicoController extends Controller
      * de ventas. Null si el SKU no existe o no tiene precio ahí (mismo criterio
      * que buscarRepuesto: Producto::precioVentaConIva).
      */
+    /**
+     * A qué pantalla volver después de avisarle algo al cliente: la que muestra la
+     * CONSTANCIA de ese aviso.
+     *
+     * Desde el 20-08-2026 el historial de envíos y la tarjeta de «listo para
+     * retirar» viven en el PARTE DEL TÉCNICO (el dueño las sacó de la pestaña
+     * Cotización porque estaban repetidas). En GARANTÍA siguen en la pestaña
+     * Cotización, que es su pantalla de envío — el parte no las incluye. Sin esto,
+     * después de avisar el usuario aterrizaba en una pantalla que ya no muestra lo
+     * que acababa de hacer.
+     *
+     * Espeja la condición con la que las vistas incluyen `_envio-historial` /
+     * `_listo-retiro`: si esa condición cambia, esta también.
+     */
+    private function pantallaDeConstancia(OrdenServicio $orden): string
+    {
+        return $orden->condicion_efectiva === 'reparacion'
+            ? 'admin.servicio-tecnico.reparacion'
+            : 'admin.servicio-tecnico.cotizacion';
+    }
+
     private function precioHoraServicio(): ?int
     {
         $sku = config('servicio_tecnico.sku_hora_servicio');
@@ -797,12 +858,27 @@ class ServicioTecnicoController extends Controller
         // ConvertEmptyStringsToNull, asi que 'Sin determinar' no pasa el required.
         $exigeDiagnostico = in_array($request->input('estado'), ['reparado', 'sin_solucion'], true);
 
+        // «Otro — lo escribo yo» (dueño, 14-08-2026): el select manda un centinela y el texto
+        // viaja aparte. El largo se corta ACÁ, en 191, porque la cotización guarda su snapshot
+        // del trabajo en un VARCHAR(191): un texto más largo pasa en SQLite y revienta en MySQL
+        // al ENVIAR la cotización, o sea lejos de donde se escribió.
+        $escribeElTrabajo = $request->input('trabajo_realizado') === OrdenServicio::TRABAJO_OTRO;
+
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],
+            'trabajo_realizado_otro' => [
+                Rule::requiredIf($escribeElTrabajo),
+                'nullable', 'string', 'min:3', 'max:'.OrdenServicio::TRABAJO_MAX,
+            ],
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             // Categoría de cierre: solo aplica a máquinas propias (IMP. DALI).
             'categoria' => ['nullable', Rule::in(OrdenServicio::CATEGORIAS)],
+            // Descuento: desde el 20-08 el presupuesto se arma en esta misma pantalla
+            // (dueño). Sigue siendo decisión COMERCIAL — abajo solo se aplica si el
+            // usuario tiene el permiso.
+            'descuento_pct' => ['nullable', 'integer', Rule::in(array_merge([0], OrdenServicio::DESCUENTOS_PCT))],
+            'descuento_motivo' => [Rule::requiredIf((int) $request->input('descuento_pct') > 0), 'nullable', Rule::in(array_keys(OrdenServicio::DESCUENTO_MOTIVOS))],
             'fecha_aviso' => ['nullable', 'date'],
             'fecha_retiro' => ['nullable', 'date'],
             'repuestos' => ['array'],
@@ -812,12 +888,30 @@ class ServicioTecnicoController extends Controller
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
             'causa_falla.required' => 'Indica la causa de la falla (diagnóstico final) para cerrar la orden como «Reparado» o «Sin solución».',
+            'trabajo_realizado_otro.required' => 'Escribe el trabajo realizado, o elige una respuesta de la lista.',
+            'trabajo_realizado_otro.min' => 'Escribe el trabajo realizado con algo más de detalle: lo lee el cliente.',
+            'trabajo_realizado_otro.max' => 'El trabajo realizado no puede pasar de :max caracteres (es lo que entra en la cotización).',
         ]);
 
-        // Validacion por fila: el tecnico solo declara QUE repuesto uso y cuantos;
-        // si empezo a llenar una fila, exige el nombre (min 3). El PRECIO ya no se
-        // ingresa aqui —se pone en la pestaña Cotización— pero se preserva si viene
-        // (campo oculto) para no perderlo al re-guardar el parte del técnico.
+        // El centinela NUNCA se guarda como trabajo: se reemplaza por el texto, con los espacios
+        // y saltos de línea colapsados (se pega desde WhatsApp y llega con saltos adentro).
+        if ($escribeElTrabajo) {
+            $data['trabajo_realizado'] = trim(preg_replace('/\s+/u', ' ', (string) ($data['trabajo_realizado_otro'] ?? '')));
+        }
+        unset($data['trabajo_realizado_otro']);
+
+        // Validacion por fila: si empezo a llenar una fila, exige el nombre (min 3).
+        //
+        // EL PRECIO SE EXIGE SOLO AL ENVIAR (dueño 20-08, al unificar las pantallas):
+        // guardar tiene que seguir siendo libre —el tecnico registra el repuesto
+        // cuando lo pone y le busca el precio despues— pero lo que sale AL CLIENTE no
+        // puede llevar un repuesto en $0, porque ahi se cobra de menos y nadie lo
+        // nota. Es el mismo criterio con el que `faltaManoObra` bloquea el envio y no
+        // el guardado.
+        // `previsualizar` cuenta como enviar: la carta de la vista previa es la que va a salir,
+        // asi que no puede armarse con un repuesto en $0 (si no, se corrige DESPUES de verla).
+        $vaAEnviar = $request->boolean('enviar') || $request->boolean('previsualizar');
+
         $errores = [];
         foreach ($request->input('repuestos', []) as $i => $r) {
             $nombre = trim((string) ($r['nombre'] ?? ''));
@@ -831,6 +925,9 @@ class ServicioTecnicoController extends Controller
 
             if (mb_strlen($nombre) < 3) {
                 $errores["repuestos.{$i}.nombre"] = 'El repuesto necesita un nombre (mínimo 3 caracteres).';
+            }
+            if ($vaAEnviar && $nombre !== '' && $precio < 1) {
+                $errores["repuestos.{$i}.precio_unitario"] = 'Indica el precio del repuesto (mayor a 0) antes de enviar la cotización.';
             }
         }
         if ($errores) {
@@ -850,12 +947,11 @@ class ServicioTecnicoController extends Controller
             // La categoría solo se guarda para máquinas propias (IMP. DALI).
             'categoria' => $orden->es_propia ? ($data['categoria'] ?? null) : null,
             // Mano de obra FIJA por el trabajo (horas estándar × valor hora): el
-            // técnico no la ingresa ni la edita. El descuento NO se toca aquí (lo
-            // maneja la pestaña Cotización).
+            // técnico no la ingresa ni la edita.
             'mano_obra' => $this->manoObraDe($data['trabajo_realizado'] ?? null),
             'fecha_aviso' => $data['fecha_aviso'] ?? null,
             'fecha_retiro' => $data['fecha_retiro'] ?? null,
-        ]);
+        ] + $this->descuentoAplicable($request, $orden, $data));
 
         // Reemplazo total de los repuestos: se borran y se recrean los que
         // tengan nombre (las filas vacias del formulario se ignoran).
@@ -921,6 +1017,26 @@ class ServicioTecnicoController extends Controller
             null => $cerroAhora('sin_solucion') ? ' La orden no tiene correo del cliente: hay que llamarlo.' : '',
         };
 
+        // El botón «Enviar cotización» es un submit de ESTE formulario con enviar=1
+        // (dueño 20-08: lo quiere en este pie): se guarda primero y se manda después,
+        // así lo que sale al cliente es lo que estaba en pantalla. Pegado a
+        // «Guardar», mandar el snapshot anterior sin darse cuenta era demasiado
+        // fácil. Si el envío no procede (etapa posterior, sin correo, total $0),
+        // enviarCotizacion lo explica y lo guardado no se pierde.
+        if ($request->boolean('enviar')) {
+            return $this->enviarCotizacion($request, $orden->fresh());
+        }
+
+        // VISTA PREVIA (dueño 20-08-2026): el mismo guardado, pero en vez de mandar la carta
+        // se vuelve con la bandera que abre la ventana con la carta ya armada. El envio de
+        // verdad sale de ahi, contra la ruta de siempre — asi lo que se ve y lo que sale son
+        // el mismo snapshot, y no hay una segunda forma de enviar que se pueda desincronizar.
+        if ($request->boolean('previsualizar')) {
+            return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
+                ->with('cotizacion_previa', true)
+                ->with('status', "Guardado. Revisa la carta antes de enviarla.");
+        }
+
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
         // el técnico puede enviar la cotización enseguida —"guarda antes de
         // enviar"— sin perder la página y con los datos ya guardados a la vista.
@@ -935,14 +1051,32 @@ class ServicioTecnicoController extends Controller
      * secundaria (try/catch): si el SMTP falla, la cotización queda registrada
      * con `correo_enviado_at` null y aparece el botón "Reintentar".
      *
-     * Aterriza SIEMPRE en la pestaña Cotización (no `back()`): desde 07-08 el
-     * botón es un submit del formulario de guardar, y ese POST puede llegar sin
-     * cabecera Referer — con `back()` el usuario caería en el Inicio.
+     * Aterriza en una ruta con NOMBRE y no en `back()`: el botón es un submit del
+     * formulario de guardar, y ese POST puede llegar sin cabecera Referer — con
+     * `back()` el usuario caería en el Inicio. El destino es la pantalla que
+     * muestra la constancia (ver pantallaDeConstancia): desde el 20-08 el parte del
+     * técnico, que es de donde se envía y donde queda el historial.
      */
+    /**
+     * LA CARTA, TAL COMO LA VA A RECIBIR EL CLIENTE, antes de mandarla (dueño 20-08-2026:
+     * «hay alguna posibilidad que haya una ventana previa donde se vea la cotizacion y despues
+     * se pueda enviar»). Sale del MISMO snapshot y de la MISMA plantilla del correo, sobre un
+     * borrador que no toca la base: una vista previa dibujada aparte mostraria un total y el
+     * cliente recibiria otro.
+     *
+     * El link de respuesta va inerte: en la vista previa no hay token que aceptar todavia.
+     */
+    public function previsualizarCotizacion(OrdenServicio $orden): View
+    {
+        return view('emails.taller.cotizacion', [
+            'cotizacion' => OrdenServicioCotizacion::borradorDesde($orden->load('repuestos')),
+            'urlRespuesta' => '#',
+        ]);
+    }
     public function enviarCotizacion(Request $request, OrdenServicio $orden): RedirectResponse
     {
         $volver = fn (string $mensaje) => redirect()
-            ->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->route($this->pantallaDeConstancia($orden), $orden)
             ->with('status', $mensaje);
 
         // Mismas condiciones que habilitan el botón (defensa server-side).
@@ -1073,8 +1207,10 @@ class ServicioTecnicoController extends Controller
      */
     public function avisarListoParaRetiro(Request $request, OrdenServicio $orden): RedirectResponse
     {
+        // Vuelve a donde está la tarjeta que acaba de cambiar (parte del técnico en
+        // reparación, pestaña Cotización en garantía). Ver pantallaDeConstancia.
         $volver = fn (string $mensaje) => redirect()
-            ->route('admin.servicio-tecnico.cotizacion', $orden)
+            ->route($this->pantallaDeConstancia($orden), $orden)
             ->with('status', $mensaje);
 
         if ($orden->estado !== 'reparado') {
@@ -1588,7 +1724,13 @@ class ServicioTecnicoController extends Controller
             ->whereNotNull('fecha')
             ->whereDate('fecha', '>=', $desde)
             ->whereDate('fecha', '<=', $hasta)
-            ->whereIn('estado', ['agendado', 'realizado']);
+            // 'no_realizado' entra desde el 14-08: el técnico FUE y no se pudo
+            // hacer, así que es trabajo del período igual que un realizado. Si
+            // quedara fuera, esos trabajos desaparecerían del informe y del Excel
+            // —el peor resultado: el que no se pudo hacer es justo el que hay que
+            // mirar—. Los 'cancelado' y los 'solicitado' siguen afuera: nunca
+            // llegaron a ser trabajo de un día.
+            ->whereIn('estado', ['agendado', 'realizado', 'no_realizado']);
     }
 
     /** Rotulo del periodo elegido: «Agosto 2026» o «Año 2026». */

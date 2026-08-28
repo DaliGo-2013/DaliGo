@@ -387,7 +387,7 @@ class VehiculoController extends Controller
         ], [
             'ppu.unique' => 'Ya existe un vehículo con esa patente.',
             'baja_motivo.required' => 'Escribe por qué sale de la flota (venta, pérdida total, etc.).',
-            'respaldos.*.max' => 'La foto no puede superar los 15 MB.',
+            'respaldos.*.max' => 'La foto no puede superar los '.RespaldoDeDocumento::topeLegible().'.',
             'respaldos.*.mimes' => 'La foto tiene que ser una imagen o un PDF.',
         ]);
 

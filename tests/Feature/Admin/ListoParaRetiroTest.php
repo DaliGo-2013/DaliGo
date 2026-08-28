@@ -61,6 +61,21 @@ class ListoParaRetiroTest extends TestCase
             ->post(route('admin.servicio-tecnico.listo-para-retiro', $orden));
     }
 
+    /**
+     * El `<div>` que ENVUELVE a un título en el HTML, para poder preguntarle si es
+     * una tarjeta (`rounded-2xl`) o una sección separada por una línea
+     * (`border-t`). Se mira la estructura porque «unificar dos cards» es un cambio
+     * de marco: los textos son idénticos antes y después.
+     */
+    private function envoltorioDe(string $html, string $titulo): string
+    {
+        $pos = strpos($html, $titulo);
+        $this->assertNotFalse($pos, "No está en la página: {$titulo}");
+        $antes = substr($html, 0, $pos);
+
+        return substr($antes, strrpos($antes, '<div'));
+    }
+
     // --- Acceso ---
 
     public function test_sin_manage_no_puede_avisar(): void
@@ -79,8 +94,10 @@ class ListoParaRetiroTest extends TestCase
         $tecnico = $this->tecnico();
         $orden = $this->reparada();
 
+        // Vuelve a la pantalla donde está la tarjeta que acaba de cambiar: el parte
+        // del técnico (dueño 20-08: la constancia se mudó ahí desde la cotización).
         $this->avisar($orden, $tecnico)
-            ->assertRedirect(route('admin.servicio-tecnico.cotizacion', $orden));
+            ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
         Mail::assertSent(EquipoListoParaRetiro::class, fn ($m) => $m->hasTo('cliente@example.com'));
 
@@ -183,24 +200,117 @@ class ListoParaRetiroTest extends TestCase
 
     // --- Pantalla ---
 
-    public function test_la_pestana_cotizacion_ofrece_el_boton_y_luego_la_constancia(): void
+    /**
+     * EL BOTÓN Y SU CONSTANCIA VIVEN EN EL PARTE DEL TÉCNICO (dueño 20-08-2026: los
+     * sacó de la pestaña Cotización porque estaban repetidos —«ya aparece abajo en la
+     * vista de parte del técnico»—). El test mira las DOS pantallas: si volvieran a
+     * aparecer en la cotización, se pone rojo.
+     */
+    public function test_el_boton_y_la_constancia_estan_en_el_parte_y_no_en_la_cotizacion(): void
     {
         $tecnico = $this->tecnico();
         $orden = $this->reparada();
 
         $this->actingAs($tecnico)
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
             ->assertSee('Avisar que está listo para retirar')
             ->assertSee('sala de ventas');
 
-        $this->avisar($orden, $tecnico);
-
         $this->actingAs($tecnico)
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
+            ->assertDontSee('Avisar que está listo para retirar');
+
+        $this->avisar($orden, $tecnico);
+
+        $this->actingAs($tecnico)
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
             ->assertDontSee('Avisar que está listo para retirar')
             ->assertSee('Ya se le avisó al cliente');
+
+        // Y la vista previa sigue sin la constancia: es solo lo que paga el cliente.
+        $this->actingAs($tecnico)
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertDontSee('Ya se le avisó al cliente')
+            ->assertDontSee('Enviada al cliente');
+    }
+
+    /**
+     * LAS DOS TARJETAS SON UNA (dueño 20-08-2026: «quiero unificar estas dos partes
+     * que parecen cards»). Se verifica por ESTRUCTURA y no por texto: los textos son
+     * los mismos antes y después del cambio, lo que cambia es el marco. «Listo para
+     * retirar» tiene que quedar como sección de la tarjeta de la cotización enviada
+     * —separada por una línea— y no abrir un marco propio.
+     */
+    public function test_la_constancia_y_el_retiro_van_en_una_sola_tarjeta(): void
+    {
+        $orden = $this->reparada();   // ya trae la cotización enviada y aceptada
+
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->getContent();
+
+        $envio = strpos($html, 'Enviada al cliente');
+        $retiro = strpos($html, 'Listo para retirar');
+        $this->assertNotFalse($envio);
+        $this->assertNotFalse($retiro);
+        $this->assertGreaterThan($envio, $retiro, '«Listo para retirar» va después de la constancia del envío.');
+
+        // Entre las dos NO se cierra ni se abre una tarjeta.
+        $tramo = substr($html, $envio, $retiro - $envio);
+        $this->assertStringNotContainsString('rounded-2xl', $tramo, 'Volvieron a abrir una tarjeta aparte para «Listo para retirar».');
+
+        // Y su envoltorio es una sección con línea divisoria, no un marco.
+        $envoltorio = $this->envoltorioDe($html, 'Listo para retirar');
+        $this->assertStringContainsString('border-t', $envoltorio);
+        $this->assertStringNotContainsString('rounded-2xl', $envoltorio);
+    }
+
+    /**
+     * SIN NADA ENVIADO no hay tarjeta con la que unificarse, así que conserva la
+     * suya: si no, quedaría un bloque flotando sin marco en medio de la pantalla.
+     */
+    public function test_sin_cotizacion_enviada_el_retiro_conserva_su_tarjeta(): void
+    {
+        $orden = $this->reparada();
+        $orden->cotizaciones()->delete();
+
+        $html = $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
+            ->assertOk()
+            ->assertDontSee('Enviada al cliente')
+            ->getContent();
+
+        $envoltorio = $this->envoltorioDe($html, 'Listo para retirar');
+        $this->assertStringContainsString('rounded-2xl', $envoltorio);
+    }
+
+    /**
+     * EN GARANTÍA NO SE TOCA: ahí el parte no incluye estas tarjetas (no hay
+     * cotización que enviar) y la pestaña Cotización es la única pantalla donde
+     * existe el botón. Sacarlas de ahí no sería quitar una repetición: sería borrar
+     * la función.
+     */
+    public function test_en_garantia_el_boton_sigue_en_la_pestana_cotizacion(): void
+    {
+        $orden = $this->reparada([
+            'facturacion' => 'garantia',
+            'garantia_doc_tipo' => 'boleta',
+            'garantia_doc_numero' => '123',
+            'garantia_doc_fecha' => now()->subMonths(2)->toDateString(),
+            'fecha_ingreso' => now()->toDateString(),
+        ]);
+
+        $this->assertSame('garantia', $orden->condicion_efectiva, 'La garantía tiene que estar vigente para que el caso pruebe algo.');
+
+        $this->actingAs($this->tecnico())
+            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->assertOk()
+            ->assertSee('Avisar que está listo para retirar');
     }
 
     public function test_antes_de_reparar_la_pantalla_explica_que_falta(): void
@@ -208,7 +318,7 @@ class ListoParaRetiroTest extends TestCase
         $orden = $this->reparada(['estado' => 'cotizacion']);
 
         $this->actingAs($this->tecnico())
-            ->get(route('admin.servicio-tecnico.cotizacion', $orden))
+            ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertOk()
             ->assertDontSee('Avisar que está listo para retirar')
             ->assertSee('marca la orden como «Reparado» en Parte del técnico');

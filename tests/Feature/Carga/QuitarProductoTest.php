@@ -76,16 +76,86 @@ class QuitarProductoTest extends TestCase
     }
 
     /**
-     * Y no se ofrece con una sola línea: una carga sin ningún producto no es una carga —el
-     * formulario no tendría qué calcular y el validador la rechazaría—, así que el botón
-     * que la deja vacía sería un botón que solo sabe fallar.
+     * Y SE OFRECE SIEMPRE, también con una sola línea. Esto INVIERTE el candado del
+     * 12-08 («con una sola línea no se ofrece: deja la carga vacía») por decisión del
+     * dueño probando la Cabina (21-08, textual): «quiero la opción de eliminar o
+     * borrar… quiero cargar lo que yo quiera sin previas». Lo que hacía peligroso el
+     * vaciado ya no existe: el armador arranca vacío de fábrica, el estado vacío tiene
+     * su cartel, y el botón de calcular se apaga solo sin líneas.
      */
-    public function test_con_un_solo_producto_no_se_ofrece_quitar(): void
+    public function test_quitar_se_ofrece_tambien_con_una_sola_linea(): void
     {
         $cabecera = $this->cabeceraDeLaLinea($this->pantalla());
 
-        $this->assertStringContainsString('x-show="lineas.length > 1"', $cabecera,
-            'El botón de quitar de la cabecera se ofrece con una sola línea: deja la carga vacía.');
+        $this->assertStringContainsString('quitar(i)', $cabecera);
+        $this->assertStringNotContainsString('lineas.length > 1', $cabecera,
+            'Volvió la condición que esconde el quitar con una sola línea: el dueño pidió lo contrario el 21-08.');
+
+        // Y en la lista «En el camión» del panel de cubicar tampoco se esconde.
+        $this->assertStringNotContainsString('x-show="lineas.length > 1"',
+            file_get_contents(resource_path('views/admin/carga/_cubicar.blade.php')),
+            'El quitar del panel de cubicar volvió a esconderse con una sola línea.');
+    }
+
+    /**
+     * EL ARMADOR ARRANCA SIN PREVIAS (dueño 21-08: «salen siempre predeterminado los
+     * bidones y no quiero, quiero cargar lo que yo quiera sin previas»). Antes se
+     * sembraba una línea con el primer producto del catálogo × 100 — al abrir la
+     * pestaña ya había una carga que nadie pidió. Ahora: cero líneas, un cartel que
+     * dice el próximo paso, el selector de una línea nueva arranca en «Elegí un
+     * producto…» y el botón de calcular se apaga mientras no haya nada que calcular.
+     */
+    public function test_el_armador_arranca_sin_previas(): void
+    {
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+
+        $html = $this->actingAs($vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->camion->id,
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('lineas: [],', $html,
+            'El armador volvió a arrancar con una línea precargada.');
+        $this->assertStringContainsString('Elegí un producto…', $html);
+        $this->assertStringContainsString('La carga arranca vacía', $html);
+        $this->assertStringContainsString(':disabled="lineas.length === 0"', $html,
+            'Calcular quedó activo sin líneas: mandaría un formulario vacío.');
+
+        // Con líneas en la URL se respetan tal cual — el arranque vacío es solo
+        // para quien llega sin nada.
+        $this->pantalla();
+        $conLineas = $this->actingAs($vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->camion->id,
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 100]],
+        ]))->assertOk()->getContent();
+        $this->assertStringContainsString('lineas: [{', $conLineas);
+    }
+
+    /**
+     * LA LÍNEA SIN ELEGIR NO MUTA. Una línea que viaja con tipo vacío (el usuario
+     * calculó sin terminar de elegir) el motor la descarta — eso ya era así—, pero al
+     * re-sembrar el formulario un `(int) (tipo ?? 0)` la devolvía convertida en BULTO
+     * A MEDIDA (0 es el centinela de a-medida): el formulario de medidas aparecía
+     * donde el usuario había dejado un selector sin elegir. Es el «?? 0 sobre un dato
+     * que se conserva» de la bitácora [2026-08-20].
+     */
+    public function test_una_linea_sin_elegir_no_vuelve_convertida_en_bulto_a_medida(): void
+    {
+        $vendedor = tap(User::factory()->create())->assignRole('vendedor');
+
+        $res = $this->actingAs($vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->camion->id,
+            'lineas' => [
+                ['tipo' => '', 'cantidad' => 10],
+                ['tipo' => $this->bolsa->id, 'cantidad' => 50],
+            ],
+        ]))->assertOk();
+
+        $sel = $res->viewData('lineasSel')->values();
+        $this->assertSame('', $sel[0]['tipo'], 'La línea sin elegir volvió como otra cosa (¿bulto a medida?).');
+        $this->assertSame($this->bolsa->id, $sel[1]['tipo']);
+
+        // Y el cálculo solo contó la línea real: la vacía se descarta sin reclamar.
+        $this->assertCount(1, $res->viewData('mixta')['lineas']);
     }
 
     /**

@@ -47,6 +47,8 @@
     <div class="space-y-6 py-6">
         <x-status-alert :status="session('status')" />
 
+        @include('admin.servicio-tecnico._tabs-listado')
+
         {{-- Visibilidad por vendedor: si el usuario no ve todo el taller, el
              listado esta acotado a la cartera de sus clientes (regla #2). Se
              avisa para que quede claro que ve menos ordenes a proposito. --}}

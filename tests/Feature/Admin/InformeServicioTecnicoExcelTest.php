@@ -282,23 +282,50 @@ class InformeServicioTecnicoExcelTest extends TestCase
         $this->assertStringNotContainsString('Solicitado SA', $hoja);
     }
 
-    public function test_terreno_trae_sus_repuestos_y_avisa_que_no_tienen_precio(): void
+    /**
+     * Desde el 14-08 el repuesto de terreno SI trae codigo (el tecnico lo elige del
+     * catalogo al cerrar), y lo que sigue faltando a proposito es el PRECIO: al
+     * tecnico industrial le pagan por arreglar e instalar, no por cobrar.
+     *
+     * La nota de la hoja sigue siendo obligatoria, con el motivo corregido: sin
+     * ella, quien compare las dos planillas concluye que en terreno no se gasta en
+     * repuestos, cuando lo que pasa es que el precio se pone en otra parte.
+     */
+    public function test_terreno_trae_sus_repuestos_con_codigo_y_avisa_que_no_tienen_precio(): void
     {
         $trabajo = $this->trabajo();
         AgendaTrabajoRepuesto::create([
             'agenda_trabajo_id' => $trabajo->id,
-            'nombre' => 'Filtro de papel',
+            'nombre' => 'Membrana RO 100 GPD',
+            'sku' => 'MEM-100',
             'cantidad' => 2,
+        ]);
+        // Escrito a mano: la columna queda vacia, que no es lo mismo que faltar.
+        AgendaTrabajoRepuesto::create([
+            'agenda_trabajo_id' => $trabajo->id,
+            'nombre' => 'Abrazadera sin codigo',
+            'sku' => null,
+            'cantidad' => 1,
         ]);
 
         $hoja = $this->parte($this->descargar(self::RUTA_TERRENO, ['anio' => 2026, 'mes' => 8]), 'xl/worksheets/sheet2.xml');
 
-        $this->assertStringContainsString('Filtro de papel', $hoja);
-        $this->assertStringContainsString('<v>2</v>', $hoja);
+        $this->assertStringContainsString('Membrana RO 100 GPD', $hoja);
+        $this->assertStringContainsString('Abrazadera sin codigo', $hoja);
         $this->assertStringContainsString('Terreno Planilla SA', $hoja);
-        // La hoja DICE que en terreno no hay SKU ni precio. Sin esa nota, quien
-        // compare las dos planillas concluye que en terreno no se gastan
-        // repuestos, cuando lo que pasa es que no se registran con codigo.
-        $this->assertStringContainsString('no hay SKU ni precio', $hoja);
+
+        // La columna del codigo existe y el codigo ATERRIZA en ella (B, la 2a):
+        // sin anclar la celda, un 'MEM-100' suelto pasaria por estar en cualquier
+        // parte de la hoja — el mismo verde-enganoso que costo el candado de los
+        // dias por mes.
+        $this->assertStringContainsString('Código', $hoja);
+        $this->assertMatchesRegularExpression('~<c r="B4"[^>]*>.*?MEM-100~s', $hoja);
+        // La fila del repuesto a mano deja B vacia, no un texto de relleno.
+        $this->assertMatchesRegularExpression('~<c r="B5" s="0"\s*/>~', $hoja);
+
+        // Y el precio NO aparece en ninguna forma: no hay columna de plata.
+        $this->assertStringNotContainsString('Precio', $hoja);
+        $this->assertStringContainsString('SIN precio', $hoja);
+        $this->assertStringContainsString('no maneja precios', $hoja);
     }
 }

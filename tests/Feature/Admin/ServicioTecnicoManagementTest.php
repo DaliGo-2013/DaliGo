@@ -692,7 +692,9 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $this->actingAs($tecnico)->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
-            ->assertSee('Detalle del presupuesto')
+            // Desde el 20-08 esta pestaña es la VISTA PREVIA de lo que paga el
+            // cliente; «Detalle del presupuesto» (los campos) vive en el parte.
+            ->assertSee('Lo que se le cotiza al cliente')
             // Barra de etapas del técnico: ve las 3 (Recepción abre la ficha de
             // solo lectura, porque no puede editar la recepción).
             ->assertSee('Recepción')
@@ -1186,7 +1188,7 @@ class ServicioTecnicoManagementTest extends TestCase
     public function test_cotizacion_pasa_el_valor_hora_de_servicio(): void
     {
         // El valor hora (SKU 9771001 con precio con IVA) alimenta la mano de obra
-        // FIJA que se muestra de solo lectura en Cotización.
+        // FIJA. La vista previa la muestra de solo lectura, con su total.
         $hora = Producto::factory()->create(['sku' => '9771001', 'nombre' => 'Hora servicio técnico']);
         Precio::factory()->create(['producto_id' => $hora->id, 'precio_con_iva' => 4500]);
 
@@ -1196,7 +1198,8 @@ class ServicioTecnicoManagementTest extends TestCase
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', 4500)
-            ->assertSee('Mano de obra (fijada por el trabajo)');
+            ->assertSee('Mano de obra')
+            ->assertSee('Costo total a pagar');
     }
 
     public function test_cotizacion_sin_valor_hora_igual_carga(): void
@@ -1208,7 +1211,8 @@ class ServicioTecnicoManagementTest extends TestCase
             ->get(route('admin.servicio-tecnico.cotizacion', $orden))
             ->assertOk()
             ->assertViewHas('precioHoraServicio', null)
-            ->assertSee('Mano de obra (fijada por el trabajo)');
+            ->assertSee('Mano de obra')
+            ->assertSee('Costo total a pagar');
     }
 
     /** Las fotos del equipo se ven tanto al EDITAR como en el DETALLE (staff). */

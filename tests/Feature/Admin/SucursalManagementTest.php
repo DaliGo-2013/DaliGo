@@ -189,6 +189,143 @@ class SucursalManagementTest extends TestCase
 
         $this->assertSame(4, Sucursal::count());
         $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR', 'es_central' => true]);
+        // El nombre oficial de la casa matriz es «Mirador», sin artículo (dueño, 14-08-2026).
+        // Se ve en el correo de ingreso, en el de retiro y en la pantalla del QR.
+        $this->assertSame('Mirador', Sucursal::where('codigo', 'MIRADOR')->value('nombre'));
+    }
+
+    /**
+     * «El Mirador» era un error de tipeo al crear la ficha (dueño, 14-08-2026) y el seeder no
+     * lo corrige solo: es `firstOrCreate`, no pisa lo editado desde la UI. Por eso hay una
+     * migración one-shot, y este candado prueba que hace lo que dice.
+     */
+    public function test_la_migracion_devuelve_a_mirador_su_nombre_oficial(): void
+    {
+        $mirador = Sucursal::create(['nombre' => 'El Mirador', 'codigo' => 'MIRADOR', 'es_central' => true, 'activa' => true]);
+        // Una ficha con OTRO código no se toca, aunque se llame parecido: si hay una duplicada,
+        // renombrarla dejaría dos «Mirador» y taparía el problema en vez de mostrarlo.
+        $otra = Sucursal::create(['nombre' => 'EL MIRADOR', 'codigo' => 'EL-MIRADOR', 'activa' => true]);
+
+        $migracion = require database_path('migrations/2026_08_14_200000_normaliza_el_nombre_de_la_sucursal_mirador.php');
+        $migracion->up();
+
+        $this->assertSame('Mirador', $mirador->fresh()->nombre);
+        $this->assertSame('EL MIRADOR', $otra->fresh()->nombre);
+    }
+
+    // ── El plazo del taller, a la vista en el listado ──────────────────────
+    // Dueño, 14-08-2026: «cerremos ese agujero». La pantalla mostraba el CÓDIGO pero no su
+    // consecuencia, y por eso un código retipeado en minúsculas dejó siete semanas de correos
+    // prometiendo 15 días hábiles donde la regla dice 10, a la vista de todos.
+
+    public function test_el_listado_muestra_el_plazo_de_las_que_reciben_taller(): void
+    {
+        $this->seed(\Database\Seeders\SucursalSeeder::class);
+
+        $html = $this->actingAs($this->admin())->get('/admin/sucursales')->assertOk()->getContent();
+
+        // Mirador repara (10); Coquimbo y Abate mandan el equipo a Mirador (15).
+        $this->assertStringContainsString('Taller: hasta 10 días hábiles', $html);
+        $this->assertStringContainsString('Taller: hasta 15 días hábiles', $html);
+        // Y explica de dónde sale, porque el número solo no dice que lo decide el código.
+        $this->assertStringContainsString('Lo decide su <strong>código</strong>', $html);
+    }
+
+    /** Buzeta no recibe taller: ahí el plazo sería un número que no se usa. */
+    public function test_el_listado_no_muestra_plazo_donde_no_se_recibe_taller(): void
+    {
+        Sucursal::create(['nombre' => 'Buzeta', 'codigo' => 'BUZETA', 'activa' => true]);
+
+        $this->actingAs($this->admin())->get('/admin/sucursales')
+            ->assertOk()
+            ->assertSee('BUZETA')
+            ->assertDontSee('Taller: hasta');
+    }
+
+    /**
+     * EL AGUJERO QUE SE CIERRA: una sucursal que empieza a recibir taller y a la que nadie le
+     * configuró su plazo hereda el default en silencio. Acá lo dice.
+     */
+    public function test_una_sucursal_sin_plazo_propio_avisa_que_usa_el_default(): void
+    {
+        config(['servicio_tecnico.sucursales_recepcion' => ['MIRADOR', 'NUEVA']]);
+        Sucursal::create(['nombre' => 'Sucursal Nueva', 'codigo' => 'NUEVA', 'activa' => true]);
+
+        $html = $this->actingAs($this->admin())->get('/admin/sucursales')->assertOk()->getContent();
+
+        $this->assertStringContainsString('Taller: hasta 15 días hábiles', $html);
+        $this->assertStringContainsString('(por defecto)', $html);
+        $this->assertStringContainsString('no tiene un plazo propio', $html);
+    }
+
+    /** Y una que sí lo tiene configurado no lleva esa advertencia. */
+    public function test_una_sucursal_con_plazo_propio_no_dice_por_defecto(): void
+    {
+        Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR', 'es_central' => true, 'activa' => true]);
+
+        $this->actingAs($this->admin())->get('/admin/sucursales')
+            ->assertOk()
+            ->assertSee('Taller: hasta 10 días hábiles')
+            ->assertDontSee('(por defecto)');
+    }
+
+    /**
+     * EL CODIGO ES UNA LLAVE Y SE GUARDA NORMALIZADO (14-08-2026). En producción estaban
+     * «Mirador» y «Coquimbo» retipeados desde este mismo formulario, y con eso el plazo de
+     * reparación del correo caía al default de 15 días hábiles (ver
+     * Sucursal::getDiasReparacionAttribute y PlazoSinFechaPrometidaTest).
+     */
+    public function test_el_codigo_se_guarda_en_mayusculas(): void
+    {
+        $this->actingAs($this->admin())->post('/admin/sucursales', [
+            'nombre' => 'Mirador', 'codigo' => '  mirador-2  ', 'activa' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('sucursales', ['codigo' => 'MIRADOR-2']);
+    }
+
+    /** Y al editar tampoco se puede volver a minúsculas «sin querer». */
+    public function test_editar_tampoco_deja_el_codigo_en_minusculas(): void
+    {
+        $sucursal = Sucursal::create(['nombre' => 'Coquimbo', 'codigo' => 'COQUIMBO', 'activa' => true]);
+
+        $this->actingAs($this->admin())->put("/admin/sucursales/{$sucursal->id}", [
+            'nombre' => 'Coquimbo', 'codigo' => 'Coquimbo', 'ciudad' => 'Coquimbo', 'activa' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('COQUIMBO', $sucursal->fresh()->codigo);
+    }
+
+    /** Y la migración one-shot arregla los que ya están guardados así. */
+    public function test_la_migracion_normaliza_los_codigos_ya_guardados(): void
+    {
+        $mirador = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'Mirador', 'es_central' => true, 'activa' => true]);
+        $coquimbo = Sucursal::create(['nombre' => 'Coquimbo', 'codigo' => 'Coquimbo', 'activa' => true]);
+
+        $migracion = require database_path('migrations/2026_08_14_210000_normaliza_los_codigos_de_sucursal.php');
+        $migracion->up();
+
+        $this->assertSame('MIRADOR', $mirador->fresh()->codigo);
+        $this->assertSame('COQUIMBO', $coquimbo->fresh()->codigo);
+        // Y con eso el plazo vuelve a ser el que dictó el dueño.
+        $this->assertSame(10, $mirador->fresh()->dias_reparacion);
+        $this->assertSame(15, $coquimbo->fresh()->dias_reparacion);
+    }
+
+    /**
+     * La migración NO fuerza una colisión: dos sucursales que difieren solo en mayúsculas son un
+     * duplicado, y eso se resuelve moviendo órdenes y usuarios, no en una migración a ciegas.
+     */
+    public function test_la_migracion_no_pisa_un_codigo_ya_ocupado(): void
+    {
+        $buena = Sucursal::create(['nombre' => 'Mirador', 'codigo' => 'MIRADOR', 'es_central' => true, 'activa' => true]);
+        $duplicada = Sucursal::create(['nombre' => 'El Mirador', 'codigo' => 'Mirador', 'activa' => true]);
+
+        $migracion = require database_path('migrations/2026_08_14_210000_normaliza_los_codigos_de_sucursal.php');
+        $migracion->up();
+
+        $this->assertSame('MIRADOR', $buena->fresh()->codigo);
+        $this->assertSame('Mirador', $duplicada->fresh()->codigo, 'La migración pisó un código ya ocupado en vez de dejar el duplicado a la vista.');
     }
 
     // ── P-M04-11 · guardas de eliminación COMPLETAS ────────────────────────

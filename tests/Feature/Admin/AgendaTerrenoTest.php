@@ -275,10 +275,14 @@ class AgendaTerrenoTest extends TestCase
         $this->actingAs($soloVe)
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
             ->assertRedirect()
-            ->assertSessionHas('aviso', 'Solo puedes marcar como realizado un trabajo agendado.');
+            ->assertSessionHas('aviso', 'Solo puedes cerrar un trabajo agendado (realizado o no realizado).');
 
         $this->actingAs($soloVe)
-            ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'realizado'])
+            ->patch(route('admin.agenda-terreno.estado', $agendado), [
+                'estado' => 'realizado',
+                // Obligatorio desde el 14-08: cerrar exige contar qué pasó.
+                'notas_tecnico' => 'Cerrado en terreno.',
+            ])
             ->assertRedirect();
         $this->assertSame('realizado', $agendado->fresh()->estado);
     }
@@ -291,7 +295,7 @@ class AgendaTerrenoTest extends TestCase
         $this->actingAs($this->tecnicoIndustrial())
             ->patch(route('admin.agenda-terreno.estado', $agendado), ['estado' => 'cancelado'])
             ->assertRedirect()
-            ->assertSessionHas('aviso', 'Solo puedes marcar como realizado un trabajo agendado.');
+            ->assertSessionHas('aviso', 'Solo puedes cerrar un trabajo agendado (realizado o no realizado).');
         $this->assertSame('agendado', $agendado->fresh()->estado);
     }
 
@@ -374,7 +378,7 @@ class AgendaTerrenoTest extends TestCase
         $this->assertStringContainsString(urlencode('Los Nogales 1234, Curicó'), $html);
     }
 
-    public function test_un_apostrofo_en_el_nombre_no_rompe_la_confirmacion(): void
+    public function test_un_apostrofo_en_el_nombre_no_puede_romper_nada(): void
     {
         // El nombre lo escribe el CLIENTE en el formulario público del QR, así que
         // un apóstrofo llega solo. Con `{{ }}` el `'` sale como `&#039;`, el parser
@@ -392,11 +396,22 @@ class AgendaTerrenoTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // El apóstrofo viaja escapado para JS ('), no como entidad HTML.
-        // chr(92) = la barra invertida del literal \u0027 que emite Js::from
-        // (escribirla a mano acá se presta justo al enredo de comillas que este test cuida).
-        $this->assertStringContainsString('D'.chr(92).'u0027Angelo', $html);
-        $this->assertStringNotContainsString("confirm('¿Marcar", $html);
+        // DESDE EL 14-08 el cierre ya no usa confirm(): el técnico escribe el paso
+        // a paso y aprieta «Realizado» o «No realizado», así que el nombre del
+        // cliente NO entra a ningún string JS. Este candado pasó a exigir eso —la
+        // propiedad FUERTE— en vez de que entre bien escapado: si mañana alguien
+        // vuelve a meter el nombre del cliente en un confirm(), se pone rojo.
+
+        // Se ve en pantalla, escapado como HTML, que es lo correcto.
+        $this->assertStringContainsString('D&#039;Angelo', $html);
+
+        // Y no viaja dentro de ningún confirm(): los que quedan en la pantalla son
+        // textos FIJOS, sin datos de nadie.
+        preg_match_all('/confirm\((.*?)\)/s', $html, $m);
+        foreach ($m[1] as $argumento) {
+            $this->assertStringNotContainsString('Angelo', $argumento,
+                "El nombre del cliente entró a un confirm(): {$argumento}");
+        }
     }
 
     public function test_un_trabajo_ya_realizado_no_vuelve_a_ofrecer_cerrarse(): void

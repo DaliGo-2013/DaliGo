@@ -57,7 +57,6 @@ class PlanCargaPublicoController extends Controller
             'camion' => $datos['camion'] ?? null,
             'escena' => $datos['escena'] ?? null,
             'mixta' => $datos['mixta'] ?? null,
-            'resultado' => $datos['resultado'] ?? null,
             'enPallet' => $datos['enPallet'] ?? null,
             'bulto' => $datos['bulto'] ?? null,
             'vence' => now()->addDays(self::DIAS_VIGENCIA),

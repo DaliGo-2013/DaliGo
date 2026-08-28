@@ -120,7 +120,7 @@
                     <div>
                         <label for="cat_interna_bulk" class="block text-xs font-medium text-neutral-500">Corregir categoría a</label>
                         <input id="cat_interna_bulk" name="categoria_interna" list="cats-efectivas" type="text" autocomplete="off"
-                               placeholder="Ej. Repuestos industriales" maxlength="191"
+                               placeholder="Ej. {{ $categoriaEjemplo }}" maxlength="191"
                                class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 sm:w-56">
                         <datalist id="cats-efectivas">
                             @foreach ($categorias as $c)<option value="{{ $c }}"></option>@endforeach

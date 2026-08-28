@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\SimuladorCargaController;
 use App\Models\CamionSimulacion;
 use App\Models\TipoBulto;
 use App\Models\User;
+use App\Services\Carga\CalculoDeCarga;
+use App\Services\Carga\PalletSimulado;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -98,7 +100,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'El primer bloque se metió adentro del espacio que ya estaba ocupado.');
         // Y el visor recibe el metraje para dibujarlo en gris: sin eso, el hueco entre
         // la cabina y la carga se lee como un error del acomodo.
-        $this->assertEquals(2, $escena["ocupado_m"]);
+        $this->assertEquals(2, $escena['ocupado_m']);
     }
 
     public function test_los_kilos_que_ya_viajan_salen_del_tope_o_el_cartel_miente(): void
@@ -263,9 +265,14 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // 600 botellones son 120 bolsas y el HD35 admite 84 (420 botellones).
         $res = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]]);
 
+        // Los dos datos siguen a la vista, en las dos superficies que quedaron al cerrar
+        // el «todo en una pantalla» (21-08): el CUÁNTO en el cartel de arriba del dibujo,
+        // con los números y no con la frase pelada, y el POR QUÉ en la fila de la carga
+        // dentro del panel. La lista de abajo del camión —que decía las dos cosas otra
+        // vez— se fue por duplicada, no por prescindible.
         $res->assertOk()
-            ->assertSee('No cabe todo')
-            ->assertSee('quedan 180 afuera', false)
+            ->assertSee('De tus 600 entran 420')
+            ->assertSee('Quedan 180 afuera')
             ->assertSee('no queda espacio');
     }
 
@@ -275,7 +282,11 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // pero lo CARGADO se reporta capado a lo pedido: 198, no 200.
         $res = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 198]]);
 
-        $res->assertOk()->assertSee('Cabe todo');
+        // El «sí» de un solo producto con cantidad se dice CON EL NÚMERO desde la fusión
+        // (21-08): «Cabe todo ✓» es correcto y no contesta la pregunta que se hizo. Y el
+        // número del cartel es lo PEDIDO —198— no las 200 de las 40 bolsas: decir 200
+        // sería prometerle al cliente dos botellones que no encargó.
+        $res->assertOk()->assertSee('Tus 198 entran');
         $this->assertSame(198, $res->viewData('mixta')['lineas'][0]['cargadas_unidades']);
         $this->assertSame(40, $res->viewData('mixta')['lineas'][0]['bultos_colocados']);
     }
@@ -755,27 +766,37 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
     }
 
     /**
-     * CADA PESTAÑA DICE CUÁNTOS PRODUCTOS ACEPTA.
+     * HAY UNA SOLA PESTAÑA DE CARGA, Y DICE QUE ACEPTA UNO O VARIOS.
      *
-     * Nace de una pregunta del dueño (10-08): «¿y dónde agrego otro bulto?»,
-     * estando en «¿Cuánto entra?», que es de UN producto. El nombre decía la
-     * PREGUNTA pero no la CAPACIDAD, así que desde ahí no había forma de saber que
-     * lo de varios productos vivía en la pestaña de al lado.
+     * Nace de una pregunta del dueño (10-08): «¿y dónde agrego otro bulto?», estando en
+     * «¿Cuánto entra?», que era de UN producto. El nombre decía la PREGUNTA pero no la
+     * CAPACIDAD, así que desde ahí no había forma de saber que lo de varios productos
+     * vivía en la pestaña de al lado. Era un candado de DESCUBRIBILIDAD: la función
+     * existía y funcionaba, y el usuario no la encontraba.
      *
-     * Es un candado de DESCUBRIBILIDAD y por eso vale escribirlo: la función
-     * existía y funcionaba, y aun así el usuario no la encontraba. Eso no lo
-     * detecta ningún test de comportamiento.
+     * El 21-08 el dueño resolvió el problema de raíz —«hay que unificar los dos puntos…
+     * la única diferencia que veo es un producto o varios y es lo mismo»— y con eso NO
+     * QUEDA NADA QUE DESCUBRIR: no hay una segunda pestaña de carga a la que pasar. Así
+     * que el candado cambia de forma y conserva su intención: lo que se vigila ahora es
+     * que la pestaña única siga anunciando su capacidad, y que la segunda NO vuelva.
+     * Reaparecer sería reabrir el problema del 10-08 con la fusión ya hecha.
      */
-    public function test_las_pestanas_dicen_cuantos_productos_acepta_cada_una(): void
+    public function test_hay_una_sola_pestana_de_carga_y_dice_que_acepta_uno_o_varios(): void
     {
         $html = $this->actingAs($this->vendedor)
             ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
             ->assertOk()->getContent();
 
-        $this->assertStringContainsString('un producto', $html);
-        $this->assertStringContainsString('varios productos', $html);
-        // Y desde el modo de un producto hay un camino explícito al de varios.
-        $this->assertStringContainsString('más de un producto', $html);
+        $this->assertStringContainsString('uno o varios productos', $html,
+            'La pestaña de carga dejó de anunciar su capacidad.');
+
+        // Las tres pestañas y NADA MÁS. Se cuenta el `role="tab"`, que es lo que las hace
+        // pestañas: buscar los nombres dejaría pasar una cuarta con otro rótulo.
+        $this->assertSame(3, substr_count($html, 'role="tab"'), 'Cambió la cantidad de pestañas.');
+
+        // Y la de un producto no volvió, ni con su nombre ni con su modo.
+        $this->assertStringNotContainsString('¿Cuánto entra?', $html);
+        $this->assertStringNotContainsString("modo = 'maximo'", $html);
     }
 
     /**
@@ -1001,7 +1022,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // «Pico a la puerta» da el peor cupo porque cruza la fila de 130 cm en una caja de
         // 200: se pierden 70 cm de ancho. No es un error — es la razón por la que en la
         // práctica se elige según el camión.
-        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $calculo = new CalculoDeCarga;
         $camion = $this->hd35->paraCalculo();
         $cupo = fn (string $e) => $calculo->cupo($camion, $this->bolsa->paraCalculo($e))['unidades'];
 
@@ -1015,7 +1036,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
             ->assertOk();
 
-        $this->assertSame(420, $sinPedir->viewData('resultado')['unidades']);
+        $this->assertSame(420, $this->unidadesQueEntran($sinPedir));
         $this->assertSame('auto', $sinPedir->viewData('estiba'));
         $this->assertSame(420, $calculo->cupo($camion, $this->bolsa->paraCalculo('auto'))['unidades']);
     }
@@ -1029,7 +1050,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
                 'estiba' => $estiba,
             ]))->assertOk();
 
-            $this->assertSame($unidades, $res->viewData('resultado')['unidades']);
+            $this->assertSame($unidades, $this->unidadesQueEntran($res));
             $this->assertSame($estiba, $res->viewData('estiba'));
             // Y lo DICE: «entran 240» sin decir con qué estiba invita a compararlo con los
             // 420 de pie y a pensar que el simulador se equivocó.
@@ -1115,9 +1136,23 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertSame(6, $fila['apiladas'], 'El tope del catálogo.');
         $this->assertSame(8, $fila['apilables_por_alto'], '220 / 26 = 8 capas.');
 
+        // El aviso se mudó a la fila DEL PANEL al cerrar el «todo en una pantalla»
+        // (21-08): la lista de abajo del camión, donde vivía, se fue por duplicada. Lo que
+        // dice es lo mismo y en menos palabras —el panel mide 224px—: los dos números y el
+        // botón que sube el tope. Si alguna vez se cae, se cae con este candado, que es el
+        // punto: los dos números seguían calculándose en la fila y ninguna vista los
+        // mostraba, o sea un dato que parece cubierto y no se lee.
         $html = $conAire->getContent();
-        $this->assertStringContainsString('la caja da para', $html);
-        $this->assertStringContainsString('Apilar 8', $html);
+        // El «de 8 que caben» NO se puede asertar contiguo: el número va en su propio
+        // `<span>` para llevar `tabular-nums`, así que en el HTML dice
+        // `de <span …>8</span> que caben`. Se asertan las dos mitades que sí son contiguas.
+        $this->assertStringContainsString('que caben', $html);
+        // EL BOTÓN DICE LA ACCIÓN Y NO SOLO EL NÚMERO (dueño 25-08: «dale la opción entonces
+        // de que indique lo que pasa»). Decía «Apilar 8», que no distingue entre apilar 8
+        // MÁS, dejar 8 en total, o cambiar el tope sin recalcular.
+        $this->assertStringContainsString('Subir el tope a 8 y recalcular', $html);
+        $this->assertStringContainsString('apilarHasta(0, 8)', $html,
+            'El botón dejó de escribir el tope en la línea: diría el número sin poder arreglarlo.');
 
         // MUTADO: pedido el tope que la altura permite, el aviso NO tiene por qué seguir
         // ahí. Un aviso que no se apaga al resolverlo deja de leerse.
@@ -1251,16 +1286,29 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $plomo->id,
         ]))->assertOk();
 
-        $resultado = $r->viewData('resultado');
-        $porEspacio = $resultado['rejilla']['largo'] * $resultado['rejilla']['ancho'] * $resultado['rejilla']['alto'];
+        // Desde la fusión (21-08) el número vive en la FILA de la carga (`por_espacio`) y
+        // el aviso viaja PEGADO al veredicto, arriba del dibujo, en vez de en una tarjeta
+        // propia debajo. La regla no cambió —el cupo cortado por kilos tiene que decir
+        // cuántos entrarían si el peso no cortara— pero el lugar sí, y por eso el candado
+        // se reescribe en vez de darse por perdido.
+        $mixta = $r->viewData('mixta');
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
 
-        $this->assertSame('peso', $resultado['limite']);
-        $this->assertSame(4, $resultado['bultos'], '1.400 kg del fixture / 300 kg por caja.');
-        $this->assertGreaterThan($resultado['bultos'], $porEspacio, 'Por espacio entrarían muchas más.');
+        $this->assertSame('peso', $fila['limita']);
+        $this->assertSame(4, $fila['bultos_colocados'], '1.400 kg del fixture / 300 kg por caja.');
+        $this->assertGreaterThan(
+            $fila['bultos_colocados'],
+            $fila['por_espacio'],
+            'Por espacio entrarían muchas más.',
+        );
 
         $html = $r->getContent();
-        $this->assertStringContainsString('Se llena de kilos antes que de espacio', $html);
-        $this->assertStringContainsString(number_format($porEspacio, 0, ',', '.'), $html);
+        $this->assertStringContainsString('se llena de kilos antes', $html);
+        $this->assertStringContainsString(
+            'por espacio entrarían '.number_format($fila['por_espacio'], 0, ',', '.'),
+            $html,
+            'El número tiene que estar A LA VISTA: el aviso sin cifra no cambia ninguna decisión.',
+        );
     }
 
     public function test_no_se_tumba_conserva_el_giro_de_90_que_de_pie_pierde(): void
@@ -1278,7 +1326,15 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // distintas y se verifican a mano:
         //   de pie          4 × 3 de piso × 1 de alto (120 de 220)      = 12
         //   no se tumba     7 × 2 girada  × 1                           = 14
-        //   automático      la acuesta: 3 × 2 × 3 capas de 60           = 18
+        //   automático      la acuesta: 3 × 2 × 3 capas de 60  = 18, + 2 en el sobrante = 20
+        //
+        // ESE «+ 2» ES NUEVO Y ES REAL. Desde la fusión (21-08) la pregunta se contesta
+        // por `carga()` y no por `cupo()`: la rejilla de 18 deja 70 cm de largo libres al
+        // fondo (3 × 120 = 360 de 430) y ahí el motor para dos cajas de canto (60 × 90 ×
+        // 120, x=360 → 420 ≤ 430). `cupo()` nunca rellenaba el sobrante, así que este
+        // camino no promete más de lo que puede: promete lo que DIBUJA, y los dos bloques
+        // están en la escena. Los cupos de referencia del HD35 (420 de pie, 480 acostado)
+        // no se mueven — los fija `CargaUnificadaTest`.
         $caja = TipoBulto::create([
             'nombre' => 'Caja alta de prueba', 'categoria' => 'cajas',
             'largo_cm' => 90, 'ancho_cm' => 60, 'alto_cm' => 120, 'peso_kg' => 1,
@@ -1286,9 +1342,29 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'orientacion_fija' => false, 'activo' => true,
         ]);
 
-        $cupo = fn (string $estiba) => $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
-            'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $caja->id, 'estiba' => $estiba,
-        ]))->assertOk()->viewData('resultado');
+        // La ORIENTACIÓN con que quedó puesta se lee del BLOQUE que dibuja el visor, no
+        // de `cupo()`: desde la fusión (21-08) la pantalla contesta por el camino de
+        // líneas, y el bloque es además el lugar más honesto para preguntarlo — es la
+        // caja tal como se está dibujando. Los bultos salen de la fila de la carga.
+        //
+        // OJO CON LA UNIDAD: el visor trabaja en METROS (`escena()` divide por 100), así
+        // que se convierte acá a centímetros enteros. Las tres alturas de abajo son las
+        // del catálogo y se verificaron a mano en centímetros; compararlas contra 1.2
+        // dejaría el candado ilegible al lado del comentario que lo justifica.
+        $cupo = function (string $estiba) use ($caja) {
+            $r = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+                'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $caja->id, 'estiba' => $estiba,
+            ]))->assertOk();
+            $mixta = $r->viewData('mixta');
+            $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+            $o = $r->viewData('escena')['bloques'][0]['orientacion'];
+
+            return [
+                'orientacion' => array_map(fn (float $m) => (int) round($m * 100), $o),
+                'bultos' => $fila['bultos_colocados'],
+                'bloques' => $r->viewData('escena')['bloques'],
+            ];
+        };
 
         $dePie = $cupo('pie');
         $noSeTumba = $cupo('horizontal');
@@ -1305,7 +1381,10 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // automático daría 18.
         $this->assertSame(12, $dePie['bultos'], '4 × 3 de piso × 1 de alto.');
         $this->assertSame(14, $noSeTumba['bultos'], 'Girada 90°: 7 × 2 de piso × 1 de alto.');
-        $this->assertSame(18, $libre['bultos'], 'Acostada: 3 × 2 × 3 capas de 60.');
+        $this->assertSame(20, $libre['bultos'], 'Acostada 3 × 2 × 3 capas, más 2 de canto en el sobrante.');
+        // Y el bloque del sobrante EXISTE: sin este assert, un 20 salido de contar mal
+        // sería indistinguible de un 20 salido de acomodar bien.
+        $this->assertCount(2, $libre['bloques'], 'La rejilla acostada más el relleno de canto.');
 
         // Sigue siendo CONSERVADORA: nunca promete más que la libre. Es lo que la hace
         // segura de ofrecer.
@@ -1403,7 +1482,14 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
 
         // Y NO hay tarimas vacías en el camión.
         $this->assertSame([], $r->viewData('escena')['bloques']);
-        $this->assertStringContainsString('no entra ni una encima del pallet', $r->getContent());
+        // El POR QUÉ se dice en la fila del panel, con el texto corto de `MOTIVOS_CORTOS`:
+        // ahí la columna mide 224px y la versión larga («no entra ni una encima del
+        // pallet», la de la lista que se fue al cerrar el «todo en una pantalla») no cabe
+        // en una línea. Lo que el candado cuida es que el motivo se DIGA, no su redacción.
+        $this->assertStringContainsString('no entra en el pallet', $r->getContent());
+        // Y sin inventar un pedido: la línea pidió 2 pallets, así que dice cuántos quedaron
+        // afuera. Un «Quedan 0 afuera» al lado del motivo se contradice solo.
+        $this->assertStringContainsString('Quedan 2 afuera', $r->getContent());
     }
 
     public function test_forzar_la_estiba_de_un_bulto_libre_le_saca_la_rotacion_al_motor(): void
@@ -1434,7 +1520,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'unidades' => 1, 'apilable_max' => 10, 'soporta_peso_encima' => true,
             'orientacion_fija' => false, 'activo' => true,
         ]);
-        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $calculo = new CalculoDeCarga;
         $camion = $this->hd35->paraCalculo();
 
         $this->assertGreaterThan(
@@ -1506,36 +1592,96 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         ]))->assertSessionHasErrors('orden');
     }
 
+    /**
+     * Rebana el menú lateral, que es donde vive la lista de la carga. Mismo idioma que
+     * el resto de los candados de este archivo: se ancla en el `aria-label` del
+     * `<aside>` y corta en su cierre.
+     */
+    /**
+     * CUÁNTAS UNIDADES ENTRARON, por el camino unificado.
+     *
+     * Desde el 21-08 la pantalla tiene UNA sola pregunta: un `tipo_bulto_id` sin líneas
+     * —los links viejos y lo que mandaba la pestaña «¿Cuánto entra?»— se traduce a una
+     * línea, así que el número ya no vive en `viewData('resultado')` (el `cupo()`) sino
+     * en la fila de la carga.
+     *
+     * Los candados que preguntaban por el camino viejo se migraron a este helper en vez
+     * de borrarse: cada uno fija una regla que la pantalla nueva tiene que seguir
+     * cumpliendo, y apagarlos habría dejado la regla sin quien la vigile. `cupo()` sigue
+     * existiendo y sigue teniendo sus propios candados —lo usa la comparativa entre
+     * camiones—; lo que cambió es de dónde saca la pantalla su respuesta.
+     */
+    private function unidadesQueEntran($respuesta): int
+    {
+        $mixta = $respuesta->viewData('mixta');
+        $this->assertNotNull($mixta, 'La pantalla no calculó ninguna carga.');
+
+        return $mixta['lineas'][array_key_first($mixta['lineas'])]['cargadas_unidades'];
+    }
+
+    private function menuDelVisor(string $html): string
+    {
+        $desde = strpos($html, 'Herramientas');
+        $this->assertNotFalse($desde, 'Ya no hay menú lateral en el visor.');
+
+        return substr($html, $desde, strpos($html, '</aside>', $desde) - $desde);
+    }
+
     public function test_el_panel_de_cubicaje_acompana_al_camion(): void
     {
         // El formato del panel izquierdo de EasyCargo, que el dueño pidió (06-08): por
-        // producto, su letra, cuántas van de cuántas y un punto verde o rojo, AL LADO del
-        // camión. Repite el detalle de abajo a propósito — el valor es no levantar la
-        // vista del dibujo para saber qué es cada bloque.
+        // producto, su letra, cuántas van y cuánto espacio ocupan, AL LADO del camión.
+        // Repite el detalle de abajo a propósito — el valor es no levantar la vista del
+        // dibujo para saber qué es cada bloque.
+        //
+        // El formato «200/200» de la primera versión ya no existe: desde el 21-08 la
+        // fila dice «200 unidades» y agrega «de N» SOLO cuando difieren, porque repetir
+        // el mismo número dos veces era ruido en una columna de 330px. La intención del
+        // candado no cambió, y el número sigue teniendo que estar.
         $html = $this->verMixta([
             ['tipo' => $this->bolsa->id, 'cantidad' => 200],
             ['tipo' => $this->caja->id, 'cantidad' => 20],
         ])->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'Cubicaje'), 3000);
+        $panel = $this->menuDelVisor($html);
 
-        $this->assertStringContainsString('200/200', $panel);
-        $this->assertStringContainsString('20/20', $panel);
-        // El punto: verde cuando entra completo.
-        $this->assertStringContainsString('bg-brand-600', $panel);
+        // Cada producto, con su nombre y su cantidad cargada.
+        $this->assertStringContainsString($this->bolsa->nombre, $panel);
+        $this->assertStringContainsString($this->caja->nombre, $panel);
+        $this->assertStringContainsString('>200</span>', $panel, 'La cantidad cargada no está en el panel.');
+        $this->assertStringContainsString('>20</span>', $panel);
+
+        // Y el espacio que ocupa cada uno, que es lo que el dueño pidió el 21-08.
+        $this->assertMatchesRegularExpression('/\d+,\d m³/', $panel,
+            'La fila no dice cuánto espacio ocupa.');
+
+        // Entra todo, así que el panel NO puede decir que algo quedó afuera. Se assertea
+        // el TEXTO y no la clase `text-red-600`: esa cadena también vive dentro del
+        // `hover:text-red-600` del botón de quitar, así que el assert negativo pasaría
+        // por la razón equivocada (la trampa del substring de la bitácora [2026-07-30]).
+        $this->assertStringNotContainsString('afuera', $panel,
+            'Entra toda la carga y el panel dice que quedó algo afuera.');
     }
 
     public function test_el_panel_de_cubicaje_marca_en_rojo_lo_que_no_entra(): void
     {
-        // 600 botellones son 120 bolsas y el HD35 admite 84: el punto tiene que avisar
-        // sin que haya que leer el detalle de abajo.
+        // 600 botellones son 120 bolsas y el HD35 admite 84: tiene que avisar sin que
+        // haya que leer el detalle de abajo. Y desde el 21-08 dice además POR QUÉ —
+        // antes era un punto rojo y el motivo había que ir a buscarlo.
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 600]])
             ->assertOk()->getContent();
 
-        $panel = substr($html, strpos($html, 'Cubicaje'), 3000);
+        $panel = $this->menuDelVisor($html);
 
-        $this->assertStringContainsString('420/600', $panel);
-        $this->assertStringContainsString('bg-red-500', $panel);
+        $this->assertStringContainsString('>420</span>', $panel, 'No dice cuántas entraron.');
+        $this->assertStringContainsString('de 600', $panel, 'No dice de cuántas eran.');
+        $this->assertStringContainsString('Quedan 180 afuera', $panel, 'No dice cuántas quedaron afuera.');
+        $this->assertStringContainsString('text-red-600', $panel, 'Se perdió la señal roja.');
+        // El motivo, en palabras y desde la única fuente.
+        $this->assertStringContainsString(
+            SimuladorCargaController::MOTIVOS_CORTOS['espacio'], $panel,
+            'El panel no dice por qué quedó carga afuera.',
+        );
     }
 
     public function test_toda_silueta_declarada_tiene_su_rama_en_el_visor_y_sus_ejes(): void
@@ -1605,6 +1751,76 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         }
     }
 
+    /**
+     * EL `x-data` DE LA PANTALLA TIENE QUE SEGUIR SIENDO EVALUABLE.
+     *
+     * Este componente es el estado de toda la pantalla —`modo`, `lineas`, `sucio`— y su
+     * `x-data` es un objeto de 150 líneas escrito dentro de un ATRIBUTO HTML, comentarios
+     * incluidos. Cuando algo lo corta, no falla una parte: **no evalúa nada**, la pantalla
+     * queda con todos los controles muertos y la consola se llena de
+     * `ReferenceError: <prop> is not defined` — un binding por cada descendiente.
+     *
+     * Y LA SUITE NO LO VE. Ningún test de PHP evalúa Alpine, así que este defecto convive
+     * con 280 candados en verde. La bitácora lo tiene documentado dos veces —las comillas
+     * dobles [2026-08-10] y ahora el cierre de comentario de bloque, que se colocó al
+     * intentar EXPLICAR el gotcha dentro del propio comentario— y en las dos no había
+     * candado: solo una advertencia que hay que acordarse de leer.
+     *
+     * Esto no reemplaza evaluar Alpine, que sería lo correcto y no está en el presupuesto
+     * de esta pantalla. Cubre las dos formas concretas que ya ocurrieron, que es mucho más
+     * que cero.
+     */
+    public function test_el_x_data_de_la_pantalla_no_se_corta_a_si_mismo(): void
+    {
+        $html = $this->actingAs($this->vendedor)
+            ->get(route('admin.carga.index', ['camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id]))
+            ->assertOk()->getContent();
+
+        // Se recogen TODOS los `x-data` del documento por su delimitador real —`"` a `"`,
+        // que es exactamente como los parte el navegador— y se elige el de esta pantalla
+        // por su contenido. Elegirlo por posición no sirve: la página trae varios (el shell,
+        // la campanita, el visor) y el primero es `{ menuAbierto: false }`.
+        //
+        // El recorte por comillas ES el mecanismo del candado: si dentro del atributo hay
+        // una comilla doble, el navegador corta ahí y el pedazo que queda es corto — el
+        // mismo corte que deja Alpine sin componente.
+        preg_match_all('/x-data="([^"]*)"/', $html, $todos);
+        $xdata = '';
+        foreach ($todos[1] as $candidato) {
+            if (str_contains($candidato, 'modo:')) {
+                $xdata = $candidato;
+                break;
+            }
+        }
+        $this->assertNotSame('', $xdata,
+            'No se encontró el x-data de la pantalla, o se cortó ANTES de `modo:` — que ya es el defecto.');
+
+        // Los dos assert que siguen se reparten los dos defectos, pero NO uno cada uno:
+        // dónde cae una comilla doble decide cuál de los dos salta (temprano corta el
+        // atributo y se nota en el largo; tarde deja un comentario sin cerrar). Por eso los
+        // dos mensajes nombran las dos causas — un mensaje que apunte a la equivocada manda
+        // a buscar el defecto al otro lado del archivo.
+        $sospechas = 'Causas conocidas, en orden: (1) una COMILLA DOBLE dentro del x-data '
+            .'—ni en los comentarios— bitácora [2026-08-10]; (2) un cierre de comentario de '
+            .'bloque suelto, que aparece al intentar EXPLICAR ese gotcha dentro del comentario. '
+            .'En los dos casos Alpine no evalúa el componente y TODA la pantalla queda muerta.';
+
+        $this->assertGreaterThan(3000, strlen($xdata), 'El x-data se cortó. '.$sospechas);
+
+        $this->assertSame(
+            substr_count($xdata, '/*'),
+            substr_count($xdata, '*/'),
+            'Los comentarios del x-data no cierran parejo. '.$sospechas,
+        );
+
+        // Y la prueba de que el recorte de arriba está leyendo lo que dice leer: las tres
+        // propiedades que sostienen la pantalla tienen que estar en el pedazo.
+        foreach (['modo:', 'lineas:', 'sucio:'] as $prop) {
+            $this->assertStringContainsString($prop, $xdata,
+                "El recorte del x-data no contiene [{$prop}]: el candado está mirando otra cosa.");
+        }
+    }
+
     public function test_los_controles_viven_en_un_solo_menu_y_no_en_las_cuatro_esquinas(): void
     {
         // Pedido del dueño 06-08: «organizá los botones en un menú, en un lateral… y que no
@@ -1617,8 +1833,10 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // esquina.
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
 
-        // Se ancla en el rótulo «Herramientas» y NO en el primer `<aside>`: el layout de la
-        // app tiene su propio aside (el menú de navegación) y la rebanada caía ahí.
+        // Se ancla en el texto «Herramientas» y NO en el primer `<aside>`: el layout de la
+        // app tiene su propio aside (el menú de navegación) y la rebanada caía ahí. Desde
+        // la Cabina (21-08) el texto lo aporta el `aria-label` del propio <aside>, ANTES
+        // del primer control — si alguien lo quita, toda esta familia de rebanadas muere.
         $desde = strpos($html, 'Herramientas');
         $this->assertNotFalse($desde, 'Ya no hay menú lateral en el visor.');
         $hasta = strpos($html, '</aside>', $desde);
@@ -1641,11 +1859,23 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $this->assertStringContainsString('shrink-0', $menu);
         $this->assertStringNotContainsString('absolute', $menu);
 
-        // Las secciones son DESPLEGABLES (pedido del dueño 06-08: «que se puedan
-        // desplegar como dropdown») — <details> nativos, sin JS.
-        $this->assertGreaterThanOrEqual(5, substr_count($menu, '<details'));
+        // El menú es la CABINA (dueño 21-08, opción D del canvas de propuestas —
+        // §4.1nonies-ter): CERO desplegables. Lo visual vive como iconos en la
+        // cabecera, el cuerpo es Cargar, y lo demás espera en dos HOJAS que abre el
+        // pie («Compartir» y «Herramientas»). Esto supersede el «cada sección es un
+        // desplegable» del 06-08: si un <details> reaparece en el menú, alguien está
+        // deshaciendo la decisión sin enterarse.
+        $this->assertSame(0, substr_count($menu, '<details'));
+        // Se busca la forma `x-show="…"` COMPLETA y no la expresión suelta: el @click
+        // del lanzador del pie también dice «hoja === 'compartir'», así que la
+        // expresión suelta pasaba en verde con la hoja borrada (cazado por mutación).
+        foreach (['compartir', 'herramientas'] as $hoja) {
+            $this->assertStringContainsString('x-show="hoja === \''.$hoja.'\'"', $menu,
+                "Falta la hoja [{$hoja}] del pie del menú.");
+        }
 
-        // Y el PALLET también se ofrece desde el menú, con los dos tipos estándar.
+        // Y el PALLET también se ofrece desde el menú (hoja «Herramientas»), con los
+        // dos tipos estándar.
         $this->assertStringContainsString('Industrial 120 × 100', $menu);
         $this->assertStringContainsString('EUR/EPAL 120 × 80', $menu);
         $this->assertStringContainsString('sobre_pallet=1', $menu);
@@ -1662,22 +1892,34 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'cantidad' => $c,
         ])))->assertOk();
 
+        // Desde la fusión (21-08) esto no es una capa encima del cupo: la cantidad ES la
+        // de la línea, así que el motor coloca exactamente lo pedido y el dibujo son los
+        // bloques que colocó. Se cuentan los BULTOS DIBUJADOS y no un `tope` que capaba el
+        // dibujo después — el dibujo dejó de necesitar capa, que era el punto.
+        $dibujados = fn ($r) => collect($r->viewData('escena')['bloques'])->sum('cantidad');
+        $fila = fn ($r) => $r->viewData('mixta')['lineas'][array_key_first($r->viewData('mixta')['lineas'])];
+
         // 50 botellones = 10 bolsas: entran (el máximo es 420) y el dibujo muestra 10.
         $conPrueba = $ver(50);
-        $this->assertTrue($conPrueba->viewData('prueba')['caben']);
-        $this->assertSame(10, $conPrueba->viewData('escena')['tope']);
+        $this->assertTrue($conPrueba->viewData('mixta')['cabeTodo']);
+        $this->assertSame(50, $fila($conPrueba)['cargadas_unidades']);
+        $this->assertSame(10, $dibujados($conPrueba));
         $conPrueba->assertSee('Tus 50 entran');
 
         // 600 no entran: el veredicto dice cuántas sí, y el dibujo muestra el máximo.
         $sinCupo = $ver(600);
-        $this->assertFalse($sinCupo->viewData('prueba')['caben']);
-        $this->assertSame(420, $sinCupo->viewData('prueba')['cargadas']);
-        $this->assertSame(84, $sinCupo->viewData('escena')['tope']);
+        $this->assertFalse($sinCupo->viewData('mixta')['cabeTodo']);
+        $this->assertSame(420, $fila($sinCupo)['cargadas_unidades']);
+        $this->assertSame(84, $dibujados($sinCupo));
+        $sinCupo->assertSee('De tus 600 entran 420');
 
-        // Sin cantidad, todo sigue como siempre: máximo y sin veredicto de prueba.
+        // Sin cantidad la pregunta es la OTRA —«¿cuánto entra?»— y por eso no hay número
+        // pedido contra el que comparar: la línea es abierta y el dibujo va al máximo.
         $sinPrueba = $ver(null);
-        $this->assertNull($sinPrueba->viewData('prueba'));
-        $this->assertSame(84, $sinPrueba->viewData('escena')['tope']);
+        $this->assertNull($fila($sinPrueba)['pedidas_unidades']);
+        $this->assertTrue($fila($sinPrueba)['abierta']);
+        $this->assertSame(84, $dibujados($sinPrueba));
+        $sinPrueba->assertSee('Entran 420');
     }
 
     public function test_importar_de_excel_esta_ofrecido_y_dice_que_no_lee_facturas(): void
@@ -1715,13 +1957,13 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
             'camion_id' => $this->hd35->id, 'tipo_bulto_id' => $this->bolsa->id, 'estiba' => 'costado', 'apilado' => 8,
         ]))->assertOk();
 
-        $this->assertSame(270, $conTope->viewData('resultado')['unidades'], '6 capas de 26 cm.');
-        $this->assertSame(360, $sinTope->viewData('resultado')['unidades'], '8 capas llenan los 220 cm.');
+        $this->assertSame(270, $this->unidadesQueEntran($conTope), '6 capas de 26 cm.');
+        $this->assertSame(360, $this->unidadesQueEntran($sinTope), '8 capas llenan los 220 cm.');
 
         // Sin pedir nada manda el catálogo: es el dato que él dictó y con el que se
         // verificaron las referencias.
         $this->assertNull($ver(null)->viewData('apilado'));
-        $this->assertSame(420, $ver(null)->viewData('resultado')['unidades']);
+        $this->assertSame(420, $this->unidadesQueEntran($ver(null)));
     }
 
     public function test_el_pallet_se_resuelve_con_el_mismo_cupo_dos_veces(): void
@@ -1739,7 +1981,7 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         ]))->assertOk();
 
         $enPallet = $res->viewData('enPallet');
-        $calculo = new \App\Services\Carga\CalculoDeCarga;
+        $calculo = new CalculoDeCarga;
         $pallet = $res->viewData('pallet');
 
         // 1) Lo que entra ENCIMA del pallet sale de cupo() con el pallet como caja.
@@ -1762,8 +2004,8 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         // Un pallet se puede poner a lo largo o a lo ancho, pero acostarlo volcaría la
         // carga. Sin esta regla había que elegir entre dos mentiras: fijarlo perdía el giro
         // válido (cupo más bajo que el real) y liberarlo dejaba al motor tumbarlo.
-        $calculo = new \App\Services\Carga\CalculoDeCarga;
-        $pallet = \App\Services\Carga\PalletSimulado::desdeFormulario('industrial', null, null, 180);
+        $calculo = new CalculoDeCarga;
+        $pallet = PalletSimulado::desdeFormulario('industrial', null, null, 180);
         $bulto = $pallet->comoBulto(500.0, 40);
 
         // Cabe de las dos formas horizontales, y NUNCA de canto: el alto del bulto
@@ -1800,11 +2042,11 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
     {
         // Los campos son un `<input number>` que el usuario tipea. Un 5000 de más no puede
         // reventar la pantalla ni entrar al cálculo.
-        $p = \App\Services\Carga\PalletSimulado::desdeFormulario('industrial', 9999, 0, 9999, 999);
+        $p = PalletSimulado::desdeFormulario('industrial', 9999, 0, 9999, 999);
 
         $this->assertSame(300, $p->largo_cm);
         $this->assertSame(100, $p->ancho_cm, 'Un 0 cae al estándar del tipo elegido.');
-        $this->assertSame(\App\Services\Carga\PalletSimulado::ALTO_MAX, $p->alto_cm);
+        $this->assertSame(PalletSimulado::ALTO_MAX, $p->alto_cm);
         $this->assertSame(30, $p->base_cm);
     }
 

@@ -544,6 +544,66 @@ Alpine.data('reparacionForm', ({ repuestos, manoObra, endpointRepuestos, precioH
 }));
 
 /**
+ * Repuestos usados en un trabajo de TERRENO, al cerrarlo (dueno 14-08-2026).
+ *
+ * Hermano de `reparacionForm` pero deliberadamente mas chico: NO tiene precio,
+ * subtotal ni total, porque al tecnico industrial le pagan por arreglar e
+ * instalar, no por cobrarle al cliente. La cotizacion formal la hacen el
+ * vendedor y el jefe de ventas. Su endpoint tampoco devuelve precios.
+ *
+ * El `sku` se guarda cuando el repuesto vino del catalogo: es lo que deja al
+ * vendedor facturar sin volver a preguntarle nada al tecnico. Escrito a mano
+ * queda null, que es un caso legitimo (no esta en el catalogo).
+ */
+Alpine.data('terrenoRepuestos', ({ repuestos, endpointRepuestos }) => ({
+    repuestos: Array.isArray(repuestos) ? repuestos : [],
+    endpointRepuestos: endpointRepuestos || '',
+    sugerencias: [],
+    filaActiva: null,
+    buscando: false,
+
+    agregar() {
+        this.repuestos.push({ nombre: '', sku: null, cantidad: 1 });
+    },
+
+    quitar(i) {
+        this.repuestos.splice(i, 1);
+    },
+
+    async buscar(i) {
+        this.filaActiva = i;
+        const q = (this.repuestos[i]?.nombre || '').trim();
+
+        if (q.length < 2 || !this.endpointRepuestos) {
+            this.sugerencias = [];
+            return;
+        }
+
+        this.buscando = true;
+
+        try {
+            const { data } = await window.axios.get(this.endpointRepuestos, { params: { q } });
+            this.sugerencias = data;
+        } catch (e) {
+            this.sugerencias = [];
+        } finally {
+            this.buscando = false;
+        }
+    },
+
+    elegir(i, s) {
+        this.repuestos[i].nombre = s.nombre;
+        this.repuestos[i].sku = s.sku ?? null;
+        this.cerrar();
+    },
+
+    cerrar() {
+        this.sugerencias = [];
+        this.filaActiva = null;
+    },
+}));
+
+/**
  * Formulario de la Agenda de terreno (tecnico industrial). Dos piezas:
  * (1) buscador del cliente por RUT/razon social que al elegir rellena
  * nombre/telefono/correo/direccion/ciudad y enlaza cliente_id (editables);

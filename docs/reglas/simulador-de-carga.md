@@ -836,9 +836,9 @@ queda de respaldo para uno que llegue sin fotos — como estuvo este unas horas.
 | Camión | Carga máxima | |
 |---|---|---|
 | Contenedor 40' | **28.800 kg** | de la placa — el dueño pasó 30.000, ver abajo |
-| HINO 500 | 11.000 kg | coincide con el catálogo |
+| HINO 500 | ~~11.000~~ → **8.000 kg** | **corregido el 14-08 con el padrón**, ver §3.5quater |
 | Chevy 3 (NQR 919 · H3) | **6.430 kg** | dato nuevo: estuvo unas horas en «sin dato» |
-| Hyundai HD35 | 1.500 kg | coincide con el catálogo |
+| Hyundai HD35 | 1.500 kg | coincide con el catálogo y con el padrón |
 
 Tres de los cuatro confirmaron lo que ya había. El Chevy cerró el único hueco donde **el error
 iba hacia arriba**: sin tonelaje el motor no recorta por peso y decía que entraba carga que el
@@ -852,6 +852,42 @@ camión no puede llevar.
    BRUTO** (contenedor + carga), no a la carga sola, que es lo que este campo significa.
    Tomarlo prometería ~1.200 kg de más — y en peso pasarse no es un viaje a medias: es una
    multa.
+
+### 3.5quater EL HINO PROMETÍA 3 TONELADAS DE MÁS (14-08-2026)
+
+Llegaron los **padrones** del HINO y del HD35 (el dueño los mandó para ver si traían datos de
+ejes; no los traen). Lo que sí traen es la carga, y en **dos renglones separados**:
+
+| | HINO 500 FC 1118 | Hyundai HD35 2.5 |
+|---|---|---|
+| **Carga** | **8.000 kg** | 1.500 kg |
+| Peso bruto v. | 11.000 kg | 3.500 kg |
+
+El simulador tenía cargados los **11.000** del HINO. Ese es el **bruto** —incluye el camión, que
+en un FC 1118 pesa unas 3 t— y este campo significa lo que se puede **subir**. O sea que la
+pantalla prometía tres toneladas que ese camión no puede llevar, y el error iba **hacia arriba**,
+que es el único que este módulo no se permite (§2): en peso, pasarse no es un viaje a medias, es
+una multa.
+
+**Es la misma trampa que el contenedor**, ya documentada arriba: ahí se descartó el 30.000
+justamente por parecerse al bruto. La diferencia es que acá no hubo que deducir nada — el padrón
+lo dice con las dos etiquetas. Y el «11.000 coincide con el catálogo» del 11-08 se explica solo:
+**FC 1118** significa 11 t de bruto y 180 HP, así que el número del modelo era el del bruto, no
+el de la carga.
+
+**Cross-check que da confianza en el resto:** el HD35 ya tenía 1.500, que es exactamente la
+carga del padrón (y no los 3.500 del bruto). Y el 6.430 del Chevy 3 se comporta como carga
+—un NQR 919 tiene ~9,2 t de bruto y unas 2,8 de tara—, así que los otros tres campos estaban
+bien leídos. El único mal leído era el del HINO.
+
+**Ningún cupo cambió** con la corrección: el HINO llena por volumen mucho antes que por peso
+(1.620 bolsas son 6.075 kg). El número importa para las cargas pesadas y para el cartel de
+sobrepeso, que es justo donde se usaba mal.
+
+**Lo que los padrones NO traen, y que sigue faltando:** distancia entre ejes y capacidad por
+eje. Ninguno de los dos documentos las lista. Esos datos están en la **revisión técnica** (que
+sí detalla el límite por eje) o en el informe técnico del fabricante — el del HD35 tiene su
+código en la factura. Ver `docs/pendientes/01`.
 
 ## 3.6 EL CARTEL DE SOBREPESO (11-08-2026)
 
@@ -1421,6 +1457,312 @@ Detalles de implementación que importan:
   nunca.
 - Los handlers van sobre los BOTONES, no sobre el lienzo, así que **no contradicen**
   «zoom solo en escritorio» (`test_el_visor_no_registra_gestos_tactiles` protege el canvas).
+
+### 4.1nonies-ter El menú «CABINA»: cabecera de iconos + cuerpo Cargar + hojas (21-08-2026)
+
+El dueño pidió *«una reinterpretación de esta interfaz… simplificar los menús en cuanto al
+despliegue de información y las opciones para trabajar; como está a la izquierda me agrada
+pero quiero más prolijidad»*, se le presentó un canvas con el estado actual y 4 propuestas
+comparables (A Depurado · B Tres bloques · C Riel · D Cabina, cada una con su tradeoff
+declarado), y eligió la D: *«queda en forma de botones las opciones, es lo mejor»*.
+
+**Lo que cambia.** El acordeón de 11 secciones `<details>` desaparece. El menú queda en
+TRES zonas:
+
+1. **Cabecera fija (fondo blanco):** las 4 vistas como ICONOS (cubo / costado / planta /
+   puerta, activo en brand sólido), el zoom − + ⟲ (escritorio), los rótulos como toggles
+   de texto `#` / `ABC`, y la ✕ de cerrar. Lo visual queda SIEMPRE a un toque — es la
+   lección de descartar la propuesta C (riel): guardar las vistas detrás de una pestaña
+   obligaba a un ping-pong de clics mientras se carga.
+2. **Cuerpo = CARGAR:** el contador como número protagonista, el chip de la comparativa
+   («Hasta N en X», tocarlo despliega la lista completa — la sección «Camiones» asciende a
+   dato pegado al número), y el kit completo de carga. En mixta, el Cubicaje al pie del
+   cuerpo: es la retroalimentación de cargar, no una herramienta aparte.
+3. **Pie fijo con dos lanzadores** («Compartir» y «Herramientas») que abren **HOJAS**: el
+   cuerpo se INTERCAMBIA por el contenido de la hoja vía `x-show` — sin `absolute`, para
+   que el candado de «nada flota sobre el lienzo» siga contando tal cual. En las hojas
+   viven Excel + link firmado (Compartir) y Acomodar + Cubicar + Pallet + Importar
+   (Herramientas), **cada una con su ayuda completa a la vista** — la hoja es transitoria
+   y ahí el texto largo no ensucia. Activar una herramienta cierra la hoja sola: el
+   resultado aparece bajo el lienzo y la mirada se va para allá.
+
+**Lo que NO cambia** (todo lo demás de §4.1nonies y §4.1nonies-bis sigue vigente):
+el menú es UNA barra que come ancho, cerrada al arrancar en celular; los 17 ids `carga3d*`
+viven dentro del `<aside>`; el zoom sigue en su envoltorio `hidden lg:block`; los tres
+controles de cantidad mueven el mismo número; el pallet se ofrece con sus dos tipos; el
+modo público solo conserva mirar y cargar (sin pie ni hojas).
+
+**Detalles que muerden:**
+
+- **El ancla de los candados ahora es el `aria-label="Herramientas"` del `<aside>`** (el
+  rótulo visible de cabecera ya no existe). Va ANTES de `class` en el tag porque los tests
+  rebanan `strpos($html, 'Herramientas') … '</aside>'` y todo control tiene que caer
+  dentro de la rebanada. Quitarlo pone rojo `test_los_controles_viven_en_un_solo_menu…`.
+- **El assert de las hojas busca la forma `x-show="hoja === '…'"` COMPLETA**, no la
+  expresión suelta: el `@click` del lanzador también contiene `hoja === 'compartir'` y la
+  expresión suelta pasaba en verde con la hoja borrada (cazado por mutación, mismo patrón
+  que el aria-controls duplicado de la bitácora [2026-07-29]).
+- `carga3dSubir` sigue siendo **texto plano** (el JS le reescribe el `textContent` con
+  ↑/↓); `carga3dPlay` sí lleva ícono SVG porque el JS no le toca el texto.
+- El binding del chevron del chip va en un `<span>` envoltorio, **no en el componente**
+  del ícono: una directiva Blade en el atributo de un `<x-componente>` no se compila
+  (bitácora [2026-08-14]).
+- La ayuda del botón derecho no se repite en el panel: ya la dice el letrero del lienzo.
+  Lo único que se perdió de prosa («Reiniciar vuelve al encuadre de siempre») viaja en el
+  `title` del botón ⟲.
+
+Candado principal: `test_los_controles_viven_en_un_solo_menu_y_no_en_las_cuatro_esquinas`
+reescrito a la forma Cabina — cero `<details>` en el menú, las dos hojas presentes, ids,
+`shrink-0`, sin `absolute`, pallet. Mutado en 4 sentidos (details reaparece / ancla rota /
+hoja sin marcador / zoom sin envoltorio), rojo exacto en cada uno.
+
+Supersede: «cada sección es un DESPLEGABLE» (ampliación del 06-08 en §4.1nonies). El resto
+de esa sección sigue vigente.
+
+### 4.1nonies-quater QA del dueño a la Cabina recién desplegada: rótulos con palabra, y el armador arranca VACÍO (21-08-2026, misma tarde)
+
+El dueño probó la Cabina en producción y volvió con dos cosas, las dos legítimas:
+
+**1. «¿Los botones # y ABC qué hacen? les doy clic y no pasa nada.»** Hacían lo de
+siempre (prender y apagar los rótulos del dibujo), pero con el camión VACÍO no hay
+bloques que rotular — cero efecto visible — y el glifo no se explica solo. La lección:
+**un toggle cuyo efecto puede ser invisible necesita su palabra**; el tooltip no alcanza
+porque en táctil no existe y en escritorio llega tarde. Los rótulos vuelven a decir
+«Códigos» y «Nombres» en su propia fila de la cabecera (la ✕ de cerrar subió junto a las
+vistas). Los iconos se quedan donde el efecto es inmediato y evidente: las vistas y el
+zoom, que mueven el dibujo al instante.
+
+**2. «Salen siempre predeterminado los bidones y no quiero, quiero cargar lo que yo
+quiera sin previas.»** Es la SEGUNDA vez que lo dice (12-08: «siempre comienza la opción
+con bidones… no encuentro ninguna opción para quitar»). La respuesta del 12-08 hizo
+visible el quitar pero lo escondió con una sola línea (`lineas.length > 1`) — o sea en el
+caso EXACTO del reclamo, la línea única precargada, seguía sin poder sacarse. Esta vez se
+va a la raíz, en cuatro piezas:
+
+- **El armador arranca con CERO líneas** (antes: primer producto del catálogo × 100). El
+  estado vacío tiene su cartel con el próximo paso, y «Calcular la carga» se apaga solo
+  (`:disabled` por Alpine) mientras no haya nada que calcular.
+- **La línea nueva nace sin producto elegido**: el selector arranca en «Elegí un
+  producto…» (option `value=""` disabled). OJO al contrato: `aMedida()` pasó de chequear
+  falsy a **`tipo === 0` estricto** — con el chequeo falsy, la línea nueva (`tipo: ''`)
+  mostraba el formulario de medidas en vez del selector. Y en `lineasSel` el tipo vacío
+  se CONSERVA como `''`: el `(int) (tipo ?? 0)` de antes la devolvía convertida en bulto
+  a medida (el «?? 0 sobre un dato que se conserva» de la bitácora [2026-08-20]). El
+  motor ya descartaba líneas sin producto; nada de eso cambió.
+- **Quitar se ofrece SIEMPRE**, también con la última línea: en la cabecera de la
+  tarjeta, en el pie de la tarjeta, en «En el camión» del cubicaje (que si vacía la
+  carga NO recalcula — un formulario sin líneas devolvería la pantalla al otro modo — y
+  deja el estado vacío a la vista) **y en la lista de resultados** «La carga, producto
+  por producto», que es donde el dueño lo buscó esta vez: ahí quitar recalcula, salvo
+  que fuera la última.
+- El candado del 12-08 (`test_con_un_solo_producto_no_se_ofrece_quitar`) queda
+  **INVERTIDO** por `test_quitar_se_ofrece_tambien_con_una_sola_linea` — el razonamiento
+  viejo («el botón que deja la carga vacía solo sabe fallar») murió porque vacío ya es
+  un estado legítimo. Candados nuevos: `test_el_armador_arranca_sin_previas` y
+  `test_una_linea_sin_elegir_no_vuelve_convertida_en_bulto_a_medida`. Los tres mutados
+  con rojo exacto.
+
+### 4.1undecies UNA SOLA PREGUNTA: la cantidad vacía es «lo que quepa» (21-08-2026)
+
+Pedido del dueño, **dos veces**: el 11-08 (*«los dos apartados se repiten, sería bueno
+juntar ambas opciones en una sola y que ahí se pueda calcular sobre un producto o
+varios»*) y el 21-08 (*«hay que unificar los dos puntos ¿Cuánto entra? y ¿cabe esta
+carga?, la única diferencia que veo es un producto o varios y es lo mismo»*).
+
+**El motor ya sabía hacerlo.** Las **líneas abiertas** se construyeron el 11-08 con sus
+seis candados (`LineaAbiertaTest`) exactamente para esta fusión, y **la pantalla nunca se
+cableó**: `grep abierta` en `app/Http/Controllers` y `resources/views` daba **cero**. Es
+el mismo patrón de la bitácora [2026-08-14] con el rol sin avisos — la capacidad existía,
+nadie la conectó. Antes de construir algo así, greppear si ya está.
+
+**Etapa 1 (hecha).** El formulario deja mandar la cantidad vacía y el controlador la
+traduce a línea abierta:
+
+- `lineas.*.cantidad` pasa de `required_with` a `nullable`. El **`min:1` se queda**: un
+  CERO significa «no coloques nada» y esa asimetría es un candado del motor. Vacío y cero
+  son cosas distintas y el error cae siempre del lado de cargar MENOS.
+- Los cuatro lugares que preguntan «¿cuánto se pidió?» contestan lo mismo:
+  `pedidas_unidades` es **null** (no 0), `cargadas` no se capa contra lo pedido, la fila
+  lleva `abierta` y `lleno_por`, y el **peso pedido de una abierta es lo COLOCADO** —
+  contarla 0 dejaría kilos reales fuera del aviso de sobrepeso del 11-08.
+- Un **pallet vacío gana sobre abierta**: no se rellena el camión de tarimas sin nada.
+- **La trampa que cazó la mutación:** al re-sembrar el formulario, `(int)` sobre la
+  cantidad vacía la devolvía como **0** — «lléname» volvía convertido en «no cargues
+  nada». Y sin la guarda la clave ni existe: la pantalla revienta entera. Misma familia
+  que el `?? 0` de la bitácora [2026-08-20].
+- **«De dónde sale ese número» no se pierde.** Era lo ÚNICO que la pantalla de un
+  producto tenía y la de varios no, o sea el caso que se cuela al unificar (lección de
+  [2026-08-20]). La fila gana `rejilla` y `limita`. El límite **fino** («el largo de la
+  caja») se le pide a `cupo()` **solo si la línea abierta está sola**: `cupo()` describe
+  el camión VACÍO, y mostrarlo junto a una carga mixta sería explicar un camión que no se
+  dibujó. Candado mutado con ese caso exacto.
+
+Candados: `CargaUnificadaTest` (7), mutados en 4 sentidos con rojo exacto. **El cupo de
+referencia del HD35 (420 botellones de pie) se reproduce igual desde la pantalla nueva**,
+que es lo que sostiene toda la fusión.
+
+**Etapa 2b (hecha) — un solo camino, y los 10 candados migrados.** Un `tipo_bulto_id`
+legado (links guardados, el multi-camión, el Excel) se traduce a **una línea abierta**, así
+que la pantalla responde por UN camino y no por dos. Eso encendió **10 candados** que leían
+el viejo (`viewData('resultado')`, `('prueba')`, `('medido')`). No eran ruido: fijaban que
+**las tres estibas dan números distintos**, que el cupo **dice cuántos entrarían si el peso
+no cortara**, que **la cantidad a probar capa el dibujo** y que **acomodar a mano no cambia
+cuántos entran**. Se migraron **uno por uno conservando su intención** — *un candado que se
+apaga al fusionar es una regla que la pantalla nueva deja de tener sin que nadie se
+entere*, y esta pantalla ya perdió una así (el `assertDontSee` inerte de [2026-08-20]).
+
+Y migrarlos destapó **cinco funciones que la fusión se llevaba en silencio**. Ninguna
+estaba en el plan; las cinco están ahora en la pantalla nueva:
+
+| Lo que solo tenía «¿Cuánto entra?» | Dónde vive ahora |
+|---|---|
+| «De dónde sale ese número» (rejilla + qué se agotó) | `rejilla` / `limita` en la fila (ⓘ del título) |
+| **La respuesta «Entran 420» en grande** | el veredicto arriba del dibujo (§4.3bis) |
+| «Se llena de kilos antes que de espacio» + cuántos por espacio | `por_espacio`, pegado al veredicto |
+| «De tus 500 entran 420, quedan 80 afuera» | rama propia del veredicto |
+| «En terreno entraron N (X% de lo calculado)» | tercera línea de la franja del veredicto |
+
+La segunda es la que más importaba y no estaba prevista: al borrar la tarjeta «ENTRAN N»,
+**la pantalla unificada se quedaba sin contestar en voz alta la pregunta que la trajo**.
+
+**Un cambio de NÚMERO que hay que saber, y es hacia arriba.** El camino viejo preguntaba
+por `cupo()` (rejilla pura); el unificado pregunta por `carga()`, que además **rellena el
+sobrante**. Para una caja de 90 × 60 × 120 en el HD35 la rejilla acostada da 18 y deja 70 cm
+de largo libres al fondo, donde entran **2 más de canto**: la pantalla ahora dice **20**.
+No promete más de lo que puede — promete lo que **dibuja**, y los dos bloques están en la
+escena. **Los cupos de referencia del HD35 no se mueven** (420 de pie, 480 acostado): eso es
+lo que sostiene la fusión y lo fija `CargaUnificadaTest`.
+
+**Y una trampa de la mudanza, para el próximo que mueva un dato de pantalla:** la
+calibración de terreno se pedía con el `tipo_bulto_id`/`estiba` del **formulario**. Con el
+armador mandando `lineas[]` y sin `tipo_bulto_id`, `$bulto` cae al **primero del catálogo**
+— la pantalla habría mostrado «en terreno entraron 390» al lado del número de **otro
+producto**. Ahora los argumentos salen de la **línea** (`medidoDeLaPantalla`), y con más de
+una línea no se muestra: una carga real es de un producto, y ponerle ese promedio a una
+mezcla es el número creíble y equivocado.
+
+### 4.1undecies-bis TRES PESTAÑAS: «La carga · Sobre pallet · Cubicar» (21-08-2026)
+
+El cierre visible de la fusión. Eran cuatro superficies de primer nivel para tres preguntas,
+y una de ellas no era ni pestaña.
+
+**Se fue «¿Cuánto entra?»** (dueño: *«hay que unificar los dos puntos… la única diferencia
+que veo es un producto o varios y es lo mismo»*). Las dos pestañas contestaban lo mismo con
+dos motores distintos: la de un producto **no dejaba agregar otro** —el dueño buscó ahí el
+botón el 10-08— y la de varios **exigía una cantidad** para preguntar un cupo. Con la
+cantidad vacía significando «lo que quepa» (§4.1undecies) las dos son un solo formulario.
+
+**Subió «Cubicar» a pestaña** (dueño: *«quiero dejar como una de las opciones principales
+cubicar»*). Estaba a dos clics dentro de la hoja «Herramientas» del menú del visor, o sea que
+había que **saber que existía** para encontrarlo; y medir un bulto que no está en el catálogo
+es de lo primero que hace alguien con una carga nueva. **No se dejó además el botón viejo**:
+dos entradas al mismo panel son dos estados independientes, y el que se abre de un lado no se
+cierra del otro. Su estado dejó de ser un `cubicar` del visor y pasa a ser el `modo` de la
+página, como las otras dos.
+
+**La primera visita no siembra nada, y es una decisión.** Entrar a `/admin/carga` a secas
+deja el armador **vacío** y la pantalla **sin camión**. Sembrarla con el primer producto del
+catálogo haría aparecer un camión de entrada —queda mejor— y es exactamente lo que el dueño
+rechazó en el QA del 21-08: *«salen siempre predeterminado los bidones y no quiero, quiero
+cargar lo que yo quiera sin previas»*. Una carga que uno no pidió es peor que una pantalla
+vacía, porque hay que darse cuenta de borrarla. Medido: esa pantalla entra **completa en
+900px**, con la línea que dice cómo empezar.
+
+**Se borró la lista duplicada.** «La carga, producto por producto» seguía debajo del camión
+diciendo lo mismo que la lista del panel. El commit que mudó la lista (24-08) decía que la
+«absorbía» y **no la había borrado** — el texto prometía una limpieza que no ocurrió, así que
+durante dos días la pantalla mostró la carga dos veces. La lista del **chofer** (parada 1
+primero) sí se queda: es otro orden para otro lector.
+
+**Y borrar esa lista se llevaba una sexta función en silencio:** el aviso «Van 6 de alto de 8
+· Apilar 8» —el pedido del dueño del 10-08 de que *«los bidones también lleguen hasta el
+techo»*—. Los dos números seguían viajando en la fila (`apiladas`, `apilables_por_alto`) y
+**ninguna vista los mostraba**: un dato calculado que nadie lee es peor que uno que no
+existe, porque parece cubierto. Ahora vive en la fila del panel, con su botón.
+
+**Lo que la limpieza dejó al descubierto**, cada uno con su candado:
+- El texto del veredicto decía *«**Abajo** está qué queda afuera y por qué»* — señalando el
+  lugar donde ya no está la lista. Cambió a una frase que no nombra un lugar, porque la lista
+  está en el panel en escritorio y detrás del cajón en el celular.
+- El enlace a **Cargas reales** —el único camino al historial cuando no hay nada anotado—
+  vivía en la tarjeta borrada. Se mudó al pie de los números, y su candado lo cazó al toque:
+  `/admin/cargas-reales` **contiene** `/admin/carga`, así que el assert que vigila que el
+  link público no tenga rutas internas se puso rojo. Del otro lado hay un cliente.
+- Una **línea abierta** no pidió un número, y tres consumidores hacían `number_format(null)`
+  = «0»: la tabla del link público («Pedidas 0 · Van 420»), la lista del chofer («420 de 0»)
+  y el **Excel**, que además lo ponía en una columna numérica —donde un 0 se suma y se
+  filtra—. Ahora dicen «Lo que quepa» / «(lo que quepa)» y la celda del Excel va **vacía**,
+  con una nota al pie de la hoja que lo declara (mismo criterio que el export de ST,
+  bitácora [2026-08-13]).
+- `escena()` tenía **tres** entradas y pasó a dos: el cupo de un producto armaba UN bloque a
+  mano desde `cupo()`. Ahora el dibujo de un producto sale de los bloques que el motor
+  **colocó**, que es la diferencia entre dibujar lo verificado y dibujar una segunda versión
+  del cálculo.
+
+**Lo que NO cambió:** el menú «Cabina» del visor (§4.1nonies-ter) con todo lo demás adentro,
+el veredicto arriba del dibujo (§4.3bis), la lista de la carga en el panel, y el modo Sobre
+pallet como pregunta aparte. Candados: `CubicarTest` (2 reescritos),
+`SimuladorCargaMixtaPantallaTest::test_hay_una_sola_pestana_de_carga_y_dice_que_acepta_uno_o_varios`
+(cuenta los `role="tab"`: buscar los nombres dejaría pasar una cuarta con otro rótulo) y 4
+más re-expresados sobre las superficies que quedaron.
+
+### 4.1undecies-ter CUBICAR es para DESPACHOS ESPECIALES, no para cajas chicas (25-08-2026)
+
+Pedido del dueño contestando las dudas de «¿esto se entiende sin que nadie lo explique?»:
+*«que cubicar tenga las opciones para cubicar, esto es sacar medidas y cargar el camión, que
+te dé la opción de cargar y acomodar en el camión a medida… manejamos productos de diferentes
+tamaños en despachos especiales… por ejemplo 2 mts de alto por cuatro metros»*, y
+*«que se pueda cargar mixto cosas cubicadas vs por ejemplo bidones»*.
+
+**CARGAR MIXTO YA FUNCIONABA**, y eso es lo que hay que entender antes de tocar nada: un
+bulto cubicado **es una línea** como cualquier otra — mismo motor, mismo dibujo, mismo Excel
+(§ del bulto a medida). Lo que faltaba era poder **descubrirlo**: el único rastro era un
+párrafo gris que decía «"Mover y girar bloques" en el menú». O sea, la función existía y había
+que ir a buscarla a otra parte **sabiendo su nombre**. Es el defecto del 10-08 (*«¿y dónde
+agrego otro bulto?»*) repetido en otra pantalla, y la lección va de nuevo: **una función que
+existe pero no se ve, no existe.**
+
+Lo que la pestaña ofrece ahora, debajo de la lista de lo que ya va en el camión:
+
+- **«+ Sumar un producto del catálogo»** → lleva a «La carga» con la línea nueva abierta. El
+  selector de productos vive ahí y duplicarlo acá serían **dos listas que se contradicen**.
+- **«Acomodar a mano en el camión»** → abre la vista de planta. Va por un evento de
+  **`window`** y no por `$dispatch`: desde que el cubicaje es pestaña, su panel es **hermano**
+  del visor y un dispatch sube por el árbol sin llegarle nunca.
+- Y **lo dice en palabras**: «Se puede mezclar: lo que cubicás acá y los productos del catálogo
+  viajan en la misma carga».
+
+**Los topes son los del validador, uno por medida** (largo **1500**, ancho y alto **300**).
+Los tres campos aceptaban 1200: se podía tipear un ancho de 900 y el rechazo llegaba **después**
+de apretar «Agregar» — una pantalla que promete lo que su propio guardado no acepta. Y la
+pantalla declara el caso con un número concreto («400 × 120 × 200 cm es un bulto válido»)
+porque sin eso cualquiera asume que esto es para cajas de repuestos.
+
+**Y el botón del apilado dice la ACCIÓN.** Decía «Apilar 8», que es el número: no distinguía
+entre apilar 8 más, dejar 8 en total, o cambiar el tope sin recalcular. Ahora la línea se lee
+como una frase —«Van 6 de 8 que caben · **Subir el tope a 8 y recalcular**»— y la ⓘ explica lo
+único que la frase no puede: cuántas aguanta la de abajo es **dato de terreno** y la decisión
+es de quien carga.
+
+**Dos defectos propios que encontró el NAVEGADOR y no los candados**, y los dos valen como
+regla:
+
+1. El botón nuevo del catálogo agregaba **otro bulto cubicado** con las medidas del
+   formulario. El panel de Cubicar tiene su propio método de agregar que **tapa** al del
+   armador, y el alias delegaba hacia el nombre tapado: Alpine resuelve `this.x` por la cadena
+   de scopes **mergeada** y caía en el hijo. **Un alias apunta hacia el nombre único, nunca
+   hacia el compartido.** Un assert de markup verifica que el botón *llama*, jamás qué
+   ejecuta — así que el candado es estructural y prohíbe la forma que ya falló.
+2. Explicar ESE gotcha dentro del comentario del `x-data` escribió un cierre de comentario de
+   bloque en la prosa, que cerró el comentario ahí mismo y **mató el Alpine de toda la
+   pantalla** — con la suite en verde, porque ningún test de PHP evalúa Alpine. Candado nuevo:
+   el `x-data` de la pantalla no se corta a sí mismo (comilla doble o comentario sin cerrar).
+
+Candados: `CubicarTest` (3 nuevos, uno estructural) y
+`SimuladorCargaMixtaPantallaTest::test_el_x_data_de_la_pantalla_no_se_corta_a_si_mismo`, todos
+mutados en los dos sentidos. Verificado en el navegador sobre el bundle real: los dos botones
+hacen lo que dicen, los topes son 1500/300/300, y una carga mixta de una estructura de 4 m con
+bidones se dibuja.
 
 ### 4.1decies El H3, moldeado sobre sus fotos: `camion_nqr` (11-08-2026)
 

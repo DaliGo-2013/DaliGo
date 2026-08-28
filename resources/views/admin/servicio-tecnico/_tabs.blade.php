@@ -16,8 +16,9 @@
     ];
     // Parte del técnico y Cotización son etapas de taller (permiso manage); un
     // rol que solo VE la orden (vendedor/jefe) no las ve para no chocar con 403.
-    // El orden de estas dos es el del arreglo: primero el parte, después la
-    // cotización (el técnico registra el trabajo y luego se le pone precio).
+    // El orden de estas dos es el del arreglo: primero el parte —donde se registra
+    // el trabajo Y se le pone precio desde el 20-08— y después la cotización, que
+    // es la vista previa de lo que el cliente lee (no se edita ahí).
     if (auth()->user()?->can('manage servicio tecnico')) {
         $stTabs['tecnico'] = ['label' => 'Parte del técnico', 'url' => route('admin.servicio-tecnico.reparacion', $orden)];
         $stTabs['cotizacion'] = ['label' => 'Cotización', 'url' => route('admin.servicio-tecnico.cotizacion', $orden)];

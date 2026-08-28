@@ -231,7 +231,7 @@
                     @forelse ($trabajosDia as $t)
                         <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
                             <div class="flex flex-wrap items-center gap-2">
-                                <x-badge :variant="$t->estado_variante">{{ ucfirst($t->estado) }}</x-badge>
+                                <x-badge :variant="$t->estado_variante">{{ $t->estado_label }}</x-badge>
                                 <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $t->tipo_label }}</span>
                                 <span class="font-medium text-neutral-900">{{ $t->cliente_nombre }}</span>
                             </div>
@@ -249,24 +249,150 @@
                             {{-- Cerrar el trabajo: solo cuando está agendado (el controlador
                                  exige esa transición para quien no puede agendar). --}}
                             @if ($t->estado === 'agendado')
-                                {{-- El nombre va por Js::from y NO por {{ }} dentro del string:
-                                     `e()` convierte el apóstrofo en `&#039;`, el parser de HTML lo
-                                     devuelve a `'` dentro del atributo y el JS queda
-                                     `confirm('… D'Angelo?')` = SyntaxError. El onsubmit muere y el
-                                     formulario se envía SIN preguntar — justo la confirmación que
-                                     evita cerrar un trabajo con un toque accidental. Y este nombre
-                                     lo escribe el cliente en el formulario público del QR, así que
-                                     el apóstrofo llega solo ("Comercial D'Angelo"). --}}
-                                <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}" class="mt-4"
-                                      onsubmit="return confirm({{ Illuminate\Support\Js::from('¿Marcar como realizado el trabajo de '.$t->cliente_nombre.'?') }});">
+                                {{-- CIERRE DEL TRABAJO EN TERRENO (dueño 14-08-2026).
+                                     Antes era un botón pelado con un confirm(): el técnico
+                                     cerraba y no quedaba registro de QUÉ hizo, aunque el
+                                     controlador ya aceptaba el detalle.
+
+                                     Ahora escribe el paso a paso —obligatorio, es lo que
+                                     viaja en el aviso a ventas— y cierra de una de las dos
+                                     formas. El «No realizado» existe porque el trabajo no
+                                     siempre se puede hacer: faltó un repuesto, el cliente no
+                                     quiso, lo que sea; sin ese botón el técnico dejaba el
+                                     trabajo abierto y nadie se enteraba.
+
+                                     Sin confirm(): el texto que escribió ES la confirmación,
+                                     y un confirm() sobre un formulario ya llenado solo
+                                     estorba con guantes en la planta. --}}
+                                <form method="POST" action="{{ route('admin.agenda-terreno.estado', $t) }}" class="mt-4 space-y-3">
                                     @csrf
                                     @method('PATCH')
-                                    <input type="hidden" name="estado" value="realizado">
-                                    <button type="submit"
-                                        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99] sm:w-auto">
-                                        <x-icon.check class="h-5 w-5" />
-                                        Marcar realizado
-                                    </button>
+                                    <div>
+                                        <x-input-label :for="'notas-'.$t->id" value="¿Qué hiciste? Paso a paso">
+                                            <x-slot:ayuda>Esto es lo que le llega al jefe de ventas y al vendedor del cliente. Si no se pudo hacer, cuenta por qué.</x-slot:ayuda>
+                                        </x-input-label>
+                                        <x-textarea :id="'notas-'.$t->id" name="notas_tecnico" rows="4" class="mt-1.5"
+                                            placeholder="Ej. 1) Revisé la bomba booster: sin presión. 2) Cambié la membrana y el filtro de papel. 3) Purgué el sistema y medí 65 psi. 4) Dejé funcionando y el cliente lo probó.">{{ old('notas_tecnico', $t->notas_tecnico) }}</x-textarea>
+                                        <x-input-error :messages="$errors->get('notas_tecnico')" class="mt-2" />
+                                    </div>
+
+                                    {{-- REPUESTOS USADOS (dueño 14-08-2026). Acompañan al paso a
+                                         paso: el detalle cuenta QUÉ se hizo, esta lista con QUÉ.
+                                         Viajan en el aviso a ventas y quedan en el informe.
+
+                                         SIN PRECIO, y no por simplificar: al técnico le pagan por
+                                         arreglar e instalar, no por cobrarle al cliente — la
+                                         cotización formal la hacen el vendedor y el jefe de
+                                         ventas. El buscador tampoco devuelve precios (endpoint
+                                         aparte del taller, ver AgendaTrabajoController).
+
+                                         Y SIN DESCUENTO DE STOCK: el inventario se descuenta con
+                                         la factura o boleta del vendedor, porque Bsale descuenta
+                                         al facturar y el técnico no emite documentos. Descontar
+                                         acá también sería consumir el repuesto dos veces.
+
+                                         Arranca vacío y ocupa una línea: el repuesto es opcional
+                                         (una mantención puede no llevar ninguno) y la pantalla
+                                         del técnico no crece de gratis. --}}
+                                    <div x-data="terrenoRepuestos({
+                                            repuestos: @js(old('repuestos', [])),
+                                            endpointRepuestos: @js(route('admin.agenda-terreno.buscar-repuesto')),
+                                         })">
+                                        {{-- EN UNA VISITA TÉCNICA LA LISTA SIGNIFICA LO CONTRARIO
+                                             (flujo del dueño, 14-08): la primera visita es para
+                                             ver qué hay que hacer y qué se va a necesitar, y con
+                                             eso el vendedor y el jefe de ventas arman la
+                                             cotización para la segunda. Ahí Carlos no instala
+                                             nada, así que sus repuestos son un PRONÓSTICO. El
+                                             rótulo se deriva del tipo (`repuestosTitulo`), no de
+                                             un campo que alguien tenga que acordarse de marcar. --}}
+                                        <div class="flex items-center justify-between">
+                                            {{-- La ayuda va en la ⓘ, pero CONDICIONAL igual que antes: en un
+                                                 trabajo que no es pronóstico ese texto sería falso. --}}
+                                            <x-input-label :value="$t->repuestosEtiquetaFormulario()">
+                                                @if ($t->repuestosSonPronostico())
+                                                    <x-slot:ayuda>Esta es la visita de revisión: anota lo que vas a NECESITAR. Con esto ventas arma la cotización para cuando vuelvas a hacer el trabajo.</x-slot:ayuda>
+                                                @endif
+                                            </x-input-label>
+                                            <x-agregar-fila-button x-on:click="agregar()">Agregar repuesto</x-agregar-fila-button>
+                                        </div>
+
+                                        <div class="mt-2 space-y-2">
+                                            <template x-for="(r, i) in repuestos" :key="i">
+                                                <div class="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 sm:flex-row sm:items-start">
+                                                    {{-- Código del catálogo: lo pone el buscador al elegir.
+                                                         Es lo que deja al vendedor armar la línea de la
+                                                         factura sin volver a preguntarle al técnico.
+                                                         Vacío = escrito a mano. --}}
+                                                    <input type="hidden" :name="`repuestos[${i}][sku]`" :value="r.sku ?? ''">
+
+                                                    <div class="relative sm:flex-1" x-on:click.outside="filaActiva === i && cerrar()">
+                                                        <input type="text" x-model="r.nombre" :name="`repuestos[${i}][nombre]`"
+                                                            placeholder="Código o nombre del repuesto" maxlength="191" autocomplete="off"
+                                                            x-on:input.debounce.250ms="buscar(i)"
+                                                            x-on:focus="buscar(i)"
+                                                            x-on:keydown.escape="cerrar()"
+                                                            class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+
+                                                        <div x-show="filaActiva === i && (buscando || sugerencias.length)" x-cloak
+                                                            class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                                                            <template x-if="buscando && sugerencias.length === 0">
+                                                                <div class="px-3.5 py-2.5 text-sm text-neutral-400">Buscando…</div>
+                                                            </template>
+                                                            <ul class="max-h-60 divide-y divide-neutral-100 overflow-auto">
+                                                                <template x-for="(s, si) in sugerencias" :key="si">
+                                                                    <li>
+                                                                        <button type="button" x-on:click="elegir(i, s)"
+                                                                            class="flex min-h-12 w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-50">
+                                                                            <span class="min-w-0">
+                                                                                <span x-show="s.sku" class="font-mono text-xs text-neutral-400" x-text="s.sku"></span>
+                                                                                <span x-text="s.nombre"></span>
+                                                                            </span>
+                                                                        </button>
+                                                                    </li>
+                                                                </template>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-start gap-2">
+                                                        <div class="w-20 sm:w-16">
+                                                            <label class="mb-0.5 block text-xs text-neutral-400 sm:hidden">Cant.</label>
+                                                            <input type="number" min="1" x-model.number="r.cantidad" :name="`repuestos[${i}][cantidad]`"
+                                                                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                                        </div>
+                                                        {{-- 48px táctiles en móvil: esta es la pantalla del
+                                                             técnico, que la usa de pie en la planta y a veces
+                                                             con guantes. Medido en el banco: con el `p-2`
+                                                             heredado del taller quedaba en 36px, bajo el
+                                                             mínimo de la doctrina de operario. Desde `sm:`
+                                                             vuelve al icono compacto. --}}
+                                                        <button type="button" x-on:click="quitar(i)"
+                                                            class="flex min-h-12 w-12 shrink-0 items-center justify-center self-end rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600 sm:min-h-0 sm:w-auto sm:self-start sm:p-2" title="Quitar">
+                                                            <x-icon.trash class="h-5 w-5" />
+                                                            <span class="sr-only">Quitar repuesto</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            <p x-show="repuestos.length === 0" class="text-sm text-neutral-400">
+                                                {{ $t->repuestosSonPronostico() ? 'Si no hace falta ninguno, déjalo así.' : 'Si no usaste ninguno, déjalo así.' }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col gap-2 sm:flex-row">
+                                        <button type="submit" name="estado" value="realizado"
+                                            class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-700 active:scale-[0.99] sm:w-auto">
+                                            <x-icon.check class="h-5 w-5" />
+                                            Marcar realizado
+                                        </button>
+                                        <button type="submit" name="estado" value="no_realizado"
+                                            class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-300 bg-white px-5 py-3 text-base font-semibold text-red-600 shadow-sm transition duration-150 hover:bg-red-50 active:scale-[0.99] sm:w-auto">
+                                            No realizado
+                                        </button>
+                                    </div>
                                 </form>
                             @endif
                         </div>
@@ -285,7 +411,7 @@
                              })">
                             <div class="mb-3 flex items-center justify-between">
                                 <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">Editar trabajo · {{ $t->tipo_label }}</p>
-                                <x-badge :variant="$t->estado_variante">{{ ucfirst($t->estado) }}</x-badge>
+                                <x-badge :variant="$t->estado_variante">{{ $t->estado_label }}</x-badge>
                             </div>
 
                             {{-- El estado de la confirmación del cliente vive dentro de _form

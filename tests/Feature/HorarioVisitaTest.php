@@ -4,12 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\AgendaCierre;
 use App\Models\AgendaTrabajo;
-use App\Models\Sucursal;
+use App\Models\User;
 use App\Support\FechaNegocio;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 /**
@@ -26,9 +25,30 @@ use Tests\TestCase;
  * Lo que estos candados cuidan:
  *   · que las horas ofrecidas sean las del día de la semana correcto (dos horarios distintos);
  *   · que un día de media jornada RECORTE la lista, y que nadie pueda estirarla;
- *   · que el servidor verifique la hora con la MISMA lista que ofreció la pantalla — un
- *     `<select>` se edita, y una cita fuera de horario la descubre alguien llamando;
- *   · que el texto libre ya no se acepte por el formulario público.
+ *   · que un día cerrado no ofrezca ninguna hora.
+ *
+ * ────────────────────────────────────────────────────────────────────────────────────────────
+ * QUÉ CAMBIÓ EL 25-08. El gerente retiró la visita industrial de la vista del cliente, así que
+ * el formulario donde el cliente pinchaba su hora ya no existe. **El horario sí sigue vivo**:
+ * es el del técnico, lo usa `AgendaTrabajo::horasDisponibles()` y de ahí sale también el
+ * criterio de la guarda que ahora rechaza agendar un día que no se atiende.
+ *
+ * Los candados que probaban el ENVÍO del cliente (guardar la hora elegida, rechazar una hora
+ * fuera del horario, ignorar el texto libre) se retiraron con ese formulario.
+ *
+ * LA HORA SE DEJA SIN CANDADO, Y ES UNA DECISIÓN TOMADA (dueño, 26-08-2026). La verificación
+ * «la hora elegida está dentro del horario del día» vivía SOLO en el formulario público, así
+ * que hoy nada impide que un vendedor agende a las 19:00 un miércoles que cierra 16:30. Se
+ * planteó cerrarlo —es hermano del hueco de los días, que sí se cerró— y el dueño resolvió
+ * **dejarlo abierto a propósito**: *«luego cuando hagamos pruebas con los vendedores que ellos
+ * digan si se va a modificar a un rango de horas más extensas o no»*.
+ *
+ * O sea: el horario de `HORARIO` puede estar más angosto que la realidad, y validar contra él
+ * bloquearía visitas que sí se hacen. Primero se mira cómo agendan los vendedores y después se
+ * decide si el rango se ensancha, si se valida, o las dos. **No es un olvido: es un dato que
+ * falta.** Si alguien viene a cerrar este hueco sin esa retroalimentación, esto es lo que hay
+ * que leer primero.
+ * ────────────────────────────────────────────────────────────────────────────────────────────
  */
 class HorarioVisitaTest extends TestCase
 {
@@ -45,23 +65,21 @@ class HorarioVisitaTest extends TestCase
         return Carbon::parse(FechaNegocio::hoy())->next($isoDia)->toDateString();
     }
 
-    private function consultar(string $fecha)
+    /**
+     * Una visita anotada con su fecha y hora PREFERIDAS, como las que quedaron de cuando el
+     * cliente las pedía por el QR y como las que anota hoy quien atiende el teléfono.
+     * Reemplaza al POST del formulario público, retirado el 25-08.
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    private function anotada(array $extra = []): AgendaTrabajo
     {
-        return $this->getJson(route('visita-industrial.disponibilidad', ['fecha' => $fecha]));
-    }
-
-    private function sucursal(): Sucursal
-    {
-        return Sucursal::firstOrCreate(['codigo' => 'MIRADOR'], ['activa' => true, 'nombre' => 'Mirador', 'es_central' => true]);
-    }
-
-    /** @param  array<string, mixed>  $extra */
-    private function pedir(array $extra = [])
-    {
-        return $this->post(route('visita-industrial.store'), $extra + [
-            'sucursal_id' => $this->sucursal()->id,
+        return AgendaTrabajo::create($extra + [
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
+            'estado' => 'solicitado',
+            'fecha' => null,
             'cliente_nombre' => 'Planta Norte SpA',
-            'cliente_rut' => '12.345.678-5',
+            'cliente_rut' => '12345678-5',
             'cliente_telefono' => '+56 9 1234 5678',
             'cliente_email' => 'planta@norte.cl',
             'direccion' => 'Camino Industrial 500',
@@ -106,36 +124,34 @@ class HorarioVisitaTest extends TestCase
         $this->assertCount(17, $horas);
     }
 
-    // ─────────────────────────────────────────────────── el endpoint
+    // ─────────────────────────────────────────────────── el horario del día
 
-    public function test_el_endpoint_manda_las_horas_del_dia_elegido(): void
+    /**
+     * El ROTULO del horario, que es lo que se le dice a alguien cuando pregunta «¿hasta qué
+     * hora van?». Lo armaba el endpoint público leyendo el modelo; el modelo lo sigue
+     * armando, así que el candado baja un nivel y sobrevive al cambio de pantalla.
+     */
+    public function test_el_dia_dice_su_horario_completo(): void
     {
         $lunes = $this->proximo(Carbon::MONDAY);
 
-        $r = $this->consultar($lunes)->assertOk();
-
-        $this->assertSame(AgendaTrabajo::horasDisponibles($lunes), $r->json('horarios'));
-        $this->assertSame('08:00 a 17:30', $r->json('horario_label'));
+        $this->assertSame('08:00 a 17:30', AgendaTrabajo::horarioLabel($lunes));
+        $this->assertSame('08:00 a 16:30', AgendaTrabajo::horarioLabel($this->proximo(Carbon::WEDNESDAY)));
+        $this->assertNull(AgendaTrabajo::horarioLabel($this->proximo(Carbon::SATURDAY)),
+            'Un día que no se atiende no tiene horario que informar.');
     }
 
-    /** Un día que no se puede pedir no ofrece horas: sería invitar a elegir algo imposible. */
+    /** Un día que no se atiende no ofrece horas: sería invitar a elegir algo imposible. */
     public function test_un_dia_cerrado_no_ofrece_horas(): void
     {
-        $sabado = $this->proximo(Carbon::SATURDAY);
-
-        $this->consultar($sabado)->assertOk()->assertJson(['horarios' => []]);
+        $this->assertSame([], AgendaTrabajo::horasDisponibles($this->proximo(Carbon::SATURDAY)));
     }
 
-    public function test_un_dia_ocupado_tampoco_ofrece_horas(): void
-    {
-        $lunes = $this->proximo(Carbon::MONDAY);
-        AgendaTrabajo::create([
-            'tipo' => 'visita_tecnica', 'estado' => 'agendado', 'fecha' => $lunes,
-            'cliente_nombre' => 'Otro cliente', 'descripcion' => 'Mantención',
-        ]);
-
-        $this->consultar($lunes)->assertOk()->assertJson(['horarios' => []]);
-    }
+    // El candado «un día OCUPADO tampoco ofrece horas» se retiró con el endpoint público: ese
+    // blanqueo lo hacía el controlador (`$d['ocupado'] ? [] : horasDisponibles(...)`), no el
+    // modelo — un día tomado sigue teniendo su horario, lo que no tiene es al técnico libre.
+    // Que no se pueda agendar encima lo cuida `bloquearSiOcupado`, con su candado en
+    // `DisponibilidadVisitaTest`.
 
     // ─────────────────────────────────────────────────── media jornada
 
@@ -173,87 +189,26 @@ class HorarioVisitaTest extends TestCase
         $this->assertSame('16:00', end($horas));
     }
 
-    // ─────────────────────────────────────────────────── el envío
+    // ─────────────────────────────────────────────────── lo que quedó del envío
+    //
+    // Los cuatro candados del ENVÍO DEL CLIENTE —guardar la hora elegida, rechazar una hora
+    // fuera del horario del día, no guardar una hora sin fecha, y aceptar una fecha sin hora—
+    // se retiraron con el formulario público. El segundo es el que dejó un hueco: esa
+    // verificación no existe en el camino interno (ver el encabezado).
+    //
+    // Y los dos de la PANTALLA del cliente (que ya no pedía el texto libre, que ofrecía elegir
+    // la hora y decía el horario de la semana) se fueron con esa pantalla. El campo de texto
+    // libre NO desapareció del sistema: quien coordina lo sigue teniendo en el formulario
+    // interno para anotar lo que el cliente cuenta por teléfono, y eso lo cuida
+    // `VisitaIndustrialTest::test_el_formulario_interno_conserva_la_disponibilidad_escrita`.
 
-    public function test_guarda_la_hora_elegida(): void
-    {
-        $lunes = $this->proximo(Carbon::MONDAY);
-
-        $this->pedir(['fecha_preferida' => $lunes, 'hora_preferida' => '09:30'])
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame('09:30', AgendaTrabajo::sole()->hora_preferida_corta);
-    }
-
-    /** El `<select>` se puede editar: la hora se verifica con la misma lista que se ofreció. */
-    public function test_una_hora_fuera_del_horario_se_rechaza(): void
-    {
-        $miercoles = $this->proximo(Carbon::WEDNESDAY);
-
-        // 17:00 existe los lunes, pero el miércoles cierra 16:30.
-        $this->pedir(['fecha_preferida' => $miercoles, 'hora_preferida' => '17:00'])
-            ->assertSessionHasErrors('hora_preferida');
-
-        $this->assertSame(0, AgendaTrabajo::count());
-    }
-
-    /** Una hora sin fecha no se puede usar: se descarta en silencio, no se guarda a medias. */
-    public function test_una_hora_sin_fecha_no_se_guarda(): void
-    {
-        $this->pedir(['hora_preferida' => '09:30'])->assertSessionHasNoErrors();
-
-        $this->assertNull(AgendaTrabajo::sole()->hora_preferida);
-    }
-
-    public function test_la_fecha_sin_hora_sigue_valiendo(): void
-    {
-        // La hora es opcional: «la que se pueda» es una respuesta válida.
-        $this->pedir(['fecha_preferida' => $this->proximo(Carbon::MONDAY)])
-            ->assertSessionHasNoErrors();
-
-        $this->assertNull(AgendaTrabajo::sole()->hora_preferida);
-    }
-
-    // ─────────────────────────────────────────────────── la pantalla
-
-    public function test_el_formulario_publico_ya_no_pide_el_texto_libre(): void
-    {
-        $html = $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $this->sucursal()->id]))
-            ->assertOk()->getContent();
-
-        $this->assertStringNotContainsString('¿Cuándo puedes y cuándo no?', $html);
-        $this->assertStringNotContainsString('name="disponibilidad"', $html);
-    }
-
-    public function test_el_formulario_ofrece_elegir_la_hora_y_dice_el_horario(): void
-    {
-        $html = $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $this->sucursal()->id]))
-            ->assertOk()->getContent();
-
-        $this->assertStringContainsString('name="hora_preferida"', $html);
-        $this->assertStringContainsString('¿A qué hora te acomoda?', $html);
-        // Sin fecha elegida no hay lista posible (depende del día de la semana), así que la
-        // pantalla dice el horario de la semana en vez de mostrar un desplegable vacío.
-        $this->assertStringContainsString('lunes y martes de 08:00 a 17:30', $html);
-        $this->assertStringContainsString('miércoles a viernes de 08:00 a 16:30', $html);
-    }
-
-    /** Y el texto libre ya no entra ni forzándolo: el campo público dejó de existir. */
-    public function test_el_texto_libre_enviado_a_mano_se_ignora(): void
-    {
-        $this->pedir(['disponibilidad' => 'Fines de semana no, después de las 15'])
-            ->assertSessionHasNoErrors();
-
-        $this->assertNull(AgendaTrabajo::sole()->disponibilidad);
-    }
-
-    /** Quien coordina tiene que VER la hora que eligió el cliente, junto a la fecha. */
+    /** Quien coordina tiene que VER la hora preferida que quedó anotada, junto a la fecha. */
     public function test_la_agenda_muestra_la_hora_preferida(): void
     {
         $lunes = $this->proximo(Carbon::MONDAY);
-        $this->pedir(['fecha_preferida' => $lunes, 'hora_preferida' => '10:00']);
+        $this->anotada(['fecha_preferida' => $lunes, 'hora_preferida' => '10:00']);
 
-        $jefe = tap(\App\Models\User::factory()->create())->assignRole('jefe_ventas');
+        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
 
         $this->actingAs($jefe)
             ->get(route('admin.agenda-terreno.index'))

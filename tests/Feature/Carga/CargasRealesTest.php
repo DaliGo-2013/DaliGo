@@ -167,7 +167,74 @@ class CargasRealesTest extends TestCase
 
         // Y NO reemplaza el cupo: los 420 del techo siguen ahí. Cambiar un número
         // verificable por el promedio de dos anécdotas sería perder información.
-        $this->assertSame(420, $con->viewData('resultado')['unidades']);
+        //
+        // El techo se lee de la FILA de la carga: desde la fusión de las dos preguntas
+        // (21-08) un `tipo_bulto_id` sin líneas se traduce a una línea abierta, así que el
+        // número vive ahí y no en `viewData('resultado')`. Y se exige que los DOS estén en
+        // pantalla a la vez, que es de lo que habla el nombre de este candado: el medido
+        // «al lado de» su techo, no en su lugar.
+        $mixta = $con->viewData('mixta');
+        $this->assertSame(420, $mixta['lineas'][array_key_first($mixta['lineas'])]['cargadas_unidades']);
+        $this->assertStringContainsString('Entran 420', $con->getContent());
+    }
+
+    public function test_lo_medido_no_se_le_pega_al_numero_de_otro_producto(): void
+    {
+        // LA TRAMPA DE LA MUDANZA (21-08). La calibración se pedía con el `tipo_bulto_id`
+        // del FORMULARIO. Desde la fusión de las dos preguntas el armador manda `lineas[]`
+        // y puede no mandar `tipo_bulto_id`: ahí el selector cae al PRIMERO del catálogo
+        // —la bolsa, que sí tiene cargas anotadas— y la pantalla habría puesto «en terreno
+        // entraron 380» al lado del número de una caja de cartón. Un dato correcto, en el
+        // lugar equivocado, sin nada que lo delate.
+        $this->anotar();
+        $this->anotar();
+
+        $caja = TipoBulto::create([
+            'nombre' => 'Caja de tapas', 'categoria' => 'cajas',
+            'largo_cm' => 46, 'ancho_cm' => 37, 'alto_cm' => 42, 'peso_kg' => 10,
+            'unidades' => 1, 'apilable_max' => 6, 'soporta_peso_encima' => true,
+            'orientacion_fija' => false, 'activo' => true,
+        ]);
+
+        // El orden del catálogo es categoría y después nombre, así que la bolsa
+        // ('botellones') es la primera y es exactamente la que el código viejo elegía.
+        $this->assertSame(
+            $this->bolsa->id,
+            TipoBulto::where('activo', true)->orderBy('categoria')->orderBy('nombre')->first()->id,
+            'Si la bolsa deja de ser la primera, este candado dejó de reproducir la trampa.',
+        );
+
+        $r = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'lineas' => [['tipo' => $caja->id, 'cantidad' => 20, 'estiba' => 'pie']],
+        ]))->assertOk();
+
+        $this->assertNull($r->viewData('medido'), 'La caja no tiene cargas anotadas.');
+        $this->assertStringNotContainsString('En terreno entraron', $r->getContent());
+
+        // Y con DOS líneas tampoco, ni aunque una de ellas sea la bolsa: una carga real es
+        // de un producto, y su promedio al lado de una mezcla es el número creíble y
+        // equivocado.
+        $mezcla = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'lineas' => [
+                ['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'pie'],
+                ['tipo' => $caja->id, 'cantidad' => 20, 'estiba' => 'pie'],
+            ],
+        ]))->assertOk();
+
+        $this->assertNull($mezcla->viewData('medido'));
+        $this->assertStringNotContainsString('En terreno entraron', $mezcla->getContent());
+
+        // El control POSITIVO, sin el cual los dos assert de arriba pasan por vacío: la
+        // MISMA bolsa, sola, sí trae su calibración.
+        $sola = $this->actingAs($this->vendedor)->get(route('admin.carga.index', [
+            'camion_id' => $this->hd35->id,
+            'lineas' => [['tipo' => $this->bolsa->id, 'cantidad' => 100, 'estiba' => 'pie']],
+        ]))->assertOk();
+
+        $this->assertSame(380, $sola->viewData('medido')['promedio']);
+        $this->assertStringContainsString('En terreno entraron', $sola->getContent());
     }
 
     public function test_lo_medido_no_se_mezcla_entre_estibas_ni_entre_camiones(): void

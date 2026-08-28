@@ -5,11 +5,12 @@ namespace Tests\Feature;
 use App\Mail\AgendaTrabajoAviso;
 use App\Models\AgendaTrabajo;
 use App\Models\Notificacion;
-use App\Models\ServicioTerreno;
 use App\Models\User;
+use App\Support\FechaNegocio;
 use Database\Seeders\ConfiguracionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -35,6 +36,41 @@ class ConfirmacionVisitaTest extends TestCase
         return tap(User::factory()->create())->assignRole('vendedor');
     }
 
+    /**
+     * ESTE ARCHIVO NO SIEMBRA `ReglasAprobacionSeeder`, y por eso sigue actuando de vendedor
+     * aunque desde el 25-08 la visita técnica necesite el visto bueno del jefe de ventas: sin
+     * regla activa el motor no pide autorización, así que acá se ve el aviso al cliente en su
+     * forma pura, que es de lo que este archivo habla. La regla nueva —que el vendedor espere
+     * y que el cliente NO reciba correo hasta que el jefe autorice— tiene su candado en
+     * `Admin\AutorizacionCitaTest`, que sí siembra la regla.
+     */
+
+    /**
+     * Un día LABORABLE, a `$dias` de hoy o el siguiente hábil.
+     *
+     * Los fixtures de este archivo usaban `now()->addDays(N)` a secas, y eso funcionó mientras
+     * cualquier día servía. Al mudar la regla «el técnico va a terreno de lunes a viernes» al
+     * formulario interno (25-08), un `+3` que cae sábado empezó a ser rechazado con 302 y
+     * `assertRedirect()` lo dejaba pasar en silencio —un redirect de validación TAMBIÉN es un
+     * redirect—: el test fallaba recién en el assert siguiente. Es el mismo tropiezo que la
+     * bitácora [2026-08-17] documenta, y el mismo helper que ya usan `AutorizacionCitaTest` y
+     * `AvisosAlTecnicoTerrenoTest`.
+     *
+     * Deriva de `AgendaTrabajo::esLaborable()` a propósito, en vez de `addWeekdays`: si algún
+     * día el horario del técnico cambia (un viernes corto, un feriado propio), el fixture se
+     * mueve con la regla en vez de volver a mentir.
+     */
+    private function dia(int $dias = 3): string
+    {
+        $d = Carbon::parse(FechaNegocio::hoy())->addDays($dias);
+
+        while (! AgendaTrabajo::esLaborable($d->toDateString())) {
+            $d->addDay();
+        }
+
+        return $d->toDateString();
+    }
+
     /** Solicitud QR pendiente de coordinar (sin fecha), con correo del cliente. */
     private function solicitud(): AgendaTrabajo
     {
@@ -50,7 +86,7 @@ class ConfirmacionVisitaTest extends TestCase
         return array_merge([
             'tipo' => 'visita_tecnica',
             'estado' => 'agendado',
-            'fecha' => now()->addDays(3)->toDateString(),
+            'fecha' => $this->dia(3),
             'hora' => '10:00',
             'cliente_nombre' => 'Aguas Claras SpA',
             'cliente_rut' => '12.345.678-5',
@@ -85,7 +121,7 @@ class ConfirmacionVisitaTest extends TestCase
         // El cliente pidió un día; el vendedor lo respeta → correo informativo SIN
         // botón de confirmar (ya lo eligió; sería doble confirmación).
         Mail::fake();
-        $preferida = now()->addDays(5)->toDateString();
+        $preferida = $this->dia(5);
         $s = AgendaTrabajo::factory()->create([
             'estado' => 'solicitado', 'fecha' => null, 'fecha_preferida' => $preferida,
             'cliente_nombre' => 'Aguas Claras SpA', 'cliente_email' => 'cliente@example.com',
@@ -107,12 +143,12 @@ class ConfirmacionVisitaTest extends TestCase
         // pide al cliente que confirme la fecha nueva.
         Mail::fake();
         $s = AgendaTrabajo::factory()->create([
-            'estado' => 'solicitado', 'fecha' => null, 'fecha_preferida' => now()->addDays(5)->toDateString(),
+            'estado' => 'solicitado', 'fecha' => null, 'fecha_preferida' => $this->dia(5),
             'cliente_email' => 'cliente@example.com',
         ]);
 
         $this->actingAs($this->vendedor())
-            ->put(route('admin.agenda-terreno.update', $s), $this->coordinarPayload(['fecha' => now()->addDays(9)->toDateString()]))
+            ->put(route('admin.agenda-terreno.update', $s), $this->coordinarPayload(['fecha' => $this->dia(9)]))
             ->assertRedirect();
 
         $this->assertNotNull($s->fresh()->confirmacion_token);   // confirma la fecha nueva
@@ -120,15 +156,18 @@ class ConfirmacionVisitaTest extends TestCase
 
     public function test_coordinar_guia_como_confirmarle_al_cliente(): void
     {
-        // Al abrir "Coordinar" una solicitud (sin agendar), la pantalla explica
-        // cómo avisarle al cliente (poner fecha + estado Agendado + guardar).
+        // Al abrir "Coordinar" una solicitud (sin agendar), la pantalla explica cómo avisarle al
+        // cliente. Desde el 21-08-2026 eso ya no es un baile de tres pasos («fecha + estado
+        // Agendado + guardar») sino un BOTÓN, porque el dueño abrió la pantalla y no encontró
+        // «algo que cierre esa confirmación» (ConfirmarVisitaAlClienteTest). Lo que este candado
+        // vigila es lo mismo: que la pantalla diga cómo confirmarle.
         $s = $this->solicitud();
 
         $this->actingAs($this->vendedor())
             ->get(route('admin.agenda-terreno.edit', $s))
             ->assertOk()
             ->assertSee('¿Confirmarle al cliente?')
-            ->assertSee('estado a «Agendado»', false);
+            ->assertSee('Confirmar y avisar al cliente');
     }
 
     public function test_coordinar_muestra_que_la_confirmacion_ya_se_envio(): void
@@ -147,7 +186,7 @@ class ConfirmacionVisitaTest extends TestCase
     {
         $t = AgendaTrabajo::factory()->create(array_merge([
             'estado' => 'agendado',
-            'fecha' => now()->addDays(3)->toDateString(),
+            'fecha' => $this->dia(3),
             'hora' => '10:00',
             'cliente_nombre' => 'Aguas Claras SpA', 'cliente_email' => 'cliente@example.com',
         ], $overrides));
@@ -222,7 +261,7 @@ class ConfirmacionVisitaTest extends TestCase
 
         $this->actingAs($this->vendedor())
             ->put(route('admin.agenda-terreno.update', $t), $this->coordinarPayload([
-                'fecha' => now()->addDays(9)->toDateString(),
+                'fecha' => $this->dia(9),
             ]));
 
         $t->refresh();

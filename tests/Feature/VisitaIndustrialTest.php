@@ -4,18 +4,43 @@ namespace Tests\Feature;
 
 use App\Models\AgendaTrabajo;
 use App\Models\Cliente;
+use App\Models\Notificacion;
 use App\Models\ServicioTerreno;
 use App\Models\Sucursal;
 use App\Models\User;
+use App\Support\FechaNegocio;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * Solicitud pública de visita/revisión industrial (QR): el cliente pide que el
- * técnico vaya a su planta; entra a la Agenda de terreno como 'solicitado'
- * (sin fecha) y el staff la coordina (fecha + técnico → agendado).
+ * LA VISITA / REVISIÓN INDUSTRIAL, DESPUÉS DE QUE DEJÓ DE PEDIRSE POR EL QR (25-08-2026).
+ *
+ * Nació como una solicitud PÚBLICA: el cliente pedía por el QR que el técnico fuera a su
+ * planta, entraba a la Agenda de terreno como 'solicitado' (sin fecha) y el staff la
+ * coordinaba. El gerente retiró esa puerta: *«que la coordinación de visita/revisión
+ * industrial la saques de la vista de ingreso; estos los harán ahora los vendedores y serán
+ * autorizados por el jefe de ventas»*.
+ *
+ * QUÉ QUEDÓ DE ESTE ARCHIVO Y QUÉ SE FUE. Lo que se probaba acá eran dos cosas mezcladas: el
+ * formulario público y la COORDINACIÓN interna de lo que ese formulario dejaba. La segunda es
+ * la que sigue viva —y ahora es todo lo que hay—, así que estos tests pasan a crear la
+ * solicitud con la factory (`solicitudDelCliente()`), que es exactamente la forma en que
+ * siguen existiendo: las que los clientes ya habían pedido antes del cambio.
+ *
+ * Se retiraron con su flujo, y vale dejar dicho cuáles para que nadie los busque:
+ *   - firma del link, honeypot y «gracias» → eran del formulario público;
+ *   - «el cliente no elige el tipo» y «un tipo enviado a mano no se respeta» → no hay cliente
+ *     que elija; el tipo lo pone el vendedor y el formulario interno ofrece los cuatro;
+ *   - «el cliente no ve los valores UF» → esa pantalla no existe;
+ *   - «fecha preferida pasada es rechazada» y «no se puede pedir en días ocupados» → NO se
+ *     perdieron: se mudaron al camino interno, que ya rechazaba días ocupados
+ *     (`bloquearSiOcupado`) y desde hoy también los días que no se atienden
+ *     (`bloquearSiNoSeAtiende`). Sus candados viven abajo.
  */
 class VisitaIndustrialTest extends TestCase
 {
@@ -37,11 +62,22 @@ class VisitaIndustrialTest extends TestCase
         return tap(User::factory()->create())->assignRole('vendedor');
     }
 
-    private function payload(Sucursal $sucursal, array $overrides = []): array
+    /**
+     * Una visita que el cliente pidió y todavía nadie coordinó: 'solicitado', SIN fecha.
+     *
+     * Reemplaza al POST del formulario público, que se retiró el 25-08. Los datos son los
+     * mismos que ese formulario dejaba —por eso los literales no cambiaron— y el estado
+     * también: así los tests de coordinación siguen probando exactamente el caso que van a
+     * encontrar en producción, que es el de las solicitudes ya ingresadas.
+     */
+    private function solicitudDelCliente(array $overrides = []): AgendaTrabajo
     {
-        return array_merge([
-            'sucursal_id' => $sucursal->id,
-            'tipo' => 'visita_tecnica',
+        return AgendaTrabajo::factory()->create(array_merge([
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
+            'estado' => 'solicitado',
+            'fecha' => null,
+            'hora' => null,
+            'tecnico_id' => null,
             'cliente_nombre' => 'Aguas Claras SpA',
             'cliente_rut' => '12.345.678-5',
             'cliente_telefono' => '+56 9 1234 5678',
@@ -49,130 +85,155 @@ class VisitaIndustrialTest extends TestCase
             'direccion' => 'Camino Industrial 500',
             'ciudad' => 'Talca',
             'descripcion' => 'La planta de osmosis 1T pierde presión.',
-        ], $overrides);
-    }
-
-    // --- Acceso / chooser ---
-
-    public function test_get_exige_firma_y_chooser_muestra_la_opcion(): void
-    {
-        $sucursal = $this->sucursal();
-
-        $this->get(route('visita-industrial.create', ['sucursal' => $sucursal->id]))->assertForbidden();
-
-        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
-            ->assertOk()
-            ->assertSee('Visita / revisión industrial')
-            ->assertSee('Visita técnica')
-            // Botón de regreso a la pantalla principal del QR (elegir otro modo).
-            ->assertSee('Volver al inicio')
-            ->assertSee('ingreso-taller?sucursal='.$sucursal->id, false);
-
-        // La opción aparece en el chooser del QR.
-        $this->get(URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]))
-            ->assertOk()->assertSee('Visita / revisión industrial');
+        ], $overrides));
     }
 
     /**
-     * El cliente YA NO elige el tipo de trabajo (pedido del técnico industrial,
-     * 13-08-2026): no puede saber si lo suyo es mantención, reparación o
-     * instalación, y elegir mal desviaba la visita.
+     * Un vendedor ANOTA la visita desde el formulario interno, sin fecha («la coordino
+     * después»). Es el POST real, así que pasa por lo que el controlador hace de camino:
+     * enlazar la ficha del cliente por RUT y avisarle a ventas.
      *
-     * Se assertea la AUSENCIA DEL CAMPO y no las etiquetas de los otros tipos, a
-     * propósito: el tarifario que el formulario SÍ muestra trae nombres como
-     * «Reparación o cambio planta» y «Lavadora reparación», así que un
-     * assertDontSee('Reparación') fallaría por una razón que no es la que se
-     * quiere vigilar (doctrina verde-engañoso, bitácora 20-07).
+     * @param  array<string, mixed>  $extra
      */
-    public function test_el_cliente_ya_no_elige_el_tipo_de_trabajo(): void
+    private function anotarComoVendedor(array $extra = []): TestResponse
+    {
+        return $this->actingAs($this->vendedor())->post(route('admin.agenda-terreno.store'), array_merge([
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
+            'estado' => 'solicitado',
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'La planta de osmosis 1T pierde presión.',
+        ], $extra));
+    }
+
+    /** Un día laborable, para que la fecha no caiga en uno que la agenda rechaza. */
+    private function dia(int $dias = 3): string
+    {
+        $d = Carbon::parse(FechaNegocio::hoy())->addDays($dias);
+
+        while (! AgendaTrabajo::esLaborable($d->toDateString())) {
+            $d->addDay();
+        }
+
+        return $d->toDateString();
+    }
+
+    // --- La puerta pública, cerrada ---
+
+    /**
+     * EL CLIENTE YA NO PUEDE PEDIR UNA VISITA INDUSTRIAL (gerente, 25-08-2026).
+     *
+     * Este candado era el inverso: verificaba que la opción SÍ estuviera en el menú del QR y
+     * que su formulario abriera con link firmado. Se invierte, no se borra — es la decisión
+     * misma, y sin él nada impide que la tarjeta vuelva de un copy-paste.
+     *
+     * Se comprueban las DOS mitades, porque una sola no alcanza: que la tarjeta no esté (lo
+     * que se ve) y que las rutas no existan (lo que importa). Sacar solo la tarjeta habría
+     * dejado a cualquiera con el link guardado creando visitas sin pasar por el vendedor ni
+     * por la autorización del jefe.
+     */
+    public function test_el_chooser_ya_no_ofrece_la_visita_industrial(): void
     {
         $sucursal = $this->sucursal();
 
-        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
+        $this->get(URL::signedRoute('ingreso-taller.create', ['sucursal' => $sucursal->id]))
             ->assertOk()
-            ->assertDontSee('name="tipo"', false)
-            // Y en su lugar la pantalla EXPLICA el flujo de dos pasos, para que el
-            // cliente no busque un campo que ya no está.
-            ->assertSee('lo coordinamos contigo');
+            // Las otras tres opciones siguen: esto no toca el ingreso a taller.
+            ->assertSee('Ingreso por unidad')
+            ->assertSee('Ingreso por cantidad')
+            ->assertDontSee('Visita / revisión industrial');
+
+        // Y las rutas se retiraron: un link viejo no puede crear nada.
+        foreach (['visita-industrial.create', 'visita-industrial.store', 'visita-industrial.gracias',
+            'visita-industrial.disponibilidad'] as $ruta) {
+            $this->assertFalse(Route::has($ruta),
+                "La ruta pública [{$ruta}] sigue viva: el link guardado saltea al vendedor y al jefe.");
+        }
+    }
+
+    // --- Anotar una visita para coordinarla después ---
+
+    /**
+     * GUARDAR SIN FECHA ES EL CASO NORMAL AHORA, y hasta hoy devolvía un 500.
+     *
+     * El registro se creaba bien y el redirect reventaba leyendo el año de una fecha que no
+     * existe: el vendedor veía una pantalla de error habiendo guardado. No se notaba porque
+     * ese camino casi no se usaba —las visitas sin fecha llegaban por el QR y este formulario
+     * se abría para ponerles la fecha—. Al retirar el QR, «lo anoto y lo coordino cuando hable
+     * con el cliente» pasó a ser la única forma de dejar una visita pendiente.
+     */
+    public function test_anotar_una_visita_sin_fecha_la_deja_por_coordinar(): void
+    {
+        $vendedor = $this->vendedor();
+
+        $this->actingAs($vendedor)->post(route('admin.agenda-terreno.store'), [
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
+            'estado' => 'solicitado',
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'La planta de osmosis 1T pierde presión.',
+        ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.agenda-terreno.index'));
+
+        $t = AgendaTrabajo::sole();
+        $this->assertSame('solicitado', $t->estado);
+        $this->assertNull($t->fecha);
     }
 
     /**
-     * Y el candado que de verdad importa: el tipo se fija en el SERVIDOR. Este
-     * POST no lleva firma, así que sacar el campo del formulario no es una
-     * defensa — un `tipo=instalacion` a mano tiene que terminar igual como
-     * visita técnica, no agendarse solo.
+     * Y AVISA A VENTAS QUE HAY ALGO POR COORDINAR.
+     *
+     * El aviso existía y lo disparaba el formulario público; ahora lo dispara el interno
+     * cuando el trabajo nace sin fecha. El destinatario no cambió y por eso el candado
+     * tampoco: quien coordina necesita saber que hay algo esperando día, y eso es igual de
+     * cierto lo haya anotado un cliente o un vendedor.
      */
-    public function test_un_tipo_enviado_a_mano_no_se_respeta(): void
-    {
-        $sucursal = $this->sucursal();
-
-        $this->post(route('visita-industrial.store'), $this->payload($sucursal, ['tipo' => 'instalacion']))
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame(AgendaTrabajo::TIPO_PUBLICO, AgendaTrabajo::latest('id')->first()->tipo);
-        $this->assertSame('visita_tecnica', AgendaTrabajo::TIPO_PUBLICO);
-    }
-
-    public function test_el_cliente_no_ve_los_valores_uf_de_los_servicios(): void
-    {
-        $sucursal = $this->sucursal();
-        // Valor con decimales A PROPÓSITO: se asserta contra el NÚMERO y no contra
-        // las letras "UF".
-        //
-        // GOTCHA (2026-07-29): este test era INTERMITENTE — fallaba ~1 de cada 100
-        // corridas de CI. `assertDontSee('UF')` busca esas dos letras en TODO el
-        // HTML, y la página trae el token CSRF (40 caracteres al azar, dos veces:
-        // en el <meta> y en el @csrf del formulario). Un token de 40 caracteres
-        // contiene la secuencia "UF" el 1,07% de las veces (medido sobre 200.000).
-        // No se reproduce renderizando muchas veces en un mismo test, porque ahí el
-        // token es el mismo: lo aleatorio es cada CORRIDA.
-        ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T', 'valor_uf' => 7.75]);
-
-        $this->get(URL::signedRoute('visita-industrial.create', ['sucursal' => $sucursal->id]))
-            ->assertOk()
-            ->assertSee('Full planta 1T')   // el servicio se ofrece…
-            ->assertDontSee('7,75')         // …pero SIN su costo (es interno)
-            ->assertDontSee('7.75');        // (en cualquiera de los dos formatos)
-    }
-
-    // --- Solicitud del cliente ---
-
-    public function test_la_solicitud_avisa_a_ventas_por_coordinar(): void
+    public function test_anotar_sin_fecha_avisa_a_ventas_por_coordinar(): void
     {
         // Ventas (jefe + vendedor) reciben campanita; el técnico industrial NO
         // (a él le llega el trabajo recién cuando lo fijan en su agenda).
         $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
         $vendedor = tap(User::factory()->create())->assignRole('vendedor');
         $tecnico = tap(User::factory()->create())->assignRole('tecnico_industrial');
-
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
-
-        foreach ([$jefe, $vendedor] as $u) {
-            $this->assertSame(1, \App\Models\Notificacion::where('user_id', $u->id)
-                ->where('evento', 'terreno.solicitada')
-                ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->count(),
-                "Falta la campanita de {$u->name}");
-        }
-        $this->assertSame(0, \App\Models\Notificacion::where('user_id', $tecnico->id)
-            ->where('evento', 'terreno.solicitada')->count());
-    }
-
-    public function test_el_aviso_por_coordinar_lleva_servicio_direccion_y_detalle(): void
-    {
-        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
         $servicio = ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T']);
 
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [
+        $this->actingAs($vendedor)->post(route('admin.agenda-terreno.store'), [
+            'tipo' => AgendaTrabajo::TIPO_PUBLICO,
+            'estado' => 'solicitado',
             'servicio_terreno_id' => $servicio->id,
-        ]));
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'La planta de osmosis 1T pierde presión.',
+        ])->assertSessionHasNoErrors();
 
-        $notif = \App\Models\Notificacion::where('user_id', $jefe->id)
+        foreach ([$jefe, $vendedor] as $u) {
+            $this->assertSame(1, Notificacion::where('user_id', $u->id)
+                ->where('evento', 'terreno.solicitada')
+                ->where('canal', Notificacion::CANAL_DATABASE)->count(),
+                "Falta la campanita de {$u->name}");
+        }
+        $this->assertSame(0, Notificacion::where('user_id', $tecnico->id)
+            ->where('evento', 'terreno.solicitada')->count());
+
+        // Y el aviso lleva lo que quien coordina necesita para llamar: servicio, dirección y
+        // el detalle. Son los campos que el lote del 22-07 agregó a la plantilla.
+        $notif = Notificacion::where('user_id', $jefe->id)
             ->where('evento', 'terreno.solicitada')
-            ->where('canal', \App\Models\Notificacion::CANAL_DATABASE)->first();
+            ->where('canal', Notificacion::CANAL_DATABASE)->sole();
 
-        $this->assertNotNull($notif);
-        // Campos que antes no viajaban: servicio, dirección y el detalle escrito
-        // por el cliente (lo más útil para quien coordina).
         $this->assertSame('Full planta 1T', $notif->payload['servicio']);
         $this->assertSame('Camino Industrial 500', $notif->payload['direccion']);
         $this->assertSame('La planta de osmosis 1T pierde presión.', $notif->payload['descripcion']);
@@ -216,64 +277,73 @@ class VisitaIndustrialTest extends TestCase
             ->assertSee('Solo martes y jueves en la mañana');
     }
 
-    public function test_crea_la_solicitud_sin_fecha_y_con_preferida(): void
+    /**
+     * LA REGLA DE LOS DÍAS QUE NO SE ATIENDEN, AHORA EN EL FORMULARIO INTERNO.
+     *
+     * Este candado reemplaza a `test_no_se_puede_pedir_visita_en_dias_ocupados`, que probaba lo
+     * mismo contra el formulario público. La regla del dueño (13-08: *«el técnico va a terreno
+     * de lunes a viernes»*) se validaba SOLO ahí: el camino interno nunca la tuvo, así que al
+     * retirar el público se quedaba sin ningún lugar donde aplicar. Se mudó a
+     * `bloquearSiNoSeAtiende` y de paso ahora cubre los cuatro tipos.
+     *
+     * Dos mitades, porque el bloqueo sin la salida sería un callejón: que RECHACE el sábado, y
+     * que el mensaje diga POR QUÉ y cuál es el próximo día con disponibilidad — que es lo que
+     * hacía el cartel en vivo del formulario público.
+     */
+    public function test_el_formulario_interno_rechaza_un_dia_que_no_se_atiende(): void
     {
-        $sucursal = $this->sucursal();
-        $servicio = ServicioTerreno::factory()->create(['nombre' => 'Full planta 1T']);
-        $preferida = now()->addDays(5)->toDateString();
+        $sabado = Carbon::parse($this->dia())->next(Carbon::SATURDAY)->toDateString();
 
-        $this->post(route('visita-industrial.store'), $this->payload($sucursal, [
-            'servicio_terreno_id' => $servicio->id,
-            'fecha_preferida' => $preferida,
-        ]))->assertSessionHasNoErrors()->assertRedirect();
-
-        $t = AgendaTrabajo::first();
-        $this->assertSame('solicitado', $t->estado);
-        $this->assertNull($t->fecha);                                 // la pone quien coordina
-        $this->assertSame($preferida, $t->fecha_preferida->toDateString());
-        $this->assertSame('visita_tecnica', $t->tipo);
-        $this->assertSame('12345678-5', $t->cliente_rut);             // normalizado
-        $this->assertSame($servicio->id, $t->servicio_terreno_id);
-        $this->assertSame('Cliente (QR)', $t->creado_por);
-    }
-
-    public function test_fecha_preferida_pasada_es_rechazada(): void
-    {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [
-            'fecha_preferida' => now()->subDay()->toDateString(),
-        ]))->assertSessionHasErrors('fecha_preferida');
-    }
-
-    public function test_no_se_puede_pedir_visita_en_dias_ocupados(): void
-    {
-        // El técnico está de viaje (agendado) del 10 al 14 de un mes futuro.
-        AgendaTrabajo::factory()->create([
-            'estado' => 'agendado', 'fecha' => '2026-09-10', 'fecha_fin' => '2026-09-14',
-            'ciudad' => 'Copiapó',
+        $res = $this->actingAs($this->vendedor())->post(route('admin.agenda-terreno.store'), [
+            'tipo' => 'mantencion',
+            'estado' => 'agendado',
+            'fecha' => $sabado,
+            'hora' => '10:00',
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'Mantención de la planta.',
         ]);
 
-        // El cliente no puede pedir una visita preferida dentro de ese rango.
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [
-            'fecha_preferida' => '2026-09-12',
-        ]))->assertSessionHasErrors('fecha_preferida');
+        $res->assertSessionHasErrors('fecha');
+        $this->assertSame(0, AgendaTrabajo::count(), 'Se guardó una cita en un día sin nadie.');
 
-        $this->assertSame(1, AgendaTrabajo::count()); // no se creó la solicitud
+        $error = session('errors')->getBag('default')->first('fecha');
+        $this->assertStringContainsString('lunes a viernes', $error);
+        $this->assertStringContainsString('más cercano con disponibilidad', $error);
     }
 
-    public function test_honeypot_lleno_no_crea_nada(): void
+    /** Y el ADMIN sí puede: misma excepción que con los días ya ocupados. */
+    public function test_el_admin_puede_agendar_un_dia_que_no_se_atiende(): void
     {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal(), [
-            'sitio_web' => 'http://spam.example',
-        ]))->assertRedirect();
+        $admin = tap(User::factory()->create())->assignRole('admin');
+        $sabado = Carbon::parse($this->dia())->next(Carbon::SATURDAY)->toDateString();
 
-        $this->assertSame(0, AgendaTrabajo::count());
+        $this->actingAs($admin)->post(route('admin.agenda-terreno.store'), [
+            'tipo' => 'mantencion',
+            'estado' => 'agendado',
+            'fecha' => $sabado,
+            'hora' => '10:00',
+            'cliente_nombre' => 'Aguas Claras SpA',
+            'cliente_rut' => '12.345.678-5',
+            'cliente_telefono' => '+56 9 1234 5678',
+            'cliente_email' => 'planta@aguasclaras.cl',
+            'direccion' => 'Camino Industrial 500',
+            'ciudad' => 'Talca',
+            'descripcion' => 'Mantención de la planta.',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame($sabado, AgendaTrabajo::sole()->fecha->toDateString());
     }
 
     // --- Coordinación ---
 
     public function test_la_solicitud_aparece_en_por_coordinar_y_no_en_el_mes(): void
     {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
 
         $res = $this->actingAs($this->vendedor())->get('/admin/agenda-terreno');
         $res->assertOk()
@@ -290,7 +360,7 @@ class VisitaIndustrialTest extends TestCase
     {
         // Coordinar una solicitud = agendarla; por pedido de gerencia el técnico
         // industrial ya no agenda, así que no ve el bloque "Por coordinar".
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
 
         $tecnico = tap(User::factory()->create())->assignRole('tecnico_industrial');
         $this->actingAs($tecnico)->get('/admin/agenda-terreno')
@@ -300,7 +370,7 @@ class VisitaIndustrialTest extends TestCase
 
     public function test_coordinar_pone_fecha_y_la_agenda(): void
     {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
         $t = AgendaTrabajo::first();
 
         $this->actingAs($this->vendedor())
@@ -327,7 +397,7 @@ class VisitaIndustrialTest extends TestCase
 
     public function test_editar_una_solicitud_sin_fecha_no_exige_fecha(): void
     {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
         $t = AgendaTrabajo::first();
 
         // Corregir un dato manteniendo el estado 'solicitado' (sin fecha aún).
@@ -362,36 +432,32 @@ class VisitaIndustrialTest extends TestCase
             ->assertSessionHasErrors('fecha');
     }
 
-    public function test_gracias_de_la_visita_ofrece_volver_al_inicio(): void
-    {
-        // Tras enviar, la pantalla "¡Listo!" tiene un botón para volver al inicio
-        // del QR (link firmado con la sucursal) — sin depender del botón «atrás».
-        $sucursal = $this->sucursal();
-        $res = $this->post(route('visita-industrial.store'), $this->payload($sucursal));
-
-        $this->get($res->headers->get('Location'))
-            ->assertOk()
-            ->assertSee('Volver al inicio')
-            ->assertSee('ingreso-taller?sucursal='.$sucursal->id, false);
-    }
+    // La pantalla «¡Listo!» de la visita se retiró con el formulario público: ya no hay envío
+    // del cliente que la muestre. Las de los otros dos ingresos —por unidad y por cantidad—
+    // conservan su «Volver al inicio» y sus candados en `IngresoTallerPublicoTest`.
 
     // --- Catálogo de clientes: reconocer / guardar / actualizar ---
 
-    public function test_la_solicitud_qr_se_enlaza_a_la_ficha_conocida_por_rut(): void
+    /**
+     * El enlace por RUT lo hacía el controlador PÚBLICO al recibir el formulario; ahora lo
+     * hace el interno (`sincronizarCatalogo`, que ya estaba en `store`). La regla es la misma
+     * y por eso el candado también: si el RUT ya existe en el catálogo, la visita nace
+     * enlazada a esa ficha en vez de quedar como un nombre suelto.
+     */
+    public function test_la_visita_anotada_se_enlaza_a_la_ficha_conocida_por_rut(): void
     {
-        // El RUT del payload (12.345.678-5) ya está en el catálogo → nace enlazada.
         $cliente = Cliente::factory()->create(['rut' => '12345678-5']);
 
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->anotarComoVendedor()->assertSessionHasNoErrors();
 
-        $this->assertSame($cliente->id, AgendaTrabajo::first()->cliente_id);
+        $this->assertSame($cliente->id, AgendaTrabajo::sole()->cliente_id);
     }
 
-    public function test_la_solicitud_qr_no_se_enlaza_si_el_rut_es_desconocido(): void
+    public function test_la_visita_anotada_no_se_enlaza_si_el_rut_es_desconocido(): void
     {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->anotarComoVendedor()->assertSessionHasNoErrors();
 
-        $this->assertNull(AgendaTrabajo::first()->cliente_id);
+        $this->assertNull(AgendaTrabajo::sole()->cliente_id);
     }
 
     public function test_coordinar_una_solicitud_sin_fecha_reconoce_al_cliente(): void
@@ -401,7 +467,7 @@ class VisitaIndustrialTest extends TestCase
         Cliente::factory()->create([
             'rut' => '12345678-5', 'razon_social' => 'Aguas Claras SpA', 'telefono' => '+56 2 2555 0000',
         ]);
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
         $t = AgendaTrabajo::first();
 
         $this->actingAs($this->vendedor())
@@ -415,7 +481,7 @@ class VisitaIndustrialTest extends TestCase
 
     public function test_guardar_en_catalogo_crea_la_ficha_local_y_la_enlaza(): void
     {
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
         $t = AgendaTrabajo::first();
         $this->assertNull($t->cliente_id); // el RUT no estaba en el catálogo
 
@@ -437,7 +503,7 @@ class VisitaIndustrialTest extends TestCase
         $cliente = Cliente::factory()->create([
             'rut' => '12345678-5', 'telefono' => '+56 9 0000 0000', 'bsale_client_id' => null,
         ]);
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
         $t = AgendaTrabajo::first();
 
         $this->actingAs($this->vendedor())
@@ -457,7 +523,7 @@ class VisitaIndustrialTest extends TestCase
         $cliente = Cliente::factory()->create([
             'rut' => '12345678-5', 'telefono' => '+56 9 0000 0000', 'bsale_client_id' => 777,
         ]);
-        $this->post(route('visita-industrial.store'), $this->payload($this->sucursal()));
+        $this->solicitudDelCliente();
         $t = AgendaTrabajo::first();
 
         $this->actingAs($this->vendedor())

@@ -14,6 +14,20 @@ class ProduccionAsignacion extends Model
     // selector del form de asignar y su validación (Rule::in).
     public const PROCEDENCIAS = ['saco', 'caja'];
 
+    /**
+     * Procedencias vigentes: editables en Configuración
+     * (`produccion_procedencias_preforma`, OPE-2 — UI una-por-línea); la
+     * constante es el histórico y el fallback con BD virgen (regla de oro).
+     * Una asignación vieja con procedencia retirada conserva su valor
+     * (columna persistida; el selector solo gobierna asignaciones nuevas).
+     *
+     * @return array<int, string>
+     */
+    public static function procedencias(): array
+    {
+        return Configuracion::getLista('produccion_procedencias_preforma', self::PROCEDENCIAS);
+    }
+
     protected $fillable = [
         'soplador_id',
         'fecha',

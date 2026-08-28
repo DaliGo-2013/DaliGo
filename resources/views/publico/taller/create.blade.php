@@ -60,15 +60,23 @@
                 </span>
             </a>
 
-            {{-- Opción D: visita/revisión INDUSTRIAL en terreno (lavadoras,
-                 llenadoras, plantas de osmosis): el técnico va donde el cliente. --}}
-            <a href="{{ $urlVisita }}"
-                class="block w-full rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition duration-150 hover:border-brand-300 hover:shadow active:scale-[0.99]">
-                <span class="font-semibold text-neutral-900">Visita / revisión industrial</span>
-                <span class="mt-1 block text-sm text-neutral-500">
-                    Para lavadoras, llenadoras y plantas de osmosis: el técnico va a tu planta. Dejas tus datos y te llamamos para coordinar.
-                </span>
-            </a>
+            {{-- LA VISITA / REVISIÓN INDUSTRIAL YA NO SE PIDE ACÁ (decisión del gerente,
+                 25-08-2026): *«que la coordinación de visita/revisión industrial la saques de
+                 la vista de ingreso; estos los harán ahora los vendedores y serán autorizados
+                 por el jefe de ventas»*.
+
+                 Era la cuarta opción de este menú y llevaba a un formulario propio. Se retiró
+                 el flujo COMPLETO —tarjeta, formulario, «gracias» y el endpoint del cartel de
+                 disponibilidad— y no solo la tarjeta: dejar la ruta viva habría permitido que
+                 cualquiera con el link guardado siguiera creando visitas sin pasar por el
+                 vendedor ni por la autorización del jefe, o sea saltearse la regla nueva.
+
+                 Lo que el cliente SIGUE recibiendo, porque el gerente lo pidió expreso: el
+                 correo con la cita cuando se agenda, se mueve o se anula, y el link para
+                 confirmar si el día no es el que había pedido. Eso vive en el modelo
+                 (`AgendaTrabajo::avisarAlCliente`) y sale por los dos caminos internos —el
+                 vendedor que agenda y el jefe que autoriza días después—, así que nunca
+                 dependió de este formulario. --}}
         </div>
 
         {{-- ───────── PASO 2: formulario manual (el actual) ───────── --}}

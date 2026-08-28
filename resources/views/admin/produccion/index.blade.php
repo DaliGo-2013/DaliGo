@@ -82,11 +82,11 @@
             </div>
         </div>
 
-        {{-- Producción por periodo (rango; default últimos 7 días) --}}
+        {{-- Producción por periodo (rango; el default en días es configurable — OPE-1) --}}
         @php
             $tp = $periodo['totales'];
             $rangoLabel = $periodo['esDefault']
-                ? 'Últimos 7 días'
+                ? 'Últimos ' . $diasPanel . ' días'
                 : \Illuminate\Support\Carbon::parse($periodo['desde'])->translatedFormat('d M') . ' – ' . \Illuminate\Support\Carbon::parse($periodo['hasta'])->translatedFormat('d M');
         @endphp
         <div class="dg-enter mb-6 rounded-2xl border border-neutral-200 bg-white shadow-sm">
@@ -94,7 +94,7 @@
                 <div>
                     <div class="flex items-center gap-1.5">
                         <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por periodo</h3>
-                        <x-info-tip>Producción de los días del rango elegido (por defecto, últimos 7): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
+                        <x-info-tip>Producción de los días del rango elegido (por defecto, últimos {{ $diasPanel }}): asignado, producido (vendible 1ª+2ª) y merma del periodo, con el detalle por día. Toca un día para ver su detalle.</x-info-tip>
                     </div>
                     <p class="mt-0.5 text-sm text-neutral-500">{{ $rangoLabel }}</p>
                 </div>

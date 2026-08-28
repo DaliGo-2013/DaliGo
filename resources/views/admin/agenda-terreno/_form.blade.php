@@ -241,7 +241,10 @@
         @if ($tecnicos->isEmpty())
             <x-input-hint>No hay usuarios con rol «técnico industrial» todavía (se crean en Usuarios).</x-input-hint>
         @elseif ($tecnicos->count() === 1)
-            <x-input-hint>Pre-seleccionado {{ $tecnicos->first()->name }} (único técnico industrial). Puedes cambiarlo si hace falta.</x-input-hint>
+            {{-- ESTA SE QUEDA A LA VISTA, cortita: no explica el campo, avisa POR QUÉ ya viene
+                 lleno. Escondida en una ⓘ el usuario no la busca y no entiende el valor
+                 pre-elegido (la regla de la ⓘ es para las explicaciones, no para el estado). --}}
+            <x-input-hint>Pre-seleccionado: {{ $tecnicos->first()->name }} (único técnico industrial).</x-input-hint>
         @endif
         <x-input-error :messages="$errors->get('tecnico_id')" class="mt-2" />
     </div>
@@ -285,9 +288,11 @@
                 {{-- Todavía solicitado / no agendado: guía para confirmarle al cliente. --}}
                 <div class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-brand-700">
                     <span class="font-medium">¿Confirmarle al cliente?</span>
-                    Pon la <span class="font-medium">fecha</span>, cambia el <span class="font-medium">estado a «Agendado»</span> y guarda.
-                    Si le cambias el día que pidió, el correo lleva un <span class="font-medium">link para que confirme</span>;
-                    si respetas su día, va solo como aviso. Si <span class="font-medium">no</span> se puede, «Cancelado» y guarda para avisarle.
+                    Pon la <span class="font-medium">fecha</span> y aprieta
+                    <span class="font-medium">«Confirmar y avisar al cliente»</span> al final: eso agenda la visita y le
+                    manda el correo. Si le cambias el día que pidió, el correo lleva un
+                    <span class="font-medium">link para que confirme</span>; si respetas su día, va como aviso.
+                    Si <span class="font-medium">no</span> se puede, usa «No se puede» en la agenda: pide el motivo y también le avisa.
                 </div>
             @endif
         </div>

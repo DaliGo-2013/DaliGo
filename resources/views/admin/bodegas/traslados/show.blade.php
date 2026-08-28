@@ -54,7 +54,12 @@
                         <dd class="text-sm text-neutral-900">Anulada el {{ $traslado->anulado_at->enChile()->format('d-m-Y H:i') }}</dd>
                     @else
                         <dd class="text-sm text-neutral-900">Se completa sola cuando el espejo confirme stock 0.</dd>
-                        <dd class="text-xs text-neutral-500">El traslado físico se ejecuta en Bsale; el espejo se refresca cada 15 minutos.</dd>
+                        {{-- La cadencia REAL del espejo: bsale:sync-stock corre hourlyAt(45)
+                             (routes/console.php). Antes acá se prometían los 15 minutos de
+                             la grilla del scheduler (I-01), que no es la cadencia del sync:
+                             la promesa mentía (LOG-1). Si el schedule cambia, este texto se
+                             cambia con él — no es derivable limpio desde Blade. --}}
+                        <dd class="text-xs text-neutral-500">El traslado físico se ejecuta en Bsale; el espejo se refresca una vez por hora.</dd>
                     @endif
                 </div>
             </dl>

@@ -17,10 +17,16 @@ dentro de la carga máxima y aun así ser multa.
 | Hyundai HD35 | | |
 | Contenedor 40' (semi Tremac) | | |
 
-**Dónde está:** en el **padrón** o en la **revisión técnica** de cada vehículo. Suele figurar
-como «peso máximo por eje» o «capacidad por eje».
+**Dónde está:** en la **revisión técnica**. ⚠️ **En el padrón NO está** — lo verifiqué el
+14-08-2026 con los padrones del HINO y del HD35 que mandó el dueño: traen carga, peso bruto,
+motor, chasis y VIN, pero **ninguna línea de ejes**. La factura del HD35 trae la disposición
+(`S(2)-S(4)`: eje simple adelante, simple con rueda doble atrás) pero no cuánto aguanta cada uno.
 
-**Quién:** quien tenga la carpeta de documentos a mano. Es copiar 8 números.
+**Quién:** quien tenga la carpeta de revisiones técnicas. Es copiar 8 números.
+
+> 💡 Los padrones **no fueron un viaje perdido**: destaparon que el HINO tenía cargados los
+> 11.000 kg del **peso bruto** en vez de los **8.000 kg de carga** — el simulador prometía tres
+> toneladas de más. Ya está corregido (ver `docs/reglas/simulador-de-carga.md` §3.5quater).
 
 **Nota técnica:** las columnas ya existen en la base (`eje_delantero_max_kg`,
 `eje_trasero_max_kg`), vacías a propósito. Mientras estén vacías el sistema **no dice que
@@ -37,7 +43,7 @@ empieza a apoyar la mercadería) **al centro de la rueda trasera**.
 | Camión | Frente de la caja → eje trasero | Distancia entre ejes | Qué falta |
 |---|---|---|---|
 | HINO 500 FC 1118 | **499 cm** ✅ (13-08) | 435 cm ⚠️ **no cierra** | confirmar el entre ejes |
-| Hyundai HD35 | — | 3.415 mm 📄 (ficha 13-08) | la medida de huincha |
+| Hyundai HD35 | ¿el «281 cm»? ❓ | ¿el «281 cm»? ❓ | **saber qué era el 281** (ver abajo) |
 
 **Cómo:** una huincha, 5 minutos. Es una sola medida, en línea recta, por el costado del
 camión.
@@ -56,24 +62,33 @@ Un HINO 500 con 5,53 m entre ejes es una versión de fábrica.
 **Lo que hace falta:** la distancia entre ejes del HINO, del **padrón** o de la **revisión
 técnica** (ahí figura). Mientras no llegue, el reparto de peso de este camión no se muestra.
 
-### 📄 HD35: la ficha llegó, pero mide desde la trompa
+### ⚠️ HD35: la ficha acotada del 13-08 NO es de este camión
 
-La silueta acotada del 13-08 dice: largo total **6.110 mm**, ancho **1.920**, alto **2.150**,
-entre ejes **3.415**, del paragolpes al eje delantero **1.075** y del eje trasero al final del
-chasis **1.620**.
+El padrón y la factura (14-08) dicen que es un **HD 35 2.5, peso bruto 3.500 kg, carga 1.500,
+carrocería furgón, 4×2**. Un HD35 de 3,5 t mide unos 5,0–5,6 m de largo con 2,6–3,0 m entre
+ejes. La ficha que llegó el 13-08 dice **6.110 mm de largo y 3.415 entre ejes**: ese es un
+camión bastante más grande (clase HD65/HD72, 6,5–7,5 t).
 
-Dos cosas:
+**Conclusión: no se usan esos 3.415 mm.** Y de paso, el «281 cm» que estaba anotado como
+distancia entre ejes vuelve a ser plausible — 2.815 mm es una distancia real de HD35 con la
+batalla larga. Así que la pregunta de abajo sigue siendo la que hay que contestar, y con más
+razón: no se sabe si el 281 era el entre ejes o la medida que falta.
 
-1. **El «281 cm entre ejes» que estaba anotado acá no era de este camión** (o no era el entre
-   ejes): la ficha dice 3.415 mm, y es el que cuadra con una caja de 430 cm.
-2. **La ficha sigue sin contestar lo que falta**, porque no dice dónde arranca la caja. Se
-   puede deducir con un supuesto: *si el fondo de la caja va al ras del final del chasis*,
-   entonces del frente de la caja al eje trasero hay `440 − 162 = 278 cm`. Y 278 se parece
-   demasiado a 281 como para ser casualidad.
+Para el registro, la ficha del 13-08 decía: largo total **6.110 mm**, ancho **1.920**, alto
+**2.150**, entre ejes **3.415**, del paragolpes al eje delantero **1.075** y del eje trasero al
+final del chasis **1.620**. **Se descarta** por lo de arriba: describe un camión más grande. Lo
+único que confirma es que el **114,5 cm** del 12-08 era del paragolpes al eje delantero (la
+ficha da 1.075 mm), o sea otra medida y no la que hace falta.
 
-**Una pregunta lo resuelve sin salir de la oficina:** ¿el «281 cm» lo midieron **del frente
-de la caja al centro de la rueda trasera**? Si sí, ya está: entra tal cual y el HD35 empieza a
-repartir peso. Si no, es una huincha de 5 minutos.
+### La pregunta que cierra el HD35
+
+**¿El «281 cm» lo midieron del frente de la caja (la pared de atrás de la cabina) al centro de
+la rueda trasera, o es la distancia entre ejes?**
+
+- Si es del **frente de la caja a la rueda**: entra tal cual como `eje_trasero_cm` y solo falta
+  el entre ejes (que en un HD35 2.5 es de fábrica: 2.615 o 2.815 mm según la batalla).
+- Si es el **entre ejes**: entonces falta la otra, y es una huincha de 5 minutos por el costado
+  del camión.
 
 > ⚠️ El **114,5 cm** del 12-08 es del **paragolpes al eje delantero** (la ficha lo confirma:
 > 1.075 mm). Es otra medida y no sirve para esto: el cálculo necesita la distancia desde donde

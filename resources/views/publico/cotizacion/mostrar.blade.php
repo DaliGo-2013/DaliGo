@@ -1,8 +1,9 @@
 {{--
     Página PÚBLICA de la cotización (link firmado del correo). Muestra la carta
     desde el SNAPSHOT y, si sigue vigente, los botones ACEPTO / NO ACEPTO más un
-    «¿por qué?» opcional (el 06-08 el dueño dio vuelta su decisión del 30-07 de
-    no llevar comentario: quiere leer el motivo del cliente en la campanita).
+    «¿por qué?», que es OBLIGATORIO en las dos respuestas desde el 14-08-2026 (el
+    06-08 el dueño lo había agregado como opcional para leer el motivo del cliente
+    en la campanita; ahora lo quiere siempre, acepte o no acepte).
     Si ya se respondió / reemplazó / venció, muestra el estado en vez de los botones.
 --}}
 @php
@@ -33,7 +34,7 @@
             @if (filled($cotizacion->causa_falla))
                 <div class="border-b border-neutral-100 py-1.5">
                     <div class="text-xs uppercase tracking-wide text-neutral-400">Diagnóstico del técnico</div>
-                    <div class="mt-0.5 text-neutral-900">{{ $cotizacion->causa_falla }}</div>
+                    <div class="mt-0.5 text-neutral-900">{{ $cotizacion->causa_falla_label }}</div>
                 </div>
             @endif
             @if (filled($cotizacion->trabajo_realizado))
@@ -89,21 +90,32 @@
                 {{-- Honeypot anti-bots (oculto; humanos no lo ven ni llenan). --}}
                 <input type="text" name="sitio_web" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
                 <p class="mb-3 text-center text-sm text-neutral-600">¿Autorizas este trabajo por el valor indicado?</p>
+                {{-- OBLIGATORIO en las DOS respuestas desde el 14-08-2026 (dueño).
+                     El `*` en rojo es la única excepción de color de la paleta, y es
+                     justo para esto. El `required` del navegador evita el viaje al
+                     servidor; el servidor lo valida igual (y trimea, para que tres
+                     espacios no cuenten como motivo). --}}
                 <div class="mb-3 text-left">
                     <label for="motivo" class="block text-sm font-medium text-neutral-700">
-                        ¿Por qué? <span class="font-normal text-neutral-400">(opcional)</span>
+                        ¿Por qué? <span class="text-red-600">*</span>
                     </label>
-                    <textarea id="motivo" name="motivo" rows="2" maxlength="1000"
+                    <textarea id="motivo" name="motivo" rows="2" maxlength="1000" required
                               class="mt-1.5 block w-full rounded-xl border-neutral-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                               placeholder="Cuéntanos el motivo de tu decisión.">{{ old('motivo') }}</textarea>
+                    <x-input-error :messages="$errors->get('motivo')" class="mt-2" />
                 </div>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button type="submit" name="respuesta" value="aceptada"
                             class="inline-flex h-12 items-center justify-center rounded-xl bg-brand-600 px-4 text-base font-semibold text-white transition hover:bg-brand-700">
                         ACEPTO
                     </button>
+                    {{-- `reportValidity()` ANTES del confirm: si no, con el motivo
+                         vacío el cliente veía primero «¿confirmas que NO aceptas?»,
+                         decía que sí, y recién entonces el navegador le bloqueaba el
+                         envío pidiéndole el motivo — dos preguntas en el orden
+                         equivocado para la decisión más delicada de la página. --}}
                     <button type="submit" name="respuesta" value="rechazada"
-                            onclick="return confirm('¿Confirmas que NO aceptas la cotización?');"
+                            onclick="return this.form.reportValidity() && confirm('¿Confirmas que NO aceptas la cotización?');"
                             class="inline-flex h-12 items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 text-base font-semibold text-neutral-700 transition hover:bg-neutral-50">
                         NO ACEPTO
                     </button>

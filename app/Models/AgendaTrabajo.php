@@ -3,14 +3,19 @@
 namespace App\Models;
 
 use App\Mail\AgendaTrabajoAviso;
+use App\Services\Notificaciones\NotificacionDispatcher;
+use App\Support\FechaNegocio;
 use Database\Factories\AgendaTrabajoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -31,12 +36,21 @@ class AgendaTrabajo extends Model implements AuditableContract
     public const TIPOS = ['visita_tecnica', 'mantencion', 'reparacion', 'instalacion'];
 
     /**
-     * El ÚNICO tipo que puede pedir un cliente por el QR (pedido del técnico
-     * industrial, 13-08-2026). El cliente no sabe —ni tiene por qué— si lo suyo
-     * es una mantención, una reparación o una instalación: eso lo determina el
-     * técnico en la planta. Los otros tres tipos existen solo para el flujo
-     * INTERNO, donde el vendedor o el jefe de ventas agenda el trabajo después
-     * de la visita, hablando con el cliente.
+     * LA VISITA DE RELEVAMIENTO: el técnico va a la planta a ver qué hay, antes de saber si
+     * lo que corresponde es una mantención, una reparación o una instalación.
+     *
+     * Se llamaba `TIPO_PUBLICO` porque era **el único tipo que un cliente podía pedir por el
+     * QR** (pedido del técnico industrial, 13-08-2026: el cliente no sabe —ni tiene por qué—
+     * cuál de los tres es lo suyo). **Desde el 25-08 el cliente ya no la pide**: el gerente
+     * sacó la visita industrial de la vista de ingreso y ahora la agendan los vendedores con
+     * el visto bueno del jefe de ventas. El nombre de la constante se conserva porque es el
+     * valor de una columna y renombrarlo sería una migración de datos por una palabra; lo que
+     * cambió es quién la crea, no qué significa.
+     *
+     * Lo que el tipo SIGUE significando, y por eso hay dos consumidores que dependen de él:
+     * sus repuestos son un PRONÓSTICO y no consumo (`repuestosSonPronostico`), y no cuenta
+     * como atención de taller en el informe. Eso es propio del relevamiento —se anota lo que
+     * se va a necesitar, no lo que se gastó— y no tiene nada que ver con quién lo pidió.
      */
     public const TIPO_PUBLICO = 'visita_tecnica';
 
@@ -45,13 +59,17 @@ class AgendaTrabajo extends Model implements AuditableContract
      * (dueño, 13-08-2026: «cuando un vendedor fije una cita con un cliente por mantención,
      * reparación o instalación… que él siempre esté al tanto de lo que hacen sus vendedores»).
      *
-     * Desde el 28-08-2026 son los CUATRO, la visita técnica incluida: «el jefe de ventas
-     * manejará la agenda de terreno de Carlos, el técnico industrial encargado de eso». Antes
-     * quedaba afuera porque se la suponía siempre nacida de un pedido del cliente por QR —que
-     * ya avisa por `terreno.solicitada`—, pero un vendedor puede crearla de cero, y en ese
-     * caso nadie se enteraba. Consecuencia deliberada: COORDINAR una solicitud del QR (fijarle
-     * fecha) también pasa a esperar autorización, porque es el momento en que se compromete
-     * el día del técnico.
+     * LA VISITA TÉCNICA ENTRÓ EL 25-08-2026, y la razón por la que estaba afuera es la que
+     * explica por qué ahora entra. Decía: *«es la que pide el cliente por el QR y el vendedor
+     * solo la coordina — no es un compromiso que el vendedor decida por su cuenta»*. El
+     * gerente sacó la visita industrial de la vista del cliente ese día: *«estos los harán
+     * ahora los vendedores y serán autorizados por el jefe de ventas»*. Sin formulario
+     * público, una visita técnica ya no la pide nadie de afuera — la fija un vendedor, igual
+     * que las otras tres, y por lo tanto es exactamente el compromiso que esta lista vigila.
+     *
+     * Las solicitudes que los clientes ya habían dejado por el QR siguen su curso normal: son
+     * las que están 'solicitado' y SIN fecha, y esa rama no pide autorización (ver
+     * `necesitaAutorizacion`: sin fecha no hay nada que comprometer).
      *
      * Se mantiene como constante aparte de TIPOS —hoy tienen el mismo contenido— porque
      * significan cosas distintas: una es «qué tipos existen» y la otra «cuáles requieren visto
@@ -66,7 +84,7 @@ class AgendaTrabajo extends Model implements AuditableContract
      * como una solicitud más del cliente: la fila vive en el bloque «Por coordinar» —está
      * 'solicitado' y sin fecha— pero no la pidió ningún cliente, la fijó un vendedor.
      */
-    public function aprobacionPendiente(): \Illuminate\Database\Eloquent\Relations\MorphOne
+    public function aprobacionPendiente(): MorphOne
     {
         return $this->morphOne(Aprobacion::class, 'aprobable')
             ->where('tipo_accion', Aprobacion::ACCION_AGENDA_CITA)
@@ -88,7 +106,24 @@ class AgendaTrabajo extends Model implements AuditableContract
 
     // 'solicitado' = lo pidió el CLIENTE por el QR y espera coordinación
     // (sin fecha); al coordinar pasa a 'agendado' con fecha y técnico.
-    public const ESTADOS = ['solicitado', 'agendado', 'realizado', 'cancelado'];
+    //
+    // 'no_realizado' (dueño 14-08-2026) = el técnico FUE y no se pudo hacer:
+    // faltaba un repuesto, el cliente no quiso, lo que sea. Es un estado FINAL y
+    // distinto de 'cancelado': cancelado es la coordinación diciendo «no va»
+    // ANTES (y le avisa al cliente por correo); no_realizado es el terreno
+    // contando qué pasó cuando ya se fue. Si hay que volver, ventas agenda un
+    // trabajo nuevo — así la agenda no arrastra un pendiente eterno.
+    public const ESTADOS = ['solicitado', 'agendado', 'realizado', 'no_realizado', 'cancelado'];
+
+    /** Los dos cierres que hace el técnico en terreno, y que avisan a ventas. */
+    public const ESTADOS_CIERRE = ['realizado', 'no_realizado'];
+
+    /**
+     * Quién recibe el aviso de cierre además del vendedor del cliente. El jefe de
+     * ventas y admin van SIEMPRE: si dependiera solo del vendedor, hoy el aviso
+     * no le llegaría a nadie (las carteras están sin asignar).
+     */
+    public const ROLES_AVISO_CIERRE = ['jefe_ventas', 'admin'];
 
     // Variante de x-badge por estado. OJO: x-badge solo define brand|neutral|
     // danger (paleta del design system); espeja al taller: cerrado-bien =
@@ -97,7 +132,19 @@ class AgendaTrabajo extends Model implements AuditableContract
         'solicitado' => 'brand',
         'agendado' => 'brand',
         'realizado' => 'neutral',
+        // Cerrado-mal = danger, igual que 'cancelado' y que el 'sin_solucion' del
+        // taller: no es un error del sistema, es un resultado que hay que ver.
+        'no_realizado' => 'danger',
         'cancelado' => 'danger',
+    ];
+
+    /** Rótulo del estado para pantallas y Excel ('no_realizado' se lee mal crudo). */
+    public const ESTADO_ETIQUETAS = [
+        'solicitado' => 'Solicitado',
+        'agendado' => 'Agendado',
+        'realizado' => 'Realizado',
+        'no_realizado' => 'No realizado',
+        'cancelado' => 'Cancelado',
     ];
 
     protected $fillable = [
@@ -227,9 +274,9 @@ class AgendaTrabajo extends Model implements AuditableContract
      * técnico está ocupado/de viaje. El solape considera fecha_fin (o la fecha si
      * es de un día). Portable MySQL 5.7 / SQLite (sin funciones de fecha crudas).
      *
-     * @return \Illuminate\Support\Collection<int, AgendaTrabajo>
+     * @return Collection<int, AgendaTrabajo>
      */
-    public static function conflictos(string $desde, string $hasta, ?int $exceptId = null): \Illuminate\Support\Collection
+    public static function conflictos(string $desde, string $hasta, ?int $exceptId = null): Collection
     {
         return static::query()
             ->whereIn('estado', ['agendado', 'realizado'])
@@ -464,8 +511,13 @@ class AgendaTrabajo extends Model implements AuditableContract
 
     /**
      * Avisa por M15 (campanita + correo según preferencias) a ventas que hay una
-     * solicitud del cliente por coordinar. Se llama al crearla desde el QR. No
-     * debe tumbar el flujo público: el emisor la envuelve en try/catch.
+     * solicitud por coordinar: una visita anotada que todavía no tiene día.
+     *
+     * SE LLAMABA AL CREARLA DESDE EL QR y desde el 25-08 la llama el formulario INTERNO
+     * cuando el trabajo nace sin fecha (el gerente retiró la puerta pública: ahora las anota
+     * un vendedor). El destinatario no cambió y por eso el aviso tampoco: quien coordina
+     * necesita saber que hay algo esperando fecha, y eso es igual de cierto lo haya anotado
+     * un cliente o un vendedor. La plantilla `terreno.solicitada` sigue siendo la misma.
      */
     public function notificarPorCoordinar(): void
     {
@@ -485,7 +537,7 @@ class AgendaTrabajo extends Model implements AuditableContract
             'url' => route('admin.agenda-terreno.index'),
         ];
 
-        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+        $dispatcher = app(NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.solicitada', $this, $u, $datos));
@@ -506,7 +558,7 @@ class AgendaTrabajo extends Model implements AuditableContract
     public function prepararConfirmacionCliente(): void
     {
         $this->forceFill([
-            'confirmacion_token' => $this->confirmacion_token ?: \Illuminate\Support\Str::random(64),
+            'confirmacion_token' => $this->confirmacion_token ?: Str::random(64),
             'confirmacion_enviada_at' => now(),
             'cliente_confirmacion' => null,
             'cliente_confirmacion_at' => null,
@@ -532,7 +584,14 @@ class AgendaTrabajo extends Model implements AuditableContract
      * El try/catch es a propósito: un correo que falla no puede tumbar ni el agendamiento ni
      * la transacción de la aprobación.
      */
-    public function avisarAlCliente(string $motivo): void
+    /**
+     * Devuelve si el correo SALIO. No es un detalle: la pantalla de coordinar le dice al jefe
+     * de ventas «se le aviso a tal correo» o «no salio, hay que llamarlo» — y con un `void`
+     * solo se podia decir «trabajo actualizado», que es justo lo que no cierra la
+     * confirmacion (dueño 21-08-2026). El fallo se sigue tragando a proposito: un SMTP
+     * caido no puede tumbar el guardado de la cita.
+     */
+    public function avisarAlCliente(string $motivo): bool
     {
         try {
             if ($motivo !== 'anulada') {
@@ -546,8 +605,12 @@ class AgendaTrabajo extends Model implements AuditableContract
             }
 
             Mail::to($this->cliente_email)->send(new AgendaTrabajoAviso($this, $motivo));
+
+            return true;
         } catch (\Throwable $e) {
             report($e);
+
+            return false;
         }
     }
 
@@ -586,7 +649,7 @@ class AgendaTrabajo extends Model implements AuditableContract
         return $this->estado === 'agendado'
             && filled($this->confirmacion_token)
             && $this->fecha
-            && $this->fecha->gte(\App\Support\FechaNegocio::ahora()->startOfDay())
+            && $this->fecha->gte(FechaNegocio::ahora()->startOfDay())
             && blank($this->cliente_confirmacion);
     }
 
@@ -613,7 +676,7 @@ class AgendaTrabajo extends Model implements AuditableContract
             'url' => route('admin.agenda-terreno.index', $this->fecha ? ['anio' => $this->fecha->year, 'mes' => $this->fecha->month, 'dia' => $this->fecha->toDateString()] : []),
         ];
 
-        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+        $dispatcher = app(NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.confirmada', $this, $u, $datos));
@@ -646,7 +709,7 @@ class AgendaTrabajo extends Model implements AuditableContract
             'url' => route('admin.agenda-terreno.index'),
         ];
 
-        $dispatcher = app(\App\Services\Notificaciones\NotificacionDispatcher::class);
+        $dispatcher = app(NotificacionDispatcher::class);
 
         User::role(self::ROLES_AVISO_COORDINAR)->get()->unique('id')
             ->each(fn (User $u) => $dispatcher->despachar('terreno.rechazada', $this, $u, $datos));
@@ -660,6 +723,279 @@ class AgendaTrabajo extends Model implements AuditableContract
     public function getEstadoVarianteAttribute(): string
     {
         return self::ESTADO_VARIANTES[$this->estado] ?? 'brand';
+    }
+
+    public function getEstadoLabelAttribute(): string
+    {
+        return self::ESTADO_ETIQUETAS[$this->estado] ?? ucfirst(str_replace('_', ' ', (string) $this->estado));
+    }
+
+    /**
+     * El vendedor a cargo del cliente de este trabajo, o null.
+     *
+     * OJO: hoy devuelve null SIEMPRE, y eso es correcto — las carteras
+     * (`clientes.vendedor_id`) están sin asignar por decisión del dueño hasta la
+     * reunión con gerencia, y no existe ningún usuario con rol vendedor. Está
+     * escrito así para que el día que se asignen, el aviso le llegue solo sin
+     * tocar código.
+     *
+     * Busca por `cliente_id` y, si el trabajo entró por QR sin enlazar, por RUT
+     * — que es la misma escalera que usa el resto del flujo público.
+     */
+    public function vendedorDelCliente(): ?User
+    {
+        $cliente = $this->cliente_id
+            ? Cliente::find($this->cliente_id)
+            : (filled($this->cliente_rut) ? Cliente::buscarPorRut($this->cliente_rut) : null);
+
+        return $cliente?->vendedor;
+    }
+
+    /**
+     * Avisa el CIERRE del trabajo a quien tiene que actuar por la zona: el jefe
+     * de ventas y el vendedor del cliente (pedido del dueño 14-08-2026).
+     *
+     * El jefe de ventas y admin van siempre —si el aviso dependiera solo del
+     * vendedor, hoy no le llegaría a nadie— y el vendedor se suma cuando exista.
+     *
+     * Los avisos son SECUNDARIOS: si fallan, el cierre del trabajo ya está
+     * guardado y no se revierte (mismo criterio que el rechazo).
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    public function avisarCierre(string $evento, array $extra = []): void
+    {
+        $datos = array_merge([
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'fecha' => $this->fecha?->format('d-m-Y') ?? '—',
+            'ciudad' => $this->ciudad ?: '—',
+            'direccion' => $this->direccion ?: '—',
+            'tecnico' => $this->tecnico?->name ?? '—',
+            'detalle' => $this->notas_tecnico ?: '—',
+            // El rótulo viaja como dato porque el MISMO evento sirve a los cuatro
+            // tipos de trabajo, y en una visita técnica la lista significa lo
+            // contrario que en las otras: es lo que hay que COTIZAR, no lo gastado.
+            'repuestos_titulo' => $this->repuestosTitulo(),
+            'repuestos' => $this->repuestosResumen(),
+            'url' => route('admin.agenda-terreno.index'),
+        ], $extra);
+
+        $dispatcher = app(NotificacionDispatcher::class);
+
+        User::role(self::ROLES_AVISO_CIERRE)->get()
+            ->when($this->vendedorDelCliente(), fn ($u, $v) => $u->push($v))
+            ->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /**
+     * EL TÉCNICO SE ENTERA DE SU PROPIA AGENDA (pedido del dueño, 14-08-2026:
+     * «cuando realizamos pruebas de testeo con instalaciones o reparaciones nunca
+     * le llegó una notificación… cualquier dato que influya en sus tareas
+     * laborales, que esté al tanto»).
+     *
+     * El hueco era estructural, no un olvido puntual: hasta hoy el rol
+     * `tecnico_industrial` NO figuraba en NINGUNA lista de destinatarios de la app
+     * (ROLES_AVISO_COORDINAR y ROLES_AVISO_CIERRE son de ventas), así que el
+     * técnico no recibía ni un aviso de nada — le agendaban el día y se enteraba
+     * abriendo la agenda a ver si había algo nuevo.
+     *
+     * A QUIÉN: al técnico ASIGNADO si el trabajo lo tiene; si no tiene, a todos
+     * los técnicos industriales. Un trabajo sin asignar sigue siendo trabajo del
+     * equipo, y si el aviso dependiera del `tecnico_id` no le llegaría a nadie —
+     * que es exactamente la falla que esto viene a cerrar.
+     *
+     * @param  array<string, mixed>  $extra
+     * @param  int|null  $tambienA  id de un técnico que TAMBIÉN tiene que enterarse
+     *                              (el anterior, cuando el trabajo se reasignó: si no, el trabajo desaparece
+     *                              de su radar sin que nadie se lo diga)
+     */
+    public function avisarAlTecnico(string $evento, array $extra = [], ?int $tambienA = null): void
+    {
+        $destinatarios = $this->tecnico
+            ? collect([$this->tecnico])
+            : User::role('tecnico_industrial')->get();
+
+        if ($tambienA !== null && $tambienA !== $this->tecnico_id) {
+            $destinatarios = $destinatarios->when(
+                User::find($tambienA),
+                fn ($c, $u) => $c->push($u)
+            );
+        }
+
+        if ($destinatarios->isEmpty()) {
+            return;
+        }
+
+        $datos = array_merge([
+            'cliente' => $this->cliente_nombre,
+            'tipo' => $this->tipo_label,
+            'fecha' => $this->fecha?->format('d-m-Y') ?? 'sin fecha',
+            // La hora importa más que ninguna otra cosa para quien maneja hasta
+            // allá: es lo que decide a qué hora sale.
+            'hora' => $this->rango_horas_label ?: 'sin hora fijada',
+            'ciudad' => $this->ciudad ?: '—',
+            'direccion' => $this->direccion ?: '—',
+            'telefono' => $this->cliente_telefono ?: 's/i',
+            'servicio' => $this->servicio?->nombre ?: 'Fuera de tarifa',
+            'descripcion' => $this->descripcion ?: '—',
+            // Quién quedó asignado: lo usa el aviso de «te lo movieron», que también
+            // le llega al técnico ANTERIOR cuando el trabajo se reasignó — es cómo
+            // se entera de que ya no es suyo.
+            'tecnico' => $this->tecnico?->name ?? 'sin asignar',
+            'url' => route('admin.agenda-terreno.index', [
+                'anio' => $this->fecha?->year,
+                'mes' => $this->fecha?->month,
+                'dia' => $this->fecha?->toDateString(),
+            ]),
+        ], $extra);
+
+        $dispatcher = app(NotificacionDispatcher::class);
+
+        $destinatarios->unique('id')
+            ->each(fn (User $u) => $dispatcher->despachar($evento, $this, $u, $datos));
+    }
+
+    /**
+     * ¿Hay que avisarle al técnico de este cambio? Decide y avisa.
+     *
+     * VIVE EN EL MODELO por la misma razón que `avisarAlCliente`, y la advertencia
+     * ya está escrita en el controlador: hay TRES caminos que le agendan un
+     * trabajo al técnico —crear la cita, editarla, y el jefe de ventas autorizando
+     * una cita días después— y con esta lógica dentro de un controlador el camino
+     * diferido sale sin avisarle a nadie. Un aviso que depende de por dónde entró
+     * el cambio es un aviso que se va a olvidar.
+     *
+     * Espeja exactamente los tres casos de `avisarClienteSiCorresponde`, porque
+     * son los mismos tres que le cambian el día al técnico: le agendaron algo, se
+     * lo movieron, o se lo cancelaron. Lo que cambia es el destinatario.
+     *
+     * @param  array{estado: string|null, fecha: string|null, hora: string|null, tecnico_id: int|null}  $antes
+     */
+    public function avisarAlTecnicoSiCorresponde(array $antes): void
+    {
+        if ($this->estado === 'agendado' && $this->fecha) {
+            if ($antes['estado'] !== 'agendado') {
+                $this->avisarAlTecnico('terreno.agendado');
+
+                return;
+            }
+
+            $moved = $antes['fecha'] !== $this->fecha?->toDateString()
+                || $antes['hora'] !== $this->hora_corta
+                || $antes['tecnico_id'] !== $this->tecnico_id;
+
+            if ($moved) {
+                $this->avisarAlTecnico('terreno.reagendado', [
+                    // Qué decía antes: sin esto el técnico recibe la cita nueva y
+                    // no sabe cuál de las suyas se movió.
+                    'antes' => trim(($antes['fecha'] ?? 'sin fecha').' '.($antes['hora'] ?? '')),
+                ], tambienA: $antes['tecnico_id']);
+            }
+
+            return;
+        }
+
+        if ($this->estado === 'cancelado' && $antes['estado'] === 'agendado') {
+            $this->avisarAlTecnico('terreno.cancelado', [], tambienA: $antes['tecnico_id']);
+        }
+    }
+
+    /**
+     * Los repuestos que declaró el técnico, en texto, para el aviso a ventas.
+     *
+     * Va DENTRO del aviso y no solo en la pantalla porque el vendedor tiene que
+     * poder facturar leyendo el correo: si la lista obliga a entrar a la app, la
+     * factura se arma preguntándole al técnico por teléfono, que es exactamente lo
+     * que este campo existe para evitar. El código va entre paréntesis cuando el
+     * repuesto vino del catálogo (es lo que se copia a la línea del documento).
+     *
+     * Sin montos: el técnico no maneja precios. Ver AgendaTrabajoRepuesto.
+     */
+    /**
+     * CÓMO SE IDENTIFICA A UN CLIENTE en los agregados de terreno: por su RUT
+     * cuando lo tiene, y por su nombre cuando no (un cliente que entró por el QR
+     * sin RUT sigue siendo un cliente).
+     *
+     * LAS DOS FORMAS VIVEN JUNTAS Y NO ES DECORACIÓN: el ranking del informe
+     * agrupa en SQL y el historial de cada cliente tiene que agrupar en PHP la
+     * misma colección. Con las dos reglas escritas en lugares distintos, el día que
+     * alguien cambie una —por ejemplo, para normalizar el RUT— el historial deja de
+     * corresponder con el número que tiene al lado y no hay nada que lo delate.
+     * `AgendaTrabajoClaveClienteTest` verifica que coinciden.
+     */
+    public const SQL_CLAVE_CLIENTE = "COALESCE(NULLIF(cliente_rut, ''), cliente_nombre)";
+
+    /** La versión PHP de SQL_CLAVE_CLIENTE. Las dos tienen que dar lo mismo. */
+    public function claveCliente(): string
+    {
+        return filled($this->cliente_rut)
+            ? (string) $this->cliente_rut
+            : (string) $this->cliente_nombre;
+    }
+
+    /**
+     * ¿Los repuestos de ESTE trabajo son un PRONÓSTICO o un CONSUMO?
+     *
+     * En una visita técnica Carlos no instala nada: va a ver qué hay que hacer y
+     * qué se va a necesitar, y con eso el vendedor y el jefe de ventas arman la
+     * cotización para la SEGUNDA visita (flujo dictado por el dueño, 14-08-2026).
+     * En los otros tres tipos el trabajo se ejecuta, así que el repuesto salió de
+     * la bodega de verdad.
+     *
+     * SE DERIVA DEL TIPO Y NO SE GUARDA EN UNA COLUMNA a propósito: una visita
+     * técnica nunca instala, así que el dato ya está y no hay forma de que las dos
+     * fuentes se contradigan.
+     *
+     * Por qué importa que estén separados: sin esto, los repuestos que Carlos
+     * anota en la visita —los que va a NECESITAR— se cuentan como gastados, y
+     * además se cuentan DOS VECES, porque en la segunda visita los declara de
+     * nuevo al usarlos. El informe mostraría consumo que nunca ocurrió.
+     */
+    public function repuestosSonPronostico(): bool
+    {
+        return $this->tipo === self::TIPO_PUBLICO;
+    }
+
+    /**
+     * Rótulo del bloque de repuestos para el AVISO y el informe: lo leen ventas y
+     * jefatura, así que va en tercera persona.
+     */
+    public function repuestosTitulo(): string
+    {
+        return $this->repuestosSonPronostico()
+            ? 'Repuestos que se van a necesitar (para cotizar)'
+            : 'Repuestos usados';
+    }
+
+    /**
+     * El mismo rótulo para el FORMULARIO del técnico, en segunda persona: las
+     * pantallas de operario le hablan a él, que es quien las llena de pie en la
+     * planta ("Repuestos que usaste", no "Repuestos usados").
+     */
+    public function repuestosEtiquetaFormulario(): string
+    {
+        return $this->repuestosSonPronostico()
+            ? 'Repuestos que vas a necesitar'
+            : 'Repuestos que usaste';
+    }
+
+    public function repuestosResumen(): string
+    {
+        $lineas = $this->repuestos
+            ->map(fn (AgendaTrabajoRepuesto $r) => trim(sprintf(
+                '%d × %s%s',
+                (int) $r->cantidad,
+                $r->nombre,
+                filled($r->sku) ? " ({$r->sku})" : ''
+            )));
+
+        if ($lineas->isEmpty()) {
+            return $this->repuestosSonPronostico() ? 'No indicó repuestos.' : 'No usó repuestos.';
+        }
+
+        return $lineas->implode("\n");
     }
 
     /**

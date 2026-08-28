@@ -157,8 +157,42 @@ class OrdenServicio extends Model implements AuditableContract
     // Documento de compra que respalda la garantia.
     public const GARANTIA_DOC_TIPOS = ['factura', 'boleta'];
 
-    // Duracion de la garantia desde la fecha de compra.
+    // Duracion de la garantia DEL PRODUCTO, desde la fecha de compra.
     public const GARANTIA_MESES = 6;
+
+    /**
+     * Duracion de la garantia DE LA REPARACION, desde el dia en que se repara (dueño,
+     * 14-08-2026: «a partir de la fecha de reparacion del dispensador entra en vigencia la
+     * garantia por tres meses»).
+     *
+     * SON DOS GARANTIAS DISTINTAS y por eso son dos constantes:
+     *   · GARANTIA_MESES (6)             → el PRODUCTO, contra la fecha de COMPRA. Es la que
+     *                                      decide si un ingreso al taller se cobra o no.
+     *   · GARANTIA_REPARACION_MESES (3)  → el TRABAJO que hizo el taller, contra la fecha de
+     *                                      REPARACION. Es la que se le promete al cliente al
+     *                                      entregarle el equipo.
+     *
+     * Reusar la de 6 para esto habria prometido el doble de cobertura sobre una reparacion, en
+     * un correo que el cliente guarda.
+     */
+    public const GARANTIA_REPARACION_MESES = 3;
+
+    /**
+     * Centinela del «Otro — lo escribo yo» del selector de «Trabajo realizado» (dueño,
+     * 14-08-2026: «que quede la respuesta manual»). El texto viaja aparte, en
+     * `trabajo_realizado_otro`; el centinela NUNCA se guarda como trabajo. Mismo idioma que
+     * ProduccionReporte::MOTIVO_OTRO.
+     */
+    public const TRABAJO_OTRO = '__otro__';
+
+    /**
+     * Largo maximo del trabajo realizado. NO es un numero elegido: la cotizacion guarda su
+     * propio snapshot del texto en `orden_servicio_cotizaciones.trabajo_realizado`, que es
+     * VARCHAR(191). En SQLite (local y tests) un texto mas largo entra igual; en MySQL revienta
+     * con «Data too long» al ENVIAR la cotizacion, o sea lejos de donde se escribio. Se corta
+     * donde se escribe. Candado: TrabajoManualTest.
+     */
+    public const TRABAJO_MAX = 191;
 
     // Los precios del catálogo (repuestos, valor hora) se guardan CON IVA, así
     // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
@@ -248,6 +282,24 @@ class OrdenServicio extends Model implements AuditableContract
     public function getGarantiaVenceAttribute(): ?Carbon
     {
         return $this->garantia_doc_fecha?->copy()->addMonths(self::GARANTIA_MESES);
+    }
+
+    /**
+     * Desde cuándo corre la garantía de LA REPARACIÓN.
+     *
+     * Es el día en que el taller dio el trabajo por terminado, que es cuando se le avisa al
+     * cliente (`listo_avisado_at`). Si todavía no se avisó —el correo se manda ANTES de
+     * estampar ese campo— corre desde hoy, que es el mismo día.
+     */
+    public function garantiaReparacionDesde(): Carbon
+    {
+        return $this->listo_avisado_at?->copy() ?? Carbon::now();
+    }
+
+    /** Cuándo vence la garantía de la reparación (3 meses; ver `GARANTIA_REPARACION_MESES`). */
+    public function garantiaReparacionVence(): Carbon
+    {
+        return $this->garantiaReparacionDesde()->addMonths(self::GARANTIA_REPARACION_MESES);
     }
 
     /**

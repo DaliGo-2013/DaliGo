@@ -24,7 +24,7 @@
 
         <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
             <div class="border-b border-neutral-100 px-4 py-3 sm:px-6">
-                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por día {{ $esDefault ? '· últimos 30 días' : '' }}</h3>
+                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Producción por día {{ $esDefault ? '· últimos ' . $diasInforme . ' días' : '' }}</h3>
             </div>
             @include('admin.produccion.partials._tendencia', ['tendencia' => $tendencia, 'linkDia' => true])
         </div>

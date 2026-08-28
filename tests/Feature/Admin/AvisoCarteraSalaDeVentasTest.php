@@ -80,7 +80,11 @@ class AvisoCarteraSalaDeVentasTest extends TestCase
 
         $this->post(
             URL::signedRoute('cotizacion.responder', ['cotizacion' => $cotizacion->token]),
-            ['respuesta' => $respuesta],
+            // El motivo va SIEMPRE: desde el 14-08 es obligatorio en las dos
+            // respuestas (la regla vive en CotizacionPublicoTest). Sin él el
+            // endpoint rechaza y estos tests dirían «el aviso no llegó» — el
+            // `assertRedirect` de arriba es justo lo que evitó ese diagnóstico.
+            ['respuesta' => $respuesta, 'motivo' => 'Motivo de prueba del cliente.'],
         )->assertRedirect();
     }
 

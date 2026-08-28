@@ -20,16 +20,20 @@
     </div>
 
     <div>
-        <x-input-label for="categoria" value="Categoría" />
+        {{-- La ayuda SOLO existe si hay producto con categoría de Bsale: nombra ese valor.
+             El @if va DENTRO del componente para que la ⓘ herede la misma condición — si
+             se evalúa siempre, en el formulario de creación ($p es null) revienta. --}}
+        <x-input-label for="categoria" value="Categoría">
+            @if ($p && $p->categoria)
+                <x-slot:ayuda>Se guarda como corrección propia de DaliGo (Bsale no la pisa). Origen Bsale: <span class="font-medium">{{ $p->categoria }}</span>.</x-slot:ayuda>
+            @endif
+        </x-input-label>
         <x-text-input id="categoria" class="mt-1.5" type="text" name="categoria" :value="old('categoria', $p?->categoria_efectiva)" list="categorias-list" placeholder="Ej. Repuestos industriales" />
         <datalist id="categorias-list">
             @foreach ($categorias as $c)
                 <option value="{{ $c }}"></option>
             @endforeach
         </datalist>
-        @if ($p && $p->categoria)
-            <x-input-hint>Se guarda como corrección propia de DaliGo (Bsale no la pisa). Origen Bsale: <span class="font-medium">{{ $p->categoria }}</span>.</x-input-hint>
-        @endif
         <x-input-error :messages="$errors->get('categoria')" class="mt-2" />
     </div>
 

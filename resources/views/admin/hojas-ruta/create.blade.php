@@ -61,7 +61,9 @@
                     </div>
 
                     <div>
-                        <x-input-label for="peoneta_nombre" value="Peoneta (opcional)" />
+                        <x-input-label for="peoneta_nombre" value="Peoneta (opcional)">
+                            <x-slot:ayuda>Se listan los últimos documentos espejados sin hoja. Un DTE anulado en Bsale se rechaza al crear.</x-slot:ayuda>
+                        </x-input-label>
                         <x-text-input id="peoneta_nombre" name="peoneta_nombre" type="text" class="mt-1.5 block w-full"
                                       :value="old('peoneta_nombre')" placeholder="Nombre del acompañante, si va" />
                         <x-input-hint>Si va, su nombre queda por seguridad y el bono se parte a medias.</x-input-hint>
@@ -102,7 +104,6 @@
                             </li>
                         @endforelse
                     </ul>
-                    <x-input-hint>Se listan los últimos documentos espejados sin hoja. Un DTE anulado en Bsale se rechaza al crear.</x-input-hint>
                 </x-seccion>
 
                 <x-form-footer>

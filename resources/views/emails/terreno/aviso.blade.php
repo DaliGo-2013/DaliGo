@@ -107,6 +107,15 @@
                                 </p>
                             @endif
 
+                            {{-- Las garantías del servicio industrial, salvo cuando la visita se
+                                 anuló: ahí no va a haber trabajo, y prometerle plazos de garantía
+                                 a alguien al que se le acaba de cancelar el servicio no informa,
+                                 confunde. En los otros casos el trabajo está por hacerse, que es
+                                 justo el momento en que el dueño quiere que el cliente los sepa. --}}
+                            @if ($motivo !== 'anulada')
+                                @include('emails.partials._garantias-industrial')
+                            @endif
+
                             @if ($agendadaInformativa)
                                 {{-- Sin la invitación de contacto: ya la dice el pie del correo, y
                                      salía dos veces en el mismo mensaje. --}}

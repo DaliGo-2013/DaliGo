@@ -51,7 +51,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'recibir traslado servicio',   // tecnico, jefe de bodega y jefe de ventas (en la matriz)
             // Agenda de terreno (tecnico industrial): plantas de osmosis,
             // llenadoras y lavadoras en el cliente.
-            'agendar servicio terreno',   // jefe/vendedores: agendar trabajos + editar el catalogo de servicios
+            // OJO: desde el 14-08-2026 esto es SOLO agendar trabajos. Editar el tarifario se
+            // separo en 'gestionar servicios terreno' (abajo) para que gerencia pueda dar una
+            // cosa sin la otra desde Administracion -> Roles.
+            'agendar servicio terreno',   // jefe/vendedores: agendar trabajos en terreno
             'ver agenda terreno',         // tecnico industrial: ver la agenda y marcar lo realizado
             // Cuando el tecnico NO esta disponible: feriados, vacaciones y dias a media
             // jornada. Cierra el dia para el formulario PUBLICO (el cliente deja de poder
@@ -59,6 +62,16 @@ class RolesAndPermissionsSeeder extends Seeder
             // lleva la agenda del tecnico industrial (dueño, 13-08-2026) — un vendedor no
             // deberia poder cerrarle la agenda a todos.
             'gestionar cierres agenda',
+            // EL TARIFARIO DE TERRENO, en DOS permisos (dueño, 14-08-2026): «que puedan elegir
+            // dar el permiso o no al perfil… separar el permiso de edicion del de agendar».
+            //
+            // Antes editar el tarifario venia pegado a 'agendar servicio terreno', asi que para
+            // que alguien pudiera corregir un precio habia que dejarlo agendar trabajos — y para
+            // que el tecnico industrial pudiera MIRAR precios, las dos cosas. Separados, cada
+            // perfil recibe exactamente lo que hace y el resto se decide desde la UI de Roles,
+            // sin tocar codigo ni esperar un deploy.
+            'ver servicios terreno',       // consultar precios y detalle (el tecnico en terreno)
+            'gestionar servicios terreno', // crear y editar el tarifario (decision comercial)
             'gestionar instalaciones',    // tecnico industrial / jefes: registro de instalaciones (Excel de terreno)
             'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
             // Informes de Servicio Tecnico (por dominio): el tecnico de taller ve
@@ -102,6 +115,11 @@ class RolesAndPermissionsSeeder extends Seeder
             // listado/ficha es distinto de recibir, categorizar y resolver.
             'view devoluciones',
             'manage devoluciones',
+            // Chat interno (MSG-1, PLAN-MENSAJES): todos con todos, asi que lo
+            // llevan TODOS los roles — pero es permiso propio (precedente
+            // 'simular carga') para poder apagarlo por rol/usuario desde
+            // Administracion → Roles sin deploy.
+            'usar mensajes',
         ];
 
         foreach ($permissions as $name) {
@@ -111,7 +129,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $admin->givePermissionTo($permissions);
 
-        Role::firstOrCreate(['name' => 'member', 'guard_name' => 'web']);
+        // member deja de ser rol-vacio con el chat (MSG-1): todos con todos.
+        Role::firstOrCreate(['name' => 'member', 'guard_name' => 'web'])
+            ->givePermissionTo('usar mensajes');
 
         // Roles del negocio: 8 roles ASCII (reconciliados por la migracion
         // reconcile_business_roles; los legacy Soplador/Jefatura ya no existen).
@@ -128,7 +148,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // 'simular carga': el vendedor es el usuario PRINCIPAL del simulador —
             // arma la ruta y responde "¿cuanto le cabe?" sin adivinar. Es solo
             // lectura y no escribe nada operativo, asi que no hay riesgo en darlo.
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga']);
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'autorizar reparacion', 'ver informe dispensadores', 'ver informe industrial', 'simular carga', 'usar mensajes']);
         // Jefes: reciben la bandeja de aprobaciones YA (M14) — queda vacia hasta
         // que un modulo les apunte reglas (M04 transferencias, M05 facturas);
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
@@ -136,10 +156,17 @@ class RolesAndPermissionsSeeder extends Seeder
         // taller (Fernando) — gestiona/edita/confirma y aplica descuentos — e
         // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
+        // SIN 'view users' desde el 27-08-2026 (dueño): ADMINISTRACIÓN es donde se
+        // cambian y habilitan los permisos, y ahí no entra ningún perfil salvo admin.
+        // Ese permiso era lo único que le hacía aparecer el módulo en el menú (el ítem
+        // Usuarios); nunca pudo tocar los roles —eso siempre fue 'manage roles', solo de
+        // admin—, pero el menú se lo ofrecía igual. Sacarlo de esta lista NO revoca nada
+        // en una base ya sembrada (givePermissionTo SUMA): eso lo hace la migración
+        // 2026_08_27_120000. Ver también App\Support\PermisosSoloAdmin.
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
             // hoja de ruta le da la llave 1 (autorizar pagos ruta).
-            ->givePermissionTo(['view users', 'manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta']);
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).
@@ -147,7 +174,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Bodega tambien simula: es quien carga y quien sabe si el numero cuadra.
             // UNIÓN 04-08: + devoluciones/simulador (M13) + la llave 3 de la
             // hoja de ruta (autorizar carga, P-DSP-08).
-            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar carga']);
+            ->givePermissionTo(['view users', 'manage production', 'view servicio tecnico', 'ver todo servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aprobar solicitudes', 'manage despachos', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar carga', 'usar mensajes']);
         // El conductor solo carga lotes de ingreso en ruta (permiso acotado): NO
         // edita órdenes ni la etapa de taller.
         //
@@ -156,7 +183,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // teléfono si lo controlan en un reparto. Ver es consulta; subir sigue
         // siendo de quien gestiona la flota ('manage vehiculos').
         Role::firstOrCreate(['name' => 'conductor', 'guard_name' => 'web'])
-            ->givePermissionTo(['crear lote servicio', 'confirmar entrega', 'ver vehiculos']);
+            ->givePermissionTo(['crear lote servicio', 'confirmar entrega', 'ver vehiculos', 'usar mensajes']);
         // El tecnico gestiona TODO el taller (M12): ingreso/edicion, etapa de
         // reparacion y tambien confirmar la recepcion (y puede cargar lotes).
         // NO lleva 'autorizar reparacion' (decision del dueño 07-08): el taller no
@@ -165,7 +192,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // de esta lista NO revoca nada en una base ya sembrada: eso lo hace la
         // migracion 2026_08_07_150100.
         Role::firstOrCreate(['name' => 'tecnico', 'guard_name' => 'web'])
-            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'ver informe dispensadores']);
+            ->givePermissionTo(['view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'confirmar servicio tecnico', 'crear lote servicio', 'recibir traslado servicio', 'ver informe dispensadores', 'usar mensajes']);
         // El tecnico INDUSTRIAL trabaja en terreno (plantas de osmosis,
         // llenadoras, lavadoras en el cliente): gestiona su agenda (agenda,
         // edita y marca lo realizado desde el calendario) e instalaciones. Es un
@@ -174,10 +201,13 @@ class RolesAndPermissionsSeeder extends Seeder
         // realizado); NO agenda ni edita la agenda (eso lo hacen jefes/vendedores).
         // Mantiene su registro de Instalaciones (su planilla). Si gerencia quiere
         // habilitarle agendar, lo activa en Administracion -> Roles.
+        // Y VE EL TARIFARIO (pedido del dueño 14-08-2026): en la planta del cliente le
+        // preguntan cuanto sale y que incluye, y hasta ahora la pantalla no le aparecia. Solo
+        // lectura: cambiar la lista de precios sigue siendo de jefatura/ventas.
         Role::firstOrCreate(['name' => 'tecnico_industrial', 'guard_name' => 'web'])
-            ->givePermissionTo(['ver agenda terreno', 'gestionar instalaciones', 'ver informe industrial']);
+            ->givePermissionTo(['ver agenda terreno', 'ver servicios terreno', 'gestionar instalaciones', 'ver informe industrial', 'usar mensajes']);
         Role::firstOrCreate(['name' => 'soplador', 'guard_name' => 'web'])
-            ->givePermissionTo('report production');
+            ->givePermissionTo(['report production', 'usar mensajes']);
         // JEFE DE SUCURSAL (2026-07-28). Nace por la regla 9 de Contabilidad: la
         // nota de credito —el unico modo de anular un documento tributario— la
         // pueden emitir el gerente, el jefe de ventas y los JEFES DE SUCURSAL
@@ -200,6 +230,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 // reciben este mismo permiso desde la UI de Roles cuando se creen
                 // sus cuentas — es aditivo y no exige tocar el codigo.
                 'despachar traslado servicio',
+                'usar mensajes',
             ]);
         // El gerente y el jefe de ventas tambien anulan (regla 9). El gerente usa
         // el rol admin, que ya recibe TODOS los permisos mas arriba.
@@ -221,7 +252,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // gana separar 'ver' de 'manage').
         Role::firstOrCreate(['name' => 'jefe_logistica', 'guard_name' => 'web'])
             // UNIÓN 04-08: + simulador (Marcos) + armar hojas de ruta (P-DSP-08).
-            ->givePermissionTo(['ver vehiculos', 'manage vehiculos', 'simular carga', 'manage hojas ruta']);
+            ->givePermissionTo(['ver vehiculos', 'manage vehiculos', 'simular carga', 'manage hojas ruta', 'usar mensajes']);
 
         // JEFE DE DESPACHO (2026-08-04, P-DSP-08). Nace con la hoja de ruta
         // digital: es la llave 2 de la cadena R11 (autoriza la RUTA y su
@@ -231,6 +262,6 @@ class RolesAndPermissionsSeeder extends Seeder
         // También arma hojas: en la práctica Ricardo cumple ambos papeles y
         // el dueño decidirá qué cuenta recibe qué rol.
         Role::firstOrCreate(['name' => 'jefe_despacho', 'guard_name' => 'web'])
-            ->givePermissionTo(['manage hojas ruta', 'autorizar ruta']);
+            ->givePermissionTo(['manage hojas ruta', 'autorizar ruta', 'usar mensajes']);
     }
 }

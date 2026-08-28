@@ -54,6 +54,38 @@ class SimuladorCargaController extends Controller
     ];
 
     /**
+     * POR QUÉ QUEDÓ CARGA AFUERA, en palabras. Un motivo del motor sin texto es una
+     * pantalla que dice «quedan 24 afuera» y no dice por qué — que es justo el dato con
+     * el que se negocia.
+     *
+     * Vivía HARDCODEADO en la vista, y eso tiene un modo de falla silencioso: si el
+     * motor aprende un motivo nuevo, la pantalla cae al `?? null` y se queda muda sin
+     * que nada falle. Acá es una sola fuente, y un candado exige que cubra todos los
+     * motivos que el motor puede emitir.
+     *
+     * Dos registros del MISMO juego de claves: el largo para la lista ancha de abajo, el
+     * corto para el panel de 330px, donde el largo envuelve en tres líneas. El candado
+     * verifica que ninguno se quede atrás del otro.
+     */
+    public const MOTIVOS = [
+        'espacio' => 'no queda espacio con el resto de la carga',
+        'peso' => 'se pasa de la carga máxima en kilos',
+        'largo' => 'no entra por el largo de la caja',
+        'ancho' => 'no entra por el ancho de la caja',
+        'alto' => 'no entra por la altura de la caja',
+        'pallet_vacio' => 'no entra ni una encima del pallet',
+    ];
+
+    public const MOTIVOS_CORTOS = [
+        'espacio' => 'no queda espacio',
+        'peso' => 'se pasa de kilos',
+        'largo' => 'no entra de largo',
+        'ancho' => 'no entra de ancho',
+        'alto' => 'no entra de alto',
+        'pallet_vacio' => 'no entra en el pallet',
+    ];
+
+    /**
      * Ejes que dibuja cada silueta. Es una CONSECUENCIA del dibujo, no un dato
      * del camión: no existe columna `ejes` y no vale inventarla para esto —
      * ninguna decisión del negocio depende de este número, solo el lienzo. Si
@@ -108,7 +140,18 @@ class SimuladorCargaController extends Controller
                     $fallar('El producto elegido ya no está en el catálogo.');
                 }
             }],
-            'lineas.*.cantidad' => ['required_with:lineas', 'integer', 'min:1', 'max:100000'],
+            // CANTIDAD OPCIONAL = «lo que quepa» (dueño 11-08: «los dos apartados se
+            // repiten, sería bueno juntar ambas opciones en una sola y que ahí se pueda
+            // calcular sobre un producto o varios»; cableado a la pantalla el 21-08).
+            //
+            // Vacía, la línea viaja al motor como ABIERTA y se llena con lo que entre —
+            // que es exactamente lo que contestaba la pestaña «¿Cuánto entra?». El motor
+            // ya lo soporta y lo tiene con candados (`LineaAbiertaTest`); lo único que
+            // faltaba era que el formulario dejara mandarla vacía.
+            //
+            // `min:1` se conserva: un CERO no es lo mismo que vacío —coloca nada, nunca
+            // «llename el camión»— y esa asimetría es un candado del motor.
+            'lineas.*.cantidad' => ['nullable', 'integer', 'min:1', 'max:100000'],
             // --- Bulto a medida. DESCARTABLE a propósito (decisión del dueño
             // 07-08): vive solo en esta simulación y NO se guarda en el catálogo.
             // El catálogo es de donde salen los cupos que se le prometen a un
@@ -252,6 +295,43 @@ class SimuladorCargaController extends Controller
             $bulto = $paletizables->first();
         }
 
+        // ── UN SOLO CAMINO: TODO PEDIDO ES UNA LISTA DE LÍNEAS ──
+        //
+        // Hasta el 21-08 la pantalla tenía dos preguntas y la de UN producto viajaba en
+        // `tipo_bulto_id` (+ `cantidad`, `estiba`, `apilado`). Al fusionarlas quedó un
+        // solo camino —líneas—, así que ese pedido se TRADUCE en vez de mantener dos
+        // motores de pantalla: mismos números, un solo lugar donde arreglarlos. Sirve a
+        // los links ya compartidos, al multi-camión y a la descarga en Excel.
+        //
+        // Y la traducción es exacta gracias a una convención que ya existía en ese
+        // formulario: la cantidad vacía significaba «el máximo», que es justo lo que ahora
+        // es una línea ABIERTA (ver `LineaAbiertaTest`).
+        //
+        // SIN NINGÚN PARÁMETRO **NO** SE TRADUCE NADA, y esto es una decisión y no un
+        // descuido: entrar a `/admin/carga` a secas deja el armador VACÍO y la pantalla sin
+        // camión. Sembrarlo con el primer producto del catálogo haría el camión aparecer de
+        // entrada —queda más lindo— pero es exactamente lo que el dueño rechazó en el QA
+        // del 21-08: *«salen siempre predeterminado los bidones y no quiero, quiero cargar
+        // lo que yo quiera sin previas»*. Una carga que uno no pidió es peor que una
+        // pantalla vacía, porque hay que darse cuenta de borrarla.
+        //
+        // No aplica en «Sobre pallet»: ese modo usa `tipo_bulto_id` para otra cosa —lo
+        // que va ENCIMA del pallet— y tiene su propio flujo.
+        $legado = empty($datos['lineas'])
+            && isset($datos['tipo_bulto_id'])
+            && ! $sobrePallet
+            && $bulto !== null;
+        if ($legado) {
+            $datos['lineas'] = [[
+                'tipo' => (int) $datos['tipo_bulto_id'],
+                // La cantidad vacía ya significaba «el máximo» en ese formulario, que es
+                // exactamente una línea ABIERTA. La traducción es exacta, no aproximada.
+                'cantidad' => $datos['cantidad'] ?? '',
+                'estiba' => $datos['estiba'] ?? 'auto',
+                'apilado' => $datos['apilado'] ?? null,
+            ]];
+        }
+
         // Modo: con líneas es CARGA MIXTA («¿cabe esta carga?»); sin líneas es el
         // cupo máximo de un solo producto («¿cuánto entra?»). La misma pantalla
         // responde las dos preguntas, que son distintas.
@@ -292,10 +372,6 @@ class SimuladorCargaController extends Controller
             ? $this->calcularEnPallet($camion, $bulto, $pallet, $estiba, $apilado)
             : null;
 
-        $resultado = ($camion && $bulto && $mixta === null && $enPallet === null)
-            ? $this->calculo->cupo($camion->paraCalculo(), $bulto->paraCalculo($estiba, $apilado))
-            : null;
-
         // MULTI-CAMIÓN: la MISMA pregunta que se está haciendo, respondida para
         // todos los camiones a la vez. La pregunta real de Comercial no es «¿entra
         // en este?» sino «¿en cuál conviene mandarlo?», y hasta ahora había que
@@ -309,20 +385,14 @@ class SimuladorCargaController extends Controller
             $aprovechar,
         );
 
-        // La PRUEBA: «¿me entran 50?» encima del cupo máximo. No toca el motor — capa
-        // el resultado y el dibujo a lo pedido, y el veredicto sale de comparar.
+        // LA «CANTIDAD A PROBAR» YA NO ES UNA CAPA APARTE. Era «¿me entran 50?» encima del
+        // cupo máximo: se calculaba el techo y después se capaba el dibujo a lo pedido.
+        // Con un solo camino la cantidad ES la de la línea, así que el motor coloca
+        // exactamente lo pedido y el dibujo son los bloques que colocó — el veredicto sale
+        // de `cabeTodo` y no de comparar dos números calculados aparte. Se conserva la
+        // lectura del parámetro porque los links viejos lo traen y la traducción de arriba
+        // lo usa.
         $cantidad = isset($datos['cantidad']) ? (int) $datos['cantidad'] : null;
-        $prueba = null;
-        if ($resultado !== null && $cantidad !== null) {
-            $porBulto = max(1, $bulto->unidades);
-            $prueba = [
-                'pedidas' => $cantidad,
-                'caben' => $cantidad <= $resultado['unidades'],
-                'cargadas' => min($cantidad, $resultado['unidades']),
-                // La bolsa viaja completa o no viaja: 23 unidades de a 5 son 5 bolsas.
-                'bultos' => min((int) ceil($cantidad / $porBulto), $resultado['bultos']),
-            ];
-        }
 
         return view('admin.carga.index', [
             'camiones' => $camiones,
@@ -334,7 +404,13 @@ class SimuladorCargaController extends Controller
             // No CORRIGE el número: lo acompaña. Aplicar el factor al cupo es una decisión
             // del dueño y necesita antes suficientes cargas para que el promedio signifique
             // algo — mientras tanto, mostrar los dos es más honesto que reemplazar uno.
-            'medido' => $this->medidoEnTerreno($camion, $bulto, $estiba),
+            // Sus dos argumentos salen de la LÍNEA cuando la carga es de una sola, no de
+            // `tipo_bulto_id`/`estiba` del formulario: desde la fusión (21-08) el armador
+            // manda `lineas[]` y puede no mandar `tipo_bulto_id`, y entonces `$bulto` cae
+            // al primero del catálogo — la pantalla diría «en terreno entraron 390» al
+            // lado del número de OTRO producto. Con varias líneas no se muestra: no hay
+            // una carga real anotada que corresponda a esa mezcla.
+            'medido' => $this->medidoDeLaPantalla($camion, $mixta, $bulto, $estiba),
             // Lo que se puede paletizar: solo cajas. Va aparte de `bultos` para que
             // los otros dos modos sigan ofreciendo el catálogo completo.
             'paletizables' => $paletizables,
@@ -342,7 +418,6 @@ class SimuladorCargaController extends Controller
             'comparativa' => $comparativa,
             'camion' => $camion,
             'bulto' => $bulto,
-            'resultado' => $resultado,
             'mixta' => $mixta,
             'estiba' => $estiba,
             'orden' => $enOrdenDeLista ? 'lista' : 'auto',
@@ -350,7 +425,6 @@ class SimuladorCargaController extends Controller
             'pallet' => $pallet,
             'enPallet' => $enPallet,
             'apilado' => $apilado,
-            'prueba' => $prueba,
             'cantidad' => $cantidad,
             // Las líneas que el usuario armó, para redibujar el formulario tal
             // cual tras el GET (y como semilla del Alpine).
@@ -358,8 +432,15 @@ class SimuladorCargaController extends Controller
                 ->map(fn (array $l) => [
                     // 0 = bulto a medida: el <select> del formulario usa ese valor
                     // para mostrar los campos de medidas en vez del catálogo.
-                    'tipo' => (int) ($l['tipo'] ?? 0),
-                    'cantidad' => (int) $l['cantidad'],
+                    // '' = «sin elegir» (la línea nueva del 21-08) y se CONSERVA:
+                    // castearla con ?? 0 la devolvería convertida en bulto a medida
+                    // — el borrado/mutación silencioso de la bitácora [2026-08-20].
+                    'tipo' => ($l['tipo'] ?? '') === '' ? '' : (int) $l['tipo'],
+                    // La cantidad VACÍA se conserva vacía: es «lo que quepa». Con
+                    // `(int)` volvía como 0, y un 0 le dice al motor «no coloques
+                    // nada» — lo contrario exacto de lo que el usuario pidió. Es la
+                    // misma familia que el `?? 0` de la bitácora [2026-08-20].
+                    'cantidad' => ($l['cantidad'] ?? '') === '' ? '' : (int) $l['cantidad'],
                     // 0/1 y no true/false: es el valor del <select> del formulario, y
                     // Alpine lo compara con las opciones tal cual viene.
                     'estiba' => isset(TipoBulto::ESTIBAS_ELEGIBLES[$l['estiba'] ?? '']) ? $l['estiba'] : 'auto',
@@ -386,7 +467,7 @@ class SimuladorCargaController extends Controller
             // medidas. SIEMPRE viaja como lista de bloques: el cupo máximo es el
             // caso particular de un solo bloque.
             'escena' => $this->escena(
-                $camion, $bulto, $resultado, $mixta, $estiba, $enPallet, $prueba['bultos'] ?? null,
+                $camion, $bulto, $mixta, $enPallet,
                 new AcomodoManual(
                     $datos['acomodo'] ?? [],
                     isset($datos['acomodo_de']) ? (int) $datos['acomodo_de'] : null,
@@ -414,7 +495,13 @@ class SimuladorCargaController extends Controller
         // La parada de cada línea (lote 6). 0 = sin declarar, o sea una sola entrega.
         $paradas = [];
         $lineas = [];
+        // Qué líneas son ABIERTAS («lo que quepa»): las que vienen sin cantidad. Se
+        // resuelve UNA vez acá y se consulta en los cuatro lugares que preguntan
+        // «¿cuánto se pidió?», porque la respuesta —«no se pidió un número»— tiene que
+        // ser la misma en todos o la pantalla se contradice.
+        $abiertas = [];
         foreach (array_values($lineasInput) as $i => $l) {
+            $abiertas[$i] = ($l['cantidad'] ?? null) === null || $l['cantidad'] === '';
             $paradas[$i] = max(0, (int) ($l['parada'] ?? 0));
             // La estiba se elige POR LÍNEA: en la misma carga puede ir un pack de
             // botellones acostado, otro de pie y una caja en automático. Un valor
@@ -438,11 +525,14 @@ class SimuladorCargaController extends Controller
                 $palletsDeLinea[$i] = $pal;
                 // Con CERO cajas encima no se sube ni un pallet: se le pasan 0 al motor
                 // para que no aparezcan tarimas vacías en el camión, y la fila lo explica.
-                $lineas[$i] = [
-                    'bulto' => $pal['bulto'],
-                    'cantidad' => $pal['porPallet']['bultos'] > 0 ? max(0, (int) $l['cantidad']) : 0,
-                    'parada' => $paradas[$i],
-                ];
+                // Ese 0 GANA sobre «abierta»: un pallet vacío no se rellena hasta llenar
+                // el camión de tarimas sin nada arriba.
+                $palletVacio = $pal['porPallet']['bultos'] === 0;
+                $abiertas[$i] = $abiertas[$i] && ! $palletVacio;
+                $lineas[$i] = ['bulto' => $pal['bulto'], 'parada' => $paradas[$i]]
+                    + ($abiertas[$i]
+                        ? ['abierta' => true]
+                        : ['cantidad' => $palletVacio ? 0 : max(0, (int) $l['cantidad'])]);
 
                 continue;
             }
@@ -457,11 +547,15 @@ class SimuladorCargaController extends Controller
             // El vendedor habla en UNIDADES (200 botellones); el motor en BULTOS
             // (bolsas de 5). Se redondea HACIA ARRIBA: 198 botellones son 40
             // bolsas — la bolsa viaja completa o no viaja.
+            // Una línea ABIERTA no lleva cantidad: el motor la llena con lo que entre
+            // (`LineaAbiertaTest`). Va sin la clave `cantidad`, no con cantidad 0 — el
+            // cero significa «no coloques nada», que es lo contrario.
             $lineas[$i] = [
                 'bulto' => $modelo->paraCalculo($estibas[$i], $apilados[$i]),
-                'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
                 'parada' => $paradas[$i],
-            ];
+            ] + ($abiertas[$i] ? ['abierta' => true] : [
+                'cantidad' => (int) ceil(((int) $l['cantidad']) / max(1, $modelo->unidades)),
+            ]);
         }
 
         $resultado = $this->calculo->carga(
@@ -472,7 +566,11 @@ class SimuladorCargaController extends Controller
         $filas = [];
         foreach ($modelos as $i => $modelo) {
             $r = $resultado['lineas'][$i];
-            $pedidasUnidades = (int) $lineasInput[array_keys($lineasInput)[$i]]['cantidad'];
+            // Una línea abierta NO tiene cantidad pedida: es `null`, no 0. Decir «0
+            // pedidas» de algo que se llenó hasta el tope se lee como que falló.
+            $pedidasUnidades = $abiertas[$i]
+                ? null
+                : (int) $lineasInput[array_keys($lineasInput)[$i]]['cantidad'];
 
             // POR QUÉ QUEDÓ AIRE ARRIBA DE ESTE PRODUCTO (pedido del dueño 10-08:
             // «necesito que los bidones también lleguen hasta el techo»).
@@ -529,6 +627,26 @@ class SimuladorCargaController extends Controller
             // (§3.3.5 — pasa de verdad: la bolsa de botellones mide 130 y el pallet 120).
             $palletVacio = $pal !== null && $pal['porPallet']['bultos'] === 0;
 
+            // ── EL CUPO DE ESTA LÍNEA SOLA, cuando la pregunta es «¿cuánto entra?» ──
+            // Se le pide a `cupo()` UNA vez y sirve dos cosas que la pantalla de un
+            // producto tenía y la de varios no (los dos casos que se colaban al fusionar,
+            // 21-08): el LÍMITE fino («el largo de la caja», no «espacio») y CUÁNTOS
+            // ENTRARÍAN SI EL PESO NO CORTARA — el número del cartel «se llena de kilos
+            // antes que de espacio», que el dueño pidió el 11-08 y que sin esto
+            // desaparecía en silencio al unificar.
+            //
+            // Solo cuando la línea es ABIERTA y ES LA ÚNICA: `cupo()` describe el camión
+            // VACÍO con UN producto, así que junto a una carga mixta estaría explicando
+            // un camión que no es el que se dibujó. Con más líneas, `lleno_por` contesta
+            // lo mismo más gruesamente y eso es lo honesto.
+            $soloEstaLinea = $abiertas[$i] && count($modelos) === 1 && $pal === null;
+            $cupoSolo = $soloEstaLinea
+                ? $this->calculo->cupo(
+                    $camion->paraCalculo($ocupado['cm'] ?? 0, $ocupado['kg'] ?? 0.0),
+                    $modelo->paraCalculo($estibas[$i], $apilados[$i]),
+                )
+                : null;
+
             $filas[$i] = [
                 'modelo' => $modelo,
                 'estiba' => $estibas[$i],
@@ -540,7 +658,54 @@ class SimuladorCargaController extends Controller
                 'pedidas_unidades' => $pedidasUnidades,
                 // Cargadas se reporta capado a lo pedido: si pidió 198 y la
                 // última bolsa completa las 200, decir «cargadas 200» confunde.
-                'cargadas_unidades' => $palletVacio ? 0 : min($r['unidades_colocadas'], $pedidasUnidades),
+                // En una abierta no se capa contra lo pedido: lo colocado ES la respuesta.
+                'cargadas_unidades' => $palletVacio
+                    ? 0
+                    : ($pedidasUnidades === null
+                        ? $r['unidades_colocadas']
+                        : min($r['unidades_colocadas'], $pedidasUnidades)),
+                // Que la fila sepa que se pidió «lo que quepa», y con qué se llenó
+                // (espacio o kilos): sin eso la pantalla no puede distinguir «entran 84»
+                // de «pediste 84 y entraron 84».
+                'abierta' => $abiertas[$i],
+                'lleno_por' => $r['lleno_por'] ?? null,
+                // ── «DE DÓNDE SALE ESE NÚMERO», por línea ──
+                // Al fusionar las dos pantallas (21-08) esto era lo ÚNICO que la de un
+                // producto tenía y la de varios no: la rejilla con que se acomodó y qué
+                // se agotó primero. Sin traerlo, la fusión habría perdido la
+                // transparencia del cálculo — el caso que solo atendía una de las dos
+                // (la lección de la bitácora [2026-08-20]).
+                'rejilla' => $bloque['rejilla'] ?? null,
+                // CUÁNTO ESPACIO OCUPA ESTA LÍNEA (pedido del dueño 21-08, mostrando el
+                // panel de EasyCargo: «el detalle de cada carga, cantidad y espacio que
+                // ocupa»). Es el volumen de la caja envolvente de lo COLOCADO —no de lo
+                // pedido—, porque es el espacio que de verdad se está usando en el
+                // dibujo que está al lado.
+                //
+                // Sale del bulto que se le pasó AL MOTOR (`$lineas[$i]['bulto']`) y no de
+                // las medidas del catálogo: en una línea en pallet el bulto es el pallet
+                // ARMADO, y medir la caja de tapas daría el volumen de la carga sin la
+                // tarima. Un solo lugar, el mismo que calculó.
+                'volumen_m3' => round(
+                    ($lineas[$i]['bulto']['largo'] * $lineas[$i]['bulto']['ancho'] * $lineas[$i]['bulto']['alto'] / 1_000_000)
+                    * ($palletVacio ? 0 : $r['colocados']),
+                    2,
+                ),
+                // Qué se agotó. Para una línea que no entró completa ya lo dice `motivo`
+                // con el detalle fino (largo/ancho/alto/peso/espacio). Para una ABIERTA
+                // Y SOLA —o sea la vieja pregunta «¿cuánto entra?»— se le pide el
+                // límite a `cupo()`, que es de donde salía ese texto antes y reproduce
+                // los cupos de referencia. Con más líneas arriba no se usa: `cupo()`
+                // describe el camión VACÍO, y mostrar su límite junto a una carga mixta
+                // sería explicar un camión que no es el que se dibujó.
+                'limita' => $r['motivo'] ?? ($cupoSolo['limite'] ?? $r['lleno_por'] ?? null),
+                // CUÁNTOS BULTOS ENTRARÍAN SI EL PESO NO CORTARA. Es el número del cartel
+                // «se llena de kilos antes que de espacio»: sale de la rejilla que da el
+                // ESPACIO, ignorando los kilos. `null` cuando la pregunta no aplica (una
+                // carga de varias líneas, o una línea con cantidad pedida).
+                'por_espacio' => $cupoSolo === null
+                    ? null
+                    : $cupoSolo['rejilla']['largo'] * $cupoSolo['rejilla']['ancho'] * $cupoSolo['rejilla']['alto'],
                 'bultos_colocados' => $palletVacio ? 0 : $r['colocados'],
                 'bultos_pedidos' => $r['pedidos'],
                 'motivo' => $palletVacio ? 'pallet_vacio' : $r['motivo'],
@@ -581,8 +746,13 @@ class SimuladorCargaController extends Controller
             ? null
             : max(0, $camion->peso_max_kg - (int) round($ocupadoKg));
         $pedidoKg = 0.0;
-        foreach ($lineas as $l) {
-            $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0)) * $l['cantidad'];
+        foreach ($lineas as $i => $l) {
+            // Una línea ABIERTA no puede pasarse de peso: el motor la corta justo ahí
+            // (`lleno_por` = peso). Así que lo «pedido» de una abierta es lo COLOCADO —
+            // usar su cantidad no existe, y contarla como 0 haría que el aviso de
+            // sobrepeso ignorara kilos que sí van arriba del camión.
+            $pedidoKg += ((float) ($l['bulto']['peso'] ?? 0))
+                * ($l['cantidad'] ?? $resultado['lineas'][$i]['colocados']);
         }
 
         return [
@@ -825,6 +995,36 @@ class SimuladorCargaController extends Controller
      *
      * @return ?array{veces:int, factor:float, promedio:int, ultima:?string}
      */
+    /**
+     * A QUÉ COMBINACIÓN le corresponde la calibración de esta pantalla.
+     *
+     * `medidoEnTerreno()` responde por un (camión, producto, estiba) exacto — así se
+     * anotó la carga real. El trabajo de acá es elegir bien esos tres, que dejó de ser
+     * obvio al fusionar las dos preguntas (21-08): la carga viaja en `lineas[]` y el
+     * `tipo_bulto_id` del formulario puede estar apuntando a otra cosa.
+     *
+     * Con más de una línea devuelve `null` a propósito: una carga real es de un producto,
+     * y ponerle el promedio de las bolsas al lado de una mezcla de bolsas y cajas sería
+     * exactamente el número creíble y equivocado. Tampoco aplica a una línea en pallet:
+     * lo que se anotó en terreno son bultos sueltos.
+     */
+    private function medidoDeLaPantalla(?CamionSimulacion $camion, ?array $mixta, ?TipoBulto $bulto, string $estiba): ?array
+    {
+        if ($mixta === null) {
+            return $this->medidoEnTerreno($camion, $bulto, $estiba);
+        }
+
+        if (count($mixta['lineas']) !== 1) {
+            return null;
+        }
+
+        $fila = $mixta['lineas'][array_key_first($mixta['lineas'])];
+
+        return $fila['pallet'] !== null
+            ? null
+            : $this->medidoEnTerreno($camion, $fila['modelo'], $fila['estiba']);
+    }
+
     private function medidoEnTerreno(?CamionSimulacion $camion, ?TipoBulto $bulto, string $estiba): ?array
     {
         if ($camion === null || $bulto === null || ! $bulto->exists) {
@@ -977,13 +1177,19 @@ class SimuladorCargaController extends Controller
 
     /**
      * La escena del visor: vehículo + lista de bloques (posición, orientación,
-     * rejilla, cantidad, color y nombre). En cupo máximo es UN bloque; en mixta,
-     * los que el acomodo por zonas haya puesto — ordenados fondo → puerta para
-     * que la animación cargue como se carga de verdad.
+     * rejilla, cantidad, color y nombre) — los que el acomodo por zonas haya puesto,
+     * ordenados fondo → puerta para que la animación cargue como se carga de verdad.
+     *
+     * DOS ENTRADAS Y NO TRES. Había una tercera —el cupo de un producto, que armaba UN
+     * bloque a mano desde `cupo()`— y desapareció al fusionar las dos preguntas (21-08):
+     * un producto es una carga de una línea, así que entra por `$mixta` como todo lo
+     * demás. Con eso el dibujo de un producto pasa a salir de los bloques que el motor
+     * COLOCÓ en vez de una rejilla reconstruida acá, que es la diferencia entre dibujar
+     * lo verificado y dibujar una segunda versión del cálculo.
      */
-    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $resultado, ?array $mixta, string $estiba = 'auto', ?array $enPallet = null, ?int $topeBultos = null, ?AcomodoManual $acomodoManual = null): ?array
+    private function escena(?CamionSimulacion $camion, ?TipoBulto $bulto, ?array $mixta, ?array $enPallet = null, ?AcomodoManual $acomodoManual = null): ?array
     {
-        if (! $camion || ($resultado === null && $mixta === null && $enPallet === null)) {
+        if (! $camion || ($mixta === null && $enPallet === null)) {
             return null;
         }
 
@@ -1011,96 +1217,70 @@ class SimuladorCargaController extends Controller
         // largo con que quedó colocado contra el suyo (`interiorDelPallet`), así que si
         // el giro llega ANTES de ese mapeo, el pallet acomodado a mano gira su carga por
         // el mismo camino que ya usaba el giro del motor — sin código nuevo.
-        $acomodo = null;
+        // Llegar acá con `$mixta` nulo es imposible: la guarda de arriba corta sin camión y
+        // sin ninguna de las dos entradas, y el pallet ya salió por su propio return. El
+        // `if` que envolvía esto existía por la tercera entrada —el cupo de un producto—
+        // que se fue con la fusión; sin él, un nulo acá sería un error de programación y
+        // no un caso, así que se dice en voz alta en vez de dibujar un camión vacío.
+        //
+        // El orden fondo → puerta se fija ACÁ y no se vuelve a tocar: es el ordinal con el
+        // que el acomodo guarda cada posición. Reordenar después de mover dejaría las
+        // posiciones apuntando a otros bloques en el próximo recálculo.
+        $acomodo = $acomodoManual->aplicar(
+            collect($mixta['resultado']['bloques'])->sortBy([['x', 'asc'], ['y', 'asc']])->values()->all(),
+            $camion->largo_cm,
+            $camion->ancho_cm,
+            $productoPorLinea,
+        );
 
-        if ($mixta !== null) {
-            // El orden fondo → puerta se fija ACÁ y no se vuelve a tocar: es el ordinal
-            // con el que el acomodo guarda cada posición. Reordenar después de mover
-            // dejaría las posiciones apuntando a otros bloques en el próximo recálculo.
-            $acomodo = $acomodoManual->aplicar(
-                collect($mixta['resultado']['bloques'])->sortBy([['x', 'asc'], ['y', 'asc']])->values()->all(),
-                $camion->largo_cm,
-                $camion->ancho_cm,
-                $productoPorLinea,
-            );
+        $bloques = collect($acomodo['bloques'])
+            ->map(function (array $b) use ($mixta, $m) {
+                $fila = $mixta['lineas'][$b['linea']];
 
-            $bloques = collect($acomodo['bloques'])
-                ->map(function (array $b) use ($mixta, $m) {
-                    $fila = $mixta['lineas'][$b['linea']];
+                $bloque = [
+                    'x' => $m($b['x']),
+                    'y' => $m($b['y']),
+                    // A qué ALTURA apoya (segundo piso, 11-08). Sin pasarlo, el motor
+                    // contaría las bolsas de arriba y el lienzo las dibujaría en el
+                    // piso, atravesando el muro: el dibujo dejaría de ser la prueba de
+                    // lo que el motor hizo, que es todo lo que aporta.
+                    'apoyo' => $m($b['apoyo'] ?? 0),
+                    'orientacion' => array_map($m, $b['orientacion']),
+                    'rejilla' => $b['rejilla'],
+                    'cantidad' => $b['cantidad'],
+                    'color' => self::COLORES_3D[$b['linea'] % count(self::COLORES_3D)],
+                    'letra' => self::letra($b['linea']),
+                    'nombre' => $fila['modelo']->nombre,
+                    'forma' => $fila['modelo']->formaVisor(),
+                    // El visor tiene que dibujar la MISMA estiba que se calculó: si no, el
+                    // dibujo diría «de pie» mientras el cálculo dice «acostado» y el
+                    // lienzo dejaría de ser la prueba de lo que el motor hizo, que es todo
+                    // lo que aporta.
+                    'estiba' => TipoBulto::estibaEfectiva($fila['estiba']),
+                    // En qué parada baja este bloque (lote 6). 0 = una sola entrega.
+                    // Viaja en la escena porque de ahí sale el ORDEN DE CARGA del
+                    // Excel, que es la hoja que lee el andén: cargar en el orden
+                    // correcto sin saber a qué parada va cada bloque es media
+                    // instrucción.
+                    'parada' => $fila['parada'] ?? 0,
+                ];
 
-                    $bloque = [
-                        'x' => $m($b['x']),
-                        'y' => $m($b['y']),
-                        // A qué ALTURA apoya (segundo piso, 11-08). Sin pasarlo, el motor
-                        // contaría las bolsas de arriba y el lienzo las dibujaría en el
-                        // piso, atravesando el muro: el dibujo dejaría de ser la prueba de
-                        // lo que el motor hizo, que es todo lo que aporta.
-                        'apoyo' => $m($b['apoyo'] ?? 0),
-                        'orientacion' => array_map($m, $b['orientacion']),
-                        'rejilla' => $b['rejilla'],
-                        'cantidad' => $b['cantidad'],
-                        'color' => self::COLORES_3D[$b['linea'] % count(self::COLORES_3D)],
-                        'letra' => self::letra($b['linea']),
-                        'nombre' => $fila['modelo']->nombre,
-                        'forma' => $fila['modelo']->formaVisor(),
-                        // El visor tiene que dibujar la MISMA estiba que se calculó: si no, el
-                        // dibujo diría «de pie» mientras el cálculo dice «acostado» y el
-                        // lienzo dejaría de ser la prueba de lo que el motor hizo, que es todo
-                        // lo que aporta.
-                        'estiba' => TipoBulto::estibaEfectiva($fila['estiba']),
-                        // En qué parada baja este bloque (lote 6). 0 = una sola entrega.
-                        // Viaja en la escena porque de ahí sale el ORDEN DE CARGA del
-                        // Excel, que es la hoja que lee el andén: cargar en el orden
-                        // correcto sin saber a qué parada va cada bloque es media
-                        // instrucción.
-                        'parada' => $fila['parada'] ?? 0,
-                    ];
-
-                    // Una línea EN PALLET se dibuja como pallet: tarima de madera con su
-                    // carga encima, con el MISMO `forma: 'pallet'` + `interior` que ya usa
-                    // el modo Sobre pallet. Cero JS nuevo — el visor no distingue de qué
-                    // pantalla vino el bloque.
-                    // `array_merge` y NO el operador `+`: `+` conserva la clave de la
-                    // izquierda, así que `forma` habría seguido siendo 'caja' y el pallet
-                    // se habría dibujado como un cajón liso, en silencio.
-                    return $fila['pallet'] === null ? $bloque : array_merge($bloque, [
-                        'forma' => 'pallet',
-                        'base' => $m($fila['pallet']['base_cm']),
-                        'interior' => $this->interiorDelPallet(
-                            $fila['pallet'], $b['orientacion']['largo'], $m, $bloque['color'],
-                        ),
-                    ]);
-                })
-                ->all();
-        } else {
-            // Con una CANTIDAD A PROBAR, el dibujo se capa a lo pedido: si el veredicto
-            // dice «entran tus 50», el camión tiene que mostrar 50, no el máximo.
-            $enEscena = min($resultado['bultos'], $topeBultos ?? PHP_INT_MAX);
-
-            // El cupo máximo también se puede acomodar: es el caso de UN bloque, y ahí
-            // vive la carga «de a un bulto» que se pidió (una línea de 1 es un bloque de
-            // 1, o sea la caja suelta que se arrastra y se gira).
-            $acomodo = $acomodoManual->aplicar($enEscena > 0 ? [[
-                'x' => 0,
-                'y' => 0,
-                'orientacion' => $resultado['orientacion'],
-                'rejilla' => $resultado['rejilla'],
-                'cantidad' => $enEscena,
-            ]] : [], $camion->largo_cm, $camion->ancho_cm, $productoPorLinea);
-
-            $bloques = collect($acomodo['bloques'])->map(fn (array $b) => [
-                'x' => $m($b['x']),
-                'y' => $m($b['y']),
-                'orientacion' => array_map($m, $b['orientacion']),
-                'rejilla' => $b['rejilla'],
-                'cantidad' => $b['cantidad'],
-                'color' => self::COLORES_3D[0],
-                'letra' => self::letra(0),
-                'nombre' => $bulto->nombre,
-                'forma' => $bulto->formaVisor(),
-                'estiba' => TipoBulto::estibaEfectiva($estiba),
-            ])->all();
-        }
+                // Una línea EN PALLET se dibuja como pallet: tarima de madera con su
+                // carga encima, con el MISMO `forma: 'pallet'` + `interior` que ya usa
+                // el modo Sobre pallet. Cero JS nuevo — el visor no distingue de qué
+                // pantalla vino el bloque.
+                // `array_merge` y NO el operador `+`: `+` conserva la clave de la
+                // izquierda, así que `forma` habría seguido siendo 'caja' y el pallet
+                // se habría dibujado como un cajón liso, en silencio.
+                return $fila['pallet'] === null ? $bloque : array_merge($bloque, [
+                    'forma' => 'pallet',
+                    'base' => $m($fila['pallet']['base_cm']),
+                    'interior' => $this->interiorDelPallet(
+                        $fila['pallet'], $b['orientacion']['largo'], $m, $bloque['color'],
+                    ),
+                ]);
+            })
+            ->all();
 
         return [
             // La clave sigue llamándose 'vehiculo' porque es el contrato con

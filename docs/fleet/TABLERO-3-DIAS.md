@@ -79,6 +79,26 @@ se acumulan localmente si el gate está activo.
 
 ## Incidencias
 
+### I-11 · Rojo de ENTORNO del Director: `vendor/symfony/error-handler` incompleto — RESUELTA 14-08
+Durante la verificación de A2, `AutorizacionCitaTest` (del PR #9, ajeno al lote) falló con
+`include(assets/images/favicon.png.base64): Failed to open stream`. El stack apuntaba a
+`vendor/symfony/error-handler/HtmlErrorRenderer.php:345` — el favicon es SÍNTOMA: el POST
+disparaba el renderizador de errores de Symfony, que no encontraba su propio asset porque
+**el paquete estaba instalado incompleto en el worktree del Director** (faltaba
+`Resources/assets/images/favicon.png.base64`).
+**Cómo se confirmó que era entorno, no código (en este orden):**
+1. El test es de OTRO territorio (PR #9), no del lote en verificación.
+2. Reproduce en `origin/main` PURO (sin el merge del lote) → no lo introduce el lote.
+3. **El CI de main (vendor fresco) tiene ese test en VERDE** → el código está bien.
+4. `composer reinstall symfony/error-handler` restauró el asset → test 15/15 verde.
+**Receta:** ante un rojo por un asset/clase faltante de un paquete de `vendor/`, es entorno
+—reinstalar ese paquete (`composer reinstall <paquete>`), no tocar el código—. Confirmar
+siempre contra el CI de main. **4ª incidencia de entorno del worktree del Director en la
+semana** (las otras: composer.lock desincronizado → ErroresServidorTest; worktree cortado a
+media sesión; `node_modules/vite` corrupto → `npm ci`). Patrón: el vendor/node_modules del
+worktree aislado se instala/queda incompleto — ante un rojo AISLADO que el forjador no vio,
+sospechar del entorno ANTES que del lote, y confirmar con el CI de main.
+
 ### I-10 · `git push` a main rechazado con «Internal Server Error» — RESUELTA 13-08 (receta fijada)
 Durante el merge del Lote 3 (`47785ad`), tres `git push origin HEAD:main` seguidos fueron
 rechazados con `remote: Internal Server Error` + Request ID, mientras githubstatus.com marcaba
