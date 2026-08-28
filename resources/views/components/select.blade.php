@@ -1,5 +1,6 @@
+{{-- `min-h-11 sm:min-h-0`: mínimo táctil de 44px en móvil. El porqué completo está en primary-button.blade.php (medición del 28-08). --}}
 @props(['disabled' => false])
 
-<select @disabled($disabled) {{ $attributes->merge(['class' => 'block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60']) }}>
+<select @disabled($disabled) {{ $attributes->merge(['class' => 'block min-h-11 sm:min-h-0 w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-base sm:text-sm text-neutral-900 shadow-sm transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60']) }}>
     {{ $slot }}
 </select>

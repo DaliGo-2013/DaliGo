@@ -33,7 +33,12 @@
     @foreach ($tabs as $tab)
         <a href="{{ $tab['url'] }}"
            @if ($tab['activa']) aria-current="true" @endif
-           class="rounded-lg px-1.5 py-2 text-center text-[13px] font-medium leading-tight transition sm:text-sm
+           {{-- flex + min-h-11: la pestaña medía 32px de alto en el celular. El flex
+                es lo que permite centrar el rótulo cuando el mínimo lo hace más alto
+                que su texto (con un `block` quedaría pegado arriba), y el rótulo
+                sigue envolviendo en dos líneas si no cabe. Desde sm: vuelve la
+                densidad de escritorio. --}}
+           class="flex min-h-11 items-center justify-center rounded-lg px-1.5 py-2 text-center text-[13px] font-medium leading-tight transition sm:min-h-0 sm:text-sm
                   {{ $tab['activa']
                        ? 'bg-white text-brand-700 shadow-sm'
                        : 'text-neutral-500 hover:text-neutral-800' }}">

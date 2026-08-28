@@ -9,7 +9,10 @@
 <x-dropdown :align="$dgAlign ?? 'right'" width="w-80" anchoMovil :direction="($dgArriba ?? false) ? 'up' : 'down'">
     <x-slot name="trigger">
         <button type="button" title="Notificaciones"
-                class="relative inline-flex items-center rounded-md border border-transparent p-2 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none">
+                {{-- Mínimo táctil en móvil (44px): medía 40x40 y está en la barra de
+                     TODAS las pantallas, así que era el control más tocado de la app.
+                     Mismo idioma que las filas del panel de abajo y que `icon-button`. --}}
+                class="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-transparent p-2 text-neutral-600 transition duration-150 hover:text-neutral-900 focus:outline-none sm:min-h-0 sm:min-w-0">
             <x-icon.bell class="h-6 w-6" />
             @if ($dgConteo > 0)
                 <span class="absolute right-0.5 top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold leading-none text-white">{{ $dgConteo > 9 ? '9+' : $dgConteo }}</span>

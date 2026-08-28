@@ -206,13 +206,13 @@
                 permanente, actualízalo en Bsale (DaliGo lo re-sincroniza solo cada hora).
             </p>
         @elseif ($cc)
-            <label class="inline-flex items-start gap-2 text-sm text-neutral-700">
+            <label class="inline-flex min-h-11 items-start gap-2 py-1.5 text-sm text-neutral-700 sm:min-h-0 sm:py-0">
                 <input type="checkbox" name="actualizar_catalogo" value="1"
                        class="mt-0.5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
                 <span>Actualizar los datos guardados de este cliente con lo de arriba.</span>
             </label>
         @else
-            <label class="inline-flex items-start gap-2 text-sm text-neutral-700">
+            <label class="inline-flex min-h-11 items-start gap-2 py-1.5 text-sm text-neutral-700 sm:min-h-0 sm:py-0">
                 <input type="checkbox" name="guardar_en_catalogo" value="1"
                        class="mt-0.5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500">
                 <span>Guardar este cliente en el catálogo para autocompletarlo la próxima vez.</span>

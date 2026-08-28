@@ -23,7 +23,10 @@
          la pantalla y la página ya existe). --}}
     <a href="{{ route('notificaciones.index') }}"
         aria-label="Notificaciones{{ $conteo > 0 ? ' ('.$conteo.' sin leer)' : '' }}"
-        class="relative ms-auto inline-flex items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
+        {{-- Mínimo táctil de 44px: medía 40x40 y esta barra SOLO existe en móvil
+             (`lg:hidden`), así que es la campana que se toca de verdad — la del pie
+             de la sidebar vive en el drawer. Sin `sm:`: acá nunca hay mouse. --}}
+        class="relative ms-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-neutral-500 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700 focus:bg-neutral-100 focus:text-neutral-700 focus:outline-none">
         <x-icon.bell class="h-6 w-6" />
         @if ($conteo > 0)
             <span class="absolute right-0 top-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-semibold tabular-nums text-white">{{ $conteo > 9 ? '9+' : $conteo }}</span>

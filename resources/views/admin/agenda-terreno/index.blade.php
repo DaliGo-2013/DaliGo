@@ -161,10 +161,10 @@
                 <div class="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-5 xl:sticky xl:top-6">
                     <div class="mb-3 flex items-center justify-between">
                         <a href="{{ route('admin.agenda-terreno.index', $anterior) }}"
-                           class="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100" title="Mes anterior">&larr;</a>
+                           class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100 sm:min-h-0 sm:min-w-0" title="Mes anterior">&larr;</a>
                         <h3 class="text-base font-semibold text-neutral-900">{{ $mesLabel }}</h3>
                         <a href="{{ route('admin.agenda-terreno.index', $siguiente) }}"
-                           class="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100" title="Mes siguiente">&rarr;</a>
+                           class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100 sm:min-h-0 sm:min-w-0" title="Mes siguiente">&rarr;</a>
                     </div>
 
                     <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-neutral-400">

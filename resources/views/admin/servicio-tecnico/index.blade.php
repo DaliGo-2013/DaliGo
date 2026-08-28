@@ -231,7 +231,11 @@
                             ? route('admin.servicio-tecnico.edit', $orden)
                             : route('admin.servicio-tecnico.show', $orden);
                     @endphp
-                    <a href="{{ $verHref }}" class="block">
+                    {{-- `min-h-11 sm:min-h-0`: el alto de esta fila lo pone su contenido, y
+                         las órdenes sin «Recibido por» quedaban en 40px — apiladas una sobre
+                         otra en el celular, abrir la equivocada es un toque. El mínimo solo
+                         levanta esas; las de tres líneas (88px) no se mueven. --}}
+                    <a href="{{ $verHref }}" class="block min-h-11 sm:min-h-0">
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="font-mono text-xs text-neutral-400">{{ $orden->folio }}</span>
                             <p class="truncate font-medium text-neutral-900 hover:text-brand-600">{{ $orden->cliente_nombre }}</p>
