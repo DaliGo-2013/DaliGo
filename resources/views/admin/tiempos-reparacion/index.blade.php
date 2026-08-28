@@ -46,12 +46,18 @@
                             tope: el desarme del equipo se paga una vez, no una hora por cada cambio. Un
                             trabajo suelto que dure MÁS que el tope se cobra completo igual — el tope recorta
                             la acumulación, nunca el tiempo de un trabajo individual.
+                            @if ($valorHora)
+                                Hoy son {{ \App\Models\TiempoReparacion::fmt($topeHoras) }} h, o sea
+                                {{ $clp($topeHoras * $valorHora) }} de mano de obra como máximo por orden.
+                            @endif
                         </x-slot:ayuda>
                     </x-input-label>
                     <x-text-input id="tope_horas" name="tope_horas" class="mt-1.5 w-full"
                                   inputmode="decimal"
                                   value="{{ old('tope_horas', \App\Models\TiempoReparacion::fmt($topeHoras)) }}" />
-                    <x-input-hint>Ej. 2 o 2,5. Hoy: {{ \App\Models\TiempoReparacion::fmt($topeHoras) }} h@if ($valorHora) = {{ $clp($topeHoras * $valorHora) }} máximo de mano de obra@endif.</x-input-hint>
+                    {{-- UNA línea corta con lo operativo; el resto está en la ⓘ (doctrina 2026-08-17,
+                         y el candado mide por CAMPO, no por texto). --}}
+                    <x-input-hint>Acepta coma decimal: 2 o 2,5.</x-input-hint>
                     <x-input-error :messages="$errors->get('tope_horas')" class="mt-2" />
                 </div>
                 <x-primary-button>Guardar tope</x-primary-button>

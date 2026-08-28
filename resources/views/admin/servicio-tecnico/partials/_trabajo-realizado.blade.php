@@ -123,7 +123,17 @@
          servidor a propósito: esto no se guarda aparte, queda dentro del texto. --}}
     @if ($rematesTrabajo)
         <div class="mt-4">
-            <x-input-label value="¿Cómo quedó el equipo?" />
+            {{-- La explicación va en la ⓘ y abajo queda UNA línea corta con lo operativo
+                 (doctrina del dueño 2026-08-17: el tope son ~95 caracteres POR CAMPO, y lo
+                 vigila AyudaEnIconoTest nombrando archivo:línea). --}}
+            <x-input-label value="¿Cómo quedó el equipo?">
+                <x-slot:ayuda>
+                    Cierra la frase que lee el cliente, una sola vez para todos los trabajos marcados
+                    (el catálogo trae el cierre pegado a cada uno, y repetirlo tres veces sería absurdo).
+                    Se propone según lo que marcaste; si lo cambias, manda tu elección. No viaja al
+                    servidor como campo aparte: queda dentro del texto de abajo.
+                </x-slot:ayuda>
+            </x-input-label>
             <div class="mt-1.5 grid gap-2 sm:grid-cols-3">
                 @foreach ($rematesTrabajo as $r)
                     <x-chip-radio name="remate_visual" :value="$r" :label="$r"
@@ -131,7 +141,7 @@
                                   x-on:change="remateElegido()" />
                 @endforeach
             </div>
-            <x-input-hint>Se propone según lo que marcaste; si lo cambias, manda tu elección. No viaja al servidor: queda dentro del texto.</x-input-hint>
+            <x-input-hint>Cierra la frase del cliente.</x-input-hint>
         </div>
     @endif
 
