@@ -1,0 +1,95 @@
+name: Reintento del deploy (madrugada)
+
+# Por que existe (28-08-2026): el deploy murio 6 veces seguidas y ninguna por el codigo — el
+# hosting tiene un tope de 25 procesos por cuenta (`ulimit -u`) y el trafico web normal se lo
+# come, asi que `git fetch` no consigue forkear el `ssh` y el `index-pack` que necesita. La app
+# responde 200 todo el tiempo; lo unico que no entra es el deploy. Ver la bitacora [2026-08-28].
+#
+# El arreglo de fondo es del hosting (subir el tope). Esto es el parche que desbloquea mientras
+# tanto: reintentar cuando NO hay trafico. Corre de madrugada en Chile (UTC-4 en invierno).
+#
+# ES SEGURO DEJARLO PROGRAMADO, y eso es a proposito:
+#   · Primero PREGUNTA al servidor que commit tiene. Si ya es el de main, sale sin tocar nada
+#     («no habia nada que hacer»), asi que una vez desplegado se vuelve inofensivo.
+#   · Comparte el `concurrency` del deploy real, asi que nunca corren dos a la vez.
+#   · La cadena remota es la MISMA del deploy, copiada literal — si un dia cambia alla, hay que
+#     cambiarla aca (esta duplicacion es deliberada: no vale la pena un action compartido para
+#     un parche que deberia morir cuando el hosting suba el tope).
+#
+# CUANDO SE PUEDE BORRAR: cuando el hosting suba el limite de procesos y el deploy vuelva a
+# pasar en horario normal.
+
+on:
+  schedule:
+    # 03:10, 04:10 y 05:10 de Chile (UTC-4). Tres oportunidades por si una agarra carga.
+    - cron: '10 7 * * *'
+    - cron: '10 8 * * *'
+    - cron: '10 9 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  reintentar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar si el servidor todavia no tiene este commit
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          ESPERADO: ${{ github.sha }}
+        run: |
+          set +e   # los fallos se manejan a mano: un intento fallido NO corta el job
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          SSH_OPTS="-i $HOME/.ssh/deploy_key -p $SSH_PORT -o IdentitiesOnly=yes -o IdentityAgent=none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new -o KexAlgorithms=+diffie-hellman-group-exchange-sha256"
+
+          # La cadena del deploy, LITERAL (heredoc sin expandir: ni $HOME ni las comillas se tocan
+          # aca, se resuelven en el servidor).
+          CMD=$(cat <<'REMOTO'
+cd /home4/impdali/daligo && git fetch origin main && (git ls-files -v | grep -E '^[a-z]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-assume-unchanged || true) && (git ls-files -v | grep -E '^[Ss]' | cut -c3- | grep -v htaccess | xargs -r git update-index --no-skip-worktree || true) && git reset --hard FETCH_HEAD && ([ -f "$HOME/composer.phar" ] || (curl -sS https://getcomposer.org/installer -o "$HOME/composer-setup.php" && /opt/cpanel/ea-php83/root/usr/bin/php "$HOME/composer-setup.php" --install-dir="$HOME" --filename=composer.phar --quiet && rm -f "$HOME/composer-setup.php")) && /opt/cpanel/ea-php83/root/usr/bin/php "$HOME/composer.phar" dump-autoload -o --no-interaction --no-scripts && /opt/cpanel/ea-php83/root/usr/bin/php artisan migrate --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan db:seed --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan storage:link --force && /opt/cpanel/ea-php83/root/usr/bin/php artisan optimize:clear && /opt/cpanel/ea-php83/root/usr/bin/php artisan config:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan route:cache && /opt/cpanel/ea-php83/root/usr/bin/php artisan permission:cache-reset
+REMOTO
+)
+
+          # ¿Ya esta desplegado? Si el servidor no contesta (puede estar sin procesos), NO se
+          # aborta: se intenta el deploy igual, que es justamente lo que se vino a hacer.
+          EN_SERVIDOR=$(ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" 'cd /home4/impdali/daligo && git rev-parse HEAD' 2>/dev/null | tr -d '[:space:]')
+
+          if [ -n "$EN_SERVIDOR" ]; then
+            echo "El servidor tiene: $EN_SERVIDOR"
+            echo "main tiene:        $ESPERADO"
+            if [ "$EN_SERVIDOR" = "$ESPERADO" ]; then
+              echo "Ya esta desplegado. No hay nada que hacer."
+              exit 0
+            fi
+          else
+            echo "No se pudo leer el commit del servidor (probablemente sin procesos libres). Se intenta igual."
+          fi
+
+          # Tres intentos espaciados: si el tope de procesos esta tocado, esperar es lo unico
+          # que sirve — el problema no es el comando, es que no hay lugar para ejecutarlo.
+          for INTENTO in 1 2 3; do
+            echo "── Intento $INTENTO ──"
+            ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "$CMD"
+            CODIGO=$?
+
+            if [ "$CODIGO" -eq 0 ]; then
+              echo "Deploy OK en el intento $INTENTO."
+              FINAL=$(ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" 'cd /home4/impdali/daligo && git rev-parse HEAD' 2>/dev/null | tr -d '[:space:]')
+              echo "El servidor quedo en: ${FINAL:-(no se pudo confirmar)}"
+              exit 0
+            fi
+
+            echo "Intento $INTENTO fallo (codigo $CODIGO)."
+            [ "$INTENTO" -lt 3 ] && echo "Esperando 5 minutos..." && sleep 300
+          done
+
+          echo "Los tres intentos fallaron. El servidor sigue sin procesos libres."
+          exit 1
