@@ -48,7 +48,7 @@
                          :href="route('admin.vehiculos.index', ['estado' => \App\Models\Vehiculo::ESTADO_ACTIVO])" />
             <x-stat-card label="Con documento vencido" :valor="$resumen[\App\Models\Vehiculo::DOC_VENCIDO]" alerta
                          :href="route('admin.vehiculos.index', ['doc' => \App\Models\Vehiculo::DOC_VENCIDO])" />
-            <x-stat-card label="Por vencer (30 días)" :valor="$resumen[\App\Models\Vehiculo::DOC_POR_VENCER]" alerta
+            <x-stat-card :label="'Por vencer ('.\App\Models\Vehiculo::diasAviso().' días)'" :valor="$resumen[\App\Models\Vehiculo::DOC_POR_VENCER]" alerta
                          :href="route('admin.vehiculos.index', ['doc' => \App\Models\Vehiculo::DOC_POR_VENCER])" />
             <x-stat-card label="Con fechas sin cargar" :valor="$resumen[\App\Models\Vehiculo::DOC_SIN_REGISTRO]"
                          :href="route('admin.vehiculos.index', ['doc' => \App\Models\Vehiculo::DOC_SIN_REGISTRO])" />

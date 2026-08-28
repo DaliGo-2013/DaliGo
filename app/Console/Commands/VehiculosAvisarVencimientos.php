@@ -18,7 +18,8 @@ use Throwable;
  * Es lo que la planilla no puede hacer: avisar sin que alguien la abra. El
  * semáforo de la pantalla muestra el estado; este comando lo empuja.
  *
- * Dos hitos por documento: `por_vencer` (faltan <= 30 días) y `vencido`. Cada
+ * Dos hitos por documento: `por_vencer` (faltan <= la franja de
+ * `vehiculos_dias_aviso`, default 30) y `vencido`. Cada
  * (vehículo × documento × hito × fecha de vencimiento) se avisa UNA sola vez
  * —lo garantiza el unique de `vehiculo_avisos`— así que correr todos los días
  * no genera ruido. Al renovar el documento la fecha cambia y el próximo
@@ -28,7 +29,10 @@ class VehiculosAvisarVencimientos extends Command
 {
     protected $signature = 'vehiculos:avisar-vencimientos {--dry-run : Muestra lo que avisaría, sin enviar ni registrar}';
 
-    protected $description = 'Avisa por la app cuando un documento de un vehículo está por vencer (30 días) o venció';
+    // Sin la cifra a propósito (LOG-2): la franja vive en Configuración
+    // (`vehiculos_dias_aviso`) y una property estática no puede leer la BD al
+    // registrarse el comando — un número acá volvería a mentir al moverla.
+    protected $description = 'Avisa por la app cuando un documento de un vehículo entra en la franja «por vencer» o venció';
 
     /**
      * Ventana hacia atrás del hito «vencido»: solo se avisa lo que venció en
@@ -77,7 +81,7 @@ class VehiculosAvisarVencimientos extends Command
         }
 
         if ($filas === []) {
-            $this->info('Sin novedades: ningún documento entró en los 30 días ni venció recientemente.');
+            $this->info('Sin novedades: ningún documento entró en los '.Vehiculo::diasAviso().' días ni venció recientemente.');
 
             return self::SUCCESS;
         }
