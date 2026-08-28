@@ -150,7 +150,7 @@ class IdiomaEspanolTest extends TestCase
             "/admin/moldes/{$molde->id}",
             "/admin/moldes/{$molde->id}/editar",
             '/admin/sucursales', '/admin/users', '/admin/users/create', '/admin/roles',
-            '/admin/configuracion', '/admin/maquinas', '/admin/tipos-botellon', '/admin/audits',
+            '/admin/configuracion', '/admin/configuracion/avisos', '/admin/maquinas', '/admin/tipos-botellon', '/admin/audits',
             '/admin/despachos', '/admin/notificaciones', '/admin/agenda-terreno',
             '/admin/servicio-tecnico/lote', '/admin/servicio-tecnico/qr', '/admin/plan',
             '/admin/aprobaciones', '/profile',
