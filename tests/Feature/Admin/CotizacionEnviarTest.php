@@ -68,10 +68,14 @@ class CotizacionEnviarTest extends TestCase
         // acá y no de que el texto coincida con el catálogo, así que sin esto el envío se
         // bloquea por «sin trabajos marcados».
         //
-        // OJO, y es un control que vale: este trabajo son 2,5 h y el tope del taller son 2 h,
-        // pero es UN solo trabajo, así que el piso de `horasACobrar` lo protege y se cobran las
-        // 2,5 h completas ($10.000). Si alguien quitara ese piso, los $10.000 de este archivo
-        // caerían a $8.000 y 9 tests se pondrían rojos.
+        // OJO: este trabajo son 2,5 h y el tope del taller son 2 h, pero es UN solo trabajo, así
+        // que el piso de `horasACobrar` lo protege y se cobrarían las 2,5 h completas.
+        //
+        // Y OJO CON LO QUE ESTE ARCHIVO *NO* VIGILA, que se comprobó mutando: quitarle el piso a
+        // `horasACobrar` NO pone rojo a este archivo, porque el envío lee `$orden->mano_obra` ya
+        // guardado (sembrado acá en 10.000) y no recalcula. El piso lo vigilan
+        // TrabajosMarcadosTest::test_un_trabajo_mas_largo_que_el_tope_se_cobra_completo y
+        // ::test_el_piso_es_el_trabajo_mas_largo_no_la_suma — los dos únicos que caen.
         $t = TiempoReparacion::where('trabajo', $orden->trabajo_realizado)->first();
         if ($t) {
             $orden->trabajos()->syncWithoutDetaching([$t->id => ['horas' => $t->horas]]);

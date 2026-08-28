@@ -128,10 +128,10 @@
                 @foreach ($rematesTrabajo as $r)
                     <x-chip-radio name="remate_visual" :value="$r" :label="$r"
                                   x-model="remate"
-                                  x-on:change="armarTexto()" />
+                                  x-on:change="remateElegido()" />
                 @endforeach
             </div>
-            <x-input-hint>Cierra la frase que lee el cliente. No viaja al servidor: queda dentro del texto.</x-input-hint>
+            <x-input-hint>Se propone según lo que marcaste; si lo cambias, manda tu elección. No viaja al servidor: queda dentro del texto.</x-input-hint>
         </div>
     @endif
 

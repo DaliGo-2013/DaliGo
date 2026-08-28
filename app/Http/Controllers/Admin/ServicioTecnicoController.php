@@ -930,6 +930,27 @@ class ServicioTecnicoController extends Controller
         // jefatura desactivó después sería un error de validación sin salida para el técnico.
         $marcables = $this->trabajosMarcables($orden)->pluck('id')->all();
 
+        // SE LIMPIA EL ARRAY ANTES DE VALIDAR, y esto NO es defensivo: el formulario manda un
+        // `<input type="hidden" name="trabajos[]" value="">` para que la clave viaje siempre
+        // (así «desmarqué todo» se distingue de «esta pantalla no preguntó»), de modo que el
+        // primer elemento que llega del navegador es SIEMPRE vacío. Sin este filtro, `Rule::in`
+        // lo rechaza y NINGÚN guardado del parte pasa la validación.
+        //
+        // Se cazó probando el payload exacto del navegador: los tests que mandaban el array
+        // limpio pasaban los 18 en verde con la pantalla incapaz de guardar — el mismo hueco de
+        // la bitácora [2026-07-06] (un campo que el navegador siempre envía y el test omite).
+        // Candado: TrabajosMarcadosTest::test_el_payload_del_navegador_con_el_hidden_vacio_guarda.
+        if ($request->has('trabajos')) {
+            $request->merge([
+                'trabajos' => collect($request->input('trabajos'))
+                    ->filter(fn ($id) => filled($id))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all(),
+            ]);
+        }
+
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
             'trabajo_realizado' => ['nullable', 'string'],

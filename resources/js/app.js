@@ -467,15 +467,36 @@ Alpine.data('reparacionForm', ({
     textoTocado: false,
 
     // El remate elegido. Arranca del que ya trae el texto guardado si lo reconoce, y si no del
-    // mas comun del catalogo (el primero, que viene ordenado por uso).
+    // que sugieren los trabajos marcados.
     remate: '',
+    // Si el tecnico eligio el remate a mano, deja de auto-ajustarse: su eleccion manda.
+    remateTocado: false,
 
     initTrabajos() {
         const hallado = this.remates.find((r) => this.texto.endsWith(r));
-        this.remate = hallado || this.remates[0] || '';
+        this.remate = hallado || this.remateSugerido;
+        this.remateTocado = !! hallado;
         // Un texto que ya existe cuenta como escrito a mano: no se re-arma solo al abrir la
         // pantalla, o corregir una orden vieja le borraria la redaccion al tecnico.
         this.textoTocado = this.texto.trim() !== '';
+    },
+
+    /**
+     * El remate que corresponde a lo marcado: si TODOS los trabajos marcados cierran igual en el
+     * catalogo, ese; si se mezclan (o no hay nada marcado), el mas comun del catalogo.
+     *
+     * Existe porque el remate se elige UNA vez para toda la frase, y arrancar siempre en el mas
+     * comun le cambiaba el sentido a lo que lee el cliente: marcar «Reacondicionamiento
+     * completo» —que en el catalogo cierra con «queda en optimas condiciones»— producia
+     * «Reacondicionamiento completo — funciona normal». Cazado verificando en el navegador; la
+     * suite de PHP no evalua esto.
+     */
+    get remateSugerido() {
+        const propios = [...new Set(
+            this.marcados.map((id) => this.filaTrabajo(id)?.remate).filter(Boolean)
+        )];
+
+        return propios.length === 1 ? propios[0] : (this.remates[0] || '');
     },
 
     filaTrabajo(id) {
@@ -545,11 +566,22 @@ Alpine.data('reparacionForm', ({
         this.textoTocado = false;
     },
 
-    // Al marcar o desmarcar, el texto se re-arma salvo que el tecnico lo haya editado.
+    // Al marcar o desmarcar: el remate se re-sugiere (salvo que el tecnico lo haya elegido) y el
+    // texto se re-arma (salvo que lo haya editado). El orden importa: el remate primero, porque
+    // el texto lo usa.
     trabajosCambiaron() {
+        if (! this.remateTocado) {
+            this.remate = this.remateSugerido;
+        }
         if (! this.textoTocado) {
             this.armarTexto();
         }
+    },
+
+    // El tecnico eligio el remate: su eleccion queda fija y el texto se rehace con ella.
+    remateElegido() {
+        this.remateTocado = true;
+        this.armarTexto();
     },
 
     // Autocompletado de repuestos (historial + comunes). `filaActiva` marca

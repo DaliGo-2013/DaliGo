@@ -46,6 +46,11 @@
             'id' => $t->id,
             'corto' => $t->trabajo_corto,
             'horas' => (float) $t->horas,
+            // El remate PROPIO de cada trabajo, para poder sugerir el correcto: marcar
+            // «Reacondicionamiento completo» (que en el catálogo cierra con «queda en óptimas
+            // condiciones») y que el texto dijera «funciona normal» le cambiaba el sentido a lo
+            // que lee el cliente. Cazado verificando en el navegador.
+            'remate' => $t->remate,
         ])->values();
 
         // `old()` gana para que un error de validación no borre lo que el técnico había marcado.

@@ -451,4 +451,82 @@ class TrabajosMarcadosTest extends TestCase
             'El tope sembrado dejó de coincidir con TOPE_HORAS_DEFAULT: una base sembrada y una virgen cobrarían distinto.',
         );
     }
+
+    // ─────────────────────────────────────────── el payload REAL del navegador
+
+    /**
+     * EL PAYLOAD EXACTO QUE MANDA EL FORMULARIO, que es distinto del que mandan los tests de
+     * arriba y por eso este candado existe aparte.
+     *
+     * El `<form>` incluye un `<input type="hidden" name="trabajos[]" value="">` para que la
+     * clave viaje siempre (así «desmarqué todo» se distingue de «esta pantalla no preguntó»), de
+     * modo que el navegador manda SIEMPRE un primer elemento vacío, y los ids como STRING. Sin
+     * el filtro previo a la validación, `Rule::in` rechaza el vacío y NINGÚN guardado del parte
+     * pasa — con los 18 candados de este archivo en verde, porque todos mandan el array limpio.
+     *
+     * Es el hueco de la bitácora [2026-07-06]: un campo que el navegador siempre envía y que el
+     * test omite. Se cazó reproduciendo el payload a mano, no con un assert.
+     */
+    public function test_el_payload_del_navegador_con_el_hidden_vacio_guarda(): void
+    {
+        $this->conValorHora(4000);
+        $caldera = $this->trabajo('Cambio de caldera', 1.5);
+        $filtro = $this->trabajo('Cambio de filtro', 0.5);
+        $orden = $this->orden();
+
+        $this->actingAs($this->tecnico())->put(
+            route('admin.servicio-tecnico.reparacion.guardar', $orden),
+            [
+                'estado' => 'cotizacion',
+                // El hidden vacío PRIMERO y los ids como string, tal cual los serializa el form.
+                'trabajos' => ['', (string) $caldera->id, (string) $filtro->id],
+                'trabajos_extra' => '',
+                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+                'trabajo_realizado_otro' => 'Cambio de caldera y cambio de filtro — funciona normal',
+            ],
+        )->assertSessionHasNoErrors();
+
+        $fresh = $orden->fresh()->load('trabajos');
+        $this->assertCount(2, $fresh->trabajos, 'El hidden vacío del formulario rompió el guardado de los trabajos.');
+        $this->assertSame(8000, (int) $fresh->mano_obra);   // 2 h de tope × $4.000
+    }
+
+    /** Y con TODO desmarcado, el navegador manda solo el hidden vacío: eso sí desmarca. */
+    public function test_el_navegador_con_todo_desmarcado_manda_solo_el_hidden(): void
+    {
+        $this->conValorHora(4000);
+        $caldera = $this->trabajo('Cambio de caldera', 1.5);
+        $orden = $this->orden();
+
+        $this->guardar($orden, [$caldera->id]);
+        $this->assertSame(6000, (int) $orden->fresh()->mano_obra);
+
+        $this->actingAs($this->tecnico())->put(
+            route('admin.servicio-tecnico.reparacion.guardar', $orden),
+            [
+                'estado' => 'cotizacion',
+                'trabajos' => [''],          // solo el hidden: el técnico desmarcó todo
+                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
+                'trabajo_realizado_otro' => 'Se revisó y no hizo falta nada',
+            ],
+        )->assertSessionHasNoErrors();
+
+        $fresh = $orden->fresh()->load('trabajos');
+        $this->assertCount(0, $fresh->trabajos);
+        $this->assertSame(0, (int) $fresh->mano_obra);
+    }
+
+    /** Un id repetido (doble submit, o el form duplicando un chip) no revienta el unique del pivote. */
+    public function test_un_id_repetido_en_el_payload_no_revienta(): void
+    {
+        $this->conValorHora(4000);
+        $caldera = $this->trabajo('Cambio de caldera', 1.5);
+        $orden = $this->orden();
+
+        $this->guardar($orden, [$caldera->id, $caldera->id])->assertSessionHasNoErrors();
+
+        $fresh = $orden->fresh()->load('trabajos');
+        $this->assertCount(1, $fresh->trabajos);
+        $this->assertSame(6000, (int) $fresh->mano_obra);
+    }
 }
