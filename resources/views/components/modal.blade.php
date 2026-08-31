@@ -65,9 +65,25 @@ $maxWidth = [
         <div class="absolute inset-0 bg-neutral-900 opacity-40"></div>
     </div>
 
+    {{-- `relative z-10` NO es decoración: sin posicionamiento este panel queda ESTÁTICO, y un
+         hermano `fixed` —el backdrop de arriba— se pinta SIEMPRE encima de un hermano estático,
+         sin importar el orden del DOM. El resultado que reportó el dueño (28-08-2026) son tres
+         síntomas de una sola causa: la ventana se ve atenuada (el `bg-neutral-900 opacity-40`
+         está por delante), no se puede deslizar el contenido, y un clic en cualquier parte la
+         cierra (el `x-on:click="show = false"` del backdrop recibe TODOS los clics).
+
+         POR QUÉ FUNCIONABA ANTES Y DEJÓ DE FUNCIONAR: el panel trae `transform`, que en Tailwind
+         v3 emitía un `transform` real y por lo tanto creaba contexto de apilamiento — eso lo
+         elevaba por accidente. En v4 esa clase compila a
+         `transform: var(--tw-rotate-x,) var(--tw-rotate-y,) …` con TODAS las variables en
+         `initial`, así que la declaración resuelve a vacío y el navegador la descarta: `transform`
+         quedó siendo un no-op y el panel perdió la elevación que nunca debió depender de ella.
+         Misma familia que la bitácora [2026-07-26] (v4 usa `scale`/`translate` independientes).
+
+         El z-index va explícito para que esto no vuelva a depender de un efecto colateral. --}}
     <div
         x-show="show"
-        class="mb-6 bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
+        class="relative z-10 mb-6 bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
         x-transition:enter="ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
