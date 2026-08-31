@@ -208,6 +208,15 @@ TipoBotellon, Bodega, Stock), los 4 controllers del hub E1 + `BodegaController` 
 `ProduccionNotaController`, y las vistas. Con respeto de autor (M11 es de Max-2): los
 porqués citados existen en el código y calzan.
 
+**Post-saldado (31-08, tarea directa del dueño al Director, merge `d82164f`):** el
+selector de «Asignar producción» ofrecía a cualquiera con el permiso `report
+production` (el mapa F0 no lo cazó: era un permiso plausible, no un hardcode) y el
+guardado aceptaba cualquier `users.id`. Clave nueva **`produccion_roles_soplador`**
+(LISTAS_SIMPLES, default `['soplador']` = `User::ROLES_SOPLADOR`): las tres pantallas
+de sopladores y sus validaciones derivan de `User::sopladores()`. Candados en
+`SopladorSelectorTest` (8). OJO LOG-3: este merge sumó una entrada a `LISTAS_SIMPLES`
+y un bloque al seeder — baseline fresco al forjar.
+
 **El hallazgo-marco: el módulo más denso es el MEJOR parametrizado del proyecto.** M11
 se construyó ya con la doctrina de la casa (D-003, «hipótesis editables») — lo que en
 Dashboard/Comercial fue cacería acá es mayormente CENSO de lo ya vivo:

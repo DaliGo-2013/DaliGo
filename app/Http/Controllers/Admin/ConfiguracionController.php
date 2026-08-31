@@ -63,6 +63,7 @@ class ConfiguracionController extends Controller
         'produccion_motivos_parada',
         'produccion_motivos_planificados',
         'produccion_procedencias_preforma',
+        'produccion_roles_soplador',
     ];
 
     /**
@@ -119,6 +120,7 @@ class ConfiguracionController extends Controller
         $this->validarParOrdenado($configuracion, $valor);
         $this->validarParSubconjunto($configuracion, $valor);
         $this->validarSegmentosEnUso($configuracion, $valor);
+        $this->validarRolesExistentes($configuracion, $valor);
 
         Configuracion::set($configuracion->clave, $valor);
 
@@ -227,6 +229,29 @@ class ConfiguracionController extends Controller
             if ($enUso > 0) {
                 throw ValidationException::withMessages([
                     'valor' => "No puedes quitar «{$vigente}»: {$enUso} cliente(s) lo tienen asignado. Reasígnalos primero desde el listado de Clientes.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Rechaza en `produccion_roles_soplador` cualquier nombre que no sea un
+     * rol EXISTENTE, nombrándolo. Sin esto un typo («sopladores») pasaría en
+     * silencio, el clamp de User::rolesSoplador() lo descartaría al leer y la
+     * clave editada no movería nada — el no-op silencioso de la casa.
+     */
+    private function validarRolesExistentes(Configuracion $configuracion, mixed $valor): void
+    {
+        if ($configuracion->clave !== 'produccion_roles_soplador' || ! is_array($valor)) {
+            return;
+        }
+
+        $existentes = \Spatie\Permission\Models\Role::pluck('name')->all();
+
+        foreach ($valor as $rol) {
+            if (! in_array($rol, $existentes, true)) {
+                throw ValidationException::withMessages([
+                    'valor' => "«{$rol}» no es un rol del sistema. Los roles se escriben como en Administración → Roles (ej. «soplador»).",
                 ]);
             }
         }
