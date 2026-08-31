@@ -623,6 +623,35 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Formatos en que puede llegar la preforma del turno (uno por línea): el selector opcional del formulario de asignar producción. Las asignaciones viejas conservan el suyo.',
             ],
+            // --- Motivos de defecto por calidad (MIPROD-1, pedido del dueño 21-08) ---
+            // Defaults = la conducta NUEVA que pidió el dueño (no la histórica, a
+            // propósito): una segunda es por definición un defecto estético, y las
+            // malas pierden «Scrap de arranque» (decisión informada: el desglose de
+            // scrap del OEE queda sin fuente hacia adelante; el histórico persiste).
+            [
+                'clave' => 'produccion_motivos_segunda',
+                'valor' => json_encode(['Detalles estéticos'], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Motivos que puede marcar el operario en los botellones de SEGUNDA (uno por línea). Las tandas ya registradas conservan su motivo aunque salga de la lista.',
+            ],
+            [
+                'clave' => 'produccion_motivos_malas',
+                'valor' => json_encode([
+                    'Burbujas / aire',
+                    'Rebaba',
+                    'Cuello o rosca deforme',
+                    'Mal sellado',
+                    'Punto frío',
+                    'Contaminación / suciedad',
+                    'Material quemado',
+                    'Espesor irregular',
+                    'Rayas o marcas',
+                ], JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Motivos que puede marcar el operario en los botellones MALOS (uno por línea). Reponer «Scrap de arranque» reactiva el desglose de scrap del informe OEE.',
+            ],
             // --- Flota de vehículos (LOG-2, PLAN-PARAMETRICOS §5.4 #1) ---
             // Grupo `vehiculos` y no `logistica`: el idioma del seeder agrupa por
             // apartado/pantalla (el hermano `despachos` ya sentó el precedente

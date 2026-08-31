@@ -89,10 +89,10 @@ class ProduccionTest extends TestCase
         // El motivo es obligatorio cuando hay defectuosas; los tests que no lo
         // fijan reciben uno valido por defecto.
         if (($payload['segunda'] ?? 0) > 0 && ! array_key_exists('motivo_segunda', $payload)) {
-            $payload['motivo_segunda'] = ProduccionRegistro::MOTIVOS_DEFECTO[0];
+            $payload['motivo_segunda'] = ProduccionRegistro::MOTIVOS_SEGUNDA[0];
         }
         if (($payload['malo'] ?? 0) > 0 && ! array_key_exists('motivo_malo', $payload)) {
-            $payload['motivo_malo'] = ProduccionRegistro::MOTIVOS_DEFECTO[0];
+            $payload['motivo_malo'] = ProduccionRegistro::MOTIVOS_MALAS[0];
         }
 
         return $this->actingAs($soplador)->post(route('produccion.mi.registros.store', $reporte), $payload);
@@ -320,7 +320,7 @@ class ProduccionTest extends TestCase
 
         $this->agregarTanda($soplador, $reporte, [
             'primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3,
-            'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Material quemado',
+            'motivo_segunda' => 'Detalles estéticos', 'motivo_malo' => 'Material quemado',
         ], $maquina, $tipo)->assertRedirect(route('produccion.mi.show', $reporte));
 
         $this->assertDatabaseHas('produccion_registros', [
@@ -328,7 +328,7 @@ class ProduccionTest extends TestCase
             'maquina_id' => $maquina->id,
             'tipo_botellon_id' => $tipo->id,
             'primera' => 50, 'segunda' => 10, 'malo' => 5, 'danada' => 3,
-            'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Material quemado',
+            'motivo_segunda' => 'Detalles estéticos', 'motivo_malo' => 'Material quemado',
         ]);
 
         $reporte->refresh();
@@ -418,7 +418,7 @@ class ProduccionTest extends TestCase
         [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
 
         // primera > 0 hace valida la tanda; segunda = 0 con motivo elegido => motivo se anula.
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10, 'segunda' => 0, 'motivo_segunda' => 'Rebaba'], $maquina, $tipo)
+        $this->agregarTanda($soplador, $reporte, ['primera' => 10, 'segunda' => 0, 'motivo_segunda' => 'Detalles estéticos'], $maquina, $tipo)
             ->assertRedirect(route('produccion.mi.show', $reporte));
 
         $this->assertNull($reporte->registros()->first()->motivo_segunda);
@@ -904,7 +904,7 @@ class ProduccionTest extends TestCase
         [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
         $this->agregarTanda($sop, $reporte, [
             'primera' => 80, 'segunda' => 10, 'malo' => 5, 'danada' => 5,
-            'motivo_segunda' => 'Rebaba', 'motivo_malo' => 'Rebaba',
+            'motivo_segunda' => 'Detalles estéticos', 'motivo_malo' => 'Rebaba',
         ], $maquina, $tipo);
 
         $this->actingAs($this->jefe())->get('/admin/produccion')
@@ -965,7 +965,7 @@ class ProduccionTest extends TestCase
         $tipo = $this->tipo();
         $maquina = $this->maquina(nombre: 'Sopladora A');
         $otra = $this->maquina(nombre: 'Sopladora B');
-        $this->agregarTanda($sop, $reporte, ['primera' => 40, 'segunda' => 10, 'motivo_segunda' => 'Rebaba'], $maquina, $tipo);
+        $this->agregarTanda($sop, $reporte, ['primera' => 40, 'segunda' => 10, 'motivo_segunda' => 'Detalles estéticos'], $maquina, $tipo);
         $this->agregarTanda($sop, $reporte, ['primera' => 5], $otra, $tipo);
 
         $this->actingAs($this->jefe())->get(route('admin.produccion.maquina', $maquina))

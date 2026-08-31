@@ -17,11 +17,21 @@ class ProduccionRegistro extends Model
     protected $table = 'produccion_registros';
 
     /**
-     * Motivos de defecto (lista cerrada) que explican por que una tanda salio
-     * de segunda o mala. Fuente unica para la validacion y el select del
-     * operario; agregar/editar motivos = tocar solo este arreglo.
+     * Motivos de defecto por CALIDAD (MIPROD-1, pedido del dueño 21-08 con la
+     * pantalla en mano — reemplaza a la antigua MOTIVOS_DEFECTO compartida):
+     * una SEGUNDA es por definición un defecto estético (si fuera más grave,
+     * sería mala), así que su lista nace con una sola opción; las MALAS
+     * conservan el catálogo SIN «Scrap de arranque» (decisión informada del
+     * dueño: el desglose de scrap del OEE pierde su fuente hacia adelante —
+     * las tandas históricas lo conservan porque el motivo se PERSISTE por
+     * fila). Ambas listas son editables en Configuración (una por línea);
+     * estas constantes son el fallback con BD virgen.
      */
-    public const MOTIVOS_DEFECTO = [
+    public const MOTIVOS_SEGUNDA = [
+        'Detalles estéticos',
+    ];
+
+    public const MOTIVOS_MALAS = [
         'Burbujas / aire',
         'Rebaba',
         'Cuello o rosca deforme',
@@ -31,11 +41,25 @@ class ProduccionRegistro extends Model
         'Material quemado',
         'Espesor irregular',
         'Rayas o marcas',
-        // Unidades perdidas al partir/re-partir la máquina (P-M11-11): el
-        // MISMO string que ProduccionParada::MOTIVOS para que el informe de
-        // merma pueda separar el scrap de arranque del resto.
-        'Scrap de arranque',
     ];
+
+    /**
+     * Listas vigentes (claves `produccion_motivos_segunda` /
+     * `produccion_motivos_malas`). La lista sigue CERRADA para el operario
+     * (Rule::in lee la vigente) — cambia quién la escribe.
+     *
+     * @return array<int, string>
+     */
+    public static function motivosSegunda(): array
+    {
+        return Configuracion::getLista('produccion_motivos_segunda', self::MOTIVOS_SEGUNDA);
+    }
+
+    /** @return array<int, string> */
+    public static function motivosMalas(): array
+    {
+        return Configuracion::getLista('produccion_motivos_malas', self::MOTIVOS_MALAS);
+    }
 
     protected $fillable = [
         'reporte_id',

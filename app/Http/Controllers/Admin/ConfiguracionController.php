@@ -63,6 +63,8 @@ class ConfiguracionController extends Controller
         'produccion_motivos_parada',
         'produccion_motivos_planificados',
         'produccion_procedencias_preforma',
+        'produccion_motivos_segunda',
+        'produccion_motivos_malas',
     ];
 
     /**
