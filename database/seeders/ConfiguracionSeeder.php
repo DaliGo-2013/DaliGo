@@ -623,6 +623,17 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Formatos en que puede llegar la preforma del turno (uno por línea): el selector opcional del formulario de asignar producción. Las asignaciones viejas conservan el suyo.',
             ],
+            // Quiénes cuentan como soplador (pedido del dueño 28-08-2026: en
+            // «Asignar producción» aparecía cualquiera — poblaba por PERMISO).
+            // El default vive también en User::ROLES_SOPLADOR (regla de oro);
+            // un rol que no exista se rechaza al guardar y se descarta al leer.
+            [
+                'clave' => 'produccion_roles_soplador',
+                'valor' => json_encode(\App\Models\User::ROLES_SOPLADOR, JSON_UNESCAPED_UNICODE),
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Roles cuyos usuarios aparecen como sopladores (uno por línea): asignar producción, historial por soplador y notas. Escribir el rol como en Administración → Roles.',
+            ],
             // --- Flota de vehículos (LOG-2, PLAN-PARAMETRICOS §5.4 #1) ---
             // Grupo `vehiculos` y no `logistica`: el idioma del seeder agrupa por
             // apartado/pantalla (el hermano `despachos` ya sentó el precedente
