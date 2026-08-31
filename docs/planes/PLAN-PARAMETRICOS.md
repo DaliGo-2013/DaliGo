@@ -229,6 +229,24 @@ apartado «Mi producción»** (cross anotado en F0-OPERACIÓN); queda en radar:
 `MOTIVOS_DIFERENCIA`/`NOTAS_COMUNES` (candidatas LISTAS_SIMPLES), los 45 días del
 historial y sus `max:100000` — para cuando se dicte su F0/lote.
 
+**MIPROD-2 en producción (`40f4960`, doble llave 31-08 — Max-1, mismo pedido
+directo del 21-08):** el selector «Cavidades activas del molde» sale de la
+pantalla del soplador; la columna se conserva (OEE y semáforo leen el
+histórico; las fichas lo muestran solo si existe). Acople declarado: se pierde
+declarar cavidades tapadas. Tests clasificados (2 mueren → 1 inverso). Parte en
+`buzon/partes/2026-08-21--max-1--miprod-2-cavidades.md`.
+
+**Preformas visibles en producción (`cbbd53a`, doble llave 31-08 — tarea
+directa del dueño al Director, con captura):** clave
+**`produccion_preformas_visibles`** (whitelist de SKUs) editada con CHECKBOXES
+del catálogo en Configuración; sin selección = todas (histórico); con
+selección, una preforma nueva de Bsale no aparece hasta marcarla; selección
+podrida cae a todas. Fuente única `Producto::preformasVisibles()` (el universo
+de `preformasParaSelector` se mudó al modelo) — selector, pantalla y la
+validación de `asignarStore` (que se APRIETA al universo del selector, M-3)
+leen lo mismo. Candados en `PreformasVisiblesTest` (6). OJO LOG-3: otra entrada
+más en `LISTAS_SIMPLES` (van 9) y otro bloque en el seeder — baseline fresco.
+
 **El hallazgo-marco: el módulo más denso es el MEJOR parametrizado del proyecto.** M11
 se construyó ya con la doctrina de la casa (D-003, «hipótesis editables») — lo que en
 Dashboard/Comercial fue cacería acá es mayormente CENSO de lo ya vivo:
