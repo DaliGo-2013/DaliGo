@@ -32,4 +32,27 @@ return [
 
     'patron_danada' => '%dañada%',
 
+    /*
+    |--------------------------------------------------------------------------
+    | La pantalla de Recetas está OCULTA (decisión del dueño, 31-08-2026)
+    |--------------------------------------------------------------------------
+    |
+    | «No es una funcionalidad expresamente solicitada; quiero mantener la
+    | lógica pero ocultar la vista por hoy» — pendiente de una reunión que
+    | defina cómo usarla. Con el flag en false: la pestaña «Recetas» no se
+    | dibuja en Configuración de producción y sus tres rutas redirigen al
+    | anfitrión (sin puerta trasera por URL, mismo criterio que las claves
+    | de audiencias).
+    |
+    | La LÓGICA queda VIVA a propósito: el backflush del kardex sigue
+    | aplicando las recetas sembradas (hipótesis «por confirmar»: 1 preforma
+    | + 1 tapa) y el seeder sigue corriendo en cada deploy. Lo único que se
+    | pierde mientras esté oculta es poder EDITAR/confirmar recetas desde la
+    | UI. Re-encender = true + deploy (nivel 2: decisión de despliegue, no
+    | perilla de negocio en caliente).
+    |
+    */
+
+    'pantalla_recetas' => false,
+
 ];

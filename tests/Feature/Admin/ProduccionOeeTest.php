@@ -37,6 +37,10 @@ class ProduccionOeeTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
+        // La pantalla de Recetas está oculta por default (dueño 31-08): el
+        // test del ciclo ideal la usa ENCENDIDA (protege la carga del ciclo
+        // para cuando se reencienda).
+        config(['produccion.pantalla_recetas' => true]);
         $sucursal = Sucursal::firstOrCreate(
             ['codigo' => 'MIRADOR'],
             ['activa' => true, 'nombre' => 'Mirador', 'es_central' => true],

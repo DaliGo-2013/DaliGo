@@ -17,8 +17,15 @@
     $configTabs = [
         ['label' => 'Máquinas', 'url' => route('admin.maquinas.index'), 'activa' => request()->routeIs('admin.maquinas.*')],
         ['label' => 'Tipos de botellón', 'url' => route('admin.tipos-botellon.index'), 'activa' => request()->routeIs('admin.tipos-botellon.*')],
-        ['label' => 'Recetas', 'url' => route('admin.recetas.index'), 'activa' => request()->routeIs('admin.recetas.*')],
-        ['label' => 'Moldes', 'url' => route('admin.moldes.index'), 'activa' => request()->routeIs('admin.moldes.*')],
     ];
+
+    // Recetas OCULTA por decisión del dueño (31-08, ver config/produccion.php
+    // `pantalla_recetas`): la lógica del kardex sigue viva; solo se esconde
+    // la pestaña — y sus rutas redirigen acá (sin puerta trasera por URL).
+    if (config('produccion.pantalla_recetas')) {
+        $configTabs[] = ['label' => 'Recetas', 'url' => route('admin.recetas.index'), 'activa' => request()->routeIs('admin.recetas.*')];
+    }
+
+    $configTabs[] = ['label' => 'Moldes', 'url' => route('admin.moldes.index'), 'activa' => request()->routeIs('admin.moldes.*')];
 @endphp
 <x-tab-nav label="Secciones de configuración de producción" :tabs="$configTabs" />

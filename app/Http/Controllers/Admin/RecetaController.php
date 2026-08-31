@@ -21,8 +21,25 @@ use Illuminate\View\View;
  */
 class RecetaController extends Controller
 {
-    public function index(): View
+    /**
+     * La pantalla está OCULTA por decisión del dueño (31-08-2026, el porqué
+     * completo en config/produccion.php `pantalla_recetas`): la lógica del
+     * backflush sigue viva; solo se esconde la vista. Redirect al anfitrión
+     * y no 403: quien llega por una URL vieja no hizo nada malo.
+     */
+    private function pantallaOculta(): ?RedirectResponse
     {
+        return config('produccion.pantalla_recetas')
+            ? null
+            : redirect()->route('admin.maquinas.index');
+    }
+
+    public function index(): View|RedirectResponse
+    {
+        if ($oculta = $this->pantallaOculta()) {
+            return $oculta;
+        }
+
         // Botellones con receta posible: los enlazados desde los tipos MÁS
         // cualquiera que ya tenga filas (por si un tipo se desenlazó después).
         $ids = TipoBotellon::whereNotNull('producto_id')->pluck('producto_id')
@@ -34,8 +51,12 @@ class RecetaController extends Controller
         ]);
     }
 
-    public function edit(Producto $producto): View
+    public function edit(Producto $producto): View|RedirectResponse
     {
+        if ($oculta = $this->pantallaOculta()) {
+            return $oculta;
+        }
+
         $filas = Receta::paraProducto($producto->id);
 
         return view('admin.recetas.edit', [
@@ -48,6 +69,10 @@ class RecetaController extends Controller
 
     public function update(Request $request, Producto $producto): RedirectResponse
     {
+        if ($oculta = $this->pantallaOculta()) {
+            return $oculta;
+        }
+
         $data = $request->validate([
             'cantidad_preforma' => ['required', 'numeric', 'min:0.0001', 'max:1000'],
             'cantidad_tapa' => ['nullable', 'required_with:componente_tapa', 'numeric', 'min:0.0001', 'max:1000'],

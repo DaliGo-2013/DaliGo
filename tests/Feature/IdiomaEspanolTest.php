@@ -59,6 +59,10 @@ class IdiomaEspanolTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
+        // La pantalla de Recetas está oculta por default (dueño 31-08); el
+        // barrido la sigue visitando ENCENDIDA para que su español quede
+        // vigilado de cara a la reactivación.
+        config(['produccion.pantalla_recetas' => true]);
         $this->sucursal = Sucursal::firstOrCreate(
             ['codigo' => 'MIRADOR'],
             ['activa' => true, 'nombre' => 'Mirador', 'es_central' => true],
