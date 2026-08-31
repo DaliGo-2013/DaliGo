@@ -380,7 +380,7 @@
                         <x-stepper-input name="segunda" label="Segunda" hint="Defecto leve." :value="old('segunda', 0)" />
                         <div x-show="segunda > 0" x-cloak class="mt-2" x-ref="grupoMotivoSegunda">
                             <x-reason-chips name="motivo_segunda" label="Motivo de las de segunda"
-                                            :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
+                                            :options="\App\Models\ProduccionRegistro::motivosSegunda()"
                                             :selected="old('motivo_segunda')" />
                         </div>
                     </div>
@@ -389,7 +389,7 @@
                         <x-stepper-input name="malo" label="Malos" hint="No vendible · reciclaje." :value="old('malo', 0)" />
                         <div x-show="malo > 0" x-cloak class="mt-2" x-ref="grupoMotivoMalo">
                             <x-reason-chips name="motivo_malo" label="Motivo de las malas"
-                                            :options="\App\Models\ProduccionRegistro::MOTIVOS_DEFECTO"
+                                            :options="\App\Models\ProduccionRegistro::motivosMalas()"
                                             :selected="old('motivo_malo')" />
                         </div>
                     </div>

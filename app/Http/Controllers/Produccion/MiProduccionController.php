@@ -201,8 +201,8 @@ class MiProduccionController extends Controller
             'segunda' => ['required', 'integer', 'min:0', 'max:100000'],
             'malo' => ['required', 'integer', 'min:0', 'max:100000'],
             'danada' => ['required', 'integer', 'min:0', 'max:100000'],
-            'motivo_segunda' => ['nullable', Rule::in(ProduccionRegistro::MOTIVOS_DEFECTO)],
-            'motivo_malo' => ['nullable', Rule::in(ProduccionRegistro::MOTIVOS_DEFECTO)],
+            'motivo_segunda' => ['nullable', Rule::in(ProduccionRegistro::motivosSegunda())],
+            'motivo_malo' => ['nullable', Rule::in(ProduccionRegistro::motivosMalas())],
         ], [
             '*.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
             'maquina_id.required' => 'Selecciona la máquina en la que trabajaste.',

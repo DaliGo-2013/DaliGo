@@ -137,6 +137,11 @@ class Oee
         // --- Calidad (+ scrap de arranque separado) ---
         $producido = (int) $registros->sum(fn ($r) => (int) $r->primera + (int) $r->segunda);
         $merma = (int) $registros->sum(fn ($r) => (int) $r->malo + (int) $r->danada);
+        // OJO (MIPROD-1, decisión informada del dueño 21-08): «Scrap de
+        // arranque» SALIÓ de la lista de motivos de malas, así que este
+        // desglose solo suma tandas HISTÓRICAS (el motivo se persiste por
+        // fila). Hacia adelante marca 0 salvo que el dueño lo reponga en
+        // `produccion_motivos_malas` desde Configuración.
         $scrap = (int) $registros
             ->where('motivo_malo', 'Scrap de arranque')
             ->sum(fn ($r) => (int) $r->malo);
