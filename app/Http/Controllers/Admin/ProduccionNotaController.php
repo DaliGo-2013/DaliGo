@@ -68,10 +68,10 @@ class ProduccionNotaController extends Controller
         return back()->with('status', 'Nota eliminada.');
     }
 
-    /** Los sopladores activos, para el select «Para quién» (vacio = todos). */
+    /** Los sopladores, para el select «Para quién» (vacio = todos). Misma fuente que Asignar producción. */
     private function sopladores()
     {
-        return User::permission('report production')->orderBy('name')->get(['id', 'name']);
+        return User::sopladores();
     }
 
     private function validateData(Request $request): array
@@ -84,7 +84,14 @@ class ProduccionNotaController extends Controller
 
         return $request->validate([
             'texto' => ['required', 'string', 'max:191'],
-            'soplador_id' => ['nullable', Rule::exists('users', 'id')],
+            // Mismo universo que su selector: null = para todos; con valor,
+            // solo un usuario con rol de soplador.
+            'soplador_id' => ['nullable', Rule::exists('users', 'id'),
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if ($value !== null && ! User::find($value)?->esSoplador()) {
+                        $fail('La nota dirigida solo puede ir a un usuario con rol de soplador.');
+                    }
+                }],
             'vigente_desde' => ['nullable', 'date'],
             'vigente_hasta' => ['nullable', 'date', 'after_or_equal:vigente_desde'],
         ], [

@@ -19,7 +19,7 @@
                     </x-select>
                     <x-input-error :messages="$errors->get('soplador_id')" class="mt-2" />
                     @if ($sopladores->isEmpty())
-                        <x-input-hint>No hay usuarios con el rol Soplador todavía. Crea uno en Usuarios.</x-input-hint>
+                        <x-input-hint>No hay usuarios con el rol {{ $rotuloRolesSoplador }} todavía. Asigna el rol en Usuarios.</x-input-hint>
                     @endif
                 </div>
 

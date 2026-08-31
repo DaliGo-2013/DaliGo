@@ -417,7 +417,7 @@ class ProduccionController extends Controller
      */
     public function sopladores(): View
     {
-        $sopladores = User::permission('report production')->orderBy('name')->get(['id', 'name']);
+        $sopladores = User::sopladores();
 
         $stats = ProduccionReporte::query()
             ->selectRaw('soplador_id, COUNT(*) AS total, MAX(fecha) AS ultima')
@@ -476,7 +476,12 @@ class ProduccionController extends Controller
     public function asignar(): View
     {
         return view('admin.produccion.asignar', [
-            'sopladores' => User::permission('report production')->orderBy('name')->get(),
+            'sopladores' => User::sopladores(),
+            // Rótulo humano de los roles asignables, derivado de la clave
+            // (doctrina DASH-2): si el dueño suma un rol, el hint no miente.
+            'rotuloRolesSoplador' => collect(User::rolesSoplador())
+                ->map(fn (string $r) => \App\Support\RolesDelSistema::etiqueta($r))
+                ->join(' o '),
             'turnos' => self::TURNOS,
             'preformas' => $this->preformasParaSelector(),
             'procedencias' => ProduccionAsignacion::procedencias(),
@@ -537,7 +542,15 @@ class ProduccionController extends Controller
     public function asignarStore(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'soplador_id' => ['required', 'integer', 'exists:users,id'],
+            // Mismo universo que el selector (pedido del dueño 28-08): solo
+            // usuarios con rol de soplador — un id de otro usuario no entra
+            // aunque el POST venga armado a mano.
+            'soplador_id' => ['required', 'integer', 'exists:users,id',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (! User::find($value)?->esSoplador()) {
+                        $fail('Solo se puede asignar producción a un usuario con rol de soplador.');
+                    }
+                }],
             'turno' => ['required', 'in:'.implode(',', self::TURNOS)],
             'fecha' => ['required', 'date'],
             // max como guardia anti-dedazo (ver TOPE_CANTIDAD).
