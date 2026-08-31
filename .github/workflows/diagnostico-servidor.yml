@@ -45,7 +45,9 @@ jobs:
             -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
             "$SSH_USER@$SSH_HOST" \
             'echo "== limite de procesos de la cuenta (ulimit -u) =="; ulimit -u; \
+             echo; echo "== NUCLEOS del servidor (cuantos hilos pide git index-pack de golpe) =="; nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo; \
              echo; echo "== cuantos procesos tiene la cuenta ahora =="; ps -u "$(id -un)" -o pid= 2>/dev/null | wc -l; \
+             echo; echo "== otros limites de la cuenta =="; ulimit -a 2>/dev/null | grep -iE "process|file|memory|virtual" | head -6; \
              echo; echo "== cuantos por tipo (los sospechosos primero) =="; \
              ps -u "$(id -un)" -o args= 2>/dev/null | sed "s#.*/##" | awk "{print \$1, \$2, \$3}" | sort | uniq -c | sort -rn | head -15; \
              echo; echo "== procesos de artisan/php vivos, con su EDAD (etime) =="; \
