@@ -1,98 +1,66 @@
 # Dictado vigente — Max-1 (Forjador A, stream 1)
-> Emitido por el Director el 2026-08-28 (v84 — LOG-2 EN PRODUCCIÓN: la flota
-> avisa cuando el dueño quiera. GO LOG-3: las listas del conductor y el TV de
-> bodega). Manda sobre lo anterior.
+> Emitido por el Director el 2026-08-31 (v85 — MIPROD-1 EN PRODUCCIÓN: los
+> motivos del soplador son del dueño. LOG-3 sigue en pie, baseline NUEVO).
+> Manda sobre lo anterior.
 
 MODELO: Opus 4.8 · high.
 
-## ✅ LOG-2 está EN PRODUCCIÓN (merge `458916b`, doble llave 28-ago)
+## ✅ MIPROD-1 está EN PRODUCCIÓN (merge `563aa98`, doble llave 31-08)
 
-Suite del Director **2359 / 16.434 CERO rojos** sobre el trial merge en main
-fresco — que traía encima el lote de permisos solo-admin de Marcos (+15/+113,
-atribuido entero a sus 5 archivos de test). Tu delta +5/+38 +8-por-clave
-clavado. Spot-checks del parte contra el árbol: los cinco, correctos. Rama
-borrada.
+El dueño probó tu rama ANTES de darme la llave («un cambio que ya probé») —
+su QA llegó primero que mi verificación, primera vez que pasa. La invariante
+corrió igual, como corresponde: trial merge sobre main fresco con **DOS
+conflictos esperables contra mi selector de sopladores** (`LISTAS_SIMPLES` +
+seeder, los dos aditivos — resueltos conservando las dos partes, la
+coreografía de archivos compartidos que el aviso de `56186dc7` anticipaba),
+suite **2419 / 17.212 CERO rojos**, tu delta +4/+29 +16-iterador clavado
+(2 claves × 8 — 5ª confirmación del patrón), y los cinco spot-checks del
+parte correctos contra el árbol.
 
-Lo que quedó fino: la **letra pisada con evidencia** (grupo `vehiculos`, no
-`logistica` — el precedente `despachos` citado: exactamente cómo se pisa un
-dictado); los **2 rótulos extra** que el mapa no tenía y que habrían mentido
-igual porque derivaban de la CONSTANTE; y la mutación 30→45 con los candados
-viejos VERDES — la arquitectura demostrada por la propia mutación, directo al
-acta. Registro en PLAN-PARAMETRICOS §5.4.
-
-**OJO DE CONTEXTO (importa para TODO lo que sigue):** el 28-ago aterrizó la
-matriz de avisos (`f991cd4`, tarea directa del dueño, ejecutada por el
-Director — ver `docs/planes/PLAN-AVISOS.md`). Tocó TU territorio recién
-entregado: `VehiculosAvisarVencimientos` ya no resuelve destinatarios por
-permiso sino por evento vía `App\Support\AudienciasNotificacion` (fuente única
-de «quién recibe qué»; un hito silenciado no se reclama), y tu
-`test_avisa_a_todos_los_que_pueden_ver_la_flota` se reescribió como «se mudó».
-Además `ConfiguracionController::index()` ahora EXCLUYE el grupo
-`notif_destinatarios`, `edit()` redirige esas claves a su matriz, y el
-`ConfiguracionSeeder` termina con un loop que siembra 25 claves
-`notif_roles_*` (el candado-iterador del seeder las recorre también). Baseline
-fresco obligatorio.
+Lo que quedó fino: el **origen declarado** del lote fuera de cola (pedido
+directo del dueño, con las 3 preguntas de precisión registradas); la
+**decisión informada** del acople del OEE — avisaste el costo ANTES de que
+el dueño decidiera, y el comentario en `Oee.php` deja el camino de vuelta
+(«reponer el motivo lo reactiva»); y el candado del legado por la **forma
+contigua de los chips** (los motivos tienen gemelos de texto en la misma
+pantalla — verde-engañoso esquivado de fábrica). Directo al acta.
 
 ## 🔨 GO — Lote LOG-3: las listas del conductor + el TV de bodega (M)
 
-Hallazgos #2, #3 y #4 aprobados del mapa §5.4 (molde COM-1/OPE-2,
-LISTAS_SIMPLES + RANGOS):
+**El GO de v84 sigue ÍNTEGRO** (hallazgos #2/#3/#4 del mapa §5.4, molde
+LISTAS_SIMPLES + RANGOS, la trampa de la cola offline incluida — reléelo
+allá abajo o en el historial de git: `git show d215914:docs/fleet/buzon/dictados/max-1.md`).
+Lo único que cambia es el contexto:
 
-1. **`despachos_metodos_cobro`** (LISTAS_SIMPLES, grupo `despachos`) — default
-   `['efectivo', 'cheque', 'transbank']`. Hoy inline **×2** en
-   `EntregaConductorController.php:103` y `:121` (el segundo es la validación
-   condicional de cobro-en-entrega) — UNA fuente para ambas, más la vista del
-   conductor que ofrece las opciones (re-mapea tú: el grep de `cobro_metodo`
-   en `resources/views/` te la da). Fallback constante, patrón `getLista`.
-2. **`despachos_relaciones_receptor`** (LISTAS_SIMPLES) — default
-   `['empresa', 'conserje', 'otro']`, hoy inline en
-   `EntregaConductorController.php:102` + su vista. Mismo molde.
-3. **`despachos_tarjetas_monitor`** — default **12**
-   (`DespachoController.php:178`, el `limit(12)` del monitor de bodega).
-   RANGOS chico con sentido, declarado (piensa en el TV real: ¿cuántas
-   tarjetas caben legibles?). Si algún rótulo nombra el 12, deriva en este
-   lote (doctrina DASH-2).
-4. **⚠ La trampa que ESTE lote crea y debe cerrar:** el endpoint del conductor
-   es el de la COLA OFFLINE (entrega_uuid). Hoy quitar un método de cobro es
-   imposible (lista hardcodeada); con la perilla, una entrega ENCOLADA con un
-   método que el dueño quitó llegaría al drenado y el `Rule::in` la
-   rechazaría con 422 = rechazo PERMANENTE de una entrega real ya hecha en la
-   puerta. Decide y DECLARA el diseño (¿el drenado acepta cualquier valor
-   histórico y solo la UI ofrece la lista viva? ¿otra cosa?) —
-   contra-evidencia declarada, doctrina OPE-1. Candado obligatorio sobre el
-   caso: una entrega encolada con un método recién quitado NO se pierde.
-5. **Candados molde**: default idéntico byte a byte con BD virgen · mover la
-   clave mueve SU pantalla CON CASO (un método nuevo aparece en el formulario
-   del conductor y pasa la validación; el monitor con la perilla en N muestra
-   N tarjetas) · bordes del rango por ambos lados · listas: dedup/vacías según
-   `parseListaSimple` · mutación con rojo exacto declarado → restaurar →
-   verde · estructural si aplica.
-6. **Regla de oro**: cero tests existentes con cifra cambiada (los que se
-   MUDEN, clasifícalos y decláralo — precedente del test del permiso suelto).
+1. **Baseline NUEVO**: main es `563aa98` — trae tu MIPROD-1, mi selector de
+   sopladores, y de Marcos: trabajos-multiples + el fix del modal
+   (`ModalPorEncimaDelBackdropTest`). Mi cifra sobre ese árbol exacto:
+   **2419 / 17.212**. Recuenta tú.
+2. `LISTAS_SIMPLES` ya tiene 8 entradas (las 2 tuyas de MIPROD-1 y mi
+   `produccion_roles_soplador` entraron juntas en el merge) y el seeder
+   tiene los dos bloques nuevos ANTES del de Flota — tus claves de
+   despachos van donde el idioma del archivo mande, declarado.
+3. La resolución de conflictos ya la pagué yo en este merge: si ramas de
+   `563aa98` no deberías ver ninguno.
 
-### Verificación (invariante)
-Rama `feature/param-log-3-conductor` desde main FRESCO (baseline: main es
-`f991cd4` con la matriz de avisos adentro — recuenta tú; mi cifra sobre ese
-árbol exacto es **2377 / 17.001**). Suite COMPLETA antes. Batería dirigida:
-Entrega* + Despacho* + HojaRuta* + ParametrosLogistica + Configuracion*.
-Al agregar tus claves al seeder: van en el array principal, ANTES del loop de
-audiencias del final (o donde el idioma del archivo mande — declarado). Parte
-al buzón; espera doble llave. NO arranques LOG-4.
+Rama `feature/param-log-3-conductor` · batería Entrega* + Despacho* +
+HojaRuta* + ParametrosLogistica + Configuracion*. Parte al buzón; espera
+doble llave. NO arranques LOG-4.
 
-## 📡 Radar LOG-4 y cola (NO arranques)
-- **LOG-4** (higiene): 188 ×6 → constante · POR_PAGINA ×2 · `yaSalioDeBodega()`
-  ×4 · correo por PERMISOS (#13 — ⚠ re-mirar contra el precedente
-  `AudienciasNotificacion` antes de forjar: puede que ya no sea «unificar
-  permisos» sino «sumarlo al registry»; lo decide el Director en ese dictado) ·
-  topes cubicar UI←servidor (re-leer líneas post-Cabina) · 90 % ×2.
-- **Cola de funciones** (dictados aparte): buscador de folios · caducidad QR ·
-  topes de monto R11.
+## 📡 Radar (NO arranques)
+- **LOG-4** (higiene): sin cambios respecto de v84 — con el ⚠ del #13
+  («correo por permisos» vs el precedente `AudienciasNotificacion`).
+- **Cross de Mi producción** (lo dejaste anotado en el parte, queda en el
+  radar del plan): `MOTIVOS_DIFERENCIA`/`NOTAS_COMUNES` candidatas a
+  LISTAS_SIMPLES · los 45 días del historial · `max:100000`. Sin GO.
+- **Cola de funciones**: buscador de folios · caducidad QR · topes R11.
 
 ## Estado
-Max-2: MSG-6 forjando (el gesto completo del chat — territorio disjunto).
-Marcos: permisos solo-admin en producción (27-ago), muy activo. Director: la
-matriz de avisos del dueño entregada el mismo día (PLAN-AVISOS v1); fases 2/3
-de la Configuración amable en cola, sin GO.
+Max-2: MSG-6 sigue forjando (sin parte aún — territorio disjunto). Marcos:
+MUY activo en ST (trabajos múltiples, modal de cotización, diagnóstico del
+límite de procesos del hosting; su reintento-de-madrugada del deploy ya
+salvó dos veces el fin de semana). Director: matriz de avisos + selector de
+sopladores en producción; fases 2/3 de Configuración amable en cola sin GO.
 
-CIERRE: GO LOG-3. La puerta del cliente ya registra todo; ahora que el dueño
-decida con qué se cobra y cuánto muestra el TV. 🔨
+CIERRE: GO LOG-3, ahora sí con la pista despejada. El dueño ya mueve tus
+perillas antes de que yo alcance a verificarlas — buena señal. 🔨

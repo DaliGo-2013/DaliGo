@@ -217,6 +217,18 @@ de sopladores y sus validaciones derivan de `User::sopladores()`. Candados en
 `SopladorSelectorTest` (8). OJO LOG-3: este merge sumó una entrada a `LISTAS_SIMPLES`
 y un bloque al seeder — baseline fresco al forjar.
 
+**MIPROD-1 en producción (`563aa98`, doble llave 31-08 — pedido directo del dueño
+21-08, lote de Max-1 FUERA de cola con origen declarado):** los motivos del
+soplador se parten por CALIDAD — `produccion_motivos_segunda` (default «Detalles
+estéticos», conducta NUEVA dictada por el dueño, no regla de oro) y
+`produccion_motivos_malas` (los 9 sin «Scrap de arranque», decisión informada: el
+desglose de scrap del OEE queda leyendo solo el histórico; reponer el motivo lo
+reactiva — comentario en `Oee.php`). `MOTIVOS_DEFECTO` retirada con censo.
+Candados en `ParametrosMiProduccionTest` (4). Este lote **abre de facto el
+apartado «Mi producción»** (cross anotado en F0-OPERACIÓN); queda en radar:
+`MOTIVOS_DIFERENCIA`/`NOTAS_COMUNES` (candidatas LISTAS_SIMPLES), los 45 días del
+historial y sus `max:100000` — para cuando se dicte su F0/lote.
+
 **El hallazgo-marco: el módulo más denso es el MEJOR parametrizado del proyecto.** M11
 se construyó ya con la doctrina de la casa (D-003, «hipótesis editables») — lo que en
 Dashboard/Comercial fue cacería acá es mayormente CENSO de lo ya vivo:
