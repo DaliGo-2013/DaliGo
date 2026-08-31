@@ -83,10 +83,14 @@
                     <dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de dañadas</dt>
                     <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_danada }}%</dd>
                 </div>
-                <div>
-                    <dt class="text-xs uppercase tracking-wide text-neutral-400">Cavidades activas</dt>
-                    <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->cavidades_activas ?? 'Todas' }}</dd>
-                </div>
+                {{-- Solo con valor: el selector del soplador se retiró (MIPROD-2);
+                     los reportes históricos con cavidades declaradas lo conservan. --}}
+                @if ($reporte->cavidades_activas)
+                    <div>
+                        <dt class="text-xs uppercase tracking-wide text-neutral-400">Cavidades activas</dt>
+                        <dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->cavidades_activas }}</dd>
+                    </div>
+                @endif
             </dl>
 
             @if ($reporte->registros->isNotEmpty())

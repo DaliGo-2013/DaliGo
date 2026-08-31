@@ -442,15 +442,12 @@ class MiProduccionController extends Controller
         }
         $request->merge(['motivo' => blank($motivo) ? null : $motivo]);
 
+        // cavidades_activas ya NO se acepta del request (MIPROD-2, pedido del
+        // dueño 21-08: el selector se retiró de la pantalla). Al no validarse,
+        // fill() no la toca: el valor histórico de un reporte queda intacto.
         $validated = $request->validate([
             'motivo' => ['nullable', 'string', 'max:255'],
             'obs' => ['nullable', 'string', 'max:1000'],
-            // Cavidades del molde con las que se trabajo el turno; vacio =
-            // todas (NULL). El tope 64 es holgura: no existe molde con mas.
-            'cavidades_activas' => ['nullable', 'integer', 'min:1', 'max:64'],
-        ], [
-            'cavidades_activas.min' => 'Las cavidades activas deben ser al menos 1.',
-            'cavidades_activas.max' => 'Revisa el número de cavidades: parece demasiado grande.',
         ]);
 
         $enviar = $request->boolean('enviar');
