@@ -38,6 +38,31 @@
             </div>
         @endcan
 
+        {{-- Serie personal del operario: SUS últimos N días (dueño 31-08).
+             Mismo markup que la mini-serie del pulso del jefe — cero clases
+             nuevas a propósito (sin rebuild del bundle). --}}
+        @if ($serieSoplador)
+            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                <div class="flex items-center justify-between gap-4">
+                    {{-- El «N días» deriva de la ventana calculada (los textos gemelos driftean). --}}
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Mi producción · últimos {{ $serieSoplador['diasSerie'] }} días</h3>
+                    <a href="{{ $serieSoplador['href'] }}" class="text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600">Ver historial</a>
+                </div>
+                <p class="mt-3 text-3xl font-semibold tabular-nums text-neutral-900">
+                    {{ number_format($serieSoplador['total'], 0, ',', '.') }}
+                    <span class="text-base font-normal text-neutral-500">botellones soplados</span>
+                </p>
+                <div class="mt-4 flex h-12 items-end gap-1">
+                    @foreach ($serieSoplador['serie'] as $dia)
+                        <div class="flex-1 rounded-t {{ $loop->last ? 'bg-brand-600' : 'bg-brand-200' }}"
+                            style="height: {{ max(4, $dia['pct']) }}%"
+                            title="{{ \Illuminate\Support\Carbon::parse($dia['fecha'])->format('d-m') }}: {{ number_format($dia['producido'], 0, ',', '.') }}"></div>
+                    @endforeach
+                </div>
+                <p class="mt-1 text-xs text-neutral-400">Hoy destacado · solo tu soplado</p>
+            </div>
+        @endif
+
         {{-- ① Excepciones (M16-v1): solo lo que se desvía, con edad y destino --}}
         @if ($puedeVerExcepciones)
             <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
