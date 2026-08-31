@@ -53,6 +53,11 @@ class MenuConsolidacionesTest extends TestCase
     {
         $this->seed(RolesAndPermissionsSeeder::class);
 
+        // La pantalla de Recetas está oculta por default (dueño 31-08): el
+        // candado del resaltado la visita ENCENDIDA — sigue siendo una
+        // consolidación E1 y su anfitrión no cambia por estar oculta.
+        config(['produccion.pantalla_recetas' => true]);
+
         return tap(User::factory()->create())
             ->givePermissionTo(Permission::all());
     }

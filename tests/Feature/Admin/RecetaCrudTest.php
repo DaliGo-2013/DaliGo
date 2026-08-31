@@ -25,6 +25,11 @@ class RecetaCrudTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolesAndPermissionsSeeder::class);
+        // AMOLDE (dueño 31-08): la pantalla de Recetas está OCULTA por default
+        // (config/produccion.php `pantalla_recetas`). Estos candados protegen
+        // el CRUD para cuando se reencienda; el ocultamiento tiene su propio
+        // candado en RecetaPantallaOcultaTest.
+        config(['produccion.pantalla_recetas' => true]);
     }
 
     private function jefe(): User
