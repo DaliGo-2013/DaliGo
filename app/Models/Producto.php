@@ -80,6 +80,81 @@ class Producto extends Model implements AuditableContract
         return trim(preg_replace('/\s+/', ' ', $s));
     }
 
+    /** Clave de Configuración de la whitelist de preformas (fuente única del nombre). */
+    public const CLAVE_PREFORMAS_VISIBLES = 'produccion_preformas_visibles';
+
+    /**
+     * Filtro reutilizable de preformas (selector de asignar producción y su
+     * validación comparten el universo): fuera los productos cuyo nombre
+     * contiene "dañada". Van las DOS variantes de caja porque el LIKE de
+     * SQLite solo case-foldea ASCII ('Ñ' != 'ñ'); en MySQL (collation ci) la
+     * segunda es redundante pero inofensiva. El patrón vive en
+     * config/produccion.php (OPE-3, nivel 2 deploy).
+     */
+    public static function sinPreformasDanadas(): \Closure
+    {
+        $patron = (string) config('produccion.patron_danada');
+
+        return function ($query) use ($patron) {
+            $query->where('nombre', 'not like', $patron)
+                ->where('nombre', 'not like', mb_strtoupper($patron));
+        };
+    }
+
+    /**
+     * El universo BASE de preformas asignables a un turno: activos cuya
+     * categoría calza el patrón de config/produccion.php, excluyendo las
+     * dañadas (registran merma en el catálogo, no son material asignable).
+     * Fallback histórico: todos los activos si la categorización del catálogo
+     * aún no distingue preformas, con la misma exclusión.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, self>
+     */
+    public static function universoPreformas(): \Illuminate\Database\Eloquent\Collection
+    {
+        $preformas = self::query()->where('activo', true)
+            ->where('categoria', 'like', config('produccion.patron_preforma'))
+            ->where(self::sinPreformasDanadas())
+            ->orderBy('nombre')
+            ->get(['id', 'sku', 'nombre']);
+
+        if ($preformas->isNotEmpty()) {
+            return $preformas;
+        }
+
+        return self::query()->where('activo', true)
+            ->where(self::sinPreformasDanadas())
+            ->orderBy('nombre')
+            ->get(['id', 'sku', 'nombre']);
+    }
+
+    /**
+     * Las preformas que se OFRECEN al asignar producción: el universo, filtrado
+     * por la whitelist del jefe (`produccion_preformas_visibles`, checkboxes en
+     * Configuración — pedido del dueño 31-08). Con selección guardada se
+     * ofrecen SOLO esas (una preforma nueva de Bsale no aparece hasta marcarla
+     * — semántica elegida a propósito); vacía/ausente = todas (el histórico).
+     * Una selección podrida (todos sus SKU desactivados o renombrados) cae a
+     * todas: un selector muerto no puede nacer de datos podridos. La
+     * validación de asignarStore usa ESTA misma lista (mismo universo, M-3).
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, self>
+     */
+    public static function preformasVisibles(): \Illuminate\Database\Eloquent\Collection
+    {
+        $universo = self::universoPreformas();
+
+        $visibles = Configuracion::get(self::CLAVE_PREFORMAS_VISIBLES);
+
+        if (! is_array($visibles) || $visibles === []) {
+            return $universo;
+        }
+
+        $filtradas = $universo->whereIn('sku', $visibles)->values();
+
+        return $filtradas->isNotEmpty() ? $filtradas : $universo;
+    }
+
     /**
      * Solo "equipos de taller" (dispensadores, lavadoras, bombas, herramientas):
      * productos cuya `categoria` (el product_type espejado de Bsale), NORMALIZADA,

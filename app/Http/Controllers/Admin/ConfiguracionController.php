@@ -110,9 +110,18 @@ class ConfiguracionController extends Controller
             return redirect()->route('admin.configuracion.avisos.edit');
         }
 
+        // La whitelist de preformas se edita con CHECKBOXES del catálogo
+        // (pedido del dueño 31-08: nada de tipear SKUs). El listado ofrecido
+        // es el MISMO universo del selector de asignar producción.
+        $esSeleccionPreformas = $configuracion->clave === \App\Models\Producto::CLAVE_PREFORMAS_VISIBLES;
+        $marcadas = Configuracion::get($configuracion->clave);
+
         return view('admin.configuracion.edit', [
             'configuracion' => $configuracion,
             'esLista' => in_array($configuracion->clave, self::LISTAS_SIMPLES, true),
+            'esSeleccionPreformas' => $esSeleccionPreformas,
+            'preformasUniverso' => $esSeleccionPreformas ? \App\Models\Producto::universoPreformas() : collect(),
+            'preformasMarcadas' => is_array($marcadas) ? $marcadas : [],
         ]);
     }
 
@@ -139,6 +148,31 @@ class ConfiguracionController extends Controller
         // Booleano: el checkbox puede no enviarse => boolean() normaliza la ausencia.
         if ($configuracion->tipo === Configuracion::TIPO_BOOLEAN) {
             return $request->boolean('valor');
+        }
+
+        // Whitelist de preformas: llega como CHECKBOXES (array de SKUs;
+        // ninguna marcada = clave ausente = [] → modo automático «todas», y
+        // la pantalla lo dice). Cada SKU se valida contra el universo del
+        // selector y uno desconocido se rechaza nombrándolo (molde
+        // validarRolesExistentes: sin esto, el clamp del consumidor lo
+        // descartaría al leer y la edición sería un no-op silencioso).
+        if ($configuracion->clave === \App\Models\Producto::CLAVE_PREFORMAS_VISIBLES) {
+            $skus = $request->validate([
+                'valor' => ['nullable', 'array'],
+                'valor.*' => ['string'],
+            ])['valor'] ?? [];
+
+            $validos = \App\Models\Producto::universoPreformas()->pluck('sku')->all();
+
+            foreach ($skus as $sku) {
+                if (! in_array($sku, $validos, true)) {
+                    throw ValidationException::withMessages([
+                        'valor' => "«{$sku}» no es una preforma del catálogo que califique para el selector.",
+                    ]);
+                }
+            }
+
+            return array_values(array_unique($skus));
         }
 
         // Lista simple (COM-1): el textarea trae UN valor por línea. Se

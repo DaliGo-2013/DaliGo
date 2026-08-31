@@ -663,6 +663,17 @@ class ConfiguracionSeeder extends Seeder
                 'grupo' => 'produccion',
                 'descripcion' => 'Motivos que puede marcar el operario en los botellones MALOS (uno por línea). Reponer «Scrap de arranque» reactiva el desglose de scrap del informe OEE.',
             ],
+            // Whitelist de preformas del selector de asignar producción (pedido
+            // del dueño 31-08): se edita con CHECKBOXES del catálogo. Vacía =
+            // modo automático (todas las que califican) — el histórico, regla
+            // de oro. El nombre de la clave es Producto::CLAVE_PREFORMAS_VISIBLES.
+            [
+                'clave' => \App\Models\Producto::CLAVE_PREFORMAS_VISIBLES,
+                'valor' => '[]',
+                'tipo' => Configuracion::TIPO_JSON,
+                'grupo' => 'produccion',
+                'descripcion' => 'Preformas que ofrece el selector de Asignar producción (se marcan con checkbox). Sin selección se ofrecen todas las del catálogo que califican.',
+            ],
             // --- Flota de vehículos (LOG-2, PLAN-PARAMETRICOS §5.4 #1) ---
             // Grupo `vehiculos` y no `logistica`: el idioma del seeder agrupa por
             // apartado/pantalla (el hermano `despachos` ya sentó el precedente
