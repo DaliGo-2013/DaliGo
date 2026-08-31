@@ -109,6 +109,14 @@ class RolesAndPermissionsSeeder extends Seeder
             // ahora evita tener que abrir el codigo cuando exista ese perfil.
             'ver vehiculos',
             'manage vehiculos',
+            // TERCER permiso de la flota (pedido del dueño 31-08-2026): el ciclo
+            // completo de las FOTOS de los documentos —subir, reemplazar, quitar la
+            // equivocada— sin la flota entera. Existe porque el caso real es una
+            // persona por sucursal que mantiene los respaldos al día (Camilo en
+            // Mirador) y el único camino era darle 'manage vehiculos', que también
+            // crea/elimina vehículos y toca el catálogo de tipos. Se asigna desde
+            // Administración → Roles; 'manage vehiculos' lo sigue incluyendo todo.
+            'cargar respaldos vehiculos',
             // Simulador de carga: es una calculadora, la usa ventas.
             'simular carga',
             // Modulo Devoluciones (M13, flujo A-12). DOS permisos: consultar el

@@ -59,6 +59,9 @@ return [
         // Logística · flota de vehículos (04-08).
         'ver vehiculos' => 'Ver la flota de vehículos y sus vencimientos',
         'manage vehiculos' => 'Gestionar la flota (crear, editar, dar de baja)',
+        // El ciclo de las FOTOS de los documentos sin la flota entera (31-08):
+        // subir, reemplazar y quitar la equivocada. Ver ya viene con 'ver vehiculos'.
+        'cargar respaldos vehiculos' => 'Cargar y reemplazar las fotos de los documentos de los vehículos',
         'simular carga' => 'Usar el simulador de carga (¿cuánto entra en cada camión?)',
         // Chat interno (MSG-1, PLAN-MENSAJES): apagable por rol sin deploy.
         'usar mensajes' => 'Usar la mensajería interna (chat entre usuarios)',

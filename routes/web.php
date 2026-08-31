@@ -698,16 +698,10 @@ Route::middleware('auth')
                 ->whereNumber('vehiculo')->name('vehiculos.update');
             Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
                 ->whereNumber('vehiculo')->name('vehiculos.destroy');
-            // Respaldo digital de un documento (11-08): SUBIR es de quien
-            // gestiona la flota — los papeles oficiales los maneja quien los
-            // renueva. El servidor comprime; el que sube no tiene que saber.
-            Route::post('vehiculos/{vehiculo}/documentos/{documento}', [VehiculoDocumentoController::class, 'store'])
-                ->whereNumber('vehiculo')->name('vehiculos.documentos.store');
-            // QUITAR una foto subida (pedido del dueño 11-08). Borra la ÚLTIMA
-            // versión y deja a la vista la anterior si existía: el caso real es
-            // «subí la foto equivocada», no «este vehículo no tiene SOAP».
-            Route::delete('vehiculos/documento-archivo/{doc}', [VehiculoDocumentoController::class, 'destroy'])
-                ->whereNumber('doc')->name('vehiculos.documentos.destroy');
+            // Las FOTOS de los documentos ya no viven en este grupo: desde el
+            // 31-08 tienen su permiso granular (ver el grupo de abajo). Acá
+            // queda lo que de verdad es gestionar la flota: crear/editar/
+            // eliminar vehículos y el catálogo de tipos de documento.
             // CREAR tipos de documento (11-08). Los cinco de la ley no se administran
             // acá: son columnas del vehículo. Esto es para los que pidan después.
             // Va con 'manage vehiculos' porque cambia el semáforo de TODA la flota.
@@ -737,7 +731,31 @@ Route::middleware('auth')
             Route::delete('cargas-reales/{cargasReale}', [CargaRealController::class, 'destroy'])
                 ->whereNumber('cargasReale')->name('cargas-reales.destroy');
         });
-        Route::middleware('permission:ver vehiculos|manage vehiculos')->group(function () {
+        // LAS FOTOS de los documentos, con permiso PROPIO (pedido del dueño 31-08-2026:
+        // que quien carga la foto también la vea y la pueda reemplazar, sin tener que
+        // darle la flota entera). Antes SUBIR y QUITAR vivían bajo 'manage vehiculos',
+        // así que el único camino para que alguien cargara respaldos era regalarle
+        // también crear/eliminar vehículos y el catálogo de tipos — permiso todo-o-nada.
+        // 'cargar respaldos vehiculos' cubre el ciclo completo de la FOTO: subir,
+        // reemplazar (que es subir de nuevo) y quitar la subida equivocada. Ver ya viene
+        // con 'ver vehiculos'. 'manage vehiculos' lo sigue incluyendo todo (canAny).
+        Route::middleware('permission:cargar respaldos vehiculos|manage vehiculos')->group(function () {
+            // SUBIR/REEMPLAZAR. El servidor comprime; el que sube no tiene que saber.
+            Route::post('vehiculos/{vehiculo}/documentos/{documento}', [VehiculoDocumentoController::class, 'store'])
+                ->whereNumber('vehiculo')->name('vehiculos.documentos.store');
+            // QUITAR una foto subida (pedido del dueño 11-08). Borra la ÚLTIMA
+            // versión y deja a la vista la anterior si existía: el caso real es
+            // «subí la foto equivocada», no «este vehículo no tiene SOAP». Va con el
+            // permiso de cargar porque es el DESHACER de la propia subida: sin él,
+            // una foto en el documento equivocado solo se arregla tapándola con otra.
+            Route::delete('vehiculos/documento-archivo/{doc}', [VehiculoDocumentoController::class, 'destroy'])
+                ->whereNumber('doc')->name('vehiculos.documentos.destroy');
+        });
+
+        // El permiso de cargar entra TAMBIÉN al grupo de lectura, y no es cortesía: un
+        // rol que solo tuviera 'cargar respaldos vehiculos' podría recibir el POST pero
+        // no llegar a la ficha donde vive el botón — un permiso que no se puede ejercer.
+        Route::middleware('permission:ver vehiculos|manage vehiculos|cargar respaldos vehiculos')->group(function () {
             Route::get('vehiculos', [VehiculoController::class, 'index'])->name('vehiculos.index');
             // La descarga va ANTES del show: 'excel' no es numérico, así que el
             // whereNumber ya lo protege, pero el orden lo deja explícito.

@@ -152,6 +152,18 @@
                                      :vacio="$respaldo
                                         ? 'Hay una foto cargada · '.$respaldo->tamano_kb.' KB'
                                         : 'Sin foto · se comprime sola, queda liviana'" />
+                    {{-- VER la foto actual antes de decidir reemplazarla (dueño, 31-08-2026:
+                         «nos olvidamos la opción de ver»). Sin este enlace, esta pantalla
+                         decía «Hay una foto cargada» sin forma de mirarla: reemplazar a
+                         ciegas, o irse a la ficha y volver. Abre en pestaña nueva para no
+                         perder lo ya escrito en el formulario. --}}
+                    @if ($respaldo)
+                        <a href="{{ route('admin.vehiculos.documentos.show', [$vehiculo, $clave]) }}"
+                           target="_blank" rel="noopener"
+                           class="mt-1 inline-flex min-h-8 items-center text-xs font-medium text-brand-700 hover:text-brand-600">
+                            Ver la foto actual
+                        </a>
+                    @endif
                     <x-input-error :messages="$errors->get('respaldos.'.$clave)" class="mt-2" />
                 </div>
             </div>

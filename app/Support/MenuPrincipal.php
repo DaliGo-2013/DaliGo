@@ -134,7 +134,10 @@ class MenuPrincipal
                 // VEN además los tres autorizadores de la cadena R11 — mismo
                 // OR que gatea su ruta (D-014).
                 'hojas-ruta' => ['label' => 'Hojas de ruta', 'route' => 'admin.hojas-ruta.index', 'activo' => ['admin.hojas-ruta.*'], 'permiso' => 'manage hojas ruta|autorizar pagos ruta|autorizar ruta|autorizar carga'],
-                'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos'],
+                // + 'cargar respaldos vehiculos' (31-08): quien mantiene las fotos de los
+                // documentos necesita LLEGAR a la flota — un permiso sin ítem de menú es
+                // un permiso que no se puede ejercer. Mismo trío que gatea las rutas.
+                'vehiculos' => ['label' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'activo' => ['admin.vehiculos.*'], 'permiso' => 'ver vehiculos|manage vehiculos|cargar respaldos vehiculos'],
                 // Conductores llegó desde Servicio Técnico el 04-08 (pedido del
                 // dueño): quien administra la flota administra quién la maneja.
                 // El permiso es el MISMO que gatea su ruta en routes/web.php

@@ -35,7 +35,9 @@ class RoleMatrixSeedTest extends TestCase
                 'manage despachos', 'confirmar entrega',
                 'emitir documentos tributarios', 'emitir nota de credito',
                 'ver plan proyecto', 'gestionar plan proyecto',
-                'ver vehiculos', 'manage vehiculos', 'simular carga',
+                // + 'cargar respaldos vehiculos' (31-08): las fotos de los documentos
+                // con permiso propio, para asignarlas sin regalar la flota entera.
+                'ver vehiculos', 'manage vehiculos', 'cargar respaldos vehiculos', 'simular carga',
                 'view devoluciones', 'manage devoluciones',
                 'manage hojas ruta', 'autorizar pagos ruta', 'autorizar ruta', 'autorizar carga',
                 'usar mensajes',

@@ -76,14 +76,18 @@
                                         Ver el documento
                                         <span class="font-normal text-neutral-400">· {{ $respaldo->tamano_kb }} KB</span>
                                     </a>
-                                    @can('manage vehiculos')
+                                    @canany(['cargar respaldos vehiculos', 'manage vehiculos'])
                                         {{-- QUITAR la foto (pedido del dueño 11-08). Va discreto y
                                              al lado de «Ver», no como botón rojo grande: el uso es
                                              deshacer una subida equivocada, no una acción que se
                                              busque. Pide confirmación porque borra un archivo de
                                              verdad, y el texto DICE qué queda después: si había una
                                              versión anterior vuelve, y si no, el documento se queda
-                                             sin respaldo. --}}
+                                             sin respaldo.
+
+                                             `canany` con el permiso granular desde el 31-08: quitar
+                                             es el DESHACER de quien sube, no un privilegio de
+                                             jefatura — mismo par de permisos que la ruta. --}}
                                         @php
                                             $versiones = $respaldos->get($doc['clave'])?->count() ?? 0;
                                         @endphp
@@ -99,9 +103,9 @@
                                                 Quitar
                                             </button>
                                         </form>
-                                    @endcan
+                                    @endcanany
                                 @endif
-                                @can('manage vehiculos')
+                                @canany(['cargar respaldos vehiculos', 'manage vehiculos'])
                                     {{-- <x-archivo-input> y NO un input nativo: el navegador
                                          recorta su rótulo y en 375 px no se entiende (candado
                                          ArchivoInputTest). `capture="environment"` abre la
@@ -119,8 +123,10 @@
                                                          vacio="Se comprime solo, queda liviano"
                                                          @change="$el.form.submit()" />
                                     </form>
-                                @endcan
-                                @unless ($respaldo || auth()->user()->can('manage vehiculos'))
+                                @endcanany
+                                {{-- El aviso de «sin respaldo» es para quien SOLO mira: quien
+                                     puede cargar ya tiene el botón de subir en su lugar. --}}
+                                @unless ($respaldo || auth()->user()->canAny(['cargar respaldos vehiculos', 'manage vehiculos']))
                                     <span class="text-neutral-400">Sin respaldo digital</span>
                                 @endunless
                             </div>
