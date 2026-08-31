@@ -165,20 +165,7 @@ class DashboardController extends Controller
             // no puede dejar la serie vacía (idioma de devolucion_fotos_min).
             $diasSerie = max(2, (int) Configuracion::get('dashboard_dias_serie_produccion', self::DIAS_SERIE_PRODUCCION_DEFAULT));
             $desde7 = \App\Support\FechaNegocio::ahora()->subDays($diasSerie - 1)->toDateString();
-            $porDia = ProduccionReporte::seriePorDia($desde7, $hoy);
-            $serie = [];
-            for ($cursor = Carbon::parse($desde7); $cursor->toDateString() <= $hoy; $cursor->addDay()) {
-                $fila = $porDia->get($cursor->toDateString());
-                $serie[] = [
-                    'fecha' => $cursor->toDateString(),
-                    'producido' => $fila ? (int) $fila->p1 + (int) $fila->p2 : 0,
-                ];
-            }
-            $max = max(1, max(array_column($serie, 'producido')));
-            foreach ($serie as &$dia) {
-                $dia['pct'] = (int) round($dia['producido'] / $max * 100);
-            }
-            unset($dia);
+            $serie = $this->serieProduccion($desde7, $hoy);
 
             // Referencia de merma: los N días ANTERIORES a hoy (hoy no puede
             // ser su propia vara). Sin datos previos queda null (sin referencia).
@@ -205,6 +192,29 @@ class DashboardController extends Controller
                 'diasSerie' => $diasSerie,
                 'diasMerma' => $diasMerma,
                 'href' => route('admin.produccion.index'),
+            ];
+        }
+
+        // ── ② Pulso personal del operario: SUS últimos N días (dueño 31-08) ──
+        // Gateado por el MISMO permiso que la tarjeta CTA de arriba (`report
+        // production`), y con la MISMA perilla de ventana que la serie del
+        // jefe: las dos mini-barras cuentan los mismos días, y el rótulo de
+        // la vista deriva de la ventana (los textos gemelos driftean).
+        $serieSoplador = null;
+
+        if ($user->can('report production')) {
+            $diasPersonal = max(2, (int) Configuracion::get('dashboard_dias_serie_produccion', self::DIAS_SERIE_PRODUCCION_DEFAULT));
+            $serie = $this->serieProduccion(
+                \App\Support\FechaNegocio::ahora()->subDays($diasPersonal - 1)->toDateString(),
+                $hoy,
+                $user->id,
+            );
+
+            $serieSoplador = [
+                'serie' => $serie,
+                'total' => array_sum(array_column($serie, 'producido')),
+                'diasSerie' => $diasPersonal,
+                'href' => route('produccion.mi.historial'),
             ];
         }
 
@@ -355,10 +365,38 @@ class DashboardController extends Controller
             'excepciones' => $excepciones,
             'puedeVerExcepciones' => $puedeVerExcepciones,
             'pulsoProduccion' => $pulsoProduccion,
+            'serieSoplador' => $serieSoplador,
             'pulsoTaller' => $pulsoTaller,
             'tallerCards' => $tallerCards,
             'accesos' => $accesos,
         ]);
+    }
+
+    /**
+     * Serie diaria CONTINUA (con ceros) para las mini-barras: producido
+     * (1ª+2ª) por día + pct relativo al mejor día de la ventana. La comparten
+     * el pulso del jefe (global) y la tarjeta personal del operario (scoped
+     * por soplador): una sola definición de «producido», para que las dos
+     * barras del Inicio digan lo mismo.
+     */
+    private function serieProduccion(string $desde, string $hasta, ?int $sopladorId = null): array
+    {
+        $porDia = ProduccionReporte::seriePorDia($desde, $hasta, $sopladorId);
+        $serie = [];
+        for ($cursor = Carbon::parse($desde); $cursor->toDateString() <= $hasta; $cursor->addDay()) {
+            $fila = $porDia->get($cursor->toDateString());
+            $serie[] = [
+                'fecha' => $cursor->toDateString(),
+                'producido' => $fila ? (int) $fila->p1 + (int) $fila->p2 : 0,
+            ];
+        }
+        $max = max(1, max(array_column($serie, 'producido')));
+        foreach ($serie as &$dia) {
+            $dia['pct'] = (int) round($dia['producido'] / $max * 100);
+        }
+        unset($dia);
+
+        return $serie;
     }
 
     /**
