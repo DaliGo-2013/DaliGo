@@ -498,38 +498,10 @@ class ProduccionController extends Controller
      */
     private function preformasParaSelector()
     {
-        $preformas = Producto::query()->where('activo', true)
-            ->where('categoria', 'like', config('produccion.patron_preforma'))
-            ->where($this->sinPreformasDanadas())
-            ->orderBy('nombre')
-            ->get(['id', 'sku', 'nombre']);
-
-        if ($preformas->isNotEmpty()) {
-            return $preformas;
-        }
-
-        return Producto::query()->where('activo', true)
-            ->where($this->sinPreformasDanadas())
-            ->orderBy('nombre')
-            ->get(['id', 'sku', 'nombre']);
-    }
-
-    /**
-     * Filtro reutilizable (selector y validacion comparten el universo): fuera
-     * los productos cuyo nombre contiene "dañada". Van las DOS variantes de
-     * caja porque el LIKE de SQLite solo case-foldea ASCII ('Ñ' != 'ñ'); en
-     * MySQL (collation ci) la segunda es redundante pero inofensiva.
-     */
-    private function sinPreformasDanadas(): \Closure
-    {
-        // El patrón vive en config/produccion.php (OPE-3, nivel 2 deploy). La
-        // segunda vuelta en MAYÚSCULAS conserva el gotcha de la Ñ tal cual.
-        $patron = (string) config('produccion.patron_danada');
-
-        return function ($query) use ($patron) {
-            $query->where('nombre', 'not like', $patron)
-                ->where('nombre', 'not like', mb_strtoupper($patron));
-        };
+        // Fuente única en el modelo (universo + whitelist del jefe): la
+        // comparte con la pantalla de checkboxes de Configuración y con la
+        // validación de asignarStore. Ver Producto::preformasVisibles().
+        return Producto::preformasVisibles();
     }
 
     /**
@@ -557,9 +529,10 @@ class ProduccionController extends Controller
             'asignadas' => ['required', 'integer', 'min:1', 'max:'.self::TOPE_CANTIDAD],
             // Preforma del turno (producto del catalogo). Opcional: si no se
             // elige, el consumo del kardex queda sin enlace a producto. Se
-            // restringe a productos ACTIVOS y NO dañados (mismo universo que
-            // el selector; un id fuera de ese universo no debe entrar al kardex).
-            'preforma_id' => ['nullable', 'integer', Rule::exists('productos', 'id')->where('activo', true)->where($this->sinPreformasDanadas())],
+            // valida contra EXACTAMENTE lo que ofrece el selector (universo +
+            // whitelist del jefe): un id oculto por la selección no entra al
+            // kardex ni con el POST armado a mano (doctrina M-3).
+            'preforma_id' => ['nullable', 'integer', Rule::in($this->preformasParaSelector()->pluck('id'))],
             // Procedencia de la preforma (saco o caja). Opcional; el select
             // no elegido llega '' y ConvertEmptyStringsToNull lo vuelve null.
             'procedencia' => ['nullable', Rule::in(ProduccionAsignacion::procedencias())],
