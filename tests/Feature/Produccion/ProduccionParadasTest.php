@@ -393,42 +393,30 @@ class ProduccionParadasTest extends TestCase
         $this->assertSame('2 h 15 min', $parada->duracion_label);
     }
 
-    // --- Cavidades activas y scrap de arranque (candado 6, parte servidor) ---
+    // --- Cavidades activas (RETIRADO en MIPROD-2) y scrap de arranque ---
+    // Los dos candados originales del candado-6 «cavidades persisten / fuera
+    // de rango» MURIERON CON EL CAMPO (clasificación bitácora 26-08): el
+    // selector se retiró a pedido del dueño (21-08). El que sigue es su
+    // candado INVERSO — el campo retirado ya no escribe ni por request crudo.
 
-    public function test_cavidades_activas_persisten(): void
+    public function test_cavidades_activas_ya_no_se_aceptan_del_request(): void
     {
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador);
+        $reporte->update(['cavidades_activas' => 8]); // valor histórico
 
+        // Un request que igual mande el campo (form viejo cacheado, cola
+        // offline antigua) no revienta NI pisa el valor histórico.
         $this->actingAs($soplador)
             ->patch(route('produccion.mi.update', $reporte), ['enviar' => 0, 'cavidades_activas' => 12])
             ->assertRedirect(route('produccion.mi.show', $reporte));
 
-        $this->assertDatabaseHas('produccion_reportes', [
-            'id' => $reporte->id,
-            'cavidades_activas' => 12,
-        ]);
+        $this->assertSame(8, $reporte->fresh()->cavidades_activas);
 
-        // Vacio = todas (NULL), sin error.
-        $this->actingAs($soplador)
-            ->patch(route('produccion.mi.update', $reporte), ['enviar' => 0, 'cavidades_activas' => ''])
-            ->assertRedirect(route('produccion.mi.show', $reporte));
-
-        $this->assertNull($reporte->fresh()->cavidades_activas);
-    }
-
-    public function test_cavidades_fuera_de_rango_es_rechazada(): void
-    {
-        $soplador = $this->soplador();
-        $reporte = $this->reporteDe($soplador);
-
-        foreach ([0, 65] as $valor) {
-            $this->actingAs($soplador)
-                ->patch(route('produccion.mi.update', $reporte), ['enviar' => 0, 'cavidades_activas' => $valor])
-                ->assertSessionHasErrors('cavidades_activas');
-        }
-
-        $this->assertNull($reporte->fresh()->cavidades_activas);
+        // Y la pantalla ya no ofrece el selector.
+        $this->actingAs($soplador)->get(route('produccion.mi.show', $reporte))
+            ->assertOk()
+            ->assertDontSee('Cavidades activas del molde');
     }
 
     public function test_scrap_de_arranque_persiste(): void
@@ -538,7 +526,7 @@ class ProduccionParadasTest extends TestCase
             ->assertOk()
             ->assertSee(route('produccion.mi.paradas.store', $reporte), false)
             ->assertSee('name="parada_motivo"', false)
-            ->assertSee('name="parada_inicio"', false)
-            ->assertSee('name="cavidades_activas"', false);
+            ->assertSee('name="parada_inicio"', false);
+        // El assert de name="cavidades_activas" murió con el campo (MIPROD-2).
     }
 }

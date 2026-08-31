@@ -143,7 +143,11 @@
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de segunda</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_segunda }}%</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de malas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_malo }}%</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Tasa de dañadas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->tasa_danada }}%</dd></div>
-                    <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Cavidades activas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->cavidades_activas ?? 'Todas' }}</dd></div>
+                    {{-- Solo con valor: el selector se retiró (MIPROD-2) y para los
+                         reportes nuevos siempre sería «Todas» — puro ruido. --}}
+                    @if ($reporte->cavidades_activas)
+                        <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Cavidades activas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->cavidades_activas }}</dd></div>
+                    @endif
                 </dl>
 
                 @if ($reporte->registros->isNotEmpty())
@@ -228,14 +232,12 @@
                     paradaInicio: '{{ old('parada_inicio', '') }}',
                     paradaFin: '{{ old('parada_fin', '') }}',
                     registrandoParada: false,
-                    cavidades: '{{ old('cavidades_activas', $reporte->cavidades_activas ?? '') }}',
                     paneles: {
                         maquina: {{ $errors->has('maquina_id') ? 'true' : 'false' }},
                         tipo: {{ $errors->has('tipo_botellon_id') ? 'true' : 'false' }},
                         motivo: {{ $errors->has('motivo') ? 'true' : 'false' }},
                         obs: {{ $errors->has('obs') ? 'true' : 'false' }},
                         paradas: {{ $errors->hasAny(['parada_motivo', 'parada_origen', 'parada_inicio', 'parada_fin', 'parada_maquina_id']) ? 'true' : 'false' }},
-                        cavidades: {{ $errors->has('cavidades_activas') ? 'true' : 'false' }},
                     },
                     agregando: false,
                     avisoTanda: false,
@@ -584,16 +586,10 @@
                         </x-collapsible>
                     </div>
 
-                    <x-collapsible label="Cavidades activas del molde" model="paneles.cavidades">
-                        <x-slot:summary><span x-text="cavidades ? cavidades + ' activas' : 'Todas'"></span></x-slot:summary>
-                        <x-input-label for="cavidades_activas" value="¿Con cuántas cavidades trabajaste?" />
-                        <x-text-input id="cavidades_activas" name="cavidades_activas" type="number"
-                                      inputmode="numeric" min="1" max="64"
-                                      class="mt-1.5 h-12 w-full sm:w-40" x-model="cavidades" />
-                        <x-input-hint>Déjalo vacío si trabajaste con todas las cavidades.</x-input-hint>
-                        <x-input-error :messages="$errors->get('cavidades_activas')" class="mt-2" />
-                    </x-collapsible>
-
+                    {{-- El selector de cavidades activas se RETIRÓ (MIPROD-2, pedido del
+                         dueño 21-08): «Todas» (null) era el default y nadie declaraba
+                         cavidades tapadas. La columna se conserva: el OEE y el semáforo
+                         de moldes siguen leyendo el histórico. --}}
                     <x-collapsible label="Observaciones (opcional)" model="paneles.obs">
                         <x-slot:summary><span x-text="obs ? obs : 'Toca para agregar una nota'"></span></x-slot:summary>
                         <p class="text-xs text-neutral-500">Toca una nota o escribe.</p>
