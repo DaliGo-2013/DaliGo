@@ -111,9 +111,13 @@ class DashboardTest extends TestCase
     {
         $res = $this->actingAs($this->userWithRole('soplador'))->get('/dashboard');
 
+        // Solo el BOTÓN (dueño 01-09): sin tarjeta ni texto alrededor. Se
+        // asserta el enlace con su destino (forma contigua), no el rótulo
+        // suelto — la sidebar también dice «Mi producción».
         $res->assertOk()
-            ->assertSee('Tu reporte de producción')
-            ->assertSee('Mi producción')
+            ->assertSee('href="'.route('produccion.mi.index').'"', false)
+            ->assertSee('Ir a Mi producción')
+            ->assertDontSee('Tu reporte de producción')
             ->assertDontSee('Requiere tu atención')
             ->assertDontSee('Accesos directos')
             ->assertDontSee('Administración')
@@ -128,7 +132,7 @@ class DashboardTest extends TestCase
         $res->assertOk()
             ->assertSee('Tu cuenta aún no tiene accesos asignados')
             ->assertDontSee('Bienvenido')       // el saludo se retiró (nadie lo quería)
-            ->assertDontSee('Tu reporte de producción')
+            ->assertDontSee('Ir a Mi producción') // el botón del operario es solo de quien reporta
             ->assertDontSee('Requiere tu atención')
             ->assertDontSee('Operación al día')
             ->assertDontSee('Comercial');

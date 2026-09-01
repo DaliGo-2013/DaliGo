@@ -25,16 +25,12 @@
             </div>
         @endif
 
-        {{-- CTA del operario: su pantalla de trabajo, a un clic --}}
+        {{-- CTA del operario: SOLO el botón (dueño 01-09: «lo más simple y
+             entendible») — sin tarjeta ni texto alrededor. Ancho completo y
+             48px en el celular (doctrina de pantallas de operario). --}}
         @can('report production')
-            <div class="dg-enter rounded-2xl border border-brand-100 bg-brand-50 p-6 shadow-sm sm:flex sm:items-center sm:justify-between">
-                <div>
-                    <h3 class="font-semibold text-neutral-900">Tu reporte de producción</h3>
-                    <p class="mt-1 text-sm text-neutral-600">Registra o revisa el soplado de hoy.</p>
-                </div>
-                <div class="mt-4 sm:mt-0">
-                    <x-button-link :href="route('produccion.mi.index')">Ir a Mi producción</x-button-link>
-                </div>
+            <div class="dg-enter">
+                <x-button-link :href="route('produccion.mi.index')" class="h-12 w-full text-base sm:w-auto">Ir a Mi producción</x-button-link>
             </div>
         @endcan
 
