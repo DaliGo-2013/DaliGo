@@ -155,9 +155,12 @@ class LimiteSesionesScreenTest extends TestCase
 
         $this->assertStringContainsString('Sesiones por usuario', $html);
         $this->assertStringContainsString(route('admin.configuracion.sesiones.edit'), $html);
-        // Las claves crudas no se listan: su único editor es la pantalla.
-        $this->assertStringNotContainsString('sesiones_limite_default', $html);
-        $this->assertStringNotContainsString('sesiones_limite_roles', $html);
+        // Las claves del grupo no se listan: su único editor es la pantalla.
+        // OJO verde-engañoso (lo cazó la mutación): el índice pinta el grupo
+        // como Str::headline («Sesiones Limite») y la clave cruda NUNCA está
+        // en el HTML — negar la cruda pasaba siempre. Se niega lo que el
+        // índice SÍ pintaría con la exclusión quitada.
+        $this->assertStringNotContainsString('Sesiones Limite', $html);
     }
 
     public function test_las_puertas_traseras_del_resource_redirigen(): void
