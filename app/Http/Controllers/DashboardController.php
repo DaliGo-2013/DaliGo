@@ -195,25 +195,54 @@ class DashboardController extends Controller
             ];
         }
 
-        // ── ② Pulso personal del operario: SUS últimos N días (dueño 31-08) ──
+        // ── ② Mi semana (operario): L-V en curso + acumulado del mes (dueño 01-09) ──
         // Gateado por el MISMO permiso que la tarjeta CTA de arriba (`report
-        // production`), y con la MISMA perilla de ventana que la serie del
-        // jefe: las dos mini-barras cuentan los mismos días, y el rótulo de
-        // la vista deriva de la ventana (los textos gemelos driftean).
-        $serieSoplador = null;
+        // production`). Reemplaza a la mini-serie de N días del 31-08: el
+        // dueño pidió cards por día con el % de 1ª en grande y el detalle
+        // «pidieron X · 1ª · 2ª · malas» en chico, más el mes calendario.
+        $semanaSoplador = null;
 
         if ($user->can('report production')) {
-            $diasPersonal = max(2, (int) Configuracion::get('dashboard_dias_serie_produccion', self::DIAS_SERIE_PRODUCCION_DEFAULT));
-            $serie = $this->serieProduccion(
-                \App\Support\FechaNegocio::ahora()->subDays($diasPersonal - 1)->toDateString(),
-                $hoy,
+            $ahora = \App\Support\FechaNegocio::ahora();
+            // Semana de NEGOCIO: parte el lunes aunque hoy sea domingo (mismo
+            // criterio que el calendario de la agenda). Solo L-V tienen card;
+            // el fin de semana no se muestra pero SÍ suma al mes.
+            $lunes = $ahora->copy()->startOfWeek(Carbon::MONDAY);
+            $viernes = $lunes->copy()->addDays(4);
+            $semana = ProduccionReporte::seriePorDia($lunes->toDateString(), $viernes->toDateString(), $user->id);
+
+            $dias = [];
+            for ($d = $lunes->copy(); $d->lte($viernes); $d->addDay()) {
+                $fecha = $d->toDateString();
+                $fila = $semana->get($fecha);
+                $dias[] = $this->cardSoplador(
+                    ucfirst($d->translatedFormat('l j')),
+                    $fila,
+                    $fecha > $hoy ? 'futuro' : ($fila ? 'con' : 'sin'),
+                    $fecha === $hoy,
+                );
+            }
+
+            // Mes CALENDARIO (del 1 al último día), independiente de la semana:
+            // el mes puede partir a mitad de semana, así que no se deriva de
+            // las filas de arriba. Ventana auditada contra el borde de mes
+            // (misma aritmética que las tarjetas de taller).
+            $mes = ProduccionReporte::seriePorDia(
+                $ahora->copy()->startOfMonth()->toDateString(),
+                $ahora->copy()->endOfMonth()->toDateString(),
                 $user->id,
             );
+            $acum = (object) [
+                'p1' => (int) $mes->sum('p1'), 'p2' => (int) $mes->sum('p2'),
+                'mal' => (int) $mes->sum('mal'), 'dan' => (int) $mes->sum('dan'),
+                'asig' => (int) $mes->sum('asig'),
+            ];
 
-            $serieSoplador = [
-                'serie' => $serie,
-                'total' => array_sum(array_column($serie, 'producido')),
-                'diasSerie' => $diasPersonal,
+            $semanaSoplador = [
+                'dias' => $dias,
+                'mes' => $this->cardSoplador(ucfirst($ahora->translatedFormat('F')), $mes->isEmpty() ? null : $acum, $mes->isEmpty() ? 'sin' : 'con', false),
+                // Los rótulos derivan de las fechas calculadas (los textos gemelos driftean).
+                'rangoSemana' => $lunes->format('d-m').' al '.$viernes->format('d-m'),
                 'href' => route('produccion.mi.historial'),
             ];
         }
@@ -365,11 +394,40 @@ class DashboardController extends Controller
             'excepciones' => $excepciones,
             'puedeVerExcepciones' => $puedeVerExcepciones,
             'pulsoProduccion' => $pulsoProduccion,
-            'serieSoplador' => $serieSoplador,
+            'semanaSoplador' => $semanaSoplador,
             'pulsoTaller' => $pulsoTaller,
             'tallerCards' => $tallerCards,
             'accesos' => $accesos,
         ]);
+    }
+
+    /**
+     * Una card de «Mi semana» del operario: % de 1ª en grande y el detalle
+     * de lo pedido y lo procesado en chico. `malas` junta malos + dañadas
+     * (la merma de la casa) — un solo número para el operario, como en el
+     * ejemplo literal del dueño. El % es el `tasa1` de armarResumen: la MISMA
+     * definición que ve el jefe (1ª sobre lo procesado).
+     *
+     * @param  object|null  $fila  agregado con p1/p2/mal/dan/asig, o null si no hubo producción
+     * @param  string  $estado  futuro | sin | con
+     */
+    private function cardSoplador(string $rotulo, ?object $fila, string $estado, bool $esHoy): array
+    {
+        $resumen = ProduccionReporte::armarResumen(
+            (int) ($fila?->p1 ?? 0), (int) ($fila?->p2 ?? 0), (int) ($fila?->mal ?? 0), (int) ($fila?->dan ?? 0),
+            (int) ($fila?->asig ?? 0),
+        );
+
+        return [
+            'rotulo' => $rotulo,
+            'estado' => $estado,
+            'esHoy' => $esHoy,
+            'tasa1' => $resumen['tasa1'],
+            'asignadas' => $resumen['asignadas'],
+            'primera' => (int) ($fila?->p1 ?? 0),
+            'segunda' => (int) ($fila?->p2 ?? 0),
+            'malas' => (int) ($fila?->mal ?? 0) + (int) ($fila?->dan ?? 0),
+        ];
     }
 
     /**

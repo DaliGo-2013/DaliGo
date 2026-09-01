@@ -38,28 +38,46 @@
             </div>
         @endcan
 
-        {{-- Serie personal del operario: SUS últimos N días (dueño 31-08).
-             Mismo markup que la mini-serie del pulso del jefe — cero clases
-             nuevas a propósito (sin rebuild del bundle). --}}
-        @if ($serieSoplador)
-            <div class="dg-enter rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                <div class="flex items-center justify-between gap-4">
-                    {{-- El «N días» deriva de la ventana calculada (los textos gemelos driftean). --}}
-                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Mi producción · últimos {{ $serieSoplador['diasSerie'] }} días</h3>
-                    <a href="{{ $serieSoplador['href'] }}" class="text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600">Ver historial</a>
+        {{-- Mi semana (operario, dueño 01-09): L-V en curso como cards — el día
+             y el % de 1ª en grande, lo pedido/procesado en chico — más el mes
+             calendario acumulado. Solo clases ya presentes en el bundle. --}}
+        @if ($semanaSoplador)
+            <div class="dg-enter space-y-3">
+                <div class="flex items-center justify-between gap-4 px-1">
+                    {{-- El rango deriva de las fechas calculadas (los textos gemelos driftean). --}}
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Mi semana · {{ $semanaSoplador['rangoSemana'] }}</h3>
+                    <a href="{{ $semanaSoplador['href'] }}" class="text-xs font-medium text-brand-700 transition duration-150 hover:text-brand-600">Ver historial</a>
                 </div>
-                <p class="mt-3 text-3xl font-semibold tabular-nums text-neutral-900">
-                    {{ number_format($serieSoplador['total'], 0, ',', '.') }}
-                    <span class="text-base font-normal text-neutral-500">botellones soplados</span>
-                </p>
-                <div class="mt-4 flex h-12 items-end gap-1">
-                    @foreach ($serieSoplador['serie'] as $dia)
-                        <div class="flex-1 rounded-t {{ $loop->last ? 'bg-brand-600' : 'bg-brand-200' }}"
-                            style="height: {{ max(4, $dia['pct']) }}%"
-                            title="{{ \Illuminate\Support\Carbon::parse($dia['fecha'])->format('d-m') }}: {{ number_format($dia['producido'], 0, ',', '.') }}"></div>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    @foreach ($semanaSoplador['dias'] as $card)
+                        <div class="rounded-2xl border p-4 shadow-sm {{ $card['esHoy'] ? 'border-brand-200 bg-brand-50' : 'border-neutral-200 bg-white' }}">
+                            <p class="text-lg font-semibold {{ $card['estado'] === 'futuro' ? 'text-neutral-400' : 'text-neutral-900' }}">{{ $card['rotulo'] }}</p>
+                            @if ($card['estado'] === 'con')
+                                <p class="mt-1 text-3xl font-semibold tabular-nums leading-none {{ $card['esHoy'] ? 'text-brand-700' : 'text-neutral-900' }}">{{ $card['tasa1'] }}%<span class="ml-1 text-xs font-normal text-neutral-500">de 1ª</span></p>
+                                <p class="mt-2 text-xs tabular-nums text-neutral-500">Pidieron {{ number_format($card['asignadas'], 0, ',', '.') }} · {{ number_format($card['primera'], 0, ',', '.') }} de 1ª · {{ number_format($card['segunda'], 0, ',', '.') }} de 2ª · {{ number_format($card['malas'], 0, ',', '.') }} malas</p>
+                            @elseif ($card['estado'] === 'futuro')
+                                <p class="mt-1 text-3xl font-semibold leading-none text-neutral-300">—</p>
+                                <p class="mt-2 text-xs text-neutral-400">Aún no llega</p>
+                            @else
+                                <p class="mt-1 text-3xl font-semibold leading-none text-neutral-300">—</p>
+                                <p class="mt-2 text-xs text-neutral-500">Sin producción</p>
+                            @endif
+                        </div>
                     @endforeach
+
+                    {{-- La sexta: el mes CALENDARIO acumulado (del 1 al último día). Sólido oscuro = final/acumulado (paleta de 4). --}}
+                    @php $mes = $semanaSoplador['mes']; @endphp
+                    <div class="rounded-2xl bg-neutral-900 p-4 shadow-sm">
+                        <p class="text-lg font-semibold text-white">{{ $mes['rotulo'] }} <span class="text-xs font-normal text-neutral-400">acumulado</span></p>
+                        @if ($mes['estado'] === 'con')
+                            <p class="mt-1 text-3xl font-semibold tabular-nums leading-none text-white">{{ $mes['tasa1'] }}%<span class="ml-1 text-xs font-normal text-neutral-400">de 1ª</span></p>
+                            <p class="mt-2 text-xs tabular-nums text-neutral-300">Pidieron {{ number_format($mes['asignadas'], 0, ',', '.') }} · {{ number_format($mes['primera'], 0, ',', '.') }} de 1ª · {{ number_format($mes['segunda'], 0, ',', '.') }} de 2ª · {{ number_format($mes['malas'], 0, ',', '.') }} malas</p>
+                        @else
+                            <p class="mt-1 text-3xl font-semibold leading-none text-neutral-400">—</p>
+                            <p class="mt-2 text-xs text-neutral-400">Sin producción este mes</p>
+                        @endif
+                    </div>
                 </div>
-                <p class="mt-1 text-xs text-neutral-400">Hoy destacado · solo tu soplado</p>
             </div>
         @endif
 
