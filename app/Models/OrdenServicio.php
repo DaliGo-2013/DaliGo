@@ -178,26 +178,18 @@ class OrdenServicio extends Model implements AuditableContract
      */
     public const GARANTIA_REPARACION_MESES = 3;
 
-    /**
-     * Centinela del «Otro — lo escribo yo» del selector de «Trabajo realizado» (dueño,
-     * 14-08-2026: «que quede la respuesta manual»). El texto viaja aparte, en
-     * `trabajo_realizado_otro`; el centinela NUNCA se guarda como trabajo. Mismo idioma que
-     * ProduccionReporte::MOTIVO_OTRO.
-     */
-    public const TRABAJO_OTRO = '__otro__';
-
-    /**
-     * Largo maximo del trabajo realizado. NO es un numero elegido: la cotizacion guarda su
-     * propio snapshot del texto en `orden_servicio_cotizaciones.trabajo_realizado`, que desde la
-     * migracion 2026_08_28_100100 es VARCHAR(500) — este tope es ESE largo. En SQLite (local y
-     * tests) un texto mas largo entra igual; en MySQL revienta con «Data too long» al ENVIAR la
-     * cotizacion, o sea lejos de donde se escribio. Se corta donde se escribe.
+    /*
+     * ACÁ VIVÍAN `TRABAJO_OTRO` y `TRABAJO_MAX`, y las dos murieron el 01-09-2026 con el mismo
+     * cambio: el técnico dejó de escribir la frase del cliente (dueño, con el gerente al lado).
      *
-     * Subio de 191 a 500 el 28-08 porque el texto ya no es UNA respuesta de la lista: se arma
-     * con todos los trabajos marcados, y con cuatro o cinco se pasaba de 191. Candado:
-     * TrabajoManualTest y TrabajosMarcadosTest.
+     * · `TRABAJO_OTRO` era el centinela del «Otro — lo escribo yo» del selector. Ya no hay
+     *   selector ni texto propio: se marcan trabajos y la frase se arma sola.
+     * · `TRABAJO_MAX` (500) era el largo máximo del texto, copiado del VARCHAR donde la
+     *   cotización guarda su snapshot. Al no haber campo que escribir, no hay dónde aplicar un
+     *   `max:`, y el largo pasó a depender de cuántos trabajos se marquen — 21 dan 793
+     *   caracteres. Por eso esa columna pasó a TEXT (migración 2026_09_01_120000) en vez de
+     *   subirle el techo por segunda vez en cuatro días.
      */
-    public const TRABAJO_MAX = 500;
 
     // Los precios del catálogo (repuestos, valor hora) se guardan CON IVA, así
     // que el total a pagar ya lo incluye. Para desglosarlo (neto + IVA = total).
@@ -495,6 +487,48 @@ class OrdenServicio extends Model implements AuditableContract
     public function horasACobrar(): float
     {
         return TiempoReparacion::horasACobrar($this->trabajos->pluck('pivot.horas'));
+    }
+
+    /**
+     * LA FRASE QUE LEE EL CLIENTE, armada con lo que el técnico MARCÓ. Desde el 01-09-2026 es lo
+     * único que existe: el técnico ya no escribe (dueño, con el gerente al lado: «no quiero que
+     * escriban por mala ortografía y agregar más información de la que no es necesaria»).
+     *
+     * SE ARMA ACÁ, EN EL SERVIDOR, y no se recibe del formulario. Es la diferencia entre quitar
+     * el campo de la pantalla y quitar la capacidad de escribir: mientras el texto viaje en el
+     * POST, cualquiera puede mandar lo que quiera y la ortografía vuelve por la puerta de atrás.
+     * El formulario ya no manda `trabajo_realizado` y el JS solo dibuja una vista previa; la
+     * frase que se guarda sale siempre de acá.
+     *
+     * El espejo en JS (`textoCliente` de `reparacionForm`, en resources/js/app.js) tiene que dar
+     * el MISMO resultado o la pantalla prometería una frase distinta de la que se guarda —
+     * misma convención que `TiempoReparacion::horasACobrar()`. Candado:
+     * TrabajoArmadoTest::test_el_espejo_en_js_arma_la_misma_frase_que_el_servidor.
+     *
+     * @param  iterable<string>  $trabajos  los trabajos marcados, SIN su remate
+     */
+    public static function fraseDeTrabajos(iterable $trabajos, ?string $remate = null): string
+    {
+        $partes = collect($trabajos)->map(fn ($t) => trim((string) $t))->filter()->values();
+
+        if ($partes->isEmpty()) {
+            return '';
+        }
+
+        $frase = $partes->count() === 1
+            ? $partes->first()
+            : $partes->slice(0, -1)->implode(', ').' y '.$partes->last();
+
+        // Solo la primera letra en mayúscula: el catálogo trae los trabajos capitalizados
+        // («Cambio de caldera») y encadenados quedarían «Cambio de llave, Cambio de caldera».
+        $frase = mb_strtoupper(mb_substr($frase, 0, 1)).mb_substr($frase, 1);
+        $frase = preg_replace_callback(
+            '/(, | y )(\p{Lu})/u',
+            fn ($m) => $m[1].mb_strtolower($m[2]),
+            $frase
+        );
+
+        return filled($remate) ? $frase.' — '.trim($remate) : $frase;
     }
 
     /** Lo escrito a mano, una línea por trabajo (el técnico las separa con salto de línea o coma). */

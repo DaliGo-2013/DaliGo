@@ -120,20 +120,17 @@ class CotizacionGuardarTest extends TestCase
      * técnico. `estado` es obligatorio ahí (es el select de la etapa), así que se
      * pasa siempre; el resto del payload es el que traía la cotización.
      *
-     * OJO con `trabajo_realizado` y `trabajos`: el parte los guarda, así que un payload que no
-     * los traiga BORRA el texto y desmarca los trabajos, y con ellos la mano de obra. Se manda
-     * lo que la orden ya tiene salvo que la prueba diga otra cosa — es lo que hace el formulario
-     * real, que reenvía los chips marcados en cada guardado.
+     * OJO con `trabajos`: el parte los guarda, así que un payload que no los traiga desmarca los
+     * trabajos y con ellos la mano de obra. Se mandan los que la orden ya tiene salvo que la
+     * prueba diga otra cosa — es lo que hace el formulario real, que reenvía los chips marcados
+     * en cada guardado.
+     *
+     * El TEXTO ya no viaja: desde el 01-09-2026 el parte no lo recibe (lo arma el servidor con
+     * los trabajos marcados) y una orden sin trabajos conserva el que ya tenía.
      */
     private function guardarPresupuesto(OrdenServicio $orden, array $payload)
     {
-        $texto = (string) $orden->trabajo_realizado;
-
-        $trabajo = ['trabajos' => $orden->trabajos->pluck('id')->all()]
-            + (blank($texto) ? [] : [
-                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-                'trabajo_realizado_otro' => $texto,
-            ]);
+        $trabajo = ['trabajos' => $orden->trabajos->pluck('id')->all()];
 
         return $this->put(
             route('admin.servicio-tecnico.reparacion.guardar', $orden),
@@ -479,11 +476,24 @@ class CotizacionGuardarTest extends TestCase
         $this->assertSame(6000, (int) OrdenServicioCotizacion::first()->mano_obra);
     }
 
-    public function test_no_se_envia_la_cotizacion_si_el_trabajo_no_tiene_tiempo_estandar(): void
+    /**
+     * NOMBRE VIEJO, CASO NUEVO. Hasta el 28-08 la mano de obra salía de que el TEXTO del trabajo
+     * coincidiera con una fila del catálogo, así que «el trabajo no tiene tiempo estándar» era un
+     * estado alcanzable. Con los chips ya no: un trabajo marcado viene del catálogo y por
+     * definición tiene horas. Lo que queda —y es lo que este test fija— es la otra mitad de la
+     * misma regla: sin NINGÚN trabajo marcado no hay mano de obra, y la cotización no sale.
+     *
+     * OJO CON EL ASSERT DE PANTALLA: hasta el 01-09 buscaba «no tiene tiempo estándar» y pasaba
+     * por la razón equivocada — esa cadena la aportaba la AYUDA del campo «algo que no está en la
+     * lista», otro control, no el mensaje del servidor. Al retirarse ese campo con el cambio de
+     * «el técnico no escribe», el verde-engañoso quedó a la vista (doctrina, bitácora
+     * [2026-07-20]). Ahora se assertea el motivo que emite `faltaManoObra()`.
+     */
+    public function test_no_se_envia_la_cotizacion_sin_ningun_trabajo_marcado(): void
     {
         $this->conValorHora(4000);
-        // Trabajo fuera del catálogo: hay costo (repuestos), así que el bloqueo por
-        // «suma $0» no aplica — lo que frena el envío es la mano de obra sin calcular.
+        // Hay costo (repuestos), así que el bloqueo por «suma $0» no aplica — lo que frena el
+        // envío es la mano de obra sin calcular.
         $orden = $this->reparacion(['trabajo_realizado' => 'Cambio de manilla a medida', 'mano_obra' => 8000]);
         $orden->repuestos()->create(['nombre' => 'Motor', 'cantidad' => 1, 'precio_unitario' => 30000]);
 
@@ -502,7 +512,7 @@ class CotizacionGuardarTest extends TestCase
         $this->actingAs($this->tecnico())
             ->get(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertSee('Para enviarla al cliente')
-            ->assertSee('no tiene tiempo estándar')
+            ->assertSee('marca en «Trabajo realizado» al menos un trabajo de la lista')
             ->assertDontSee('name="enviar"', false);
     }
 

@@ -759,20 +759,29 @@ class ServicioTecnicoManagementTest extends TestCase
             ->assertSee('Cambio de estanque');
     }
 
+    /**
+     * La respuesta se persiste MARCANDO el trabajo, no escribiéndolo: desde el 01-09-2026 el
+     * parte no recibe el texto (dueño, con el gerente al lado: «que al cliquear los trabajos que
+     * realice se forme la respuesta»). Que un texto mandado por el POST se ignore lo fija
+     * TrabajoArmadoTest; acá solo interesa que la columna quede escrita.
+     */
     public function test_guardar_reparacion_persiste_la_respuesta_de_trabajo(): void
     {
         $orden = OrdenServicio::factory()->create(['facturacion' => 'reparacion']);
-        $respuesta = 'Cambio de caldera — funciona normal';
+        $caldera = \App\Models\TiempoReparacion::create([
+            'trabajo' => 'Cambio de caldera — funciona normal', 'horas' => 1.5, 'grupo' => 'Reparada', 'activo' => true,
+        ]);
 
         $this->actingAs($this->admin())
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
                 'causa_falla' => 'uso_normal',
-                'trabajo_realizado' => $respuesta,
+                'trabajos' => [$caldera->id],
+                'remate' => 'funciona normal',
             ])
             ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden));
 
-        $this->assertSame($respuesta, $orden->fresh()->trabajo_realizado);
+        $this->assertSame('Cambio de caldera — funciona normal', $orden->fresh()->trabajo_realizado);
     }
 
     public function test_reparacion_conserva_trabajo_historico_fuera_de_lista(): void
@@ -795,7 +804,6 @@ class ServicioTecnicoManagementTest extends TestCase
             ->put(route('admin.servicio-tecnico.reparacion.guardar', $orden), [
                 'estado' => 'reparado',
                 'causa_falla' => 'uso_normal',   // obligatoria al cerrar como reparado
-                'trabajo_realizado' => 'Cambio de motor y correa',
                 'mano_obra' => 15000,            // el técnico NO fija la mano de obra: se ignora
                 'fecha_aviso' => now()->toDateString(),
                 'repuestos' => [
@@ -808,9 +816,8 @@ class ServicioTecnicoManagementTest extends TestCase
 
         $fresh = $orden->fresh()->load('repuestos');
         $this->assertSame('reparado', $fresh->estado);
-        $this->assertSame('Cambio de motor y correa', $fresh->trabajo_realizado);
-        // Mano de obra fijada por el trabajo: ese trabajo no está en el catálogo
-        // de tiempos (ni hay valor hora) → 0. Lo enviado (15000) se ignora.
+        // Mano de obra fijada por los TRABAJOS MARCADOS: acá no se marcó ninguno (este test es
+        // sobre los repuestos) → 0. Lo enviado en `mano_obra` (15000) se ignora igual.
         $this->assertSame(0, $fresh->mano_obra);
         $this->assertCount(2, $fresh->repuestos);                 // la vacia no se guarda
         $this->assertSame(40000, $fresh->costo_total);            // 30000 + (2*5000), sin mano de obra

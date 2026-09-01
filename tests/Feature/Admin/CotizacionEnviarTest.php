@@ -116,16 +116,12 @@ class CotizacionEnviarTest extends TestCase
      */
     private function guardarParte(OrdenServicio $orden, array $payload)
     {
-        // Sin trabajo no se manda el centinela: `trabajo_realizado_otro` sería
-        // obligatorio y el test fallaría por un error de validación en vez de por lo
-        // que prueba. Los ids marcados van siempre, como los reenvía el formulario en cada
-        // guardado: omitirlos desmarcaría los trabajos y apagaría la mano de obra.
-        $trabajo = [
-            'trabajos' => $orden->trabajos->pluck('id')->all(),
-        ] + (blank($orden->trabajo_realizado) ? [] : [
-            'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-            'trabajo_realizado_otro' => $orden->trabajo_realizado,
-        ]);
+        // Los ids marcados van siempre, como los reenvía el formulario en cada guardado:
+        // omitirlos desmarcaría los trabajos y apagaría la mano de obra.
+        //
+        // EL TEXTO YA NO SE REENVÍA: desde el 01-09-2026 el parte no lo recibe (lo arma el
+        // servidor con los trabajos marcados), y una orden sin trabajos conserva el que tenía.
+        $trabajo = ['trabajos' => $orden->trabajos->pluck('id')->all()];
 
         return $this->put(
             route('admin.servicio-tecnico.reparacion.guardar', $orden),

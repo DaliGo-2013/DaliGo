@@ -437,7 +437,7 @@ Alpine.data('ordenServicioForm', ({ cond, fechaEntrega, feriados, soloLectura, s
  */
 Alpine.data('reparacionForm', ({
     repuestos, endpointRepuestos, precioHora, descuentoPct,
-    catalogoTrabajos, marcados, trabajosExtra, remates, topeHoras, textoTrabajo,
+    catalogoTrabajos, marcados, remates, topeHoras, remateInicial,
 }) => ({
     repuestos: Array.isArray(repuestos) ? repuestos : [],
     // Descuento (%) sobre el total; 0 = sin descuento.
@@ -456,29 +456,20 @@ Alpine.data('reparacionForm', ({
     // un total que su propio Guardar va a cambiar (bitacora 2026-08-07).
     catalogo: Array.isArray(catalogoTrabajos) ? catalogoTrabajos : [],
     marcados: Array.isArray(marcados) ? marcados.map(Number) : [],
-    trabajosExtra: trabajosExtra || '',
     remates: Array.isArray(remates) ? remates : [],
     topeHoras: Number(topeHoras) || 0,
 
-    // El texto que lee el cliente. Se arma solo con lo marcado MIENTRAS el tecnico no lo haya
-    // editado a mano; en cuanto lo toca, se respeta y aparece el enlace para rehacerlo. Pisar
-    // lo que alguien escribio es peor que dejar el texto desalineado de los chips.
-    texto: textoTrabajo || '',
-    textoTocado: false,
-
-    // El remate elegido. Arranca del que ya trae el texto guardado si lo reconoce, y si no del
-    // que sugieren los trabajos marcados.
-    remate: '',
+    // El remate elegido. Arranca del que trae la orden guardada (el servidor lo deduce de la
+    // frase ya escrita) y si no, del que sugieren los trabajos marcados.
+    remate: remateInicial || '',
     // Si el tecnico eligio el remate a mano, deja de auto-ajustarse: su eleccion manda.
     remateTocado: false,
 
     initTrabajos() {
-        const hallado = this.remates.find((r) => this.texto.endsWith(r));
-        this.remate = hallado || this.remateSugerido;
-        this.remateTocado = !! hallado;
-        // Un texto que ya existe cuenta como escrito a mano: no se re-arma solo al abrir la
-        // pantalla, o corregir una orden vieja le borraria la redaccion al tecnico.
-        this.textoTocado = this.texto.trim() !== '';
+        this.remateTocado = !! remateInicial;
+        if (! this.remateTocado) {
+            this.remate = this.remateSugerido;
+        }
     },
 
     /**
@@ -531,28 +522,27 @@ Alpine.data('reparacionForm', ({
         return Math.round(this.horasACobrar * this.precioHora);
     },
 
-    get extraLista() {
-        return this.trabajosExtra.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
-    },
-
     fmtHoras(h) {
         return String(Number(h) || 0).replace('.', ',');
     },
 
-    // La frase que lee el cliente: los trabajos marcados en minuscula (menos el primero),
-    // separados por coma y con «y» antes del ultimo, mas lo escrito a mano, mas el remate.
-    // Es la forma en que el propio tecnico las escribe a mano hoy.
-    armarTexto() {
+    /**
+     * VISTA PREVIA de la frase que lee el cliente: los trabajos marcados en minuscula (menos el
+     * primero), separados por coma y con «y» antes del ultimo, mas el remate.
+     *
+     * Es un GETTER y ya no un metodo que escribe en un campo: desde el 01-09-2026 el tecnico no
+     * escribe (dueño, con el gerente al lado), asi que no hay texto editable que respetar ni
+     * estado «lo toco a mano» que llevar. La frase que se GUARDA la arma el servidor
+     * (OrdenServicio::fraseDeTrabajos) y esto solo la muestra antes de guardar; los dos tienen
+     * que dar el MISMO resultado o la pantalla prometeria una frase distinta de la que se
+     * guarda — misma convencion que horasACobrar(), y con el mismo tipo de candado.
+     */
+    get textoCliente() {
         const partes = this.marcados
             .map((id) => this.filaTrabajo(id)?.corto)
-            .filter(Boolean)
-            .concat(this.extraLista);
+            .filter(Boolean);
 
-        if (partes.length === 0) {
-            this.texto = '';
-            this.textoTocado = false;
-            return;
-        }
+        if (partes.length === 0) return '';
 
         const frase = partes.length === 1
             ? partes[0]
@@ -562,26 +552,20 @@ Alpine.data('reparacionForm', ({
         // («Cambio de caldera») y encadenados quedarian «Cambio de llave, Cambio de caldera».
         const normal = frase.charAt(0).toUpperCase() + frase.slice(1).replace(/, ([A-ZÁÉÍÓÚÑ])/g, (m, c) => ', ' + c.toLowerCase()).replace(/ y ([A-ZÁÉÍÓÚÑ])/g, (m, c) => ' y ' + c.toLowerCase());
 
-        this.texto = this.remate ? normal + ' — ' + this.remate : normal;
-        this.textoTocado = false;
+        return this.remate ? normal + ' — ' + this.remate : normal;
     },
 
-    // Al marcar o desmarcar: el remate se re-sugiere (salvo que el tecnico lo haya elegido) y el
-    // texto se re-arma (salvo que lo haya editado). El orden importa: el remate primero, porque
-    // el texto lo usa.
+    // Al marcar o desmarcar, el remate se re-sugiere salvo que el tecnico lo haya elegido. El
+    // texto no hace falta re-armarlo: es un getter y se recalcula solo.
     trabajosCambiaron() {
         if (! this.remateTocado) {
             this.remate = this.remateSugerido;
         }
-        if (! this.textoTocado) {
-            this.armarTexto();
-        }
     },
 
-    // El tecnico eligio el remate: su eleccion queda fija y el texto se rehace con ella.
+    // El tecnico eligio el remate: su eleccion queda fija.
     remateElegido() {
         this.remateTocado = true;
-        this.armarTexto();
     },
 
     // Autocompletado de repuestos (historial + comunes). `filaActiva` marca

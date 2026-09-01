@@ -73,11 +73,18 @@
                          :count="$escritosAMano->count()"
                          :countLabel="$escritosAMano->count() === 1 ? 'trabajo' : 'trabajos'">
                 <li class="border-b border-neutral-100 bg-neutral-50 px-4 py-2 text-xs text-neutral-500 sm:px-6">
-                    Estos trabajos no suman horas todavía. Agrega al catálogo los que se repitan: desde ahí
-                    el técnico los va a poder marcar y su mano de obra se va a cobrar.
-                    {{-- El recorte se DECLARA: un listado truncado en silencio se lee como «esto
-                         fue todo lo que pasó». --}}
-                    <span class="mt-1 block text-neutral-400">Se revisan las {{ $ordenesRevisadas }} órdenes más recientes.</span>
+                    Agrega al catálogo los que se repitan: desde ahí el técnico los va a poder marcar y su
+                    mano de obra se va a cobrar.
+                    {{-- ESTA LISTA YA NO CRECE, y decirlo importa: desde el 01-09-2026 el parte no tiene
+                         dónde escribir (el técnico solo marca), así que lo que hay acá es lo que se
+                         alcanzó a escribir hasta entonces. Sigue sirviendo —es la mejor pista de qué le
+                         falta al catálogo— pero presentarla como «lo que se está escribiendo ahora»
+                         sería mentir, y jefatura esperaría entradas nuevas que no van a llegar. --}}
+                    <span class="mt-1 block text-neutral-400">
+                        Es lo que los técnicos alcanzaron a escribir hasta el 01-09-2026, cuando el parte
+                        pasó a ser solo de marcar: la lista no crece más.
+                        Se revisan las {{ $ordenesRevisadas }} órdenes más recientes.
+                    </span>
                 </li>
                 @foreach ($escritosAMano as $x)
                     <li class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">

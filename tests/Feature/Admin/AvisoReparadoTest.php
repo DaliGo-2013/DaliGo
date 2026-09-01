@@ -71,13 +71,23 @@ class AvisoReparadoTest extends TestCase
     }
 
     /** Guarda el parte del tecnico con el estado pedido. */
+    /**
+     * El trabajo se MARCA, no se escribe: desde el 01-09-2026 el parte no recibe el texto (lo
+     * arma el servidor con los trabajos marcados). El aviso lo cita, así que el trabajo tiene
+     * que existir en el catálogo o el cuerpo diría «Sin detalle».
+     */
     private function guardar(User $actor, OrdenServicio $orden, string $estado)
     {
+        $caldera = \App\Models\TiempoReparacion::firstOrCreate(
+            ['trabajo' => 'Cambio de caldera'],
+            ['horas' => 1.5, 'grupo' => 'Reparada', 'activo' => true],
+        );
+
         return $this->actingAs($actor)->put(
             route('admin.servicio-tecnico.reparacion.guardar', $orden),
             [
                 'estado' => $estado,
-                'trabajo_realizado' => 'Cambio de caldera',
+                'trabajos' => [$caldera->id],
                 // Obligatoria al cerrar como reparado/sin_solucion.
                 'causa_falla' => 'uso_normal',
                 'repuestos' => [],

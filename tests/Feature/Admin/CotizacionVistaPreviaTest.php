@@ -108,12 +108,13 @@ class CotizacionVistaPreviaTest extends TestCase
     {
         $orden = $this->ordenCotizable();
 
-        $this->revisar($orden, ['trabajo_realizado' => 'Cambio de caldera y limpieza — funciona normal'])
+        $this->revisar($orden, ['remate' => 'funciona normal'])
             ->assertRedirect(route('admin.servicio-tecnico.reparacion', $orden))
             ->assertSessionHas('cotizacion_previa');
 
-        // Se guardó…
-        $this->assertSame('Cambio de caldera y limpieza — funciona normal', $orden->fresh()->trabajo_realizado);
+        // Se guardó, con la frase ARMADA por el servidor con los trabajos marcados: desde el
+        // 01-09-2026 el parte ya no recibe el texto (el técnico no escribe).
+        $this->assertSame('Cambio de caldera — funciona normal', $orden->fresh()->trabajo_realizado);
         // …y no salió ninguna carta ni quedó cotización enviada.
         Mail::assertNothingSent();
         $this->assertSame(0, OrdenServicioCotizacion::count());

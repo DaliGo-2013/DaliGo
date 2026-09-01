@@ -714,6 +714,42 @@ class ServicioTecnicoController extends Controller
     }
 
     /**
+     * LA FRASE QUE LEE EL CLIENTE, decidida en el servidor. Desde el 01-09-2026 el técnico no
+     * escribe: marca trabajos y elige el cierre, y el texto sale de ahí
+     * (`OrdenServicio::fraseDeTrabajos`). El formulario ya no manda `trabajo_realizado`.
+     *
+     * DOS GUARDAS, y ninguna es defensiva — las dos evitan un borrado silencioso, que es la
+     * familia de defecto de la bitácora [2026-08-20]:
+     *
+     * 1. Si la pantalla NO preguntó por los trabajos (`trabajos` ausente), se conserva la frase
+     *    guardada. Sin esto, cualquier otra superficie que guarde el parte le borraría el texto.
+     * 2. Si preguntó y no hay NINGUNO marcado, también se conserva. Este es el caso de las
+     *    órdenes ANTERIORES al pivote de trabajos (28-08): tienen su frase escrita a mano y cero
+     *    trabajos marcados, así que abrir una y guardarla la dejaría muda — se perdería lo que
+     *    el cliente ya tenía por escrito, sin que nadie se entere. Desmarcar todo en una orden
+     *    que sí tenía trabajos no borra el texto tampoco, y es correcto: la mano de obra sí baja
+     *    a $0 (esa es la señal), pero la constancia de lo que se le dijo al cliente no se toca.
+     */
+    private function fraseDelCliente(OrdenServicio $orden, array $data, bool $sincronizaTrabajos): ?string
+    {
+        $ids = $sincronizaTrabajos ? ($data['trabajos'] ?? []) : [];
+
+        if ($ids === []) {
+            return $orden->trabajo_realizado;
+        }
+
+        // El orden del catálogo, no el del POST: dos técnicos que marcan lo mismo en distinto
+        // orden tienen que producir la misma frase, o el texto del cliente dependería de en qué
+        // orden tocó los chips.
+        $cortos = TiempoReparacion::whereIn('id', $ids)
+            ->orderBy('grupo')->orderBy('trabajo')
+            ->pluck('trabajo')
+            ->map(fn ($t) => TiempoReparacion::sinRemate($t));
+
+        return OrdenServicio::fraseDeTrabajos($cortos, $data['remate'] ?? null);
+    }
+
+    /**
      * Los remates que existen en el catálogo, derivados de él y no escritos a mano acá: si
      * jefatura agrega un trabajo con un remate nuevo, aparece solo. Ordenados por cuántas veces
      * se usan, así el más común («funciona normal», 15 de 21) queda primero.
@@ -923,12 +959,6 @@ class ServicioTecnicoController extends Controller
         // ConvertEmptyStringsToNull, asi que 'Sin determinar' no pasa el required.
         $exigeDiagnostico = in_array($request->input('estado'), ['reparado', 'sin_solucion'], true);
 
-        // «Otro — lo escribo yo» (dueño, 14-08-2026): el select manda un centinela y el texto
-        // viaja aparte. El largo se corta ACÁ porque la cotización guarda su snapshot del
-        // trabajo en un VARCHAR: un texto más largo pasa en SQLite y revienta en MySQL al
-        // ENVIAR la cotización, o sea lejos de donde se escribió.
-        $escribeElTrabajo = $request->input('trabajo_realizado') === OrdenServicio::TRABAJO_OTRO;
-
         // Los trabajos MARCADOS se validan contra el mismo scope que los ofrece (activos ∪ los
         // que esta orden ya tiene marcados), no con un `exists` pelado — doctrina de la bitácora
         // [2026-06-30]. Sin el segundo conjunto, re-guardar una orden histórica cuyo trabajo
@@ -958,16 +988,14 @@ class ServicioTecnicoController extends Controller
 
         $data = $request->validate([
             'estado' => ['required', Rule::in(OrdenServicio::ESTADOS)],
-            'trabajo_realizado' => ['nullable', 'string'],
-            'trabajo_realizado_otro' => [
-                Rule::requiredIf($escribeElTrabajo),
-                'nullable', 'string', 'min:3', 'max:'.OrdenServicio::TRABAJO_MAX,
-            ],
             'trabajos' => ['array'],
             'trabajos.*' => [Rule::in($marcables)],
-            // Lo que el técnico hizo y no está en la lista. No exige mínimo ni formato: es una
-            // nota, y lo que hace con ella es alimentar el catálogo de jefatura.
-            'trabajos_extra' => ['nullable', 'string', 'max:'.OrdenServicio::TRABAJO_MAX],
+            // EL REMATE, no el texto. Desde el 01-09-2026 el parte NO recibe la frase del cliente
+            // —la arma el servidor con los trabajos marcados— y lo único que el técnico decide
+            // sobre ella es con cuál de los cierres del catálogo termina. Va contra la MISMA lista
+            // que la pantalla ofrece, así que sigue sin ser texto libre: es exactamente el punto
+            // del cambio (dueño: «el gerente no quiere que escriban por mala ortografía»).
+            'remate' => ['nullable', Rule::in($this->rematesTrabajo())],
             'causa_falla' => [Rule::requiredIf($exigeDiagnostico), 'nullable', Rule::in(OrdenServicio::CAUSAS_FALLA)],
             // Categoría de cierre: solo aplica a máquinas propias (IMP. DALI).
             'categoria' => ['nullable', Rule::in(OrdenServicio::CATEGORIAS)],
@@ -985,19 +1013,9 @@ class ServicioTecnicoController extends Controller
             'repuestos.*.precio_unitario' => ['nullable', 'integer', 'min:0'],
         ], [
             'causa_falla.required' => 'Indica la causa de la falla (diagnóstico final) para cerrar la orden como «Reparado» o «Sin solución».',
-            'trabajo_realizado_otro.required' => 'Escribe el trabajo realizado, o elige una respuesta de la lista.',
-            'trabajo_realizado_otro.min' => 'Escribe el trabajo realizado con algo más de detalle: lo lee el cliente.',
-            'trabajo_realizado_otro.max' => 'El trabajo realizado no puede pasar de :max caracteres (es lo que entra en la cotización).',
             'trabajos.*.in' => 'Uno de los trabajos marcados ya no está en el catálogo. Recarga la pantalla y márcalo de nuevo.',
-            'trabajos_extra.max' => 'Lo escrito a mano no puede pasar de :max caracteres.',
+            'remate.in' => 'Ese cierre de frase ya no está en el catálogo. Recarga la pantalla y elígelo de nuevo.',
         ]);
-
-        // El centinela NUNCA se guarda como trabajo: se reemplaza por el texto, con los espacios
-        // y saltos de línea colapsados (se pega desde WhatsApp y llega con saltos adentro).
-        if ($escribeElTrabajo) {
-            $data['trabajo_realizado'] = trim(preg_replace('/\s+/u', ' ', (string) ($data['trabajo_realizado_otro'] ?? '')));
-        }
-        unset($data['trabajo_realizado_otro']);
 
         // Validacion por fila: si empezo a llenar una fila, exige el nombre (min 3).
         //
@@ -1055,8 +1073,7 @@ class ServicioTecnicoController extends Controller
 
         $orden->update([
             'estado' => $data['estado'],
-            'trabajo_realizado' => $data['trabajo_realizado'] ?? null,
-            'trabajos_extra' => $data['trabajos_extra'] ?? null,
+            'trabajo_realizado' => $this->fraseDelCliente($orden, $data, $sincronizaTrabajos),
             'causa_falla' => $data['causa_falla'] ?? null,
             // La categoría solo se guarda para máquinas propias (IMP. DALI).
             'categoria' => $orden->es_propia ? ($data['categoria'] ?? null) : null,

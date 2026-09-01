@@ -58,14 +58,15 @@
         // los marcados de la orden, pero si viene VACÍA el técnico desmarcó todo y hay que
         // respetarlo — `old('trabajos', $default)` ya distingue ausente de vacío.
         $marcadosInit = collect(old('trabajos', $trabajosMarcados))->map(fn ($id) => (int) $id)->values();
-        $extraInicial = (string) old('trabajos_extra', (string) $orden->trabajos_extra);
 
-        // El texto que lee el cliente. El contrato con el controlador sigue siendo el de siempre
-        // (`trabajo_realizado` = centinela, `trabajo_realizado_otro` = el texto), así que al
-        // repoblar tras un error de validación hay que mirar la clave del texto, no la del
-        // centinela: `old('trabajo_realizado')` trae «__otro__» y escribirlo en el textarea le
-        // mostraría eso al técnico.
-        $textoInicial = old('trabajo_realizado_otro', old('trabajo_realizado') !== null ? '' : (string) $orden->trabajo_realizado);
+        // EL REMATE con el que arranca la pantalla. Ya no se deduce en JS mirando el final del
+        // texto —ese texto dejó de existir como campo el 01-09-2026— sino acá: `old()` tras un
+        // error de validación, y si no, el que trae la frase ya guardada de la orden. Sin esto,
+        // abrir una orden cerrada con «queda en óptimas condiciones» y volver a guardarla le
+        // cambiaría el cierre al más común del catálogo, en silencio.
+        $remateGuardado = collect($rematesTrabajo)
+            ->first(fn ($r) => filled($orden->trabajo_realizado) && str_ends_with($orden->trabajo_realizado, $r));
+        $remateInicial = (string) old('remate', (string) $remateGuardado);
     @endphp
 
     <x-slot name="header">
@@ -178,7 +179,7 @@
 
                      `x-init` en vez de un `init()` propio del componente: el componente ya
                      tiene su ciclo y acá solo hay que sembrar el remate y el flag del texto. --}}
-                x-data="reparacionForm({ repuestos: @js($repuestosInit), endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }}, catalogoTrabajos: @js($catalogoJs), marcados: @js($marcadosInit), trabajosExtra: @js($extraInicial), remates: @js($rematesTrabajo), topeHoras: {{ $topeHoras }}, textoTrabajo: @js($textoInicial) })"
+                x-data="reparacionForm({ repuestos: @js($repuestosInit), endpointRepuestos: '{{ route('admin.servicio-tecnico.buscar-repuesto') }}', precioHora: {{ (int) ($precioHoraServicio ?? 0) }}, descuentoPct: {{ (int) old('descuento_pct', $orden->descuento_pct ?? 0) }}, catalogoTrabajos: @js($catalogoJs), marcados: @js($marcadosInit), remates: @js($rematesTrabajo), topeHoras: {{ $topeHoras }}, remateInicial: @js($remateInicial) })"
                 x-init="initTrabajos()">
                 @csrf
                 @method('PUT')

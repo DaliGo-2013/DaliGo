@@ -80,8 +80,6 @@ class TrabajosMarcadosTest extends TestCase
             array_merge([
                 'estado' => 'cotizacion',
                 'trabajos' => $ids,
-                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-                'trabajo_realizado_otro' => 'Lo que se hizo — funciona normal',
             ], $extra),
         );
     }
@@ -223,25 +221,22 @@ class TrabajosMarcadosTest extends TestCase
      * borraba la mano de obra, porque las horas se buscaban por el texto EXACTO contra el
      * catálogo. Ahora el texto es solo lo que lee el cliente.
      */
-    public function test_editar_el_texto_no_cambia_la_mano_de_obra(): void
+    public function test_el_texto_que_llegue_por_el_post_no_cambia_la_mano_de_obra(): void
     {
         $this->conValorHora(4000);
         $caldera = $this->trabajo('Cambio de caldera', 1.5);
         $orden = $this->orden();
 
+        // Desde el 01-09-2026 la pantalla ya no manda texto (el técnico no escribe), pero el
+        // payload igual puede traerlo — y la regla que arregló el defecto de fondo sigue siendo
+        // la misma: el dinero sale de los CHIPS, nunca del texto. Antes, ajustarle una coma al
+        // trabajo borraba la mano de obra porque las horas se buscaban por texto exacto.
         $this->guardar($orden, [$caldera->id], [
-            'trabajo_realizado_otro' => 'Cambio de caldera — funciona normal',
-        ]);
-        $this->assertSame(6000, (int) $orden->fresh()->mano_obra);
-
-        // El técnico reescribe el texto por completo, sin tocar los chips.
-        $this->guardar($orden, [$caldera->id], [
-            'trabajo_realizado_otro' => 'Se cambió la caldera y quedó funcionando perfecto, probada 20 minutos',
+            'trabajo_realizado' => 'Se cambió la caldera y quedó funcionando perfecto, probada 20 minutos',
+            'trabajo_realizado_otro' => 'otra cosa distinta todavía',
         ])->assertSessionHasNoErrors();
 
-        $fresh = $orden->fresh();
-        $this->assertSame(6000, (int) $fresh->mano_obra);      // NO bajó a 0
-        $this->assertSame('Se cambió la caldera y quedó funcionando perfecto, probada 20 minutos', $fresh->trabajo_realizado);
+        $this->assertSame(6000, (int) $orden->fresh()->mano_obra);   // NO bajó a 0
     }
 
     /**
@@ -390,8 +385,6 @@ class TrabajosMarcadosTest extends TestCase
             route('admin.servicio-tecnico.reparacion.guardar', $orden),
             [
                 'estado' => 'cotizacion',
-                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-                'trabajo_realizado_otro' => 'Cambio de caldera — funciona normal',
             ],
         )->assertSessionHasNoErrors();
 
@@ -481,8 +474,6 @@ class TrabajosMarcadosTest extends TestCase
                 // El hidden vacío PRIMERO y los ids como string, tal cual los serializa el form.
                 'trabajos' => ['', (string) $caldera->id, (string) $filtro->id],
                 'trabajos_extra' => '',
-                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-                'trabajo_realizado_otro' => 'Cambio de caldera y cambio de filtro — funciona normal',
             ],
         )->assertSessionHasNoErrors();
 
@@ -506,8 +497,6 @@ class TrabajosMarcadosTest extends TestCase
             [
                 'estado' => 'cotizacion',
                 'trabajos' => [''],          // solo el hidden: el técnico desmarcó todo
-                'trabajo_realizado' => OrdenServicio::TRABAJO_OTRO,
-                'trabajo_realizado_otro' => 'Se revisó y no hizo falta nada',
             ],
         )->assertSessionHasNoErrors();
 

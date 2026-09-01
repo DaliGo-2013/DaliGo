@@ -80,8 +80,13 @@ class ParteTecnicoXDataTest extends TestCase
 
         // 1. El recorte tiene que llegar hasta el CIERRE del objeto. Si una comilla doble se
         //    colara, el atributo terminaría antes y esto quedaría corto.
+        // Se busca la ÚLTIMA clave del objeto, que es lo único que prueba que el recorte llegó
+        // hasta el final. Era `textoTrabajo:` hasta el 01-09-2026, cuando el técnico dejó de
+        // escribir y esa clave (con su texto) se fue del x-data; hoy la última es
+        // `remateInicial:`. Si alguien reordena las claves, este nombre hay que moverlo con
+        // ellas — un assert apuntado a una clave del medio pasaría con el atributo cortado.
         $this->assertStringContainsString(
-            'textoTrabajo:',
+            'remateInicial:',
             $atributo,
             'El x-data se cortó antes de su última clave: hay una comilla doble adentro (probablemente en un @js que no escapó).',
         );
