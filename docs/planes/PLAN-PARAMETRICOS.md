@@ -472,3 +472,18 @@ destinatarios, `ConfiguracionController::index()/edit()` cambiaron (grupo
 oculto + redirect) y `ConfiguracionSeeder` gana un loop al final — y el
 hallazgo #13 de la higiene («correo por permisos») debe re-mirarse contra ese
 precedente antes de forjarse.
+
+**Nota de contexto (tareas directas del dueño, 01-09, fuera de la fase B):**
+aterrizaron tres lotes del Director que tocan superficie compartida: la serie
+personal del soplador en el Inicio (`1749b9c`, reusa la perilla DASH-1
+`dashboard_dias_serie_produccion` — una sola ventana para el pulso del jefe y
+la tarjeta del operario), el restablecimiento de contraseña por el admin
+(`b6f4675`, rota remember_token y cierra sesiones), y el **límite de sesiones
+paralelas** (rama `feature/limite-sesiones`): default 3, paramétrico por rol y
+por usuario puntual — `App\Support\LimiteSesiones` (nueva fuente única, molde
+AudienciasNotificacion), pantalla propia «Sesiones por usuario» dentro de
+Configuración (segundo grupo oculto del índice; `ConfiguracionController::
+index()/edit()/update()` ganaron el whereNotIn y las redirecciones), primer
+listener del repo (`app/Listeners/LimitarSesionesAlEntrar`, evento Login,
+auto-descubierto) y 3 claves nuevas al final de `ConfiguracionSeeder`. Quien
+forje encima de Configuración debe mirar estos precedentes primero.

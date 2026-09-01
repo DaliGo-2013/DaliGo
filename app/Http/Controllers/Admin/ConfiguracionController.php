@@ -93,10 +93,14 @@ class ConfiguracionController extends Controller
      */
     public function index(): View
     {
-        // Las claves de audiencias (notif_roles_*) NO se listan acá: su único
-        // editor es la matriz «Avisos y destinatarios» (menos JSON a la vista).
+        // Las claves con pantalla PROPIA no se listan acá: audiencias se edita
+        // en la matriz «Avisos y destinatarios» y el límite de sesiones en
+        // «Sesiones por usuario» (menos JSON a la vista).
         $grupos = Configuracion::orderBy('grupo')->orderBy('clave')
-            ->where('grupo', '!=', \App\Support\AudienciasNotificacion::GRUPO)
+            ->whereNotIn('grupo', [
+                \App\Support\AudienciasNotificacion::GRUPO,
+                \App\Support\LimiteSesiones::GRUPO,
+            ])
             ->get()->groupBy('grupo');
 
         return view('admin.configuracion.index', ['grupos' => $grupos]);
@@ -108,6 +112,9 @@ class ConfiguracionController extends Controller
         // matriz, nunca como JSON crudo.
         if ($configuracion->grupo === \App\Support\AudienciasNotificacion::GRUPO) {
             return redirect()->route('admin.configuracion.avisos.edit');
+        }
+        if ($configuracion->grupo === \App\Support\LimiteSesiones::GRUPO) {
+            return redirect()->route('admin.configuracion.sesiones.edit');
         }
 
         // La whitelist de preformas se edita con CHECKBOXES del catálogo
@@ -127,6 +134,13 @@ class ConfiguracionController extends Controller
 
     public function update(Request $request, Configuracion $configuracion): RedirectResponse
     {
+        // La puerta trasera de ESCRITURA también se cierra (mejora sobre el
+        // molde de avisos): un PUT crudo del resource a una clave del grupo
+        // de sesiones se va a su pantalla, que valida con nombres y rangos.
+        if ($configuracion->grupo === \App\Support\LimiteSesiones::GRUPO) {
+            return redirect()->route('admin.configuracion.sesiones.edit');
+        }
+
         $valor = $this->validateValor($request, $configuracion);
         $this->validarParOrdenado($configuracion, $valor);
         $this->validarParSubconjunto($configuracion, $valor);
