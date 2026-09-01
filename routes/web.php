@@ -176,6 +176,13 @@ Route::middleware('auth')
         Route::put('configuracion/avisos', [\App\Http\Controllers\Admin\AvisosNotificacionController::class, 'update'])
             ->middleware('permission:manage settings')->name('configuracion.avisos.update');
 
+        // Sesiones por usuario: límite de sesiones paralelas (default / rol /
+        // usuario puntual). Literal ANTES del resource, mismo motivo que avisos.
+        Route::get('configuracion/sesiones', [\App\Http\Controllers\Admin\LimiteSesionesController::class, 'edit'])
+            ->middleware('permission:manage settings')->name('configuracion.sesiones.edit');
+        Route::put('configuracion/sesiones', [\App\Http\Controllers\Admin\LimiteSesionesController::class, 'update'])
+            ->middleware('permission:manage settings')->name('configuracion.sesiones.update');
+
         // Configuracion global: parametros tipados (solo ver y editar).
         Route::resource('configuracion', ConfiguracionController::class)
             ->only(['index', 'edit', 'update'])

@@ -869,6 +869,32 @@ class ConfiguracionSeeder extends Seeder
             ];
         }
 
+        // ── Límite de sesiones paralelas (Configuración → Sesiones por usuario) ──
+        // Default 3 (pedido del dueño 01-09; hoy era ilimitado — el 3 ES el
+        // cambio de conducta, no una parametrización de lo histórico). Claves
+        // nuevas → firstOrCreate en el deploy sin one-shot.
+        $ajustes[] = [
+            'clave' => \App\Support\LimiteSesiones::CLAVE_DEFAULT,
+            'valor' => (string) \App\Support\LimiteSesiones::DEFAULT,
+            'tipo' => Configuracion::TIPO_INTEGER,
+            'grupo' => \App\Support\LimiteSesiones::GRUPO,
+            'descripcion' => 'Sesiones abiertas a la vez por usuario (0 = sin límite). Al topar, entra la nueva y se cierra la más antigua. Se edita en Configuración → Sesiones por usuario.',
+        ];
+        $ajustes[] = [
+            'clave' => \App\Support\LimiteSesiones::CLAVE_ROLES,
+            'valor' => '[]',
+            'tipo' => Configuracion::TIPO_JSON,
+            'grupo' => \App\Support\LimiteSesiones::GRUPO,
+            'descripcion' => 'Límite de sesiones POR ROL (mapa rol → número; vacío = todos heredan el default). Se edita en Configuración → Sesiones por usuario.',
+        ];
+        $ajustes[] = [
+            'clave' => \App\Support\LimiteSesiones::CLAVE_USUARIOS,
+            'valor' => '[]',
+            'tipo' => Configuracion::TIPO_JSON,
+            'grupo' => \App\Support\LimiteSesiones::GRUPO,
+            'descripcion' => 'Límite de sesiones POR USUARIO puntual (mapa id → número; gana sobre el rol y el default). Se edita en Configuración → Sesiones por usuario.',
+        ];
+
         foreach ($ajustes as $a) {
             Configuracion::firstOrCreate(
                 ['clave' => $a['clave']],
