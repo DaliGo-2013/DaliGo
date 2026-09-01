@@ -69,6 +69,7 @@ class AuditController extends Controller
         'updated' => 'actualizó',
         'deleted' => 'eliminó',
         'roleChanged' => 'cambió rol',
+        'passwordChanged' => 'restableció contraseña',
     ];
 
     /**

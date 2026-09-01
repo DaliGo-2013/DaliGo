@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Rules\ImpdaliEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -106,6 +108,14 @@ class UserController extends Controller
             'sucursal_id' => ['nullable', 'integer', Rule::exists('sucursales', 'id')],
             // Jefe directo: existe y no puede ser el propio usuario.
             'jefe_id' => ['nullable', 'integer', Rule::exists('users', 'id'), Rule::notIn([$user->id])],
+            // Restablecer contraseña (dueño 01-09): opcional — en blanco no se
+            // toca. Mismas reglas de fuerza que al crear la cuenta. Existe
+            // porque los operarios no tienen casilla real donde recibir el
+            // enlace de «olvidé mi contraseña»: el admin la repone en persona.
+            // El required_with cierra el silencio de «pegué la clave solo en
+            // Confirmar»: sin él, nullable corta la cadena, confirmed nunca
+            // corre y el guardado sale exitoso SIN restablecer nada.
+            'password' => ['nullable', 'required_with:password_confirmation', 'confirmed', Password::defaults()],
         ]);
 
         if ($this->wouldRemoveLastAdmin($user, $validated['role'])) {
@@ -114,17 +124,52 @@ class UserController extends Controller
 
         $oldRole = $user->getRoleNames()->sort()->values()->implode(', ');
 
-        $user->update([
+        $datos = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'sucursal_id' => $validated['sucursal_id'] ?? null,
             'jefe_id' => $validated['jefe_id'] ?? null,
-        ]);
+        ];
+
+        // La clave solo viaja si el admin escribió una nueva. owen-it no la
+        // audita ($auditExclude del modelo); el rastro de QUE cambió queda
+        // como evento aparte, sin valores.
+        $claveNueva = ($validated['password'] ?? null) !== null;
+        if ($claveNueva) {
+            $datos['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($datos);
+
+        if ($claveNueva) {
+            // Restablecer debe CORTAR el acceso vigente (teléfono perdido,
+            // desvinculación) — hallazgos del panel pre-merge 01-09:
+            // (1) rotar el remember_token invalida las cookies de
+            // «recordarme» (el recaller solo compara ese token) — mismo gesto
+            // que el reset por correo. Explícito y no vía update(): el token
+            // no es fillable y el update lo botaría en silencio.
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+
+            // (2) cerrar sus sesiones abiertas (driver database): no hay
+            // AuthenticateSession en el stack, así que sin este borrado una
+            // sesión viva sobreviviría al cambio de clave. Si el admin se
+            // restablece a sí mismo, su propia sesión actual se conserva.
+            DB::table('sessions')
+                ->where('user_id', $user->id)
+                ->when($user->is($request->user()), fn ($q) => $q->where('id', '!=', $request->session()->getId()))
+                ->delete();
+        }
         $user->syncRoles([$validated['role']]);
         $this->auditRoleChange($user, $oldRole === '' ? null : $oldRole, $validated['role']);
+        if ($claveNueva) {
+            $this->auditPasswordChange($user);
+        }
 
         return redirect()->route('admin.users.index')
-            ->with('status', "Cuenta de {$user->email} actualizada.");
+            ->with('status', $claveNueva
+                ? "Cuenta de {$user->email} actualizada y contraseña restablecida."
+                : "Cuenta de {$user->email} actualizada.");
     }
 
     /**
@@ -142,6 +187,21 @@ class UserController extends Controller
         $user->isCustomEvent = true;
         $user->auditCustomOld = ['roles' => $oldRole];
         $user->auditCustomNew = ['roles' => $newRole];
+
+        Event::dispatch(new AuditCustom($user));
+    }
+
+    /**
+     * Deja rastro en la auditoria de QUE la contraseña se restableció desde
+     * administración — jamás de la clave: owen-it ya excluye `password`
+     * ($auditExclude del modelo), y este evento aparte tampoco lleva valores.
+     */
+    private function auditPasswordChange(User $user): void
+    {
+        $user->auditEvent = 'passwordChanged';
+        $user->isCustomEvent = true;
+        $user->auditCustomOld = [];
+        $user->auditCustomNew = ['password' => 'restablecida por administración'];
 
         Event::dispatch(new AuditCustom($user));
     }

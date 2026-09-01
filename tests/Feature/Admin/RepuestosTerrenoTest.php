@@ -366,6 +366,13 @@ class RepuestosTerrenoTest extends TestCase
 
     public function test_el_rotulo_cambia_segun_el_tipo_de_visita(): void
     {
+        // La agenda muestra el MES ACTUAL y descarta un ?dia= de otro mes
+        // (AgendaTrabajoController::index:53,62): con el fixture fijo en
+        // agosto, este test se puso rojo solo al cruzar a septiembre
+        // (familia borde-de-mes, bitácora [2026-07-31]) — el reloj viaja
+        // a la fecha del fixture.
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-10 12:00:00'));
+
         $visita = $this->trabajoDeTipo('visita_tecnica');
         $trabajo = $this->trabajoDeTipo('reparacion');
 
@@ -412,6 +419,10 @@ class RepuestosTerrenoTest extends TestCase
 
     public function test_la_pantalla_del_tecnico_ofrece_declarar_repuestos_y_no_habla_de_plata(): void
     {
+        // Mismo viaje de reloj que test_el_rotulo_cambia_segun_el_tipo_de_visita:
+        // el ?dia= de agosto se descarta cuando el mes actual ya es otro.
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-10 12:00:00'));
+
         $this->trabajo();
 
         $html = $this->actingAs($this->tecnico())
