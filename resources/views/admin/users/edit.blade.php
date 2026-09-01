@@ -62,6 +62,23 @@
                     <x-input-error :messages="$errors->get('jefe_id')" class="mt-2" />
                 </div>
 
+                {{-- Restablecer contraseña (dueño 01-09): los operarios no tienen
+                     casilla real para el enlace de «olvidé mi contraseña», así que
+                     el admin la repone acá y se la entrega en persona. --}}
+                <div>
+                    <x-input-label for="password" value="Nueva contraseña (opcional)">
+                        <x-slot:ayuda>Restablece el acceso de esta persona sin pasar por el correo: escribe la clave nueva y entrégasela directamente. Ella puede cambiarla después desde su perfil.</x-slot:ayuda>
+                    </x-input-label>
+                    <x-password-input id="password" class="mt-1.5" name="password" autocomplete="new-password" placeholder="••••••••" />
+                    <x-input-hint>Déjala en blanco para no cambiarla.</x-input-hint>
+                    <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-input-label for="password_confirmation" value="Confirmar nueva contraseña" />
+                    <x-password-input id="password_confirmation" class="mt-1.5" name="password_confirmation" autocomplete="new-password" placeholder="••••••••" />
+                </div>
+
             </form>
         </div>
     </div>
