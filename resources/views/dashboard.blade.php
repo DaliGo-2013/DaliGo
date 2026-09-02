@@ -28,11 +28,11 @@
         {{-- CTA del operario: SOLO el botón (dueño 01-09: «lo más simple y
              entendible») — sin tarjeta ni texto alrededor. Ancho completo y
              48px en el celular (doctrina de pantallas de operario). --}}
-        @can('report production')
+        @if ($semanaSoplador)
             <div class="dg-enter">
                 <x-button-link :href="route('produccion.mi.index')" class="h-12 w-full text-base sm:w-auto">Ir a Mi producción</x-button-link>
             </div>
-        @endcan
+        @endif
 
         {{-- Mi semana (operario, dueño 01-09): L-V en curso como cards — el día
              y el % de 1ª en grande, lo pedido/procesado en chico — más el mes

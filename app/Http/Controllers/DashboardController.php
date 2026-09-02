@@ -202,7 +202,10 @@ class DashboardController extends Controller
         // «pidieron X · 1ª · 2ª · malas» en chico, más el mes calendario.
         $semanaSoplador = null;
 
-        if ($user->can('report production')) {
+        // Y por ROL soplador (paramétrico produccion_roles_soplador, la misma
+        // fuente que el selector de asignar): el jefe y el admin también
+        // tienen el permiso y NO deben ver esta vista (dueño 02-09).
+        if ($user->can('report production') && $user->esSoplador()) {
             $ahora = \App\Support\FechaNegocio::ahora();
             // Semana de NEGOCIO: parte el lunes aunque hoy sea domingo (mismo
             // criterio que el calendario de la agenda). Solo L-V tienen card;
