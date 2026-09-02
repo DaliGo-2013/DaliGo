@@ -174,9 +174,25 @@ class ProduccionReporte extends Model implements AuditableContract
         return (int) $this->malo + (int) $this->danada;
     }
 
+    /**
+     * Diferencia = PRODUCIDO − ASIGNADO: positivo = se hizo de más, negativo =
+     * faltó. Antes era al revés (asignadas − total) y un 810/800 se mostraba
+     * como «−10», leído como faltante (dueño 02-09). El mismo signo en la
+     * pantalla del soplador (getter Alpine) y en las Δ del jefe.
+     */
     public function getDiferenciaAttribute(): int
     {
-        return (int) $this->asignadas - $this->total;
+        return $this->total - (int) $this->asignadas;
+    }
+
+    /**
+     * ¿Produjo MENOS de lo asignado? Es lo único que exige motivo al enviar
+     * (los motivos de la lista son de faltante); producir de más no se explica.
+     * La regla vive acá, una sola vez: el controller y la pantalla la consumen.
+     */
+    public function getFaltoAttribute(): bool
+    {
+        return $this->diferencia < 0;
     }
 
     public function getTasaPrimeraAttribute(): int

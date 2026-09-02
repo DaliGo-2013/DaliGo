@@ -457,9 +457,11 @@ class MiProduccionController extends Controller
                 return back()->withInput()
                     ->withErrors(['enviar' => 'Agrega al menos una tanda de producción antes de enviar.']);
             }
-            if ($reporte->diferencia !== 0 && blank($validated['motivo'] ?? null)) {
+            // Solo cuando FALTÓ (producido < asignado): producir de más no se
+            // explica — los motivos de la lista son de faltante (dueño 02-09).
+            if ($reporte->falto && blank($validated['motivo'] ?? null)) {
                 return back()->withInput()
-                    ->withErrors(['motivo' => 'Indica el motivo de la diferencia con lo asignado.']);
+                    ->withErrors(['motivo' => 'Indica por qué faltó producción respecto de lo asignado.']);
             }
         }
 

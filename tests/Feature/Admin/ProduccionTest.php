@@ -1181,4 +1181,68 @@ class ProduccionTest extends TestCase
 
         $this->assertSame(0, $reporte->registros()->count());
     }
+
+    // --- Diferencia = producido − asignado (dueño 02-09) ----------------------
+
+    public function test_producir_de_mas_da_diferencia_positiva_y_no_exige_motivo(): void
+    {
+        // El hallazgo del dueño: asignó 800, reportó 810 y la pantalla decía
+        // «−10» (la fórmula era asignadas − total). Ahora: +10, sin motivo.
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 110], $maquina, $tipo);
+
+        $reporte->refresh();
+        $this->assertSame(10, $reporte->diferencia);
+        $this->assertFalse($reporte->falto);
+
+        $html = $this->actingAs($soplador)->get(route('produccion.mi.show', $reporte))->assertOk()->getContent();
+        $this->assertStringContainsString('Sobre lo asignado', $html);
+        $this->assertStringContainsString('>+10<', $html);
+
+        // Enviar SIN motivo: pasa (producir de más no se explica).
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), ['enviar' => 1])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('enviado', $reporte->fresh()->estado);
+    }
+
+    public function test_producir_de_menos_da_diferencia_negativa_y_exige_motivo(): void
+    {
+        $soplador = $this->soplador();
+        $reporte = $this->reporteDe($soplador, 100);
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+        $this->agregarTanda($soplador, $reporte, ['primera' => 90], $maquina, $tipo);
+
+        $reporte->refresh();
+        $this->assertSame(-10, $reporte->diferencia);
+        $this->assertTrue($reporte->falto);
+
+        // La pantalla lo dice con palabras y el número sin signo.
+        $html = $this->actingAs($soplador)->get(route('produccion.mi.show', $reporte))->assertOk()->getContent();
+        $this->assertStringContainsString('Faltan para lo asignado', $html);
+        $this->assertStringContainsString('>10<', $html);
+
+        $this->actingAs($soplador)->patch(route('produccion.mi.update', $reporte), ['enviar' => 1])
+            ->assertSessionHasErrors('motivo');
+        $this->assertSame('borrador', $reporte->fresh()->estado);
+    }
+
+    public function test_las_vistas_del_jefe_muestran_el_signo_de_la_diferencia(): void
+    {
+        $soplador = $this->soplador();
+        [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
+
+        $deMas = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
+        $this->agregarTanda($soplador, $this->reporteDe($soplador, 100), ['primera' => 1], $maquina, $tipo); // asegura fixtures
+        $deMas->update(['primera' => 110]);
+        $deMenos = $this->reporteDe($soplador, 100, ProduccionReporte::ENVIADO);
+        $deMenos->update(['primera' => 90]);
+
+        $html = $this->actingAs($this->jefe())->get(route('admin.produccion.index'))->assertOk()->getContent();
+
+        // Forma contigua del Δ en la fila de la cola (doctrina verde-engañoso).
+        $this->assertStringContainsString('Δ <span>+10</span>', $html);
+        $this->assertStringContainsString('Δ <span>-10</span>', $html);
+    }
 }
