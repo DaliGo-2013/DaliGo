@@ -80,7 +80,7 @@
                             <x-produccion.metrica label="Malos" w="w-24">{{ $reporte->malo }}</x-produccion.metrica>
                             <x-produccion.metrica label="Dañadas" w="w-28">{{ $reporte->danada }}</x-produccion.metrica>
                             <span class="inline-flex w-16 items-baseline gap-1 font-medium tabular-nums {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">
-                                Δ <span>{{ $reporte->diferencia }}</span>
+                                Δ <span>{{ $reporte->diferencia > 0 ? '+' : '' }}{{ $reporte->diferencia }}</span>
                             </span>
                             <x-produccion.estado-badge :estado="$reporte->estado" />
                         </div>

@@ -252,7 +252,9 @@
                     get tanda() { return (Number(this.primera) || 0) + (Number(this.segunda) || 0) + (Number(this.malo) || 0) + (Number(this.danada) || 0); },
                     get total() { return this.guardado + this.tanda; },
                     get vendible() { return this.guardadoVendible + (Number(this.primera) || 0) + (Number(this.segunda) || 0); },
-                    get diferencia() { return this.asignadas - this.total; },
+                    /* Producido − asignado (mismo signo que el modelo): + = de más, − = faltó. */
+                    get diferencia() { return this.total - this.asignadas; },
+                    get falto() { return this.diferencia < 0; },
                     /* Señalar en vez de narrar: antes de mandar al servidor, si falta una
                        precondición abrimos su panel y sacudimos ESE control (sin recargar).
                        El servidor sigue validando igual como respaldo. */
@@ -322,7 +324,7 @@
                         const sel = cont && cont.querySelector('input[type=radio]:checked');
                         const otro = cont && cont.querySelector('input[name=motivo_otro]');
                         const falta = ! sel || (sel.value === @js(\App\Models\ProduccionReporte::MOTIVO_OTRO) && ! (otro && otro.value.trim()));
-                        if (this.diferencia !== 0 && falta) { e.preventDefault(); this.paneles.motivo = true; this.$nextTick(() => this.$destacar(cont)); return; }
+                        if (this.falto && falta) { e.preventDefault(); this.paneles.motivo = true; this.$nextTick(() => this.$destacar(cont)); return; }
                         if (! confirm('¿Enviar el reporte? No podrás editarlo después.')) e.preventDefault();
                     }
                  }">
@@ -563,8 +565,11 @@
                         <span class="font-semibold text-brand-600" x-text="tanda"></span>
                     </div>
                     <div class="mt-1 flex items-center justify-between">
-                        <span class="text-neutral-500">Diferencia con asignadas</span>
-                        <span class="text-base font-semibold" :class="diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900'" x-text="diferencia">{{ $reporte->diferencia }}</span>
+                        {{-- Rótulo y número derivan de la MISMA diferencia (producido − asignado):
+                             «Cuadra» / «Sobre lo asignado +10» / «Faltan para lo asignado 10»
+                             (dueño 02-09: el −10 pelado se leía al revés). --}}
+                        <span class="text-neutral-500" x-text="diferencia === 0 ? 'Cuadra con lo asignado' : (diferencia > 0 ? 'Sobre lo asignado' : 'Faltan para lo asignado')">{{ $reporte->diferencia === 0 ? 'Cuadra con lo asignado' : ($reporte->diferencia > 0 ? 'Sobre lo asignado' : 'Faltan para lo asignado') }}</span>
+                        <span class="text-base font-semibold" :class="diferencia === 0 ? 'text-neutral-400' : (diferencia > 0 ? 'text-neutral-900' : 'text-brand-700')" x-text="diferencia > 0 ? '+' + diferencia : String(Math.abs(diferencia))">{{ $reporte->diferencia > 0 ? '+'.$reporte->diferencia : abs($reporte->diferencia) }}</span>
                     </div>
                 </div>
 
@@ -576,10 +581,10 @@
                     @method('PATCH')
                     <input type="hidden" name="enviar" value="1">
 
-                    {{-- Motivo: requerido si hay diferencia; chips tocables + "Otro" --}}
-                    <div x-show="diferencia !== 0" @if($reporte->diferencia === 0) x-cloak @endif x-ref="grupoMotivoDiferencia">
+                    {{-- Motivo: requerido solo si FALTÓ producción; chips tocables + "Otro" --}}
+                    <div x-show="falto" @if(! $reporte->falto) x-cloak @endif x-ref="grupoMotivoDiferencia">
                         <x-collapsible label="Motivo de la diferencia" model="paneles.motivo">
-                            <x-slot:summary>¿Por qué no cuadra con lo asignado?</x-slot:summary>
+                            <x-slot:summary>¿Por qué faltó producción?</x-slot:summary>
                             <x-reason-chips name="motivo" allow-other
                                             :options="\App\Models\ProduccionReporte::MOTIVOS_DIFERENCIA"
                                             :selected="old('motivo', $reporte->motivo)" />

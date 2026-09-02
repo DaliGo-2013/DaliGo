@@ -41,7 +41,7 @@
                 </div>
                 <div>
                     <dt class="text-xs uppercase tracking-wide text-neutral-400">Diferencia</dt>
-                    <dd class="mt-1 text-sm font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">{{ $reporte->diferencia }}</dd>
+                    <dd class="mt-1 text-sm font-medium {{ $reporte->diferencia === 0 ? 'text-neutral-400' : 'text-neutral-900' }}">{{ $reporte->diferencia > 0 ? '+' : '' }}{{ $reporte->diferencia }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs uppercase tracking-wide text-neutral-400">Producido (1ª+2ª)</dt>
