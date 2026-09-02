@@ -21,6 +21,13 @@
 
 ## Sesiones
 
+### [2026-09-02] Instalaciones vuelve a ser de Carlos: sale del jefe de ventas y del vendedor
+- **Quién:** Marcos + Claude (Fable 5.1).
+- **Objetivo declarado:** *«saca de la vista del jefe de ventas el apartado instalaciones porque eso es para Carlos Tablante, el técnico industrial, que ingresa sus instalaciones para que le paguen el sueldo y horas extras. Es como un respaldo personal… deshabilitarlo del jefe de ventas y vendedores»*. El dueño lo había pedido el 01-09 y lo frenó; hoy lo volvió a pedir con el alcance claro.
+- **Qué se hizo:** el permiso `gestionar instalaciones` **ya existía como perilla** en Administración → Roles, así que no se creó nada: se le quitó al `jefe_ventas` en el seeder y la one-shot `2026_09_02_120000` se lo revoca a **jefe_ventas y vendedor** en producción. Dos roles porque el seeder solo se lo daba al jefe, pero la captura del dueño mostraba un **Vendedor Test** con el ítem — o sea que ese rol lo recibió desde la UI. Reversible solo para el jefe (el único al que el código se lo había dado). Lo conservan `tecnico_industrial` y `admin`; el botón «Registrar instalación» se queda, es como Carlos carga su planilla.
+- **Candados:** el viejo `test_jefe_ventas_tambien_gestiona` quedó **invertido** (jefe y vendedor, por ruta y por menú), más el control positivo de que a Carlos le sigue apareciendo, más los dos de la migración con el estado de producción sembrado antes de correr. Mutados.
+- **Decisiones:** ninguna nueva — es la aplicación de la doctrina de permisos del 27-08 (un ítem se gatea con el permiso de su dueño; el por-si-acaso no es un criterio).
+- **Próximo paso:** sin cambio — el simulador sigue congelado esperando al jefe de logística.
 ### [2026-08-27] Dos accesos que nadie había habilitado: Conductores para el técnico, ADMINISTRACIÓN para el jefe de ventas
 - **Quién:** Marcos + Claude (Opus 5).
 - **Objetivo declarado:** dos reportes del dueño, los dos mirando el menú en su teléfono. *«Sacale el permiso al técnico de ver logística a los conductores, no entiendo por qué ve conductores, no recuerdo habilitar ese permiso»* y, con la ficha del rol jefe_ventas abierta, *«necesito que el rol jefe de ventas no tenga la opción de ver administración… ya que es la opción para cambiar y habilitar permisos, no debe tener acceso ningún perfil salvo admin, que es el que administra el sistema completo»*.
