@@ -296,6 +296,9 @@ class MenuPrincipal
                 // el técnico industrial ve la Agenda con solo `ver agenda
                 // terreno` y el tarifario le daría 403.
                 'agenda-terreno' => ['label' => 'Agenda de terreno', 'route' => 'admin.agenda-terreno.index', 'activo' => ['admin.agenda-terreno.*', 'admin.servicios-terreno.*'], 'permiso' => 'ver agenda terreno|agendar servicio terreno', 'badge' => 'agenda_por_coordinar', 'badge_title' => ':n visita(s) por coordinar'],
+                // La planilla PERSONAL del técnico industrial (dueño, 02-09-2026: «es para
+                // Carlos Tablante… para que le paguen el sueldo y horas extras»). Solo él y
+                // admin llevan el permiso; jefe de ventas y vendedor lo perdieron ese día.
                 'instalaciones' => ['label' => 'Instalaciones', 'route' => 'admin.instalaciones.index', 'activo' => ['admin.instalaciones.*'], 'permiso' => 'gestionar instalaciones'],
                 // Conductores se fue a LOGÍSTICA el 04-08 (pedido del dueño).
                 // Sigue siendo visible para el técnico: el permiso del ítem es

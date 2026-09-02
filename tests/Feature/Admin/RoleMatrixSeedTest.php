@@ -48,7 +48,9 @@ class RoleMatrixSeedTest extends TestCase
             // la llave 1 de la hoja de ruta (P-DSP-08).
             // SIN 'view users' (dueño, 27-08-2026): era lo único que le hacía
             // aparecer ADMINISTRACIÓN en el menú. Ver PermisosSoloAdminTest.
-            'jefe_ventas' => ['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes'],
+            // SIN 'gestionar instalaciones' (dueño, 02-09-2026): es la planilla personal
+            // del técnico industrial. Ver InstalacionManagementTest.
+            'jefe_ventas' => ['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'emitir nota de credito', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes'],
             // Jefe de sucursal (2026-07-28): nace por la regla 9 de Contabilidad
             // (quiénes pueden anular con nota de crédito). Ver el seeder.
             // El jefe de sucursal DESPACHA (no recibe): la máquina sale de su

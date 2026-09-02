@@ -22,8 +22,14 @@ use Illuminate\View\View;
 /**
  * Registro de instalaciones en terreno del técnico industrial (Carlos Tablante).
  * Plasma su Excel "INSTALACION DE MAQUINAS": listado editable de instalaciones/
- * puestas en marcha con datos comerciales. Lo usan el técnico industrial, jefes
- * de venta y admin (permiso 'gestionar instalaciones').
+ * puestas en marcha con datos comerciales.
+ *
+ * ES SU PLANILLA PERSONAL (dueño, 02-09-2026): con este registro le pagan el sueldo
+ * y las horas extras. Lo usa el técnico industrial y nadie más (permiso 'gestionar
+ * instalaciones', que el admin lleva por construcción). Los jefes de venta lo
+ * tuvieron hasta esa fecha «por si acaso» y el dueño lo pidió de vuelta; la
+ * migración 2026_09_02_120000 se lo quitó también al vendedor, que lo había
+ * recibido desde la UI.
  */
 class InstalacionController extends Controller
 {

@@ -72,7 +72,10 @@ class RolesAndPermissionsSeeder extends Seeder
             // sin tocar codigo ni esperar un deploy.
             'ver servicios terreno',       // consultar precios y detalle (el tecnico en terreno)
             'gestionar servicios terreno', // crear y editar el tarifario (decision comercial)
-            'gestionar instalaciones',    // tecnico industrial / jefes: registro de instalaciones (Excel de terreno)
+            // El registro de instalaciones del tecnico INDUSTRIAL, y de nadie mas (dueño,
+            // 02-09-2026): es su planilla personal — con ella le pagan el sueldo y las horas
+            // extras. Lo llevaban tambien los jefes «por si acaso» y el dueño lo pidio de vuelta.
+            'gestionar instalaciones',    // tecnico industrial: su registro de instalaciones (Excel de terreno)
             'gestionar tiempos reparacion', // jefatura: catálogo de horas estándar por trabajo (mano de obra fija)
             // Informes de Servicio Tecnico (por dominio): el tecnico de taller ve
             // solo Dispensadores; el tecnico industrial solo Industrial; jefes/admin ambos.
@@ -162,7 +165,9 @@ class RolesAndPermissionsSeeder extends Seeder
         // ademas, resolver exige portar el rol_aprobador de la solicitud.
         // Jefe de ventas supervisa TODO el servicio técnico (pedido de gerencia):
         // taller (Fernando) — gestiona/edita/confirma y aplica descuentos — e
-        // industrial (Carlos) — ya agenda terreno + instalaciones. El DESCUENTO es
+        // industrial (Carlos) — agenda terreno. NO instalaciones (dueño, 02-09-2026): ese
+        // registro es la planilla personal de Carlos, con la que le pagan; sacarlo de esta
+        // lista no revoca nada en una base ya sembrada, eso lo hace 2026_09_02_120000. El DESCUENTO es
         // decisión comercial: solo jefe_ventas/admin lo aplican (el técnico no).
         // SIN 'view users' desde el 27-08-2026 (dueño): ADMINISTRACIÓN es donde se
         // cambian y habilitan los permisos, y ahí no entra ningún perfil salvo admin.
@@ -174,7 +179,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Role::firstOrCreate(['name' => 'jefe_ventas', 'guard_name' => 'web'])
             // UNIÓN del merge 04-08: M13 le dio devoluciones + simulador; la
             // hoja de ruta le da la llave 1 (autorizar pagos ruta).
-            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'gestionar instalaciones', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
+            ->givePermissionTo(['manage clientes', 'view servicio tecnico', 'ver todo servicio tecnico', 'manage servicio tecnico', 'editar recepcion servicio tecnico', 'confirmar servicio tecnico', 'recibir traslado servicio', 'aplicar descuento servicio tecnico', 'aprobar solicitudes', 'agendar servicio terreno', 'ver servicios terreno', 'gestionar servicios terreno', 'gestionar cierres agenda', 'autorizar reparacion', 'gestionar tiempos reparacion', 'ver informe dispensadores', 'ver informe industrial', 'manage devoluciones', 'simular carga', 'autorizar pagos ruta', 'usar mensajes']);
         // El jefe de bodega AUTORIZA la recepcion de lo que llego por QR (revisa
         // que los datos esten bien) y luego el tecnico repara. Por eso tiene
         // 'confirmar servicio tecnico' pero NO 'manage' (no ingresa/edita).

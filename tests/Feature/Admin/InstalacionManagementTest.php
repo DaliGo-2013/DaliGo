@@ -7,6 +7,7 @@ use App\Models\Producto;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class InstalacionManagementTest extends TestCase
@@ -19,9 +20,16 @@ class InstalacionManagementTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
+    private const MIGRACION = 'migrations/2026_09_02_120000_instalaciones_solo_del_tecnico_industrial.php';
+
     private function tecnicoIndustrial(): User
     {
         return tap(User::factory()->create())->assignRole('tecnico_industrial');
+    }
+
+    private function usuario(string $rol): User
+    {
+        return tap(User::factory()->create())->assignRole($rol);
     }
 
     private function payload(array $overrides = []): array
@@ -62,11 +70,80 @@ class InstalacionManagementTest extends TestCase
         $this->actingAs($this->tecnicoIndustrial())->get('/admin/instalaciones')->assertOk();
     }
 
-    public function test_jefe_ventas_tambien_gestiona(): void
+    /**
+     * INSTALACIONES ES LA PLANILLA PERSONAL DEL TÉCNICO INDUSTRIAL, Y DE NADIE MÁS.
+     *
+     * Dueño, 02-09-2026, mirando el menú de un jefe de ventas: *«eso es para Carlos
+     * Tablante, el técnico industrial, que ingresa sus instalaciones para que le
+     * paguen el sueldo y horas extras. Es como un respaldo personal»*.
+     *
+     * Este candado es el INVERSO del que había acá (`test_jefe_ventas_tambien_gestiona`,
+     * que fijaba que el jefe SÍ entraba): la pantalla nació como el Excel de Carlos y
+     * el seeder se la repartió a los jefes «por si acaso». Se prueba el jefe de ventas
+     * y el vendedor porque el dueño nombró a los dos — y porque en producción un
+     * vendedor la veía aunque el seeder nunca se la dio (la recibió desde la UI).
+     */
+    public function test_ni_el_jefe_de_ventas_ni_el_vendedor_ven_instalaciones(): void
     {
-        $jefe = tap(User::factory()->create())->assignRole('jefe_ventas');
+        foreach (['jefe_ventas', 'vendedor'] as $rol) {
+            $usuario = $this->usuario($rol);
 
-        $this->actingAs($jefe)->get('/admin/instalaciones')->assertOk();
+            $this->actingAs($usuario)->get('/admin/instalaciones')
+                ->assertRedirect(route('dashboard'))
+                ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+
+            // Y el ítem no se le ofrece: el gate del menú y el de la ruta son el
+            // mismo (D-014), o si no el menú ofrecería un 403.
+            $this->actingAs($usuario)->get(route('dashboard'))->assertOk()
+                ->assertDontSee(route('admin.instalaciones.index'));
+        }
+    }
+
+    /**
+     * La otra mitad: a Carlos le sigue apareciendo en el menú. Sin esto, el candado
+     * de arriba se cumple igual con el permiso borrado del sistema entero.
+     */
+    public function test_el_tecnico_industrial_conserva_instalaciones_en_su_menu(): void
+    {
+        $this->actingAs($this->tecnicoIndustrial())->get(route('dashboard'))->assertOk()
+            ->assertSee(route('admin.instalaciones.index'));
+    }
+
+    // --- La migración de producción ---
+
+    public function test_la_migracion_les_quita_instalaciones_al_jefe_de_ventas_y_al_vendedor(): void
+    {
+        // Estado de producción antes del cambio: el seeder se lo había dado al jefe de
+        // ventas, y alguien se lo marcó al vendedor desde la pantalla de Roles.
+        Role::findByName('jefe_ventas')->givePermissionTo('gestionar instalaciones');
+        Role::findByName('vendedor')->givePermissionTo('gestionar instalaciones');
+        $this->assertTrue(Role::findByName('vendedor')->fresh()->hasPermissionTo('gestionar instalaciones'), 'El fixture no reprodujo el estado viejo.');
+
+        (require database_path(self::MIGRACION))->up();
+
+        $this->assertFalse(Role::findByName('jefe_ventas')->hasPermissionTo('gestionar instalaciones'));
+        $this->assertFalse(Role::findByName('vendedor')->hasPermissionTo('gestionar instalaciones'));
+        // Y a su dueño no se lo lleva.
+        $this->assertTrue(Role::findByName('tecnico_industrial')->hasPermissionTo('gestionar instalaciones'));
+        $this->assertTrue(Role::findByName('admin')->hasPermissionTo('gestionar instalaciones'));
+    }
+
+    /**
+     * Reversible SOLO para el jefe de ventas: es el único al que el seeder se lo había
+     * dado. El vendedor lo tenía por fuera del código, y devolvérselo en un `down()`
+     * sería volver a repartir algo que nunca se decidió repartir.
+     */
+    public function test_la_migracion_se_revierte_solo_para_el_jefe_de_ventas(): void
+    {
+        Role::findByName('jefe_ventas')->givePermissionTo('gestionar instalaciones');
+        Role::findByName('vendedor')->givePermissionTo('gestionar instalaciones');
+        $migracion = require database_path(self::MIGRACION);
+
+        $migracion->up();
+        $migracion->down();
+
+        $this->assertTrue(Role::findByName('jefe_ventas')->hasPermissionTo('gestionar instalaciones'));
+        $this->assertFalse(Role::findByName('vendedor')->hasPermissionTo('gestionar instalaciones'));
     }
 
     public function test_formulario_sugiere_productos_activos_del_catalogo(): void
