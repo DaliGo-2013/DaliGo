@@ -183,4 +183,38 @@ class DashboardSopladorSemanaTest extends TestCase
             ->assertDontSee('Wednesday')
             ->assertDontSee('September');
     }
+
+    public function test_es_solo_para_sopladores_aunque_el_jefe_tenga_el_permiso(): void
+    {
+        // Dueño 02-09: entró como jefe de bodega y como admin y vio las cards
+        // y el botón. El permiso `report production` no alcanza — la vista es
+        // por ROL soplador (paramétrico produccion_roles_soplador, la misma
+        // fuente que el selector de asignar producción).
+        $this->viajarA('2026-09-02');
+        // La perilla se siembra ANTES de la primera consulta: Configuracion::get
+        // cachea «clave ausente» y create() no invalida ese cache (set() sí).
+        \App\Models\Configuracion::create([
+            'clave' => 'produccion_roles_soplador', 'valor' => json_encode(['soplador']),
+            'tipo' => \App\Models\Configuracion::TIPO_JSON, 'grupo' => 'produccion', 'descripcion' => 'test',
+        ]);
+
+        foreach (['jefe_bodega', 'admin'] as $rol) {
+            $u = tap(User::factory()->create())->assignRole($rol);
+            $u->givePermissionTo('report production');
+
+            $res = $this->actingAs($u)->get('/dashboard')->assertOk();
+            $this->assertNull($res->viewData('semanaSoplador'), "El rol {$rol} no debe ver la semana del soplador.");
+            $res->assertDontSee('Mi semana ·')->assertDontSee('Ir a Mi producción');
+        }
+
+        // Y la perilla manda: si el negocio declara que los jefes de bodega
+        // también sopla, la vista aparece — sin tocar código.
+        \App\Models\Configuracion::set('produccion_roles_soplador', json_encode(['soplador', 'jefe_bodega']));
+        $jefe = tap(User::factory()->create())->assignRole('jefe_bodega');
+        $jefe->givePermissionTo('report production');
+
+        $res = $this->actingAs($jefe)->get('/dashboard')->assertOk();
+        $this->assertNotNull($res->viewData('semanaSoplador'));
+        $res->assertSee('Ir a Mi producción');
+    }
 }
