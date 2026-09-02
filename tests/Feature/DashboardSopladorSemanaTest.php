@@ -91,7 +91,7 @@ class DashboardSopladorSemanaTest extends TestCase
 
         $res->assertSee('Lunes 31')
             ->assertSee('97%')
-            ->assertSee('Pidieron 700 · 680 de 1ª · 15 de 2ª · 5 malas')
+            ->assertSeeInOrder(['Pidieron', '700', '1ª', '680', '2ª', '15', 'Malas', '5'])
             ->assertSee('Mi semana · 31-08 al 04-09')
             ->assertSee('Aún no llega')
             ->assertSee('Sin producción');
