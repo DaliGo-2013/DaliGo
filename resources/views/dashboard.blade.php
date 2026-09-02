@@ -50,7 +50,7 @@
                             <p class="text-lg font-semibold {{ $card['estado'] === 'futuro' ? 'text-neutral-400' : 'text-neutral-900' }}">{{ $card['rotulo'] }}</p>
                             @if ($card['estado'] === 'con')
                                 <p class="mt-1 text-3xl font-semibold tabular-nums leading-none {{ $card['esHoy'] ? 'text-brand-700' : 'text-neutral-900' }}">{{ $card['tasa1'] }}%<span class="ml-1 text-xs font-normal text-neutral-500">de 1ª</span></p>
-                                <p class="mt-2 text-xs tabular-nums text-neutral-500">Pidieron {{ number_format($card['asignadas'], 0, ',', '.') }} · {{ number_format($card['primera'], 0, ',', '.') }} de 1ª · {{ number_format($card['segunda'], 0, ',', '.') }} de 2ª · {{ number_format($card['malas'], 0, ',', '.') }} malas</p>
+                                @include('dashboard._detalle-card', ['card' => $card, 'oscuro' => false])
                             @elseif ($card['estado'] === 'futuro')
                                 <p class="mt-1 text-3xl font-semibold leading-none text-neutral-300">—</p>
                                 <p class="mt-2 text-xs text-neutral-400">Aún no llega</p>
@@ -67,7 +67,7 @@
                         <p class="text-lg font-semibold text-white">{{ $mes['rotulo'] }} <span class="text-xs font-normal text-neutral-400">acumulado</span></p>
                         @if ($mes['estado'] === 'con')
                             <p class="mt-1 text-3xl font-semibold tabular-nums leading-none text-white">{{ $mes['tasa1'] }}%<span class="ml-1 text-xs font-normal text-neutral-400">de 1ª</span></p>
-                            <p class="mt-2 text-xs tabular-nums text-neutral-300">Pidieron {{ number_format($mes['asignadas'], 0, ',', '.') }} · {{ number_format($mes['primera'], 0, ',', '.') }} de 1ª · {{ number_format($mes['segunda'], 0, ',', '.') }} de 2ª · {{ number_format($mes['malas'], 0, ',', '.') }} malas</p>
+                            @include('dashboard._detalle-card', ['card' => $mes, 'oscuro' => true])
                         @else
                             <p class="mt-1 text-3xl font-semibold leading-none text-neutral-400">—</p>
                             <p class="mt-2 text-xs text-neutral-400">Sin producción este mes</p>
