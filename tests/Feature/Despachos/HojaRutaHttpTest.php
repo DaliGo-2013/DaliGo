@@ -248,4 +248,35 @@ class HojaRutaHttpTest extends TestCase
             ->put(route('admin.hojas-ruta.orden', $hoja), ['paradas' => [$primera->id, $segunda->id]])
             ->assertForbidden();
     }
+
+    /**
+     * El código DSP-… del despacho no va en la línea de la parada (dueño
+     * 02-09: ruido para un humano — nadie lo lee ni lo dicta): queda dentro
+     * de la ⓘ, que abre al tocar en el celular, y la línea dice solo el cobro.
+     */
+    public function test_el_codigo_del_despacho_vive_en_la_ayuda_y_no_en_la_linea(): void
+    {
+        $hoja = $this->hojaEnBorrador();
+        $despacho = \App\Models\Despacho::factory()->create();
+        \App\Models\HojaRutaParada::create([
+            'hoja_de_ruta_id' => $hoja->id,
+            'despacho_id' => $despacho->id,
+            'orden' => 1,
+        ]);
+
+        $html = $this->actingAs($this->usuario('jefe_logistica'))
+            ->get(route('admin.hojas-ruta.show', $hoja))
+            ->assertOk()
+            ->getContent();
+
+        // Dentro de la ⓘ, con su explicación…
+        $this->assertStringContainsString('Código del despacho: '.$despacho->codigo, $html);
+        // …y NUNCA como texto suelto delante del cobro (la forma vieja).
+        $this->assertDoesNotMatchRegularExpression(
+            '/'.preg_quote($despacho->codigo, '/').'\s*·\s*Cobro/u',
+            $html,
+            'El código volvió a la línea de la parada.'
+        );
+        $this->assertStringContainsString('Cobro:', $html);
+    }
 }

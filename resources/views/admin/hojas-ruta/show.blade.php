@@ -123,9 +123,13 @@
                                     Folio {{ $parada->despacho?->documento?->folio ?? '—' }}
                                     · {{ $parada->despacho?->documento?->cliente?->razon_social ?? 'Sin cliente' }}
                                 </p>
-                                <p class="truncate text-xs text-neutral-500">
-                                    {{ $parada->despacho?->codigo }}
-                                    · Cobro: {{ ['pagado' => 'Pagado', 'cobrar_en_entrega' => 'Cobrar en entrega', 'credito' => 'Crédito'][$parada->estado_cobro] ?? $parada->estado_cobro }}
+                                {{-- El código DSP-… sale de la línea (dueño 02-09: ruido para un humano)
+                                     y queda en la ⓘ, que también abre al tocar en el celular. --}}
+                                <p class="flex items-center gap-1 truncate text-xs text-neutral-500">
+                                    <span>Cobro: {{ ['pagado' => 'Pagado', 'cobrar_en_entrega' => 'Cobrar en entrega', 'credito' => 'Crédito'][$parada->estado_cobro] ?? $parada->estado_cobro }}</span>
+                                    @if ($parada->despacho?->codigo)
+                                        <x-info-tip>Código del despacho: {{ $parada->despacho->codigo }}. Es el que viaja en el QR del retiro y de la entrega.</x-info-tip>
+                                    @endif
                                 </p>
                             </div>
                             <x-despacho.estado-badge :estado="$parada->despacho->estado" class="shrink-0" />
