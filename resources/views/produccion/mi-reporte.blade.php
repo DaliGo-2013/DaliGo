@@ -15,6 +15,33 @@
 
         <x-produccion.indicador-red />
 
+        {{-- Colación (dueño 02-09): lo primero que se toca al irse. Un solo
+             estado, dos botones — «Salir a colación» abre una parada planificada
+             de operario con la hora del servidor; «Volví» la cierra. Requiere
+             señal a propósito: una hora servida horas después por la cola sería
+             falsa (si olvida «Volví», el envío del reporte la cierra solo). Solo
+             en el reporte editable; nunca un form dentro de otro form. --}}
+        @if ($reporte && $reporte->editablePorSoplador())
+            @php $colacion = $reporte->colacionAbierta(); @endphp
+            @if ($colacion)
+                <div class="dg-enter mb-4 rounded-2xl border border-brand-200 bg-brand-50 p-4">
+                    <p class="text-sm font-semibold text-brand-700">En colación desde las {{ $colacion->inicio_corta }}</p>
+                    <form method="POST" action="{{ route('produccion.mi.colacion.volver', $reporte) }}" class="mt-3">
+                        @csrf
+                        @method('PATCH')
+                        <x-primary-button type="submit" class="h-12 w-full justify-center" x-bind:disabled="! $store.red.online">Volví</x-primary-button>
+                        <p class="mt-1 text-xs text-neutral-500" x-show="! $store.red.online" x-cloak>Necesita señal.</p>
+                    </form>
+                </div>
+            @else
+                <form method="POST" action="{{ route('produccion.mi.colacion.salir', $reporte) }}" class="dg-enter mb-4">
+                    @csrf
+                    <x-secondary-button type="submit" class="h-12 w-full justify-center" x-bind:disabled="! $store.red.online">Salir a colación</x-secondary-button>
+                    <p class="mt-1 text-xs text-neutral-500" x-show="! $store.red.online" x-cloak>Necesita señal.</p>
+                </form>
+            @endif
+        @endif
+
         {{-- Notas del jefe vigentes (P-M11-22): antes del split de ramas a
              propósito — una nota («hoy llegan preformas nuevas») debe verse
              también sin asignación o con el reporte ya enviado. Brand y no

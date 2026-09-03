@@ -130,6 +130,20 @@ class ProduccionReporte extends Model implements AuditableContract
         return $this->hasMany(ProduccionParada::class, 'reporte_id');
     }
 
+    /**
+     * La colación en curso del soplador (parada de motivo Colación sin fin),
+     * o null si no está en colación. Fuente única para la pantalla y los
+     * endpoints de salir/volver.
+     */
+    public function colacionAbierta(): ?ProduccionParada
+    {
+        return $this->paradas()
+            ->where('motivo', ProduccionParada::MOTIVO_COLACION)
+            ->whereNull('fin')
+            ->latest('id')
+            ->first();
+    }
+
     /** El molde elegido al aprobar cuando la inferencia por tipo es ambigua (P-M11-12). */
     public function molde(): BelongsTo
     {

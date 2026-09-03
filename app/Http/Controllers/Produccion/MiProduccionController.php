@@ -564,6 +564,74 @@ class MiProduccionController extends Controller
      * Tras agregar/eliminar una tanda, quedarse en el reporte (la pantalla de
      * llenado), no en la lista de producciones del dia.
      */
+    /**
+     * «Salir a colación» (dueño 02-09): abre una parada PLANIFICADA de origen
+     * operario, sin máquina, con la hora de negocio del servidor. Idempotente:
+     * con una colación ya abierta no crea otra. Requiere señal a propósito (la
+     * pantalla apaga el botón offline): una hora servida horas después por la
+     * cola sería falsa. Si olvida «Volví», el envío del reporte la cierra solo.
+     */
+    public function colacionSalir(Request $request, ProduccionReporte $reporte): RedirectResponse|JsonResponse
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+        abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
+
+        $hora = \App\Support\FechaNegocio::ahora()->format('H:i');
+
+        $abierta = DB::transaction(function () use ($reporte, $hora) {
+            $reporte = ProduccionReporte::lockForUpdate()->findOrFail($reporte->id);
+            $abierta = $reporte->colacionAbierta();
+            if ($abierta) {
+                return $abierta;
+            }
+
+            return $reporte->paradas()->create([
+                'motivo' => ProduccionParada::MOTIVO_COLACION,
+                'clase' => ProduccionParada::claseDe(ProduccionParada::MOTIVO_COLACION),
+                'origen' => 'operario',
+                'maquina_id' => null,
+                'inicio' => $hora,
+                'fin' => null,
+            ]);
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'desde' => $abierta->inicio_corta]);
+        }
+
+        return redirect()->to($this->rutaDelReporte($reporte))
+            ->with('status', 'En colación desde las '.$abierta->inicio_corta.'.');
+    }
+
+    /** «Volví»: cierra la colación abierta con la hora de negocio. Sin abierta, no-op. */
+    public function colacionVolver(Request $request, ProduccionReporte $reporte): RedirectResponse|JsonResponse
+    {
+        abort_unless($reporte->soplador_id === $request->user()->id, 403);
+        abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
+
+        $hora = \App\Support\FechaNegocio::ahora()->format('H:i');
+
+        $cerrada = DB::transaction(function () use ($reporte, $hora) {
+            $reporte = ProduccionReporte::lockForUpdate()->findOrFail($reporte->id);
+            $abierta = $reporte->colacionAbierta();
+            if (! $abierta) {
+                return null;
+            }
+            $abierta->update(['fin' => $hora]);
+
+            return $abierta;
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'cerrada' => $cerrada !== null]);
+        }
+
+        return redirect()->to($this->rutaDelReporte($reporte))
+            ->with('status', $cerrada
+                ? 'De vuelta. Colación de '.$cerrada->duracion_label.'.'
+                : 'No había una colación abierta.');
+    }
+
     private function rutaDelReporte(ProduccionReporte $reporte): string
     {
         return route('produccion.mi.show', $reporte);
