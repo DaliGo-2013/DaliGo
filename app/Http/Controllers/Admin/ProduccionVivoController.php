@@ -156,7 +156,8 @@ class ProduccionVivoController extends Controller
                 'paradas' => $reporte->paradas
                     ->map(fn ($parada) => [
                         'motivo' => $parada->motivo,
-                        'maquina' => $parada->maquina?->nombre,
+                        // La colación no tiene máquina (detiene al operario): que no salga con hueco.
+                        'maquina' => $parada->maquina?->nombre ?? 'Operario',
                         'inicio' => $parada->inicio_corta,
                         'lleva' => \App\Models\ProduccionParada::labelDe($parada->duracionMinutosHasta($ahoraPared)),
                     ])

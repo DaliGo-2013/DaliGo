@@ -860,6 +860,11 @@ Route::middleware(['auth', 'permission:report production'])
         // Mismo contrato offline que los registros (cliente_uuid idempotente).
         Route::post('mi-reporte/{reporte}/paradas', [MiProduccionController::class, 'paradaStore'])->whereNumber('reporte')->name('mi.paradas.store');
         Route::delete('mi-reporte/{reporte}/paradas/{parada}', [MiProduccionController::class, 'paradaDestroy'])->whereNumber(['reporte', 'parada'])->name('mi.paradas.destroy');
+        // Colación (dueño 02-09): «Salir a colación» abre una parada planificada
+        // de operario; «Volví» la cierra. Sin cola offline a proposito (la hora
+        // es la del servidor al momento de tocar).
+        Route::post('mi-reporte/{reporte}/colacion', [MiProduccionController::class, 'colacionSalir'])->whereNumber('reporte')->name('mi.colacion.salir');
+        Route::patch('mi-reporte/{reporte}/colacion', [MiProduccionController::class, 'colacionVolver'])->whereNumber('reporte')->name('mi.colacion.volver');
         // Propuesta de mejora (P-M11-23, kaizen): texto libre que llega a la
         // bandeja del jefe. Path HERMANO (nada nuevo bajo mi-reporte/ — ver el
         // comentario de mi-historial); no cuelga de un reporte a proposito: se

@@ -26,6 +26,14 @@ class ProduccionParada extends Model
 
     public const CLASE_NO_PLANIFICADA = 'no_planificada';
 
+    /**
+     * Motivo FIJO de la colación del soplador (dueño 02-09): una parada
+     * planificada de origen operario, sin máquina, abierta con «Salir a
+     * colación» y cerrada con «Volví» (o por el envío del reporte). No vive
+     * en las listas de motivos: es una acción, no un chip.
+     */
+    public const MOTIVO_COLACION = 'Colación';
+
     // Origen de la detencion: se detuvo la maquina, o fue el operario quien
     // no pudo operar (patron "No Machine"). Etiquetas facticas, no culposas.
     public const ORIGENES = ['maquina', 'operario'];
@@ -112,6 +120,13 @@ class ProduccionParada extends Model
      */
     public static function claseDe(string $motivo): string
     {
+        // La colación es planificada SIEMPRE, sin depender de la perilla de
+        // motivos planificados: no es un chip de la lista, es una acción propia
+        // del soplador («Salir a colación» / «Volví», dueño 02-09).
+        if ($motivo === self::MOTIVO_COLACION) {
+            return self::CLASE_PLANIFICADA;
+        }
+
         return in_array($motivo, self::motivosPlanificados(), true)
             ? self::CLASE_PLANIFICADA
             : self::CLASE_NO_PLANIFICADA;
