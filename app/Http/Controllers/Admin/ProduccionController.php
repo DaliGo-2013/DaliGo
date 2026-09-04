@@ -243,6 +243,11 @@ class ProduccionController extends Controller
             'dias' => array_reverse($dias),
             'totales' => ProduccionReporte::armarResumen($sp1, $sp2, $smal, $sdan, $sasig) + ['reportes' => $srep],
             'maxProducido' => max(1, collect($dias)->max('producido') ?? 0),
+            // Qué dibuja la barra de cada día (dueño 03-09): con asignaciones del
+            // período, el AVANCE sobre lo asignado (100 % = cumplió el día); en los
+            // desgloses por máquina/tipo no hay meta por día, así que la barra es
+            // RELATIVA al mejor día. La vista rotula cuál de los dos es.
+            'modoBarra' => $asignadasPorDia !== null ? 'avance' : 'relativo',
         ];
     }
 
