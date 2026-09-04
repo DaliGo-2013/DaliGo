@@ -30,3 +30,5 @@
         <li class="px-4 py-6 text-center text-sm text-neutral-500 sm:px-6">Sin datos en el periodo.</li>
     @endforelse
 </ul>
+{{-- La barra de un desglose no tiene meta: es relativa al primero. Se dice (dueño 03-09). --}}
+<p class="px-4 py-2 text-xs text-neutral-400 sm:px-6">Barra: producido respecto del primero de la lista.</p>
