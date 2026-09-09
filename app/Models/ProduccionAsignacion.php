@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class ProduccionAsignacion extends Model
 {
@@ -35,6 +36,8 @@ class ProduccionAsignacion extends Model
         'asignadas',
         'preforma_id',
         'procedencia',
+        'maquina_id',
+        'tipo_botellon_id',
         'creado_por',
     ];
 
@@ -65,6 +68,24 @@ class ProduccionAsignacion extends Model
         return $this->belongsTo(Producto::class, 'preforma_id');
     }
 
+    /**
+     * Máquina en la que se sopla este turno (dueño 09-09: la fija el jefe al
+     * asignar; el soplador no elige). Nullable: asignaciones históricas o
+     * planta sin catálogo. Las tandas y paradas del reporte la heredan.
+     */
+    public function maquina(): BelongsTo
+    {
+        return $this->belongsTo(Maquina::class, 'maquina_id');
+    }
+
+    /**
+     * Tipo de botellón que se produce este turno. Misma regla que la máquina.
+     */
+    public function tipoBotellon(): BelongsTo
+    {
+        return $this->belongsTo(TipoBotellon::class, 'tipo_botellon_id');
+    }
+
     public function reporte(): HasOne
     {
         return $this->hasOne(ProduccionReporte::class, 'asignacion_id');
@@ -80,6 +101,6 @@ class ProduccionAsignacion extends Model
             ->selectRaw('fecha, COALESCE(SUM(asignadas),0) a')
             ->groupBy('fecha')
             ->get()
-            ->mapWithKeys(fn ($r) => [\Illuminate\Support\Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
+            ->mapWithKeys(fn ($r) => [Carbon::parse($r->fecha)->toDateString() => (int) $r->a]);
     }
 }

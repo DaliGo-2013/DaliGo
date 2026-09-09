@@ -6,15 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Aprobacion;
 use App\Models\Configuracion;
 use App\Models\Maquina;
-use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionMejora;
 use App\Models\ProduccionMovimiento;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
+use App\Models\Producto;
 use App\Models\TipoBotellon;
 use App\Models\User;
 use App\Services\Aprobaciones\Aprobaciones;
+use App\Services\Produccion\Moldes;
+use App\Services\Produccion\Oee;
+use App\Support\FechaNegocio;
+use App\Support\RolesDelSistema;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -74,7 +78,7 @@ class ProduccionController extends Controller
     {
         // Día de NEGOCIO (P-TZ-01): la cola/alertas/resumen del jefe viven en
         // el día chileno, no en el UTC (que avanza a las 20/21h de Chile).
-        $hoy = \App\Support\FechaNegocio::hoy();
+        $hoy = FechaNegocio::hoy();
 
         // --- Cola de reportes de HOY (la superficie de trabajo del jefe) ---
         $reportes = ProduccionReporte::with('soplador')
@@ -134,7 +138,7 @@ class ProduccionController extends Controller
 
         // --- OEE por maquina del periodo (P-M11-11): comparativa contra la
         // meta de cada maquina; el detalle vive en el informe por maquina. ---
-        $oeePorMaquina = app(\App\Services\Produccion\Oee::class)->porMaquina($desde, $hasta);
+        $oeePorMaquina = app(Oee::class)->porMaquina($desde, $hasta);
 
         // --- Kaizen (P-M11-23): propuestas que esperan decision (bandeja). ---
         $mejorasAbiertas = ProduccionMejora::abiertas()
@@ -173,7 +177,7 @@ class ProduccionController extends Controller
             'hasta' => ['nullable', 'date'],
         ]);
 
-        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : \App\Support\FechaNegocio::hoy();
+        $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->toDateString() : FechaNegocio::hoy();
         $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->toDateString() : Carbon::parse($hasta)->subDays($ventana)->toDateString();
         if ($desde > $hasta) {
             $desde = $hasta;
@@ -318,7 +322,7 @@ class ProduccionController extends Controller
     public function diaDetalle(Request $request): View
     {
         $request->validate(['fecha' => ['nullable', 'date']]);
-        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : \App\Support\FechaNegocio::hoy();
+        $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : FechaNegocio::hoy();
 
         $reportes = ProduccionReporte::with('soplador')->withCount('registros')
             ->whereDate('fecha', $fecha)
@@ -357,7 +361,7 @@ class ProduccionController extends Controller
 
         $tendencia = $this->construirTendencia($desde, $hasta, $this->registrosPorDia($desde, $hasta, 'maquina_id', $maquina->id));
 
-        $oee = app(\App\Services\Produccion\Oee::class);
+        $oee = app(Oee::class);
 
         return view('admin.produccion.maquina', [
             'maquina' => $maquina->load('sucursal'),
@@ -383,7 +387,7 @@ class ProduccionController extends Controller
      */
     private function presetsDeRango(): array
     {
-        $hoy = \App\Support\FechaNegocio::ahora();
+        $hoy = FechaNegocio::ahora();
         $finMesAnterior = $hoy->copy()->startOfMonth()->subDay();
 
         return [
@@ -443,8 +447,8 @@ class ProduccionController extends Controller
      */
     public function sopladorHistorial(Request $request, User $soplador): View
     {
-        $desde = $request->date('desde') ?? \App\Support\FechaNegocio::ahora()->startOfMonth();
-        $hasta = $request->date('hasta') ?? \App\Support\FechaNegocio::ahora()->endOfMonth();
+        $desde = $request->date('desde') ?? FechaNegocio::ahora()->startOfMonth();
+        $hasta = $request->date('hasta') ?? FechaNegocio::ahora()->endOfMonth();
 
         // whereDate (no whereBetween): la columna casteada guarda "Y-m-d 00:00:00"
         // y el borde superior del between la deja fuera (bitacora 2026-07-01).
@@ -485,11 +489,16 @@ class ProduccionController extends Controller
             // Rótulo humano de los roles asignables, derivado de la clave
             // (doctrina DASH-2): si el dueño suma un rol, el hint no miente.
             'rotuloRolesSoplador' => collect(User::rolesSoplador())
-                ->map(fn (string $r) => \App\Support\RolesDelSistema::etiqueta($r))
+                ->map(fn (string $r) => RolesDelSistema::etiqueta($r))
                 ->join(' o '),
             'turnos' => self::TURNOS,
             'preformas' => $this->preformasParaSelector(),
             'procedencias' => ProduccionAsignacion::procedencias(),
+            // Máquina y tipo se deciden ACÁ (dueño 09-09): el soplador ya no
+            // elige. El selector ofrece todas las activas (con su sucursal si
+            // hay más de una); la validación las acota a las del soplador.
+            'maquinas' => Maquina::query()->with('sucursal')->where('activa', true)->orderBy('nombre')->get(),
+            'tipos' => TipoBotellon::activos()->orderBy('nombre')->get(),
         ]);
     }
 
@@ -545,6 +554,25 @@ class ProduccionController extends Controller
             'asignadas.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
         ]);
 
+        // Máquina y tipo del turno (dueño 09-09): los fija el jefe acá y el
+        // soplador los hereda en cada tanda y parada. Segunda pasada porque
+        // la lista de máquinas depende del soplador ya validado: las activas
+        // de SU sucursal (Maquina::paraSoplador, la misma regla que antes
+        // aplicaba la tanda). Obligatorios mientras haya catálogo; una planta
+        // sin máquinas o sin tipos sigue pudiendo asignar (quedan en null).
+        $soplador = User::findOrFail($validated['soplador_id']);
+        $maquinas = Maquina::paraSoplador($soplador);
+        $tipos = TipoBotellon::activos()->get();
+        $validated += $request->validate([
+            'maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', 'integer', Rule::in($maquinas->pluck('id'))],
+            'tipo_botellon_id' => [$tipos->isEmpty() ? 'nullable' : 'required', 'integer', Rule::in($tipos->pluck('id'))],
+        ], [
+            'maquina_id.required' => 'Elige la máquina en la que va a soplar.',
+            'maquina_id.in' => 'Esa máquina no está activa o no es de la sucursal del soplador.',
+            'tipo_botellon_id.required' => 'Elige el tipo de botellón del turno.',
+            'tipo_botellon_id.in' => 'Elige un tipo de botellón activo.',
+        ]);
+
         // Asignacion + reporte en una sola transaccion: si el reporte falla, no
         // queda una asignacion huerfana (el soplador veria "sin asignacion").
         $asignacion = DB::transaction(function () use ($validated, $request) {
@@ -555,6 +583,8 @@ class ProduccionController extends Controller
                 'asignadas' => $validated['asignadas'],
                 'preforma_id' => $validated['preforma_id'] ?? null,
                 'procedencia' => $validated['procedencia'] ?? null,
+                'maquina_id' => $validated['maquina_id'] ?? null,
+                'tipo_botellon_id' => $validated['tipo_botellon_id'] ?? null,
                 'creado_por' => $request->user()->id,
             ]);
 
@@ -621,6 +651,8 @@ class ProduccionController extends Controller
             'soplador',
             'revisadoPor',
             'asignacion.preforma',
+            'asignacion.maquina',
+            'asignacion.tipoBotellon',
             'registros' => fn ($query) => $query->latest('id'),
             'registros.maquina',
             'registros.tipoBotellon.producto',
@@ -647,7 +679,7 @@ class ProduccionController extends Controller
             // P-M11-12: con 2+ moldes activos para un tipo del reporte, el
             // form de Autorizar pide elegir cuál trabajó el turno.
             'moldesAmbiguos' => $reporte->esPendienteDeRevision()
-                ? app(\App\Services\Produccion\Moldes::class)->candidatosAmbiguos($reporte)
+                ? app(Moldes::class)->candidatosAmbiguos($reporte)
                 : collect(),
         ]);
     }
@@ -663,7 +695,7 @@ class ProduccionController extends Controller
 
         // P-M11-12: si algún tipo del reporte tiene 2+ moldes ACTIVOS, la
         // inferencia es ambigua y el jefe debe decir cuál trabajó el turno.
-        $moldes = app(\App\Services\Produccion\Moldes::class);
+        $moldes = app(Moldes::class);
         $candidatos = $moldes->candidatosAmbiguos($reporte);
         $request->validate([
             'molde_id' => [Rule::requiredIf($candidatos->isNotEmpty()), 'nullable', 'integer', Rule::in($candidatos->pluck('id'))],
@@ -697,7 +729,7 @@ class ProduccionController extends Controller
 
                 // El contador de ciclos comparte el guard del backflush:
                 // devolver jamás resta, re-aprobar jamás re-suma (P-M11-12).
-                return app(\App\Services\Produccion\Moldes::class)->registrarCiclos($locked);
+                return app(Moldes::class)->registrarCiclos($locked);
             }
 
             return [];

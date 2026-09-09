@@ -4,13 +4,16 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Maquina;
 use App\Models\ProduccionAsignacion;
+use App\Models\ProduccionMovimiento;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
 use App\Models\Sucursal;
 use App\Models\TipoBotellon;
 use App\Models\User;
+use App\Support\AvisosError;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use OwenIt\Auditing\Models\Audit;
 use Tests\TestCase;
 
@@ -74,12 +77,23 @@ class ProduccionTest extends TestCase
         ]);
     }
 
-    /** Agrega una tanda válida actuando como el soplador dueño del reporte. */
+    /**
+     * Agrega una tanda válida actuando como el soplador dueño del reporte.
+     * Máquina y tipo ya NO viajan en el payload (dueño 09-09): los fija el
+     * jefe en la asignación y la tanda los hereda — el helper los deja en la
+     * asignación del reporte para que los tests sigan leyéndose igual.
+     */
     private function agregarTanda(User $soplador, ProduccionReporte $reporte, array $cantidades, ?Maquina $maquina = null, ?TipoBotellon $tipo = null)
     {
+        if ($maquina || $tipo) {
+            $reporte->asignacion->update([
+                'maquina_id' => $maquina?->id ?? $reporte->asignacion->maquina_id,
+                'tipo_botellon_id' => $tipo?->id ?? $reporte->asignacion->tipo_botellon_id,
+            ]);
+            $reporte->unsetRelation('asignacion');
+        }
+
         $payload = array_merge([
-            'maquina_id' => $maquina?->id,
-            'tipo_botellon_id' => $tipo?->id,
             'primera' => 0,
             'segunda' => 0,
             'malo' => 0,
@@ -108,7 +122,7 @@ class ProduccionTest extends TestCase
     public function test_soplador_no_puede_ver_el_panel_del_jefe(): void
     {
         $this->actingAs($this->soplador())->get('/admin/produccion')->assertRedirect(route('dashboard'))
-            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+            ->assertSessionHas('aviso', AvisosError::SIN_PERMISO);
     }
 
     public function test_invitado_es_redirigido_al_login(): void
@@ -121,7 +135,7 @@ class ProduccionTest extends TestCase
     {
         $member = tap(User::factory()->create())->assignRole('member');
         $this->actingAs($member)->get('/produccion/mi-reporte')->assertRedirect(route('dashboard'))
-            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+            ->assertSessionHas('aviso', AvisosError::SIN_PERMISO);
     }
 
     // --- Asignacion (jefe) ---
@@ -186,7 +200,7 @@ class ProduccionTest extends TestCase
         $this->actingAs($this->jefe())->get(route('admin.produccion.asignar'))
             ->assertOk()
             ->assertSee('Procedencia de la preforma')
-            ->assertViewHas('procedencias', \App\Models\ProduccionAsignacion::PROCEDENCIAS);
+            ->assertViewHas('procedencias', ProduccionAsignacion::PROCEDENCIAS);
     }
 
     public function test_procedencia_visible_en_reporte_aprobado(): void
@@ -424,56 +438,11 @@ class ProduccionTest extends TestCase
         $this->assertNull($reporte->registros()->first()->motivo_segunda);
     }
 
-    public function test_tanda_exige_maquina_si_hay_activas(): void
-    {
-        $soplador = $this->soplador();
-        $reporte = $this->reporteDe($soplador, 100);
-        $this->maquina();
-        $tipo = $this->tipo();
-
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10], null, $tipo)
-            ->assertSessionHasErrors('maquina_id');
-    }
-
-    public function test_sin_maquinas_ni_tipos_la_tanda_entra_sin_ellos(): void
-    {
-        // Transicion post-deploy: aun no se crean maquinas ni tipos.
-        $soplador = $this->soplador();
-        $reporte = $this->reporteDe($soplador, 100);
-
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10])
-            ->assertRedirect(route('produccion.mi.show', $reporte));
-
-        $this->assertDatabaseHas('produccion_registros', [
-            'reporte_id' => $reporte->id, 'maquina_id' => null, 'tipo_botellon_id' => null, 'primera' => 10,
-        ]);
-    }
-
-    public function test_maquina_de_otra_sucursal_es_rechazada(): void
-    {
-        $sucursalA = $this->sucursal('MIRADOR');
-        $sucursalB = $this->sucursal('COQUIMBO');
-        $soplador = $this->soplador($sucursalA);
-        $reporte = $this->reporteDe($soplador, 100);
-        $this->maquina($sucursalA, 'Sopladora A');
-        $ajena = $this->maquina($sucursalB, 'Sopladora B');
-        $tipo = $this->tipo();
-
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10], $ajena, $tipo)
-            ->assertSessionHasErrors('maquina_id');
-    }
-
-    public function test_maquina_inactiva_es_rechazada(): void
-    {
-        $soplador = $this->soplador();
-        $reporte = $this->reporteDe($soplador, 100);
-        $activa = $this->maquina(nombre: 'Activa');
-        $inactiva = $this->maquina(nombre: 'Inactiva', activa: false);
-        $tipo = $this->tipo();
-
-        $this->agregarTanda($soplador, $reporte, ['primera' => 10], $inactiva, $tipo)
-            ->assertSessionHasErrors('maquina_id');
-    }
+    // Los candados de la ELECCIÓN de máquina/tipo por el soplador (exige
+    // máquina si hay activas, otra sucursal rechazada, inactiva rechazada,
+    // sin catálogo entra con nulls) SE MUDARON a la asignación del jefe:
+    // tests/Feature/Admin/AsignacionMaquinaTipoTest.php (dueño 09-09). La
+    // tanda ya no valida esos campos — los hereda.
 
     public function test_soplador_no_agrega_tandas_a_reporte_ajeno(): void
     {
@@ -703,7 +672,7 @@ class ProduccionTest extends TestCase
         $otro = $this->soplador();
 
         $this->actingAs($otro)->get(route('produccion.mi.show', $reporte))->assertRedirect(route('dashboard'))
-            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+            ->assertSessionHas('aviso', AvisosError::SIN_PERMISO);
     }
 
     // --- Backfill de transicion ---
@@ -1014,7 +983,7 @@ class ProduccionTest extends TestCase
             route('admin.produccion.tipo', $tipo),
         ] as $url) {
             $this->actingAs($sop)->get($url)->assertRedirect(route('dashboard'))
-            ->assertSessionHas('aviso', \App\Support\AvisosError::SIN_PERMISO);
+                ->assertSessionHas('aviso', AvisosError::SIN_PERMISO);
         }
     }
 
@@ -1087,7 +1056,7 @@ class ProduccionTest extends TestCase
         $reporte->update(['estado' => ProduccionReporte::ENVIADO]);
         $this->actingAs($this->jefe())->post(route('admin.produccion.reporte.aprobar', $reporte));
 
-        $this->assertGreaterThan(0, \App\Models\ProduccionMovimiento::count());
+        $this->assertGreaterThan(0, ProduccionMovimiento::count());
         $this->assertGreaterThan(0, Audit::where('auditable_type', ProduccionReporte::class)->count());
 
         $this->artisan('produccion:limpiar-pruebas', ['--force' => true])->assertExitCode(0);
@@ -1120,7 +1089,7 @@ class ProduccionTest extends TestCase
         $sop = $this->soplador();
         $reporte = $this->reporteDe($sop, 100);
         [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
-        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $uuid = (string) Str::uuid();
         $payload = [
             'cliente_uuid' => $uuid, 'maquina_id' => $maquina->id, 'tipo_botellon_id' => $tipo->id,
             'primera' => 40, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
@@ -1143,8 +1112,8 @@ class ProduccionTest extends TestCase
         [$maquina, $tipo] = [$this->maquina(), $this->tipo()];
         $base = ['maquina_id' => $maquina->id, 'tipo_botellon_id' => $tipo->id, 'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0];
 
-        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $base + ['cliente_uuid' => (string) \Illuminate\Support\Str::uuid()])->assertOk();
-        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $base + ['cliente_uuid' => (string) \Illuminate\Support\Str::uuid()])->assertOk();
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $base + ['cliente_uuid' => (string) Str::uuid()])->assertOk();
+        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), $base + ['cliente_uuid' => (string) Str::uuid()])->assertOk();
 
         $this->assertSame(2, $reporte->registros()->count());
         $this->assertSame(20, $reporte->fresh()->primera);
@@ -1164,23 +1133,10 @@ class ProduccionTest extends TestCase
         $this->assertNull($reporte->registros()->first()->cliente_uuid);
     }
 
-    public function test_tanda_offline_con_maquina_invalida_devuelve_422(): void
-    {
-        // Máquina desactivada mientras el soplador estaba offline: el drenado
-        // recibe 422 (permanente) y NO crea el registro.
-        $sop = $this->soplador();
-        $reporte = $this->reporteDe($sop, 100);
-        $maquinaInactiva = $this->maquina(activa: false);
-        $tipo = $this->tipo();
-
-        $this->actingAs($sop)->postJson(route('produccion.mi.registros.store', $reporte), [
-            'cliente_uuid' => (string) \Illuminate\Support\Str::uuid(),
-            'maquina_id' => $maquinaInactiva->id, 'tipo_botellon_id' => $tipo->id,
-            'primera' => 10, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
-        ])->assertStatus(422);
-
-        $this->assertSame(0, $reporte->registros()->count());
-    }
+    // test_tanda_offline_con_maquina_invalida_devuelve_422 MURIÓ con la
+    // elección de máquina por el soplador (dueño 09-09): la tanda ya no valida
+    // maquina_id. Su reemplazo —una tanda encolada ANTES del cambio, que aún
+    // trae el campo, NO da 422— vive en AsignacionMaquinaTipoTest.
 
     // --- Diferencia = producido − asignado (dueño 02-09) ----------------------
 

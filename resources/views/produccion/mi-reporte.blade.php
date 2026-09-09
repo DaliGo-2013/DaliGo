@@ -159,6 +159,13 @@
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Lo que reportaste</h3>
                     <x-produccion.estado-badge :estado="$reporte->estado" />
                 </div>
+                @php
+                    $comboTurno = collect([$reporte->maquinaAsignada()?->nombre, $reporte->tipoAsignado()?->nombre])
+                        ->filter()->implode(' · ');
+                @endphp
+                @if ($comboTurno !== '')
+                    <p class="px-4 pt-3 text-sm text-neutral-700 sm:px-6" data-combo-turno>{{ $comboTurno }}</p>
+                @endif
                 <dl class="grid grid-cols-2 gap-x-6 gap-y-4 p-4 sm:p-6">
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Asignadas</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->asignadas }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-neutral-400">Total</dt><dd class="mt-1 text-sm font-medium text-neutral-900">{{ $reporte->total }}</dd></div>
@@ -233,9 +240,10 @@
             @endif
 
             @php
-                $multiSucursal = $maquinas->pluck('sucursal_id')->unique()->count() > 1;
-                $etiquetasMaquinas = $maquinas->mapWithKeys(fn ($m) => [$m->id => $multiSucursal ? "{$m->nombre} · {$m->sucursal->nombre}" : $m->nombre]);
-                $etiquetasTipos = $tipos->pluck('nombre', 'id');
+                // Máquina y tipo del turno: los fijó el jefe al asignar (dueño
+                // 09-09). Acá solo se muestran; el soplador no elige nada.
+                $comboTurno = collect([$reporte->maquinaAsignada()?->nombre, $reporte->tipoAsignado()?->nombre])
+                    ->filter()->implode(' · ');
             @endphp
 
             <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
@@ -248,23 +256,17 @@
                     guardado: {{ (int) $reporte->total }},
                     guardadoVendible: {{ (int) $reporte->producido }},
                     asignadas: {{ (int) $reporte->asignadas }},
-                    maquinaId: '{{ $maquinaPreseleccionada ?: '' }}',
-                    tipoId: '{{ $tipoPreseleccionado ?: '' }}',
-                    maquinas: {{ Js::from($etiquetasMaquinas) }},
-                    tipos: {{ Js::from($etiquetasTipos) }},
-                    /* Estado PROPIO de la parada (no reusar maquinaId: un x-model
-                       compartido sincronizaría los chips de la tanda con los de la
-                       parada). Los campos van prefijados parada_* por lo mismo. */
-                    paradaMaquinaId: '{{ old('parada_maquina_id', $maquinaPreseleccionada ?: '') }}',
+                    /* La máquina y el tipo NO son estado de esta pantalla: los fijó
+                       el jefe en la asignación y el servidor los hereda en cada tanda
+                       y parada (dueño 09-09). Los campos de la parada van prefijados
+                       parada_* para no contaminar old() de los otros forms. */
                     paradaInicio: '{{ old('parada_inicio', '') }}',
                     paradaFin: '{{ old('parada_fin', '') }}',
                     registrandoParada: false,
                     paneles: {
-                        maquina: {{ $errors->has('maquina_id') ? 'true' : 'false' }},
-                        tipo: {{ $errors->has('tipo_botellon_id') ? 'true' : 'false' }},
                         motivo: {{ $errors->has('motivo') ? 'true' : 'false' }},
                         obs: {{ $errors->has('obs') ? 'true' : 'false' }},
-                        paradas: {{ $errors->hasAny(['parada_motivo', 'parada_origen', 'parada_inicio', 'parada_fin', 'parada_maquina_id']) ? 'true' : 'false' }},
+                        paradas: {{ $errors->hasAny(['parada_motivo', 'parada_origen', 'parada_inicio', 'parada_fin']) ? 'true' : 'false' }},
                     },
                     agregando: false,
                     avisoTanda: false,
@@ -286,8 +288,6 @@
                        precondición abrimos su panel y sacudimos ESE control (sin recargar).
                        El servidor sigue validando igual como respaldo. */
                     agregarTanda(e) {
-                        if (this.$refs.grupoMaquina && ! this.maquinaId) { e.preventDefault(); this.paneles.maquina = true; this.$nextTick(() => this.$destacar(this.$refs.grupoMaquina)); return; }
-                        if (this.$refs.grupoTipo && ! this.tipoId) { e.preventDefault(); this.paneles.tipo = true; this.$nextTick(() => this.$destacar(this.$refs.grupoTipo)); return; }
                         if (this.segunda > 0 && ! this.$refs.grupoMotivoSegunda.querySelector('input[type=radio]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoMotivoSegunda); return; }
                         if (this.malo > 0 && ! this.$refs.grupoMotivoMalo.querySelector('input[type=radio]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoMotivoMalo); return; }
                         /* Sin señal: guardar la tanda en la cola local en vez de enviarla; se
@@ -319,9 +319,6 @@
                     agregarParada(e) {
                         const form = e.target;
                         if (! form.querySelector('input[name=parada_motivo]:checked')) { e.preventDefault(); this.paneles.paradas = true; this.$nextTick(() => this.$destacar(this.$refs.grupoParadaMotivo)); return; }
-                        /* Sin esta guarda, una parada sin máquina se encola offline y el
-                           drenado la pierde en silencio (422 permanente sin UI de rechazadas). */
-                        if (form.querySelector('input[name=parada_maquina_id]') && ! form.querySelector('input[name=parada_maquina_id]:checked')) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaMaquina); return; }
                         if (! this.paradaInicio) { e.preventDefault(); this.$destacar(this.$refs.grupoParadaHoras); return; }
                         /* Cortesía en cliente; el servidor valida igual (after_or_equal).
                            Comparación lexicográfica válida para HH:MM con cero inicial.
@@ -369,41 +366,17 @@
                         @endif
                         <span class="text-xl font-bold text-neutral-900">{{ $reporte->asignadas }}</span>
                     </span>
+                    {{-- Máquina y tipo del turno, de solo lectura: los decide el jefe
+                         (dueño 09-09). Antes el soplador los elegía tanda por tanda. --}}
+                    <p class="w-full text-sm text-neutral-700" data-combo-turno>
+                        {{ $comboTurno !== '' ? $comboTurno : 'Sin máquina ni tipo asignados' }}
+                    </p>
                 </div>
 
-                {{-- Agregar una tanda: máquina + tipo + cantidades --}}
+                {{-- Agregar una tanda: solo cantidades (máquina y tipo vienen de la asignación) --}}
                 <form method="POST" action="{{ route('produccion.mi.registros.store', $reporte) }}"
                       class="space-y-4 p-4 sm:p-6" x-on:submit="agregarTanda($event)">
                     @csrf
-
-                    @if ($maquinas->isNotEmpty())
-                        <x-collapsible label="Máquina" model="paneles.maquina" x-ref="grupoMaquina">
-                            <x-slot:summary><span x-text="maquinas[maquinaId] || 'Toca para elegir'"></span></x-slot:summary>
-                            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                @foreach ($maquinas as $maquina)
-                                    <x-chip-radio name="maquina_id" :value="$maquina->id"
-                                                  :label="$etiquetasMaquinas[$maquina->id]"
-                                                  :checked="(int) old('maquina_id', $maquinaPreseleccionada) === $maquina->id"
-                                                  x-model="maquinaId" x-on:change="paneles.maquina = false" />
-                                @endforeach
-                            </div>
-                            <x-input-error :messages="$errors->get('maquina_id')" class="mt-2" />
-                        </x-collapsible>
-                    @endif
-
-                    @if ($tipos->isNotEmpty())
-                        <x-collapsible label="Tipo de botellón" model="paneles.tipo" x-ref="grupoTipo">
-                            <x-slot:summary><span x-text="tipos[tipoId] || 'Toca para elegir'"></span></x-slot:summary>
-                            <div class="grid grid-cols-2 gap-2">
-                                @foreach ($tipos as $tipo)
-                                    <x-chip-radio name="tipo_botellon_id" :value="$tipo->id" :label="$tipo->nombre"
-                                                  :checked="(int) old('tipo_botellon_id', $tipoPreseleccionado) === $tipo->id"
-                                                  x-model="tipoId" x-on:change="paneles.tipo = false" />
-                                @endforeach
-                            </div>
-                            <x-input-error :messages="$errors->get('tipo_botellon_id')" class="mt-2" />
-                        </x-collapsible>
-                    @endif
 
                     <x-stepper-input name="primera" label="Primera" hint="Vendible normal." :value="old('primera', 0)" />
 
@@ -512,19 +485,10 @@
                                 <x-input-error :messages="$errors->get('parada_origen')" class="mt-2" />
                             </div>
 
-                            @if ($maquinas->isNotEmpty())
-                                <div x-ref="grupoParadaMaquina">
-                                    <x-input-label value="Máquina" />
-                                    <div class="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                        @foreach ($maquinas as $maquina)
-                                            <x-chip-radio name="parada_maquina_id" :value="$maquina->id"
-                                                          :label="$etiquetasMaquinas[$maquina->id]"
-                                                          :checked="(string) old('parada_maquina_id', $maquinaPreseleccionada ?: '') === (string) $maquina->id"
-                                                          x-model="paradaMaquinaId" />
-                                        @endforeach
-                                    </div>
-                                    <x-input-error :messages="$errors->get('parada_maquina_id')" class="mt-2" />
-                                </div>
+                            {{-- La máquina de la parada es la ASIGNADA (dueño 09-09): se
+                                 muestra, no se elige. --}}
+                            @if ($reporte->maquinaAsignada())
+                                <p class="text-sm text-neutral-700"><span class="font-medium">Máquina:</span> {{ $reporte->maquinaAsignada()->nombre }}</p>
                             @endif
 
                             <div x-ref="grupoParadaHoras" class="grid grid-cols-2 gap-3">

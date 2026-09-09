@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Produccion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Maquina;
 use App\Models\ProduccionMejora;
+use App\Models\ProduccionNota;
 use App\Models\ProduccionParada;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
-use App\Models\TipoBotellon;
 use App\Models\User;
+use App\Services\Produccion\SemaforoPreformas;
+use App\Support\FechaNegocio;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class MiProduccionController extends Controller
         $user = $request->user();
         // Día de NEGOCIO (P-TZ-01): el turno noche seguía viendo su producción
         // a las 22:00 Chile — el "hoy" UTC ya era mañana y la lista se vaciaba.
-        $hoy = \App\Support\FechaNegocio::hoy();
+        $hoy = FechaNegocio::hoy();
 
         $reportes = ProduccionReporte::where('soplador_id', $user->id)
             ->whereDate('fecha', $hoy)
@@ -64,7 +65,7 @@ class MiProduccionController extends Controller
         $user = $request->user();
         // Dia de NEGOCIO (P-TZ-01): a las 22:00 de Chile el "hoy" UTC ya es
         // manana y la ventana se correria un dia.
-        $hoy = \App\Support\FechaNegocio::ahora()->startOfDay();
+        $hoy = FechaNegocio::ahora()->startOfDay();
 
         // 45 dias DISTINTOS incluyendo hoy: los whereDate >= / <= son inclusivos
         // en ambos bordes, asi que la cuenta es (hasta - desde + 1).
@@ -178,11 +179,6 @@ class MiProduccionController extends Controller
         abort_unless($reporte->soplador_id === $request->user()->id, 403);
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
 
-        // Las mismas listas que ve el soplador en pantalla (sincronia por
-        // construccion entre el selector y la validacion).
-        $maquinas = Maquina::paraSoplador($request->user());
-        $tipos = TipoBotellon::activos()->get();
-
         // Los select de motivo mandan '' cuando no aplican; normalizar a null
         // para que 'nullable' los deje pasar sin chocar con Rule::in.
         $request->merge([
@@ -190,12 +186,15 @@ class MiProduccionController extends Controller
             'motivo_malo' => $request->filled('motivo_malo') ? $request->input('motivo_malo') : null,
         ]);
 
+        // Máquina y tipo NO vienen del cliente (dueño 09-09): los fijó el jefe
+        // en la asignación y la tanda los hereda más abajo. Lo que mande el
+        // request en esos nombres se ignora sin validarlo: una tanda encolada
+        // offline ANTES del cambio todavía los trae, y un 422 por un campo
+        // que ya no existe la perdería en silencio (rechazo permanente).
         $validated = $request->validate([
             // Idempotencia de la cola offline (P-SPK-02): el cliente genera este
             // UUID por tanda; si el drenado reintenta, el mismo UUID no duplica.
             'cliente_uuid' => ['nullable', 'uuid'],
-            'maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
-            'tipo_botellon_id' => [$tipos->isEmpty() ? 'nullable' : 'required', Rule::in($tipos->pluck('id'))],
             // max como guardia anti-dedazo (un cero de mas ensucia el kardex).
             'primera' => ['required', 'integer', 'min:0', 'max:100000'],
             'segunda' => ['required', 'integer', 'min:0', 'max:100000'],
@@ -205,10 +204,6 @@ class MiProduccionController extends Controller
             'motivo_malo' => ['nullable', Rule::in(ProduccionRegistro::motivosMalas())],
         ], [
             '*.max' => 'La cantidad es demasiado grande; revisa el número ingresado.',
-            'maquina_id.required' => 'Selecciona la máquina en la que trabajaste.',
-            'maquina_id.in' => 'Selecciona una máquina válida.',
-            'tipo_botellon_id.required' => 'Selecciona el tipo de botellón.',
-            'tipo_botellon_id.in' => 'Selecciona un tipo de botellón válido.',
             'motivo_segunda.in' => 'Selecciona un motivo válido para las de segunda.',
             'motivo_malo.in' => 'Selecciona un motivo válido para las malas.',
         ]);
@@ -253,7 +248,13 @@ class MiProduccionController extends Controller
                 return;
             }
 
-            $reporte->registros()->create($validated);
+            // La tanda HEREDA el combo de la asignación (fuente única): así el
+            // kardex, el molde, el OEE y los desgloses siguen leyendo la tanda
+            // sin cambios, y todas las tandas del reporte comparten máquina y tipo.
+            $reporte->registros()->create($validated + [
+                'maquina_id' => $reporte->maquinaAsignada()?->id,
+                'tipo_botellon_id' => $reporte->tipoAsignado()?->id,
+            ]);
             $reporte->recalcularDesdeRegistros();
         });
 
@@ -296,16 +297,15 @@ class MiProduccionController extends Controller
         abort_unless($reporte->soplador_id === $request->user()->id, 403);
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
 
-        $maquinas = Maquina::paraSoplador($request->user());
-
         // Campos PREFIJADOS parada_*: este form convive en el mismo Blade con
         // el de la tanda y el de envio; sin prefijo, un rechazo del servidor
-        // contaminaria old('motivo')/old('maquina_id') de los otros forms (el
-        // peor caso precargaba el motivo de la parada como texto de "Otro" en
-        // el motivo de diferencia y terminaba mutando reporte.motivo).
+        // contaminaria old('motivo') de los otros forms (el peor caso
+        // precargaba el motivo de la parada como texto de "Otro" en el motivo
+        // de diferencia y terminaba mutando reporte.motivo). La máquina de la
+        // parada ya no se pide: es la ASIGNADA (dueño 09-09) — un
+        // parada_maquina_id de una cola offline vieja se ignora sin validar.
         $validated = $request->validate([
             'cliente_uuid' => ['nullable', 'uuid'],
-            'parada_maquina_id' => [$maquinas->isEmpty() ? 'nullable' : 'required', Rule::in($maquinas->pluck('id'))],
             'parada_motivo' => ['required', Rule::in(ProduccionParada::motivos())],
             'parada_origen' => ['required', Rule::in(ProduccionParada::ORIGENES)],
             'parada_inicio' => ['required', 'date_format:H:i'],
@@ -314,8 +314,6 @@ class MiProduccionController extends Controller
             // pone la hora real y la duracion modulo-1440 la endereza.
             'parada_fin' => ['nullable', 'date_format:H:i', 'after_or_equal:parada_inicio'],
         ], [
-            'parada_maquina_id.required' => 'Selecciona la máquina de la parada.',
-            'parada_maquina_id.in' => 'Selecciona una máquina válida.',
             'parada_motivo.required' => 'Selecciona qué detuvo la producción.',
             'parada_motivo.in' => 'Selecciona un motivo válido.',
             'parada_origen.required' => 'Indica qué se detuvo: la máquina o el operario.',
@@ -340,7 +338,7 @@ class MiProduccionController extends Controller
 
             $reporte->paradas()->create([
                 'cliente_uuid' => $uuid,
-                'maquina_id' => $validated['parada_maquina_id'] ?? null,
+                'maquina_id' => $reporte->maquinaAsignada()?->id,
                 'motivo' => $validated['parada_motivo'],
                 // La clase la deriva SIEMPRE el servidor a partir del motivo;
                 // el request no puede imponerla.
@@ -483,7 +481,7 @@ class MiProduccionController extends Controller
             // dejaria paradas "cerradas al envio" en un reporte aun borrador.
             if ($enviar) {
                 $reporte->paradas()->whereNull('fin')->update([
-                    'fin' => \App\Support\FechaNegocio::ahora()->format('H:i'),
+                    'fin' => FechaNegocio::ahora()->format('H:i'),
                     'cerrada_al_envio' => true,
                 ]);
             }
@@ -507,6 +505,10 @@ class MiProduccionController extends Controller
     {
         $reporte?->load([
             'asignacion.preforma',
+            // La máquina y el tipo del turno los fijó el jefe (dueño 09-09):
+            // la pantalla solo los MUESTRA, ya no los ofrece a elegir.
+            'asignacion.maquina',
+            'asignacion.tipoBotellon',
             'registros' => fn ($query) => $query->latest('id'),
             'registros.maquina',
             'registros.tipoBotellon',
@@ -514,23 +516,17 @@ class MiProduccionController extends Controller
             'paradas.maquina',
         ]);
 
-        $maquinas = Maquina::paraSoplador($user);
-        $tipos = TipoBotellon::activos()->orderBy('nombre')->get();
-
         // Semaforo de preformas (P-M11-22): ¿el espejo de SU sucursal alcanza
         // para la meta? Null = silencio (sin preforma/espejo/sucursal).
-        $semaforoPreformas = app(\App\Services\Produccion\SemaforoPreformas::class)
+        $semaforoPreformas = app(SemaforoPreformas::class)
             ->estadoPara($reporte, $user);
 
         // Notas del jefe vigentes que le hablan a ESTE soplador (las suyas +
         // las globales). Se pintan como banner, no persiguen (sin M15).
-        $notasJefe = \App\Models\ProduccionNota::vigentes()
+        $notasJefe = ProduccionNota::vigentes()
             ->paraSoplador($user->id)
             ->orderByDesc('id')
             ->get();
-
-        // Preseleccion pegajosa: la maquina/tipo de la ultima tanda del reporte.
-        $ultimo = $reporte?->registros->first();
 
         // Reportes devueltos pendientes (de otros dias o turnos) que el
         // soplador no veria de otra forma.
@@ -550,10 +546,6 @@ class MiProduccionController extends Controller
         return view('produccion.mi-reporte', [
             'misMejoras' => $misMejoras,
             'reporte' => $reporte,
-            'maquinas' => $maquinas,
-            'tipos' => $tipos,
-            'maquinaPreseleccionada' => (int) old('maquina_id', $ultimo?->maquina_id),
-            'tipoPreseleccionado' => (int) old('tipo_botellon_id', $ultimo?->tipo_botellon_id),
             'devueltos' => $devueltos,
             'semaforoPreformas' => $semaforoPreformas,
             'notasJefe' => $notasJefe,
@@ -576,7 +568,7 @@ class MiProduccionController extends Controller
         abort_unless($reporte->soplador_id === $request->user()->id, 403);
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
 
-        $hora = \App\Support\FechaNegocio::ahora()->format('H:i');
+        $hora = FechaNegocio::ahora()->format('H:i');
 
         $abierta = DB::transaction(function () use ($reporte, $hora) {
             $reporte = ProduccionReporte::lockForUpdate()->findOrFail($reporte->id);
@@ -609,7 +601,7 @@ class MiProduccionController extends Controller
         abort_unless($reporte->soplador_id === $request->user()->id, 403);
         abort_unless($reporte->editablePorSoplador(), 403, 'Este reporte ya no se puede editar.');
 
-        $hora = \App\Support\FechaNegocio::ahora()->format('H:i');
+        $hora = FechaNegocio::ahora()->format('H:i');
 
         $cerrada = DB::transaction(function () use ($reporte, $hora) {
             $reporte = ProduccionReporte::lockForUpdate()->findOrFail($reporte->id);
