@@ -56,7 +56,10 @@
                                     <p class="truncate text-xs text-neutral-500">{{ $preforma }}</p>
                                 @endif
                             </div>
-                            <x-produccion.estado-badge :estado="$reporte->estado" />
+                            <div class="flex shrink-0 flex-col items-end gap-1">
+                                <x-produccion.estado-badge :estado="$reporte->estado" />
+                                <x-produccion.modificado-badge :reporte="$reporte" />
+                            </div>
                         </div>
 
                         <div class="mt-3 flex items-center justify-between gap-3">

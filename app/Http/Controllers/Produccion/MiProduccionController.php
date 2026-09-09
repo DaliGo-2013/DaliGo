@@ -36,7 +36,7 @@ class MiProduccionController extends Controller
         $reportes = ProduccionReporte::where('soplador_id', $user->id)
             ->whereDate('fecha', $hoy)
             ->with('asignacion.preforma')
-            ->withCount('registros')
+            ->withCount(['registros', 'ajustes'])
             ->orderBy('id')
             ->get();
 
@@ -101,13 +101,18 @@ class MiProduccionController extends Controller
         $reportes = ProduccionReporte::where('soplador_id', $user->id)
             ->whereDate('fecha', '>=', $desde->toDateString())
             ->whereDate('fecha', '<=', $hasta->toDateString())
+            // Cambios del jefe (dueño 09-09): la fila dice quién cambió qué y
+            // cuánto. Dos queries fijas (ajustes + responsables), no N+1; las
+            // filas de ajuste son pocas (solo reportes corregidos).
+            ->with('ajustes.responsable')
+            ->withCount('ajustes')
             ->orderByDesc('fecha')
             ->orderByDesc('id')
             ->get();
 
-        // Sin with(): la fila usa solo columnas denormalizadas y accessors. El
-        // with(['registros...']) del historial admin aqui seria peso muerto
-        // (cientos de tandas cargadas para nada en 45 dias).
+        // Sin with() de tandas: la fila usa solo columnas denormalizadas y
+        // accessors. El with(['registros...']) del historial admin aqui seria
+        // peso muerto (cientos de tandas cargadas para nada en 45 dias).
         $totales = [
             'vendibles' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->producido),
             'merma' => (int) $reportes->sum(fn (ProduccionReporte $r) => $r->merma),
@@ -514,6 +519,9 @@ class MiProduccionController extends Controller
             'registros.tipoBotellon',
             'paradas' => fn ($query) => $query->latest('id'),
             'paradas.maquina',
+            // Cambios del jefe (dueño 09-09): quién y quién autorizó.
+            'ajustes.responsable',
+            'ajustes.autorizadoPor',
         ]);
 
         // Semaforo de preformas (P-M11-22): ¿el espejo de SU sucursal alcanza

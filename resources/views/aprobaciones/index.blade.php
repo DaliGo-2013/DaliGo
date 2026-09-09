@@ -72,10 +72,8 @@
                                             \App\Models\Aprobacion::ACCION_DEVOLUCION_REEMBOLSO => [
                                                 'monto_reembolso' => 'Reembolso $',
                                             ],
-                                            default => [
-                                                'asignadas' => 'Asignadas', 'primera' => '1ª', 'segunda' => '2ª',
-                                                'malo' => 'Malos', 'danada' => 'Dañadas',
-                                            ],
+                                            // Fuente única con las pantallas del soplador y del jefe.
+                                            default => \App\Models\ProduccionAjuste::ETIQUETAS,
                                         };
                                         $cambios = collect($labelsPorTipo)
                                             ->filter(fn ($label, $campo) => array_key_exists($campo, $nuevo)

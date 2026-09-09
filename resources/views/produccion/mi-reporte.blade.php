@@ -157,8 +157,20 @@
             <div class="dg-enter overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div class="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Lo que reportaste</h3>
-                    <x-produccion.estado-badge :estado="$reporte->estado" />
+                    <div class="flex items-center gap-2">
+                        <x-produccion.modificado-badge :reporte="$reporte" />
+                        <x-produccion.estado-badge :estado="$reporte->estado" />
+                    </div>
                 </div>
+                {{-- Cambios del jefe (dueño 09-09): el soplador ve quién le cambió qué
+                     ítem, cuánto había y cuánto quedó — ARRIBA de los totales, que ya
+                     vienen pisados. --}}
+                @if ($reporte->modificado)
+                    <div class="border-b border-neutral-100 bg-brand-50">
+                        <h3 class="px-4 pt-3 text-xs font-medium uppercase tracking-wide text-brand-700 sm:px-6">Cambios del jefe</h3>
+                        <x-produccion.ajustes :reporte="$reporte" />
+                    </div>
+                @endif
                 @php
                     $comboTurno = collect([$reporte->maquinaAsignada()?->nombre, $reporte->tipoAsignado()?->nombre])
                         ->filter()->implode(' · ');

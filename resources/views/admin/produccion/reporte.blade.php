@@ -4,7 +4,10 @@
                        :subtitle="$reporte->fecha->format('d-m-Y').' · turno '.$reporte->turno"
                        :back="route('admin.produccion.soplador', $reporte->soplador)">
             <x-slot name="action">
-                <x-produccion.estado-badge :estado="$reporte->estado" class="text-sm" />
+                <div class="flex items-center gap-2">
+                    <x-produccion.modificado-badge :reporte="$reporte" class="text-sm" />
+                    <x-produccion.estado-badge :estado="$reporte->estado" class="text-sm" />
+                </div>
             </x-slot>
         </x-page-header>
     </x-slot>
@@ -190,12 +193,19 @@
                     @if ($reporte->obs)
                         <p><span class="font-medium text-neutral-700">Observaciones:</span> <span class="text-neutral-600">{{ $reporte->obs }}</span></p>
                     @endif
-                    @if ($reporte->motivo_ajuste)
-                        <p><span class="font-medium text-neutral-700">Ajuste del jefe:</span> <span class="text-neutral-600">{{ $reporte->motivo_ajuste }}</span></p>
-                    @endif
                     @if ($reporte->devuelto_motivo)
                         <p><span class="font-medium text-neutral-700">Motivo del rechazo:</span> <span class="text-neutral-600">{{ $reporte->devuelto_motivo }}</span></p>
                     @endif
+                </div>
+            @endif
+
+            {{-- Cambios del jefe (dueño 09-09): antes → después por campo, quién y
+                 cuándo, con el motivo. Reemplaza la línea «Ajuste del jefe: motivo»
+                 (que solo mostraba el último motivo). --}}
+            @if ($reporte->modificado)
+                <div class="border-t border-neutral-100">
+                    <h3 class="px-6 pt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Cambios del jefe</h3>
+                    <x-produccion.ajustes :reporte="$reporte" />
                 </div>
             @endif
         </div>

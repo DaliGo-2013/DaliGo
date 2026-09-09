@@ -3,6 +3,7 @@
 namespace App\Services\Aprobaciones\Acciones;
 
 use App\Models\Aprobacion;
+use App\Models\ProduccionAjuste;
 use App\Models\ProduccionReporte;
 use App\Services\Aprobaciones\AccionAprobable;
 use App\Services\Aprobaciones\ConflictoAccionException;
@@ -41,11 +42,21 @@ class AjusteReporteProduccion implements AccionAprobable
         }
 
         $nuevo = $aprobacion->datos['nuevo'] ?? [];
+        $nuevo = is_array($nuevo) ? $nuevo : [];
+
+        // El "antes" se lee del reporte BLOQUEADO, no del snapshot del payload:
+        // es lo que de verdad había en el momento de aplicar (el snapshot de
+        // updated_at ya garantiza que coinciden, pero la fila fresca es la
+        // fuente). Una fila por campo que cambió (dueño 09-09): el soplador
+        // ve quién, qué ítem y cuánto; el reporte queda «Modificado».
+        $anterior = $reporte->only(array_keys(ProduccionAjuste::ETIQUETAS));
 
         $reporte->update($nuevo);
 
         if (array_key_exists('asignadas', $nuevo)) {
             $reporte->asignacion?->update(['asignadas' => $nuevo['asignadas']]);
         }
+
+        ProduccionAjuste::registrar($reporte, $anterior, $nuevo, $aprobacion);
     }
 }

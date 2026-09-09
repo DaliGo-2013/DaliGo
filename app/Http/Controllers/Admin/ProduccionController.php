@@ -82,7 +82,7 @@ class ProduccionController extends Controller
 
         // --- Cola de reportes de HOY (la superficie de trabajo del jefe) ---
         $reportes = ProduccionReporte::with('soplador')
-            ->withCount('registros')
+            ->withCount(['registros', 'ajustes'])
             ->delDia($hoy)
             ->orderByRaw("CASE estado WHEN 'enviado' THEN 0 WHEN 'devuelto' THEN 1 WHEN 'borrador' THEN 2 ELSE 3 END")
             ->orderBy('id')
@@ -106,7 +106,7 @@ class ProduccionController extends Controller
         // darles una fila donde actuar — sin esto la alerta es un callejon sin
         // salida. Mismo patron que los "devueltos de otros dias" del soplador.
         $pendientesOtrosDias = ProduccionReporte::with('soplador')
-            ->withCount('registros')
+            ->withCount(['registros', 'ajustes'])
             ->whereIn('estado', [ProduccionReporte::ENVIADO, ProduccionReporte::DEVUELTO])
             ->whereDate('fecha', '!=', $hoy)
             ->orderBy('fecha')
@@ -324,7 +324,7 @@ class ProduccionController extends Controller
         $request->validate(['fecha' => ['nullable', 'date']]);
         $fecha = $request->filled('fecha') ? Carbon::parse($request->input('fecha'))->toDateString() : FechaNegocio::hoy();
 
-        $reportes = ProduccionReporte::with('soplador')->withCount('registros')
+        $reportes = ProduccionReporte::with('soplador')->withCount(['registros', 'ajustes'])
             ->whereDate('fecha', $fecha)
             ->orderByRaw("CASE estado WHEN 'enviado' THEN 0 WHEN 'devuelto' THEN 1 WHEN 'borrador' THEN 2 ELSE 3 END")
             ->orderBy('id')
@@ -453,6 +453,7 @@ class ProduccionController extends Controller
         // whereDate (no whereBetween): la columna casteada guarda "Y-m-d 00:00:00"
         // y el borde superior del between la deja fuera (bitacora 2026-07-01).
         $reportes = ProduccionReporte::with(['registros.maquina', 'registros.tipoBotellon', 'asignacion'])
+            ->withCount('ajustes')
             ->where('soplador_id', $soplador->id)
             ->whereDate('fecha', '>=', $desde->toDateString())
             ->whereDate('fecha', '<=', $hasta->toDateString())
@@ -659,6 +660,9 @@ class ProduccionController extends Controller
             'paradas' => fn ($query) => $query->latest('id'),
             'paradas.maquina',
             'movimientos.producto',
+            // Cambios del jefe (dueño 09-09): antes → después por campo.
+            'ajustes.responsable',
+            'ajustes.autorizadoPor',
         ]);
 
         // Preview del kardex («al aprobar se registrara»): las MISMAS lineas
