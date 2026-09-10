@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\PlanHito;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\Cache;
  *
  * Lo que SÍ vive aquí como datos (misma filosofía que MenuPrincipal): las
  * FECHAS de cada módulo para las barras del Gantt (el tracker no las tiene)
- * y los HITOS re-baselinados. Ajustarlas = editar este archivo = commit =
+ * (los HITOS vivían acá hasta P-PLAN-06; hoy están en BD y se editan en la
+ * UI — acá queda solo su semilla). Ajustarlas = editar este archivo = commit =
  * deploy — coherente con "el plan oficial se edita commiteando".
  *
  * Candados en PlanProyectoTest: el parser corre contra el archivo REAL en
@@ -107,8 +109,11 @@ class PlanProyecto
     ];
 
     /**
-     * Hitos re-baselinados (RUTA §2 + lectura ejecutiva §10). `cumplido` se
-     * marca a mano al cerrarse (commit = deploy, igual que las fechas).
+     * SEMILLA de los hitos re-baselinados (RUTA §2 + lectura ejecutiva §10).
+     * Desde P-PLAN-06 (10-09-2026) los hitos VIVEN en BD (`plan_hitos`) y se
+     * agregan/editan desde /plan; esta lista solo la lee PlanHitosSeeder la
+     * primera vez (firstOrCreate por clave). Editar acá NO cambia nada en una
+     * BD ya sembrada — para eso está la pantalla.
      */
     public const HITOS = [
         ['key' => "H1'", 'label' => 'Decisiones Sprint 0 cerradas', 'fecha' => '2026-07-31', 'cumplido' => false],
@@ -286,25 +291,27 @@ class PlanProyecto
     }
 
     /**
-     * Hitos con su countdown contra el día de negocio: cumplido / atrasado /
-     * pendiente (+ días de distancia).
+     * Hitos (desde BD, ordenados por fecha) con su countdown contra el día de
+     * negocio: cumplido / atrasado / pendiente (+ días de distancia). Misma
+     * forma de array que consumen la vista y CartaGanttExcel; `id` para las
+     * rutas de edición.
      *
      * @return array<int, array<string, mixed>>
      */
     public static function hitos(): array
     {
-        $hoy = Carbon::parse(FechaNegocio::hoy());
-
-        return array_map(function (array $hito) use ($hoy) {
-            $fecha = Carbon::parse($hito['fecha']);
-            $dias = (int) $hoy->diffInDays($fecha, false);
-
-            return array_merge($hito, [
-                'carbon' => $fecha,
-                'dias' => $dias,
-                'estado' => $hito['cumplido'] ? 'cumplido' : ($dias < 0 ? 'atrasado' : 'pendiente'),
-            ]);
-        }, self::HITOS);
+        return PlanHito::orderBy('fecha')->orderBy('id')->get()
+            ->map(function (PlanHito $hito) {
+                return array_merge([
+                    'id' => $hito->id,
+                    'key' => $hito->clave,
+                    'label' => $hito->etiqueta,
+                    'fecha' => $hito->fecha->toDateString(),
+                    'cumplido' => $hito->cumplido,
+                    'carbon' => $hito->fecha,
+                ], $hito->countdown());
+            })
+            ->all();
     }
 
     /**

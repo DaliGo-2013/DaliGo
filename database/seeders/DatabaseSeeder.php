@@ -49,6 +49,9 @@ class DatabaseSeeder extends Seeder
             // el formulario público deja de ofrecer días en que no hay nadie. No pisa los
             // cierres que carga el jefe de ventas (origen 'manual').
             FeriadosChileSeeder::class,
+            // Hitos del plan del proyecto (/plan): los 7 re-baselinados nacen
+            // aqui una vez; despues se editan desde la UI y no se pisan.
+            PlanHitosSeeder::class,
         ]);
     }
 }

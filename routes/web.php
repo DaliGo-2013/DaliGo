@@ -102,6 +102,13 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:gestionar plan proyecto')->name('plan.extras.update');
     Route::delete('/plan/extras/{extra}', [PlanProyectoController::class, 'extraDestroy'])
         ->middleware('permission:gestionar plan proyecto')->name('plan.extras.destroy');
+    // Hitos del plan: en BD desde P-PLAN-06, mismo permiso que los extras.
+    Route::post('/plan/hitos', [PlanProyectoController::class, 'hitoStore'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.hitos.store');
+    Route::patch('/plan/hitos/{hito}', [PlanProyectoController::class, 'hitoUpdate'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.hitos.update');
+    Route::delete('/plan/hitos/{hito}', [PlanProyectoController::class, 'hitoDestroy'])
+        ->middleware('permission:gestionar plan proyecto')->name('plan.hitos.destroy');
 });
 
 // Bandeja movil del aprobador (M14): pendientes del rol vigente, resolver

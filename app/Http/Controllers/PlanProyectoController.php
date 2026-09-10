@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PlanExtra;
+use App\Models\PlanHito;
 use App\Services\Plan\CartaGanttExcel;
 use App\Support\PlanProyecto;
 use Illuminate\Http\RedirectResponse;
@@ -16,8 +17,10 @@ use Illuminate\View\View;
  * Página «Plan del proyecto» (/plan): carta Gantt transicional mientras la
  * app se construye. El plan oficial se LEE del repo (PlanProyecto parsea
  * RUTA-MAESTRA §10 — push a main = deploy = página al día); lo único que se
- * escribe desde aquí son los "trabajos extras en paralelo" (PlanExtra),
- * gateados por 'gestionar plan proyecto'. Ver = 'ver plan proyecto'.
+ * escribe desde aquí son los "trabajos extras en paralelo" (PlanExtra) y,
+ * desde P-PLAN-06, los HITOS (PlanHito — el gerente los corre o agrega sin
+ * esperar un deploy), gateados por 'gestionar plan proyecto'. Ver = 'ver plan
+ * proyecto'.
  */
 class PlanProyectoController extends Controller
 {
@@ -81,6 +84,47 @@ class PlanProyectoController extends Controller
         $extra->delete();
 
         return redirect()->route('plan.index')->with('status', 'Trabajo extra eliminado.');
+    }
+
+    // --- Hitos (P-PLAN-06) -------------------------------------------------
+
+    public function hitoStore(Request $request): RedirectResponse
+    {
+        PlanHito::create($this->validateHito($request));
+
+        return redirect()->route('plan.index')->with('status', 'Hito agregado.');
+    }
+
+    public function hitoUpdate(Request $request, PlanHito $hito): RedirectResponse
+    {
+        $hito->update($this->validateHito($request, $hito));
+
+        return redirect()->route('plan.index')->with('status', 'Hito actualizado.');
+    }
+
+    public function hitoDestroy(PlanHito $hito): RedirectResponse
+    {
+        $hito->delete();
+
+        return redirect()->route('plan.index')->with('status', 'Hito eliminado.');
+    }
+
+    /**
+     * El checkbox «cumplido» llega ausente cuando está desmarcado: se lee con
+     * boolean() y no con `?? 0` sobre un dato que se conserva (gotcha
+     * [2026-08-20] — acá SÍ es un formulario que siempre dibuja el control).
+     */
+    private function validateHito(Request $request, ?PlanHito $hito = null): array
+    {
+        $datos = $request->validate([
+            'clave' => ['required', 'string', 'max:12', Rule::unique('plan_hitos', 'clave')->ignore($hito?->id)],
+            'etiqueta' => ['required', 'string', 'max:191'],
+            'fecha' => ['required', 'date_format:Y-m-d'],
+            'cumplido' => ['nullable', 'boolean'],
+        ]);
+        $datos['cumplido'] = $request->boolean('cumplido');
+
+        return $datos;
     }
 
     private function validateData(Request $request): array
