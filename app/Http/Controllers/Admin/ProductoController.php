@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Producto;
+use App\Models\TipoBulto;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -445,6 +446,11 @@ class ProductoController extends Controller
     {
         $validated = $request->validate([
             'sku' => ['required', 'string', 'max:64', Rule::unique('productos', 'sku')->ignore($producto)],
+            // CÓMO VIAJA: contra el MISMO scope que ofrece el <select> (solo activos), no
+            // un `exists` a secas — un bulto desactivado que entrara acá armaría planes
+            // con algo que nadie puede elegir en pantalla (misma regla que el preforma_id
+            // del kardex, bitácora [2026-06-30]).
+            'tipo_bulto_id' => ['nullable', 'integer', Rule::exists('tipos_bulto', 'id')->where('activo', true)],
             'nombre' => ['required', 'string', 'max:191'],
             'descripcion' => ['nullable', 'string'],
             'categoria' => ['nullable', 'string', 'max:191'],
@@ -485,6 +491,9 @@ class ProductoController extends Controller
             // antes el mismo string vivía retipeado en la vista (duplicado
             // marcado en el mapa F0-COMERCIAL, muerto en COM-1).
             'categoriaEjemplo' => $sugeridas[0] ?? 'Repuestos industriales',
+            // Para el <select> «Cómo viaja»: solo los bultos ACTIVOS, el mismo scope que
+            // valida `validateData` — así lo que se ofrece y lo que se acepta es lo mismo.
+            'tiposBulto' => TipoBulto::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'unidades']),
         ];
     }
 

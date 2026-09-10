@@ -273,6 +273,16 @@
                        quiere hacer con esto — «cargar y hacer una prueba si alcanza todo
                        o no». */
                     impAbierto: false, impTexto: '', impNoLeidas: [], impLeidas: 0,
+                    /* TRAER UNA FACTURA (10-09-2026). El endpoint responde JSON; la URL
+                       llega por el helper de Blade con las barras escapadas, es normal. */
+                    docEndpoint: @js(route('admin.carga.documento')),
+                    docBusca: '', docBuscado: false, docResultados: [], docError: '', docCargando: false,
+                    /* DE DONDE VINO LA CARGA Y QUE NO ENTRO AL CALCULO. Van al form como
+                       hidden (origen y no_cargadas) porque calcular recarga la pagina y
+                       este estado muere; se siembran desde el servidor para que el aviso
+                       sobreviva tambien a los recalculos siguientes. */
+                    origen: @js($avisoCarga['origen'] ?? ''),
+                    noCargadas: @js($avisoCarga['lineas'] ?? []),
                     importar() {
                         // Sin tildes, sin mayúsculas y sin dobles espacios: lo que se
                         // tipea en una planilla nunca coincide carácter a carácter con
@@ -298,6 +308,12 @@
                         this.impLeidas = nuevas.length;
                         if (!nuevas.length) return;
 
+                        /* Lo no leido viaja al form y se dibuja junto a la lista: antes
+                           quedaba solo en este modal y la recarga del calculo se lo llevaba
+                           JUSTO cuando la importacion era parcial, o sea cuando importaba. */
+                        this.origen = 'Planilla pegada';
+                        this.noCargadas = noLeidas.map((l) => l + ' — no se pudo leer');
+
                         // El tope de 8 líneas es el del formulario y del validador.
                         this.lineas = nuevas.slice(0, 8);
                         this.modo = 'mixta';
@@ -305,6 +321,56 @@
                         // `$nextTick`: los inputs de las líneas nuevas todavía no existen
                         // en el DOM cuando esto corre, y enviar antes mandaría los viejos.
                         this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
+                    },
+                    /* BUSCAR DOCUMENTOS por folio o cliente. Solo lectura; un 403 se dice
+                       en palabras (el permiso de facturas es aparte del del simulador). */
+                    async buscarDocumentos() {
+                        const q = this.docBusca.trim();
+                        this.docError = ''; this.docResultados = []; this.docBuscado = false;
+                        if (!q) return;
+                        this.docCargando = true;
+                        try {
+                            const r = await fetch(this.docEndpoint + '?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });
+                            if (r.status === 403) { this.docError = 'No tenés permiso para ver documentos de venta.'; return; }
+                            if (!r.ok) { this.docError = 'No se pudo buscar. Probá de nuevo.'; return; }
+                            this.docResultados = (await r.json()).documentos || [];
+                            this.docBuscado = true;
+                        } catch (e) {
+                            this.docError = 'Sin conexión: no se pudo buscar.';
+                        } finally {
+                            this.docCargando = false;
+                        }
+                    },
+                    /* TRAER UN DOCUMENTO: sus lineas ya convertidas a bultos por el servidor.
+                       Lo que NO se pudo convertir va al form en texto legible (origen y
+                       no_cargadas) para dibujarse junto a la lista despues de la recarga. */
+                    async traerDocumento(id) {
+                        this.docError = ''; this.docCargando = true;
+                        try {
+                            const r = await fetch(this.docEndpoint + '?id=' + encodeURIComponent(id), { headers: { 'Accept': 'application/json' } });
+                            const j = await r.json().catch(() => ({}));
+                            if (!r.ok) { this.docError = j.message || 'No se pudo traer el documento.'; return; }
+
+                            const motivos = @js(\App\Services\Carga\LineasDesdeDocumento::etiquetasDeMotivo());
+                            this.noCargadas = [
+                                ...(j.sin_bulto || []).map((l) => `${l.nombre} × ${l.cantidad} — ${motivos[l.motivo] || 'sin bulto'}`),
+                                ...(j.fuera_de_tope || []).map((l) => `${l.nombre} × ${l.cantidad} — más de 8 líneas: no entró al formulario`),
+                            ];
+                            this.origen = 'Documento N° ' + (j.documento?.folio ?? id);
+
+                            if (!(j.lineas || []).length) {
+                                this.docError = 'Ninguna línea de este documento tiene definido cómo viaja: no hay nada que calcular. Se declara en la ficha del producto («Cómo viaja»).';
+                                return;
+                            }
+                            this.lineas = j.lineas.map((l) => ({ tipo: l.tipo, cantidad: l.cantidad, estiba: 'auto' }));
+                            this.modo = 'mixta';
+                            this.impAbierto = false;
+                            this.$nextTick(() => this.$refs.formMixta?.requestSubmit());
+                        } catch (e) {
+                            this.docError = 'Sin conexión: no se pudo traer el documento.';
+                        } finally {
+                            this.docCargando = false;
+                        }
                     },
                  }" x-on:abrir-importar="impAbierto = true" class="space-y-6">
 
@@ -645,6 +711,16 @@
                       x-ref="formMixta"
                       method="GET" action="{{ route('admin.carga.index') }}"
                       class="space-y-4 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+                    {{-- DE DÓNDE VINO LA CARGA Y QUÉ NO ENTRÓ (traer factura / pegar planilla,
+                         10-09-2026). Viajan como hidden porque calcular es un GET que recarga
+                         la página: un aviso que viviera solo en el modal moriría justo cuando
+                         aparece el veredicto que necesita la salvedad. Ver `_aviso-origen`. --}}
+                    <template x-if="origen">
+                        <input type="hidden" name="origen" :value="origen">
+                    </template>
+                    <template x-for="(t, i) in noCargadas" :key="i">
+                        <input type="hidden" :name="`no_cargadas[${i}]`" :value="t">
+                    </template>
                     <div class="sm:max-w-md">
                         <x-input-label for="camion_id_mixta" value="Camión" />
                         <x-select id="camion_id_mixta" name="camion_id" class="mt-1.5">

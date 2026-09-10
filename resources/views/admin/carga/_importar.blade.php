@@ -11,8 +11,16 @@
     Lee en el cliente (ver `importar()` en el x-data de la pantalla) y deja la lista
     armada en el modo «¿Cabe esta carga?», que es el que responde la pregunta.
 
-    Lo que NO hace todavía, y hay que decirlo: no lee facturas ni arma la ruta. Eso
-    necesita enganchar con Hojas de ruta y es una pieza aparte.
+    DESDE EL 10-09-2026 TAMBIÉN TRAE FACTURAS (jefe de logística: «exportar documentos a la
+    sección de carga del camión para saber su capacidad total»): se busca por folio o
+    cliente y las líneas del documento entran convertidas a bultos con el «Cómo viaja» de
+    cada producto (su ficha). Lo que no tiene bulto declarado se LISTA —no se salta— y
+    viaja en la URL (`origen`, `no_cargadas[]`), porque calcular recarga la página y un
+    aviso que viviera solo en este modal moriría justo cuando aparece el veredicto que
+    necesita la salvedad. Ver `_aviso-origen.blade.php`.
+
+    Lo que sigue sin hacer, y hay que decirlo: no arma la ruta. Eso engancha con Hojas de
+    ruta y es una pieza aparte.
 --}}
 <div x-show="impAbierto" x-cloak
      class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-neutral-900/40 p-4 sm:items-center"
@@ -60,6 +68,50 @@
             </div>
         </template>
 
+        {{-- O TRAER UNA FACTURA (jefe de logística, 10-09-2026). Se busca por folio o
+             cliente entre los documentos VIGENTES; al elegir uno, sus líneas entran al
+             simulador convertidas a bultos según el «Cómo viaja» de cada producto. Lo que no
+             se pudo convertir NO se muestra acá sino junto a la lista de la carga (viaja en
+             la URL): este modal se cierra y la página se recarga al calcular. --}}
+        <div class="mt-5 border-t border-neutral-100 pt-4">
+            <label for="docBusca" class="block text-xs font-medium uppercase tracking-wide text-neutral-500">
+                O traé una factura
+            </label>
+            <div class="mt-1.5 flex gap-2">
+                <x-text-input id="docBusca" x-model="docBusca" class="block w-full"
+                              x-on:keydown.enter.prevent="buscarDocumentos()"
+                              placeholder="Folio o nombre del cliente" />
+                <x-secondary-button type="button" @click="buscarDocumentos()" ::disabled="!docBusca.trim() || docCargando">
+                    Buscar
+                </x-secondary-button>
+            </div>
+
+            <template x-if="docError">
+                <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700" x-text="docError"></p>
+            </template>
+
+            <template x-if="docResultados.length">
+                <ul class="mt-2 divide-y divide-neutral-100 rounded-lg border border-neutral-200">
+                    <template x-for="d in docResultados" :key="d.id">
+                        <li>
+                            <button type="button" @click="traerDocumento(d.id)" :disabled="docCargando"
+                                    class="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-neutral-50 disabled:opacity-60">
+                                <span class="min-w-0">
+                                    <span class="font-medium tabular-nums text-neutral-900" x-text="'N° ' + d.folio"></span>
+                                    <span class="ml-1 truncate text-neutral-500" x-text="d.cliente"></span>
+                                </span>
+                                <span class="shrink-0 text-xs text-neutral-400" x-text="d.emitido"></span>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+
+            <template x-if="docBuscado && !docResultados.length && !docError">
+                <p class="mt-2 text-xs text-neutral-500">No hay documentos vigentes con ese folio o cliente.</p>
+            </template>
+        </div>
+
         <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
             <x-secondary-button type="button" @click="impAbierto = false">Cancelar</x-secondary-button>
             <x-primary-button type="button" @click="importar()" ::disabled="!impTexto.trim()">
@@ -68,9 +120,9 @@
         </div>
 
         <p class="mt-3 border-t border-neutral-100 pt-3 text-xs leading-relaxed text-neutral-400">
-            Todavía no lee facturas ni arma la ruta: eso engancha con Hojas de ruta y es el
-            paso siguiente. Por ahora trae productos y cantidades, que es lo que hace falta
-            para responder si la carga alcanza.
+            Lo que no tenga definido «Cómo viaja» en su ficha de producto se avisa junto a la
+            lista de la carga y no entra al cálculo. Todavía no arma la ruta: eso engancha con
+            Hojas de ruta y es el paso siguiente.
         </p>
     </div>
 </div>

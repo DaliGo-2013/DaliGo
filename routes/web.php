@@ -736,6 +736,11 @@ Route::middleware('auth')
             // El plan de carga como .xlsx. Lleva los MISMOS parametros que la
             // pantalla en la query, asi que baja exactamente lo que se esta mirando.
             Route::get('carga/excel', [SimuladorCargaController::class, 'excel'])->name('carga.excel');
+            // TRAER UNA FACTURA al simulador (JSON, solo lectura). Lee documentos de venta, asi
+            // que exige ADEMAS el permiso que hoy da acceso a ellos: con solo 'simular carga'
+            // seria una puerta lateral a las facturas. Ver SimuladorCargaController::documento.
+            Route::get('carga/documento', [SimuladorCargaController::class, 'documento'])
+                ->middleware('permission:manage despachos')->name('carga.documento');
             // CARGAS REALES: lo que entro de verdad, contra lo que el simulador dijo.
             // Es lo unico que da un factor de correccion propio, y va con el MISMO
             // permiso porque calibra esta calculadora y no otra cosa. Estas si

@@ -194,4 +194,8 @@
             </div>
         @endforeach
     @endforeach
+
+    {{-- Lo que NO entró al cálculo va acá, pegado a la lista de lo que sí: son las dos
+         mitades de la misma pregunta. Ver `_aviso-origen.blade.php`. --}}
+    @include('admin.carga._aviso-origen')
 </div>

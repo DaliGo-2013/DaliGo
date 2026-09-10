@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -36,6 +37,10 @@ class Producto extends Model implements AuditableContract
         'alto_cm',
         'ancho_cm',
         'largo_cm',
+        // CÓMO VIAJA este producto al cargarlo: su tipo de bulto habitual (nullable a
+        // propósito; el que no lo declara se LISTA al traer una factura al simulador, no
+        // se inventa). Ver la migración `2026_09_10_120000`.
+        'tipo_bulto_id',
         'atributos',
         'activo',
         'bsale_variant_id',
@@ -229,5 +234,23 @@ class Producto extends Model implements AuditableContract
     public function stocks(): HasMany
     {
         return $this->hasMany(Stock::class, 'producto_id');
+    }
+
+    /**
+     * CÓMO VIAJA este producto: su tipo de bulto habitual (bolsa de 5, caja, pallet).
+     *
+     * Es el enlace que le faltaba al simulador de carga para traer una factura (jefe de
+     * logística, 10-09-2026): las facturas espejadas traen `producto_id` y `cantidad`, y
+     * el motor ya divide por las unidades del bulto; lo único que no existía era saber de
+     * qué bulto es cada producto. `tipos_bulto` no lo tiene a propósito («NO es un
+     * producto»), así que el dato vive acá, como forma HABITUAL, y al importar se puede
+     * cambiar línea por línea. Nullable con intención: sin declarar se LISTA, no se
+     * inventa (decisión del dueño, 10-09-2026).
+     *
+     * @return BelongsTo<TipoBulto, $this>
+     */
+    public function tipoBulto(): BelongsTo
+    {
+        return $this->belongsTo(TipoBulto::class, 'tipo_bulto_id');
     }
 }

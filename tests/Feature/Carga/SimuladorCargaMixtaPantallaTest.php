@@ -1922,17 +1922,23 @@ class SimuladorCargaMixtaPantallaTest extends TestCase
         $sinPrueba->assertSee('Entran 420');
     }
 
-    public function test_importar_de_excel_esta_ofrecido_y_dice_que_no_lee_facturas(): void
+    public function test_importar_esta_ofrecido_trae_facturas_y_dice_lo_que_todavia_no_hace(): void
     {
         // El dueño lo pidió para «generar una ruta con facturas, cargar y hacer una prueba
-        // si alcanza todo o no». Lo que entró lee productos y cantidades pegados de la
-        // planilla; las facturas y la ruta son otra pieza. La pantalla lo DICE, porque un
-        // botón que promete más de lo que hace se descubre en el peor momento.
+        // si alcanza todo o no». Primero entró la planilla pegada; el 10-09-2026 entraron
+        // las FACTURAS (jefe de logística) y este candado cambió de contrato con ellas:
+        // antes fijaba que el modal DIJERA que no leía facturas, ahora fija que las ofrezca.
+        // Lo que sigue igual es la regla de fondo — la pantalla dice lo que todavía no
+        // hace (armar la ruta), porque un botón que promete más de lo que hace se descubre
+        // en el peor momento.
         $html = $this->verMixta([['tipo' => $this->bolsa->id, 'cantidad' => 100]])->assertOk()->getContent();
 
         $this->assertStringContainsString('id="carga3dImportar"', $html);
         $this->assertStringContainsString('Traer la carga de una planilla', $html);
-        $this->assertStringContainsString('Todavía no lee facturas ni arma la ruta', $html);
+        $this->assertStringContainsString('O traé una factura', $html);
+        $this->assertStringContainsString('Todavía no arma la ruta', $html);
+        // Y la afirmación vieja no puede quedar en ningún lado: ahora sería falsa.
+        $this->assertStringNotContainsString('Todavía no lee facturas', $html);
     }
 
     public function test_apilar_mas_alto_usa_el_espacio_que_quedaba_libre(): void

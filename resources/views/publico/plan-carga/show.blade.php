@@ -61,6 +61,10 @@
          girar el dibujo. Es lo mismo que dice la pantalla interna. --}}
     @if ($mixta)
         <div class="mt-5 overflow-hidden rounded-xl border border-neutral-200">
+            {{-- Lo que NO entró al cálculo, ANTES de la tabla de lo que sí: quien recibe este
+                 plan lee primero que es de una carga a la que le faltan líneas. Mismo partial
+                 que la pantalla interna; el aviso viaja en la misma URL firmada. --}}
+            @include('admin.carga._aviso-origen')
             <table class="w-full text-sm">
                 <thead class="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
                     <tr>

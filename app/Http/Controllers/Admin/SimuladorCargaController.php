@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CamionSimulacion;
 use App\Models\CargaReal;
+use App\Models\DocumentoVenta;
 use App\Models\TipoBulto;
+use App\Services\Carga\LineasDesdeDocumento;
+use Illuminate\Http\JsonResponse;
 use App\Services\Carga\AcomodoManual;
 use App\Services\Carga\CalculoDeCarga;
 use App\Services\Carga\PalletSimulado;
@@ -194,6 +197,15 @@ class SimuladorCargaController extends Controller
             // Quién decide qué producto va al fondo: el motor por volumen (auto) o el
             // orden en que el usuario armó la lista.
             'orden' => ['nullable', 'in:auto,lista'],
+            // DE DÓNDE VINO LA CARGA Y QUÉ NO ENTRÓ AL CÁLCULO (traer factura / pegar
+            // planilla, 10-09-2026). Viajan en la URL a propósito: el modal que las mostraba
+            // se cierra y la página se RECARGA al calcular, así que todo estado Alpine muere —
+            // un aviso que viviera solo ahí desaparecería justo cuando aparece el veredicto que
+            // necesita esa salvedad. En la URL sobrevive a la recarga y viaja en el link
+            // compartido. Son textos de pantalla, acotados; se dibujan escapados.
+            'origen' => ['nullable', 'string', 'max:80'],
+            'no_cargadas' => ['nullable', 'array', 'max:20'],
+            'no_cargadas.*' => ['string', 'max:120'],
             // SOBRE PALLET: se arma un pallet con un producto y después se sube al
             // camión. Las medidas son editables porque el dueño lo pidió así («deja la
             // opción de modificar», «un botón para ajustar medidas»): las dos estándar
@@ -419,6 +431,12 @@ class SimuladorCargaController extends Controller
             'camion' => $camion,
             'bulto' => $bulto,
             'mixta' => $mixta,
+            // El aviso de origen (factura / planilla) con lo que NO entró al cálculo, para
+            // dibujarlo junto a la lista de la carga y sembrar el x-data (así sobrevive a
+            // los recálculos siguientes). Null = no se dibuja nada.
+            'avisoCarga' => filled($datos['origen'] ?? null) || ! empty($datos['no_cargadas'])
+                ? ['origen' => $datos['origen'] ?? null, 'lineas' => array_values($datos['no_cargadas'] ?? [])]
+                : null,
             'estiba' => $estiba,
             'orden' => $enOrdenDeLista ? 'lista' : 'auto',
             'aprovechar' => $aprovechar,
@@ -486,6 +504,69 @@ class SimuladorCargaController extends Controller
      * @param  Collection<int, TipoBulto>  $bultos
      * @return array{resultado: array, lineas: list<array<string, mixed>>, cabeTodo: bool, peligrosas: list<TipoBulto>}
      */
+    /**
+     * TRAER UNA FACTURA AL SIMULADOR (jefe de logística, 10-09-2026: «exportar documentos a
+     * la sección de carga del camión para saber su capacidad total»).
+     *
+     * Dos preguntas por la misma ruta, las dos de SOLO LECTURA y en JSON para el modal:
+     *   · `?q=`  → hasta 10 documentos VIGENTES cuyo folio empiece así o cuyo cliente lo contenga.
+     *   · `?id=` → el documento convertido a líneas del simulador (`LineasDesdeDocumento`), con
+     *              lo que NO se pudo convertir listado aparte. Un documento anulado no se carga:
+     *              422 con el motivo — no un plan de carga de algo que no se va a despachar.
+     *
+     * PERMISO: esta ruta exige `manage despachos` ADEMÁS del `simular carga` del grupo. El
+     * simulador es una calculadora que hasta hoy no leía nada operativo; leer facturas desde
+     * acá con solo `simular carga` lo convertiría en una puerta lateral a los documentos de
+     * venta para quien no los ve en ninguna otra pantalla. `manage despachos` es el permiso
+     * que hoy da acceso a esos documentos (Despachos los lista con él).
+     */
+    public function documento(Request $request, LineasDesdeDocumento $conversor): JsonResponse
+    {
+        if ($request->filled('id')) {
+            $documento = DocumentoVenta::with('cliente')->findOrFail((int) $request->input('id'));
+
+            if ($documento->estaAnulado()) {
+                return response()->json([
+                    'message' => "El documento N° {$documento->folio} está anulado: no se carga.",
+                ], 422);
+            }
+
+            return response()->json(
+                ['documento' => $this->resumenDocumento($documento)] + $conversor->convertir($documento),
+            );
+        }
+
+        $q = trim((string) $request->input('q', ''));
+        if ($q === '') {
+            return response()->json(['documentos' => []]);
+        }
+
+        $documentos = DocumentoVenta::with('cliente')
+            ->vigentes()
+            ->where(fn ($w) => $w->where('folio', 'like', $q.'%')
+                ->orWhereHas('cliente', fn ($c) => $c->where('razon_social', 'like', '%'.$q.'%')))
+            ->latest('emitido_at')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'documentos' => $documentos->map(fn (DocumentoVenta $d) => $this->resumenDocumento($d))->values(),
+        ]);
+    }
+
+    /** @return array{id:int,folio:string,cliente:string,emitido:?string} */
+    private function resumenDocumento(DocumentoVenta $d): array
+    {
+        return [
+            'id' => $d->id,
+            'folio' => (string) $d->folio,
+            'cliente' => $d->cliente?->razon_social ?? 'Sin cliente',
+            // En hora chilena: `emitido_at` es un datetime en UTC y a las 21:00 de Chile ya
+            // es «mañana» en UTC (bitácora [2026-07-20]).
+            'emitido' => $d->emitido_at?->enChile()->format('d-m-Y'),
+        ];
+    }
+
     private function calcularMixta(CamionSimulacion $camion, array $lineasInput, $bultos, bool $enOrdenDeLista = false, bool $aprovechar = false, array $ocupado = ['cm' => 0, 'kg' => 0.0]): array
     {
         $modelos = [];

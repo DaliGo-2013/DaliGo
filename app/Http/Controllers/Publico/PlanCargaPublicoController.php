@@ -59,6 +59,10 @@ class PlanCargaPublicoController extends Controller
             'mixta' => $datos['mixta'] ?? null,
             'enPallet' => $datos['enPallet'] ?? null,
             'bulto' => $datos['bulto'] ?? null,
+            // LO QUE NO ENTRÓ AL CÁLCULO viaja también al link (10-09-2026): quien recibe
+            // el plan tiene que ver que es de una carga a la que le faltan líneas, no de una
+            // completa. Es la misma URL, así que es el mismo aviso.
+            'avisoCarga' => $datos['avisoCarga'] ?? null,
             'vence' => now()->addDays(self::DIAS_VIGENCIA),
             // DOS VISTAS DEL MISMO LINK (pedido del dueño 11-08: «que la otra persona lo
             // pueda ver pero no editar, y si jefatura lo pueda editar»).

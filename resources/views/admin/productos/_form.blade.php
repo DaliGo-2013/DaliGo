@@ -72,6 +72,25 @@
         </div>
     </div>
 
+    {{-- CÓMO VIAJA (jefe de logística, 10-09-2026: traer facturas al simulador). Es el
+         enlace producto → tipo de bulto que el simulador necesita para convertir «200
+         botellones» en «40 bolsas». Nullable a propósito: el producto que no lo declara
+         se LISTA al traer la factura, no se inventa (decisión del dueño, 10-09-2026). --}}
+    <div class="sm:col-span-2">
+        <x-input-label for="tipo_bulto_id" value="Cómo viaja">
+            <x-slot:ayuda>El bulto con el que este producto se sube al camión (bolsa, caja, pallet). Lo usa el simulador de carga al traer una factura: sin esto, la línea queda fuera del cálculo y se avisa.</x-slot:ayuda>
+        </x-input-label>
+        <x-select id="tipo_bulto_id" name="tipo_bulto_id" class="mt-1.5">
+            <option value="">Sin declarar</option>
+            @foreach ($tiposBulto as $tb)
+                <option value="{{ $tb->id }}" @selected((int) old('tipo_bulto_id', $p?->tipo_bulto_id) === $tb->id)>
+                    {{ $tb->nombre }} · {{ $tb->unidades }} {{ \Illuminate\Support\Str::plural('unidad', $tb->unidades) }} por bulto
+                </option>
+            @endforeach
+        </x-select>
+        <x-input-error :messages="$errors->get('tipo_bulto_id')" class="mt-2" />
+    </div>
+
     <div class="sm:col-span-2">
         <x-input-label for="atributos" value="Atributos (JSON, opcional)" />
         <x-textarea id="atributos" class="mt-1.5 font-mono text-xs" name="atributos" rows="3" placeholder='{"color":"azul"}'>{{ old('atributos', $p && $p->atributos ? json_encode($p->atributos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : '') }}</x-textarea>
