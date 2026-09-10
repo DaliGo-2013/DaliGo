@@ -104,24 +104,48 @@
                                 </tr>
                                 <tr>
                                     <td style="padding:14px; font-size:13px; color:#525252; line-height:1.7;">
+                                        {{-- EL ESTADO DEL EQUIPO SE INFORMA AL DEJARLO, no al retirarlo
+                                             (dueño, 10-09-2026): el reclamo que se repite en el mostrador es
+                                             por un golpe o un rayón que nadie anotó al ingresar, y a esa
+                                             altura ya no hay forma de saber si venía de antes. Por eso el
+                                             correo pide revisar el equipo, avisar en el momento y —lo que
+                                             de verdad zanja la discusión— sacarle fotos antes de dejarlo.
+                                             Dice «equipo» y no «dispensador» porque al taller también
+                                             entran lavadoras, bombas y herramientas. --}}
                                         <div style="font-weight:bold; color:#171717;">
-                                            No nos hacemos responsables por entrega de dispensadores sin caja, por rayones o golpes.
+                                            Revisa tu equipo antes de dejarlo: si tiene golpes, rayones, viene sin caja o
+                                            le falta alguna pieza, avísanos al momento del ingreso para que quede anotado
+                                            en la orden.
+                                        </div>
+                                        <div style="margin-top:6px;">
+                                            Lo que no quede informado al ingresar no se puede reclamar al retirar, así que
+                                            te recomendamos sacarle fotos a tu equipo como respaldo. No nos hacemos
+                                            responsables por entrega de equipos sin caja, por rayones o golpes.
                                         </div>
                                         @if ($plazoDias)
                                             <div style="font-weight:bold; color:#171717; margin-top:6px;">
                                                 El plazo de reparación es de hasta {{ $plazoDias }} días hábiles.
                                             </div>
                                         @endif
+                                        {{-- EL BODEGAJE Y LA LEY NOMBRAN AL DISPENSADOR, y es una decisión
+                                             del dueño (10-09-2026): «que se especifique con el tema de
+                                             dispensadores la ley; las herramientas la verdad llegan muy pocas
+                                             a servicio técnico y se van rápido, o sea se retiran». Lo que se
+                                             acumula meses en la bodega —y por lo tanto lo único que se puede
+                                             llegar a vender o dar de baja— es un dispensador. Por eso estos
+                                             dos puntos NO se generalizan a «equipo» como los de arriba: acá
+                                             ser genérico prometería aplicarle a una herramienta un régimen
+                                             que no le corresponde. --}}
                                         <div style="margin-top:10px;">
                                             · Cada pieza reparada tiene una garantía de {{ $garantiaMeses }} meses.<br>
-                                            · A partir de los {{ $bodegajeDesdeMeses }} meses se cobrará un costo de
-                                            {{ $bodegajeMensual }} + IVA mensual por concepto de bodegaje.<br>
+                                            · A partir de los {{ $bodegajeDesdeMeses }} meses de bodegaje del dispensador
+                                            se cobrará un costo de {{ $bodegajeMensual }} + IVA mensual.<br>
                                             · En caso de cumplir {{ $bodegajeLimiteMeses }} meses de bodegaje podemos vender,
                                             regalar o dar de baja el dispensador según la Ley 19.496.
                                         </div>
                                         <div style="margin-top:10px; color:#737373;">
                                             <strong style="color:#171717;">Horario de atención:</strong>
-                                            lunes a jueves de 09:00 a 13:00 y de 14:00 a 17:00 · viernes hasta las 16:00.
+                                            {{ $horarioAtencion }}.
                                         </div>
                                     </td>
                                 </tr>

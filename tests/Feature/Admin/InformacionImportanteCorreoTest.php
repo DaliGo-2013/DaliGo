@@ -29,6 +29,10 @@ use Tests\TestCase;
  *     (ver PlazoSinFechaPrometidaTest).
  *   · la GARANTÍA es la misma constante que promete el correo de retiro. Si fueran dos números,
  *     un día se prometería una cosa al ingresar y otra al entregar.
+ *
+ * Y EL HORARIO TAMPOCO, desde el 10-09-2026: estaba escrito en la plantilla, entre condiciones
+ * que sí salían de config, y el correo siguió prometiendo un horario que el taller ya había
+ * cambiado. Un recuadro que se lee como texto fijo es donde un dato viejo pasa más desapercibido.
  */
 class InformacionImportanteCorreoTest extends TestCase
 {
@@ -56,7 +60,10 @@ class InformacionImportanteCorreoTest extends TestCase
             'sucursal_id' => $this->sucursal()->id,
         ], $overrides));
 
-        return (new IngresoTallerRecibido($orden->fresh()))->render();
+        // Con los espacios COLAPSADOS a propósito: las frases de este recuadro son largas y
+        // cruzan los saltos de línea del Blade, así que un assert sobre el HTML crudo se pone
+        // rojo cuando alguien re-acomoda la plantilla sin cambiar una sola palabra del texto.
+        return preg_replace('/\s+/u', ' ', (new IngresoTallerRecibido($orden->fresh()))->render());
     }
 
     // ─────────────────────────────────────────────────── el bloque
@@ -74,10 +81,54 @@ class InformacionImportanteCorreoTest extends TestCase
     {
         $html = $this->correo();
 
-        $this->assertStringContainsString('No nos hacemos responsables por entrega de dispensadores sin caja', $html);
+        $this->assertStringContainsString('No nos hacemos responsables por entrega de equipos sin caja', $html);
         $this->assertStringContainsString('garantía de 3 meses', $html);
-        $this->assertStringContainsString('$3.000 + IVA mensual por concepto de bodegaje', $html);
+        $this->assertStringContainsString('$3.000 + IVA mensual', $html);
         $this->assertStringContainsString('Ley 19.496', $html);
+    }
+
+    /**
+     * EL BODEGAJE Y LA LEY HABLAN DEL DISPENSADOR, a propósito (dueño, 10-09-2026): «que se
+     * especifique con el tema de dispensadores la ley; las herramientas la verdad llegan muy
+     * pocas a servicio técnico y se van rápido, o sea se retiran».
+     *
+     * Este candado existe porque la tentación es exactamente la contraria: el resto del recuadro
+     * dice «equipo» —al taller entran lavadoras, bombas y herramientas— y un barrido de
+     * consistencia generalizaría estos dos puntos sin pensar. Sería un error de fondo, no de
+     * estilo: lo que se acumula meses en la bodega, y por lo tanto lo único que se puede llegar
+     * a vender o dar de baja, es un dispensador. Decir «equipo» le prometería a quien trajo una
+     * herramienta un régimen de bodegaje y disposición que no le corresponde.
+     */
+    public function test_el_bodegaje_y_la_ley_hablan_del_dispensador_no_del_equipo(): void
+    {
+        $html = $this->correo();
+
+        $this->assertStringContainsString('bodegaje del dispensador', $html);
+        $this->assertStringContainsString('dar de baja el dispensador según la Ley 19.496', $html);
+    }
+
+    /**
+     * EL ESTADO SE INFORMA AL DEJAR EL EQUIPO, NO AL RETIRARLO (dueño, 10-09-2026): «que al
+     * momento de ingresar su dispensador o herramienta, lo que sea, si no informa algún defecto
+     * como golpes, rayones o sin caja, que después al retirar no reclame».
+     *
+     * Las tres mitades del pedido y por qué las tres tienen que estar: sin el «avísanos al
+     * ingresar» el cliente no sabe que tiene algo que hacer; sin el «no se puede reclamar al
+     * retirar» no sabe qué se juega si no lo hace; y sin las FOTOS —lo único que zanja la
+     * discusión meses después— la regla queda en la palabra de cada uno.
+     */
+    public function test_pide_informar_el_estado_al_ingresar_y_recomienda_fotos(): void
+    {
+        $html = $this->correo();
+
+        $this->assertStringContainsString('avísanos al momento del ingreso', $html);
+        $this->assertStringContainsString('no se puede reclamar al retirar', $html);
+        $this->assertStringContainsString('fotos', $html);
+        // Golpes, rayones y sin caja: los tres casos que nombró, porque son los tres que
+        // llegan al mostrador.
+        foreach (['golpes', 'rayones', 'sin caja'] as $defecto) {
+            $this->assertStringContainsString($defecto, $html, "El correo no nombra «{$defecto}».");
+        }
     }
 
     public function test_lleva_el_horario_de_atencion(): void
@@ -85,8 +136,29 @@ class InformacionImportanteCorreoTest extends TestCase
         $html = $this->correo();
 
         $this->assertStringContainsString('Horario de atención', $html);
-        $this->assertStringContainsString('lunes a jueves', $html);
-        $this->assertStringContainsString('viernes hasta las 16:00', $html);
+        $this->assertStringContainsString('lunes y martes de 08:00 a 17:30', $html);
+        $this->assertStringContainsString('miércoles a viernes de 08:00 a 16:30', $html);
+    }
+
+    /**
+     * Y EL HORARIO SALE DE CONFIG, no del texto de la plantilla. Es el candado del defecto que
+     * originó este cambio: el horario estaba escrito dentro del Blade, entre condiciones que sí
+     * salían de config, y el correo siguió prometiendo «lunes a jueves de 09:00 a 13:00 y de
+     * 14:00 a 17:00» después de que el taller cambiara de horario. Nadie lo miró porque el
+     * recuadro se lee como un bloque de texto fijo.
+     */
+    public function test_el_horario_de_atencion_sale_de_configuracion(): void
+    {
+        config()->set('servicio_tecnico.horario_atencion', [
+            ['dias' => 'lunes a viernes', 'horas' => '07:30 a 18:00'],
+            ['dias' => 'sábado', 'horas' => '09:00 a 13:00'],
+        ]);
+
+        $html = $this->correo();
+
+        $this->assertStringContainsString('lunes a viernes de 07:30 a 18:00 · sábado de 09:00 a 13:00', $html);
+        // Y el horario viejo no puede quedar de respaldo en ninguna parte del correo.
+        $this->assertStringNotContainsString('08:00 a 17:30', $html);
     }
 
     // ─────────────────────────────────────────────────── los dos números que no se escriben

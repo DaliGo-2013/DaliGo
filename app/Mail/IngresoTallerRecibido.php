@@ -51,6 +51,12 @@ class IngresoTallerRecibido extends Mailable
                 'bodegajeDesdeMeses' => $bodegaje['desde_meses'],
                 'bodegajeMensual' => '$'.number_format((int) $bodegaje['mensual_clp'], 0, ',', '.'),
                 'bodegajeLimiteMeses' => $bodegaje['limite_meses'],
+                // EL HORARIO TAMPOCO SE ESCRIBE EN LA PLANTILLA: estuvo ahi dentro, entre
+                // condiciones que si salian de config, y el correo siguio prometiendo el
+                // horario viejo despues de que el taller lo cambiara (dueño, 10-09-2026).
+                'horarioAtencion' => collect(config('servicio_tecnico.horario_atencion'))
+                    ->map(fn (array $tramo) => $tramo['dias'].' de '.$tramo['horas'])
+                    ->implode(' · '),
             ],
         );
     }

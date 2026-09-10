@@ -49,6 +49,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Horario de atencion del taller
+    |--------------------------------------------------------------------------
+    |
+    | El horario que viaja en el correo de ingreso, dentro del mismo recuadro de
+    | «INFORMACION IMPORTANTE». Esta aca y no escrito en la plantilla por lo que
+    | ya paso una vez: el correo prometio durante semanas un horario viejo
+    | («lunes a jueves de 09:00 a 13:00 y de 14:00 a 17:00») porque estaba dentro
+    | del Blade, entre condiciones que si salian de config, y nadie lo miro al
+    | cambiar el horario real. Corregido por el dueño el 10-09-2026.
+    |
+    | Cada fila es un tramo: `dias` como se le dice al cliente y `horas` el rango.
+    | La plantilla las junta con « · », asi que agregar un sabado es una fila mas
+    | y no tocar el texto del correo.
+    |
+    */
+    'horario_atencion' => [
+        ['dias' => 'lunes y martes', 'horas' => '08:00 a 17:30'],
+        ['dias' => 'miércoles a viernes', 'horas' => '08:00 a 16:30'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Garantias del servicio INDUSTRIAL (terreno)
     |--------------------------------------------------------------------------
     |
