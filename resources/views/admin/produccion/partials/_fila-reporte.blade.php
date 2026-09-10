@@ -20,6 +20,7 @@
                 Δ <span>{{ $reporte->diferencia > 0 ? '+' : '' }}{{ $reporte->diferencia }}</span>
             </span>
             <x-produccion.estado-badge :estado="$reporte->estado" />
+            <x-produccion.modificado-badge :reporte="$reporte" />
         </div>
     </x-slot>
 

@@ -93,6 +93,7 @@
                             </div>
                             <div class="flex shrink-0 flex-col items-end gap-1">
                                 <x-produccion.estado-badge :estado="$reporte->estado" />
+                                <x-produccion.modificado-badge :reporte="$reporte" />
                                 @if (\App\Support\FechaNegocio::esHoy($reporte->fecha))
                                     <x-badge variant="neutral">hoy</x-badge>
                                 @endif
@@ -110,6 +111,9 @@
                                 {{ $editable ? 'Reportar →' : 'Ver →' }}
                             </span>
                         </div>
+                        {{-- Cambios del jefe (dueño 09-09): quién, qué ítem y cuánto, acá
+                             mismo en los 45 días. El motivo va en el detalle. --}}
+                        <x-produccion.ajustes :reporte="$reporte" compacto />
                     </a>
                 @endforeach
             </div>

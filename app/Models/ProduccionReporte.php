@@ -167,6 +167,32 @@ class ProduccionReporte extends Model implements AuditableContract
         return $this->asignacion?->tipoBotellon;
     }
 
+    /**
+     * Cambios del jefe sobre las cantidades (dueño 09-09), una fila por campo.
+     * Más reciente primero. Ver ProduccionAjuste.
+     */
+    public function ajustes(): HasMany
+    {
+        return $this->hasMany(ProduccionAjuste::class, 'reporte_id')->latest('id');
+    }
+
+    /**
+     * ¿El jefe modificó este reporte alguna vez? Gobierna la etiqueta
+     * «Modificado». Lee ajustes_count si la lista vino con withCount (sin
+     * N+1), la relación si está cargada, y si no una consulta exists.
+     */
+    public function getModificadoAttribute(): bool
+    {
+        if (array_key_exists('ajustes_count', $this->attributes)) {
+            return (int) $this->attributes['ajustes_count'] > 0;
+        }
+        if ($this->relationLoaded('ajustes')) {
+            return $this->ajustes->isNotEmpty();
+        }
+
+        return $this->ajustes()->exists();
+    }
+
     /** El molde elegido al aprobar cuando la inferencia por tipo es ambigua (P-M11-12). */
     public function molde(): BelongsTo
     {

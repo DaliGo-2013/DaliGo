@@ -6,6 +6,7 @@ use App\Models\Aprobacion;
 use App\Models\Configuracion;
 use App\Models\Devolucion;
 use App\Models\Notificacion;
+use App\Models\ProduccionAjuste;
 use App\Models\ProduccionReporte;
 use App\Models\ReglaAprobacion;
 use App\Models\User;
@@ -382,11 +383,14 @@ class Aprobaciones
         // (con != laxo, null != 0 es false y se perdía — gate R-31).
         // motivo_ajuste se excluye: ya viaja como {motivo} en la plantilla y
         // dentro de {cambio} saldría duplicado (#6: con chips se nota más).
+        // Las etiquetas de los campos del reporte salen de la FUENTE ÚNICA
+        // (ProduccionAjuste::ETIQUETAS); un campo de otro tipo de acción cae
+        // al ucfirst de siempre.
         $aStr = fn ($x) => is_scalar($x) ? (string) $x : '';
         $cambios = collect($nuevo)
             ->except('motivo_ajuste')
             ->filter(fn ($v, $campo) => is_scalar($v) && $aStr($anterior[$campo] ?? null) !== (string) $v)
-            ->map(fn ($v, $campo) => ucfirst((string) $campo).': '.(is_scalar($anterior[$campo] ?? null) ? $anterior[$campo] : '—').' → '.$v);
+            ->map(fn ($v, $campo) => (ProduccionAjuste::ETIQUETAS[$campo] ?? ucfirst((string) $campo)).': '.(is_scalar($anterior[$campo] ?? null) ? $anterior[$campo] : '—').' → '.$v);
 
         return $cambios->isNotEmpty() ? $cambios->implode(' · ') : '—';
     }
