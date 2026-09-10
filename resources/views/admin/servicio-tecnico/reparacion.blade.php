@@ -67,6 +67,17 @@
         $remateGuardado = collect($rematesTrabajo)
             ->first(fn ($r) => filled($orden->trabajo_realizado) && str_ends_with($orden->trabajo_realizado, $r));
         $remateInicial = (string) old('remate', (string) $remateGuardado);
+
+        // ¿ARRANCA ABIERTO EL FORMULARIO? (dueño 10-09-2026: «que el técnico tenga todo en la
+        // misma página»). Al guardar, la pantalla ya era la misma —el controlador redirige acá
+        // mismo— pero el parte volvía al modo LECTURA, y «Revisar y enviar cotización» vive
+        // DENTRO del formulario: desaparecía, y había que apretar «Editar» y bajar otra vez.
+        //
+        // Se decide en PHP y no en Alpine porque manda DOS COSAS: el estado inicial del `x-data`
+        // y cuál de los dos paneles nace con `x-cloak` (más abajo). Si el panel que va a
+        // mostrarse naciera cloakeado, el navegador pintaría el OTRO hasta que Alpine arranque —
+        // el parpadeo que ya se veía al volver de un error de validación.
+        $editando = $errors->any() || session('sigue_editando');
     @endphp
 
     <x-slot name="header">
@@ -74,7 +85,7 @@
                        :back="route('admin.servicio-tecnico.index')" backTitle="Volver al listado" />
     </x-slot>
 
-    <div class="py-12" x-data="{ editando: {{ $errors->any() ? 'true' : 'false' }} }">
+    <div class="py-12" x-data="{ editando: {{ $editando ? 'true' : 'false' }} }">
         @include('admin.servicio-tecnico._tabs', ['activa' => 'tecnico'])
 
         <x-status-alert :status="session('status')" />
@@ -116,7 +127,7 @@
                 // «Sin determinar», que es la misma etiqueta que usa el informe.
                 $causaTxt = $orden->causa_falla_label;
             @endphp
-            <div x-show="!editando">
+            <div x-show="!editando" {{ $editando ? 'x-cloak' : '' }}>
                 <div class="mb-4 flex items-center justify-between">
                     <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Detalle del trabajo realizado</h3>
                     <x-secondary-button type="button" x-on:click="editando = true">
@@ -168,7 +179,7 @@
             </div>
 
             {{-- ===================== EDICIÓN (formulario) ===================== --}}
-            <form x-show="editando" x-cloak id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
+            <form x-show="editando" {{ $editando ? '' : 'x-cloak' }} id="reparacion-form" method="POST" action="{{ route('admin.servicio-tecnico.reparacion.guardar', $orden) }}"
                 class="space-y-6" data-una-vez
                 {{-- La mano de obra YA NO SE SIEMBRA: es un getter derivado de los trabajos
                      marcados (`manoObra` en reparacionForm). Antes viajaba como dato con el
