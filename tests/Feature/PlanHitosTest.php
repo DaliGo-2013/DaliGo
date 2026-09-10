@@ -166,9 +166,11 @@ class PlanHitosTest extends TestCase
     public function test_la_pagina_muestra_el_countdown_de_cada_hito_desde_la_bd(): void
     {
         $hoy = Carbon::parse(FechaNegocio::hoy());
+        // Creados en orden DISTINTO al de fecha, para que el orden por id no
+        // pase el assert de orden por casualidad.
+        PlanHito::create(['clave' => 'HP', 'etiqueta' => 'Hito que viene', 'fecha' => $hoy->copy()->addDays(10)->toDateString()]);
         PlanHito::create(['clave' => 'HC', 'etiqueta' => 'Hito ya cumplido', 'fecha' => $hoy->copy()->subDays(30)->toDateString(), 'cumplido' => true]);
         PlanHito::create(['clave' => 'HA', 'etiqueta' => 'Hito que se pasó', 'fecha' => $hoy->copy()->subDays(3)->toDateString()]);
-        PlanHito::create(['clave' => 'HP', 'etiqueta' => 'Hito que viene', 'fecha' => $hoy->copy()->addDays(10)->toDateString()]);
 
         $this->actingAs($this->usuarioQueVe())->get(route('plan.index'))
             ->assertOk()
