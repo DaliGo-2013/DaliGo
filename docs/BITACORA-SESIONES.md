@@ -21,6 +21,17 @@
 
 ## Sesiones
 
+### [2026-09-10] Los hitos del plan salen del código y entran a la pantalla: lo que el gerente pide en reunión ya no espera un deploy
+- **Quién:** Marcos + Claude (Fable 5.1)
+- **Objetivo declarado:** P-PLAN-06 — que los hitos de /plan se puedan agregar y editar a mano, «para que sea más rápido agregar cuando el gerente pide algo».
+- **Qué se hizo (3 commits en `feature/plan-hitos-editables`):** los hitos dejan de ser la constante `PlanProyecto::HITOS` y viven en `plan_hitos`; `PlanHitosSeeder` los siembra una vez con `firstOrCreate` por clave, así que el `db:seed` de cada deploy **no revierte** lo que el gerente editó. CRUD en el propio card con el permiso `gestionar plan proyecto` que ya existía (cero permisos nuevos, cero ítems de menú nuevos), calcado del idioma de `_extras`. La página y el Excel de la gerencia leen de la BD.
+- **La decisión de diseño que importa:** el permiso reusado. Crear uno nuevo habría obligado a asignarlo a mano por rol antes de que sirviera; con el existente, quien ya podía anotar un trabajo extra puede correr un hito desde el primer minuto.
+- **Lo que encontró el navegador y no los tests:** el lápiz escrito a mano medía **32px** en el celular, bajo el mínimo táctil de 44px que adoptó P-MOB-01. Se cambió por `<x-icon-button size="sm"`, que ya resuelve exactamente eso (44px en móvil, densidad de fila desde `sm:`) — o sea que el defecto venía de **recrear un control que ya tenía componente**, la regla DRY del proyecto cobrándose otra.
+- **Candados:** 7 en `PlanHitosTest`, **mutados en tres sentidos con rojo exacto** (el seeder pisando ediciones con `updateOrCreate`; el checkbox ausente leído sin `boolean()`, que borraría el «cumplido» en silencio; el orden por fecha). Suite completa **2495 verdes**.
+- **Verificación E2E en el navegador:** alta → «Faltan 51 d»; editar a una fecha pasada → «Atrasado 5 d» y la tarjeta se reordena sola; 44px a 375px sin scroll horizontal; 4 columnas iguales a 1280px y fila completa al editar. Las capturas salen en blanco por el pane oculto (gotcha [2026-08-10]): sirve medir geometría, no fotografiar.
+- **Decisiones:** ninguna nueva.
+- **Próximo paso:** merge a `main` con la doble llave del dueño — el push despliega a producción y la migración corre sola.
+
 ### [2026-09-02] Instalaciones vuelve a ser de Carlos: sale del jefe de ventas y del vendedor
 - **Quién:** Marcos + Claude (Fable 5.1).
 - **Objetivo declarado:** *«saca de la vista del jefe de ventas el apartado instalaciones porque eso es para Carlos Tablante, el técnico industrial, que ingresa sus instalaciones para que le paguen el sueldo y horas extras. Es como un respaldo personal… deshabilitarlo del jefe de ventas y vendedores»*. El dueño lo había pedido el 01-09 y lo frenó; hoy lo volvió a pedir con el alcance claro.
