@@ -21,6 +21,17 @@
 
 ## Sesiones
 
+### [2026-09-10] Dos trabajos que el técnico no tenía cómo marcar, y uno llevaba dos semanas a la vista
+- **Quién:** Marcos + Claude (Fable 5.1).
+- **Objetivo declarado:** *«faltan dos reparaciones acá, una que diga "se agrega espigón" y en algunos casos muy pocos pero hay que tener en cuenta "cambio de tapa frontal"»*, con captura del parte del técnico.
+- **Lo que hay que admitir:** el espigón **no era un pedido nuevo**. Está citado textualmente en el comentario de cabecera de `_trabajo-realizado.blade.php` como parte del ejemplo del dueño del 28-08 que motivó rehacer esa pantalla entera («cambio de llave, cambio de estanque, cambio de caldera **y se agrega espigón**»). Se rediseñó la pantalla para poder marcar varios trabajos… y el trabajo del ejemplo nunca entró al catálogo. Dos semanas con el técnico sin poder marcarlo.
+- **Qué se hizo:** las dos entradas al grupo `Reparada` de `config/servicio_tecnico.php`, con el **remate ya usado por sus vecinos** («funciona normal» para el espigón, «queda en óptimas condiciones» para la tapa frontal, igual que la lateral). El seeder los siembra solos en el próximo deploy con `firstOrCreate`, así que no pisa las horas que jefatura haya ajustado.
+- **Las dos trampas del catálogo, que son la razón de los candados:** (1) el remate **se deriva del catálogo**, así que un «queda en optimas condiciones» sin tilde no rompe nada visible — agrega una **cuarta tarjeta** a «¿Cómo quedó el equipo?» y el técnico elige entre dos que dicen lo mismo; (2) un trabajo **sin horas** deja la mano de obra en $0 y **bloquea el envío de la cotización** (bitácora [2026-08-07]), así que agregarlo sin estimado lo deja inservible. Horas iniciales: espigón **0,5 h** (entra a los rápidos, como manguera o cable suelto), tapa frontal **1 h** como la lateral; jefatura las calibra desde la app.
+- **Candados:** 2 nuevos en `TrabajoArmadoTest`, **mutados con rojo exacto** (sacar el espigón del config; escribir mal el remate). El candado del largo de la frase ya medía contra el catálogo real, así que absorbió el crecimiento solo: el peor caso pasó de 793 a **836** caracteres, contra una columna que ya es TEXT.
+- **Hallazgo derivado a tarea aparte (NO se tocó):** la frase que muestra la pantalla y la que guarda el servidor traen los trabajos en **distinto orden**. Marcando caldera → espigón → tapa frontal, la pantalla dice «Cambio de caldera, se agrega espigón y cambio de tapa frontal» y se guarda «Cambio de caldera, cambio de tapa frontal y se agrega espigón»: el JS recorre los chips en el orden en que se tocaron y el servidor ordena por grupo+trabajo a propósito. Es el defecto de las dos fuentes [2026-08-07], **preexistente**, y el test que dice vigilarlo es solo estructural (la suite de PHP no evalúa Alpine). Se dejó fuera de este lote por ser el flujo central de ST y haber ramas abiertas que lo tocan.
+- **Verificado en el navegador:** los dos chips aparecen en Reparada (18 opciones, 23 en total), siguen siendo **tres** los remates, y marcando los tres trabajos el servidor guardó la frase completa con el tope de 2 h aplicado.
+- **Decisiones:** ninguna nueva.
+- **Próximo paso:** merge a `main` con la doble llave del dueño; el simulador sigue congelado.
 ### [2026-09-10] Los hitos del plan salen del código y entran a la pantalla: lo que el gerente pide en reunión ya no espera un deploy
 - **Quién:** Marcos + Claude (Fable 5.1)
 - **Objetivo declarado:** P-PLAN-06 — que los hitos de /plan se puedan agregar y editar a mano, «para que sea más rápido agregar cuando el gerente pide algo».
