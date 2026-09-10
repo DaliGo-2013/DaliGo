@@ -292,7 +292,7 @@ class TrabajoArmadoTest extends TestCase
      * EL DEFECTO QUE ESTE CAMBIO ESTUVO A PUNTO DE INTRODUCIR. El largo de la frase lo contenía
      * el `max:` del campo de texto; al sacar el campo, dejó de tener quién lo contenga y pasó a
      * depender de CUÁNTOS trabajos se marquen. Con el catálogo real: 10 marcados dan 511
-     * caracteres y los 21 dan 793, contra un VARCHAR(500) en la columna donde la cotización
+     * caracteres y los 23 dan 836, contra un VARCHAR(500) en la columna donde la cotización
      * guarda su snapshot. SQLite lo deja pasar —o sea que local y la suite no lo verían— y MySQL
      * revienta con «Data too long» al ENVIAR la cotización, lejos de donde se marcó.
      *
@@ -342,5 +342,52 @@ class TrabajoArmadoTest extends TestCase
         $this->assertStringContainsString("' — '", $js);
         // Y que no haya vuelto a existir un texto editable en el componente.
         $this->assertStringNotContainsString('textoTocado', $js);
+    }
+
+    /**
+     * Los dos trabajos que el dueño pidió el 10-09-2026 y que el técnico no tenía cómo marcar.
+     * El espigón no es un olvido cualquiera: ya aparecía en su ejemplo del 28-08 («cambio de
+     * llave, cambio de estanque, cambio de caldera y se agrega espigón»), o sea que el catálogo
+     * llevaba dos semanas sin la pieza que motivó rehacer esta pantalla.
+     *
+     * Se verifican los TRES lados que hacen que un trabajo exista de verdad, porque cada uno
+     * falla distinto: la semilla (si falta, una BD nueva o staging no lo tienen), el remate
+     * pegado (uno mal escrito INVENTA una cuarta opción en «¿Cómo quedó el equipo?», que se
+     * deriva del catálogo) y las horas (un trabajo sin horas deja la mano de obra en $0 y
+     * BLOQUEA el envío de la cotización, bitácora [2026-08-07]).
+     */
+    public function test_el_catalogo_trae_el_espigon_y_la_tapa_frontal_marcables(): void
+    {
+        $this->seed(TiemposReparacionSeeder::class);
+
+        foreach (['Se agrega espigón', 'Cambio de tapa frontal'] as $corto) {
+            $fila = TiempoReparacion::all()->first(fn ($t) => $t->trabajo_corto === $corto);
+
+            $this->assertNotNull($fila, "El catálogo no trae «{$corto}»: el técnico no puede marcarlo.");
+            $this->assertTrue($fila->activo, "«{$corto}» está inactivo: no se ofrece para marcar.");
+            $this->assertSame('Reparada', $fila->grupo, "«{$corto}» tiene que caer en el grupo Reparada.");
+            $this->assertGreaterThan(0, (float) $fila->horas, "«{$corto}» sin horas deja la mano de obra en \$0 y bloquea el envío.");
+        }
+    }
+
+    /**
+     * El remate se DERIVA del catálogo, así que un trabajo nuevo con el remate mal escrito
+     * («queda en optimas condiciones», «funciona bien») no rompe nada visible: agrega una cuarta
+     * tarjeta a «¿Cómo quedó el equipo?» y el técnico elige entre dos que dicen lo mismo. Por eso
+     * el candado va sobre el conjunto completo y no sobre las filas nuevas.
+     */
+    public function test_el_catalogo_no_inventa_remates_nuevos(): void
+    {
+        $this->seed(TiemposReparacionSeeder::class);
+
+        $remates = TiempoReparacion::where('activo', true)->pluck('trabajo')
+            ->map(fn ($t) => (new TiempoReparacion(['trabajo' => $t]))->remate)
+            ->filter()->unique()->sort()->values()->all();
+
+        $this->assertSame(
+            ['funciona normal', 'irreparable', 'queda en óptimas condiciones'],
+            $remates,
+            'Apareció un remate nuevo en el catálogo: «¿Cómo quedó el equipo?» se deriva de acá y sumaría una tarjeta.'
+        );
     }
 }

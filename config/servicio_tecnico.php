@@ -230,6 +230,12 @@ return [
             'Cambio de bomba de agua — funciona normal',
             'Cambio de limitador de temperatura — funciona normal',
             'Cambio de filtro — funciona normal',
+            // Agregados el 10-09-2026 a pedido del dueño. El espigón ya aparecía en su
+            // ejemplo del 28-08 («cambio de llave, cambio de estanque, cambio de caldera y
+            // se agrega espigón») y no estaba en la lista; la tapa frontal es poco
+            // frecuente pero ocurre, y sin ella el técnico no tenía cómo marcarla.
+            'Se agrega espigón — funciona normal',
+            'Cambio de tapa frontal — queda en óptimas condiciones',
         ],
         'Revisada sin falla' => [
             'Revisión general, se deja en observación y no presenta fallas — funciona normal',

@@ -17,7 +17,7 @@
      pantalla. «No le pongas hora a todos los arreglos porque va a generar un problema cuando se
      sume al cobro total». El tope de 2 h existe desde el 28-08 y ese ejemplo suyo (caldera 1,5 +
      relé 1 + ventilador 1) SIEMPRE cobró 2 h, no 3 — lo que fallaba era la pantalla, que ponía
-     21 números sueltos invitando a sumarlos mentalmente. El técnico no decide esas horas ni las
+     21 números sueltos invitando a sumarlos mentalmente (hoy 23). El técnico no decide esas horas ni las
      edita, así que verlas por chip no le servía para nada y solo prometía una acumulación que el
      guardado no hace. El único número que queda es el que se va a cobrar, con su aritmética.
 
@@ -38,7 +38,7 @@
         </x-slot:ayuda>
     </x-input-label>
 
-    {{-- Los chips, en un colapsable con el resumen de lo marcado: son 21 opciones y dejarlas
+    {{-- Los chips, en un colapsable con el resumen de lo marcado: son 23 opciones y dejarlas
          siempre abiertas empuja el resto de la pantalla fuera del celular (doctrina de pantallas
          de operario). Se abre solo si no hay nada marcado —que es cuando hay que elegir— y ante un
          error de validación. --}}

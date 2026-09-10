@@ -37,7 +37,7 @@ class TiemposReparacionSeeder extends Seeder
     {
         $t = Str::lower($trabajo);
 
-        $rapidos = ['desbloquea', 'manguera', 'cable/conexión', 'cambio de filtro', 'se desarma', 'verifica buen funcionamiento'];
+        $rapidos = ['desbloquea', 'manguera', 'cable/conexión', 'cambio de filtro', 'se desarma', 'verifica buen funcionamiento', 'espigón'];
         foreach ($rapidos as $k) {
             if (Str::contains($t, $k)) {
                 return 0.5;
