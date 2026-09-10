@@ -104,7 +104,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'emitir nota de credito',        // ANULAR un documento ya emitido (el unico camino: los DTE no se borran)
             // Plan del proyecto (/plan, carta Gantt transicional).
             'ver plan proyecto',       // consultar la pagina (gantt + tracker + hitos + extras)
-            'gestionar plan proyecto', // crear/editar/eliminar los "trabajos extras en paralelo"
+            'gestionar plan proyecto', // crear/editar/eliminar los "trabajos extras en paralelo" y los hitos
             // Modulo LOGISTICA · flota de vehiculos (pedido del dueño 04-08-2026).
             // DOS permisos: ver la flota y sus vencimientos es una consulta que
             // manana necesita cobranzas (paga permisos de circulacion y SOAP);
