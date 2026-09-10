@@ -345,6 +345,230 @@ class TrabajoArmadoTest extends TestCase
     }
 
     /**
+     * EL ORDEN DEL ESPEJO, que es lo que el candado de arriba NO mira (10-09-2026).
+     *
+     * Reproducido en el navegador en la orden #20 marcando caldera → espigón → tapa frontal: la
+     * pantalla mostraba «Cambio de caldera, se agrega espigón y cambio de tapa frontal» y se
+     * guardaba «Cambio de caldera, cambio de tapa frontal y se agrega espigón». El getter
+     * recorría `marcados` —el orden en que se tocaron los chips— y el servidor ordena por
+     * catálogo. El candado de arriba pasaba en verde porque solo mira los conectores.
+     *
+     * Se verifica la FORMA y no el resultado porque la suite de PHP no evalúa Alpine. Y la forma
+     * que se exige es «recorrer el catálogo» y no «ordenar lo marcado»: `catalogo` ya llega en el
+     * orden canónico, así que el orden se HEREDA. Una comparación escrita en JS sería una cuarta
+     * copia de la regla y la más fácil de desalinear (el `sortBy` de PHP compara bytes; un
+     * `localeCompare` no).
+     *
+     * El assert va sobre el CUERPO del getter, recortado por su cierre real, y no sobre el
+     * archivo entero: `this.marcados.map(` es correcto en `horasMarcadas` y en `remateSugerido`
+     * —son sumas y máximos, no les importa el orden— así que un assert global pasaría por el
+     * método equivocado (bitácora [2026-08-21]).
+     */
+    public function test_el_espejo_en_js_encadena_en_el_orden_del_catalogo_y_no_del_click(): void
+    {
+        $cuerpo = $this->cuerpoDeTextoCliente();
+
+        // La forma COMPLETA de la línea, con el `const partes =` incluido, y no la subcadena
+        // suelta: `this.marcados.map(` es legítimo dos líneas más arriba —el propio arreglo lo usa
+        // para armar el Set de búsqueda— y también en `horasMarcadas` y `remateSugerido`, que son
+        // sumas y máximos a los que el orden no les importa. Un assert de la subcadena pasaría
+        // por el elemento equivocado (bitácora [2026-08-21]).
+        $this->assertStringContainsString(
+            'const partes = this.catalogo',
+            $cuerpo,
+            'La vista previa dejó de recorrer el catálogo: si encadena `marcados`, muestra el orden en que se tocaron los chips y no el que se guarda.'
+        );
+        $this->assertStringNotContainsString(
+            'const partes = this.marcados',
+            $cuerpo,
+            'La vista previa volvió a encadenar `marcados`: eso es el orden de los clicks, y el servidor ordena por catálogo (`TiempoReparacion::enOrden`).'
+        );
+    }
+
+    /**
+     * El cuerpo de `get textoCliente()`, recortado por su cierre real. Si el getter se renombra o
+     * se va, esto falla en vez de asertar sobre vacío — un `assertStringNotContainsString` sobre
+     * una cadena vacía pasa siempre (bitácora [2026-08-14]).
+     */
+    private function cuerpoDeTextoCliente(): string
+    {
+        $js = file_get_contents(resource_path('js/app.js'));
+        $ini = strpos($js, 'get textoCliente() {');
+        $this->assertNotFalse($ini, 'No existe `get textoCliente()` en app.js: el espejo de la frase se fue de lugar.');
+
+        $fin = strpos($js, "\n    },", $ini);
+        $this->assertNotFalse($fin, 'No se encontró el cierre de `textoCliente`: el recorte no se puede hacer.');
+
+        $cuerpo = substr($js, $ini, $fin - $ini);
+        // Control positivo del recorte: sin esto, un recorte vacío o cortado daría verde por vacío.
+        $this->assertStringContainsString("' y '", $cuerpo, 'El recorte de `textoCliente` no llegó al armado de la frase.');
+
+        return $cuerpo;
+    }
+
+    /**
+     * LO QUE SE GUARDA SIGUE EL ORDEN EN QUE SE DIBUJAN LOS CHIPS, punta a punta (10-09-2026).
+     *
+     * El candado hermano del de arriba, y el que sí puede fallar por conducta: la expectativa se
+     * DERIVA de la pantalla —se leen los ids de los chips en el orden del DOM— en vez de
+     * escribirse a mano, así que fija la relación entre las dos superficies y no dos veces la
+     * misma frase. Es lo que hace que la vista previa del técnico signifique algo: la pantalla
+     * puede mostrar cualquier orden con tal de que sea EL de lo que se guarda.
+     *
+     * El fixture está armado para que tres órdenes distintos no coincidan —creación (los ids),
+     * alfabético ignorando el grupo, y el del POST— así que discrimina tres regresiones:
+     * ordenar por id, olvidarse del grupo, y usar el orden en que llegaron los chips.
+     */
+    public function test_lo_guardado_sigue_el_orden_en_que_se_dibujan_los_chips(): void
+    {
+        $this->conValorHora();
+
+        // Creados a propósito en un orden que NO es el canónico: por id sería zapata, aviso,
+        // ajuste; alfabético sin mirar el grupo sería ajuste, aviso, zapata; el canónico
+        // (grupo, luego trabajo) es ajuste, zapata, aviso.
+        $zapata = $this->trabajo('Zapata cambiada — funciona normal', 1.0, 'Reparada');
+        $aviso = $this->trabajo('Aviso previo revisado — funciona normal', 1.0, 'Revisada sin falla');
+        $ajuste = $this->trabajo('Ajuste de termostato — funciona normal', 1.0, 'Reparada');
+
+        $orden = $this->orden();
+        $html = $this->pantalla($orden);
+
+        // Los ids de los chips, en el orden en que la pantalla los dibuja. El hidden centinela
+        // (`value=""`) no matchea porque exige dígitos.
+        preg_match_all('/name="trabajos\[\]" value="(\d+)"/', $html, $m);
+        $dibujados = array_map('intval', $m[1]);
+
+        $this->assertSame(
+            [$ajuste->id, $zapata->id, $aviso->id],
+            $dibujados,
+            'Los chips no se dibujan en el orden canónico (grupo, luego trabajo).'
+        );
+
+        // Se marcan al REVÉS de como se dibujan: es el orden de los clicks del técnico.
+        $this->guardar($orden, [
+            'trabajos' => array_reverse($dibujados),
+            'remate' => 'funciona normal',
+        ])->assertSessionHasNoErrors();
+
+        // La expectativa sale de la PANTALLA, no de una frase escrita a mano.
+        $esperada = OrdenServicio::fraseDeTrabajos(
+            collect($dibujados)->map(fn ($id) => TiempoReparacion::find($id)->trabajo_corto),
+            'funciona normal',
+        );
+
+        $this->assertSame($esperada, $orden->fresh()->trabajo_realizado);
+
+        // Control positivo: sin esto, un `$dibujados` vacío o mal extraído daría dos frases
+        // vacías iguales y el assert de arriba pasaría por vacío.
+        $this->assertSame(
+            'Ajuste de termostato, zapata cambiada y aviso previo revisado — funciona normal',
+            $orden->fresh()->trabajo_realizado,
+        );
+    }
+
+    /**
+     * EL PAYLOAD QUE RECIBE LA VISTA PREVIA VA EN EL MISMO ORDEN QUE LOS CHIPS (10-09-2026).
+     *
+     * El eslabón que los otros dos candados NO cubren, y sin él el arreglo se apoya en una
+     * coincidencia. La vista previa hereda el orden de `catalogoTrabajos` en vez de ordenar, así
+     * que ese payload ES el criterio del lado del cliente — pero llega por un camino distinto del
+     * de los chips: los chips salen del `@foreach` sobre la colección agrupada y el payload de un
+     * `flatten(1)` de la misma. Un `sortBy('id')` metido en el `flatten` dejaría los chips
+     * perfectos y la vista previa desordenada, y los dos candados de arriba seguirían verdes.
+     *
+     * El fixture ordena al revés que los ids («Alfa» se crea segunda) para que «va en orden de
+     * catálogo» y «va en orden de creación» no puedan confundirse.
+     */
+    public function test_el_payload_de_la_vista_previa_va_en_el_orden_de_los_chips(): void
+    {
+        $this->trabajo('Zeta ultima — funciona normal', 1.0, 'Reparada');
+        $this->trabajo('Alfa primera — funciona normal', 1.0, 'Reparada');
+
+        $html = $this->pantalla($this->orden());
+
+        preg_match_all('/name="trabajos\[\]" value="(\d+)"/', $html, $chips);
+
+        // `@js()` emite el JSON con las comillas como `"` y todo entre comillas simples, así
+        // que los ids se leen de esa forma y no del JSON crudo (que no existe en el HTML).
+        $ini = strpos($html, 'catalogoTrabajos:');
+        $this->assertNotFalse($ini, 'La pantalla ya no le pasa el catálogo a la vista previa.');
+        preg_match_all('/u0022id.u0022:(\d+)/', substr($html, $ini, 4000), $payload);
+
+        $this->assertNotEmpty($payload[1], 'No se pudieron leer los ids del payload: cambió la forma que emite `@js()`.');
+        $this->assertSame(
+            $chips[1],
+            $payload[1],
+            'El catálogo que recibe la vista previa no viene en el mismo orden que los chips: la frase de la pantalla se desordenaría aunque los chips se vean bien.'
+        );
+    }
+
+    /**
+     * UN SOLO CRITERIO DE ORDEN, y por eso vive en el modelo (10-09-2026).
+     *
+     * Hasta el 10-09 había tres para lo mismo: el `sortBy` de PHP que dibuja los chips, un
+     * `orderBy` de SQL en `fraseDelCliente` para la frase que se guarda, y el orden de los clicks
+     * en la vista previa. Los dos primeros parecían equivalentes y no lo son: la colación de
+     * MySQL ignora los acentos y el `sortBy` compara bytes.
+     *
+     * ESTE CANDADO ES ESTRUCTURAL PORQUE NO PUEDE SER DE CONDUCTA: la BD de test es SQLite, que
+     * ordena por bytes igual que PHP, así que un `orderBy` de vuelta acá daría VERDE en la suite
+     * y divergiría solo en producción (la familia de la bitácora [2026-06-30]). Medido con el
+     * catálogo real: las 23 filas de hoy coinciden en los dos criterios, porque ninguna pareja se
+     * diferencia primero en una vocal acentuada — pero 12 de las 23 ya llevan acento.
+     */
+    public function test_la_frase_y_los_chips_ordenan_con_el_mismo_criterio(): void
+    {
+        // SIN LOS COMENTARIOS, y no es un detalle: los asserts negativos de abajo buscan literales
+        // de sintaxis (`orderBy('trabajo')`) que el comentario de `fraseDelCliente` NOMBRA para
+        // explicar por qué se fueron. Sobre el archivo crudo el candado se disparaba con el código
+        // perfectamente bien — escribir sobre la sintaxis, dentro de la sintaxis, la rompe
+        // (bitácora [2026-08-25]). Un candado de código mira código.
+        $php = $this->sinComentarios(app_path('Http/Controllers/Admin/ServicioTecnicoController.php'));
+
+        // Los DOS sitios por su forma completa y no por un conteo de `enOrden(`: los comentarios
+        // de este mismo archivo la nombran, así que el número cambia al redactar y el candado
+        // fallaría sin que nada esté roto.
+        $this->assertStringContainsString(
+            'TiempoReparacion::enOrden($this->trabajosMarcables($orden))',
+            $php,
+            'El catálogo de chips dejó de pedirle el orden a `TiempoReparacion::enOrden()`.'
+        );
+        $this->assertStringContainsString(
+            'TiempoReparacion::enOrden(TiempoReparacion::whereIn(',
+            $php,
+            'La frase del cliente dejó de pedirle el orden a `TiempoReparacion::enOrden()`: es el mismo orden que dibuja los chips.'
+        );
+        $this->assertStringNotContainsString(
+            "orderBy('trabajo')",
+            $php,
+            'Volvió un orden por SQL: la colación de MySQL ignora los acentos y el `sortBy` del catálogo compara bytes, así que las dos superficies se separarían (y SQLite no lo caza).'
+        );
+        $this->assertStringNotContainsString(
+            "sortBy([['grupo'",
+            $php,
+            'El criterio de orden se volvió a escribir en el controlador: vive en `TiempoReparacion::enOrden()`, una sola vez.'
+        );
+    }
+
+    /**
+     * El código de un archivo PHP sin sus comentarios, para que un candado que busca literales de
+     * sintaxis no se dispare con la prosa que los explica.
+     */
+    private function sinComentarios(string $ruta): string
+    {
+        $codigo = collect(token_get_all(file_get_contents($ruta)))
+            ->reject(fn ($t) => is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true))
+            ->map(fn ($t) => is_array($t) ? $t[1] : $t)
+            ->implode('');
+
+        // Control positivo: si el filtro se comiera el código, los asserts negativos pasarían por
+        // vacío y este candado dejaría de vigilar.
+        $this->assertStringContainsString('private function fraseDelCliente(', $codigo);
+
+        return $codigo;
+    }
+
+    /**
      * Los dos trabajos que el dueño pidió el 10-09-2026 y que el técnico no tenía cómo marcar.
      * El espigón no es un olvido cualquiera: ya aparecía en su ejemplo del 28-08 («cambio de
      * llave, cambio de estanque, cambio de caldera y se agrega espigón»), o sea que el catálogo

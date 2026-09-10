@@ -528,7 +528,7 @@ Alpine.data('reparacionForm', ({
 
     /**
      * VISTA PREVIA de la frase que lee el cliente: los trabajos marcados en minuscula (menos el
-     * primero), separados por coma y con «y» antes del ultimo, mas el remate.
+     * primero), separados por coma y con « y » antes del ultimo, mas el remate.
      *
      * Es un GETTER y ya no un metodo que escribe en un campo: desde el 01-09-2026 el tecnico no
      * escribe (dueño, con el gerente al lado), asi que no hay texto editable que respetar ni
@@ -536,10 +536,28 @@ Alpine.data('reparacionForm', ({
      * (OrdenServicio::fraseDeTrabajos) y esto solo la muestra antes de guardar; los dos tienen
      * que dar el MISMO resultado o la pantalla prometeria una frase distinta de la que se
      * guarda — misma convencion que horasACobrar(), y con el mismo tipo de candado.
+     *
+     * EL ORDEN SALE DE `catalogo`, NO DE `marcados` (10-09-2026). Esto recorria `marcados`, que
+     * viene en el orden en que el tecnico toco los chips, y el servidor ordena por grupo y
+     * trabajo: marcando caldera → espigón → tapa frontal, la pantalla mostraba «caldera, se
+     * agrega espigón y cambio de tapa frontal» y se guardaba «caldera, cambio de tapa frontal y
+     * se agrega espigón». No cambia el precio ni el significado, pero el tecnico revisaba un
+     * texto que no era el que iba a leer el cliente — el defecto de las dos fuentes de la
+     * bitacora [2026-08-07].
+     *
+     * Se arregla RECORRIENDO EL CATALOGO y quedandose con lo marcado, en vez de ordenar
+     * `marcados` con una copia del criterio del servidor: `catalogo` ya llega en el orden
+     * canonico (`TiempoReparacion::enOrden`, el mismo que dibuja los chips), asi que el orden se
+     * HEREDA y no se vuelve a declarar. Una comparacion escrita aca seria una CUARTA copia de la
+     * regla, y encima la mas facil de desalinear: el `sortBy` de PHP compara bytes y un
+     * `localeCompare` de JS no. De paso, un id marcado que no este en el catalogo queda fuera
+     * solo, sin necesitar el filtro.
      */
     get textoCliente() {
-        const partes = this.marcados
-            .map((id) => this.filaTrabajo(id)?.corto)
+        const marcados = new Set(this.marcados.map(Number));
+        const partes = this.catalogo
+            .filter((t) => marcados.has(Number(t.id)))
+            .map((t) => t.corto)
             .filter(Boolean);
 
         if (partes.length === 0) return '';

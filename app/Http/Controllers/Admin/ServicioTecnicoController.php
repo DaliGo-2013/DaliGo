@@ -694,8 +694,7 @@ class ServicioTecnicoController extends Controller
      */
     private function catalogoParaMarcar(OrdenServicio $orden): \Illuminate\Support\Collection
     {
-        return $this->trabajosMarcables($orden)
-            ->sortBy([['grupo', 'asc'], ['trabajo', 'asc']])
+        return TiempoReparacion::enOrden($this->trabajosMarcables($orden))
             ->groupBy('grupo');
     }
 
@@ -741,8 +740,13 @@ class ServicioTecnicoController extends Controller
         // El orden del catálogo, no el del POST: dos técnicos que marcan lo mismo en distinto
         // orden tienen que producir la misma frase, o el texto del cliente dependería de en qué
         // orden tocó los chips.
-        $cortos = TiempoReparacion::whereIn('id', $ids)
-            ->orderBy('grupo')->orderBy('trabajo')
+        //
+        // Y ese orden lo define `TiempoReparacion::enOrden()`, el MISMO que ordena los chips en
+        // pantalla. Acá había un `orderBy('grupo')->orderBy('trabajo')` de SQL que hacía lo mismo
+        // «a ojo» y no era equivalente: la colación de MySQL ignora los acentos y el `sortBy` de
+        // la vista compara bytes (ver el porqué medido en `enOrden`). Ordenar en PHP cuesta una
+        // colección de 3 o 4 filas y deja los dos lados idénticos por construcción.
+        $cortos = TiempoReparacion::enOrden(TiempoReparacion::whereIn('id', $ids)->get())
             ->pluck('trabajo')
             ->map(fn ($t) => TiempoReparacion::sinRemate($t));
 

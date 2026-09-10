@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -109,6 +110,34 @@ class TiempoReparacion extends Model implements AuditableContract
     public static function fmt(float $horas): string
     {
         return rtrim(rtrim(number_format($horas, 1, ',', ''), '0'), ',');
+    }
+
+    /**
+     * EL ORDEN CANÓNICO DEL CATÁLOGO: grupo, y dentro de cada grupo el trabajo. Uno solo, y por
+     * eso vive acá.
+     *
+     * Es el orden en que se dibujan los chips Y el orden en que se encadena la frase que lee el
+     * cliente, porque son la misma cosa: dos técnicos que marcan lo mismo en distinto orden
+     * tienen que producir la misma frase. Lo que obliga a definirlo UNA vez es que hasta el
+     * 10-09-2026 había TRES criterios para lo mismo — un `sortBy` de PHP para los chips, un
+     * `orderBy` de SQL para la frase que se guarda, y el orden en que el técnico tocó los chips
+     * en la vista previa de la pantalla.
+     *
+     * Y no eran equivalentes: `orderBy` compara con la colación de MySQL, que es
+     * ACENTO-INSENSIBLE («á» ordena como «a»), mientras `sortBy` compara BYTES («á» es 0xC3 0xA1,
+     * o sea después de la z). Se separan en cuanto dos trabajos del mismo grupo se diferencien
+     * primero en una vocal acentuada contra una simple. Medido sobre el catálogo real: hoy
+     * ninguna pareja lo hace y los dos criterios dan el mismo resultado en las 23 filas, así que
+     * la divergencia **no se ve** — pero **12 de esas 23 ya llevan acento**, y jefatura sigue
+     * agregando trabajos. Peor: la BD de test es SQLite, que ordena por bytes, así que **ningún
+     * test puede cazar esa diferencia**. Por eso se elimina por construcción en vez de vigilarse.
+     *
+     * @param  Collection<int, static>  $filas
+     * @return Collection<int, static>
+     */
+    public static function enOrden(Collection $filas): Collection
+    {
+        return $filas->sortBy([['grupo', 'asc'], ['trabajo', 'asc']])->values();
     }
 
     /**
