@@ -1176,13 +1176,24 @@ class ServicioTecnicoController extends Controller
         if ($request->boolean('previsualizar')) {
             return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
                 ->with('cotizacion_previa', true)
+                // «Volver a editar» de la ventana previa tiene que devolver al FORMULARIO: la
+                // carta se revisa justamente para corregir algo, y caer en el modo lectura
+                // obligaba a apretar «Editar» y volver a bajar.
+                ->with('sigue_editando', true)
                 ->with('status', "Guardado. Revisa la carta antes de enviarla.");
         }
 
         // Se queda en la MISMA pantalla de reparación (no vuelve al listado): así
         // el técnico puede enviar la cotización enseguida —"guarda antes de
         // enviar"— sin perder la página y con los datos ya guardados a la vista.
+        //
+        // Y CON EL FORMULARIO ABIERTO (dueño 10-09-2026: «que el técnico tenga todo en la misma
+        // página»). Volver a la misma URL no alcanzaba: el parte se dibuja CERRADO por defecto,
+        // así que cada guardado devolvía el modo lectura y se llevaba con él «Revisar y enviar
+        // cotización» —que es un submit de ESE mismo formulario—. La bandera la lee el `x-data`
+        // de la vista.
         return redirect()->route('admin.servicio-tecnico.reparacion', $orden)
+            ->with('sigue_editando', true)
             ->with('status', "Reparación de la orden {$orden->folio} actualizada.".$aviso);
     }
 
