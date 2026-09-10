@@ -171,9 +171,16 @@
                     $reporte->asignacion?->preforma?->nombre,
                     $reporte->asignacion?->procedencia ? 'en '.$reporte->asignacion->procedencia : null,
                 ])->filter()->implode(' · ');
+                // Máquina y tipo ASIGNADOS por el jefe (dueño 09-09): las tandas
+                // los heredan, así que esto es lo que se pidió, no lo reportado.
+                $comboAsignado = collect([$reporte->maquinaAsignada()?->nombre, $reporte->tipoAsignado()?->nombre])
+                    ->filter()->implode(' · ');
             @endphp
-            @if ($preformaTurno !== '' || $reporte->motivo || $reporte->obs || $reporte->motivo_ajuste || $reporte->devuelto_motivo)
+            @if ($preformaTurno !== '' || $comboAsignado !== '' || $reporte->motivo || $reporte->obs || $reporte->motivo_ajuste || $reporte->devuelto_motivo)
                 <div class="space-y-2 border-t border-neutral-100 px-6 py-4 text-sm">
+                    @if ($comboAsignado !== '')
+                        <p><span class="font-medium text-neutral-700">Máquina y tipo asignados:</span> <span class="text-neutral-600">{{ $comboAsignado }}</span></p>
+                    @endif
                     @if ($preformaTurno !== '')
                         <p><span class="font-medium text-neutral-700">Preforma del turno:</span> <span class="text-neutral-600">{{ $preformaTurno }}</span></p>
                     @endif

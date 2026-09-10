@@ -2,14 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Models\Configuracion;
 use App\Models\Maquina;
-use App\Models\Producto;
 use App\Models\ProduccionAsignacion;
 use App\Models\ProduccionParada;
 use App\Models\ProduccionRegistro;
 use App\Models\ProduccionReporte;
+use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\TipoBotellon;
 use App\Models\User;
@@ -281,11 +282,15 @@ class ParametrosOperacionTest extends TestCase
 
     private function reporteBorradorDe(User $soplador): ProduccionReporte
     {
+        // Máquina y tipo los fija el jefe en la asignación (dueño 09-09); la
+        // parada que se registre abajo HEREDA esta máquina.
         $asignacion = ProduccionAsignacion::create([
             'soplador_id' => $soplador->id,
             'fecha' => now()->toDateString(),
             'turno' => 'dia',
             'asignadas' => 200,
+            'maquina_id' => $this->maquina->id,
+            'tipo_botellon_id' => $this->tipo->id,
         ]);
 
         return ProduccionReporte::create([
@@ -302,7 +307,6 @@ class ParametrosOperacionTest extends TestCase
     private function payloadParada(string $motivo): array
     {
         return [
-            'parada_maquina_id' => $this->maquina->id,
             'parada_motivo' => $motivo,
             'parada_origen' => 'maquina',
             'parada_inicio' => '10:00',
@@ -397,6 +401,9 @@ class ParametrosOperacionTest extends TestCase
             'fecha' => now()->toDateString(),
             'asignadas' => 300,
             'procedencia' => 'granel',
+            // Con catálogo sembrado en setUp, máquina y tipo son obligatorios (09-09).
+            'maquina_id' => $this->maquina->id,
+            'tipo_botellon_id' => $this->tipo->id,
         ])->assertSessionHasNoErrors();
         $this->assertSame('granel', ProduccionAsignacion::where('soplador_id', $soplador->id)->firstOrFail()->procedencia);
 
@@ -515,7 +522,8 @@ class ParametrosOperacionTest extends TestCase
         $danada = Producto::create(['sku' => 'PREF-D', 'nombre' => 'Preforma dañada 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
         $rota = Producto::create(['sku' => 'PREF-R', 'nombre' => 'Preforma rota 20g', 'categoria' => 'Preformas PET', 'activo' => true]);
         $jefe = $this->jefe();
-        $base = fn () => ['soplador_id' => $this->soplador()->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100];
+        $base = fn () => ['soplador_id' => $this->soplador()->id, 'turno' => 'dia', 'fecha' => now()->toDateString(), 'asignadas' => 100,
+            'maquina_id' => $this->maquina->id, 'tipo_botellon_id' => $this->tipo->id];
 
         // Default: la dañada queda fuera del selector Y de la validación
         // (closure única: mismo universo en las dos puertas).
@@ -552,11 +560,11 @@ class ParametrosOperacionTest extends TestCase
         // Adopción de Controller::POR_PAGINA (molde COM-2): el valor vive UNA
         // vez en el padre; estos dos eran los paginate(25) del módulo.
         $kardex = $this->actingAs($this->jefe())->get(route('admin.produccion.movimientos'))->assertOk();
-        $this->assertSame(\App\Http\Controllers\Controller::POR_PAGINA, $kardex->viewData('movimientos')->perPage());
+        $this->assertSame(Controller::POR_PAGINA, $kardex->viewData('movimientos')->perPage());
 
         $bodega = Bodega::factory()->create();
         $gestor = tap(User::factory()->create())->givePermissionTo('manage productos');
         $inventario = $this->actingAs($gestor)->get(route('admin.bodegas.show', $bodega))->assertOk();
-        $this->assertSame(\App\Http\Controllers\Controller::POR_PAGINA, $inventario->viewData('stocks')->perPage());
+        $this->assertSame(Controller::POR_PAGINA, $inventario->viewData('stocks')->perPage());
     }
 }

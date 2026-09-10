@@ -51,8 +51,10 @@ class ParametrosMiProduccionTest extends TestCase
 
     private function reporteDe(User $soplador): ProduccionReporte
     {
+        // Máquina y tipo vienen de la asignación (dueño 09-09); la tanda los hereda.
         $asignacion = ProduccionAsignacion::create([
             'soplador_id' => $soplador->id, 'fecha' => now()->toDateString(), 'turno' => 'dia', 'asignadas' => 200,
+            'maquina_id' => $this->maquina->id, 'tipo_botellon_id' => $this->tipo->id,
         ]);
 
         return ProduccionReporte::create([
@@ -65,8 +67,6 @@ class ParametrosMiProduccionTest extends TestCase
     private function tanda(array $extra): array
     {
         return array_merge([
-            'maquina_id' => $this->maquina->id,
-            'tipo_botellon_id' => $this->tipo->id,
             'primera' => 0, 'segunda' => 0, 'malo' => 0, 'danada' => 0,
         ], $extra);
     }

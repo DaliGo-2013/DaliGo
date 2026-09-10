@@ -78,11 +78,13 @@ class ProduccionParadasTest extends TestCase
         ]);
     }
 
-    /** Payload valido de parada; se sobreescribe por test. */
-    private function payload(Maquina $maquina, array $overrides = []): array
+    /**
+     * Payload valido de parada; se sobreescribe por test. Sin máquina desde
+     * el 09-09: la parada HEREDA la asignada por el jefe (ver el primer test).
+     */
+    private function payload(array $overrides = []): array
     {
         return array_merge([
-            'parada_maquina_id' => $maquina->id,
             'parada_motivo' => 'Falla de máquina',
             'parada_origen' => 'maquina',
             'parada_inicio' => '10:00',
@@ -97,9 +99,11 @@ class ProduccionParadasTest extends TestCase
         $soplador = $this->soplador();
         $reporte = $this->reporteDe($soplador);
         $maquina = $this->maquina();
+        // La máquina de la parada es la ASIGNADA por el jefe (dueño 09-09).
+        $reporte->asignacion->update(['maquina_id' => $maquina->id]);
 
         $this->actingAs($soplador)
-            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina))
+            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload())
             ->assertRedirect(route('produccion.mi.show', $reporte));
 
         $this->assertDatabaseHas('produccion_paradas', [
@@ -121,7 +125,7 @@ class ProduccionParadasTest extends TestCase
         $reporte = $this->reporteDe($soplador);
         $maquina = $this->maquina();
         $uuid = (string) Str::uuid();
-        $payload = $this->payload($maquina, ['cliente_uuid' => $uuid]);
+        $payload = $this->payload(['cliente_uuid' => $uuid]);
 
         $this->actingAs($soplador)->postJson(route('produccion.mi.paradas.store', $reporte), $payload)->assertOk();
         $this->actingAs($soplador)->postJson(route('produccion.mi.paradas.store', $reporte), $payload)->assertOk();
@@ -141,7 +145,7 @@ class ProduccionParadasTest extends TestCase
 
         foreach ([Str::uuid(), Str::uuid()] as $uuid) {
             $this->actingAs($soplador)
-                ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, ['cliente_uuid' => (string) $uuid]))
+                ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload(['cliente_uuid' => (string) $uuid]))
                 ->assertOk();
         }
 
@@ -157,7 +161,7 @@ class ProduccionParadasTest extends TestCase
         $maquina = $this->maquina();
 
         $this->actingAs($soplador)
-            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, [
+            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload([
                 'parada_inicio' => '10:00',
                 'parada_fin' => '09:00',
             ]))
@@ -176,7 +180,7 @@ class ProduccionParadasTest extends TestCase
         // "Preformas defectuosas" existe en MOTIVOS_DIFERENCIA pero NO es una
         // parada (es perdida de calidad): la lista cerrada debe rechazarla.
         $this->actingAs($soplador)
-            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, [
+            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload([
                 'parada_motivo' => 'Preformas defectuosas',
             ]))
             ->assertStatus(422)
@@ -193,7 +197,7 @@ class ProduccionParadasTest extends TestCase
 
         // El request intenta imponer 'planificada' sobre una falla: se ignora.
         $this->actingAs($soplador)
-            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, [
+            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload([
                 'parada_motivo' => 'Falla de máquina',
                 'clase' => ProduccionParada::CLASE_PLANIFICADA,
             ]))
@@ -205,7 +209,7 @@ class ProduccionParadasTest extends TestCase
         ]);
 
         $this->actingAs($soplador)
-            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, [
+            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload([
                 'parada_motivo' => 'Cambio de molde',
                 'parada_inicio' => '12:00',
                 'parada_fin' => '12:30',
@@ -228,7 +232,7 @@ class ProduccionParadasTest extends TestCase
         $maquina = $this->maquina();
 
         $this->actingAs($soplador)
-            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, [
+            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload([
                 'cliente_uuid' => '',
                 'parada_fin' => '',
             ]))
@@ -252,7 +256,7 @@ class ProduccionParadasTest extends TestCase
 
         // 403 crudo ANTES de validar: la cola offline lo clasifica permanente.
         $this->actingAs($otro)
-            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina))
+            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload())
             ->assertForbidden();
 
         $this->assertSame(0, $reporte->paradas()->count());
@@ -265,7 +269,7 @@ class ProduccionParadasTest extends TestCase
         $maquina = $this->maquina();
 
         $this->actingAs($soplador)
-            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina))
+            ->postJson(route('produccion.mi.paradas.store', $reporte), $this->payload())
             ->assertForbidden();
 
         $this->assertSame(0, $reporte->paradas()->count());
@@ -426,7 +430,7 @@ class ProduccionParadasTest extends TestCase
         $maquina = $this->maquina();
 
         $this->actingAs($soplador)
-            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload($maquina, [
+            ->post(route('produccion.mi.paradas.store', $reporte), $this->payload([
                 'parada_motivo' => 'Scrap de arranque',
             ]))
             ->assertRedirect();

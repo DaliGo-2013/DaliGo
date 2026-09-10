@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\FechaNegocio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -20,8 +22,11 @@ class ProduccionReporte extends Model implements AuditableContract
 
     // Estados del flujo.
     public const BORRADOR = 'borrador';
+
     public const ENVIADO = 'enviado';
+
     public const APROBADO = 'aprobado';
+
     public const DEVUELTO = 'devuelto';
 
     // Centinela del chip "Otro" del selector de motivo (la vista lo manda como
@@ -142,6 +147,24 @@ class ProduccionReporte extends Model implements AuditableContract
             ->whereNull('fin')
             ->latest('id')
             ->first();
+    }
+
+    /**
+     * La máquina que el jefe ASIGNÓ a este turno (dueño 09-09). Fuente única
+     * para la tanda, la parada y las pantallas: el soplador no elige máquina.
+     * Null = asignación histórica o planta sin catálogo.
+     */
+    public function maquinaAsignada(): ?Maquina
+    {
+        return $this->asignacion?->maquina;
+    }
+
+    /**
+     * El tipo de botellón que el jefe ASIGNÓ a este turno. Misma regla.
+     */
+    public function tipoAsignado(): ?TipoBotellon
+    {
+        return $this->asignacion?->tipoBotellon;
     }
 
     /** El molde elegido al aprobar cuando la inferencia por tipo es ambigua (P-M11-12). */
@@ -307,7 +330,7 @@ class ProduccionReporte extends Model implements AuditableContract
             ->selectRaw('fecha, COALESCE(SUM(primera),0) p1, COALESCE(SUM(segunda),0) p2, COALESCE(SUM(malo),0) mal, COALESCE(SUM(danada),0) dan, COALESCE(SUM(asignadas),0) asig, COUNT(*) reportes')
             ->groupBy('fecha')
             ->get()
-            ->keyBy(fn ($r) => \Illuminate\Support\Carbon::parse($r->fecha)->toDateString());
+            ->keyBy(fn ($r) => Carbon::parse($r->fecha)->toDateString());
     }
 
     // --- Scopes ---
@@ -332,6 +355,6 @@ class ProduccionReporte extends Model implements AuditableContract
     {
         // Fallback en día de NEGOCIO (P-TZ-01): aunque hoy todos los callers
         // pasan $fecha, un caller futuro sin argumento no debe caer al día UTC.
-        return $query->whereDate('fecha', $fecha ?? \App\Support\FechaNegocio::hoy());
+        return $query->whereDate('fecha', $fecha ?? FechaNegocio::hoy());
     }
 }
