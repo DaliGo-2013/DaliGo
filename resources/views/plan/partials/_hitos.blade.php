@@ -72,12 +72,10 @@
                     <div class="mt-0.5 flex items-center justify-between gap-2">
                         <p class="text-xs tabular-nums text-neutral-500">{{ $hito['carbon']->format('d-m-Y') }}</p>
                         @can('gestionar plan proyecto')
-                            <button type="button" @click="editando = true"
-                                    class="-me-2 rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-neutral-100 hover:text-neutral-700"
-                                    title="Editar hito">
+                            {{-- icon-button size sm: 44px tactil en movil, densidad de fila desde sm: --}}
+                            <x-icon-button class="-me-2" @click="editando = true" title="Editar hito" label="Editar">
                                 <x-icon.pencil class="h-4 w-4" />
-                                <span class="sr-only">Editar</span>
-                            </button>
+                            </x-icon-button>
                         @endcan
                     </div>
                 </div>
@@ -108,12 +106,10 @@
                         <div class="flex flex-wrap items-center justify-between gap-3 sm:col-span-6">
                             <x-checkbox-item name="cumplido" value="1" :checked="$errorEnEste ? (bool) old('cumplido') : $hito['cumplido']">Cumplido</x-checkbox-item>
                             <div class="flex items-center gap-3">
-                                <button type="submit" form="hito-borrar-{{ $hito['id'] }}"
-                                        class="rounded-lg p-2 text-neutral-400 transition duration-150 hover:bg-red-50 hover:text-red-600"
-                                        title="Eliminar hito">
+                                <x-icon-button type="submit" form="hito-borrar-{{ $hito['id'] }}"
+                                               variant="danger" title="Eliminar hito" label="Eliminar">
                                     <x-icon.trash class="h-4 w-4" />
-                                    <span class="sr-only">Eliminar</span>
-                                </button>
+                                </x-icon-button>
                                 <x-secondary-button type="button" @click="editando = false">Cerrar</x-secondary-button>
                                 <x-primary-button>Guardar</x-primary-button>
                             </div>
