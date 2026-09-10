@@ -529,7 +529,75 @@
                                             <span class="text-neutral-500">Pallets en el camión</span>
                                             <span class="font-medium tabular-nums text-neutral-900">{{ $enPallet['enCamion']['rejilla']['largo'] }} × {{ $enPallet['enCamion']['rejilla']['ancho'] }}</span>
                                         </div>
+                                        {{-- LO QUE QUEDA LIBRE AL COSTADO Y ARRIBA (jefe de logística,
+                                             10-09-2026: señaló la franja vacía contra el lateral y
+                                             preguntó si ahí se podía poner algo). Va acá, entre los
+                                             números del pallet, porque es una MEDIDA del resultado y
+                                             no un aviso: el cupo de arriba dice qué entró, estas dos
+                                             líneas dicen qué quedó sin usar. Ver `calcularEnPallet`
+                                             para por qué se informan medidas y no un cupo. --}}
+                                        @if ($enPallet['libreAnchoCm'] > 0 || $enPallet['libreAltoCm'] > 0)
+                                            <div class="flex justify-between gap-3 py-1">
+                                                <span class="text-neutral-500">Libre al costado</span>
+                                                <span class="font-medium tabular-nums text-neutral-900">
+                                                    {{ $enPallet['libreAnchoCm'] > 0 ? $enPallet['libreAnchoCm'].' cm de ancho' : '—' }}
+                                                </span>
+                                            </div>
+                                            <div class="flex justify-between gap-3 py-1">
+                                                <span class="text-neutral-500">Libre encima</span>
+                                                <span class="font-medium tabular-nums text-neutral-900">
+                                                    {{ $enPallet['libreAltoCm'] > 0 ? $enPallet['libreAltoCm'].' cm de alto' : '—' }}
+                                                </span>
+                                            </div>
+                                        @endif
                                     </div>
+
+                                    {{-- EL PUENTE A «LA CARGA». Es la respuesta a las DOS cosas que
+                                         pidió el jefe el 10-09 —rellenar la franja, y que la app
+                                         «autorrellene» el camión—: las dos ya las hace el motor, pero
+                                         en el otro modo, y este modo no decía ni que existía. Una
+                                         línea sin cantidad significa «lo que quepa» y se acomoda en lo
+                                         que sobra, así que el relleno lo calcula el motor y no el ojo.
+
+                                         Se lleva el pallet armado tal cual —tipo, alto y cuántos
+                                         entraron— para que del otro lado no haya que escribir nada de
+                                         nuevo, y la segunda línea va VACÍA: es la del relleno, lista
+                                         para elegir producto y dejarle la cantidad en blanco. --}}
+                                    @if ($enPallet['cabenPallets'] > 0 && ($enPallet['libreAnchoCm'] > 0 || $enPallet['libreAltoCm'] > 0))
+                                        <div class="mt-4 rounded-lg bg-brand-50 px-3 py-2.5 text-xs leading-relaxed text-brand-700 ring-1 ring-inset ring-brand-100">
+                                            <strong>Queda espacio sin usar.</strong>
+                                            Al costado y encima de los pallets entra carga liviana.
+                                            @if ($enPallet['puenteTipo'])
+                                                <a href="{{ route('admin.carga.index', array_filter([
+                                                        'camion_id' => $camion->id,
+                                                        'lineas' => [
+                                                            [
+                                                                'pallet' => $enPallet['puenteTipo'],
+                                                                'pallet_alto' => $pallet->alto_cm,
+                                                                'tipo' => $bulto->id,
+                                                                'cantidad' => $enPallet['cabenPallets'],
+                                                            ],
+                                                            ['tipo' => ''],
+                                                        ],
+                                                    ]))}}"
+                                                   {{-- 600 → hover 700 es el idioma de la casa; `brand-800`
+                                                        no existe en el @theme y la clase no se generaría. --}}
+                                                   class="mt-1.5 inline-flex min-h-12 items-center font-semibold text-brand-600 underline underline-offset-2 hover:text-brand-700">
+                                                    Sumar relleno en «La carga» →
+                                                </a>
+                                            @else
+                                                {{-- Huella ajustada a mano: una línea de carga no puede
+                                                     expresar un pallet que no sea de los dos estándar
+                                                     (ver `calcularEnPallet`), y llevarlo cambiaría sus
+                                                     medidas sin decirlo. --}}
+                                                <span class="mt-1 block text-brand-600">
+                                                    Para calcular cuánto entra, armá la carga en «La carga»:
+                                                    este pallet tiene medidas propias y el enlace directo
+                                                    le cambiaría el tamaño.
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
 
                                     @if (! $enPallet['entraEnPallet'])
                                         {{-- Pasa de verdad y no es un error del cálculo: la bolsa de

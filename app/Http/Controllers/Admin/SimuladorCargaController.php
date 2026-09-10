@@ -1163,6 +1163,60 @@ class SimuladorCargaController extends Controller
         // el vendedor podría leerlo como que la carga entra.
         $entra = $porPallet['bultos'] > 0;
 
+        /*
+         * ── LO QUE QUEDA LIBRE AL COSTADO Y ARRIBA DE LOS PALLETS ──
+         *
+         * Lo pidió el jefe de logística (10-09-2026) señalando en una captura la franja
+         * vacía contra el lateral: *«ese espacio, ¿se podía poner más cosas de forma
+         * manual de última para ocupar todo? Lo mismo que arriba de todos los pallets
+         * sobra espacio y se puede poner cosas que no sean tan pesadas»*. Su lectura era
+         * correcta y la franja es grande: un pallet de 100 cm de ancho en un contenedor
+         * de 235 deja 35 cm a lo ancho, y uno armado a 180 en un 40' deja 59 de alto.
+         *
+         * NO LO DECÍA NADIE, y no por olvido: `pisoLibre()` —el único hueco que la
+         * pantalla informaba— mide a TODO el ancho y TODO el alto, y su comentario
+         * declara que el piso al costado de un bloque corto «no se cuenta, para nunca
+         * prometer de más». Este modo cae justo en ese caso: los pallets llegan hasta la
+         * puerta (3 cm libres) y lo que sobra está a los lados y encima, o sea en las dos
+         * direcciones que esa medida calla. El hueco existía, era el más grande, y era el
+         * invisible.
+         *
+         * SE INFORMAN LAS MEDIDAS, NO UN CUPO. «Sobran 35 cm de ancho» es un hecho
+         * geométrico; «ahí entran 100 bolsas» es una promesa, y depende de qué se quiera
+         * meter, de si aguanta ir encima de lo de abajo y del peso que queda. Esa
+         * pregunta la contesta el motor en el modo «La carga» —donde una línea sin
+         * cantidad se lleva lo que quepa— y a eso lleva el puente de la pantalla. Así el
+         * número que promete algo sigue saliendo de un cálculo verificado.
+         *
+         * Son huecos DISJUNTOS: la franja se toma a todo el alto, y el sobrante de arriba
+         * solo cuenta sobre la huella de los pallets. Sumarlos contaría dos veces la
+         * columna de la esquina.
+         */
+        // OJO: la guarda es «cuántos pallets se COLOCARON», no `$entra` —que solo dice si
+        // la caja entra ENCIMA del pallet—. Con un pallet más alto que el camión no se
+        // coloca ninguno y la rejilla viene en cero: ahí el «libre» sería el camión
+        // entero, y al lado de un «0 pallets» se leería como que algo se puede rellenar.
+        // Lo cazó su propio candado (`test_si_no_entra_ningun_pallet_no_hay_franja`).
+        $colocados = $entra ? $enCamion['bultos'] : 0;
+        $anchoUsado = $enCamion['rejilla']['ancho'] * $enCamion['orientacion']['ancho'];
+        $altoUsado = $enCamion['rejilla']['alto'] * $enCamion['orientacion']['alto'];
+
+        /*
+         * ¿SE PUEDE OFRECER EL PUENTE A «LA CARGA»? Solo si la HUELLA del pallet es una
+         * de las estándar, porque una línea de carga expresa su pallet con la clave del
+         * tipo (`lineas.*.pallet`) y no con medidas propias: el alto sí viaja, el largo y
+         * el ancho no. Con la huella ajustada a mano —«Ajustar medidas» lo permite— el
+         * enlace armaría un pallet de OTRO tamaño y devolvería otros números con cara de
+         * ser los mismos. Antes que eso, no se ofrece el puente y se dice por qué.
+         */
+        $puenteTipo = null;
+        foreach (PalletSimulado::TIPOS as $clave => $tipo) {
+            if ($tipo['largo'] === $pallet->largo_cm && $tipo['ancho'] === $pallet->ancho_cm) {
+                $puenteTipo = $clave;
+                break;
+            }
+        }
+
         return [
             'pallet' => $pallet,
             'porPallet' => $porPallet,
@@ -1170,8 +1224,13 @@ class SimuladorCargaController extends Controller
             'entraEnPallet' => $entra,
             'unidadesPorPallet' => $porPallet['unidades'],
             'pesoArmadoKg' => round($pesoArmado, 1),
-            'cabenPallets' => $entra ? $enCamion['bultos'] : 0,
-            'unidadesTotales' => $entra ? $enCamion['bultos'] * $porPallet['unidades'] : 0,
+            'cabenPallets' => $colocados,
+            'unidadesTotales' => $colocados * $porPallet['unidades'],
+            // Sin pallets colocados no hay franja que informar: el camión está vacío y
+            // el hueco es el camión entero, que ya se ve.
+            'libreAnchoCm' => $colocados > 0 ? max(0, $camion->ancho_cm - $anchoUsado) : 0,
+            'libreAltoCm' => $colocados > 0 ? max(0, $camion->alto_cm - $altoUsado) : 0,
+            'puenteTipo' => $puenteTipo,
         ];
     }
 
