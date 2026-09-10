@@ -83,8 +83,28 @@ class InformacionImportanteCorreoTest extends TestCase
 
         $this->assertStringContainsString('No nos hacemos responsables por entrega de equipos sin caja', $html);
         $this->assertStringContainsString('garantía de 3 meses', $html);
-        $this->assertStringContainsString('$3.000 + IVA mensual por concepto de bodegaje', $html);
+        $this->assertStringContainsString('$3.000 + IVA mensual', $html);
         $this->assertStringContainsString('Ley 19.496', $html);
+    }
+
+    /**
+     * EL BODEGAJE Y LA LEY HABLAN DEL DISPENSADOR, a propósito (dueño, 10-09-2026): «que se
+     * especifique con el tema de dispensadores la ley; las herramientas la verdad llegan muy
+     * pocas a servicio técnico y se van rápido, o sea se retiran».
+     *
+     * Este candado existe porque la tentación es exactamente la contraria: el resto del recuadro
+     * dice «equipo» —al taller entran lavadoras, bombas y herramientas— y un barrido de
+     * consistencia generalizaría estos dos puntos sin pensar. Sería un error de fondo, no de
+     * estilo: lo que se acumula meses en la bodega, y por lo tanto lo único que se puede llegar
+     * a vender o dar de baja, es un dispensador. Decir «equipo» le prometería a quien trajo una
+     * herramienta un régimen de bodegaje y disposición que no le corresponde.
+     */
+    public function test_el_bodegaje_y_la_ley_hablan_del_dispensador_no_del_equipo(): void
+    {
+        $html = $this->correo();
+
+        $this->assertStringContainsString('bodegaje del dispensador', $html);
+        $this->assertStringContainsString('dar de baja el dispensador según la Ley 19.496', $html);
     }
 
     /**
