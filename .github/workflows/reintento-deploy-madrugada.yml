@@ -27,10 +27,18 @@ name: Reintento del deploy (madrugada)
 
 on:
   schedule:
-    # 03:10, 04:10 y 05:10 de Chile (UTC-4). Tres oportunidades por si una agarra carga.
-    - cron: '10 7 * * *'
-    - cron: '10 8 * * *'
-    - cron: '10 9 * * *'
+    # LA HORA DECLARADA NO ES LA HORA REAL. Estaban en 07:10/08:10/09:10 UTC («03:10-05:10 de
+    # Chile») y GitHub los disparo ~5 HORAS TARDE todos los dias: 12:11, 12:53 y 13:31 UTC el
+    # 8, el 9 y el 10 de septiembre — o sea 09:10-10:30 de la mañana en Chile, plena hora de
+    # oficina, justo cuando el tope de 25 procesos muerde. El «reintento de madrugada» nunca
+    # corrio de madrugada, y el deploy del 10-09 amanecio sin desplegar (bitacora 2026-09-11).
+    #
+    # Por eso: hora TEMPRANA y minuto IMPAR (GitHub encola menos los minutos raros). Aun con
+    # las 5 h de retraso observadas caen a las 07:37-09:37 UTC = 04:37-06:37 de Chile, antes
+    # de que abra la oficina. Candado: tests/Feature/ReintentoDeployCronTest.php.
+    - cron: '37 2 * * *'
+    - cron: '37 3 * * *'
+    - cron: '37 4 * * *'
   workflow_dispatch:
 
 concurrency:
