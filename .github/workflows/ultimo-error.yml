@@ -1,0 +1,60 @@
+name: Ultimo error de la app (solo lectura)
+
+# Por que existe: la pantalla del 500 le muestra al usuario un CODIGO DE INCIDENTE para que lo
+# dicte («me salio el error RVFCDK»), y ese codigo viaja en la misma linea de log que la
+# excepcion. Hasta hoy nadie podia usarlo: no habia forma de leer el log sin entrar por cPanel,
+# asi que la funcion estaba a medias — el usuario dicta un codigo que nadie puede buscar.
+# El 15-09-2026 eso costo dos rondas de diagnostico a ciegas sobre un 500 al crear un vehiculo.
+#
+# SOLO LECTURA, Y CON LA SALIDA RECORTADA A PROPOSITO:
+#   · No hay `inputs`, igual que en diagnostico-servidor.yml: un workflow_dispatch con texto
+#     libre, en un repo PUBLICO (D-012), es una puerta para ejecutar cualquier cosa en
+#     produccion. Se muestran SIEMPRE los ultimos errores, que es lo que se necesita.
+#   · Los comandos son FIJOS y ninguno escribe, borra ni toca git.
+#   · LA SALIDA SE ENMASCARA. Los logs de Actions de un repo publico son publicos, y el mensaje
+#     de una QueryException trae el SQL COMPLETO — con la patente, el nombre del conductor y
+#     todo lo que se estaba insertando. Se recorta a 200 caracteres y se tapan correos y
+#     cualquier corrida de 4+ digitos. Con la CLASE y el ARCHIVO:LINEA alcanza para diagnosticar
+#     casi siempre; si hace falta el mensaje entero, se lee por cPanel y no se publica aca.
+#
+# Se corre a mano: gh workflow run ultimo-error.yml
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ultimo-error:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leer los ultimos errores del log (sin tocar nada)
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+            -o IdentitiesOnly=yes \
+            -o IdentityAgent=none \
+            -o BatchMode=yes \
+            -o ConnectTimeout=25 \
+            -o StrictHostKeyChecking=accept-new \
+            -o KexAlgorithms=+diffie-hellman-group-exchange-sha256 \
+            "$SSH_USER@$SSH_HOST" \
+            'LOG=$(ls -t "$HOME"/daligo/storage/logs/laravel*.log 2>/dev/null | head -1); \
+             echo "== archivo =="; echo "${LOG:-(no se encontro ningun laravel*.log)}"; \
+             [ -n "$LOG" ] || exit 0; \
+             echo; echo "== ULTIMOS 3 ERRORES (recortados y enmascarados) =="; \
+             grep -a "\.ERROR" "$LOG" | tail -3 | cut -c1-200 \
+               | sed -e "s/[A-Za-z0-9._%+-]\{1,\}@[A-Za-z0-9.-]\{1,\}/<correo>/g" -e "s/[0-9]\{4,\}/<n>/g"; \
+             echo; echo "== CODIGOS DE INCIDENTE de esas lineas =="; \
+             grep -ao "\"incidente\":\"[A-Z0-9]\{6\}\"" "$LOG" | tail -5; \
+             echo; echo "== ARCHIVO:LINEA de NUESTRO codigo en los ultimos errores =="; \
+             tail -400 "$LOG" | grep -ao "/home[^ \"]*/\(app\|routes\|database\)/[^ \"():]*\.php:[0-9]\{1,\}" \
+               | sed "s#.*/daligo/##" | tail -15; \
+             echo; echo "== CLASES de excepcion vistas al final del log =="; \
+             tail -400 "$LOG" | grep -ao "[A-Za-z\\]\{1,\}Exception" | sort | uniq -c | sort -rn | head -8'
