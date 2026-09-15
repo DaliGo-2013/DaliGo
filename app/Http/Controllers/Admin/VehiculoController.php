@@ -398,6 +398,22 @@ class VehiculoController extends Controller
             $datos['baja_at'] = null;
         }
 
+        // `pasillo_cm` ES LA ÚNICA COLUMNA NOT NULL DEL FORMULARIO, y por eso un
+        // blanco acá no es un blanco cualquiera: la migración la declara
+        // `->default(0)` SIN `->nullable()`, así que admite que la clave FALTE
+        // (toma el default) pero no que llegue un NULL explícito.
+        //
+        // Y el formulario manda el campo siempre, llenado o no: vacío llega como
+        // '', `ConvertEmptyStringsToNull` lo vuelve null, el `nullable` de la
+        // regla lo deja pasar, y el insert manda ese null contra la columna.
+        // Eso es el 500 al crear un vehículo del 15-09-2026 — el log de
+        // producción: «SQLSTATE[23000]: Column 'pasillo_cm' cannot be null».
+        //
+        // Se normaliza al default de la columna (0 = no se reserva pasillo), que
+        // es lo que significa dejarlo en blanco. Va acá y no en `store()` porque
+        // editar pasa por el mismo camino y tiene el mismo riesgo.
+        $datos['pasillo_cm'] = (int) ($datos['pasillo_cm'] ?? 0);
+
         return $datos;
     }
 }
