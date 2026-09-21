@@ -15,6 +15,7 @@
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E-NAV · Menú V4 — 8 de 10 pasos hechos** (P-NAV-08 Volver único 24-07 · P-NAV-09 ancho único 25-07 · P-NAV-10 panel anclado 26-07, los tres con QA del dueño; **pendientes P-NAV-05 gate R-31 formal y P-NAV-06 pantallas huérfanas**) · **E1 · M15 CERRADA 2026-07-08** · **E2 · M14 Aprobaciones CERRADA 2026-07-17** (QA del dueño 8/8 en producción, acta 15-07) · **E10-v0/v1 dashboard CERRADAS** · **E-TZ timezone APLICADA 21-07** (solo P-TZ-03 QA de borde pendiente) · **P-M12-02 fase CORREO aplicada 21-07** (stream boceto ST/terreno: cotización + comunicación al cliente) · stream 2 en DESPACHOS · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
+| **Prioridad externa** | **DaliGo EN PAUSA desde el 2026-09-16 por pedido del gerente general.** El equipo pasa a los tres encargos de la **constructora LOLS**: sitio web, programa de presupuestos y programa de sueldos (fichas en §9bis, registro en R-005 §11). Se construyen en el **servidor de la constructora**: DaliGo no presta infraestructura ni código, solo equipo — y por eso no suman al tracker §10. **Retraso acumulado de DaliGo: 2 días hábiles** (reloj en §9bis, al 21-09). Los hitos NO se corren cada semana: se corren juntos al reanudar, por el acumulado. **Primer hito en riesgo: H3' ≈ 9-oct — quedan 14 días hábiles.** **Próximo paso: reunión con don Luis el miércoles 23 o jueves 24-09 en la tarde** — entrega los requerimientos exactos; recién ahí se estiman plazos y se reparte el trabajo entre Marcos y Mauricio. |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
 | **Avance global** | **≈ 58 %** sobre base 108 (tracker actualizado el 2026-08-10 en §10: **F1 de PLAN-M11-FINAL completa** —backflush + paradas con duración, M11 85 %, primer módulo forjado en paralelo por ambos streams—; el 06-07-ago: M04 40 % —bodegas paramétricas + wizard de baja—; el 05-ago: F2 despachos completa —M08 75 %— y E6 Devoluciones —M13 85 %—). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 53 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6). F2 de M11 en curso (OEE + alertas) |
@@ -365,6 +366,143 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 
 ---
 
+## 9bis. Trabajo fuera de DaliGo — Constructora LOLS
+
+> **Reunión con don Luis (gerente general) · 16-sep-2026.** Pidió tres cosas para la constructora
+> LOLS: un sitio web, un programa de presupuestos y un programa de sueldos. **No son alcance de
+> DaliGo** —son otro cliente y otro producto— pero se anotan aquí porque **consumen el mismo equipo**
+> y por eso DaliGo entra en pausa (ver R-005 en §11).
+>
+> **Para qué está este apartado.** No para describir cómo se construyen los tres pedidos —eso vive en
+> sus propios documentos y en el servidor de la constructora—, sino para **controlar los tiempos**:
+> cuánto se retrasa DaliGo, cómo se reparte la carga entre los dos y cómo se administran los dos
+> avances en paralelo sin que uno tape al otro.
+>
+> Esta es una **primera puesta**: los pasos están planteados y sin fechas a propósito. Los
+> requerimientos exactos los entrega don Luis en la reunión del **miércoles 23 o jueves 24-09, en la
+> tarde**, y recién ahí se estiman plazos —más claros, todavía no exactos— y se reparte el trabajo.
+> Lo que importa hoy es que **quede en la carta Gantt y se sepa que se pidió como prioridad**.
+>
+> Sobre la empresa, según lo que explicó don Luis: la base son cuatro áreas — **arquitectura**
+> (Fernando y Hernán), **soluciones de oficina** (Fernando), **construcción** (don Luis o Dafne,
+> sumando camiones pluma y grúa horquilla) y **materialidad** (Dafne). Las dos últimas además pueden
+> hacer trámites o asesorías.
+
+### Dónde se construye — y qué NO comparte con DaliGo
+
+Los tres pedidos se levantan en **infraestructura de la constructora LOLS**, la misma casa donde ya
+vive Bóveda. Conviene dejarlo escrito porque la pregunta va a volver:
+
+| | DaliGo | Los tres pedidos de LOLS |
+|---|---|---|
+| **Servidor** | hosting de DaliGo | **servidor propio de la constructora** |
+| **Repositorio** | `DaliGo` | repos aparte, uno por pedido |
+| **Base de datos** | la de DaliGo | las suyas (y Bóveda, donde ya está la asistencia) |
+| **Presupuesto** | el del proyecto DaliGo | el de la constructora |
+| **Equipo** | Marcos y Mauricio | **Marcos y Mauricio — los mismos** |
+
+**Lo único compartido es el equipo, y por lo tanto el calendario.** DaliGo no presta servidores ni
+código: presta **tiempo**. Por eso este apartado no describe cómo se construyen los tres pedidos
+—eso vivirá en sus propios documentos— sino **cuánto tiempo se llevan y cuánto retrasan a DaliGo**.
+
+Por la misma razón **no entran al tracker §10**: si sumaran ahí, el avance de DaliGo subiría sin que
+DaliGo avance un solo paso.
+
+### Reloj de la pausa — lo que DaliGo lleva perdido
+
+La regla: se cuentan **días hábiles**, se anotan por semana y **los hitos no se tocan cada semana**.
+Se corren una sola vez, al reanudar, por el acumulado de esta tabla. Así el retraso es un número
+medido y no una estimación que se rehace cada lunes.
+
+| Semana | Días | Hábiles | En qué se fue | Acumulado |
+|---|---|---|---|---|
+| S1 | 17 al 21-09 | 2 | Reunión con don Luis y anotación del pedido. Todavía sin material de la constructora. | **2** |
+
+> El 18 y el 19 son feriados: no se cuentan. Cada cierre de sesión agrega su fila; si una semana el
+> equipo vuelve a tocar DaliGo, esa semana suma menos días y se dice en qué se usó.
+
+**El primer hito en riesgo es H3' (≈ 9-oct-2026).** Entre hoy y esa fecha quedan **14 días hábiles**:
+si la pausa se estira más de tres semanas, H3' se consume entero y hay que moverlo sí o sí.
+
+### La reunión que destraba las fechas — miércoles 23 o jueves 24-09-2026, en la tarde
+
+Don Luis entrega los **requerimientos exactos** de los tres pedidos. Hasta que eso pase, cualquier
+plazo que se escriba acá es inventado; después de esa reunión se pueden dar plazos **más claros,
+aunque todavía no exactos**.
+
+Lo que hay que salir sabiendo de esa reunión, por pedido:
+
+| Pedido | Lo que destraba el plazo |
+|---|---|
+| Sitio web | cuántas páginas, quién entrega textos y fotos, si hay dominio y logos, y para cuándo lo quiere |
+| Presupuestos | un presupuesto real de ejemplo, los parámetros de la base y el árbol de partidas; si el estado de pago entra ahora o después |
+| Sueldos y gastos | el Excel de Paula, una planilla de sueldo real, y qué pagos fuera del sueldo existen además de los sábados |
+
+Y dos preguntas que valen para los tres: **cuál va primero** y **si hay una fecha comprometida con
+alguien afuera**.
+
+### Reparto de cargas — se desglosa después de la reunión
+
+Los tres pedidos **no se pueden hacer a la vez con dos personas**, pero **todavía no se asigna quién
+hace qué ni cuánto tarda**: eso se desglosa con los requerimientos en la mano, en los días siguientes
+a la reunión, y se anota acá con fecha.
+
+Lo único que hoy se puede afirmar es el orden en que se destraban, que sale de qué necesita cada uno
+para poder empezar:
+
+| Pedido | Depende de | Cuándo se puede empezar |
+|---|---|---|
+| Sitio web | material de la constructora (textos, fotos, logos) | **no depende de ningún dato**: apenas llegue el material |
+| Presupuestos | un presupuesto real de ejemplo + los parámetros de la base | cuando entreguen el ejemplo |
+| Sueldos y gastos | el Excel de Paula **y** de dónde sale la asistencia | último: es el único que toca Bóveda |
+
+### Cómo se recalculan los hitos cuando se reanude
+
+1. Se suma el acumulado del reloj (días hábiles).
+2. **H3' a H7' se corren ese mismo número de días**, todos juntos, en una sola re-planificación R-006.
+3. Se le muestran al gerente, que puede ajustarlas desde la pantalla del plan (P-PLAN-06).
+
+No se corren antes porque hoy no se sabe cuánto dura la pausa: moverlas ahora sería inventar fechas
+que habría que volver a mover.
+
+### E-LOLSWEB · LOLS · sitio web de la constructora — pedido de don Luis 16-09-2026
+> Lo que pidió textualmente: una página **didáctica, «que el cliente no piense»**. El sitio tiene que
+> presentar las cuatro áreas del negocio y quién responde por cada una, e incluir la maquinaria
+> (camiones pluma, grúa horquilla) y la posibilidad de encargar trámites o asesorías. Sin fechas
+> todavía: primero llega el material.
+- [ ] **P-LWEB-01** · Recibir el material de la constructora: textos, fotos de obras, logos, datos de contacto y qué servicio presenta cada persona
+- [ ] **P-LWEB-02** · Definir con don Luis el recorrido del visitante — qué tiene que entender en los primeros diez segundos y cuál es la única acción que se le pide
+- [ ] **P-LWEB-03** · Estructura y borrador de diseño de las cuatro áreas, con la maquinaria y el apartado de trámites y asesorías
+- [ ] **P-LWEB-04** · Construcción del sitio, revisado en celular antes que en escritorio
+- [ ] **P-LWEB-05** · Dominio, publicación y entrega
+
+### E-LOLSPRE · LOLS · programa de presupuestos de obra — pedido de don Luis 16-09-2026
+> La preocupación que declaró: **pasar la base de un presupuesto de un edificio**. La base se arma con
+> parámetros del tipo altura de fundación, altura de subterráneo, espesor de muralla, altura del primer
+> piso. De ahí tiene que salir un **Excel con el detalle específico del presupuesto**, y el programa
+> debe permitir **agregar ítems** sin programador (su ejemplo: sumar un ítem dentro de terminaciones).
+> **A futuro el mismo documento se convierte en un estado de pago**, así que la estructura se diseña
+> pensando en eso aunque el estado de pago no se construya ahora.
+- [ ] **P-LPRE-01** · Recibir un presupuesto real de ejemplo y el Excel que usan hoy
+- [ ] **P-LPRE-02** · Levantar los parámetros de la base: alturas, espesores y qué más manda el cálculo
+- [ ] **P-LPRE-03** · Definir las partidas y el árbol de ítems, con el requisito de agregar ítems nuevos desde la pantalla
+- [ ] **P-LPRE-04** · Motor de cálculo y exportación del Excel con el detalle específico
+- [ ] **P-LPRE-05** · Diseñar el camino a estado de pago — decisión de alcance con don Luis, no construcción en esta puesta
+
+### E-LOLSSUE · LOLS · programa de sueldos y control de gastos — pedido de don Luis 16-09-2026
+> El problema que describió: **hay plata que no está contemplada en el sueldo**. Su ejemplo: se cita
+> gente a trabajar el sábado de 8 a 15 y se le pagan 45 mil líquidos el lunes. El programa tiene que
+> permitir **el control de gastos que hoy Paula lleva en Excel**, cruzado con la asistencia y mostrando
+> **nombre, cargo y obra**. Ese cruce toca Bóveda, que ya tiene la asistencia con esos tres campos:
+> decidir si se lee de ahí o se carga aparte es de las primeras preguntas.
+- [ ] **P-LSUE-01** · Recibir el Excel de gastos de Paula y una planilla de sueldo real
+- [ ] **P-LSUE-02** · Catastro de los pagos fuera del sueldo: sábados, bonos, adelantos — quién los autoriza, cuándo se pagan y con qué respaldo
+- [ ] **P-LSUE-03** · Definir de dónde sale la asistencia con nombre, cargo y obra, y si se lee de Bóveda o se carga aparte
+- [ ] **P-LSUE-04** · Registro de pagos y su cruce con la asistencia
+- [ ] **P-LSUE-05** · Informe de control de gastos que reemplace el Excel de Paula
+
+---
+
 ## 10. Tracker de avance (base 100, ponderado por esfuerzo)
 
 > Regla anti-autoengaño: un ítem solo suma cuando su criterio de "hecho" pasó QA en staging.
@@ -484,3 +622,22 @@ Cada cambio al plan se anota aquí con fecha y motivo. El ORDEN de los módulos 
 - **Peso 3 y no más:** es un CRUD de una entidad con avisos programados; comparado con M13 Devoluciones (peso 4) o M17 (peso 5) es más chico. Arrancó en 60 % y subió a **75 %** el mismo día, al cargarse los 17 vehículos de la flota en producción. El 25 % que falta es el **QA del dueño** y los bloques que quedaron fuera por decisión suya (kilometraje y mantenciones).
 - **Qué NO cambia:** el ciclo de la factura sigue en 35 puntos y en ≈ 31 %. El módulo nuevo **no aporta al objetivo central** del proyecto; suma en la periferia. Vale decirlo para que el +1 % no se lea como avance del ciclo.
 - **Regla que lo evita:** ninguna — esta vez la regla se cumplió. Se deja como precedente del camino correcto: módulo nuevo → fila en §10 + línea de fechas en `PlanProyecto::MODULOS` + esta R-00N, **en el mismo push**.
+
+### R-005 · 2026-09-16 — DaliGo en pausa: la constructora LOLS pasa a primera prioridad
+- **Qué:** DaliGo queda en **stand-by por tiempo indefinido**. El equipo (Marcos y Mauricio) se dedica
+  de lleno a los tres pedidos de la constructora LOLS: sitio web, programa de presupuestos y programa
+  de sueldos — fichas E-LOLSWEB, E-LOLSPRE y E-LOLSSUE en §9bis.
+- **Por qué:** lo pidió **don Luis, gerente general, en la reunión del 16-09-2026**, y lo pidió como
+  prioridad. No es una decisión técnica ni una re-priorización interna del plan.
+- **Efecto sobre las fechas:** los hitos H3' a H7' quedan **sin recalcular a propósito**. Todavía no se
+  sabe cuánto dura la pausa ni cuánto pesan los tres pedidos: los requerimientos exactos los entrega
+  don Luis en la reunión del **miércoles 23 o jueves 24-09-2026**. Mover las fechas ahora sería inventarlas. En su lugar el retraso se
+  **mide semana a semana** en el reloj de la pausa (§9bis) y los cinco hitos se corren de una sola vez
+  al reanudar, en una R-006. El gerente puede además ajustarlas desde la pantalla (P-PLAN-06).
+- **Qué NO cambia:** los tres pedidos se construyen en el **servidor de la constructora**, con sus
+  propios repos y su propio presupuesto — DaliGo no aporta infraestructura ni código, solo equipo. Por
+  eso tampoco entran al tracker §10: el avance de DaliGo no puede subir por trabajo que no es de
+  DaliGo.
+- **Lo que esta entrada SÍ fija:** que la pausa existe, desde cuándo, quién la pidió y qué se está
+  haciendo en su lugar. Es justo lo que R-002 no hizo en su momento y costó trece días de plan sin
+  registrar.
