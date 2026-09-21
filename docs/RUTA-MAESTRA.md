@@ -15,7 +15,7 @@
 | **Fase actual** | F1→F2 (código adelantado al Gantt; decisiones de F0 atrasadas) |
 | **Unidad activa** | **E-NAV · Menú V4 — 8 de 10 pasos hechos** (P-NAV-08 Volver único 24-07 · P-NAV-09 ancho único 25-07 · P-NAV-10 panel anclado 26-07, los tres con QA del dueño; **pendientes P-NAV-05 gate R-31 formal y P-NAV-06 pantallas huérfanas**) · **E1 · M15 CERRADA 2026-07-08** · **E2 · M14 Aprobaciones CERRADA 2026-07-17** (QA del dueño 8/8 en producción, acta 15-07) · **E10-v0/v1 dashboard CERRADAS** · **E-TZ timezone APLICADA 21-07** (solo P-TZ-03 QA de borde pendiente) · **P-M12-02 fase CORREO aplicada 21-07** (stream boceto ST/terreno: cotización + comunicación al cliente) · stream 2 en DESPACHOS · E0 cerrada salvo pendientes menores (P-S0-03/04/05/06 + P-S0-09/10/11/12) |
 | **Próximo paso** | ⚠️ *Corregido el 2026-07-26: las 4 ramas que esta fila daba por pendientes **ya están en `main`** —`errores-amables` (`f992d1e`), `soplador-historial-45dias` (`ffca25d`), `aprobaciones-categorias` (`6069354`), `notificaciones-solo-admin` (`9b85752`)—; la fila apuntaba a trabajo terminado hacía días.* · **La decisión que toca es de PRODUCTO, no de merge:** el ciclo de la factura (M04→M05→M07→M08) está en 0 % y es el objetivo central del proyecto; M04 sigue pospuesto desde R-002 (13-07) esperando a D-003. Definir si se retoma M04 o se sigue con la periferia · **Cierres baratos pendientes:** P-NAV-05 (gate R-31 formal), P-NAV-06 (pantallas huérfanas al menú), P-TZ-03 (QA de borde del dueño ~21:30), y el `.env` del servidor a `CACHE_STORE=file`/`SESSION_DRIVER=file` · **Decisiones:** 5 abiertas (D-003/004/005/006/008) con objetivo declarado de cerrarlas al **31-jul-2026** · **Ramas abiertas hoy:** `feature/despachos-v1` (14-07), `feature/errores-500-familia` (25-07), `feature/notif-especificas` (23-07), `feature/m15-notificaciones` (13-07, resto de una épica ya cerrada), `design/menu-talana` (23-07) |
-| **Prioridad externa** | **DaliGo EN PAUSA desde el 2026-09-16 por pedido del gerente general.** El equipo pasa a los tres encargos de la **constructora LOLS**: sitio web, programa de presupuestos y programa de sueldos (fichas en §9bis, registro en R-005 §11). Se construyen en el **servidor de la constructora**: DaliGo no presta infraestructura ni código, solo equipo — y por eso no suman al tracker §10. **Retraso acumulado de DaliGo: 2 días hábiles** (reloj en §9bis, al 21-09). Los hitos NO se corren cada semana: se corren juntos al reanudar, por el acumulado. **Primer hito en riesgo: H3' ≈ 9-oct — quedan 14 días hábiles.** **Próximo paso: reunión con don Luis el miércoles 23 o jueves 24-09 en la tarde** — entrega los requerimientos exactos; recién ahí se estiman plazos y se reparte el trabajo entre Marcos y Mauricio. |
+| **Prioridad externa** | **DaliGo EN PAUSA desde el 2026-09-16 por pedido del gerente general.** El equipo pasa a los tres encargos de la **constructora LOLS**: sitio web, programa de presupuestos y programa de sueldos, más **capacitarlo para usar su televisor como computador** (fichas en §9bis, registro en R-005 §11). Se construyen en el **servidor de la constructora**: DaliGo no presta infraestructura ni código, solo equipo — y por eso no suman al tracker §10. **Retraso acumulado de DaliGo: 2 días hábiles** (reloj en §9bis, al 21-09). Los hitos NO se corren cada semana: se corren juntos al reanudar, por el acumulado. **Primer hito en riesgo: H3' ≈ 9-oct — quedan 14 días hábiles.** **Próximo paso: reunión con don Luis el miércoles 23 o jueves 24-09 en la tarde** — entrega los requerimientos exactos; recién ahí se estiman plazos y se reparte el trabajo entre Marcos y Mauricio. |
 | **Bloqueos activos** | D-003 (bodegas — Ricardo respondió 13-07, Luis pendiente; M04 pospuesto → sin fecha crítica), D-005 (soporte Bsale, bloquea M05-F2; ruta docs subió por DESPACHOS) — semáforo en `docs/DECISIONES.md` §2 |
 | **Salud doc↔código** | VERIFICADA el 2026-07-07 (infra por SSH: crontab `*/15` vivo, 4 syncs OK en sus slots, espejo al día tras I-03) |
 | **Avance global** | **≈ 58 %** sobre base 108 (tracker actualizado el 2026-08-10 en §10: **F1 de PLAN-M11-FINAL completa** —backflush + paradas con duración, M11 85 %, primer módulo forjado en paralelo por ambos streams—; el 06-07-ago: M04 40 % —bodegas paramétricas + wizard de baja—; el 05-ago: F2 despachos completa —M08 75 %— y E6 Devoluciones —M13 85 %—). **Del ciclo de la factura —35 puntos, el objetivo central— hay ≈ 53 %, pero M05 todavía no puede emitir un documento tributario real** (config vacía, candado apagado, sin ruta de emisión ni comando B6). F2 de M11 en curso (OEE + alertas) |
@@ -373,7 +373,12 @@ Las 10 decisiones viven en **`docs/DECISIONES.md`** (fichas D-001…D-010 con br
 > DaliGo** —son otro cliente y otro producto— pero se anotan aquí porque **consumen el mismo equipo**
 > y por eso DaliGo entra en pausa (ver R-005 en §11).
 >
-> **Para qué está este apartado.** No para describir cómo se construyen los tres pedidos —eso vive en
+> A esos tres se suma un **cuarto frente que no es un desarrollo sino capacitación**: don Luis quiere
+> usar **su televisor como computador**, y hay que aprender a manejarlo para poder enseñarle. Se
+> anota con la misma letra que lo demás porque es **tiempo del equipo igual que el resto**, y el
+> tiempo que no se anota es el que después nadie sabe dónde se fue.
+>
+> **Para qué está este apartado.** No para describir cómo se construyen los encargos —eso vive en
 > sus propios documentos y en el servidor de la constructora—, sino para **controlar los tiempos**:
 > cuánto se retrasa DaliGo, cómo se reparte la carga entre los dos y cómo se administran los dos
 > avances en paralelo sin que uno tape al otro.
@@ -437,15 +442,17 @@ Lo que hay que salir sabiendo de esa reunión, por pedido:
 | Sitio web | cuántas páginas, quién entrega textos y fotos, si hay dominio y logos, y para cuándo lo quiere |
 | Presupuestos | un presupuesto real de ejemplo, los parámetros de la base y el árbol de partidas; si el estado de pago entra ahora o después |
 | Sueldos y gastos | el Excel de Paula, una planilla de sueldo real, y qué pagos fuera del sueldo existen además de los sábados |
+| La tele como computador | marca y modelo del televisor, qué quiere hacer en él y si la sala tiene internet |
 
-Y dos preguntas que valen para los tres: **cuál va primero** y **si hay una fecha comprometida con
+Y dos preguntas que valen para todos: **cuál va primero** y **si hay una fecha comprometida con
 alguien afuera**.
 
 ### Reparto de cargas — se desglosa después de la reunión
 
 Los tres pedidos **no se pueden hacer a la vez con dos personas**, pero **todavía no se asigna quién
 hace qué ni cuánto tarda**: eso se desglosa con los requerimientos en la mano, en los días siguientes
-a la reunión, y se anota acá con fecha.
+a la reunión, y se anota acá con fecha. La capacitación de la tele se intercala entre medio: no
+compite con ninguno, pero **sí consume horas y por eso entra al reloj**.
 
 Lo único que hoy se puede afirmar es el orden en que se destraban, que sale de qué necesita cada uno
 para poder empezar:
@@ -455,6 +462,7 @@ para poder empezar:
 | Sitio web | material de la constructora (textos, fotos, logos) | **no depende de ningún dato**: apenas llegue el material |
 | Presupuestos | un presupuesto real de ejemplo + los parámetros de la base | cuando entreguen el ejemplo |
 | Sueldos y gastos | el Excel de Paula **y** de dónde sale la asistencia | último: es el único que toca Bóveda |
+| La tele como computador | ver el televisor y saber qué quiere hacer con él | **en cualquier momento**: no depende de los otros tres y son ratos cortos |
 
 ### Cómo se recalculan los hitos cuando se reanude
 
@@ -500,6 +508,21 @@ que habría que volver a mover.
 - [ ] **P-LSUE-03** · Definir de dónde sale la asistencia con nombre, cargo y obra, y si se lee de Bóveda o se carga aparte
 - [ ] **P-LSUE-04** · Registro de pagos y su cruce con la asistencia
 - [ ] **P-LSUE-05** · Informe de control de gastos que reemplace el Excel de Paula
+
+### E-LOLSTV · LOLS · la tele de don Luis como computador, y capacitarlo — 16-09-2026
+> Don Luis quiere **usar su televisor como si fuera un computador**. Esto no es un desarrollo: es
+> **aprender a manejarlo primero para poder enseñarle después**, y esa primera parte es trabajo del
+> equipo aunque no se vea como tal. Va en el plan porque **es tiempo invertido** y porque la
+> capacitación se hace una vez y queda.
+>
+> Todavía no se sabe qué televisor es ni qué quiere hacer en él, y de eso depende todo lo demás: no
+> es lo mismo un televisor que trae su propio sistema y navegador que uno que necesita un aparato
+> conectado por HDMI. Esa es la primera pregunta de la lista.
+- [ ] **P-LTV-01** · Ver el televisor: marca, modelo, qué sistema trae, qué entradas tiene y si la sala tiene internet
+- [ ] **P-LTV-02** · Preguntarle a don Luis **qué quiere hacer en la tele** — revisar informes, entrar a Bóveda, ver correo, mostrar planos en reunión — porque el camino cambia según la respuesta
+- [ ] **P-LTV-03** · Elegir el camino y lo que haga falta: navegador del propio televisor, o un aparato conectado, más teclado y mouse
+- [ ] **P-LTV-04** · Dejarlo andando y probado con sus cuentas, antes de sentarlo a él adelante
+- [ ] **P-LTV-05** · Capacitación con don Luis, con una hoja corta de "cómo se prende y cómo se hace lo que él hace siempre"
 
 ---
 
@@ -626,7 +649,9 @@ Cada cambio al plan se anota aquí con fecha y motivo. El ORDEN de los módulos 
 ### R-005 · 2026-09-16 — DaliGo en pausa: la constructora LOLS pasa a primera prioridad
 - **Qué:** DaliGo queda en **stand-by por tiempo indefinido**. El equipo (Marcos y Mauricio) se dedica
   de lleno a los tres pedidos de la constructora LOLS: sitio web, programa de presupuestos y programa
-  de sueldos — fichas E-LOLSWEB, E-LOLSPRE y E-LOLSSUE en §9bis.
+  de sueldos — fichas E-LOLSWEB, E-LOLSPRE y E-LOLSSUE en §9bis. Se suma **E-LOLSTV**, que no es un
+  desarrollo sino capacitación: don Luis quiere usar su televisor como computador y hay que aprender
+  a manejarlo para enseñarle. Entra al plan porque **también es tiempo del equipo**.
 - **Por qué:** lo pidió **don Luis, gerente general, en la reunión del 16-09-2026**, y lo pidió como
   prioridad. No es una decisión técnica ni una re-priorización interna del plan.
 - **Efecto sobre las fechas:** los hitos H3' a H7' quedan **sin recalcular a propósito**. Todavía no se
